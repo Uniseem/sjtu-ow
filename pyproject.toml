@@ -1,0 +1,60 @@
+[project]
+name = "sjtu-ow"
+version = "0.1.0"
+description = "上海交通大学守望先锋社区网站"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "django>=6.0,<6.1",
+    "wagtail>=8.0,<8.1",
+    "django-tailwind-cli>=4.6",
+    "whitenoise>=6.12",
+    "django-tasks-db>=0.13,<0.14",
+    "django-htmx>=1.23",
+    "gunicorn>=23",
+    "argon2-cffi>=23",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13",
+    "pytest>=8",
+    "pytest-django>=4.11",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = [
+    ".django_tailwind_cli",
+    "staticfiles",
+    "data",
+    "media",
+    "prerendered",
+    "**/migrations/*.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "sjtu_ow",
+    "accounts",
+    "core",
+    "content",
+    "teams",
+    "lfg",
+    "tournaments",
+    "scrims",
+    "moderation",
+    "integrations",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "sjtu_ow.settings.dev"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "--reuse-db"

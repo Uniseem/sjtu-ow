@@ -1,0 +1,13 @@
+{% extends "errors/base.html" %}
+
+{% block title %}没有权限 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block error_body %}
+  <h1>没有权限</h1>
+  <p>{{ reason|default:"你没有权限查看这个页面。" }}</p>
+  <p>如果尚未登录，请先登录后再试。</p>
+  <div class="actions">
+    <a href="/accounts/login/">去登录</a>
+    <a class="secondary" href="/">回到首页</a>
+  </div>
+{% endblock %}

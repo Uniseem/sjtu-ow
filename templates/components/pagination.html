@@ -1,0 +1,17 @@
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+  <nav class="join mt-6" aria-label="分页">
+    {% if page_obj.has_previous %}
+      <a class="join-item btn" href="?page={{ page_obj.previous_page_number }}">上一页</a>
+    {% else %}
+      <span class="join-item btn btn-disabled">上一页</span>
+    {% endif %}
+    <span class="join-item btn btn-ghost pointer-events-none">
+      {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+    </span>
+    {% if page_obj.has_next %}
+      <a class="join-item btn" href="?page={{ page_obj.next_page_number }}">下一页</a>
+    {% else %}
+      <span class="join-item btn btn-disabled">下一页</span>
+    {% endif %}
+  </nav>
+{% endif %}

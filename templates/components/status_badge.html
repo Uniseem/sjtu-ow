@@ -1,0 +1,13 @@
+{% with kind=kind|default:"neutral" %}
+  {% if kind == "success" %}
+    <span class="badge badge-success">{{ label }}</span>
+  {% elif kind == "warning" %}
+    <span class="badge badge-warning">{{ label }}</span>
+  {% elif kind == "error" %}
+    <span class="badge badge-error">{{ label }}</span>
+  {% elif kind == "info" %}
+    <span class="badge badge-info">{{ label }}</span>
+  {% else %}
+    <span class="badge badge-neutral">{{ label }}</span>
+  {% endif %}
+{% endwith %}

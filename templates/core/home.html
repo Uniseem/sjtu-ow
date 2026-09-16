@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}首页 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="hero min-h-[60vh] bg-base-200">
+    <div class="hero-content text-center">
+      <div class="max-w-xl">
+        <h1>
+          上海交通大学守望先锋社区
+        </h1>
+        <p class="py-6 text-base-content/80">
+          资讯、赛事、组队、战队和内战功能正在建设中。当前页面用于确认站点骨架、样式和部署流程。
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <a href="/tournaments/" class="btn btn-primary min-h-11 font-button">查看赛事</a>
+          <a href="/teams/" class="btn btn-outline min-h-11 font-button">浏览战队</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

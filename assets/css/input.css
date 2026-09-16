@@ -1,0 +1,88 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+@source "../../templates/**/*.html";
+@source "../../**/templates/**/*.html";
+
+:root {
+  --font-fallback: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-body: var(--font-fallback);
+  --font-h1: var(--font-body);
+  --font-h1-weight: 700;
+  --font-h1-size: 2rem;
+  --font-h2: var(--font-body);
+  --font-h2-weight: 600;
+  --font-h2-size: 1.5rem;
+  --font-h3: var(--font-body);
+  --font-h3-weight: 600;
+  --font-h3-size: 1.25rem;
+  --font-h4: var(--font-body);
+  --font-h4-weight: 600;
+  --font-h4-size: 1.125rem;
+  --font-nav: var(--font-body);
+  --font-button: var(--font-body);
+  --font-numeric: var(--font-body);
+  --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@theme {
+  --font-sans: var(--font-body);
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+h1 {
+  font-family: var(--font-h1);
+  font-weight: var(--font-h1-weight);
+  font-size: var(--font-h1-size);
+}
+
+h2 {
+  font-family: var(--font-h2);
+  font-weight: var(--font-h2-weight);
+  font-size: var(--font-h2-size);
+}
+
+h3 {
+  font-family: var(--font-h3);
+  font-weight: var(--font-h3-weight);
+  font-size: var(--font-h3-size);
+}
+
+h4,
+h5,
+h6 {
+  font-family: var(--font-h4);
+  font-weight: var(--font-h4-weight);
+  font-size: var(--font-h4-size);
+}
+
+.font-nav {
+  font-family: var(--font-nav);
+}
+
+.font-button {
+  font-family: var(--font-button);
+}
+
+.font-numeric {
+  font-family: var(--font-numeric);
+}
+
+.font-code {
+  font-family: var(--font-code);
+}
+
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator {
+  display: inline;
+}
+
+.htmx-request.htmx-indicator {
+  display: inline;
+}

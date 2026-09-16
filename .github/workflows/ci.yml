@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ruff, pytest, migrations, deploy check
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: sjtu_ow.settings.dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Tests
+        run: uv run pytest
+
+      - name: Missing migrations
+        run: uv run python manage.py makemigrations --check --dry-run
+
+      - name: Production deploy check
+        env:
+          DJANGO_SETTINGS_MODULE: sjtu_ow.settings.prod
+          DJANGO_SECRET_KEY: ci-not-for-production-use-a-long-random-string-at-least-fifty-chars
+          FIELD_ENCRYPTION_KEY: ci-not-for-production
+          DJANGO_ALLOWED_HOSTS: example.com
+          DJANGO_CSRF_TRUSTED_ORIGINS: https://example.com
+          SITE_URL: https://example.com
+          DJANGO_SECURE_SSL_REDIRECT: "true"
+        run: uv run python manage.py check --deploy
+
+      - name: Error pages match templates
+        run: |
+          uv run python manage.py render_error_pages
+          git diff --exit-code -- deploy/error_pages
+
+      - name: Docker image
+        run: docker build -t sjtu-ow:ci .

@@ -1,0 +1,82 @@
+{% load static tailwind_cli %}
+<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}上海交通大学守望先锋社区{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}上海交通大学守望先锋社区网站{% endblock %}">
+    {% tailwind_css %}
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body class="min-h-screen bg-base-100 text-base-content">
+    <div class="drawer">
+      <input id="nav-drawer" type="checkbox" class="drawer-toggle">
+      <div class="drawer-content flex min-h-screen flex-col">
+        <header class="navbar bg-base-100 border-b border-base-300 px-4">
+          <div class="navbar-start gap-2">
+            <label for="nav-drawer" class="btn btn-ghost btn-square lg:hidden" aria-label="打开导航菜单">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </label>
+            <a href="{% url 'home' %}" class="text-lg font-semibold font-nav">交大守望先锋</a>
+          </div>
+          <nav class="navbar-center hidden lg:flex font-nav" aria-label="主导航">
+            <ul class="menu menu-horizontal gap-1">
+              <li><a href="{% url 'home' %}">首页</a></li>
+              <li><a href="/news/">资讯</a></li>
+              <li><a href="/tournaments/">赛事</a></li>
+              <li><a href="/lfg/">组队大厅</a></li>
+              <li><a href="/teams/">战队</a></li>
+              <li><a href="/scrims/">内战</a></li>
+            </ul>
+          </nav>
+          <div class="navbar-end gap-2" data-slot="account">
+            {% include "components/account_area.html" %}
+          </div>
+        </header>
+
+        <div id="toast-region" class="toast toast-top toast-end z-50" data-slot="messages" aria-live="polite">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <main class="flex-1">
+          {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer footer-horizontal footer-center bg-base-200 text-base-content p-8 font-nav">
+          <nav class="grid grid-flow-col gap-6">
+            <a class="link link-hover" href="/about/">关于我们</a>
+            <a class="link link-hover" href="/terms/">用户协议</a>
+            <a class="link link-hover" href="/privacy/">隐私政策</a>
+          </nav>
+          <aside>
+            <p>上海交通大学守望先锋社区</p>
+          </aside>
+        </footer>
+      </div>
+      <div class="drawer-side z-40 lg:hidden">
+        <label for="nav-drawer" class="drawer-overlay" aria-label="关闭导航菜单"></label>
+        <ul class="menu bg-base-200 min-h-full w-72 p-4 font-nav">
+          <li><a href="{% url 'home' %}">首页</a></li>
+          <li><a href="/news/">资讯</a></li>
+          <li><a href="/tournaments/">赛事</a></li>
+          <li><a href="/lfg/">组队大厅</a></li>
+          <li><a href="/teams/">战队</a></li>
+          <li><a href="/scrims/">内战</a></li>
+        </ul>
+      </div>
+    </div>
+    <script src="{% static 'vendor/htmx.min.js' %}"></script>
+    <script src="{% static 'vendor/alpine.csp.min.js' %}" defer></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

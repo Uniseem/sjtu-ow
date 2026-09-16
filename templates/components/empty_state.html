@@ -1,0 +1,13 @@
+<div class="hero bg-base-200 rounded-box py-12">
+  <div class="hero-content text-center">
+    <div class="max-w-md">
+      <h2 class="text-xl font-semibold">{{ title|default:"暂无内容" }}</h2>
+      {% if message %}
+        <p class="py-4 text-base-content/70">{{ message }}</p>
+      {% endif %}
+      {% if action_url and action_label %}
+        <a href="{{ action_url }}" class="btn btn-primary font-button">{{ action_label }}</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
