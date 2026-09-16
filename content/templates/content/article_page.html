@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block title %}{{ seo.document_title }}{% endblock %}
+
+{% block content %}
+  <article class="mx-auto w-full max-w-3xl px-4 py-10">
+    <p class="text-sm text-base-content/70">
+      <a href="{{ page.get_parent.url }}" class="link link-hover">资讯</a>
+      ·
+      {{ page.category.name }}
+    </p>
+    <h1 class="mt-2">{{ page.title }}</h1>
+    <p class="mt-3 text-sm text-base-content/70">
+      {{ page.author.nickname }}
+      ·
+      {{ page.first_published_at|date:"Y年n月j日 H:i" }}
+    </p>
+    {% if page.cover %}
+      <figure class="mt-6">
+        {% image page.cover fill-1200x630 class="w-full rounded-box" %}
+      </figure>
+    {% endif %}
+    {% if page.summary %}
+      <p class="mt-6 text-base-content/80">{{ page.summary }}</p>
+    {% endif %}
+    <div class="article-body mt-8">
+      {% include_block page.body %}
+    </div>
+  </article>
+{% endblock %}

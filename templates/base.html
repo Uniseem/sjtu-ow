@@ -4,8 +4,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}上海交通大学守望先锋社区{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}上海交通大学守望先锋社区网站{% endblock %}">
+    <title>{% block title %}{{ seo.document_title }}{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}{{ seo.description }}{% endblock %}">
+    <link rel="canonical" href="{% block canonical %}{{ seo.canonical }}{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}{{ seo.og_title }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ seo.og_description }}{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ seo.og_url }}{% endblock %}">
+    {% if seo.og_image %}
+      <meta property="og:image" content="{{ seo.og_image }}">
+    {% endif %}
     {% tailwind_css %}
     {% block extra_head %}{% endblock %}
   </head>

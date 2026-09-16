@@ -62,7 +62,7 @@ class SiteSettings(BaseGenericSetting):
     site_description = models.TextField(
         "站点简介",
         blank=True,
-        help_text=LATER,
+        help_text="用于页面描述和链接预览。",
     )
     default_share_image = models.ForeignKey(
         "wagtailimages.Image",
@@ -71,7 +71,7 @@ class SiteSettings(BaseGenericSetting):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
-        help_text=LATER,
+        help_text="没有封面的页面使用这张图作为分享预览。",
     )
     team_max_members = models.PositiveIntegerField(
         "战队人数上限",
@@ -162,7 +162,7 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("site_description"),
                 FieldPanel("default_share_image"),
             ],
-            heading="站点信息（后续里程碑使用）",
+            heading="站点信息",
         ),
         MultiFieldPanel(
             [

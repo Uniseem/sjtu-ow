@@ -1,0 +1,7 @@
+{% load wagtailimages_tags %}
+<figure class="my-6">
+  {% image value.image fill-1200x675 class="w-full rounded-box" %}
+  {% if value.caption %}
+    <figcaption>{{ value.caption }}</figcaption>
+  {% endif %}
+</figure>

@@ -5,12 +5,17 @@ from accounts.services import (
     assign_round_permissions,
     ensure_preset_groups,
 )
+from content.services import (
+    ensure_article_categories,
+    ensure_page_tree,
+    remove_wagtail_stock_groups,
+)
 
 
 class Command(BaseCommand):
     help = (
         "Initialize groups, page tree, workflows, and default typography. "
-        "This round creates all preset groups and the permissions that exist today."
+        "This round creates preset groups, article categories, and the page tree."
     )
 
     def handle(self, *args, **options):
@@ -25,12 +30,37 @@ class Command(BaseCommand):
                 "赛事管理员和内战管理员可查看联系方式。"
             )
         )
+
+        removed = remove_wagtail_stock_groups()
+        if removed:
+            self.stdout.write(
+                self.style.SUCCESS("已删除 Wagtail 自带用户组：" + "、".join(removed))
+            )
+        else:
+            self.stdout.write(
+                "Wagtail 自带的 Editors / Moderators 组不存在，无需删除。"
+            )
+
+        categories = ensure_article_categories()
+        self.stdout.write(
+            self.style.SUCCESS(
+                "已确保文章分类："
+                + "、".join(f"{item.name}（{item.slug}）" for item in categories)
+            )
+        )
+
+        homepage = ensure_page_tree()
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"已确保页面树：{homepage.title}、资讯、用户协议、隐私政策、关于我们"
+            )
+        )
+
         later = [
-            "页面树：首页、「资讯」栏目、用户协议和隐私政策占位页面",
             "「内容审核」工作流，并绑定到文章栏目",
             "「投稿图片」图片集合及权限",
-            "内容编辑 / 认证作者 / 投稿者的文章与审核权限（M2）",
-            "投稿者组的自动成员同步（M2）",
+            "内容编辑 / 认证作者 / 投稿者的文章与审核权限（M2 投稿轮）",
+            "投稿者组的自动成员同步（M2 投稿轮）",
             "赛事管理员的赛事管理权限（M4）",
             "内战管理员的内战管理权限（M6）",
             "初始游戏模式",
@@ -43,6 +73,6 @@ class Command(BaseCommand):
             self.stdout.write(f"  - {item}")
         self.stdout.write(
             self.style.NOTICE(
-                "不会改写已有用户组成员关系；重复执行只会确保组存在并补齐本轮权限。"
+                "不会改写已有用户组成员关系；重复执行只会确保组、分类和页面树存在。"
             )
         )

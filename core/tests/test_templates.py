@@ -5,12 +5,16 @@ from django.template.loader import render_to_string
 
 
 def test_templates_have_no_inline_style_attributes():
-    root = Path(settings.BASE_DIR) / "templates"
+    roots = [Path(settings.BASE_DIR) / "templates"]
+    roots.extend(sorted(Path(settings.BASE_DIR).glob("*/templates")))
     offenders = []
-    for path in root.rglob("*.html"):
-        text = path.read_text(encoding="utf-8")
-        if 'style="' in text or "style='" in text:
-            offenders.append(str(path.relative_to(root)))
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for path in root.rglob("*.html"):
+            text = path.read_text(encoding="utf-8")
+            if 'style="' in text or "style='" in text:
+                offenders.append(str(path.relative_to(settings.BASE_DIR)))
     assert offenders == []
 
 

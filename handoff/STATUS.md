@@ -1,8 +1,8 @@
 # 当前状态
 
 ```yaml
-milestone: M1 账号与资料
-round: 005-m1-profile
+milestone: M2 内容、投稿与字体
+round: 006-m2-content
 next: claude
 updated: 2026-09-16
 blocked_on: 无
@@ -10,15 +10,15 @@ blocked_on: 无
 
 ## 现在该谁动手
 
-**Claude**：读 `handoff/rounds/005-m1-profile/report.md`，独立验证后写 `review.md`。通过则开下一轮（M2 或 005 的收尾），把上面的 `next` 改成 `grok`。
+**Claude**：读 `handoff/rounds/006-m2-content/report.md`，独立验证后写 `review.md`。通过则开 007（投稿），把上面的 `next` 改成 `grok`。
 
 ## 里程碑进度
 
 | 里程碑 | 状态 | 说明 |
 |---|---|---|
 | M0 项目骨架 | **已完成** | 003 复核通过 |
-| M1 账号与资料 | 进行中 | 004 已通过；005 个人资料与功能权限待复核 |
-| M2 内容、投稿与字体 | 未开始 | |
+| M1 账号与资料 | **已完成** | 005 复核通过 |
+| M2 内容、投稿与字体 | 进行中 | 006 内容页面待复核；007 投稿、008 字体、009 预渲染、010 AI 审核尚未开始 |
 | M3 战队与组队大厅 | 未开始 | |
 | M4 赛事与报名 | 未开始 | |
 | M5 开放 API 与 Webhook | 未开始 | |
@@ -33,7 +33,8 @@ blocked_on: 无
 | 002-m0-fixes | 修复 001 复核问题 | A 类全部修好；B2 的修法引入新问题，错误页失去样式 |
 | 003-m0-hardening | 修健康检查误报和错误页样式 | 复核通过 |
 | 004-m1-accounts | 账号、全站设置、异步邮件、worker 心跳 | 复核通过（SMTP 明文写入列为 005 T1） |
-| 005-m1-profile | 个人资料、联系方式、功能权限、`init_site` 角色组 | 实现完成，待复核 |
+| 005-m1-profile | 个人资料、联系方式、功能权限、`init_site` 角色组 | 复核通过。M1 完成 |
+| 006-m2-content | 页面类型、文章分类、首页与资讯、元信息 / sitemap / robots | 实现完成，待复核 |
 
 ## 当前待定问题
 

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}{{ seo.document_title }}{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-6xl px-4 py-10">
+    <h1>上海交通大学守望先锋社区</h1>
+    <p class="mt-3 max-w-2xl text-base-content/80">
+      资讯、赛事、组队、战队和内战。赛事与内战功能正在建设中。
+    </p>
+
+    <div class="mt-8 grid gap-6 lg:grid-cols-2">
+      <section class="card bg-base-200" data-slot="home-articles">
+        <div class="card-body">
+          <h2>最新公告</h2>
+          {% if home_articles %}
+            <ul class="mt-4 flex flex-col gap-3">
+              {% for article in home_articles %}
+                <li>
+                  <a href="{{ article.url }}" class="link link-hover font-semibold">
+                    {{ article.title }}
+                  </a>
+                  <p class="text-sm text-base-content/70">
+                    {{ article.category.name }}
+                    ·
+                    {{ article.first_published_at|date:"Y年n月j日" }}
+                  </p>
+                  {% if article.summary %}
+                    <p class="text-sm text-base-content/80">{{ article.summary }}</p>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            {% include "components/empty_state.html" with title="暂无文章" message="发布后会显示在这里。" %}
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="card bg-base-200" data-slot="home-tournaments">
+        <div class="card-body">
+          <h2>正在报名的赛事</h2>
+          {% if open_tournaments %}
+            {# M4: iterate open_tournaments here. Layout stays. #}
+            <ul class="mt-4 flex flex-col gap-3">
+              {% for tournament in open_tournaments %}
+                <li>{{ tournament }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            {% include "components/empty_state.html" with title="即将开放" message="赛事报名将在后续里程碑接入。" %}
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="card bg-base-200" data-slot="home-scrims">
+        <div class="card-body">
+          <h2>近期内战</h2>
+          {% if upcoming_scrims %}
+            {# M6: iterate upcoming_scrims here. Layout stays. #}
+            <ul class="mt-4 flex flex-col gap-3">
+              {% for scrim in upcoming_scrims %}
+                <li>{{ scrim }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            {% include "components/empty_state.html" with title="即将开放" message="内战活动将在后续里程碑接入。" %}
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="card bg-base-200" data-slot="home-lfg">
+        <div class="card-body">
+          <h2>组队大厅</h2>
+          <p class="mt-4 text-base-content/80">
+            {% if request.user.is_authenticated and lfg_open_count is not None %}
+              {# M3: show count of open LFG posts. #}
+              当前 {{ lfg_open_count }} 条招人中的车帖
+            {% else %}
+              登录后查看
+            {% endif %}
+          </p>
+          <div class="card-actions mt-4">
+            <a href="/lfg/" class="btn btn-primary min-h-11 font-button">进入组队大厅</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+{% endblock %}

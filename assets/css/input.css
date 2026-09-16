@@ -87,6 +87,38 @@ h6 {
   display: inline;
 }
 
+.article-body .rich-text p {
+  @apply my-4 leading-7;
+}
+
+.article-body .rich-text ul {
+  @apply my-4 list-disc pl-6;
+}
+
+.article-body .rich-text ol {
+  @apply my-4 list-decimal pl-6;
+}
+
+.article-body .rich-text a {
+  @apply link link-primary;
+}
+
+.article-body .rich-text h2 {
+  @apply mt-8 mb-3;
+}
+
+.article-body .rich-text h3 {
+  @apply mt-6 mb-2;
+}
+
+.article-body figcaption {
+  @apply mt-2 text-center text-sm text-base-content/70;
+}
+
+.article-body blockquote {
+  @apply my-4 border-l-4 border-primary pl-4 text-base-content/80;
+}
+
 .form-control input[type="text"],
 .form-control input[type="email"],
 .form-control input[type="password"],

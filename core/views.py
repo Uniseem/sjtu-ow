@@ -14,6 +14,15 @@ from core.models import SiteSettings
 
 @require_GET
 def home(request):
+    from wagtail.models import Site
+
+    from content.models import HomePage
+
+    site = Site.find_for_request(request)
+    if site is not None:
+        page = site.root_page.specific
+        if isinstance(page, HomePage) and page.live:
+            return page.serve(request)
     return render(request, "core/home.html")
 
 
