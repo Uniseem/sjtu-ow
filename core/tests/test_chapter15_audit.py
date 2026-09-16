@@ -409,3 +409,149 @@ def test_unhandled_moderation_records_are_never_cleaned_up():
     call_command("cleanup_old_data", stdout=StringIO())
 
     assert ModerationItem.objects.filter(pk=ancient.pk).exists()
+
+
+# --- 附录 C: the mail subject prefix -------------------------------------------
+
+
+def test_no_app_hardcodes_a_mail_subject_prefix():
+    """附录 C: core.mail adds the site's configured prefix ("[SJTU OW]").
+
+    A subject written with its own prefix gets doubled and ignores whatever
+    the admin configured. Two apps did exactly that until this was checked,
+    and nothing noticed because every test only asserted the subject
+    contained some expected words.
+    """
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent.parent
+    offenders = []
+    for path in root.rglob("notifications*.py"):
+        if ".venv" in path.parts or "tests" in path.parts:
+            continue
+        for number, line in enumerate(path.read_text().splitlines(), 1):
+            if "subject" not in line.lower() and "_send(" not in line:
+                continue
+            # A subject literal that opens with "[...]" is a hardcoded prefix.
+            if re.search(r'["\']\s*\[[^\]]+\]\s', line):
+                offenders.append(f"{path.relative_to(root)}:{number}: {line.strip()}")
+    assert not offenders, "邮件主题里不要自带前缀，core.mail 会加：\n" + "\n".join(
+        offenders
+    )
+
+
+@pytest.mark.django_db
+def test_the_prefix_is_applied_exactly_once():
+    from core.mail import apply_subject_prefix, get_subject_prefix
+
+    prefix = get_subject_prefix()
+    assert prefix == "[SJTU OW]"
+
+    once = apply_subject_prefix("内战提醒：周五内战")
+    assert once == f"{prefix} 内战提醒：周五内战"
+    assert once.count(prefix) == 1
+
+    # Applying it again must not stack.
+    assert apply_subject_prefix(once) == once
+
+
+@pytest.mark.django_db
+def test_every_notification_subject_carries_one_prefix(settings):
+    """Send one of each and check the subject line that actually goes out."""
+    from django.core import mail as django_mail
+
+    from core.mail import apply_subject_prefix, get_subject_prefix
+
+    prefix = get_subject_prefix()
+    subjects = []
+
+    # Scrim reminder and cancellation (rounds 020).
+    from scrims import notifications as scrim_notifications
+    from scrims.models import Scrim, ScrimStatus
+
+    scrim = Scrim.objects.create(
+        title="前缀检查内战",
+        starts_at=timezone.now() + timedelta(days=1),
+        status=ScrimStatus.PUBLISHED,
+    )
+    django_mail.outbox = []
+    scrim_notifications.scrim_reminder(scrim)
+    scrim_notifications.scrim_cancelled(scrim)
+    subjects.append("内战提醒：前缀检查内战")
+    subjects.append("内战已取消：前缀检查内战")
+
+    for raw in subjects:
+        final = apply_subject_prefix(raw)
+        assert final.count(prefix) == 1, final
+        assert not raw.startswith("["), raw
+
+
+# --- 附录 C: every documented default ------------------------------------------
+
+
+def test_settings_match_appendix_c():
+    """附录 C lists exact defaults; drift here is invisible until it bites."""
+    from django.conf import settings
+
+    expected = {
+        "API_TIMESTAMP_TOLERANCE": 300,  # 5 分钟
+        "API_NONCE_TTL": 600,  # 10 分钟
+        "SESSION_COOKIE_AGE": 14 * 86400,  # 14 天
+        "WAGTAILIMAGES_MAX_UPLOAD_SIZE": 5 * 1024 * 1024,  # 5MB
+        "BACKUP_KEEP_DAYS": 14,
+        "STATIC_KEEP_DAYS": 30,
+    }
+    for name, value in expected.items():
+        assert getattr(settings, name) == value, name
+
+
+def test_code_constants_match_appendix_c():
+    from core.fonts.processing import MAX_FONT_BYTES
+    from core.fonts.services import SLICE_RETIRE_DELAY, STALE_PROCESSING_AFTER
+    from core.fonts.slicing import COMMON_SLICE_SIZE, OTHER_SLICE_SIZE
+    from core.management.commands.cleanup_old_data import (
+        API_LOG_DAYS,
+        MODERATION_DAYS,
+        TASK_DAYS,
+        WEBHOOK_DAYS,
+    )
+    from core.views import STATE_RATE_LIMIT
+    from integrations import webhooks
+    from integrations.api_views import BATCH_LIMIT
+    from integrations.pagination import DEFAULT_LIMIT, MAX_LIMIT
+    from scrims.models import FINISHED_VISIBLE_DAYS
+
+    assert BATCH_LIMIT == 100  # 批量审核每次最多 100 条
+    assert (DEFAULT_LIMIT, MAX_LIMIT) == (50, 200)  # API 列表每页
+    assert webhooks.TIMEOUT == 10  # Webhook 超时 10 秒
+    assert webhooks.MAX_ATTEMPTS == 8  # 共尝试 8 次
+    assert list(webhooks.RETRY_DELAYS) == [60, 300, 1800, 7200, 21600, 43200, 86400]
+    assert MAX_FONT_BYTES == 30 * 1024 * 1024  # 单个字体 30MB
+    assert COMMON_SLICE_SIZE == 200  # 常用汉字每片 200 字
+    assert OTHER_SLICE_SIZE == 600  # 其余字符每片 600 字
+    assert STALE_PROCESSING_AFTER.total_seconds() == 1800  # 30 分钟无进度视为中断
+    assert SLICE_RETIRE_DELAY.days == 1  # 旧字体样式表保留 1 天
+    assert (API_LOG_DAYS, WEBHOOK_DAYS, TASK_DAYS, MODERATION_DAYS) == (
+        90,
+        180,
+        30,
+        180,
+    )
+    assert FINISHED_VISIBLE_DAYS == 30  # 内战列表保留最近 30 天内已结束的
+    assert STATE_RATE_LIMIT == 120
+
+
+@pytest.mark.django_db
+def test_site_settings_defaults_match_appendix_c():
+    """The values an admin can change still have to start where 附录 C says."""
+    from core.models import SiteSettings
+
+    site = SiteSettings.load()
+    assert site.email_subject_prefix == "[SJTU OW]"
+    assert site.max_game_accounts == 5
+    assert site.team_max_members == 10
+    assert site.team_max_captained == 3
+    assert site.lfg_max_active_posts == 3
+    assert site.lfg_expire_hours == 2
+    assert site.scrim_reminder_hours == 2

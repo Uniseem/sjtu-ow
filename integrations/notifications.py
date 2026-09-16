@@ -1,4 +1,7 @@
-"""Emails about the open API (design 11.8.3). Sent to superusers only."""
+"""Emails about the open API (design 11.8.3). Sent to superusers only.
+
+Subjects are bare -- core.mail adds the site's configured prefix.
+"""
 
 from __future__ import annotations
 
@@ -46,7 +49,7 @@ def webhook_failed(delivery) -> None:
         body += f"\n在后台查看和手动重发：{link}\n"
     for address in recipients:
         send_mail(
-            subject=f"[交大守望先锋] Webhook 投递失败：{delivery.client.name}",
+            subject=f"Webhook 投递失败：{delivery.client.name}",
             message=body,
             from_email=None,
             recipient_list=[address],

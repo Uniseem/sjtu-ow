@@ -1,4 +1,9 @@
-"""Scrim emails (design 9.1, 10.2). One message per recipient."""
+"""Scrim emails (design 9.1, 10.2). One message per recipient.
+
+Subjects are written bare: core.mail prefixes every outgoing message with
+the site's configured prefix ([SJTU OW] by default, 附录 C), so a prefix
+written here would be doubled and would ignore the admin's setting.
+"""
 
 from __future__ import annotations
 
@@ -53,7 +58,7 @@ def scrim_cancelled(scrim) -> int:
         f"规格：{scrim.get_format_display()}\n\n"
         f"活动页面：{_link(scrim)}\n"
     )
-    return _send(_recipients(scrim), f"[交大守望先锋] 内战已取消：{scrim.title}", body)
+    return _send(_recipients(scrim), f"内战已取消：{scrim.title}", body)
 
 
 def scrim_reminder(scrim) -> int:
@@ -64,4 +69,4 @@ def scrim_reminder(scrim) -> int:
         f"规格：{scrim.get_format_display()}\n\n"
         f"活动页面：{_link(scrim)}\n"
     )
-    return _send(_recipients(scrim), f"[交大守望先锋] 内战提醒：{scrim.title}", body)
+    return _send(_recipients(scrim), f"内战提醒：{scrim.title}", body)
