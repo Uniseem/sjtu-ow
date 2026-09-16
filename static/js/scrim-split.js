@@ -1,8 +1,13 @@
-/* Live counts on the admin split page (design 9.3, 9.5).
+/* The admin split page (design 9.3, 9.5).
  *
- * Plain DOM, no framework: the site ships Alpine's CSP build, which does not
- * evaluate expressions written in attributes. Everything here is an ordinary
- * event listener in an external file, so script-src 'self' is enough.
+ * Plain DOM plus SortableJS, no framework: the site ships Alpine's CSP build,
+ * which does not evaluate expressions written in attributes. Everything here
+ * is an ordinary listener in an external file, so script-src 'self' is enough.
+ *
+ * Capacity rule, as asked for: a full team refuses a drop. To swap someone in
+ * you first drag someone out to the buffer. Rejecting the drop is friendlier
+ * than silently accepting an eleventh player and flagging it afterwards --
+ * the arrangement on screen is always one you could save.
  */
 (function () {
   "use strict";
@@ -14,6 +19,12 @@
       fn();
     }
   }
+
+  function each(nodes, fn) {
+    Array.prototype.forEach.call(nodes, fn);
+  }
+
+  // --- picking who plays -----------------------------------------------------
 
   function wirePicker() {
     var form = document.querySelector("[data-split-form]");
@@ -28,11 +39,11 @@
 
     function refresh() {
       var picked = 0;
-      for (var i = 0; i < boxes.length; i += 1) {
-        if (boxes[i].checked) {
+      each(boxes, function (box) {
+        if (box.checked) {
           picked += 1;
         }
-      }
+      });
       if (output) {
         output.textContent = String(picked);
       }
@@ -44,79 +55,166 @@
       }
     }
 
-    for (var i = 0; i < boxes.length; i += 1) {
-      boxes[i].addEventListener("change", refresh);
-    }
+    each(boxes, function (box) {
+      box.addEventListener("change", refresh);
+    });
     refresh();
   }
 
-  function ratingFor(row) {
-    var roleSelect = row.querySelector("[data-role-select]");
-    if (!roleSelect) {
-      var cell = row.querySelector("[data-rating]");
-      var shown = cell ? parseInt(cell.textContent, 10) : 0;
-      return isNaN(shown) ? 0 : shown;
-    }
+  // --- the board -------------------------------------------------------------
+
+  function zoneOf(node) {
+    return node.closest("[data-zone]");
+  }
+
+  function teamOf(zone) {
+    return zone.getAttribute("data-zone-team") || "";
+  }
+
+  function capacityOf(zone) {
+    var raw = zone.getAttribute("data-zone-capacity");
+    return raw ? parseInt(raw, 10) : 0;
+  }
+
+  function cardsIn(node) {
+    return node.querySelectorAll("[data-card]");
+  }
+
+  function ratingFor(card, role) {
     var scores = {};
     try {
-      scores = JSON.parse(roleSelect.getAttribute("data-ratings") || "{}");
+      scores = JSON.parse(card.getAttribute("data-ratings") || "{}");
     } catch (error) {
       scores = {};
     }
-    return scores[roleSelect.value] || 0;
+    if (role && scores[role]) {
+      return scores[role];
+    }
+    if (role) {
+      return 0;
+    }
+    return parseInt(card.getAttribute("data-best"), 10) || 0;
   }
 
-  function wireTeams() {
+  function teamCount(team) {
+    var panel = document.querySelector('[data-team-panel="' + team + '"]');
+    return panel ? cardsIn(panel).length : 0;
+  }
+
+  function wireBoard() {
     var form = document.querySelector("[data-teams-form]");
-    if (!form) {
+    if (!form || typeof window.Sortable === "undefined") {
       return;
     }
-    var rows = form.querySelectorAll("[data-member]");
-    var totalA = document.querySelector("[data-total-a]");
-    var totalB = document.querySelector("[data-total-b]");
-    var gap = document.querySelector("[data-gap]");
+    var help = form.querySelector("[data-drag-help]");
+    if (help) {
+      help.hidden = false;
+    }
+    var teamSize = parseInt(form.getAttribute("data-team-size"), 10) || 0;
+    var overWarning = document.querySelector("[data-over-capacity]");
 
     function refresh() {
-      var sums = { a: 0, b: 0 };
-      for (var i = 0; i < rows.length; i += 1) {
-        var row = rows[i];
-        var teamSelect = row.querySelector("[data-team-select]");
-        var team = teamSelect ? teamSelect.value : "";
-        var rating = ratingFor(row);
-        var cell = row.querySelector("[data-rating]");
-        if (cell) {
-          cell.textContent = rating ? String(rating) : "—";
+      var totals = { a: 0, b: 0 };
+      each(document.querySelectorAll("[data-zone]"), function (zone) {
+        var team = teamOf(zone);
+        var role = zone.getAttribute("data-zone-role") || "";
+        var cards = cardsIn(zone);
+        var count = zone.querySelector("[data-zone-count]");
+        if (count) {
+          count.textContent = String(cards.length);
         }
-        if (team === "a" || team === "b") {
-          sums[team] += rating;
-        }
-      }
+        var capacity = capacityOf(zone);
+        zone.classList.toggle(
+          "is-over",
+          capacity > 0 && cards.length !== capacity
+        );
+        each(cards, function (card) {
+          var rating = ratingFor(card, role);
+          card.querySelector("[data-card-team]").value = team;
+          card.querySelector("[data-card-role]").value = role;
+          var shown = card.querySelector("[data-card-rank]");
+          if (shown) {
+            shown.textContent = rating ? String(rating) : "—";
+          }
+          if (team === "a" || team === "b") {
+            totals[team] += rating;
+          }
+        });
+      });
+
+      each(document.querySelectorAll("[data-team-total]"), function (node) {
+        node.textContent = String(totals[node.getAttribute("data-team-total")] || 0);
+      });
+      var totalA = document.querySelector("[data-total-a]");
+      var totalB = document.querySelector("[data-total-b]");
+      var gap = document.querySelector("[data-gap]");
       if (totalA) {
-        totalA.textContent = String(sums.a);
+        totalA.textContent = String(totals.a);
       }
       if (totalB) {
-        totalB.textContent = String(sums.b);
+        totalB.textContent = String(totals.b);
       }
       if (gap) {
-        gap.textContent = String(Math.abs(sums.a - sums.b));
+        gap.textContent = String(Math.abs(totals.a - totals.b));
       }
-      var perTeam = document.querySelectorAll("[data-team-total]");
-      for (var j = 0; j < perTeam.length; j += 1) {
-        var side = perTeam[j].getAttribute("data-team-total");
-        perTeam[j].textContent = String(sums[side] || 0);
+      if (overWarning) {
+        overWarning.hidden = !(
+          teamCount("a") > teamSize || teamCount("b") > teamSize
+        );
       }
     }
 
-    form.addEventListener("change", function (event) {
-      if (event.target.matches("[data-team-select], [data-role-select]")) {
-        refresh();
+    // Design 9.5 still allows saving a split whose role counts are wrong, so
+    // only the team size is enforced here; role zones just turn red.
+    function accepts(targetZone, card) {
+      var team = teamOf(targetZone);
+      if (team !== "a" && team !== "b") {
+        return true; // the buffer always accepts
       }
+      var from = zoneOf(card);
+      if (from && teamOf(from) === team) {
+        return true; // moving between roles inside the same team
+      }
+      return teamCount(team) < teamSize;
+    }
+
+    each(form.querySelectorAll("[data-list]"), function (list) {
+      window.Sortable.create(list, {
+        group: "scrim-split",
+        animation: 120,
+        ghostClass: "is-dragging",
+        onMove: function (event) {
+          var target = zoneOf(event.to);
+          return target ? accepts(target, event.dragged) : false;
+        },
+        onEnd: refresh,
+      });
     });
+
+    // Keyboard and touch path: same rules, no dragging required.
+    form.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-move]");
+      if (!button) {
+        return;
+      }
+      event.preventDefault();
+      var card = button.closest("[data-card]");
+      var wanted = button.getAttribute("data-move");
+      var target = document.querySelector(
+        '[data-zone][data-zone-team="' + wanted + '"]'
+      );
+      if (!target || !accepts(target, card)) {
+        return;
+      }
+      target.querySelector("[data-list]").appendChild(card);
+      refresh();
+    });
+
     refresh();
   }
 
   ready(function () {
     wirePicker();
-    wireTeams();
+    wireBoard();
   });
 })();

@@ -59,14 +59,40 @@
       A 队总分 <span data-total-a>{{ total_a }}</span> ·
       B 队总分 <span data-total-b>{{ total_b }}</span> ·
       分差 <span data-gap>{{ gap }}</span>
+      <span class="split-warn" data-over-capacity hidden>有队伍超员，先把人拖到缓冲区</span>
     </p>
 
-    <form method="post" data-teams-form>
+    <form method="post" data-teams-form data-team-size="{{ team_size }}">
       {% csrf_token %}
+      <p class="help-block" data-drag-help hidden>
+        拖动卡片换队伍和位置。<strong>队伍满员时不能直接拖进去</strong>——先把要换下来的人拖到下面的缓冲区，再把新人拖进来。
+        不用鼠标的话，每张卡片上的按钮也能移动。
+      </p>
+      <noscript>
+        <div class="messages"><ul><li class="error">这个页面的分队调整需要 JavaScript。</li></ul></div>
+      </noscript>
+
       <div class="split-teams">
-        {% include "scrims/admin/_team.html" with team="a" label="A 队" members=team_a problems=problems_a total=total_a %}
-        {% include "scrims/admin/_team.html" with team="b" label="B 队" members=team_b problems=problems_b total=total_b %}
+        {% for side in sides %}
+          <div class="split-team" data-team-panel="{{ side.team }}">
+            <h3>{{ side.label }}（总分 <span data-team-total="{{ side.team }}">{{ side.total }}</span>）</h3>
+            {% if side.problems %}
+              <p class="split-problem" data-team-problem="{{ side.team }}">位置人数不符：{{ side.problems|join:"、" }}</p>
+            {% else %}
+              <p class="split-problem" data-team-problem="{{ side.team }}" hidden></p>
+            {% endif %}
+            {% for zone in side.zones %}
+              {% include "scrims/admin/_zone.html" with team=side.team role=zone.role label=zone.label members=zone.members capacity=zone.capacity %}
+            {% endfor %}
+          </div>
+        {% endfor %}
       </div>
+
+      <div class="split-buffer">
+        {% include "scrims/admin/_zone.html" with team="" role="" label="缓冲区（不上场）" members=bench capacity=0 %}
+        <p class="help-block">队伍满了要换人，先把人拖到这里腾位置。留在这里的人这次不上场。</p>
+      </div>
+
       <p>
         <button type="submit" name="action" value="save" class="button button-primary">保存分队</button>
         <a class="button button-secondary" href="{% url 'scrim_split_text' scrim.pk %}" target="_blank" rel="noopener">查看纯文本</a>
@@ -88,5 +114,6 @@
 
 {% block extra_js %}
   {# defer + a readyState guard, because Wagtail may place this before the body #}
+  <script src="{% static 'vendor/Sortable.min.js' %}" defer></script>
   <script src="{% static 'js/scrim-split.js' %}" defer></script>
 {% endblock %}

@@ -1,0 +1,20 @@
+{% comment %}
+One drop target. `team` is "a"/"b"/"" (buffer); `role` is a role value or "".
+The list keeps its data attributes so the script knows what a drop means.
+{% endcomment %}
+<div class="split-zone" data-zone data-zone-team="{{ team }}" data-zone-role="{{ role }}"
+     {% if capacity %}data-zone-capacity="{{ capacity }}"{% endif %}>
+  <h4 class="split-zone-title">
+    {{ label }}
+    {% if capacity %}
+      <span class="split-count"><span data-zone-count>{{ members|length }}</span> / {{ capacity }}</span>
+    {% else %}
+      <span class="split-count"><span data-zone-count>{{ members|length }}</span></span>
+    {% endif %}
+  </h4>
+  <ul class="split-list" data-list>
+    {% for signup in members %}
+      {% include "scrims/admin/_card.html" with signup=signup %}
+    {% endfor %}
+  </ul>
+</div>

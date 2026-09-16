@@ -616,3 +616,179 @@ def test_the_plain_text_endpoint(client, db):
     assert response.status_code == 200
     assert response["Content-Type"].startswith("text/plain")
     assert "A 队（总分 " in response.content.decode()
+
+
+# --- the drag-and-drop board (design 9.5) --------------------------------------
+
+
+@pytest.fixture
+def split_page(client, db):
+    def render(scrim):
+        admin = User.objects.filter(is_superuser=True).first() or (
+            User.objects.create_superuser(
+                email="board@example.com",
+                password="Correct-Horse-Battery-1",
+                nickname="超管",
+            )
+        )
+        client.force_login(admin)
+        response = client.get(f"/admin/scrims/{scrim.pk}/split/")
+        assert response.status_code == 200
+        return response.content.decode()
+
+    return render
+
+
+@pytest.mark.django_db
+def test_a_role_queue_board_has_one_zone_per_role(split_page):
+    scrim = make_scrim(ScrimFormat.RQ_5V5)
+    fill(scrim, 10)
+    select_all(scrim)
+    split, players = services.generate_teams(scrim)
+    services.save_teams(
+        scrim=scrim, placements=services.placements_from_split(split, players, scrim)
+    )
+
+    html = split_page(scrim)
+
+    for team in ("a", "b"):
+        for role in (Role.TANK, Role.DAMAGE, Role.SUPPORT):
+            marker = f'data-zone-team="{team}" data-zone-role="{role}"'
+            assert marker in html, marker
+    # The buffer the user asked for: a zone belonging to no team.
+    assert 'data-zone-team="" data-zone-role=""' in html
+    assert "缓冲区" in html
+
+
+@pytest.mark.django_db
+def test_an_open_board_has_no_role_zones(split_page):
+    scrim = make_scrim(ScrimFormat.OPEN_5V5)
+    signups = fill(scrim, 10, roles=[Role.DAMAGE])
+    select_all(scrim)
+    services.save_teams(
+        scrim=scrim,
+        placements={
+            row.pk: ("a" if index < 5 else "b", "", row.best_rating)
+            for index, row in enumerate(signups)
+        },
+    )
+
+    html = split_page(scrim)
+
+    assert f'data-zone-role="{Role.TANK}"' not in html
+    assert 'data-zone-team="a" data-zone-role=""' in html
+
+
+@pytest.mark.django_db
+def test_the_board_carries_what_the_capacity_rule_needs(split_page):
+    """The rule lives in the script; the numbers it reads come from here.
+
+    Dropping these attributes would silently turn the full-team check off,
+    so the markup is asserted even though the behaviour is browser-side.
+    """
+    scrim = make_scrim(ScrimFormat.RQ_6V6)
+    fill(scrim, 12)
+    select_all(scrim)
+    split, players = services.generate_teams(scrim)
+    services.save_teams(
+        scrim=scrim, placements=services.placements_from_split(split, players, scrim)
+    )
+
+    html = split_page(scrim)
+
+    assert 'data-team-size="6"' in html  # per-team capacity
+    assert 'data-zone-capacity="2"' in html  # 6v6 wants two tanks
+    assert "data-ratings=" in html  # per-role score, for live totals
+    assert "Sortable.min.js" in html  # served from our own static files
+    assert "cdn" not in html.lower()
+
+
+@pytest.mark.django_db
+def test_a_selected_player_with_no_team_waits_in_the_buffer(split_page):
+    scrim = make_scrim(ScrimFormat.RQ_5V5)
+    signups = fill(scrim, 10)
+    select_all(scrim)
+    split, players = services.generate_teams(scrim)
+    services.save_teams(
+        scrim=scrim, placements=services.placements_from_split(split, players, scrim)
+    )
+    # Pull one player out of their team without dropping the signup.
+    benched = signups[0]
+    benched.refresh_from_db()
+    benched.team = ""
+    benched.assigned_role = ""
+    benched.save()
+
+    html = split_page(scrim)
+    buffer_section = html[html.index("缓冲区") :]
+
+    assert benched.user.nickname in buffer_section
+
+
+@pytest.mark.django_db
+def test_the_board_posts_the_same_fields_the_view_reads(split_page):
+    """Drag updates hidden inputs; the POST contract is unchanged."""
+    scrim = make_scrim(ScrimFormat.RQ_5V5)
+    signups = fill(scrim, 10)
+    select_all(scrim)
+    split, players = services.generate_teams(scrim)
+    services.save_teams(
+        scrim=scrim, placements=services.placements_from_split(split, players, scrim)
+    )
+
+    html = split_page(scrim)
+
+    for signup in signups:
+        assert f'name="team-{signup.pk}"' in html
+        assert f'name="role-{signup.pk}"' in html
+
+
+@pytest.mark.django_db
+def test_the_board_uses_no_alpine_expressions(split_page):
+    """020's lesson: the site ships Alpine's CSP build."""
+    scrim = make_scrim(ScrimFormat.RQ_5V5)
+    fill(scrim, 10)
+    select_all(scrim)
+
+    html = split_page(scrim)
+
+    for attribute in ("x-data", "x-on:", "x-ref", "@click", "onclick="):
+        assert attribute not in html, attribute
+
+
+@pytest.mark.django_db
+def test_saving_a_manual_arrangement_from_the_board(client, db):
+    """Post what the board would post, including someone left in the buffer."""
+    scrim = make_scrim(ScrimFormat.RQ_5V5)
+    signups = fill(scrim, 10)
+    select_all(scrim)
+    admin = User.objects.create_superuser(
+        email="manual@example.com",
+        password="Correct-Horse-Battery-1",
+        nickname="超管",
+    )
+    client.force_login(admin)
+
+    payload = {"action": "save"}
+    for index, signup in enumerate(signups):
+        if index == 9:
+            payload[f"team-{signup.pk}"] = ""  # left in the buffer
+            payload[f"role-{signup.pk}"] = ""
+        else:
+            payload[f"team-{signup.pk}"] = "a" if index < 5 else "b"
+            payload[f"role-{signup.pk}"] = Role.DAMAGE
+
+    response = client.post(f"/admin/scrims/{scrim.pk}/split/", payload)
+
+    assert response.status_code == 302
+    assert scrim.signups.filter(team="a").count() == 5
+    assert scrim.signups.filter(team="b").count() == 4
+    benched = scrim.signups.get(pk=signups[9].pk)
+    assert benched.team == ""
+    assert benched.assigned_role == ""
+    # Still on the board, so the buffer keeps them across a save; just not
+    # on a team, so they are not in the roster or the copied text.
+    assert benched.is_selected is True
+    assert benched.pk not in {row.pk for row in services.team_rows(scrim)["a"]}
+    assert benched.pk not in {row.pk for row in services.team_rows(scrim)["b"]}
+    assert benched.user.nickname not in services.copy_text(scrim)

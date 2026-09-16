@@ -366,6 +366,12 @@ def save_teams(*, scrim, placements):
         signup.save(
             update_fields=["team", "assigned_role", "rating_used", "is_selected"]
         )
+    # Anyone the form did not place is in the buffer: still on tonight's board
+    # (``is_selected`` stays set, so they are still listed there next time the
+    # page loads) but on neither team, so they are not in the roster or the
+    # copied result. Clearing is_selected here would make them vanish from the
+    # board the moment you saved, which is the opposite of what a staging area
+    # is for.
     for signup in rows.values():
         if signup.pk not in {int(key) for key in placements}:
             if signup.team or signup.assigned_role:

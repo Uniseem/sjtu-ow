@@ -8,14 +8,81 @@
   flex: 1 1 22rem;
   min-width: 0;
 }
+.split-buffer {
+  margin-top: 1.5rem;
+}
 .split-problem {
   color: #cd3238;
   font-weight: 600;
 }
-.split-role {
-  white-space: nowrap;
+.split-warn {
+  color: #cd3238;
+  font-weight: 600;
+}
+.split-zone {
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+.split-zone.is-over {
+  border-color: #cd3238;
+}
+.split-zone.is-over .split-count {
+  color: #cd3238;
+  font-weight: 700;
+}
+.split-zone-title {
+  align-items: baseline;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin: 0 0 0.5rem;
+}
+.split-count {
+  font-variant-numeric: tabular-nums;
+}
+.split-list {
+  list-style: none;
+  margin: 0;
+  min-height: 2.75rem;
+  padding: 0;
+}
+.split-card {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: grab;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+  padding: 0.5rem;
+}
+.split-card:last-child {
+  margin-bottom: 0;
+}
+.split-card.is-dragging {
+  opacity: 0.4;
+}
+.split-card-name {
+  font-weight: 600;
+}
+.split-card-rank {
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.split-card-roles {
+  color: #5c5c5c;
+  flex-basis: 100%;
+  font-size: 0.85em;
+}
+.split-card-moves {
+  display: flex;
+  gap: 0.25rem;
 }
 .split-copy {
-  width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  width: 100%;
 }

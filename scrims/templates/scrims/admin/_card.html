@@ -1,0 +1,14 @@
+<li class="split-card" data-card data-signup="{{ signup.pk }}"
+    data-ratings="{{ signup.rating_map }}" data-best="{{ signup.best_rating|default:0 }}">
+  <span class="split-card-name">{{ signup.user.nickname }}</span>
+  <code class="split-card-tag">{{ signup.game_account.battletag }}</code>
+  <span class="split-card-rank" data-card-rank>{{ signup.rating_used|default:"—" }}</span>
+  <span class="split-card-roles">{% for _role, text in signup.rank_pairs %}{{ text }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>
+  <span class="split-card-moves">
+    <button type="button" class="button button-small" data-move="a">A</button>
+    <button type="button" class="button button-small" data-move="b">B</button>
+    <button type="button" class="button button-small" data-move="">缓冲</button>
+  </span>
+  <input type="hidden" name="team-{{ signup.pk }}" value="{{ signup.team }}" data-card-team>
+  <input type="hidden" name="role-{{ signup.pk }}" value="{{ signup.assigned_role }}" data-card-role>
+</li>
