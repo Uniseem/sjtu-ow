@@ -613,3 +613,62 @@ def test_enum_values_match_appendix_b():
     for enum, expected in documented.items():
         actual = [value for value, _label in enum.choices]
         assert actual == expected, f"{enum.__name__}: {actual} != {expected}"
+
+
+# --- 附录 A: rank encoding -----------------------------------------------------
+
+
+TIERS = (
+    "bronze",
+    "silver",
+    "gold",
+    "platinum",
+    "diamond",
+    "master",
+    "grandmaster",
+    "champion",
+)
+
+
+def test_rank_encoding_matches_appendix_a():
+    """附录 A: 分数 = 大段序号 × 5 + (5 − 小段), and it must round-trip.
+
+    These forty numbers are what the scrim balancer compares, so a shifted
+    tier would quietly produce lopsided teams that still look plausible.
+    """
+    from accounts.ranks import decode_rank, encode_rank
+
+    for index, tier in enumerate(TIERS):
+        for division in (5, 4, 3, 2, 1):
+            expected = index * 5 + (5 - division)
+            assert encode_rank(tier, division) == expected, (tier, division)
+            assert decode_rank(expected) == (tier, division), expected
+
+    # Top 500 sits above every tier and has no division.
+    assert encode_rank("top500", None) == 40
+    assert decode_rank(40) == ("top500", None)
+    # Unranked is stored as null, not as zero — zero is 青铜 5.
+    assert encode_rank(None, None) is None
+    assert encode_rank("bronze", 5) == 0
+
+
+def test_the_worked_example_from_appendix_a():
+    """附录 A spells one out: 「钻石 3」= 4 × 5 + (5 − 3) = 22."""
+    from accounts.ranks import encode_rank, format_rank
+
+    assert encode_rank("diamond", 3) == 22
+    assert format_rank(22) == "钻石 3"
+    assert format_rank(None) == "未定级"
+    assert format_rank(40) == "前 500"
+
+
+def test_rank_scores_are_strictly_ordered():
+    """Higher rank means higher score, with no ties across the whole table."""
+    from accounts.ranks import encode_rank
+
+    scores = [
+        encode_rank(tier, division) for tier in TIERS for division in (5, 4, 3, 2, 1)
+    ]
+    scores.append(encode_rank("top500", None))
+    assert scores == sorted(scores)
+    assert len(set(scores)) == len(scores)
