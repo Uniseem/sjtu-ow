@@ -4,18 +4,23 @@ from accounts.services import (
     ALL_PRESET_GROUPS,
     assign_round_permissions,
     ensure_preset_groups,
+    sync_all_submitter_memberships,
 )
 from content.services import (
+    assign_content_permissions,
     ensure_article_categories,
+    ensure_content_workflow,
     ensure_page_tree,
+    ensure_submission_image_collection,
     remove_wagtail_stock_groups,
+    sync_default_site_from_site_url,
 )
 
 
 class Command(BaseCommand):
     help = (
-        "Initialize groups, page tree, workflows, and default typography. "
-        "This round creates preset groups, article categories, and the page tree."
+        "Initialize groups, page tree, the content-review workflow, "
+        "and the submission image collection."
     )
 
     def handle(self, *args, **options):
@@ -56,11 +61,33 @@ class Command(BaseCommand):
             )
         )
 
+        site = sync_default_site_from_site_url()
+        self.stdout.write(
+            self.style.SUCCESS(f"已按 SITE_URL 设置站点：{site.hostname}:{site.port}")
+        )
+
+        collection = ensure_submission_image_collection()
+        self.stdout.write(self.style.SUCCESS(f"已确保图片集合：{collection.name}"))
+
+        workflow = ensure_content_workflow()
+        self.stdout.write(
+            self.style.SUCCESS(f"已确保工作流：{workflow.name}（绑定到文章栏目）")
+        )
+
+        assign_content_permissions()
+        self.stdout.write(
+            self.style.SUCCESS(
+                "已分配内容权限：投稿者可新建稿件并上传投稿图片；"
+                "内容编辑可审核发布；认证作者可直接发布。"
+            )
+        )
+
+        changed = sync_all_submitter_memberships()
+        self.stdout.write(
+            self.style.SUCCESS(f"已同步投稿者组成员（本轮变更 {changed} 人）")
+        )
+
         later = [
-            "「内容审核」工作流，并绑定到文章栏目",
-            "「投稿图片」图片集合及权限",
-            "内容编辑 / 认证作者 / 投稿者的文章与审核权限（M2 投稿轮）",
-            "投稿者组的自动成员同步（M2 投稿轮）",
             "赛事管理员的赛事管理权限（M4）",
             "内战管理员的内战管理权限（M6）",
             "初始游戏模式",
@@ -73,6 +100,8 @@ class Command(BaseCommand):
             self.stdout.write(f"  - {item}")
         self.stdout.write(
             self.style.NOTICE(
-                "不会改写已有用户组成员关系；重复执行只会确保组、分类和页面树存在。"
+                "不会改写已有用户组成员关系（投稿者组除外，由系统按验证邮箱"
+                "和投稿功能权限自动维护）；重复执行只会确保组、分类、页面树、"
+                "工作流和权限存在。"
             )
         )

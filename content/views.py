@@ -2,10 +2,20 @@
 
 from django.conf import settings
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils.http import urlencode
 from django.views.decorators.http import require_GET
 
+from accounts.models import Feature
+from accounts.permissions import can_use
+from accounts.services import (
+    GROUP_SUBMITTER,
+    email_is_verified,
+    sync_submitter_group,
+)
 from content.models import ArticlePage, StandardPage
+from content.services import article_create_admin_url
 
 
 @require_GET
@@ -43,3 +53,32 @@ def robots_txt(request):
         ]
     )
     return HttpResponse(body, content_type="text/plain; charset=utf-8")
+
+
+@require_GET
+def submit_entry(request):
+    """Front-end 投稿 entry: redirect to admin create, or explain why not (5.4.3)."""
+    user = request.user
+    reasons = []
+    login_url = ""
+    if not user.is_authenticated:
+        reasons = ["未登录"]
+        next_query = urlencode({"next": "/submit/"})
+        login_url = f"{reverse('account_login')}?{next_query}"
+    else:
+        if not email_is_verified(user):
+            reasons.append("邮箱未验证")
+        if not can_use(user, Feature.ARTICLE_SUBMIT):
+            reasons.append("没有投稿权限")
+        if not reasons:
+            sync_submitter_group(user)
+            if user.groups.filter(name=GROUP_SUBMITTER).exists():
+                create_url = article_create_admin_url()
+                if create_url:
+                    return redirect(create_url)
+            reasons.append("没有投稿权限")
+    return render(
+        request,
+        "content/submit.html",
+        {"reasons": reasons, "login_url": login_url},
+    )

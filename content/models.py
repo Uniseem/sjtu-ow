@@ -10,6 +10,7 @@ from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Orderable, Page
 
 from content.blocks import ARTICLE_BODY_BLOCKS
+from content.forms import ArticlePageForm
 from content.seo import build_seo
 
 ARTICLES_PER_PAGE = 12
@@ -270,6 +271,7 @@ class ArticlePage(SeoPageMixin, Page):
 
     parent_page_types = ["content.ArticleIndexPage"]
     subpage_types = []
+    base_form_class = ArticlePageForm
 
     content_panels = Page.content_panels + [
         FieldPanel("category"),

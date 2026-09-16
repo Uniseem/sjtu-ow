@@ -5,7 +5,8 @@ from __future__ import annotations
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
 
-from accounts.models import ContactMethod, GameAccount, User
+from accounts.models import ContactMethod, Feature, GameAccount, User
+from accounts.permissions import can_use
 
 GROUP_SJTU = "交大用户"
 GROUP_EXTERNAL = "校外用户"
@@ -118,3 +119,64 @@ def assign_round_permissions() -> None:
         groups[name].permissions.add(access_admin)
     for name in CONTACT_VIEW_GROUPS:
         groups[name].permissions.add(view_contact)
+
+
+def email_is_verified(user) -> bool:
+    if user is None or not getattr(user, "pk", None):
+        return False
+    from allauth.account.models import EmailAddress
+
+    return EmailAddress.objects.filter(user=user, verified=True).exists()
+
+
+def user_should_be_submitter(user) -> bool:
+    if user is None or not getattr(user, "pk", None):
+        return False
+    if not user.is_active:
+        return False
+    if not email_is_verified(user):
+        return False
+    return can_use(user, Feature.ARTICLE_SUBMIT)
+
+
+def sync_submitter_group(user) -> bool:
+    """Add or remove 「投稿者」 to match 5.4.2. Returns whether the user is in it."""
+    if user is None or not getattr(user, "pk", None):
+        return False
+    group, _ = Group.objects.get_or_create(name=GROUP_SUBMITTER)
+    should = user_should_be_submitter(user)
+    in_group = user.groups.filter(pk=group.pk).exists()
+    if should and not in_group:
+        user.groups.add(group)
+        return True
+    if not should and in_group:
+        user.groups.remove(group)
+        return False
+    return should
+
+
+def sync_submitters_for_users(users) -> None:
+    for user in users:
+        sync_submitter_group(user)
+
+
+def sync_submitters_for_group(group: Group) -> None:
+    sync_submitters_for_users(group.user_set.all())
+
+
+def sync_all_submitter_memberships() -> int:
+    """Recompute 投稿者 for verified users and anyone already in the group."""
+    from allauth.account.models import EmailAddress
+
+    group, _ = Group.objects.get_or_create(name=GROUP_SUBMITTER)
+    ids = set(group.user_set.values_list("pk", flat=True))
+    ids.update(
+        EmailAddress.objects.filter(verified=True).values_list("user_id", flat=True)
+    )
+    changed = 0
+    for user in User.objects.filter(pk__in=ids):
+        before = user.groups.filter(pk=group.pk).exists()
+        after = sync_submitter_group(user)
+        if before != after:
+            changed += 1
+    return changed

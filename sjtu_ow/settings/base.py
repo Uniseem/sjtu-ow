@@ -251,9 +251,7 @@ SECURE_CSP = {
     "connect-src": [CSP.SELF],
     "frame-src": [
         CSP.SELF,
-        "https://www.youtube.com",
-        "https://www.youtube-nocookie.com",
-        "https://player.vimeo.com",
+        "https://player.bilibili.com",
     ],
     "frame-ancestors": [CSP.NONE],
     "base-uri": [CSP.SELF],
@@ -270,6 +268,13 @@ WAGTAILSEARCH_BACKENDS = {
         "BACKEND": "wagtail.search.backends.database",
     }
 }
+WAGTAILEMBEDS_FINDERS = [
+    {
+        "class": "content.embeds.BilibiliEmbedFinder",
+    }
+]
+WAGTAILIMAGES_MAX_UPLOAD_SIZE = 5 * 1024 * 1024
+WAGTAILIMAGES_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 
 TAILWIND_CLI_USE_DAISY_UI = True
 # Source lives outside STATICFILES_DIRS so collectstatic/hashed storage
