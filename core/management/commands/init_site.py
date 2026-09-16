@@ -17,6 +17,7 @@ from content.services import (
 )
 from core.fonts.css import regenerate_font_css
 from core.fonts.services import ensure_typography_rules
+from moderation.services import assign_moderation_permissions
 
 
 class Command(BaseCommand):
@@ -83,6 +84,14 @@ class Command(BaseCommand):
                 "内容编辑可审核发布；认证作者可直接发布。"
             )
         )
+
+        reviewers = assign_moderation_permissions()
+        if reviewers:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "已分配内容审核权限：" + "、".join(reviewers) + " 可复核 AI 标记"
+                )
+            )
 
         rules = ensure_typography_rules()
         font_css_url = regenerate_font_css()

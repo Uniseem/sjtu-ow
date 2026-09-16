@@ -1,0 +1,37 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}复核内容{% endblock %}
+
+{% block main_content %}
+  <dl>
+    <dt>内容类型</dt><dd>{{ item.get_target_type_display }}{% if item.field %}（{{ item.field }}）{% endif %}</dd>
+    <dt>风险等级</dt><dd>{{ item.get_risk_display }}</dd>
+    <dt>命中类别</dt><dd>{{ categories|join:"、"|default:"—" }}</dd>
+    <dt>AI 理由</dt><dd>{{ item.reason|default:"—" }}</dd>
+    <dt>引用原文</dt><dd>{{ item.quote|default:"—" }}</dd>
+    <dt>作者</dt><dd>{{ item.author.nickname|default:"—" }}（此前被标记 {{ author_flags }} 次）</dd>
+    <dt>内容地址</dt><dd>{% if item.url %}<a href="{{ item.url }}">{{ item.url }}</a>{% else %}—{% endif %}</dd>
+    <dt>模型</dt><dd>{{ item.model|default:"—" }}</dd>
+    <dt>审核时间</dt><dd>{{ item.checked_at|default:"—" }}</dd>
+    <dt>当前状态</dt><dd>{{ item.get_status_display }}{% if item.reviewed_by %}（{{ item.reviewed_by.nickname }} 于 {{ item.reviewed_at }}）{% endif %}</dd>
+    {% if item.handling_note %}<dt>处理说明</dt><dd>{{ item.handling_note }}</dd>{% endif %}
+  </dl>
+
+  <h2>送审内容</h2>
+  <pre class="w-whitespace-pre-wrap">{{ item.excerpt }}</pre>
+
+  <h2>记录处理结果</h2>
+  <p class="help-block">这里只记录你做了什么。关闭车帖、退回稿件、停用账号等操作请到对应功能里执行——AI 和这个页面都不会替你改动内容。</p>
+  <form method="post" action="{% url 'moderation_action' item.pk %}">
+    {% csrf_token %}
+    <label for="handling_note">处理说明</label>
+    <input type="text" id="handling_note" name="handling_note" maxlength="300" value="{{ item.handling_note }}">
+    <p>
+      {% for value, label in actions.items %}
+        <button type="submit" name="action" value="{{ value }}" class="button {% if value == 'ok' %}button-primary{% else %}button-secondary{% endif %}">{{ label.1 }}</button>
+      {% endfor %}
+    </p>
+  </form>
+
+  <p><a class="button button-secondary" href="{% url 'moderation_index' %}">返回列表</a></p>
+{% endblock %}

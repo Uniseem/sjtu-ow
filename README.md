@@ -1,6 +1,6 @@
 # 上海交通大学守望先锋社区网站
 
-Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.6）。当前里程碑是 **M2 内容、投稿与字体**（内容、投稿、字体与排版、半静态渲染已落地；AI 审核还在后续轮次）。
+Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.7）。**M2 内容、投稿与字体已完成**：内容、投稿、字体与排版、半静态渲染、AI 内容审核。下一步是 M3 战队与组队大厅。
 
 ## 技术栈
 
@@ -154,6 +154,30 @@ CRON_TZ=Asia/Shanghai
 ```
 
 **从备份恢复数据后必须清空预渲染目录**（`manage.py prerender --clear` 或后台按钮），否则静态页面会比数据库更新。升级版本不需要清空。
+
+## AI 内容审核
+
+站内内容（昵称、稿件、已发布的文章和普通页面）由 worker 送到大模型过一遍，疑似有问题的进后台「社区 → 内容审核」由管理员判断。
+
+**AI 只有读取权限**：请求里不带任何工具、不带身份信息，模型唯一的产出是一条待复核记录；关闭车帖、退回稿件、停用账号等处置全部由管理员在对应功能里执行。
+
+- 默认接 DeepSeek 的 OpenAI 兼容接口，模型在「设置 → 全站设置」里改（默认 `deepseek-v4.1-flash`）。
+- 环境变量：`MODERATION_API_KEY`、`MODERATION_BASE_URL`（自建或聚合平台时填）、`MODERATION_EXTRA_BODY`（一段 JSON，比如关闭思考模式的参数，原样并进请求体）、`MODERATION_TIMEOUT`、`MODERATION_MAX_OUTPUT_TOKENS`。
+- **没配密钥就不送审**，不会产生「无法判定」的噪音。后台还可以整体关掉。
+- 省钱措施：短内容一次最多合并 20 条、相同文本 30 天内不重复送审、每天调用上限（默认 2000）、后台显示本月调用次数和估算花费。
+
+```bash
+uv run python manage.py moderate_scan               # 全量扫描现有内容
+uv run python manage.py moderate_scan --what pages --limit 50
+uv run python manage.py moderate_scan --digest      # 发送每日汇总邮件
+```
+
+宿主机 cron（每天一封汇总）：
+
+```
+CRON_TZ=Asia/Shanghai
+30 9 * * * docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py moderate_scan --digest
+```
 
 ## 健康检查
 

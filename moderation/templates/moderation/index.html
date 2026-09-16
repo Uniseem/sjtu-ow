@@ -1,0 +1,80 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}内容审核{% endblock %}
+
+{% block main_content %}
+  {% if not enabled %}
+    <p class="help-block help-warning">AI 审核当前是关闭的（「设置 → 全站设置」里的「启用 AI 内容审核」）。已有记录仍可复核。</p>
+  {% endif %}
+
+  <p class="help-block">
+    模型 <code>{{ model }}</code>；今天已调用 {{ usage.calls }} 次、送审 {{ usage.items }} 条，剩余额度 {{ quota_left }}；
+    本月调用 {{ month.calls }} 次、送审 {{ month.items }} 条，估算花费 ${{ month.cost|floatformat:4 }}。
+    <strong>AI 只做判断，不会改动任何内容。</strong>
+  </p>
+
+  <form method="get" class="w-mb-4">
+    <label>状态
+      <select name="status">
+        <option value="">全部</option>
+        {% for value, label in statuses %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>风险
+      <select name="risk">
+        <option value="">全部</option>
+        {% for value, label in risks %}
+          <option value="{{ value }}" {% if risk == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>类型
+      <select name="target_type">
+        <option value="">全部</option>
+        {% for value, label in target_types %}
+          <option value="{{ value }}" {% if target_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="button button-secondary">筛选</button>
+  </form>
+
+  <table class="listing">
+    <thead>
+      <tr>
+        <th>内容</th>
+        <th>风险</th>
+        <th>类别</th>
+        <th>类型</th>
+        <th>作者</th>
+        <th>时间</th>
+        <th>状态</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td><a href="{% url 'moderation_detail' item.pk %}">{{ item.excerpt|truncatechars:60 }}</a></td>
+          <td>{{ item.get_risk_display }}</td>
+          <td>{{ item.category_labels|join:"、"|default:"—" }}</td>
+          <td>{{ item.get_target_type_display }}</td>
+          <td>{{ item.author.nickname|default:"—" }}</td>
+          <td>{{ item.created_at }}</td>
+          <td>{{ item.get_status_display }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">没有符合条件的记录。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if items.has_other_pages %}
+    <p>
+      {% if items.has_previous %}<a href="?page={{ items.previous_page_number }}&amp;status={{ status }}&amp;risk={{ risk }}&amp;target_type={{ target_type }}">上一页</a>{% endif %}
+      第 {{ items.number }} / {{ items.paginator.num_pages }} 页
+      {% if items.has_next %}<a href="?page={{ items.next_page_number }}&amp;status={{ status }}&amp;risk={{ risk }}&amp;target_type={{ target_type }}">下一页</a>{% endif %}
+    </p>
+  {% endif %}
+{% endblock %}

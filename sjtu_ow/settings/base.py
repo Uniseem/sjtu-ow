@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from django.utils.csp import CSP
@@ -293,6 +294,11 @@ PRERENDER_ROOT = Path(env("PRERENDER_ROOT", str(BASE_DIR / "prerendered")))
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", "dev-insecure-field-encryption-key")
 MODERATION_API_KEY = env("MODERATION_API_KEY", "")
 MODERATION_BASE_URL = env("MODERATION_BASE_URL", "")
+MODERATION_TIMEOUT = int(env("MODERATION_TIMEOUT", "30"))
+MODERATION_MAX_OUTPUT_TOKENS = int(env("MODERATION_MAX_OUTPUT_TOKENS", "600"))
+# Extra body fields for the provider, e.g. the switch that turns thinking off.
+# The exact key differs per provider, so it stays configuration, not code.
+MODERATION_EXTRA_BODY = json.loads(env("MODERATION_EXTRA_BODY", "{}"))
 SENTRY_DSN = env("SENTRY_DSN", "")
 EMAIL_ALLOWLIST = env_list("EMAIL_ALLOWLIST")
 
