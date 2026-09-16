@@ -555,3 +555,61 @@ def test_site_settings_defaults_match_appendix_c():
     assert site.lfg_max_active_posts == 3
     assert site.lfg_expire_hours == 2
     assert site.scrim_reminder_hours == 2
+
+
+# --- 附录 B: enum values -------------------------------------------------------
+
+
+def test_enum_values_match_appendix_b():
+    """附录 B lists every stored enum value. They are in URLs, API responses
+    and webhook payloads, so a rename is a breaking change for upstreams —
+    worth pinning rather than trusting to review."""
+    from core.models import PrerenderedPage, TypographyRule
+    from integrations.models import DeliveryStatus, WebhookEvent, WebhookPayloadMode
+    from lfg.models import LfgStatus
+    from moderation.models import ModerationItem, Risk
+    from scrims.models import Role as ScrimRole
+    from scrims.models import ScrimFormat, ScrimStatus, Team
+    from teams.models import ApplicationStatus, TeamRole
+    from tournaments.models import (
+        ActorType,
+        RegistrationStatus,
+        ReviewMode,
+        TournamentStatus,
+    )
+
+    documented = {
+        RegistrationStatus: [
+            "pending",
+            "awaiting_upstream",
+            "approved",
+            "rejected",
+            "withdrawn",
+        ],
+        ReviewMode: ["local", "upstream", "two_stage"],
+        TournamentStatus: ["draft", "published", "finished", "cancelled"],
+        ActorType: ["captain", "admin", "upstream", "system"],
+        ScrimStatus: ["draft", "published", "finished", "cancelled"],
+        ScrimFormat: ["rq_5v5", "rq_6v6", "open_5v5", "open_6v6"],
+        ScrimRole: ["tank", "damage", "support"],
+        Team: ["a", "b"],
+        LfgStatus: ["open", "full", "closed"],
+        ApplicationStatus: ["pending", "approved", "rejected", "cancelled"],
+        TeamRole: ["captain", "member"],
+        PrerenderedPage.Status: ["pending", "ready", "failed"],
+        TypographyRule.Mode: ["system", "inherit", "custom"],
+        Risk: ["none", "low", "medium", "high", "unknown"],
+        ModerationItem.Status: ["pending", "ok", "handled", "ignored"],
+        WebhookPayloadMode: ["thin", "full"],
+        DeliveryStatus: ["pending", "succeeded", "failed"],
+        WebhookEvent: [
+            "registration.submitted",
+            "registration.roster_synced",
+            "registration.withdrawn",
+            "registration.status_changed",
+            "ping",
+        ],
+    }
+    for enum, expected in documented.items():
+        actual = [value for value, _label in enum.choices]
+        assert actual == expected, f"{enum.__name__}: {actual} != {expected}"
