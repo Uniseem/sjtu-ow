@@ -41,7 +41,11 @@ extend-exclude = [
     "data",
     "media",
     "prerendered",
+    "backups",
     "**/migrations/*.py",
+    # Round reports quote code as it was, including code that was wrong on
+    # purpose. Reformatting those snippets would rewrite the record.
+    "handoff",
 ]
 
 [tool.ruff.lint]

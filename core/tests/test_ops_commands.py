@@ -132,7 +132,7 @@ def test_the_snapshot_is_consistent_while_writes_are_happening(
             time.sleep(0.001)
         writer.close()
 
-    worker = threading.Thread(target=churn)
+    worker = threading.Thread(target=churn, daemon=True)
     worker.start()
     time.sleep(0.05)
     try:
@@ -140,6 +140,9 @@ def test_the_snapshot_is_consistent_while_writes_are_happening(
     finally:
         stop.set()
         worker.join(timeout=10)
+    # A writer thread that outlived this test would hold a connection and keep
+    # inserting rows while later tests run, which is a miserable thing to debug.
+    assert not worker.is_alive(), "写入线程没有在测试结束前停下"
 
     extracted = tmp_path / "check"
     extracted.mkdir()

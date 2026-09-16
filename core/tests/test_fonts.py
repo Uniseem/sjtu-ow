@@ -188,8 +188,38 @@ def test_only_one_font_is_processed_at_a_time(media_root):
     assert waiting.status == FontFace.Status.PENDING
 
 
+def test_slicing_the_same_font_twice_gives_identical_bytes():
+    """Slice files are named by content hash, so slicing must be reproducible.
+
+    fontTools rewrites head.modified on save by default, which made two runs
+    a second apart produce different bytes and therefore different file
+    names: every reprocess replaced the whole set and pushed the entire font
+    back down to every visitor. This showed up for a long time only as an
+    occasional failure in the test below.
+    """
+    import time
+
+    from core.fonts.processing import inspect_font, subset_to_woff2
+
+    data = make_font_bytes(sample_chars(60))
+    group = sorted(inspect_font(data).codepoints)[:40]
+
+    first = subset_to_woff2(data, group)
+    time.sleep(1.1)  # long enough for a second-resolution timestamp to move
+    second = subset_to_woff2(data, group)
+
+    assert first == second
+
+
 @pytest.mark.django_db
 def test_reprocess_clears_old_slice_files(media_root):
+    # run_face_processing() refuses to start while ANY other face is still
+    # marked processing (design 13.12.2), so a row left behind by another test
+    # would turn this into a confusing path mismatch further down. This has
+    # bitten once before; assert the precondition so the next time says why.
+    assert not FontFace.objects.filter(status=FontFace.Status.PROCESSING).exists(), (
+        "开始前就有别的字体处于 processing 状态，说明有测试泄漏了状态"
+    )
     family = _family()
     face = services.add_face_from_bytes(
         family, make_font_bytes(sample_chars(260)), "test.ttf", weight=400

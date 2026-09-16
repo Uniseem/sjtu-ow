@@ -116,8 +116,20 @@ def _subset_options() -> subset.Options:
 
 
 def subset_to_woff2(data: bytes, codepoints) -> bytes:
-    """Return a WOFF2 file containing only the given code points."""
-    font = TTFont(io.BytesIO(data), fontNumber=0)
+    """Return a WOFF2 file containing only the given code points.
+
+    The output must be byte-for-byte reproducible: slice files are named by
+    their content hash, so a font that has not changed has to produce the
+    same names. By default fontTools rewrites ``head.modified`` to the
+    current time when the font is saved, so slicing the same font twice a
+    second apart produced different bytes, hence different file names. Every
+    reprocess then wrote a fresh set of slices, retired the previous ones and
+    sent every visitor back for the whole font.
+
+    ``recalcTimestamp=False`` keeps whatever the source font carries, so the
+    hash changes when the font does and not otherwise.
+    """
+    font = TTFont(io.BytesIO(data), fontNumber=0, recalcTimestamp=False)
     with font:
         subsetter = subset.Subsetter(options=_subset_options())
         subsetter.populate(unicodes=sorted(codepoints))
