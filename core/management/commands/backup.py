@@ -57,6 +57,11 @@ class Command(BaseCommand):
             type=int,
             help="保留天数，默认取设置里的 BACKUP_KEEP_DAYS（14）。",
         )
+        parser.add_argument(
+            "--no-upload",
+            action="store_true",
+            help="即使后台开了异地备份，这次也不上传。",
+        )
 
     def handle(self, *args, **options):
         root = Path(options["output"]) if options["output"] else backup_root()
@@ -84,13 +89,32 @@ class Command(BaseCommand):
         removed = self.prune(root, keep_days)
         if removed:
             self.stdout.write(f"已清理 {removed} 个超过 {keep_days} 天的旧备份")
-        self.stdout.write(
-            self.style.WARNING(
-                "备份里有用户邮箱和联系方式，且没有加密。"
-                "上传到服务器以外的位置之前先加密（设计 16.7）。"
-            )
-        )
+        self.upload(archive, skip=options["no_upload"])
         return None
+
+    def upload(self, archive: Path, *, skip: bool) -> None:
+        """Design 16.7 step 3: encrypt and send a copy off the server."""
+        from core import offsite
+
+        config = offsite.load_config()
+        if not config.enabled:
+            self.stdout.write(
+                self.style.WARNING(
+                    "异地备份没有开启。本地这份没有加密，里面有用户邮箱和联系方式，"
+                    "**服务器没了这份也跟着没了**。"
+                    "在「设置 → 全站设置 → 异地备份」里配置对象存储（设计 16.7）。"
+                )
+            )
+            return
+        if skip:
+            self.stdout.write("按 --no-upload 跳过上传。")
+            return
+        try:
+            key = offsite.upload(archive, config=config)
+        except offsite.OffsiteError as exc:
+            # A failed upload must not look like a successful backup.
+            raise CommandError(f"本地备份已生成，但上传失败：{exc}") from exc
+        self.stdout.write(self.style.SUCCESS(f"已加密并上传到 {config.bucket}/{key}"))
 
     def prune(self, root: Path, keep_days: int) -> int:
         cutoff = timezone.now() - timedelta(days=keep_days)

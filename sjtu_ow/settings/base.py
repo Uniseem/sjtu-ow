@@ -330,6 +330,10 @@ PRERENDER_ROOT = Path(env("PRERENDER_ROOT", str(BASE_DIR / "prerendered")))
 
 # Local backups (design 16.2, 16.7). Kept for BACKUP_KEEP_DAYS days.
 BACKUP_ROOT = Path(env("BACKUP_ROOT", str(BASE_DIR / "backups")))
+# Design 16.7: backups are encrypted before they leave the server. This key
+# must NOT live in the database — it would then be inside the very backup it
+# protects. Keep it in the club's password manager alongside SECRET_KEY.
+BACKUP_ENCRYPTION_KEY = env("BACKUP_ENCRYPTION_KEY", "")
 BACKUP_KEEP_DAYS = int(env("BACKUP_KEEP_DAYS", "14"))
 # Design 16.5: old static files linger for a month after an upgrade.
 STATIC_KEEP_DAYS = int(env("STATIC_KEEP_DAYS", "30"))

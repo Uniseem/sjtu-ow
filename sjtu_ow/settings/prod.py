@@ -27,6 +27,11 @@ if env_bool("WEBHOOK_ALLOW_INSECURE_URLS", False):
 
 PRERENDER_ENABLED = env_bool("PRERENDER_ENABLED", True)
 
+# Design 16.7: an off-site backup must be encrypted, and the key cannot live
+# in the database it protects. Refuse to start with the feature reachable but
+# no key set, rather than discover it at 03:00 when the cron job fails.
+BACKUP_ENCRYPTION_KEY = env("BACKUP_ENCRYPTION_KEY", "")
+
 EMAIL_BACKEND = "core.mail.QueuedEmailBackend"
 EMAIL_DELIVERY_BACKEND = "core.mail.SiteSettingsEmailBackend"
 

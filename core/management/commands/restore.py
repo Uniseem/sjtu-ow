@@ -62,8 +62,41 @@ def check_key(snapshot: Path) -> list[str]:
 class Command(BaseCommand):
     help = "从备份恢复数据库和上传文件（设计 16.7）"
 
+    def show_listing(self):
+        from core import offsite
+
+        try:
+            items = offsite.listing()
+        except offsite.OffsiteError as exc:
+            raise CommandError(str(exc)) from exc
+        if not items:
+            self.stdout.write("对象存储里没有备份。")
+            return None
+        for item in items:
+            size_mb = item.get("Size", 0) / 1024 / 1024
+            self.stdout.write(
+                f"  {item['Key']}  {size_mb:.1f} MB  {item.get('LastModified', '')}"
+            )
+        self.stdout.write("")
+        self.stdout.write("用 --from-s3 <KEY> 恢复其中一个。")
+        return None
+
     def add_arguments(self, parser):
-        parser.add_argument("archive", help="备份文件，比如 backups/sjtu-ow-...tar.gz")
+        parser.add_argument(
+            "archive",
+            nargs="?",
+            help="备份文件，比如 backups/sjtu-ow-...tar.gz。用 --from-s3 时可以不填。",
+        )
+        parser.add_argument(
+            "--from-s3",
+            metavar="KEY",
+            help="先从对象存储下载这个对象并解密（用 --list-s3 看有哪些）。",
+        )
+        parser.add_argument(
+            "--list-s3",
+            action="store_true",
+            help="列出对象存储里的备份，不做任何恢复。",
+        )
         parser.add_argument(
             "--yes",
             action="store_true",
@@ -76,7 +109,27 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        archive = Path(options["archive"])
+        from core import offsite
+
+        if options["list_s3"]:
+            return self.show_listing()
+
+        downloaded = None
+        if options["from_s3"]:
+            downloaded = tempfile.mkdtemp(prefix="restore-")
+            target = Path(downloaded) / "downloaded.tar.gz"
+            self.stdout.write(f"正在从对象存储下载 {options['from_s3']} ……")
+            try:
+                offsite.download(options["from_s3"], target)
+            except offsite.OffsiteError as exc:
+                raise CommandError(str(exc)) from exc
+            self.stdout.write("下载并解密完成。")
+            archive = target
+        elif options["archive"]:
+            archive = Path(options["archive"])
+        else:
+            raise CommandError("要么给出备份文件路径，要么用 --from-s3。")
+
         if not archive.exists():
             raise CommandError(f"找不到备份文件 {archive}。")
 

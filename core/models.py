@@ -102,6 +102,39 @@ class SiteSettings(BaseGenericSetting):
         default=2,
         help_text="内战开始前多久给报名者发提醒邮件。",
     )
+    # Off-site backups (design 16.7). The S3 credentials live here because
+    # they are what you need to *reach* the bucket; losing them with the
+    # database is fine, you re-enter them on the new server. The encryption
+    # key deliberately does not live here — see BACKUP_ENCRYPTION_KEY.
+    backup_s3_enabled = models.BooleanField(
+        "备份上传到对象存储",
+        default=False,
+        help_text="开启后，每次备份完会加密并上传一份。需要先设好下面几项。",
+    )
+    backup_s3_endpoint = models.URLField(
+        "对象存储地址",
+        blank=True,
+        help_text="Cloudflare R2 形如 https://<账号ID>.r2.cloudflarestorage.com",
+    )
+    backup_s3_bucket = models.CharField("存储桶", max_length=64, blank=True)
+    backup_s3_region = models.CharField(
+        "区域", max_length=32, blank=True, default="auto", help_text="R2 填 auto。"
+    )
+    backup_s3_access_key_id = models.CharField(
+        "Access Key ID", max_length=128, blank=True
+    )
+    backup_s3_secret_access_key = EncryptedTextField(
+        "Secret Access Key",
+        blank=True,
+        help_text="加密存储。",
+    )
+    backup_s3_prefix = models.CharField(
+        "路径前缀",
+        max_length=128,
+        blank=True,
+        default="sjtu-ow/",
+        help_text="存到桶里的哪个目录下。",
+    )
     moderation_enabled = models.BooleanField(
         "启用 AI 内容审核",
         default=True,
@@ -184,6 +217,18 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("moderation_high_risk_notify"),
             ],
             heading="AI 审核（后续里程碑使用）",
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("backup_s3_enabled"),
+                FieldPanel("backup_s3_endpoint"),
+                FieldPanel("backup_s3_bucket"),
+                FieldPanel("backup_s3_region"),
+                FieldPanel("backup_s3_access_key_id"),
+                FieldPanel("backup_s3_secret_access_key"),
+                FieldPanel("backup_s3_prefix"),
+            ],
+            heading="异地备份（对象存储）",
         ),
     ]
 

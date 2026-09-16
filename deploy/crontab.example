@@ -8,7 +8,9 @@ CRON_TZ=Asia/Shanghai
 COMPOSE=/srv/sjtu-ow/deploy/docker-compose.yml
 
 # 每天 03:00 备份数据库和上传文件，保留最近 14 天（设计 16.7）
-# 备份文件未加密，里面有用户邮箱和联系方式；同步到服务器以外之前要先加密。
+# 后台开启「异地备份」之后，这条命令会自动加密并上传一份到对象存储。
+# 加密密钥来自环境变量 BACKUP_ENCRYPTION_KEY，不在数据库里——
+# 放数据库里的话，密钥就在它保护的那份备份里，全盘丢失后等于打不开。
 0 3 * * * docker compose -f $COMPOSE exec -T web python manage.py backup
 
 # 每天 04:00 清理过期数据：
@@ -30,6 +32,6 @@ COMPOSE=/srv/sjtu-ow/deploy/docker-compose.yml
 # 每天 09:30 AI 审核的每日汇总邮件
 30 9 * * * docker compose -f $COMPOSE exec -T web python manage.py moderate_scan --digest
 
-# 说明：把备份同步到对象存储（设计 16.7 第 3 步）需要凭据，还没有做成命令。
-# 现在要自己加一条，例如（先用 age 加密再上传）：
-# 10 3 * * * age -r <公钥> -o /tmp/b.age /var/lib/docker/volumes/..._backups/_data/$(ls -t ... | head -1) && <上传命令>
+# 恢复：
+#   python manage.py restore --list-s3                 列出对象存储里的备份
+#   python manage.py restore --from-s3 <KEY> --yes     下载、解密并恢复
