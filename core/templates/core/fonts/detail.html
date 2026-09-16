@@ -1,0 +1,85 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}{{ family.name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% url 'core_font_faces_css' %}">
+{% endblock %}
+
+{% block main_content %}
+  <dl>
+    <dt>样式表字体名</dt><dd><code>{{ family.css_name }}</code></dd>
+    <dt>来源</dt><dd>{{ family.get_source_display }}{% if family.source_ref %}（{{ family.source_ref }}）{% endif %}</dd>
+    <dt>授权</dt><dd>{{ family.get_license_type_display }}{% if family.license_note %}：{{ family.license_note }}{% endif %}</dd>
+    <dt>添加人</dt><dd>{{ family.created_by|default:"—" }}，{{ family.created_at }}</dd>
+  </dl>
+
+  {% if used_by %}
+    <p class="help-block">正在被排版区域使用：{{ used_by|join:"、" }}。删除前需要先在排版设置里换掉。</p>
+  {% endif %}
+
+  <table class="listing">
+    <thead>
+      <tr>
+        <th>字重</th>
+        <th>状态</th>
+        <th>分片</th>
+        <th>总大小</th>
+        <th>字符数</th>
+        <th>预览</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for face in faces %}
+        <tr>
+          <td>{{ face.label }}</td>
+          <td>
+            {{ face.get_status_display }}
+            {% if face.status == "processing" %}（{{ face.progress }}%）{% endif %}
+            {% if face.error %}<br><span class="help-block help-critical">{{ face.error }}</span>{% endif %}
+          </td>
+          <td>{{ face.slice_count }}</td>
+          <td>{{ face.total_bytes|filesizeformat }}</td>
+          <td>{{ face.glyph_count }}</td>
+          <td>
+            {% if face.status == "ready" %}
+              <span class="font-preview-{{ family.pk }}-{{ face.weight }}-{{ face.style }}">{{ sample_text }}</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            <a class="button button-small button-secondary" href="{% url 'core_font_face_download' face.pk %}">下载</a>
+            <form method="post" action="{% url 'core_font_face_delete' face.pk %}" class="w-inline">
+              {% csrf_token %}
+              <button type="submit" class="button button-small serious">删除字重</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">还没有字重。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p>
+    <form method="post" action="{% url 'core_font_reprocess' family.pk %}" class="w-inline">
+      {% csrf_token %}
+      <button type="submit" class="button button-secondary">重新处理全部字重</button>
+    </form>
+    <a class="button serious" href="{% url 'core_font_delete' family.pk %}">删除字体</a>
+  </p>
+
+  <section>
+    <h2>添加字重</h2>
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% if face_form.non_field_errors %}{% include "wagtailadmin/shared/non_field_errors.html" with form=face_form %}{% endif %}
+      {% for field in face_form %}
+        {% include "wagtailadmin/shared/field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" class="button button-primary">添加</button>
+    </form>
+  </section>
+{% endblock %}

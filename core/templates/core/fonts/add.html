@@ -1,0 +1,48 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load wagtailadmin_tags %}
+
+{% block titletag %}添加字体{% endblock %}
+
+{% block main_content %}
+  <section>
+    <h2>上传字体文件</h2>
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% if upload_form.non_field_errors %}{% include "wagtailadmin/shared/non_field_errors.html" with form=upload_form %}{% endif %}
+      {% for field in upload_form %}
+        {% include "wagtailadmin/shared/field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" name="submit_upload" class="button button-primary">上传并处理</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>从 Google Fonts 下载</h2>
+    <p>服务器会把字体下载到本站保存，前台只使用本站副本。</p>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if google_form.non_field_errors %}{% include "wagtailadmin/shared/non_field_errors.html" with form=google_form %}{% endif %}
+      {% for field in google_form %}
+        {% include "wagtailadmin/shared/field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" name="submit_google" class="button button-primary">下载</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>从网址下载</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if url_form.non_field_errors %}{% include "wagtailadmin/shared/non_field_errors.html" with form=url_form %}{% endif %}
+      {% for field in url_form %}
+        {% include "wagtailadmin/shared/field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" name="submit_url" class="button button-primary">下载并处理</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>授权提醒</h2>
+    <p>方正、汉仪等商业字体通常需要单独购买网页嵌入授权。字体文件里标记为禁止嵌入的，系统会直接拒绝处理。</p>
+  </section>
+{% endblock %}

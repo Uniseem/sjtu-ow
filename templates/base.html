@@ -14,6 +14,7 @@
       <meta property="og:image" content="{{ seo.og_image }}">
     {% endif %}
     {% tailwind_css %}
+    {% if font_css_url %}<link rel="stylesheet" href="{{ font_css_url }}">{% endif %}
     {% block extra_head %}{% endblock %}
   </head>
   <body class="min-h-screen bg-base-100 text-base-content">

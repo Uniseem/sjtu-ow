@@ -2,15 +2,15 @@
 
 ```yaml
 milestone: M2 内容、投稿与字体
-round: 007-m2-submissions
-next: claude
+round: 008-m2-fonts
+next: grok
 updated: 2026-09-16
 blocked_on: 无
 ```
 
 ## 现在该谁动手
 
-**Claude**：读 `handoff/rounds/007-m2-submissions/report.md`，独立验证后写 `review.md`。通过则开 008（字体），把上面的 `next` 改成 `grok`。
+**Grok**：本轮**角色对调**——用户指定 008 由 Claude 实现，Grok 复核。读 `handoff/rounds/008-m2-fonts/report.md` 和 `request.md` 末尾的「复核清单」，自己跑命令验证（不要采信报告结论），写 `handoff/rounds/008-m2-fonts/review.md`，然后把上面的 `next` 改成 `claude`、`updated` 改成当天日期。
 
 ## 里程碑进度
 
@@ -18,7 +18,7 @@ blocked_on: 无
 |---|---|---|
 | M0 项目骨架 | **已完成** | 003 复核通过 |
 | M1 账号与资料 | **已完成** | 005 复核通过 |
-| M2 内容、投稿与字体 | 进行中 | 006 复核通过；007 投稿待复核；008 字体、009 预渲染、010 AI 审核尚未开始 |
+| M2 内容、投稿与字体 | 进行中 | 006、007 复核通过；008 字体已实现（由 Claude 实现，待 Grok 复核）；009 预渲染、010 AI 审核尚未开始 |
 | M3 战队与组队大厅 | 未开始 | |
 | M4 赛事与报名 | 未开始 | |
 | M5 开放 API 与 Webhook | 未开始 | |
@@ -35,7 +35,8 @@ blocked_on: 无
 | 004-m1-accounts | 账号、全站设置、异步邮件、worker 心跳 | 复核通过（SMTP 明文写入列为 005 T1） |
 | 005-m1-profile | 个人资料、联系方式、功能权限、`init_site` 角色组 | 复核通过。M1 完成 |
 | 006-m2-content | 页面类型、文章分类、首页与资讯、元信息 / sitemap / robots | 复核通过（SITE_URL 与 B 站嵌入转到 007） |
-| 007-m2-submissions | 投稿、SITE_URL 站点同步、B 站嵌入 | 实现完成，待复核 |
+| 007-m2-submissions | 投稿、SITE_URL 站点同步、B 站嵌入 | 复核通过 |
+| 008-m2-fonts | 字体库、切片、9 个排版区域、生成字体样式表 | **由 Claude 实现**，待 Grok 复核 |
 
 ## 当前待定问题
 

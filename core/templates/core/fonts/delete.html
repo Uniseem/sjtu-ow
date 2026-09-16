@@ -1,0 +1,20 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}删除字体{% endblock %}
+
+{% block main_content %}
+  {% if blocked_regions %}
+    <p class="help-block help-critical">
+      「{{ family.name }}」正在被排版区域使用（{{ blocked_regions|join:"、" }}），不能删除。
+      请先在排版设置里把这些区域换成其他字体。
+    </p>
+    <p><a class="button button-secondary" href="{% url 'core_typography' %}">前往排版设置</a></p>
+  {% else %}
+    <p>确定删除字体「{{ family.name }}」吗？原始文件和全部分片都会一起删除，无法恢复。</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="button serious">确认删除</button>
+      <a class="button button-secondary" href="{% url 'core_font_detail' family.pk %}">取消</a>
+    </form>
+  {% endif %}
+{% endblock %}

@@ -15,6 +15,8 @@ from content.services import (
     remove_wagtail_stock_groups,
     sync_default_site_from_site_url,
 )
+from core.fonts.css import regenerate_font_css
+from core.fonts.services import ensure_typography_rules
 
 
 class Command(BaseCommand):
@@ -82,6 +84,15 @@ class Command(BaseCommand):
             )
         )
 
+        rules = ensure_typography_rules()
+        font_css_url = regenerate_font_css()
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"已确保 {len(rules)} 个排版区域（默认系统字体），"
+                f"字体样式表：{font_css_url}"
+            )
+        )
+
         changed = sync_all_submitter_memberships()
         self.stdout.write(
             self.style.SUCCESS(f"已同步投稿者组成员（本轮变更 {changed} 人）")
@@ -91,7 +102,6 @@ class Command(BaseCommand):
             "赛事管理员的赛事管理权限（M4）",
             "内战管理员的内战管理权限（M6）",
             "初始游戏模式",
-            "9 个排版区域的默认设置（全部使用系统字体），并生成初始字体样式表",
         ]
         self.stdout.write(
             self.style.NOTICE("以下内容仍等到后续里程碑写入（命令可重复执行）：")

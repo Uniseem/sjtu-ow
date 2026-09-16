@@ -84,6 +84,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "content.context_processors.seo",
+                "core.context_processors.fonts",
             ],
         },
     },

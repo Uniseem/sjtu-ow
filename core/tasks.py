@@ -1,4 +1,4 @@
-"""Background tasks for mail delivery."""
+"""Background tasks: mail delivery and font processing."""
 
 from __future__ import annotations
 
@@ -25,3 +25,18 @@ def deliver_queued_email(payload: dict, attempt: int = 0) -> None:
                 payload, attempt + 1
             )
         raise
+
+
+# Font slicing runs one at a time; a waiting task retries for about an hour.
+FONT_REQUEUE_LIMIT = 120
+
+
+@task
+def process_font_face(face_id: int, attempt: int = 0) -> None:
+    """Slice one font weight (design 13.12.2). Waits if another font is running."""
+    from core.fonts.services import REQUEUE_DELAY_SECONDS, run_face_processing
+
+    result = run_face_processing(face_id)
+    if result == "requeue" and attempt < FONT_REQUEUE_LIMIT:
+        run_after = timezone.now() + timedelta(seconds=REQUEUE_DELAY_SECONDS)
+        process_font_face.using(run_after=run_after).enqueue(face_id, attempt + 1)

@@ -1,6 +1,6 @@
 # 上海交通大学守望先锋社区网站
 
-Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.4）。当前里程碑是 **M2 内容、投稿与字体**（内容页面和投稿已落地；字体、预渲染和 AI 审核还在后续轮次）。
+Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.5）。当前里程碑是 **M2 内容、投稿与字体**（内容、投稿、字体与排版已落地；预渲染和 AI 审核还在后续轮次）。
 
 ## 技术栈
 
@@ -11,6 +11,7 @@ Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v
 - 样式由 `django-tailwind-cli` 编译，不安装 Node。源文件在 `assets/css/input.css`（不能放进 `STATICFILES_DIRS`，否则 WhiteNoise 哈希存储会处理 `@import "tailwindcss"` 并失败），编译结果在 `static/css/app.css`。
 - 静态资源：WhiteNoise 存储后端（内容哈希 + 预压缩）；生产由 Caddy 直接提供
 - 异步任务：Django Tasks + `django-tasks-db`；应用层发信走队列，由 worker 按后台 SMTP 发送
+- 字体：fontTools + brotli 在 worker 里把字体切成带 `unicode-range` 的 WOFF2 分片，全部托管在本站
 - 代码检查：ruff；测试：pytest + pytest-django
 
 ### 自托管前端脚本（不走 CDN）
@@ -21,7 +22,7 @@ Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v
 | `static/vendor/alpine.csp.min.js` | 3.17.1 | npm `@alpinejs/csp` |
 | `static/vendor/Sortable.min.js` | 1.15.6 | [SortableJS 1.15.6](https://github.com/SortableJS/Sortable/releases/tag/v1.15.6) |
 
-不加载 Google Fonts 或其他网络字体。
+前台不加载 Google Fonts 或其他网络字体：管理员可以在后台从 Google Fonts **下载**字体，下载后只使用本站保存的副本。
 
 ## 本地开发
 
@@ -115,11 +116,19 @@ docker compose -p sjtu-ow-test -f deploy/docker-compose.yml --env-file .env.test
 
 停掉 `web` 后，Caddy 对会打到后端的请求返回维护页；已经生成的预渲染公开页面仍可访问。
 
-`init_site` 创建全部预置用户组（交大用户、校外用户、内容编辑、赛事管理员、内战管理员、认证作者、投稿者），删除 Wagtail 自带的 Editors / Moderators，写入文章分类和页面树（首页、「资讯」、用户协议、隐私政策、关于我们），按 `SITE_URL` 设置 Wagtail 默认站点的主机名和端口（`https` 默认 443、`http` 默认 80，带端口时用给定端口），创建「内容审核」工作流并绑定到文章栏目，创建「投稿图片」集合，并为后台角色分配进入 Wagtail 的权限、为赛事/内战管理员分配查看联系方式的权限、为投稿相关角色分配栏目和图片权限。然后按「邮箱已验证且可以使用投稿功能」同步「投稿者」组成员。字体、赛事/内战权限在后续里程碑写入。命令可重复执行，不会改写已有成员关系（投稿者组除外）或已改过的分类名称：
+`init_site` 创建全部预置用户组（交大用户、校外用户、内容编辑、赛事管理员、内战管理员、认证作者、投稿者），删除 Wagtail 自带的 Editors / Moderators，写入文章分类和页面树（首页、「资讯」、用户协议、隐私政策、关于我们），按 `SITE_URL` 设置 Wagtail 默认站点的主机名和端口（`https` 默认 443、`http` 默认 80，带端口时用给定端口），创建「内容审核」工作流并绑定到文章栏目，创建「投稿图片」集合，并为后台角色分配进入 Wagtail 的权限、为赛事/内战管理员分配查看联系方式的权限、为投稿相关角色分配栏目和图片权限。然后按「邮箱已验证且可以使用投稿功能」同步「投稿者」组成员，创建 9 个排版区域（默认系统字体）并生成初始字体样式表。赛事/内战权限在后续里程碑写入。命令可重复执行，不会改写已有成员关系（投稿者组除外）或已改过的分类名称：
 
 ```bash
 uv run python manage.py init_site
 ```
+
+## 字体与排版
+
+「设置 → 字体库」添加字体（上传文件 / 从 Google Fonts 下载 / 从网址下载），worker 用 fontTools 把字体切成 WOFF2 分片，浏览器只下载页面用到的分片。「设置 → 排版设置」为 9 个区域（正文、一至四级标题、导航栏、按钮、数字与数据、游戏 ID 与代码）分别设置字体、字重、字号、行高和字间距，保存后生成 `media/fonts/css/fonts.<哈希>.css`，全站布局在 `<head>` 里引用它。两个页面都只对超级管理员开放。
+
+- 模板里不写字体名称，只用 `assets/css/input.css` 里的 `--font-*` 变量和 `.font-nav` / `.font-button` / `.font-numeric` / `.font-code` 类。
+- 处理一个中文字重要几十秒到几分钟，队列同一时间只处理一个字重。
+- 被排版区域引用的字体不能删除。
 
 ## 健康检查
 

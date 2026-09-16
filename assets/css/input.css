@@ -5,24 +5,40 @@
 @source "../../**/templates/**/*.html";
 
 :root {
+  /* Defaults; "设置 → 排版设置" overrides these in the generated fonts.<hash>.css. */
   --font-fallback: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-mono-fallback: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-body: var(--font-fallback);
+  --font-body-weight: 400;
+  --font-body-size: 1rem;
+  --font-body-line-height: inherit;
+  --font-body-letter-spacing: normal;
   --font-h1: var(--font-body);
   --font-h1-weight: 700;
   --font-h1-size: 2rem;
+  --font-h1-line-height: inherit;
+  --font-h1-letter-spacing: normal;
   --font-h2: var(--font-body);
   --font-h2-weight: 600;
   --font-h2-size: 1.5rem;
+  --font-h2-line-height: inherit;
+  --font-h2-letter-spacing: normal;
   --font-h3: var(--font-body);
   --font-h3-weight: 600;
   --font-h3-size: 1.25rem;
+  --font-h3-line-height: inherit;
+  --font-h3-letter-spacing: normal;
   --font-h4: var(--font-body);
   --font-h4-weight: 600;
   --font-h4-size: 1.125rem;
+  --font-h4-line-height: inherit;
+  --font-h4-letter-spacing: normal;
   --font-nav: var(--font-body);
   --font-button: var(--font-body);
   --font-numeric: var(--font-body);
-  --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-code: var(--font-mono-fallback);
+  /* Headings shrink to 85% on phones (design 13.12.3). */
+  --font-heading-mobile-scale: 0.85;
 }
 
 @theme {
@@ -31,24 +47,34 @@
 
 body {
   font-family: var(--font-body);
+  font-weight: var(--font-body-weight);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+  letter-spacing: var(--font-body-letter-spacing);
 }
 
 h1 {
   font-family: var(--font-h1);
   font-weight: var(--font-h1-weight);
   font-size: var(--font-h1-size);
+  line-height: var(--font-h1-line-height);
+  letter-spacing: var(--font-h1-letter-spacing);
 }
 
 h2 {
   font-family: var(--font-h2);
   font-weight: var(--font-h2-weight);
   font-size: var(--font-h2-size);
+  line-height: var(--font-h2-line-height);
+  letter-spacing: var(--font-h2-letter-spacing);
 }
 
 h3 {
   font-family: var(--font-h3);
   font-weight: var(--font-h3-weight);
   font-size: var(--font-h3-size);
+  line-height: var(--font-h3-line-height);
+  letter-spacing: var(--font-h3-letter-spacing);
 }
 
 h4,
@@ -57,6 +83,28 @@ h6 {
   font-family: var(--font-h4);
   font-weight: var(--font-h4-weight);
   font-size: var(--font-h4-size);
+  line-height: var(--font-h4-line-height);
+  letter-spacing: var(--font-h4-letter-spacing);
+}
+
+@media (max-width: 767px) {
+  h1 {
+    font-size: calc(var(--font-h1-size) * var(--font-heading-mobile-scale));
+  }
+
+  h2 {
+    font-size: calc(var(--font-h2-size) * var(--font-heading-mobile-scale));
+  }
+
+  h3 {
+    font-size: calc(var(--font-h3-size) * var(--font-heading-mobile-scale));
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-size: calc(var(--font-h4-size) * var(--font-heading-mobile-scale));
+  }
 }
 
 .font-nav {
@@ -69,6 +117,7 @@ h6 {
 
 .font-numeric {
   font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
 }
 
 .font-code {

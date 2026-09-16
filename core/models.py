@@ -134,13 +134,13 @@ class SiteSettings(BaseGenericSetting):
         "字体样式表地址",
         max_length=500,
         blank=True,
-        help_text=LATER,
+        help_text="由「设置 → 排版设置」自动生成。",
     )
     font_css_generated_at = models.DateTimeField(
         "字体样式表生成时间",
         blank=True,
         null=True,
-        help_text=LATER,
+        help_text="由「设置 → 排版设置」自动生成。",
     )
 
     panels = [
@@ -185,14 +185,248 @@ class SiteSettings(BaseGenericSetting):
             ],
             heading="AI 审核（后续里程碑使用）",
         ),
-        MultiFieldPanel(
-            [
-                FieldPanel("font_css_path"),
-                FieldPanel("font_css_generated_at"),
-            ],
-            heading="字体（后续里程碑使用）",
-        ),
     ]
 
     class Meta:
         verbose_name = "全站设置"
+
+
+class FontFamily(models.Model):
+    """A font in the site font library (design 12.4.3)."""
+
+    class Source(models.TextChoices):
+        UPLOAD = "upload", "上传"
+        GOOGLE_FONTS = "google_fonts", "Google Fonts"
+        URL = "url", "网址下载"
+
+    class License(models.TextChoices):
+        OPEN_SOURCE = "open_source", "开源授权"
+        WEB_LICENSE = "web_license", "已购买网页嵌入授权"
+        OTHER = "other", "其他"
+
+    name = models.CharField("显示名称", max_length=64)
+    css_name = models.CharField(
+        "样式表字体名",
+        max_length=32,
+        unique=True,
+        help_text="生成样式表时使用，自动分配。",
+    )
+    source = models.CharField("来源", max_length=16, choices=Source.choices)
+    source_ref = models.CharField(
+        "来源标识",
+        max_length=500,
+        blank=True,
+        help_text="Google Fonts 字体名称或下载地址。",
+    )
+    license_type = models.CharField("授权类型", max_length=16, choices=License.choices)
+    license_note = models.TextField("授权说明", blank=True)
+    license_confirmed = models.BooleanField("已确认允许嵌入网站", default=False)
+    created_by = models.ForeignKey(
+        "accounts.User",
+        verbose_name="添加人",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    created_at = models.DateTimeField("添加时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "字体"
+        verbose_name_plural = "字体"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def used_by_regions(self):
+        """Typography regions referencing this font; they block deletion (13.12.1)."""
+        return list(
+            TypographyRule.objects.filter(
+                family=self, mode=TypographyRule.Mode.CUSTOM
+            ).values_list("region", flat=True)
+        )
+
+    def ready_faces(self):
+        return self.faces.filter(status=FontFace.Status.READY).order_by(
+            "weight", "style"
+        )
+
+
+def font_original_upload_path(instance, filename):
+    return f"fonts/{instance.family_id}/original/{filename}"
+
+
+class FontFace(models.Model):
+    """One weight/style of a font, plus its processing result (design 12.4.4)."""
+
+    class Style(models.TextChoices):
+        NORMAL = "normal", "正常"
+        ITALIC = "italic", "斜体"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "等待处理"
+        PROCESSING = "processing", "处理中"
+        READY = "ready", "可用"
+        FAILED = "failed", "失败"
+
+    WEIGHT_CHOICES = [
+        (100, "100 Thin"),
+        (200, "200 ExtraLight"),
+        (300, "300 Light"),
+        (400, "400 Regular"),
+        (500, "500 Medium"),
+        (600, "600 SemiBold"),
+        (700, "700 Bold"),
+        (800, "800 ExtraBold"),
+        (900, "900 Black"),
+    ]
+
+    family = models.ForeignKey(
+        FontFamily,
+        verbose_name="字体",
+        on_delete=models.CASCADE,
+        related_name="faces",
+    )
+    weight = models.PositiveSmallIntegerField("字重", choices=WEIGHT_CHOICES)
+    style = models.CharField(
+        "样式",
+        max_length=8,
+        choices=Style.choices,
+        default=Style.NORMAL,
+    )
+    original_file = models.FileField(
+        "原始文件",
+        upload_to=font_original_upload_path,
+        null=True,
+        blank=True,
+        max_length=500,
+    )
+    status = models.CharField(
+        "状态",
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    progress = models.PositiveSmallIntegerField("处理进度", default=0)
+    error = models.TextField("失败原因", blank=True)
+    slices = models.JSONField("分片", default=list, blank=True)
+    slice_count = models.PositiveIntegerField("分片数量", default=0)
+    total_bytes = models.PositiveIntegerField("分片总大小", default=0)
+    glyph_count = models.PositiveIntegerField("字符数量", default=0)
+    created_at = models.DateTimeField("添加时间", auto_now_add=True)
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    class Meta:
+        verbose_name = "字重"
+        verbose_name_plural = "字重"
+        ordering = ["family", "weight", "style"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["family", "weight", "style"],
+                name="unique_font_face_per_family",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.family.name} {self.weight} {self.get_style_display()}"
+
+    @property
+    def label(self):
+        suffix = "" if self.style == self.Style.NORMAL else " 斜体"
+        return f"{self.weight}{suffix}"
+
+
+class TypographyRule(models.Model):
+    """One of the nine typography regions (design 12.4.5)."""
+
+    class Region(models.TextChoices):
+        BODY = "body", "正文"
+        H1 = "h1", "一级标题"
+        H2 = "h2", "二级标题"
+        H3 = "h3", "三级标题"
+        H4 = "h4", "四级标题"
+        NAV = "nav", "导航栏"
+        BUTTON = "button", "按钮"
+        NUMERIC = "numeric", "数字与数据"
+        MONO = "mono", "游戏 ID 与代码"
+
+    class Mode(models.TextChoices):
+        SYSTEM = "system", "系统字体"
+        INHERIT = "inherit", "跟随正文"
+        CUSTOM = "custom", "字体库中的字体"
+
+    region = models.CharField(
+        "区域",
+        max_length=16,
+        choices=Region.choices,
+        unique=True,
+    )
+    mode = models.CharField(
+        "字体来源",
+        max_length=16,
+        choices=Mode.choices,
+        default=Mode.INHERIT,
+    )
+    family = models.ForeignKey(
+        FontFamily,
+        verbose_name="字体",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="typography_rules",
+    )
+    weight = models.PositiveSmallIntegerField(
+        "字重",
+        choices=FontFace.WEIGHT_CHOICES,
+        default=400,
+    )
+    size_rem = models.DecimalField(
+        "字号（rem）",
+        max_digits=5,
+        decimal_places=3,
+        null=True,
+        blank=True,
+    )
+    line_height = models.DecimalField(
+        "行高（倍）",
+        max_digits=4,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    letter_spacing_em = models.DecimalField(
+        "字间距（em）",
+        max_digits=5,
+        decimal_places=3,
+        null=True,
+        blank=True,
+    )
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    class Meta:
+        verbose_name = "排版区域"
+        verbose_name_plural = "排版区域"
+
+    def __str__(self):
+        return self.get_region_display()
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        errors = {}
+        if self.region == self.Region.BODY and self.mode == self.Mode.INHERIT:
+            errors["mode"] = "正文区域不能选「跟随正文」。"
+        if self.mode == self.Mode.CUSTOM:
+            if self.family_id is None:
+                errors["family"] = "选择「字体库中的字体」时必须指定字体。"
+            elif not self.family.faces.filter(
+                weight=self.weight,
+                style=FontFace.Style.NORMAL,
+                status=FontFace.Status.READY,
+            ).exists():
+                errors["weight"] = (
+                    "这个字体没有处理完成的该字重，请先处理或换一个字重。"
+                )
+        if errors:
+            raise ValidationError(errors)

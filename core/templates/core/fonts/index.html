@@ -1,0 +1,49 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}字体库{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% url 'core_font_faces_css' %}">
+{% endblock %}
+
+{% block main_content %}
+  <p>
+    <a class="button button-primary" href="{% url 'core_font_add' %}">添加字体</a>
+    <a class="button button-secondary" href="{% url 'core_typography' %}">排版设置</a>
+  </p>
+
+  {% if families %}
+    <table class="listing">
+      <thead>
+        <tr>
+          <th>名称</th>
+          <th>样式表字体名</th>
+          <th>来源</th>
+          <th>授权</th>
+          <th>字重</th>
+          <th>预览</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for family in families %}
+          <tr>
+            <td><a href="{% url 'core_font_detail' family.pk %}">{{ family.name }}</a></td>
+            <td><code>{{ family.css_name }}</code></td>
+            <td>{{ family.get_source_display }}</td>
+            <td>{{ family.get_license_type_display }}</td>
+            <td>
+              {% for face in family.faces.all %}
+                {{ face.label }}（{{ face.get_status_display }}{% if face.status == "processing" %} {{ face.progress }}%{% endif %}）{% if not forloop.last %}、{% endif %}
+              {% empty %}
+                尚未添加字重
+              {% endfor %}
+            </td>
+            <td class="font-preview-{{ family.pk }}">{{ sample_text }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>字体库还是空的。全站正在使用系统字体。</p>
+  {% endif %}
+{% endblock %}
