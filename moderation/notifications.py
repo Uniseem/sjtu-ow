@@ -35,6 +35,18 @@ def reviewer_emails() -> list[str]:
     return sorted(address for address in emails if address)
 
 
+def _send_one_by_one(subject: str, body: str, recipients) -> None:
+    """One message per address so reviewers never see each other's email."""
+    for address in recipients:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=None,
+            recipient_list=[address],
+            fail_silently=False,
+        )
+
+
 def admin_url(item: ModerationItem) -> str:
     base = getattr(settings, "WAGTAILADMIN_BASE_URL", "") or ""
     return base.rstrip("/") + reverse("moderation_detail", args=[item.pk])
@@ -64,13 +76,7 @@ def notify_high_risk(item: ModerationItem) -> None:
         f"复核地址：{admin_url(item)}\n\n"
         f"（AI 只做判断，不会改动任何内容。处置请在后台进行。）"
     )
-    send_mail(
-        subject="高风险内容待复核",
-        message=body,
-        from_email=None,
-        recipient_list=recipients,
-        fail_silently=False,
-    )
+    _send_one_by_one("高风险内容待复核", body, recipients)
     ModerationItem.objects.filter(pk=item.pk).update(notified_at=timezone.now())
 
 
@@ -96,13 +102,7 @@ def send_digest() -> int:
         )
     lines.append("")
     lines.append("（AI 只做判断，不会改动任何内容。处置请在后台进行。）")
-    send_mail(
-        subject="内容审核每日汇总",
-        message="\n".join(lines),
-        from_email=None,
-        recipient_list=recipients,
-        fail_silently=False,
-    )
+    _send_one_by_one("内容审核每日汇总", "\n".join(lines), recipients)
     ModerationItem.objects.filter(pk__in=[item.pk for item in pending]).update(
         notified_at=timezone.now()
     )

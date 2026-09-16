@@ -187,7 +187,15 @@ class HomePage(SeoPageMixin, Page):
         # M4 / M6 / M3 data hooks: leave keys in context so templates stay put.
         context["open_tournaments"] = None
         context["upcoming_scrims"] = None
-        context["lfg_open_count"] = None
+        # Anonymous (and prerendered) pages show 「登录后查看」; the signed-in
+        # count arrives through the home-lfg slot (design 13.13.3).
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            from lfg import services as lfg_services
+
+            context["lfg_open_count"] = lfg_services.open_count()
+        else:
+            context["lfg_open_count"] = None
         return context
 
     class Meta:

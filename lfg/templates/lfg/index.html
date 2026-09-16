@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}组队大厅 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-4xl px-4 py-10">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1>组队大厅</h1>
+      <a href="{% url 'lfg_create' %}" class="btn btn-primary min-h-11 font-button">发车</a>
+    </div>
+
+    <form
+      id="lfg-filters"
+      class="form-control mt-6 flex flex-col gap-3"
+      hx-get="{% url 'lfg_list' %}"
+      hx-target="#lfg-list"
+      hx-trigger="change, submit, load, every 30s"
+      hx-indicator="#lfg-loading"
+    >
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="flex flex-col gap-1">
+          <span class="label-text">模式</span>
+          <select name="mode" class="select select-sm min-h-11">
+            <option value="">全部模式</option>
+            {% for mode in modes %}
+              <option value="{{ mode.pk }}">{{ mode.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="label cursor-pointer gap-2 min-h-11">
+          <input type="checkbox" name="tank" value="1" class="checkbox checkbox-sm">
+          <span class="label-text">缺重装</span>
+        </label>
+        <label class="label cursor-pointer gap-2 min-h-11">
+          <input type="checkbox" name="damage" value="1" class="checkbox checkbox-sm">
+          <span class="label-text">缺输出</span>
+        </label>
+        <label class="label cursor-pointer gap-2 min-h-11">
+          <input type="checkbox" name="support" value="1" class="checkbox checkbox-sm">
+          <span class="label-text">缺支援</span>
+        </label>
+        <label class="label cursor-pointer gap-2 min-h-11">
+          <input type="checkbox" name="open" value="1" class="checkbox checkbox-sm">
+          <span class="label-text">只看招人中</span>
+        </label>
+        <span id="lfg-loading" class="htmx-indicator text-sm text-base-content/60">刷新中…</span>
+      </div>
+      <p class="text-sm text-base-content/60">列表每 30 秒自动刷新。</p>
+    </form>
+
+    <div id="lfg-list" class="mt-6">
+      {% include "components/empty_state.html" with title="正在加载" message="车帖列表加载中…" %}
+    </div>
+  </section>
+{% endblock %}

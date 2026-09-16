@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}{% if post %}编辑车帖{% else %}发车{% endif %} · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-2xl px-4 py-10">
+    <h1>{% if post %}编辑车帖{% else %}发车{% endif %}</h1>
+    {% if not allowed %}
+      <div class="alert alert-warning mt-6" role="status">{{ reason }}</div>
+      <p class="mt-4"><a href="{% url 'lfg_index' %}" class="btn btn-ghost min-h-11 font-button">返回组队大厅</a></p>
+    {% else %}
+      <form method="post" class="form-control mt-6 flex flex-col gap-4">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
+        {% endif %}
+        {% include "account/_form.html" %}
+        <p class="text-sm text-base-content/60">车帖会在开车时间 2 小时后自动过期。</p>
+        <div class="flex flex-wrap gap-2">
+          <button type="submit" class="btn btn-primary min-h-11 font-button">{% if post %}保存{% else %}发布{% endif %}</button>
+          <a href="{% url 'lfg_index' %}" class="btn btn-ghost min-h-11 font-button">取消</a>
+        </div>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

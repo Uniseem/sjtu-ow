@@ -194,10 +194,12 @@ def test_reprocess_clears_old_slice_files(media_root):
     face = services.add_face_from_bytes(
         family, make_font_bytes(sample_chars(260)), "test.ttf", weight=400
     )
-    services.run_face_processing(face.pk)
+    # Assert the outcome of each run: a "requeue" would otherwise look like a
+    # mysterious path mismatch further down.
+    assert services.run_face_processing(face.pk) == "done"
     face.refresh_from_db()
     first = [item["path"] for item in face.slices]
-    services.run_face_processing(face.pk)
+    assert services.run_face_processing(face.pk) == "done"
     face.refresh_from_db()
     assert [item["path"] for item in face.slices] == first
     for path in first:

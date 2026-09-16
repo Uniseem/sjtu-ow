@@ -461,3 +461,23 @@ class PrerenderedPage(models.Model):
 
     def __str__(self):
         return self.path
+
+
+class GameMode(models.Model):
+    """A game mode players can pick when posting to the LFG board (12.4.2)."""
+
+    name = models.CharField("名称", max_length=32, unique=True)
+    sort_order = models.PositiveSmallIntegerField("排序", default=0)
+    is_active = models.BooleanField(
+        "启用",
+        default=True,
+        help_text="停用后发车时不能选，已有车帖不受影响。",
+    )
+
+    class Meta:
+        verbose_name = "游戏模式"
+        verbose_name_plural = "游戏模式"
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name

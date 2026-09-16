@@ -17,6 +17,7 @@ from content.services import (
 )
 from core.fonts.css import regenerate_font_css
 from core.fonts.services import ensure_typography_rules
+from core.services import ensure_game_modes
 from moderation.services import assign_moderation_permissions
 
 
@@ -93,6 +94,13 @@ class Command(BaseCommand):
                 )
             )
 
+        modes = ensure_game_modes()
+        self.stdout.write(
+            self.style.SUCCESS(
+                "已确保游戏模式：" + "、".join(mode.name for mode in modes)
+            )
+        )
+
         rules = ensure_typography_rules()
         font_css_url = regenerate_font_css()
         self.stdout.write(
@@ -110,7 +118,6 @@ class Command(BaseCommand):
         later = [
             "赛事管理员的赛事管理权限（M4）",
             "内战管理员的内战管理权限（M6）",
-            "初始游戏模式",
         ]
         self.stdout.write(
             self.style.NOTICE("以下内容仍等到后续里程碑写入（命令可重复执行）：")

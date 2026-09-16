@@ -462,3 +462,30 @@ def test_handling_records_the_decision_without_touching_content(client, moderati
     assert item.handling_note == "已要求改昵称"
     assert author.nickname == "被标记的人"  # content untouched
     assert author.is_active is True
+
+
+@pytest.mark.django_db
+def test_high_risk_mail_goes_out_one_by_one(moderation_on):
+    for index in range(2):
+        User.objects.create_superuser(
+            email=f"admin{index}-solo@example.com",
+            password="Correct-Horse-Battery-1",
+            nickname=f"超管{index}",
+            agreed_terms_at=timezone.now(),
+            agreed_cross_border_at=timezone.now(),
+        )
+    item = services.submit(
+        target_type=TargetType.ARTICLE, target_id=31, field="content", text="卖号广告"
+    )
+    mail.outbox.clear()
+    services.record(
+        item,
+        risk=Risk.HIGH,
+        categories=[Category.GAME_TRADE],
+        reason="卖号",
+        quote="卖号",
+        model="m",
+    )
+    assert len(mail.outbox) == 2
+    for message in mail.outbox:
+        assert len(message.recipients()) == 1

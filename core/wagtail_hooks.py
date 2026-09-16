@@ -1,8 +1,11 @@
 from django.urls import path, reverse
 from wagtail import hooks
 from wagtail.admin.menu import MenuItem
+from wagtail.snippets.models import register_snippet
+from wagtail.snippets.views.snippets import SnippetViewSet
 
 from core.fonts import admin_views
+from core.models import GameMode
 from core.prerender_admin import prerender_clear, prerender_index, prerender_rebuild
 from core.views import send_site_test_email
 
@@ -117,3 +120,20 @@ def register_typography_menu_item():
         icon_name="edit",
         order=810,
     )
+
+
+class GameModeViewSet(SnippetViewSet):
+    """Game modes are managed by superusers and content editors (design 14.2)."""
+
+    model = GameMode
+    icon = "tasks"
+    menu_label = "游戏模式"
+    menu_name = "game_modes"
+    menu_order = 260
+    add_to_admin_menu = True
+    list_display = ["name", "sort_order", "is_active"]
+    ordering = ["sort_order", "name"]
+    copy_view_enabled = False
+
+
+register_snippet(GameModeViewSet)

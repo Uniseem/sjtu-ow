@@ -12,16 +12,15 @@ def site_url(path: str) -> str:
 
 
 def _send(subject: str, body: str, recipients) -> None:
-    addresses = sorted({address for address in recipients if address})
-    if not addresses:
-        return
-    send_mail(
-        subject=subject,
-        message=body,
-        from_email=None,
-        recipient_list=addresses,
-        fail_silently=False,
-    )
+    """One message per address: recipients must not see each other's email."""
+    for address in sorted({address for address in recipients if address}):
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=None,
+            recipient_list=[address],
+            fail_silently=False,
+        )
 
 
 def application_submitted(application) -> None:

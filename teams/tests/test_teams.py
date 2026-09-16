@@ -508,3 +508,19 @@ def test_team_list_does_not_run_a_query_per_team(
         response = client.get(reverse("team_index"))
     assert response.status_code == 200
     assert "计数队0" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_disband_mail_does_not_leak_addresses(
+    team, applicant, captain, django_capture_on_commit_callbacks
+):
+    application = services.apply_to_team(
+        team=team, user=applicant, roles={"tank": True}
+    )
+    services.approve_application(application=application, actor=captain)
+    mail.outbox.clear()
+    with django_capture_on_commit_callbacks(execute=True):
+        services.disband_team(team=team, actor=captain)
+    assert len(mail.outbox) == 2  # one message per member
+    for message in mail.outbox:
+        assert len(message.recipients()) == 1
