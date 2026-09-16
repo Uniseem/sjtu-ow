@@ -28,9 +28,9 @@ def decode_cursor(cursor: str):
         moment = parse_datetime(payload["u"])
         pk = int(payload["i"])
     except (ValueError, KeyError, TypeError, binascii.Error) as exc:
-        raise ApiError("validation_error", "cursor 不合法") from exc
+        raise ApiError("invalid_cursor", "cursor 不合法") from exc
     if moment is None:
-        raise ApiError("validation_error", "cursor 不合法")
+        raise ApiError("invalid_cursor", "cursor 不合法")
     return moment, pk
 
 

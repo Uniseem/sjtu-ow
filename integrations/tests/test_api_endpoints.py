@@ -189,7 +189,7 @@ def test_upsert_validates(client, api):
         secret=secret,
         body={"title": "缺字段"},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422  # design 11.10
     assert response.json()["error"]["code"] == "validation_error"
 
 
@@ -435,7 +435,7 @@ def test_reject_needs_a_note(client, api, registration):
         secret=secret,
         body={"action": "reject", "roster_version": 1},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422  # design 11.10
     assert "备注" in response.json()["error"]["message"]
 
 
@@ -557,7 +557,7 @@ def test_unknown_action_is_rejected(client, api, registration):
         secret=secret,
         body={"action": "delete", "roster_version": 1},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422  # design 11.10
     assert response.json()["error"]["code"] == "validation_error"
 
 
@@ -599,7 +599,7 @@ def test_batch_limit(client, api):
         secret=secret,
         body={"items": [{"id": index} for index in range(101)]},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422  # design 11.10
     assert response.json()["error"]["details"]["limit"] == 100
 
 
@@ -701,3 +701,135 @@ def test_no_contact_details_anywhere(client, api, registration):
         response = call(client, "GET", path, api=api_obj, secret=secret, query=query)
         assert "123456789" not in response.content.decode()
         assert "@example.com" not in response.content.decode()
+
+
+# --- design 11.10: the published error table -----------------------------------
+
+
+def test_the_error_table_matches_the_design():
+    """Design 11.10 is a published contract: names and statuses both."""
+    from integrations.api import ERRORS
+
+    documented = {
+        "invalid_request": 400,
+        "invalid_field": 400,
+        "invalid_include": 400,
+        "invalid_cursor": 400,
+        "missing_auth": 401,
+        "invalid_api_key": 401,
+        "timestamp_expired": 401,
+        "nonce_reused": 401,
+        "invalid_signature": 401,
+        "scope_denied": 403,
+        "include_not_allowed": 403,
+        "review_not_allowed": 403,
+        "not_found": 404,
+        "roster_version_mismatch": 409,
+        "invalid_state_transition": 409,
+        "review_mode_locked": 409,
+        "validation_error": 422,
+        "rate_limited": 429,
+        "internal_error": 500,
+    }
+    actual = {code: status for code, (status, _msg) in ERRORS.items()}
+    assert actual == documented
+
+
+@pytest.mark.django_db
+def test_an_unknown_include_is_a_bad_request_not_a_permission_error(
+    client, api, registration
+):
+    """Design 11.10 separates a typo (400) from a denied expansion (403)."""
+    api_obj, secret = api
+
+    typo = call(
+        client,
+        "GET",
+        "/api/v1/registrations",
+        api=api_obj,
+        secret=secret,
+        query=[("include", "menbers")],
+    )
+
+    assert typo.status_code == 400
+    error = typo.json()["error"]
+    assert error["code"] == "invalid_include"
+    assert "members" in error["details"]["allowed"]
+
+
+@pytest.mark.django_db
+def test_a_real_include_without_permission_is_still_403(client, db, registration):
+    limited, secret = api_services.create_client(
+        name="只读基本信息", scopes=["registrations:read"], allowed_includes=["team"]
+    )
+
+    response = call(
+        client,
+        "GET",
+        "/api/v1/registrations",
+        api=limited,
+        secret=secret,
+        query=[("include", "logs")],
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "include_not_allowed"
+
+
+@pytest.mark.django_db
+def test_a_broken_cursor_says_so(client, api, registration):
+    api_obj, secret = api
+
+    response = call(
+        client,
+        "GET",
+        "/api/v1/registrations",
+        api=api_obj,
+        secret=secret,
+        query=[("cursor", "not-a-real-cursor")],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_cursor"
+
+
+@pytest.mark.django_db
+def test_unparseable_json_says_so(client, api):
+    api_obj, secret = api
+    body = b"{not json at all"
+    headers = sign_request(
+        "POST", "/api/v1/registrations/review-batch", (), body, api_obj.key_id, secret
+    )
+
+    response = client.post(
+        "/api/v1/registrations/review-batch",
+        data=body,
+        content_type="application/json",
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_request"
+
+
+@pytest.mark.django_db
+def test_an_unexpected_failure_still_returns_the_envelope(
+    client, api, registration, monkeypatch
+):
+    """Design 11.10: even a crash answers with a code and the request id."""
+    from integrations import api_views
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("something nobody predicted")
+
+    monkeypatch.setattr(api_views, "visible_registrations", boom)
+    api_obj, secret = api
+
+    response = call(client, "GET", "/api/v1/registrations", api=api_obj, secret=secret)
+
+    assert response.status_code == 500
+    error = response.json()["error"]
+    assert error["code"] == "internal_error"
+    assert "X-Request-Id" in error["message"] or error.get("details", {}).get(
+        "request_id"
+    )

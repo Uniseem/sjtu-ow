@@ -270,6 +270,10 @@ WAGTAILADMIN_BASE_URL = SITE_URL
 WAGTAILADMIN_LOGIN_URL = "account_login"
 ADMIN_URL_PREFIX = "/admin/"
 WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
+# No Gravatar: the admin CSP allows no external images, so the avatars only
+# ever rendered blank, and looking one up sends a hash of the admin's email
+# to a third party — which the privacy policy does not cover.
+WAGTAIL_GRAVATAR_PROVIDER_URL = None
 WAGTAILSEARCH_BACKENDS = {
     "default": {
         "BACKEND": "wagtail.search.backends.database",

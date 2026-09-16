@@ -672,3 +672,28 @@ def test_rank_scores_are_strictly_ordered():
     scores.append(encode_rank("top500", None))
     assert scores == sorted(scores)
     assert len(set(scores)) == len(scores)
+
+
+@pytest.mark.django_db
+def test_the_admin_asks_no_third_party_for_avatars(client):
+    """Design 15.3 keeps admin identities off third parties, and the admin
+    CSP blocks external images anyway, so Gravatar only ever rendered blank."""
+    from django.conf import settings
+
+    assert settings.WAGTAIL_GRAVATAR_PROVIDER_URL is None
+
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    call_command("init_site", stdout=StringIO(), stderr=StringIO())
+    boss = User.objects.create_superuser(
+        email="avatar-check@example.com",
+        password="Correct-Horse-Battery-1",
+        nickname="超管",
+    )
+    client.force_login(boss)
+
+    html = client.get("/admin/").content.decode()
+
+    assert "gravatar" not in html.lower()

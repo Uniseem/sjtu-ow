@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import datetime
+import logging
 import time
 
 from django.conf import settings
 from django.core.cache import cache
-from rest_framework import status as http_status
+from rest_framework.exceptions import ParseError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -15,7 +17,13 @@ from core.ratelimit import client_ip
 from integrations.models import ApiClient, ApiRequestLog
 from integrations.signing import string_to_sign, verify
 
+logger = logging.getLogger(__name__)
+
 ERRORS = {
+    # Design 11.10. The status codes are part of the published contract.
+    "invalid_request": (400, "请求格式错误"),
+    "invalid_include": (400, "展开项不存在"),
+    "invalid_cursor": (400, "游标无效或已过期"),
     "missing_auth": (401, "缺少认证请求头"),
     "invalid_api_key": (401, "Key ID 无效或客户端已停用"),
     "timestamp_expired": (401, "时间戳与服务器时间相差过大"),
@@ -30,7 +38,8 @@ ERRORS = {
     "roster_version_mismatch": (409, "名单已被队长更新，请重新获取后再审核"),
     "invalid_field": (400, "字段名不存在"),
     "not_found": (404, "对象不存在"),
-    "validation_error": (400, "请求内容不合法"),
+    "validation_error": (422, "请求内容不合法"),
+    "internal_error": (500, "服务器内部错误，请带上 X-Request-Id 联系管理员"),
 }
 NONCE_PREFIX = "sjtu_ow:api_nonce:"
 RATE_PREFIX = "api"
@@ -63,19 +72,59 @@ def list_response(items, *, next_cursor=None, has_more=False) -> Response:
 
 
 def exception_handler(exc, context):
+    """Wrap every failure in the design 11.10 envelope.
+
+    DRF's own status code is authoritative here: it already knows that an
+    unauthenticated request is 401 and a forbidden one is 403. Only the code
+    name is filled in, never the status — overriding it once turned the docs
+    page's 403 into a 422.
+    """
     from rest_framework.views import exception_handler as drf_handler
 
     if isinstance(exc, ApiError):
         return error_response(exc.code, exc.message, exc.details)
+
     response = drf_handler(exc, context)
-    if response is not None and "error" not in (response.data or {}):
-        code = "validation_error"
-        if response.status_code == http_status.HTTP_404_NOT_FOUND:
-            code = "not_found"
+    if response is None:
+        # Unhandled: still answer with the envelope and the request id rather
+        # than Django's HTML error page.
+        logger.exception("API 内部错误", exc_info=exc)
+        request = getattr(context.get("request", None), "_request", None)
+        request_id = getattr(request, "request_id", "") or ""
+        return error_response(
+            "internal_error",
+            details={"request_id": request_id} if request_id else None,
+        )
+
+    if "error" not in (response.data or {}):
         response.data = {
-            "error": {"code": code, "message": str(response.data)},
+            "error": {
+                "code": _code_for(exc, response.status_code),
+                "message": str(response.data),
+            }
         }
     return response
+
+
+# A DRF status mapped onto the closest code in design 11.10.
+_STATUS_CODES = {
+    400: "invalid_request",
+    401: "missing_auth",
+    403: "scope_denied",
+    404: "not_found",
+    405: "invalid_request",
+    415: "invalid_request",
+    422: "validation_error",
+    429: "rate_limited",
+}
+
+
+def _code_for(exc, status_code: int) -> str:
+    if isinstance(exc, ParseError):
+        return "invalid_request"
+    if isinstance(exc, DRFValidationError):
+        return "validation_error"
+    return _STATUS_CODES.get(status_code, "internal_error")
 
 
 def isoformat(value) -> str | None:
@@ -144,12 +193,27 @@ def check_rate(client) -> None:
 
 
 def check_includes(client, includes) -> list[str]:
-    """Expand and validate ``include`` (design 11.3)."""
+    """Expand and validate ``include`` (design 11.3, 11.10).
+
+    Design 11.10 separates two cases that are easy to conflate: a name that
+    is not an expansion at all is a malformed request (400), while a real
+    expansion this client may not use is a permission problem (403). Telling
+    them apart lets an upstream see a typo for what it is.
+    """
+    from integrations.models import Include
+
+    known = set(Include.values)
     wanted = []
     for name in includes:
         name = name.strip()
         if not name:
             continue
+        if name not in known:
+            raise ApiError(
+                "invalid_include",
+                f"没有展开项「{name}」",
+                {"include": name, "allowed": sorted(known)},
+            )
         if name == "members.ranks" and "members" not in wanted:
             wanted.append("members")
         if not client.allows_include(name):
