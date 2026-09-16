@@ -301,6 +301,34 @@ API 调用日志 90 天、Webhook 投递记录 180 天（待投递的不删）�
 - **批量审核**：一次最多 100 条，每条独立成败，整体返回 200，失败的那条带自己的错误码。
 - **不返回联系方式**：任何接口都不含邮箱、QQ、微信、手机号。状态日志只给操作方类型（`captain` / `admin` / `upstream` / `system`），不给管理员是谁。
 
+## 备份与恢复
+
+```bash
+uv run python manage.py backup                 # 备份到 BACKUP_ROOT，保留 14 天
+uv run python manage.py backup --keep-days 30
+uv run python manage.py restore backups/sjtu-ow-20260916-221549.tar.gz        # 只演练
+uv run python manage.py restore backups/sjtu-ow-20260916-221549.tar.gz --yes  # 真的恢复
+```
+
+- 数据库用 **SQLite 的在线备份 API** 生成快照，不是复制文件——开了 WAL 的库直接复制可能拿到不一致的状态。
+- 备份里有数据库和 `media`；`static` 和 `prerendered` 不备份，都能重新生成。
+- **备份文件没有加密**，里面有用户邮箱和联系方式。设计 16.7 要求同步到服务器以外之前先加密（比如 age）。命令每次都会提醒这件事。**上传到对象存储还没有做成命令**，要自己加一条 cron。
+- 恢复会：校验 `FIELD_ENCRYPTION_KEY` 能不能解开备份里的加密字段（**解不开就拒绝**，不然会恢复出一堆没人能读的密文）→ 关掉数据库连接 → 删除旧 WAL → 替换数据库文件 → 恢复 media → **清空 `prerendered`**（否则静态页面会比数据新）。
+- 不加 `--yes` 只打印要做什么，什么都不改。
+- 恢复前要先停 `web` 和 `worker`，恢复后启动并触发全量重新生成——这两步命令做不了，输出里有提示。
+
+## 定时维护
+
+```bash
+uv run python manage.py cleanup_old_data   # 日志、投递记录、任务记录、会话
+uv run python manage.py cleanup_static     # 不属于当前版本且超过 30 天的静态文件
+uv run python manage.py optimize_db        # PRAGMA optimize + WAL 检查点
+```
+
+`cleanup_static` 按 `staticfiles.json` 判断哪些文件还在用：**读不到清单就什么都不删**。升级后旧文件要留一个月，让还拿着缓存页面的访客能取到它引用的资源（设计 16.8）。
+
+完整的 cron 时间表见 `deploy/crontab.example`。
+
 ## 健康检查
 
 `GET /healthz` 在以下全部通过时返回 200，否则 503：

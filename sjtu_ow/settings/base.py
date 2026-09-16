@@ -324,6 +324,12 @@ WEBHOOK_ALLOW_INSECURE_URLS = env_bool("WEBHOOK_ALLOW_INSECURE_URLS", False)
 PRERENDER_ENABLED = env_bool("PRERENDER_ENABLED", False)
 PRERENDER_ROOT = Path(env("PRERENDER_ROOT", str(BASE_DIR / "prerendered")))
 
+# Local backups (design 16.2, 16.7). Kept for BACKUP_KEEP_DAYS days.
+BACKUP_ROOT = Path(env("BACKUP_ROOT", str(BASE_DIR / "backups")))
+BACKUP_KEEP_DAYS = int(env("BACKUP_KEEP_DAYS", "14"))
+# Design 16.5: old static files linger for a month after an upgrade.
+STATIC_KEEP_DAYS = int(env("STATIC_KEEP_DAYS", "30"))
+
 # Placeholder until M5 / M2. Read here so production env is complete (design 16.3).
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", "dev-insecure-field-encryption-key")
 MODERATION_API_KEY = env("MODERATION_API_KEY", "")

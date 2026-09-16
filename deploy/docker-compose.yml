@@ -15,6 +15,7 @@ services:
       - media:/app/media
       - static:/app/staticfiles
       - prerendered:/app/prerendered
+      - backups:/app/backups
     expose:
       - "8000"
     healthcheck:
@@ -63,5 +64,6 @@ volumes:
   media:
   static:
   prerendered:
+  backups:
   caddy_data:
   caddy_config:

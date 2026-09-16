@@ -14,6 +14,9 @@ data/*.sqlite3-*
 media/
 staticfiles/
 prerendered/
+
+# Backups hold user emails and contact details. Never commit one.
+backups/
 *.log
 
 # Tailwind CLI binary (downloaded locally / in Docker)
