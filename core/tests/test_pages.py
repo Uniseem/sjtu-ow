@@ -1,6 +1,9 @@
 import json
+import sqlite3
+import time
 
 import pytest
+from django.db import connection
 from django.db.backends.utils import CursorWrapper
 from django.db.utils import OperationalError
 from django.urls import reverse
@@ -13,7 +16,33 @@ def test_healthz_returns_200(client):
     payload = json.loads(response.content)
     assert payload["status"] == "ok"
     assert payload["checks"]["database"]["ok"] is True
+    assert payload["checks"]["database"]["detail"] == "ok"
     assert payload["checks"]["disk"]["ok"] is True
+
+
+@pytest.mark.django_db(transaction=True)
+def test_healthz_returns_200_when_database_is_busy(client):
+    connection.close()
+    db_path = str(connection.settings_dict["NAME"])
+    blocker = sqlite3.connect(db_path, timeout=30)
+    blocker.isolation_level = None
+    blocker.execute("BEGIN IMMEDIATE")
+    try:
+        started = time.monotonic()
+        response = client.get(reverse("healthz"))
+        elapsed = time.monotonic() - started
+    finally:
+        blocker.execute("ROLLBACK")
+        blocker.close()
+
+    assert elapsed < 1.0
+    assert response.status_code == 200
+    payload = json.loads(response.content)
+    assert payload["status"] == "ok"
+    assert payload["checks"]["database"]["ok"] is True
+    assert payload["checks"]["database"]["detail"] == (
+        "busy: another write in progress"
+    )
 
 
 @pytest.mark.django_db(transaction=True)

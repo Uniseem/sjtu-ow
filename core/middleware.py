@@ -37,7 +37,7 @@ class WagtailAdminCSPMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        prefix = getattr(settings, "WAGTAILADMIN_PATH_PREFIX", "/admin/")
+        prefix = getattr(settings, "ADMIN_URL_PREFIX", "/admin/")
         if request.path.startswith(prefix):
             response._csp_config = ADMIN_CSP
         return response

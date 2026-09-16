@@ -1,6 +1,6 @@
 # 上海交通大学守望先锋社区网站
 
-Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.1）。当前里程碑是 **M0 项目骨架**，不含账号、战队、赛事等业务功能。
+Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.2）。当前里程碑是 **M0 项目骨架**，不含账号、战队、赛事等业务功能。
 
 ## 技术栈
 
@@ -97,13 +97,15 @@ uv run python manage.py init_site
 
 ## 健康检查
 
-`GET /healthz` 在数据库可读写且数据盘剩余空间大于 20% 时返回 200，否则 503。worker 心跳和任务积压接口已留在 `core/health.py`，M1 再计入状态。
+`GET /healthz` 在数据库可读写且数据盘剩余空间大于 20% 时返回 200，否则 503。数据库探活写入专用表 `HealthProbe` 后回滚，等待最多 200 毫秒；遇到 SQLite `database is locked` 视为正常忙碌（仍返回 200）。worker 心跳和任务积压接口已留在 `core/health.py`，M1 再计入状态。
+
+Wagtail 后台 URL 前缀由设置 `ADMIN_URL_PREFIX`（默认 `/admin/`）控制，供 CSP 中间件识别后台请求。不要和 Wagtail 官方设置混淆。
 
 ## CI
 
 使用 **GitHub Actions**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）：ruff、pytest、`makemigrations --check`、生产配置下的 `check --deploy`、重新生成错误页后 `git diff` 必须为空、`docker build`。
 
-错误页是自包含 HTML，提交在 `deploy/error_pages/`。改 `templates/errors/` 后运行：
+Django 渲染的 404 / 403 / 429 / 500 引用 `static/css/error.css`。给 Caddy 的维护页是自包含 HTML（生成时把 `error.css` 内联进去），提交在 `deploy/error_pages/maintenance.html`。改错误页模板或 `error.css` 后运行：
 
 ```bash
 uv run python manage.py render_error_pages

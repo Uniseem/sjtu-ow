@@ -8,41 +8,78 @@ from pathlib import Path
 from django.conf import settings
 from django.db import connection, transaction
 
+from core.models import HealthProbe
+
+HEALTH_PROBE_BUSY_TIMEOUT_MS = 200
+BUSY_DETAIL = "busy: another write in progress"
+_BUSY_MARKERS = ("database is locked", "database is busy")
+
 
 class _ProbeRollback(Exception):
     """Sentinel used to roll back the health-check write."""
 
 
+def _is_sqlite_busy(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        message = str(current).lower()
+        if any(marker in message for marker in _BUSY_MARKERS):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _busy_timeout_ms() -> int:
+    return int(
+        getattr(settings, "HEALTH_PROBE_BUSY_TIMEOUT_MS", HEALTH_PROBE_BUSY_TIMEOUT_MS)
+    )
+
+
+def _default_busy_timeout_ms() -> int:
+    timeout_s = connection.settings_dict.get("OPTIONS", {}).get("timeout", 5)
+    return int(float(timeout_s) * 1000)
+
+
+def _pragma_busy_timeout(ms: int) -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(f"PRAGMA busy_timeout={int(ms)}")
+
+
 def check_database() -> tuple[bool, str]:
-    """Verify the default database can read and write a real table."""
+    """Verify the default database can read and write the probe table."""
+    previous_ms = None
     try:
+        connection.ensure_connection()
+        with connection.cursor() as cursor:
+            cursor.execute("PRAGMA busy_timeout")
+            row = cursor.fetchone()
+            previous_ms = int(row[0]) if row else _default_busy_timeout_ms()
+        _pragma_busy_timeout(_busy_timeout_ms())
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            if cursor.fetchone() is None:
+                return False, "database read failed"
         with transaction.atomic():
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT 1")
-                if cursor.fetchone() is None:
-                    raise RuntimeError("database read failed")
-                cursor.execute(
-                    "DELETE FROM django_content_type "
-                    "WHERE app_label = %s AND model = %s",
-                    ["__healthz__", "__probe__"],
-                )
-                cursor.execute(
-                    "INSERT INTO django_content_type (app_label, model) "
-                    "VALUES (%s, %s)",
-                    ["__healthz__", "__probe__"],
-                )
-                cursor.execute(
-                    "SELECT id FROM django_content_type "
-                    "WHERE app_label = %s AND model = %s",
-                    ["__healthz__", "__probe__"],
-                )
-                if cursor.fetchone() is None:
-                    raise RuntimeError("database write did not persist")
+            HealthProbe.objects.create(token="__healthz__")
+            if not HealthProbe.objects.filter(token="__healthz__").exists():
+                raise RuntimeError("database write did not persist")
             raise _ProbeRollback
     except _ProbeRollback:
         return True, "ok"
     except Exception as exc:  # noqa: BLE001 — health endpoint must not raise
+        if _is_sqlite_busy(exc):
+            return True, BUSY_DETAIL
         return False, str(exc)
+    finally:
+        try:
+            restore_ms = (
+                previous_ms if previous_ms is not None else _default_busy_timeout_ms()
+            )
+            _pragma_busy_timeout(restore_ms)
+        except Exception:  # noqa: BLE001 — never fail the probe while restoring
+            pass
 
 
 def check_disk(path: Path | None = None) -> tuple[bool, str]:
