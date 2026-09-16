@@ -618,3 +618,91 @@ def test_task_on_a_missing_delivery():
     from integrations.tasks import deliver_webhook
 
     assert deliver_webhook.func(999999) == "gone"
+
+
+# --- the 24-hour tier and the safety net ---------------------------------------
+
+
+@pytest.mark.django_db
+def test_the_last_retry_is_scheduled_a_day_out(monkeypatch):
+    """Design 11.8.3: the seventh gap is 24 hours.
+
+    019 checked the gap sequence in isolation; this pins the value that
+    actually lands in the database, which is what a worker acts on.
+    """
+    delivery = webhooks.queue_ping(configure(make_client()))
+    monkeypatch.setattr(webhooks, "post", fake_post(500, "HTTP 500"))
+
+    for _ in range(webhooks.MAX_ATTEMPTS - 1):
+        webhooks.attempt(delivery)
+        delivery.refresh_from_db()
+
+    assert delivery.attempts == webhooks.MAX_ATTEMPTS - 1
+    assert delivery.status == DeliveryStatus.PENDING
+    gap = delivery.next_attempt_at - timezone.now()
+    assert timedelta(hours=23, minutes=59) < gap <= timedelta(hours=24)
+
+
+@pytest.mark.django_db
+def test_the_safety_net_picks_up_a_delivery_whose_task_was_lost(monkeypatch):
+    """Design 11.8.3: a task queued 24 hours out may not survive a restart.
+
+    The row is the source of truth, so a due delivery with no task behind it
+    still has to go out. This is the real protection for the long tiers.
+    """
+    from integrations.tasks import deliver_due_webhooks
+
+    client = configure(make_client())
+    delivery = WebhookDelivery.objects.create(
+        client=client,
+        event_type=WebhookEvent.PING,
+        payload={"id": "lost", "type": "ping", "data": {}},
+        status=DeliveryStatus.PENDING,
+        attempts=6,
+        next_attempt_at=timezone.now() - timedelta(hours=2),
+    )
+
+    picked = deliver_due_webhooks.func()
+
+    assert picked == 1
+    # And the task it queued does deliver when it runs.
+    monkeypatch.setattr(webhooks, "post", fake_post(200))
+    from integrations.tasks import deliver_webhook
+
+    assert deliver_webhook.func(delivery.pk) == "succeeded"
+    delivery.refresh_from_db()
+    assert delivery.status == DeliveryStatus.SUCCEEDED
+
+
+@pytest.mark.django_db
+def test_the_safety_net_leaves_alone_what_is_not_due_yet():
+    from integrations.tasks import deliver_due_webhooks
+
+    client = configure(make_client())
+    WebhookDelivery.objects.create(
+        client=client,
+        event_type=WebhookEvent.PING,
+        payload={},
+        status=DeliveryStatus.PENDING,
+        attempts=6,
+        next_attempt_at=timezone.now() + timedelta(hours=20),
+    )
+
+    assert deliver_due_webhooks.func() == 0
+
+
+@pytest.mark.django_db
+def test_the_safety_net_ignores_finished_deliveries():
+    from integrations.tasks import deliver_due_webhooks
+
+    client = configure(make_client())
+    for status in (DeliveryStatus.SUCCEEDED, DeliveryStatus.FAILED):
+        WebhookDelivery.objects.create(
+            client=client,
+            event_type=WebhookEvent.PING,
+            payload={},
+            status=status,
+            next_attempt_at=timezone.now() - timedelta(days=3),
+        )
+
+    assert deliver_due_webhooks.func() == 0
