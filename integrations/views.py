@@ -5,6 +5,10 @@ from __future__ import annotations
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAdminUser
 
 from integrations.api import SignedApiView, data_response, isoformat
 
@@ -28,3 +32,23 @@ class PingView(SignedApiView):
                 "server_time": isoformat(timezone.now()),
             }
         )
+
+
+class SuperuserOnlyMixin:
+    """Design 11.11: only a signed-in superuser may read the API docs."""
+
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsAdminUser]
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if not request.user.is_superuser:
+            raise PermissionDenied("只有超级管理员可以查看接口文档。")
+
+
+class ApiSchemaView(SuperuserOnlyMixin, SpectacularAPIView):
+    pass
+
+
+class ApiDocsView(SuperuserOnlyMixin, SpectacularSwaggerView):
+    url_name = "api:schema"

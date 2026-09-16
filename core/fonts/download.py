@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import ipaddress
 import re
-import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -30,26 +28,12 @@ class DownloadError(FontError):
 
 
 def _assert_public_url(url: str) -> None:
-    parts = urllib.parse.urlsplit(url)
-    if parts.scheme != "https":
-        raise DownloadError("下载地址必须是 https。")
-    host = parts.hostname
-    if not host:
-        raise DownloadError("下载地址里没有主机名。")
+    from core.net import UnsafeUrl, assert_public_https_url
+
     try:
-        infos = socket.getaddrinfo(host, parts.port or 443, proto=socket.IPPROTO_TCP)
-    except OSError as exc:
-        raise DownloadError(f"无法解析下载地址的主机名：{exc}") from exc
-    for info in infos:
-        address = ipaddress.ip_address(info[4][0])
-        if (
-            address.is_private
-            or address.is_loopback
-            or address.is_link_local
-            or address.is_reserved
-            or address.is_multicast
-        ):
-            raise DownloadError("下载地址指向内网地址，已拒绝。")
+        assert_public_https_url(url)
+    except UnsafeUrl as exc:
+        raise DownloadError(f"下载地址不可用：{exc}") from exc
 
 
 class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):

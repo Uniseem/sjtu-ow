@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "django_tasks_db",
     "rest_framework",
     "drf_spectacular",
+    "drf_spectacular_sidecar",
 ]
 
 MIDDLEWARE = [
@@ -305,10 +306,20 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     # Only the upstream-facing API; Wagtail's admin API is not a contract.
     "PREPROCESSING_HOOKS": ["integrations.schema.only_public_api"],
+    # Serve Swagger UI from our own static files. The site's CSP forbids CDN
+    # scripts (README「自托管前端脚本」), and the default CDN build renders blank.
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
 }
 # API signing (design 11.2)
 API_TIMESTAMP_TOLERANCE = 300  # seconds
 API_NONCE_TTL = 600  # seconds
+
+# Design 11.8.3 requires webhook URLs to be public https addresses. This flag
+# lifts that check so development can point a webhook at a local receiver; it
+# is refused in production (see settings/prod.py).
+WEBHOOK_ALLOW_INSECURE_URLS = env_bool("WEBHOOK_ALLOW_INSECURE_URLS", False)
 
 PRERENDER_ENABLED = env_bool("PRERENDER_ENABLED", False)
 PRERENDER_ROOT = Path(env("PRERENDER_ROOT", str(BASE_DIR / "prerendered")))

@@ -221,7 +221,27 @@ CRON_TZ=Asia/Shanghai
 - 每个请求要带 `X-Api-Key`、`X-Timestamp`、`X-Nonce`、`X-Signature`，签名是 HMAC-SHA256（算法见设计 11.2.2）。服务端按七步校验：请求头齐全 → Key 有效 → 时间戳 5 分钟内 → Nonce 10 分钟内没用过 → 常数时间比对签名 → 授权范围 → 限流。
 - 每次调用都写一条日志（不含请求体和响应体），在客户端详情页能看到最近 50 条。
 - `GET /api/v1/ping` 用来确认密钥、签名算法和双方时间差。
-- Webhook 投递和接口文档页面在后续轮次。
+- 接口文档在 `/api/v1/docs/`（OpenAPI 3，drf-spectacular 自动生成），**只有登录后台的超级管理员能看**。Swagger UI 的脚本和样式来自本站 `static/`（`drf-spectacular-sidecar`），不走 CDN。
+
+### Webhook
+
+- 在客户端详情页配置接收地址、签名密钥、订阅的事件和请求体模式（`thin` 只带 ID / `full` 带完整报名对象）。
+- 事件：`registration.submitted`、`registration.roster_synced`、`registration.withdrawn`、`registration.status_changed`、`ping`。
+- **两层过滤**：客户端订阅了这个事件，**并且**这个赛事和它相关（审核模式是 `upstream` 或 `two_stage`，或者赛事是它自己推送的）。
+- 请求头 `X-Webhook-Id`（重试时不变，用来去重）、`X-Webhook-Event`、`X-Webhook-Timestamp`、`X-Webhook-Signature`（`sha256=` + HMAC-SHA256(密钥, 时间戳 + `.` + 原始请求体)）。接收方的校验代码见设计 11.8.2。
+- **请求体在事件产生时就固定下来**，重试发的和第一次完全一样。
+- 投递：10 秒超时，2xx 算成功；**不跟随重定向，3xx 算失败**。失败后按 1 分钟、5 分钟、30 分钟、2 小时、6 小时、12 小时、24 小时重试，**加首次一共 8 次**，全部失败后邮件通知超级管理员，可以在后台手动重发（事件 ID 不变）。
+- 接收地址必须是公网 https，不能指向内网或本机。开发环境要指向本地接收端时设 `WEBHOOK_ALLOW_INSECURE_URLS=1`；**生产环境设了会拒绝启动**。
+- **不保证顺序、可能重复**：接收方按 `X-Webhook-Id` 去重，用 `roster_version` 和 `created_at` 判断新旧。
+
+### 定时清理
+
+```bash
+uv run python manage.py cleanup_old_data --dry-run   # 只统计
+uv run python manage.py cleanup_old_data
+```
+
+API 调用日志 90 天、Webhook 投递记录 180 天（待投递的不删）、已完成任务记录 30 天、过期会话。宿主机 cron 的完整示例见 `deploy/crontab.example`。
 
 ### 业务接口
 

@@ -257,11 +257,21 @@ def submit(*, tournament, team, actor, selections) -> Registration:
     return registration
 
 
+# Design 11.8.1: which event each captain action produces.
+SUBMIT_EVENTS = {
+    RegistrationAction.SUBMIT: "registration.submitted",
+    RegistrationAction.RESUBMIT: "registration.submitted",
+    RegistrationAction.SYNC_ROSTER: "registration.roster_synced",
+}
+
+
 def _after_submit(registration, action):
     from tournaments import notifications
 
     notifications.registration_submitted(registration, action)
-    # M5: deliver the registration.submitted / roster_synced webhook here.
+    event = SUBMIT_EVENTS.get(action)
+    if event:
+        _send_event(registration, event, actor_type=ActorType.CAPTAIN)
 
 
 def captain_can_change(registration, now=None) -> bool:
@@ -296,15 +306,39 @@ def _set_status(
         note=note,
         snapshot=snapshot,
     )
-    transaction.on_commit(lambda: _after_status_change(registration, note))
+    transaction.on_commit(
+        lambda: _after_status_change(
+            registration, note, action, actor_type, from_status
+        )
+    )
     return registration
 
 
-def _after_status_change(registration, note):
+def _after_status_change(registration, note, action, actor_type, from_status):
     from tournaments import notifications
 
     notifications.registration_status_changed(registration, note)
-    # M5: deliver the registration.status_changed webhook here.
+    event = (
+        "registration.withdrawn"
+        if action == RegistrationAction.WITHDRAW
+        else "registration.status_changed"
+    )
+    _send_event(registration, event, actor_type=actor_type, previous_status=from_status)
+
+
+def _send_event(registration, event_type, *, actor_type, previous_status=None):
+    """Hand the event to the webhook layer. Never break the request over it."""
+    from integrations import webhooks
+
+    try:
+        webhooks.queue_registration_event(
+            registration,
+            event_type,
+            actor_type=actor_type,
+            previous_status=previous_status or None,
+        )
+    except Exception:  # noqa: BLE001 — a webhook must not fail the action
+        logger.warning("Webhook 事件 %s 排队失败", event_type, exc_info=True)
 
 
 @transaction.atomic

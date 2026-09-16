@@ -1,4 +1,6 @@
-"""API clients and call logs (design 12.10)."""
+"""API clients, call logs and webhook deliveries (design 12.10)."""
+
+import uuid
 
 from django.db import models
 from django.utils import timezone
@@ -105,3 +107,70 @@ class ApiRequestLog(models.Model):
 
     def __str__(self):
         return f"{self.method} {self.path} → {self.status_code}"
+
+
+class WebhookEvent(models.TextChoices):
+    """The five event types from design 11.8.1."""
+
+    REGISTRATION_SUBMITTED = "registration.submitted", "提交报名"
+    REGISTRATION_ROSTER_SYNCED = "registration.roster_synced", "同步名单"
+    REGISTRATION_WITHDRAWN = "registration.withdrawn", "撤回报名"
+    REGISTRATION_STATUS_CHANGED = "registration.status_changed", "状态变化"
+    PING = "ping", "测试事件"
+
+
+class DeliveryStatus(models.TextChoices):
+    PENDING = "pending", "待投递"
+    SUCCEEDED = "succeeded", "已送达"
+    FAILED = "failed", "已失败"
+
+
+class WebhookDelivery(models.Model):
+    """One event heading to one client; kept for 180 days (design 12.10.3).
+
+    ``payload`` is built when the event happens and never rebuilt, so a retry
+    sends exactly what the first attempt sent.
+    """
+
+    client = models.ForeignKey(
+        ApiClient,
+        verbose_name="客户端",
+        on_delete=models.CASCADE,
+        related_name="webhook_deliveries",
+    )
+    event_id = models.UUIDField("事件 ID", unique=True, default=uuid.uuid4)
+    event_type = models.CharField("事件类型", max_length=64)
+    payload = models.JSONField("事件内容", default=dict)
+    status = models.CharField(
+        "状态",
+        max_length=16,
+        choices=DeliveryStatus.choices,
+        default=DeliveryStatus.PENDING,
+    )
+    attempts = models.PositiveSmallIntegerField("已尝试次数", default=0)
+    next_attempt_at = models.DateTimeField("下次尝试", null=True, blank=True)
+    last_status_code = models.PositiveSmallIntegerField(
+        "最后状态码", null=True, blank=True
+    )
+    last_error = models.TextField("最后错误", blank=True)
+    delivered_at = models.DateTimeField("送达时间", null=True, blank=True)
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Webhook 投递"
+        verbose_name_plural = "Webhook 投递"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "next_attempt_at"]),
+            models.Index(fields=["client", "-created_at"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.event_type} → {self.client.name}（{self.status}）"
+
+    @property
+    def exhausted(self) -> bool:
+        from integrations.webhooks import MAX_ATTEMPTS
+
+        return self.attempts >= MAX_ATTEMPTS

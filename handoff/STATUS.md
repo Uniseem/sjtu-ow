@@ -2,7 +2,7 @@
 
 ```yaml
 milestone: M5 开放 API 与 Webhook
-round: 018-m5-api-endpoints
+round: 019-m5-webhooks
 next: claude
 updated: 2026-09-16
 blocked_on: 无
@@ -10,13 +10,17 @@ blocked_on: 无
 
 ## 现在该谁动手
 
-**Claude**：用户外出期间由 Claude 连做（实现 + 自查）。M2–M4 已完成；M5 的 017（客户端与签名认证）、018（业务接口）已完成。下一轮是 **019 Webhook 与接口文档**（设计 11.8：Webhook 投递与重试、OpenAPI 文档页面，以及设计 16.5 的调用日志 90 天 / Webhook 记录 180 天清理任务）。
+**Claude**：用户外出期间由 Claude 连做（实现 + 自查）。**M0–M5 全部完成**。下一轮是 **M6 内战**（设计第 9 章）。
 
-用户回来后，008–018 可以交给 Grok 做独立复核：读各自的 `report.md` 和 `008-m2-fonts/request.md` 末尾的复核清单，自己跑命令验证，把结论追加到对应的 `review.md`。
+用户回来后，008–019 可以交给 Grok 做独立复核：读各自的 `report.md` 和 `008-m2-fonts/request.md` 末尾的复核清单，自己跑命令验证，把结论追加到对应的 `review.md`。
 
-**018 有两个问题等你拍板**（详见 `rounds/018-m5-api-endpoints/review.md`）：
-1. 持 `registrations:read` 的上游现在能看到全站所有赛事的报名和名单，包括本站自办的和别的上游推的。设计 11.6.4 没写限制，要不要按 `source_client` 收窄？
-2. 设计 11.4 的错误码总表漏了 `review_not_allowed` 和 `invalid_state_transition`（11.6.7 正文里有），要不要补表？
+**有三个问题等你拍板**：
+
+1. **报名的可见范围**（018）：持 `registrations:read` 的上游现在能看到全站所有赛事的报名和名单，包括本站自办的和别的上游推的。设计 11.6.4 没写限制，要不要按 `source_client` 收窄？
+2. **设计 11.4 的错误码总表**（018）漏了 `review_not_allowed` 和 `invalid_state_transition`（11.6.7 正文里有），要不要补表？
+3. **`manage.py backup` 还不存在**（019）：设计 16.5 要求每天 03:00 备份，命令属于 M7，现在 `deploy/crontab.example` 里注释着。所有定时任务里这条最不该缺，M7 要优先做。
+
+另外 019 留了一个自己认的缺口：Webhook 24 小时那一档重试**没有真实验证过**，兜底任务 `deliver_due_webhooks` 也还没接到 cron 上。详见 `rounds/019-m5-webhooks/review.md`。
 
 ## 里程碑进度
 
@@ -27,8 +31,8 @@ blocked_on: 无
 | M2 内容、投稿与字体 | **已完成** | 006、007 复核通过；008–011 由 Claude 实现 + 自查，待 Grok 独立复核 |
 | M3 战队与组队大厅 | **已完成** | 012 战队、013 组队大厅（Claude 实现 + 自查，待 Grok 独立复核） |
 | M4 赛事与报名 | **已完成** | 014 赛事、015 报名、016 后台审核（Claude 实现 + 自查，待 Grok 独立复核） |
-| M5 开放 API 与 Webhook | 进行中 | 017 客户端与签名认证、018 业务接口已完成；019 Webhook 与文档未开始 |
-| M6 内战 | 未开始 | |
+| M5 开放 API 与 Webhook | **已完成** | 017 签名认证、018 业务接口、019 Webhook 与文档（Claude 实现 + 自查，待 Grok 独立复核） |
+| M6 内战 | 未开始 | 下一轮 |
 | M7 上线准备 | 未开始 | |
 
 ## 轮次记录
@@ -53,6 +57,7 @@ blocked_on: 无
 | 016-m4-review | 后台报名审核：列表、详情、批量通过、CSV 导出与留痕 | **Claude 实现**，自查通过。M4 完成 |
 | 017-m5-api-auth | 开放 API：客户端、HMAC 七步验签、Nonce 与限流、调用日志、ping、后台管理 | **Claude 实现**，自查通过（4 个问题当场修掉） |
 | 018-m5-api-endpoints | 开放 API 业务接口：赛事、报名、名单、统计、审核、批量审核、CSV，含展开项、字段裁剪、游标分页 | **Claude 实现**，自查通过。自查中修掉 3 个 014–016 遗留的状态机漏洞（上游可越权审核、两级审核可被跳过、审核不幂等），并清掉 004–007 遗留的验证数据 |
+| 019-m5-webhooks | Webhook 投递与重试、接口文档页、每日清理任务、crontab 示例 | **Claude 实现**，自查通过（修掉接口文档页在 CSP 下全白的问题）。M5 完成 |
 
 ## 当前待定问题
 

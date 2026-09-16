@@ -1,0 +1,31 @@
+# 宿主机 crontab（设计 16.5）。表中时间都是北京时间。
+# 海外服务器的系统时区通常不是北京时间，所以显式声明 CRON_TZ；
+# 系统的 cron 不支持 CRON_TZ 时，把下面的小时换算成服务器时区。
+#
+#   crontab -l > /tmp/cron && cat deploy/crontab.example >> /tmp/cron && crontab /tmp/cron
+
+CRON_TZ=Asia/Shanghai
+COMPOSE=/srv/sjtu-ow/deploy/docker-compose.yml
+
+# 每天 04:00 清理过期数据：
+#   API 调用日志 90 天、Webhook 投递记录 180 天、已完成任务记录 30 天、过期会话
+0 4 * * * docker compose -f $COMPOSE exec -T web python manage.py cleanup_old_data
+
+# 每天 04:15 全量重新生成预渲染页面
+15 4 * * * docker compose -f $COMPOSE exec -T web python manage.py prerender
+
+# 每天 09:30 AI 审核的每日汇总邮件
+30 9 * * * docker compose -f $COMPOSE exec -T web python manage.py moderate_scan --digest
+
+# ---------------------------------------------------------------------------
+# 设计 16.5 还要求下面三条，对应的命令属于 M7「上线准备」，现在还没有实现。
+# 等 M7 做完再取消注释，不要提前加进去 —— cron 会每天失败一次。
+#
+# 每天 03:00 备份数据库和上传文件（设计 16.7）
+# 0 3 * * * docker compose -f $COMPOSE exec -T web python manage.py backup
+#
+# 每天 04:20 清理 static 数据卷里超过 30 天的旧静态资源
+# 20 4 * * * docker compose -f $COMPOSE exec -T web python manage.py cleanup_static
+#
+# 每周日 04:30 SQLite PRAGMA optimize
+# 30 4 * * 0 docker compose -f $COMPOSE exec -T web python manage.py optimize_db

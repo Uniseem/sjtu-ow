@@ -6,6 +6,9 @@ app_name = "api"
 
 urlpatterns = [
     path("ping", views.PingView.as_view(), name="ping"),
+    # Design 11.11: superusers only.
+    path("schema/", views.ApiSchemaView.as_view(), name="schema"),
+    path("docs/", views.ApiDocsView.as_view(), name="docs"),
     path(
         "tournaments",
         api_views.TournamentListView.as_view(),

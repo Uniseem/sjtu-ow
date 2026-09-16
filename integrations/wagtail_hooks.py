@@ -10,9 +10,18 @@ from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 
 from integrations import services
-from integrations.models import ApiClient, ApiRequestLog, Include, Scope
+from integrations.models import (
+    ApiClient,
+    ApiRequestLog,
+    Include,
+    Scope,
+    WebhookDelivery,
+    WebhookEvent,
+    WebhookPayloadMode,
+)
 
 LOG_PAGE_SIZE = 50
+DELIVERY_PAGE_SIZE = 30
 
 
 def superuser_required(view):
@@ -104,6 +113,12 @@ def client_detail(request, pk):
             client.save(update_fields=["is_active"])
             messages.success(request, "已启用。" if client.is_active else "已停用。")
             return redirect("api_client_detail", pk=client.pk)
+        if action == "webhook":
+            return _save_webhook(request, client)
+        if action == "ping":
+            return _send_ping(request, client)
+        if action == "resend":
+            return _resend(request, client)
     return render(
         request,
         "integrations/detail.html",
@@ -112,9 +127,84 @@ def client_detail(request, pk):
             "header_icon": "link",
             "client": client,
             "logs": ApiRequestLog.objects.filter(client=client)[:LOG_PAGE_SIZE],
+            "deliveries": WebhookDelivery.objects.filter(client=client)[
+                :DELIVERY_PAGE_SIZE
+            ],
+            "webhook_events": WebhookEvent.choices,
+            "payload_modes": WebhookPayloadMode.choices,
             "breadcrumbs_items": _breadcrumbs(
                 {"url": reverse("api_client_index"), "label": "API 客户端"},
                 {"url": "", "label": client.name},
+            ),
+        },
+    )
+
+
+def _save_webhook(request, client):
+    from core.net import UnsafeUrl
+    from integrations import webhooks
+
+    url = request.POST.get("webhook_url", "").strip()
+    try:
+        webhooks.validate_webhook_url(url)
+    except UnsafeUrl as exc:
+        messages.error(request, f"Webhook 地址不可用：{exc}")
+        return redirect("api_client_detail", pk=client.pk)
+    client.webhook_url = url
+    client.webhook_events = request.POST.getlist("webhook_events")
+    mode = request.POST.get("webhook_payload_mode")
+    if mode in WebhookPayloadMode.values:
+        client.webhook_payload_mode = mode
+    secret = request.POST.get("webhook_secret", "").strip()
+    fields = ["webhook_url", "webhook_events", "webhook_payload_mode"]
+    if secret:
+        client.webhook_secret = secret
+        fields.append("webhook_secret")
+    client.save(update_fields=fields)
+    messages.success(request, "已保存 Webhook 配置。")
+    return redirect("api_client_detail", pk=client.pk)
+
+
+def _send_ping(request, client):
+    from integrations import webhooks
+
+    if not client.webhook_url:
+        messages.error(request, "先填写 Webhook 地址。")
+    else:
+        delivery = webhooks.queue_ping(client)
+        messages.success(request, f"测试事件已排队，事件 ID {delivery.event_id}。")
+    return redirect("api_client_detail", pk=client.pk)
+
+
+def _resend(request, client):
+    from integrations import webhooks
+
+    delivery = get_object_or_404(
+        WebhookDelivery, pk=request.POST.get("delivery"), client=client
+    )
+    webhooks.resend(delivery)
+    messages.success(request, f"已重新排队，事件 ID 不变（{delivery.event_id}）。")
+    return redirect("api_client_detail", pk=client.pk)
+
+
+@superuser_required
+def webhook_deliveries(request, pk):
+    client = get_object_or_404(ApiClient, pk=pk)
+    return render(
+        request,
+        "integrations/deliveries.html",
+        {
+            "page_title": f"{client.name} 的 Webhook 投递",
+            "header_icon": "link",
+            "client": client,
+            "deliveries": WebhookDelivery.objects.filter(client=client)[:200],
+            "breadcrumbs_items": _breadcrumbs(
+                {"url": reverse("api_client_index"), "label": "API 客户端"},
+                {
+                    "url": reverse("api_client_detail", args=[client.pk]),
+                    "label": client.name,
+                },
+                {"url": "", "label": "Webhook 投递"},
             ),
         },
     )
@@ -129,6 +219,11 @@ def register_api_client_urls():
             "settings/api-clients/<int:pk>/",
             client_detail,
             name="api_client_detail",
+        ),
+        path(
+            "settings/api-clients/<int:pk>/deliveries/",
+            webhook_deliveries,
+            name="integrations_webhook_deliveries",
         ),
     ]
 

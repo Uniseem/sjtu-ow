@@ -22,6 +22,75 @@
     {% endif %}
   </form>
 
+  <h2>Webhook</h2>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="webhook">
+    <p>
+      <label for="webhook_url">接收地址</label><br>
+      <input type="url" id="webhook_url" name="webhook_url" value="{{ client.webhook_url }}" size="60">
+      <span class="help">必须是 https 公网地址，不能指向内网或本机。</span>
+    </p>
+    <p>
+      <label for="webhook_secret">签名密钥</label><br>
+      <input type="text" id="webhook_secret" name="webhook_secret" size="60" autocomplete="off"
+             placeholder="{% if client.webhook_secret %}已设置，留空表示不修改{% else %}还没有设置{% endif %}">
+    </p>
+    <fieldset>
+      <legend>订阅的事件</legend>
+      {% for value, label in webhook_events %}
+        <label>
+          <input type="checkbox" name="webhook_events" value="{{ value }}"
+                 {% if value in client.webhook_events %}checked{% endif %}>
+          {{ label }}（<code>{{ value }}</code>）
+        </label><br>
+      {% endfor %}
+    </fieldset>
+    <p>
+      <label for="webhook_payload_mode">请求体</label>
+      <select id="webhook_payload_mode" name="webhook_payload_mode">
+        {% for value, label in payload_modes %}
+          <option value="{{ value }}" {% if client.webhook_payload_mode == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <button type="submit" class="button">保存 Webhook 配置</button>
+  </form>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" name="action" value="ping" class="button button-secondary">发送测试事件</button>
+  </form>
+
+  <h2>最近的 Webhook 投递</h2>
+  <table class="listing">
+    <thead><tr><th>时间</th><th>事件</th><th>状态</th><th>尝试</th><th>最后状态码</th><th>下次尝试</th><th>操作</th></tr></thead>
+    <tbody>
+      {% for delivery in deliveries %}
+        <tr>
+          <td>{{ delivery.created_at }}</td>
+          <td><code>{{ delivery.event_type }}</code></td>
+          <td>{{ delivery.get_status_display }}{% if delivery.last_error %}<br><small>{{ delivery.last_error }}</small>{% endif %}</td>
+          <td>{{ delivery.attempts }} / 8</td>
+          <td>{{ delivery.last_status_code|default:"—" }}</td>
+          <td>{{ delivery.next_attempt_at|default:"—" }}</td>
+          <td>
+            {% if delivery.status == "failed" %}
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="delivery" value="{{ delivery.pk }}">
+                <button type="submit" name="action" value="resend" class="button button-small">重发</button>
+              </form>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">还没有投递记录。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><a href="{% url 'integrations_webhook_deliveries' client.pk %}">查看更多投递记录</a></p>
+
   <h2>最近调用</h2>
   <table class="listing">
     <thead><tr><th>时间</th><th>方法</th><th>路径</th><th>状态码</th><th>错误码</th><th>耗时</th><th>IP</th></tr></thead>

@@ -19,6 +19,7 @@ dependencies = [
     "brotli>=1.1",
     "djangorestframework>=3.16",
     "drf-spectacular>=0.28",
+    "drf-spectacular-sidecar>=2026.9.1",
 ]
 
 [dependency-groups]
