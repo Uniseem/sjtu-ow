@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}申请加入 {{ team.name }} · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-2xl px-4 py-10">
+    <h1>申请加入「{{ team.name }}」</h1>
+    {% if not allowed %}
+      <div class="alert alert-warning mt-6" role="status">{{ reason }}</div>
+      <p class="mt-4"><a href="{{ team.get_absolute_url }}" class="btn btn-ghost min-h-11 font-button">返回战队主页</a></p>
+    {% else %}
+      <form method="post" class="form-control mt-6 flex flex-col gap-4">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
+        {% endif %}
+        {% include "account/_form.html" %}
+        <div class="flex flex-wrap gap-2">
+          <button type="submit" class="btn btn-primary min-h-11 font-button">提交申请</button>
+          <a href="{{ team.get_absolute_url }}" class="btn btn-ghost min-h-11 font-button">取消</a>
+        </div>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

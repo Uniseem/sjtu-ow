@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load wagtailimages_tags %}
+
+{% block title %}{{ team.name }} · 战队 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-4xl px-4 py-10">
+    {% if team.is_disbanded %}
+      <div class="alert alert-warning" role="status">该战队已解散。</div>
+    {% endif %}
+
+    <div class="mt-6 flex flex-wrap items-center gap-4">
+      {% if team.logo %}
+        {% image team.logo fill-96x96 class="rounded-xl" alt=team.name %}
+      {% else %}
+        <div class="flex h-24 w-24 items-center justify-center rounded-xl bg-base-300 text-2xl font-semibold">{{ team.name|slice:":2" }}</div>
+      {% endif %}
+      <div>
+        <h1>{{ team.name }}</h1>
+        <p class="mt-1 text-sm text-base-content/70">
+          <span class="font-numeric">{{ memberships|length }} / {{ max_members }}</span> 人
+          ·
+          {% if team.is_recruiting %}招募中{% else %}暂不招募{% endif %}
+          {% if captain %}· 队长 {{ captain.nickname }}{% endif %}
+        </p>
+      </div>
+    </div>
+
+    {% if team.description %}
+      <p class="mt-6 whitespace-pre-line text-base-content/80">{{ team.description }}</p>
+    {% endif %}
+
+    {% if not team.is_disbanded %}
+      {% include "teams/slots/join.html" %}
+    {% endif %}
+
+    <h2 class="mt-10">成员</h2>
+    <ul class="mt-4 flex flex-col gap-2">
+      {% for membership in memberships %}
+        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
+          <span>{{ membership.user.nickname }}</span>
+          {% if membership.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
+          <span class="ml-auto text-sm text-base-content/60 font-numeric">{{ membership.joined_at|date:"Y年n月j日" }} 加入</span>
+        </li>
+      {% empty %}
+        <li class="text-base-content/70">还没有成员。</li>
+      {% endfor %}
+    </ul>
+
+    <h2 class="mt-10">参赛记录</h2>
+    {% include "components/empty_state.html" with title="即将开放" message="赛事报名将在后续里程碑接入。" %}
+  </section>
+{% endblock %}

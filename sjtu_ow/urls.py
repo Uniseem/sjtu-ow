@@ -12,6 +12,7 @@ urlpatterns = [
     path("", include("accounts.urls")),
     path("", include("core.urls")),
     path("", include("content.urls")),
+    path("", include("teams.urls")),
     path("", include(wagtail_urls)),
 ]
 

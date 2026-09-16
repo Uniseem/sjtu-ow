@@ -21,7 +21,7 @@ ME_NAV = (
     ("me_profile", "基本资料", True),
     ("me_game_accounts", "游戏 ID 与段位", True),
     ("me_contacts", "联系方式", True),
-    ("me_teams", "我的战队", False),
+    ("me_teams", "我的战队", True),
     ("me_registrations", "我的报名", False),
     ("me_security", "账号安全", True),
 )
@@ -36,13 +36,17 @@ def _apply_validation_error(form, exc: ValidationError) -> None:
     form.add_error(None, exc)
 
 
-def _me_context(request, current: str, **extra):
+def me_context(request, current: str, **extra):
+    """Shared context for every 个人中心 page; other apps use it too."""
     return {
         "current_me": current,
         "me_nav": ME_NAV,
         "profile_gaps": profile_gaps(request.user),
         **extra,
     }
+
+
+_me_context = me_context
 
 
 @login_required

@@ -1,0 +1,25 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}指定队长{% endblock %}
+
+{% block main_content %}
+  <p class="help-block">用于队长账号被停用等情况。被指定的人如果还不是成员，会先加入战队。</p>
+  <p>当前成员：
+    {% for membership in memberships %}
+      {{ membership.user.nickname }}{% if membership.is_captain %}（队长）{% endif %}{% if not forloop.last %}、{% endif %}
+    {% empty %}（无）{% endfor %}
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <label for="user">新队长</label>
+    <select id="user" name="user">
+      {% for candidate in candidates %}
+        <option value="{{ candidate.pk }}">{{ candidate.nickname }}（{{ candidate.email }}）</option>
+      {% endfor %}
+    </select>
+    <p>
+      <button type="submit" class="button button-primary">指定为队长</button>
+      <a class="button button-secondary" href="{% url 'teams:index' %}">返回</a>
+    </p>
+  </form>
+{% endblock %}

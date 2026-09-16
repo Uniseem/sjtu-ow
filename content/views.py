@@ -20,6 +20,8 @@ from content.services import article_create_admin_url
 
 @require_GET
 def sitemap_xml(request):
+    from teams.models import Team
+
     urlset = []
     for model in (ArticlePage, StandardPage):
         for page in model.objects.live().public().order_by("path"):
@@ -27,6 +29,14 @@ def sitemap_xml(request):
                 page.get_url(request)
             )
             urlset.append({"loc": loc, "lastmod": page.last_published_at})
+    # Disbanded teams stay out of the sitemap (design 13.14).
+    for team in Team.objects.filter(disbanded_at__isnull=True).order_by("pk"):
+        urlset.append(
+            {
+                "loc": request.build_absolute_uri(team.get_absolute_url()),
+                "lastmod": team.updated_at,
+            }
+        )
     return render(
         request,
         "content/sitemap.xml",

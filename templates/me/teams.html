@@ -1,0 +1,55 @@
+{% extends "me/base.html" %}
+
+{% block me_title %}我的战队{% endblock %}
+{% block me_heading %}我的战队{% endblock %}
+
+{% block me_content %}
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h2>我所在的战队</h2>
+    <a href="{% url 'team_create' %}" class="btn btn-primary btn-sm min-h-11 font-button">创建战队</a>
+  </div>
+  {% if teams %}
+    <ul class="mt-4 flex flex-col gap-2">
+      {% for membership in teams %}
+        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
+          <a href="{{ membership.team.get_absolute_url }}" class="link link-hover">{{ membership.team.name }}</a>
+          {% if membership.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
+          <span class="ml-auto flex gap-2">
+            {% if membership.is_captain %}
+              <a href="{% url 'team_manage' membership.team.pk %}" class="btn btn-ghost btn-sm min-h-11 font-button">管理</a>
+            {% else %}
+              <form method="post" action="{% url 'team_leave' membership.team.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">退出</button>
+              </form>
+            {% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mt-4 text-base-content/70">你还没有加入任何战队。<a href="{% url 'team_index' %}" class="link link-primary">去看看</a></p>
+  {% endif %}
+
+  <h2 class="mt-10">我的入队申请</h2>
+  {% if applications %}
+    <ul class="mt-4 flex flex-col gap-2">
+      {% for application in applications %}
+        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
+          <a href="{{ application.team.get_absolute_url }}" class="link link-hover">{{ application.team.name }}</a>
+          <span class="badge">{{ application.get_status_display }}</span>
+          {% if application.decision_note %}<span class="text-sm text-base-content/70">{{ application.decision_note }}</span>{% endif %}
+          <span class="ml-auto text-sm text-base-content/60 font-numeric">{{ application.created_at|date:"Y年n月j日" }}</span>
+          {% if application.status == pending_status %}
+            <form method="post" action="{% url 'application_cancel' application.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">撤回</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mt-4 text-base-content/70">还没有提交过入队申请。</p>
+  {% endif %}
+{% endblock %}

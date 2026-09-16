@@ -78,22 +78,24 @@ def site_host() -> tuple[str, bool]:
     return site.hostname, site.port == 443
 
 
+TARGET_PROVIDERS = []
+
+
+def register_targets(provider) -> None:
+    """Apps add their own public pages in ``AppConfig.ready()``."""
+    if provider not in TARGET_PROVIDERS:
+        TARGET_PROVIDERS.append(provider)
+
+
 def page_targets() -> dict[str, str]:
     """Every public page that should exist as a static file: path -> kind."""
-    from content.models import ArticleIndexPage, ArticlePage, HomePage, StandardPage
-
     targets: dict[str, str] = {}
-    kinds = (
-        (HomePage, "home"),
-        (ArticleIndexPage, "article_index"),
-        (ArticlePage, "article"),
-        (StandardPage, "standard"),
-    )
-    for model, kind in kinds:
-        for page in model.objects.live().public().specific():
-            url = page.get_url()
-            if url:
-                targets[normalize_path(url)] = kind
+    for provider in TARGET_PROVIDERS:
+        for path, kind in provider().items():
+            try:
+                targets[normalize_path(path)] = kind
+            except PrerenderError:
+                logger.warning("跳过不合法的预渲染路径 %s", path)
     targets.setdefault("/", "home")
     return targets
 

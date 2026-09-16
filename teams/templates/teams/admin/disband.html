@@ -1,0 +1,12 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}解散战队{% endblock %}
+
+{% block main_content %}
+  <p>确定解散「{{ team.name }}」吗？成员会被清空、待审批的申请会取消，队名可以被其他战队使用。历史报名记录仍然保留。</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="button serious">确认解散</button>
+    <a class="button button-secondary" href="{% url 'teams:index' %}">取消</a>
+  </form>
+{% endblock %}

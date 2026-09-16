@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}创建战队 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-2xl px-4 py-10">
+    <h1>创建战队</h1>
+    <p class="mt-2 text-sm text-base-content/70">你会自动成为队长。每人最多同时担任 <span class="font-numeric">{{ max_captained }}</span> 支战队的队长。</p>
+    <form method="post" enctype="multipart/form-data" class="form-control mt-6 flex flex-col gap-4">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
+      {% endif %}
+      {% include "account/_form.html" %}
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary min-h-11 font-button">创建</button>
+        <a href="{% url 'team_index' %}" class="btn btn-ghost min-h-11 font-button">取消</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

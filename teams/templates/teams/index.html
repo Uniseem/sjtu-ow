@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load wagtailimages_tags %}
+
+{% block title %}战队 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-5xl px-4 py-10">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1>战队</h1>
+      <a href="{% url 'team_create' %}" class="btn btn-primary min-h-11 font-button">创建战队</a>
+    </div>
+
+    <nav class="mt-6 flex flex-wrap gap-2" aria-label="筛选">
+      <a href="{% url 'team_index' %}" class="btn btn-sm min-h-11 font-button {% if not recruiting_only %}btn-primary{% else %}btn-ghost{% endif %}">全部</a>
+      <a href="{% url 'team_index' %}?recruiting=1" class="btn btn-sm min-h-11 font-button {% if recruiting_only %}btn-primary{% else %}btn-ghost{% endif %}">只看招募中</a>
+    </nav>
+
+    {% if teams %}
+      <ul class="mt-8 grid gap-4 sm:grid-cols-2">
+        {% for team in teams %}
+          <li class="card bg-base-200">
+            <div class="card-body">
+              <div class="flex items-center gap-4">
+                {% if team.logo %}
+                  {% image team.logo fill-64x64 class="rounded-lg" alt=team.name %}
+                {% else %}
+                  <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-base-300 text-lg font-semibold">{{ team.name|slice:":2" }}</div>
+                {% endif %}
+                <div class="flex-1">
+                  <h2 class="card-title text-lg">
+                    <a href="{{ team.get_absolute_url }}" class="link link-hover">{{ team.name }}</a>
+                  </h2>
+                  <p class="text-sm text-base-content/70">
+                    <span class="font-numeric">{{ team.members_total }} / {{ max_members }}</span> 人
+                    ·
+                    {% if team.is_recruiting %}招募中{% else %}暂不招募{% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with title="还没有战队" message="第一支战队可以由你来建。" action_url="/teams/new/" action_label="创建战队" %}
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}管理 {{ team.name }} · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-4xl px-4 py-10">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1>管理「{{ team.name }}」</h1>
+      <a href="{{ team.get_absolute_url }}" class="btn btn-ghost min-h-11 font-button">查看主页</a>
+    </div>
+
+    <h2 class="mt-8">待审批的申请</h2>
+    {% if applications %}
+      <ul class="mt-4 flex flex-col gap-4">
+        {% for application in applications %}
+          <li class="card bg-base-200">
+            <div class="card-body gap-3">
+              <p>
+                <strong>{{ application.applicant.nickname }}</strong>
+                <span class="text-sm text-base-content/70">意向位置：{{ application.role_labels|join:"、" }}</span>
+              </p>
+              {% if application.message %}<p class="text-base-content/80">{{ application.message }}</p>{% endif %}
+              <div class="text-sm text-base-content/70">
+                游戏 ID 与段位：
+                {% for account in application.applicant.game_accounts.all %}
+                  <span class="font-code">{{ account.battletag }}</span>
+                  {% if not forloop.last %}、{% endif %}
+                {% empty %}
+                  （未填写）
+                {% endfor %}
+              </div>
+              <div class="flex flex-wrap items-end gap-2">
+                <form method="post" action="{% url 'application_approve' application.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary btn-sm min-h-11 font-button">通过</button>
+                </form>
+                <form method="post" action="{% url 'application_reject' application.pk %}" class="form-control flex flex-row items-end gap-2">
+                  {% csrf_token %}
+                  <input type="text" name="note" maxlength="200" placeholder="拒绝原因（可选）" class="input input-sm">
+                  <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">拒绝</button>
+                </form>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mt-4 text-base-content/70">暂时没有待审批的申请。</p>
+    {% endif %}
+
+    <h2 class="mt-10">成员（<span class="font-numeric">{{ memberships|length }} / {{ max_members }}</span>）</h2>
+    <ul class="mt-4 flex flex-col gap-2">
+      {% for membership in memberships %}
+        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
+          <span>{{ membership.user.nickname }}</span>
+          {% if membership.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
+          <span class="text-sm text-base-content/60">
+            {% for account in membership.user.game_accounts.all %}
+              <span class="font-code">{{ account.battletag }}</span>{% if not forloop.last %}、{% endif %}
+            {% endfor %}
+          </span>
+          {% if not membership.is_captain %}
+            <span class="ml-auto flex flex-wrap gap-2">
+              <form method="post" action="{% url 'captain_transfer' team.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="user" value="{{ membership.user.pk }}">
+                <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">转让队长</button>
+              </form>
+              <form method="post" action="{% url 'member_remove' team.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="user" value="{{ membership.user.pk }}">
+                <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">移除</button>
+              </form>
+            </span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+
+    <h2 class="mt-10">战队资料</h2>
+    <form method="post" enctype="multipart/form-data" class="form-control mt-4 flex flex-col gap-4">
+      {% csrf_token %}
+      <input type="hidden" name="form" value="profile">
+      {% if form.non_field_errors %}
+        <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
+      {% endif %}
+      {% include "account/_form.html" %}
+      <div><button type="submit" class="btn btn-primary min-h-11 font-button">保存</button></div>
+    </form>
+
+    <h2 class="mt-10">解散战队</h2>
+    <p class="mt-2 text-sm text-base-content/70">解散后成员会被清空、待审批的申请会取消，队名可以被其他战队使用。</p>
+    <form method="post" action="{% url 'team_disband' team.pk %}" class="mt-4">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-error min-h-11 font-button">解散战队</button>
+    </form>
+  </section>
+{% endblock %}

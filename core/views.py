@@ -13,14 +13,10 @@ from core.mail import SMTPNotConfigured, send_test_email
 from core.middleware import OW_FLASH_COOKIE, OW_LOGGED_IN_COOKIE
 from core.models import SiteSettings
 from core.ratelimit import client_ip, over_limit
+from core.slots import render_requested
 
-# Personalised regions of prerendered pages (design 13.13.3).
-STATE_SLOTS = {
-    "account": "slots/account.html",
-    "messages": "slots/messages.html",
-    "home-lfg": "slots/home_lfg.html",
-}
 STATE_RATE_LIMIT = 120  # per IP per minute (design 附录 C)
+DEFAULT_SLOTS = ("account", "messages")
 
 
 @require_GET
@@ -59,17 +55,12 @@ def state_fragment(request):
         response["Retry-After"] = "60"
         return response
 
-    names = [name.strip() for name in request.GET.get("slots", "").split(",")]
-    wanted = [name for name in names if name in STATE_SLOTS][:10]
-    if not wanted:
-        wanted = ["account", "messages"]
+    names = [name.strip() for name in request.GET.get("slots", "").split(",") if name]
+    wanted = names or list(DEFAULT_SLOTS)
 
     # Prerendered pages carry no CSRF token, so make sure the cookie exists.
     get_token(request)
-    context = {"oob": True, "lfg_open_count": None}
-    html = "".join(
-        render_to_string(STATE_SLOTS[name], context, request=request) for name in wanted
-    )
+    html = render_requested(request, wanted)
     response = HttpResponse(html)
     response["Cache-Control"] = "private, no-store"
     response["Vary"] = "Cookie"
@@ -78,7 +69,8 @@ def state_fragment(request):
         response.delete_cookie(
             OW_LOGGED_IN_COOKIE, samesite=settings.SESSION_COOKIE_SAMESITE
         )
-    if "messages" in wanted and request.COOKIES.get(OW_FLASH_COOKIE):
+    asked_for_messages = any(name.split(":")[0] == "messages" for name in wanted)
+    if asked_for_messages and request.COOKIES.get(OW_FLASH_COOKIE):
         response.delete_cookie(
             OW_FLASH_COOKIE, samesite=settings.SESSION_COOKIE_SAMESITE
         )
