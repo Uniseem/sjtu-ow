@@ -124,6 +124,23 @@ h6 {
   font-family: var(--font-code);
 }
 
+/* Slot skeletons while the page state request is in flight (design 13.13.3). */
+.ow-state-pending [data-slot] > * {
+  visibility: hidden;
+}
+
+.ow-state-pending [data-slot] {
+  border-radius: 0.5rem;
+  background-color: color-mix(in oklab, currentColor 10%, transparent);
+  animation: ow-slot-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ow-slot-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
 .htmx-indicator {
   display: none;
 }

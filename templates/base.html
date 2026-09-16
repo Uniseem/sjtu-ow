@@ -15,9 +15,10 @@
     {% endif %}
     {% tailwind_css %}
     {% if font_css_url %}<link rel="stylesheet" href="{{ font_css_url }}">{% endif %}
+    <script src="{% static 'js/state.js' %}"></script>
     {% block extra_head %}{% endblock %}
   </head>
-  <body class="min-h-screen bg-base-100 text-base-content">
+  <body class="min-h-screen bg-base-100 text-base-content" data-state-filled="{% if request.user.is_authenticated %}1{% else %}0{% endif %}">
     <div class="drawer">
       <input id="nav-drawer" type="checkbox" class="drawer-toggle">
       <div class="drawer-content flex min-h-screen flex-col">
@@ -41,20 +42,10 @@
               <li><a href="/scrims/">内战</a></li>
             </ul>
           </nav>
-          <div class="navbar-end gap-2" data-slot="account">
-            {% include "components/account_area.html" %}
-          </div>
+          {% include "slots/account.html" %}
         </header>
 
-        <div id="toast-region" class="toast toast-top toast-end z-50" data-slot="messages" aria-live="polite">
-          {% if messages %}
-            {% for message in messages %}
-              <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
-                <span>{{ message }}</span>
-              </div>
-            {% endfor %}
-          {% endif %}
-        </div>
+        {% include "slots/messages.html" %}
 
         <main class="flex-1">
           {% block content %}{% endblock %}

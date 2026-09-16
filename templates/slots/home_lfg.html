@@ -1,0 +1,16 @@
+<section id="slot-home-lfg" data-slot="home-lfg" class="card bg-base-200"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <div class="card-body">
+    <h2>组队大厅</h2>
+    <p class="mt-4 text-base-content/80">
+      {% if request.user.is_authenticated and lfg_open_count is not None %}
+        {# M3: show count of open LFG posts. #}
+        当前 {{ lfg_open_count }} 条招人中的车帖
+      {% else %}
+        登录后查看
+      {% endif %}
+    </p>
+    <div class="card-actions mt-4">
+      <a href="/lfg/" class="btn btn-primary min-h-11 font-button">进入组队大厅</a>
+    </div>
+  </div>
+</section>

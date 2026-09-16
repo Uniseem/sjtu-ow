@@ -1,13 +1,16 @@
-"""Background tasks: mail delivery and font processing."""
+"""Background tasks: mail delivery, font processing and prerendering."""
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 
 from django.utils import timezone
 from django_tasks import task
 
 from core.mail import deliver_email_payload
+
+logger = logging.getLogger(__name__)
 
 # Initial send, then three retries (design 10.1 / appendix C).
 MAIL_RETRY_DELAYS = (60, 300, 1800)
@@ -48,3 +51,34 @@ def delete_retired_font_slices(paths: list) -> None:
     from core.fonts.services import delete_unreferenced_slices
 
     delete_unreferenced_slices(paths)
+
+
+@task
+def prerender_page(path: str) -> None:
+    """Generate one static page (design 13.13.4)."""
+    from core import prerender
+
+    if not prerender.is_enabled():
+        return
+    prerender.generate(path)
+
+
+@task
+def prerender_all() -> None:
+    """Rebuild every static page: nightly fallback and after an upgrade."""
+    from core import prerender
+
+    if not prerender.is_enabled():
+        return
+    stats = prerender.generate_all()
+    logger.info("预渲染全量完成：%s", stats)
+
+
+@task
+def remove_prerendered(path: str) -> None:
+    """Delete one page's static files (design 13.13.5)."""
+    from core import prerender
+
+    if not prerender.is_enabled():
+        return
+    prerender.drop(path)

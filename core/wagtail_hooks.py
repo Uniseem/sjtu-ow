@@ -3,6 +3,7 @@ from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 
 from core.fonts import admin_views
+from core.prerender_admin import prerender_clear, prerender_index, prerender_rebuild
 from core.views import send_site_test_email
 
 
@@ -65,6 +66,37 @@ class SuperuserMenuItem(MenuItem):
 
     def is_shown(self, request):
         return bool(getattr(request.user, "is_superuser", False))
+
+
+@hooks.register("register_admin_urls")
+def register_prerender_urls():
+    return [
+        path(
+            "settings/prerender/",
+            prerender_index,
+            name="core_prerender_index",
+        ),
+        path(
+            "settings/prerender/rebuild/",
+            prerender_rebuild,
+            name="core_prerender_rebuild",
+        ),
+        path(
+            "settings/prerender/clear/",
+            prerender_clear,
+            name="core_prerender_clear",
+        ),
+    ]
+
+
+@hooks.register("register_settings_menu_item")
+def register_prerender_menu_item():
+    return SuperuserMenuItem(
+        "静态页面",
+        reverse("core_prerender_index"),
+        icon_name="doc-empty",
+        order=820,
+    )
 
 
 @hooks.register("register_settings_menu_item")

@@ -430,3 +430,34 @@ class TypographyRule(models.Model):
                 )
         if errors:
             raise ValidationError(errors)
+
+
+class PrerenderedPage(models.Model):
+    """One public page that is, or should be, served as a static file (12.4.6)."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "等待生成"
+        READY = "ready", "已生成"
+        FAILED = "failed", "生成失败"
+
+    path = models.CharField("网址路径", max_length=500, unique=True)
+    kind = models.CharField("页面类型", max_length=32)
+    status = models.CharField(
+        "状态",
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    requested_at = models.DateTimeField("最近一次请求生成", null=True, blank=True)
+    generated_at = models.DateTimeField("最近一次生成完成", null=True, blank=True)
+    content_hash = models.CharField("内容哈希", max_length=64, blank=True)
+    bytes = models.PositiveIntegerField("未压缩大小", default=0)
+    error = models.TextField("最近一次失败原因", blank=True)
+
+    class Meta:
+        verbose_name = "静态页面"
+        verbose_name_plural = "静态页面"
+        ordering = ["path"]
+
+    def __str__(self):
+        return self.path

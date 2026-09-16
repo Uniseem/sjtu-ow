@@ -1,0 +1,7 @@
+<div id="slot-messages" data-slot="messages" class="toast toast-top toast-end z-50" aria-live="polite"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+      <span>{{ message }}</span>
+    </div>
+  {% endfor %}
+</div>

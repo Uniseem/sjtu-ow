@@ -193,6 +193,10 @@ def regenerate_font_css(rules=None) -> str:
         settings_obj.font_css_path = url
         settings_obj.font_css_generated_at = timezone.now()
         settings_obj.save(update_fields=["font_css_path", "font_css_generated_at"])
+        # Every prerendered page links this stylesheet (design 13.13.4).
+        from core import prerender
+
+        prerender.request_all()
     _clean_old_stylesheets(keep=name)
     return url
 

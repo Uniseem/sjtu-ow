@@ -5,4 +5,5 @@ from core import views
 urlpatterns = [
     path("", views.home, name="home"),
     path("healthz", views.healthz, name="healthz"),
+    path("_fragments/state/", views.state_fragment, name="state_fragment"),
 ]

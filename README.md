@@ -1,6 +1,6 @@
 # 上海交通大学守望先锋社区网站
 
-Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.5）。当前里程碑是 **M2 内容、投稿与字体**（内容、投稿、字体与排版已落地；预渲染和 AI 审核还在后续轮次）。
+Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.6）。当前里程碑是 **M2 内容、投稿与字体**（内容、投稿、字体与排版、半静态渲染已落地；AI 审核还在后续轮次）。
 
 ## 技术栈
 
@@ -129,6 +129,31 @@ uv run python manage.py init_site
 - 模板里不写字体名称，只用 `assets/css/input.css` 里的 `--font-*` 变量和 `.font-nav` / `.font-button` / `.font-numeric` / `.font-code` 类。
 - 处理一个中文字重要几十秒到几分钟，队列同一时间只处理一个字重。
 - 被排版区域引用的字体不能删除。
+
+## 半静态渲染
+
+公开页面（首页、资讯列表、文章、普通页面）由 worker **以未登录访客的身份**预先渲染成静态 HTML，放在 `prerendered` 数据卷里，由 Caddy 直接返回，不经过 Django。页面里因人而异的部分（账号区域、操作提示等）留成占位，加载后用一次 `/_fragments/state/` 请求补上。
+
+- **未登录访客不发这个请求**：`<head>` 里的 `static/js/state.js` 只在 `ow_logged_in` / `ow_flash` 两个提示 Cookie 存在时才发请求，两个 Cookie 都不含身份信息。
+- **静态文件只是加速层**：文件不在就由 Django 实时渲染，同时排一个生成任务，结果一样。
+- 开关：`PRERENDER_ENABLED`（生产默认开，开发默认关）；目录：`PRERENDER_ROOT`（默认 `prerendered/`）。
+- 后台「设置 → 静态页面」可以看生成情况、重新生成单页或全部、清空全部静态文件。
+
+```bash
+uv run python manage.py prerender            # 全量生成
+uv run python manage.py prerender --path /news/hello/
+uv run python manage.py prerender --list
+uv run python manage.py prerender --clear    # 清空，网站回落到实时渲染
+```
+
+宿主机 cron（设计 16.5，北京时间）：
+
+```
+CRON_TZ=Asia/Shanghai
+15 4 * * * docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py prerender
+```
+
+**从备份恢复数据后必须清空预渲染目录**（`manage.py prerender --clear` 或后台按钮），否则静态页面会比数据库更新。升级版本不需要清空。
 
 ## 健康检查
 
