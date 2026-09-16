@@ -1,0 +1,23 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}{{ action_label }}{% endblock %}
+
+{% block main_content %}
+  <dl>
+    <dt>内战</dt><dd>{{ scrim.title }}</dd>
+    <dt>当前状态</dt><dd>{{ scrim.get_status_display }}</dd>
+    <dt>开始时间</dt><dd>{{ scrim.starts_at }}</dd>
+    <dt>报名截止</dt><dd>{{ scrim.signup_deadline }}</dd>
+    <dt>已报名</dt><dd>{{ scrim.signups.count }} 人</dd>
+  </dl>
+  {% if action_label == "取消内战" %}
+    <p class="help-block">取消后内战从列表中消失，详情页仍可访问并显示「已取消」。已报名的人会收到邮件。</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <p>
+      <button type="submit" class="button {% if action_label == '取消内战' %}serious{% else %}button-primary{% endif %}">{{ action_label }}</button>
+      <a class="button button-secondary" href="{% url 'scrims:index' %}">返回</a>
+    </p>
+  </form>
+{% endblock %}

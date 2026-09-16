@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ scrim.title }} · 内战 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-3xl px-4 py-10">
+    {% if cancelled %}
+      <div class="alert alert-warning mb-6" role="status">这场内战已取消。</div>
+    {% endif %}
+
+    <h1>{{ scrim.title }}</h1>
+    <p class="mt-2 text-sm text-base-content/70">
+      <time datetime="{{ scrim.starts_at|date:'c' }}" class="font-numeric">{{ scrim.starts_at|date:"Y年n月j日 H:i" }}</time>
+      · {{ scrim.get_format_display }}
+      {% if scrim.sjtu_only %}· 仅限交大{% endif %}
+    </p>
+    <p class="mt-1 text-sm text-base-content/60">
+      报名截止
+      <time datetime="{{ scrim.signup_deadline|date:'c' }}" class="font-numeric">{{ scrim.signup_deadline|date:"Y年n月j日 H:i" }}</time>
+    </p>
+
+    {% if scrim.description %}
+      <div class="mt-6 whitespace-pre-line text-base-content/90">{{ scrim.description }}</div>
+    {% endif %}
+
+    {% include "scrims/slots/actions.html" %}
+
+    <h2 class="mt-10">报名情况</h2>
+    <p class="mt-2 text-sm text-base-content/80">
+      共 <span class="font-numeric">{{ counts.total }}</span> 人 ·
+      坦克 <span class="font-numeric">{{ counts.tank }}</span> ·
+      输出 <span class="font-numeric">{{ counts.damage }}</span> ·
+      支援 <span class="font-numeric">{{ counts.support }}</span>
+    </p>
+
+    {% if signups %}
+      <ul class="mt-4 divide-y divide-base-300 rounded-box bg-base-200">
+        {% for signup in signups %}
+          <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+            <span>{{ signup.user.nickname }}</span>
+            <span class="flex gap-1">
+              {% for label in signup.role_labels %}
+                <span class="badge badge-outline badge-sm">{{ label }}</span>
+              {% endfor %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="mt-2 text-xs text-base-content/60">名单只显示昵称和能打的位置。</p>
+    {% else %}
+      <p class="mt-4 text-sm text-base-content/70">还没有人报名。</p>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -100,7 +100,7 @@ class SiteSettings(BaseGenericSetting):
     scrim_reminder_hours = models.PositiveIntegerField(
         "内战提前提醒小时数",
         default=2,
-        help_text=LATER,
+        help_text="内战开始前多久给报名者发提醒邮件。",
     )
     moderation_enabled = models.BooleanField(
         "启用 AI 内容审核",

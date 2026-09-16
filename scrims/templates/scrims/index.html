@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}内战 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-5xl px-4 py-10">
+    <h1>内战</h1>
+    <p class="mt-2 text-sm text-base-content/70">报名后管理员会统一分队，分队结果发到群里。</p>
+
+    {% if scrims %}
+      <ul class="mt-6 grid gap-4 sm:grid-cols-2">
+        {% for scrim in scrims %}
+          <li class="card bg-base-200">
+            <div class="card-body gap-2">
+              <h2 class="card-title text-lg">
+                <a href="{% url 'scrim_detail' scrim.pk %}" class="link link-hover">{{ scrim.title }}</a>
+              </h2>
+              <p class="text-sm text-base-content/70">
+                <time datetime="{{ scrim.starts_at|date:'c' }}" class="font-numeric">{{ scrim.starts_at|date:"n月j日 H:i" }}</time>
+                · {{ scrim.get_format_display }}
+                {% if scrim.sjtu_only %}· 仅限交大{% endif %}
+              </p>
+              {% if scrim.status == "finished" %}
+                <p class="text-sm text-base-content/60">已结束</p>
+              {% else %}
+                <p class="text-sm text-base-content/60">
+                  报名截止
+                  <time datetime="{{ scrim.signup_deadline|date:'c' }}" class="font-numeric">{{ scrim.signup_deadline|date:"n月j日 H:i" }}</time>
+                </p>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with title="暂无内战" message="内战发布后会出现在这里。" %}
+    {% endif %}
+  </section>
+{% endblock %}

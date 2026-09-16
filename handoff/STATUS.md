@@ -1,8 +1,8 @@
 # 当前状态
 
 ```yaml
-milestone: M5 开放 API 与 Webhook
-round: 019-m5-webhooks
+milestone: M6 内战
+round: 020-m6-scrims
 next: claude
 updated: 2026-09-16
 blocked_on: 无
@@ -10,15 +10,16 @@ blocked_on: 无
 
 ## 现在该谁动手
 
-**Claude**：用户外出期间由 Claude 连做（实现 + 自查）。**M0–M5 全部完成**。下一轮是 **M6 内战**（设计第 9 章）。
+**Claude**：用户外出期间由 Claude 连做（实现 + 自查）。**M0–M5 全部完成**，M6 做了一半。下一轮是 **021 内战分队**（设计 9.3–9.6：勾选上场、分队算法、后台拖拽调整、复制结果）。
 
-用户回来后，008–019 可以交给 Grok 做独立复核：读各自的 `report.md` 和 `008-m2-fonts/request.md` 末尾的复核清单，自己跑命令验证，把结论追加到对应的 `review.md`。
+用户回来后，008–020 可以交给 Grok 做独立复核：读各自的 `report.md` 和 `008-m2-fonts/request.md` 末尾的复核清单，自己跑命令验证，把结论追加到对应的 `review.md`。
 
-**有三个问题等你拍板**：
+**有四个问题等你拍板**：
 
 1. **报名的可见范围**（018）：持 `registrations:read` 的上游现在能看到全站所有赛事的报名和名单，包括本站自办的和别的上游推的。设计 11.6.4 没写限制，要不要按 `source_client` 收窄？
 2. **设计 11.4 的错误码总表**（018）漏了 `review_not_allowed` 和 `invalid_state_transition`（11.6.7 正文里有），要不要补表？
 3. **`manage.py backup` 还不存在**（019）：设计 16.5 要求每天 03:00 备份，命令属于 M7，现在 `deploy/crontab.example` 里注释着。所有定时任务里这条最不该缺，M7 要优先做。
+4. **要不要关掉 Wagtail 后台的 gravatar 头像？**（020）后台头像走 `www.gravatar.com`，被本站 CSP 挡下，控制台常年报错、头像空白。倾向于关掉（`WAGTAIL_GRAVATAR_PROVIDER_URL = None`），因为把管理员邮箱哈希发给第三方和隐私政策口径不一致。这是前几轮就有的问题，等你定。
 
 另外 019 留了一个自己认的缺口：Webhook 24 小时那一档重试**没有真实验证过**，兜底任务 `deliver_due_webhooks` 也还没接到 cron 上。详见 `rounds/019-m5-webhooks/review.md`。
 
@@ -32,7 +33,7 @@ blocked_on: 无
 | M3 战队与组队大厅 | **已完成** | 012 战队、013 组队大厅（Claude 实现 + 自查，待 Grok 独立复核） |
 | M4 赛事与报名 | **已完成** | 014 赛事、015 报名、016 后台审核（Claude 实现 + 自查，待 Grok 独立复核） |
 | M5 开放 API 与 Webhook | **已完成** | 017 签名认证、018 业务接口、019 Webhook 与文档（Claude 实现 + 自查，待 Grok 独立复核） |
-| M6 内战 | 未开始 | 下一轮 |
+| M6 内战 | 进行中 | 020 活动与报名已完成；021 分队算法与后台分队页未开始 |
 | M7 上线准备 | 未开始 | |
 
 ## 轮次记录
@@ -58,6 +59,7 @@ blocked_on: 无
 | 017-m5-api-auth | 开放 API：客户端、HMAC 七步验签、Nonce 与限流、调用日志、ping、后台管理 | **Claude 实现**，自查通过（4 个问题当场修掉） |
 | 018-m5-api-endpoints | 开放 API 业务接口：赛事、报名、名单、统计、审核、批量审核、CSV，含展开项、字段裁剪、游标分页 | **Claude 实现**，自查通过。自查中修掉 3 个 014–016 遗留的状态机漏洞（上游可越权审核、两级审核可被跳过、审核不幂等），并清掉 004–007 遗留的验证数据 |
 | 019-m5-webhooks | Webhook 投递与重试、接口文档页、每日清理任务、crontab 示例 | **Claude 实现**，自查通过（修掉接口文档页在 CSP 下全白的问题）。M5 完成 |
+| 020-m6-scrims | 内战活动管理与报名：四种规格、两套段位规则、提醒与取消邮件、半静态渲染 | **Claude 实现**，自查通过（修掉「修改报名」按钮在 Alpine CSP 构建下失效的问题；新测试做了变异测试） |
 
 ## 当前待定问题
 

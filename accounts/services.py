@@ -79,12 +79,25 @@ def profile_is_complete(user: User) -> bool:
 def deletion_blocked_reason(account: GameAccount) -> str | None:
     """Return a user-facing reason, or None if the game ID may be deleted.
 
-    M6: refuse when this ID is used in an unfinished scrim signup
-    (prompt to cancel the scrim signup first).
-    M3: deleting the ID also deletes LFG posts that use it.
-    Tournament registration snapshots (M4) are not affected.
+    Design 9.2: a signup points at the game ID it was made with, so the ID
+    cannot go while an unfinished scrim still uses it — cancel the signup
+    first. Deleting the ID also deletes LFG posts that use it (M3), and
+    tournament roster snapshots (M4) hold copies, not references.
     """
-    _ = account
+    from scrims.models import ScrimStatus
+
+    signup = (
+        account.scrim_signups.filter(
+            scrim__status__in=[ScrimStatus.DRAFT, ScrimStatus.PUBLISHED]
+        )
+        .select_related("scrim")
+        .first()
+    )
+    if signup is not None:
+        return (
+            f"这个游戏 ID 正用于内战「{signup.scrim.title}」的报名，"
+            f"请先取消报名再删除。"
+        )
     return None
 
 

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}我的内战 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-3xl px-4 py-10">
+    <h1>我的内战</h1>
+    {% if signups %}
+      <ul class="mt-6 divide-y divide-base-300 rounded-box bg-base-200">
+        {% for signup in signups %}
+          <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+            <span>
+              <a href="{% url 'scrim_detail' signup.scrim.pk %}" class="link link-hover">{{ signup.scrim.title }}</a>
+              <span class="ml-2 text-sm text-base-content/70 font-numeric">{{ signup.scrim.starts_at|date:"n月j日 H:i" }}</span>
+            </span>
+            <span class="flex items-center gap-1">
+              {% if signup.scrim.status == "cancelled" %}<span class="badge badge-warning badge-sm">已取消</span>{% endif %}
+              {% for label in signup.role_labels %}<span class="badge badge-outline badge-sm">{{ label }}</span>{% endfor %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with title="还没有报名内战" message="在内战页面报名后会出现在这里。" %}
+    {% endif %}
+  </section>
+{% endblock %}
