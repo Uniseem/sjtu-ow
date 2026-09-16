@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     "django_htmx",
     "django_tailwind_cli",
     "django_tasks_db",
+    "rest_framework",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -68,6 +70,7 @@ MIDDLEWARE = [
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "core.middleware.WagtailAdminCSPMiddleware",
     "core.middleware.RequestIDMiddleware",
+    "integrations.middleware.ApiRequestLogMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
 ]
@@ -286,6 +289,26 @@ TAILWIND_CLI_SRC_CSS = BASE_DIR / "assets" / "css" / "input.css"
 TAILWIND_CLI_DIST_CSS = "css/app.css"
 # tailwind-cli-extra v2.9.0 = Tailwind CSS 4.3.2 + daisyUI 5.6.10
 TAILWIND_CLI_VERSION = "2.9.0"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [],
+    "UNAUTHENTICATED_USER": None,
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "integrations.api.exception_handler",
+}
+SPECTACULAR_SETTINGS = {
+    "TITLE": "上海交通大学守望先锋社区 开放 API",
+    "VERSION": "v1",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # Only the upstream-facing API; Wagtail's admin API is not a contract.
+    "PREPROCESSING_HOOKS": ["integrations.schema.only_public_api"],
+}
+# API signing (design 11.2)
+API_TIMESTAMP_TOLERANCE = 300  # seconds
+API_NONCE_TTL = 600  # seconds
 
 PRERENDER_ENABLED = env_bool("PRERENDER_ENABLED", False)
 PRERENDER_ROOT = Path(env("PRERENDER_ROOT", str(BASE_DIR / "prerendered")))

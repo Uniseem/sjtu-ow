@@ -17,6 +17,8 @@ dependencies = [
     "cryptography>=44",
     "fonttools>=4.56",
     "brotli>=1.1",
+    "djangorestframework>=3.16",
+    "drf-spectacular>=0.28",
 ]
 
 [dependency-groups]

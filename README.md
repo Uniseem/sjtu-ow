@@ -1,6 +1,6 @@
 # 上海交通大学守望先锋社区网站
 
-Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.7）。M0–M4 已完成（赛事、报名、后台审核都已落地）。下一个里程碑是 M5 开放 API 与 Webhook。
+Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.7）。M0–M4 已完成；当前里程碑是 **M5 开放 API 与 Webhook**（客户端与签名认证已落地，业务接口和 Webhook 在后续轮次）。
 
 ## 技术栈
 
@@ -11,6 +11,7 @@ Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v
 - 样式由 `django-tailwind-cli` 编译，不安装 Node。源文件在 `assets/css/input.css`（不能放进 `STATICFILES_DIRS`，否则 WhiteNoise 哈希存储会处理 `@import "tailwindcss"` 并失败），编译结果在 `static/css/app.css`。
 - 静态资源：WhiteNoise 存储后端（内容哈希 + 预压缩）；生产由 Caddy 直接提供
 - 异步任务：Django Tasks + `django-tasks-db`；应用层发信走队列，由 worker 按后台 SMTP 发送
+- 开放 API：Django REST Framework + drf-spectacular（只给上游用，前台不调用）
 - 字体：fontTools + brotli 在 worker 里把字体切成带 `unicode-range` 的 WOFF2 分片，全部托管在本站
 - 代码检查：ruff；测试：pytest + pytest-django
 
@@ -211,6 +212,16 @@ uv run python manage.py moderate_scan --digest      # 发送每日汇总邮件
 CRON_TZ=Asia/Shanghai
 30 9 * * * docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py moderate_scan --digest
 ```
+
+## 开放 API
+
+给上游赛事平台用，前台页面不走 API。
+
+- 基础地址 `/api/v1/`，每个上游一个客户端，在后台「设置 → API 客户端」创建，**Secret 只在创建和重新生成时显示一次**。
+- 每个请求要带 `X-Api-Key`、`X-Timestamp`、`X-Nonce`、`X-Signature`，签名是 HMAC-SHA256（算法见设计 11.2.2）。服务端按七步校验：请求头齐全 → Key 有效 → 时间戳 5 分钟内 → Nonce 10 分钟内没用过 → 常数时间比对签名 → 授权范围 → 限流。
+- 每次调用都写一条日志（不含请求体和响应体），在客户端详情页能看到最近 50 条。
+- `GET /api/v1/ping` 用来确认密钥、签名算法和双方时间差。
+- 业务接口和 Webhook 在后续轮次。
 
 ## 健康检查
 

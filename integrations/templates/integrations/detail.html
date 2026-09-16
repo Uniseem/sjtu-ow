@@ -1,0 +1,46 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}{{ client.name }}{% endblock %}
+
+{% block main_content %}
+  <dl>
+    <dt>Key ID</dt><dd><code>{{ client.key_id }}</code></dd>
+    <dt>Secret</dt><dd>只在创建和重新生成时显示一次，这里不展示。</dd>
+    <dt>授权范围</dt><dd>{{ client.scopes|join:"、"|default:"—" }}</dd>
+    <dt>允许的展开项</dt><dd>{{ client.allowed_includes|join:"、"|default:"—" }}</dd>
+    <dt>限流</dt><dd>{{ client.rate_limit_per_minute }} 次 / 分钟</dd>
+    <dt>状态</dt><dd>{% if client.revoked_at %}已吊销（{{ client.revoked_at }}）{% elif client.is_active %}启用{% else %}停用{% endif %}</dd>
+    <dt>最近调用</dt><dd>{{ client.last_used_at|default:"—" }}</dd>
+  </dl>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" name="action" value="regenerate" class="button serious">重新生成密钥</button>
+    {% if not client.revoked_at %}
+      <button type="submit" name="action" value="toggle" class="button button-secondary">{% if client.is_active %}停用{% else %}启用{% endif %}</button>
+      <button type="submit" name="action" value="revoke" class="button serious">吊销</button>
+    {% endif %}
+  </form>
+
+  <h2>最近调用</h2>
+  <table class="listing">
+    <thead><tr><th>时间</th><th>方法</th><th>路径</th><th>状态码</th><th>错误码</th><th>耗时</th><th>IP</th></tr></thead>
+    <tbody>
+      {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at }}</td>
+          <td>{{ log.method }}</td>
+          <td><code>{{ log.path }}</code></td>
+          <td>{{ log.status_code }}</td>
+          <td>{{ log.error_code|default:"—" }}</td>
+          <td>{{ log.duration_ms }} ms</td>
+          <td>{{ log.ip }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">还没有调用记录。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a class="button button-secondary" href="{% url 'api_client_index' %}">返回</a></p>
+{% endblock %}
