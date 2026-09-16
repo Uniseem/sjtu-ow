@@ -53,14 +53,18 @@ def _breadcrumbs(*items):
 
 @superuser_required
 def font_index(request):
-    families = FontFamily.objects.prefetch_related("faces").all()
+    families = list(FontFamily.objects.prefetch_related("faces").all())
+    rows = [
+        {"family": family, "disk_bytes": services.family_disk_bytes(family)}
+        for family in families
+    ]
     return render(
         request,
         "core/fonts/index.html",
         {
             "page_title": "字体库",
             "header_icon": "doc-full",
-            "families": families,
+            "rows": rows,
             "sample_text": services.SAMPLE_TEXT,
             "breadcrumbs_items": _breadcrumbs({"url": "", "label": "字体库"}),
         },
@@ -239,6 +243,7 @@ def font_detail(request, pk):
             "header_icon": "doc-full",
             "family": family,
             "faces": family.faces.all(),
+            "disk_bytes": services.family_disk_bytes(family),
             "face_form": face_form,
             "sample_text": services.SAMPLE_TEXT,
             "used_by": [

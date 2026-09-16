@@ -11,6 +11,7 @@
     <dt>样式表字体名</dt><dd><code>{{ family.css_name }}</code></dd>
     <dt>来源</dt><dd>{{ family.get_source_display }}{% if family.source_ref %}（{{ family.source_ref }}）{% endif %}</dd>
     <dt>授权</dt><dd>{{ family.get_license_type_display }}{% if family.license_note %}：{{ family.license_note }}{% endif %}</dd>
+    <dt>磁盘占用</dt><dd>{{ disk_bytes|filesizeformat }}（原始文件 + 分片）</dd>
     <dt>添加人</dt><dd>{{ family.created_by|default:"—" }}，{{ family.created_at }}</dd>
   </dl>
 

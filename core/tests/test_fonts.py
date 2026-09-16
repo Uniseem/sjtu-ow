@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
@@ -507,3 +509,177 @@ def test_front_end_links_the_generated_stylesheet(client, media_root):
     response = client.get("/")
     html = response.content.decode("utf-8")
     assert "/media/fonts/css/fonts." in html
+
+
+# --- 009 fixes ---------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_replacing_a_weight_removes_the_previous_upload(media_root):
+    family = _family()
+    first = services.add_face_from_bytes(
+        family, make_font_bytes("ABC"), "v1.ttf", weight=400
+    )
+    first_path = first.original_file.name
+    second = services.add_face_from_bytes(
+        family, make_font_bytes("ABCD"), "v2.ttf", weight=400
+    )
+    assert first.pk == second.pk
+    assert second.original_file.name != first_path
+    assert not default_storage.exists(first_path)
+    assert default_storage.exists(second.original_file.name)
+
+
+@pytest.mark.django_db
+def test_weight_used_through_inherit_is_in_use(media_root):
+    family = _family()
+    _ready_face(family, weight=400)
+    bold = _ready_face(
+        family,
+        weight=700,
+        slices=[
+            {
+                "path": "fonts/x/700-000.def.woff2",
+                "unicode_range": "U+4E00",
+                "bytes": 20,
+            }
+        ],
+    )
+    services.ensure_typography_rules()
+    body = TypographyRule.objects.get(region="body")
+    body.mode = TypographyRule.Mode.CUSTOM
+    body.family = family
+    body.weight = 400
+    body.save()
+
+    # 一级标题「跟随正文」默认 700，所以这个字重正在被使用
+    assert services.is_face_in_use(bold) is True
+
+
+@pytest.mark.django_db
+def test_admin_refuses_to_delete_a_weight_used_through_inherit(client, media_root):
+    family = _family()
+    _ready_face(family, weight=400)
+    bold = _ready_face(
+        family,
+        weight=700,
+        slices=[
+            {
+                "path": "fonts/x/700-000.def.woff2",
+                "unicode_range": "U+4E00",
+                "bytes": 20,
+            }
+        ],
+    )
+    services.ensure_typography_rules()
+    TypographyRule.objects.filter(region="body").update(
+        mode=TypographyRule.Mode.CUSTOM, family=family, weight=400
+    )
+    client.force_login(_superuser())
+    response = client.post(
+        reverse("core_font_face_delete", args=[bold.pk]), follow=True
+    )
+    assert response.status_code == 200
+    assert FontFace.objects.filter(pk=bold.pk).exists()
+
+
+@pytest.mark.django_db
+def test_processing_a_weight_used_through_inherit_refreshes_the_stylesheet(media_root):
+    family = _family()
+    regular = services.add_face_from_bytes(
+        family, make_font_bytes(sample_chars(260)), "r.ttf", weight=400
+    )
+    services.run_face_processing(regular.pk)
+    services.ensure_typography_rules()
+    TypographyRule.objects.filter(region="body").update(
+        mode=TypographyRule.Mode.CUSTOM, family=family, weight=400
+    )
+    regenerate_font_css()
+    before = SiteSettings.load().font_css_path
+
+    bold = services.add_face_from_bytes(
+        family, make_font_bytes(sample_chars(260), weight=700), "b.ttf", weight=700
+    )
+    assert services.run_face_processing(bold.pk) == "done"
+
+    after = SiteSettings.load().font_css_path
+    assert after != before
+    with default_storage.open(after.replace("/media/", "")) as handle:
+        css = handle.read().decode("utf-8")
+    assert "font-weight: 700;" in css
+
+
+@pytest.mark.django_db
+def test_replaced_slices_are_retired_not_deleted(media_root):
+    from django.core.files.base import ContentFile
+
+    family = _family()
+    face = _ready_face(family)
+    path = "fonts/retire/400-000.old.woff2"
+    default_storage.save(path, ContentFile(b"old"))
+    services.retire_slice_files([{"path": path}])
+    assert default_storage.exists(path)  # 延迟一天，页面可能还在加载
+
+    assert services.delete_unreferenced_slices([path]) == 1
+    assert not default_storage.exists(path)
+
+    # 仍被引用的文件不会被删
+    still_used = face.slices[0]["path"]
+    default_storage.save(still_used, ContentFile(b"live"))
+    assert services.delete_unreferenced_slices([still_used]) == 0
+    assert default_storage.exists(still_used)
+
+
+@pytest.mark.django_db
+def test_retiring_slices_schedules_a_delayed_task(
+    media_root, django_capture_on_commit_callbacks
+):
+    from django_tasks_db.models import DBTaskResult
+
+    with django_capture_on_commit_callbacks(execute=True):
+        services.retire_slice_files([{"path": "fonts/9/400-000.aaaaaaaa.woff2"}])
+    task = DBTaskResult.objects.filter(
+        task_path__endswith="delete_retired_font_slices"
+    ).first()
+    assert task is not None
+    assert task.run_after is not None
+    assert task.run_after > timezone.now() + timedelta(hours=20)
+
+
+@pytest.mark.django_db
+def test_css_name_allocation_survives_a_collision(media_root, monkeypatch):
+    _family(name="第一个")
+    names = iter(["sjtu-font-1", "sjtu-font-9"])  # 第一次撞车，第二次成功
+    monkeypatch.setattr(services, "next_css_name", lambda: next(names))
+    family = _family(name="第二个")
+    assert family.css_name == "sjtu-font-9"
+
+
+@pytest.mark.django_db
+def test_region_keeps_showing_a_font_that_lost_its_weights(media_root):
+    from core.fonts.forms import TypographyRuleForm
+
+    family = _family()
+    face = _ready_face(family)
+    services.ensure_typography_rules()
+    rule = TypographyRule.objects.get(region="h1")
+    rule.mode = TypographyRule.Mode.CUSTOM
+    rule.family = family
+    rule.save()
+    face.delete()  # 字重被删光，字体库里没有可用字重了
+
+    form = TypographyRuleForm(instance=TypographyRule.objects.get(pk=rule.pk))
+    assert family in list(form.fields["family"].queryset)
+
+
+@pytest.mark.django_db
+def test_family_disk_bytes_counts_original_and_slices(media_root):
+    family = _family()
+    face = services.add_face_from_bytes(
+        family, make_font_bytes("ABC的"), "x.ttf", weight=400
+    )
+    services.run_face_processing(face.pk)
+    face.refresh_from_db()
+    total = services.family_disk_bytes(family)
+    assert total > face.total_bytes  # 分片 + 原始文件
+    assert total >= face.total_bytes + face.original_file.size

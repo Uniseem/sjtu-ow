@@ -47,6 +47,37 @@ def create_family(
     source_ref="",
     created_by=None,
 ):
+    """Create a font. Retries the css_name if another admin grabbed it first."""
+    from django.db import IntegrityError
+
+    last_error = None
+    for _attempt in range(5):
+        try:
+            with transaction.atomic():
+                return _create_family(
+                    name=name,
+                    source=source,
+                    license_type=license_type,
+                    license_note=license_note,
+                    license_confirmed=license_confirmed,
+                    source_ref=source_ref,
+                    created_by=created_by,
+                )
+        except IntegrityError as exc:
+            last_error = exc
+    raise last_error
+
+
+def _create_family(
+    *,
+    name,
+    source,
+    license_type,
+    license_note,
+    license_confirmed,
+    source_ref,
+    created_by,
+):
     from core.models import FontFamily
 
     return FontFamily.objects.create(
@@ -85,6 +116,9 @@ def add_face_from_bytes(family, data: bytes, filename: str, weight=None, style=N
             "glyph_count": info.glyph_count,
         },
     )
+    if face.original_file:
+        # Replacing a weight: the previous upload would otherwise stay on disk.
+        face.original_file.delete(save=False)
     face.original_file.save(filename, ContentFile(data), save=True)
     queue_face(face)
     return face
@@ -110,6 +144,12 @@ def add_google_faces(family, weights):
     grouped = download.download_google_slices(family.pk, faces)
     created = []
     for (weight, style), slices in sorted(grouped.items()):
+        existing = FontFace.objects.filter(
+            family=family, weight=weight, style=style
+        ).first()
+        if existing is not None:
+            stale = [item for item in existing.slices or [] if item not in slices]
+            processing.delete_slice_files(stale)
         face, _ = FontFace.objects.update_or_create(
             family=family,
             weight=weight,
@@ -218,12 +258,40 @@ def run_face_processing(face_id: int) -> str:
         glyph_count=info.glyph_count,
         updated_at=timezone.now(),
     )
-    processing.delete_slice_files(
-        [item for item in old_slices if item not in slices],
-    )
+    retire_slice_files([item for item in old_slices if item not in slices])
     if is_face_in_use(face):
         regenerate_font_css()
     return "done"
+
+
+SLICE_RETIRE_DELAY = timedelta(days=1)
+
+
+def retire_slice_files(slices) -> None:
+    """Delete replaced slices a day later; pages may still be loading them."""
+    from core.tasks import delete_retired_font_slices
+
+    paths = [item.get("path") for item in slices or [] if item.get("path")]
+    if not paths:
+        return
+    run_after = timezone.now() + SLICE_RETIRE_DELAY
+    transaction.on_commit(
+        lambda: delete_retired_font_slices.using(run_after=run_after).enqueue(paths)
+    )
+
+
+def delete_unreferenced_slices(paths) -> int:
+    """Delete the given slice files unless some weight still points at them."""
+    from core.models import FontFace
+
+    wanted = set(paths or [])
+    if not wanted:
+        return 0
+    for face in FontFace.objects.exclude(slices=[]).only("slices"):
+        for item in face.slices or []:
+            wanted.discard(item.get("path"))
+    processing.delete_slice_files([{"path": path} for path in sorted(wanted)])
+    return len(wanted)
 
 
 def _fail(face, message: str) -> None:
@@ -238,21 +306,37 @@ def _fail(face, message: str) -> None:
 
 
 def is_face_in_use(face) -> bool:
-    from core.models import TypographyRule
+    """Is this (font, weight) used by any region?
 
-    return TypographyRule.objects.filter(
-        mode=TypographyRule.Mode.CUSTOM,
-        family_id=face.family_id,
-        weight=face.weight,
-    ).exists()
+    Uses the same rule as the generated stylesheet (design 12.4.5): a
+    "跟随正文" region resolves to the body font, so a weight can be in use
+    without any region naming that font directly.
+    """
+    from core.fonts.css import ordered_rules, used_pairs
+
+    return (face.family_id, face.weight) in used_pairs(ordered_rules())
 
 
 def delete_face(face) -> None:
-    """Remove one weight and every file it owns."""
+    """Remove one weight and every file it owns, then refresh the stylesheet."""
     processing.delete_slice_files(face.slices)
     if face.original_file:
         face.original_file.delete(save=False)
     face.delete()
+    regenerate_font_css()
+
+
+def family_disk_bytes(family) -> int:
+    """Original files plus every slice this font owns."""
+    total = 0
+    for face in family.faces.all():
+        total += face.total_bytes or 0
+        if face.original_file:
+            try:
+                total += face.original_file.size
+            except (OSError, ValueError):
+                pass
+    return total
 
 
 def reprocess_family(family) -> int:

@@ -40,3 +40,11 @@ def process_font_face(face_id: int, attempt: int = 0) -> None:
     if result == "requeue" and attempt < FONT_REQUEUE_LIMIT:
         run_after = timezone.now() + timedelta(seconds=REQUEUE_DELAY_SECONDS)
         process_font_face.using(run_after=run_after).enqueue(face_id, attempt + 1)
+
+
+@task
+def delete_retired_font_slices(paths: list) -> None:
+    """Delete slice files replaced a day ago (design 13.12.2)."""
+    from core.fonts.services import delete_unreferenced_slices
+
+    delete_unreferenced_slices(paths)

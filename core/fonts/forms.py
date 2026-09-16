@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django import forms
+from django.db.models import Q
 
 from core.fonts import processing
 from core.fonts.services import MAX_ENABLED_VARIANTS
@@ -163,9 +164,12 @@ class TypographyRuleForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["family"].queryset = FontFamily.objects.filter(
-            faces__status=FontFace.Status.READY
-        ).distinct()
+        # Fonts with a processed weight, plus whatever this region already uses
+        # (its weights may have been deleted since), so the admin can see it.
+        choices = Q(faces__status=FontFace.Status.READY)
+        if self.instance.family_id:
+            choices |= Q(pk=self.instance.family_id)
+        self.fields["family"].queryset = FontFamily.objects.filter(choices).distinct()
         self.fields["family"].required = False
         self.fields["family"].empty_label = "（未选择）"
         if self.instance.region == TypographyRule.Region.BODY:

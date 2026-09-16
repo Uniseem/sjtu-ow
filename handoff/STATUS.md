@@ -2,15 +2,17 @@
 
 ```yaml
 milestone: M2 内容、投稿与字体
-round: 008-m2-fonts
-next: grok
+round: 009-m2-font-fixes
+next: claude
 updated: 2026-09-16
 blocked_on: 无
 ```
 
 ## 现在该谁动手
 
-**Grok**：本轮**角色对调**——用户指定 008 由 Claude 实现，Grok 复核。读 `handoff/rounds/008-m2-fonts/report.md` 和 `request.md` 末尾的「复核清单」，自己跑命令验证（不要采信报告结论），写 `handoff/rounds/008-m2-fonts/review.md`，然后把上面的 `next` 改成 `claude`、`updated` 改成当天日期。
+**Claude**：用户外出期间由 Claude 连做（实现 + 自查）。008、009 已完成，下一轮是 **010 半静态渲染**。
+
+用户回来后，008 和 009 可以交给 Grok 做独立复核：读各自的 `report.md` 和 `008-m2-fonts/request.md` 末尾的复核清单，自己跑命令验证，把结论追加到对应的 `review.md`。
 
 ## 里程碑进度
 
@@ -18,7 +20,7 @@ blocked_on: 无
 |---|---|---|
 | M0 项目骨架 | **已完成** | 003 复核通过 |
 | M1 账号与资料 | **已完成** | 005 复核通过 |
-| M2 内容、投稿与字体 | 进行中 | 006、007 复核通过；008 字体已实现（由 Claude 实现，待 Grok 复核）；009 预渲染、010 AI 审核尚未开始 |
+| M2 内容、投稿与字体 | 进行中 | 006、007 复核通过；008 字体、009 字体修复已完成（Claude 实现 + 自查，待 Grok 独立复核）；010 预渲染、011 AI 审核未开始 |
 | M3 战队与组队大厅 | 未开始 | |
 | M4 赛事与报名 | 未开始 | |
 | M5 开放 API 与 Webhook | 未开始 | |
@@ -36,7 +38,8 @@ blocked_on: 无
 | 005-m1-profile | 个人资料、联系方式、功能权限、`init_site` 角色组 | 复核通过。M1 完成 |
 | 006-m2-content | 页面类型、文章分类、首页与资讯、元信息 / sitemap / robots | 复核通过（SITE_URL 与 B 站嵌入转到 007） |
 | 007-m2-submissions | 投稿、SITE_URL 站点同步、B 站嵌入 | 复核通过 |
-| 008-m2-fonts | 字体库、切片、9 个排版区域、生成字体样式表 | **由 Claude 实现**，待 Grok 复核 |
+| 008-m2-fonts | 字体库、切片、9 个排版区域、生成字体样式表 | **Claude 实现**，自查发现 4 个必须修 |
+| 009-m2-font-fixes | 修 008 自查的问题：「跟随正文」口径统一、文件清理 | **Claude 实现**，自查通过 |
 
 ## 当前待定问题
 

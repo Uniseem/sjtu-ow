@@ -12,7 +12,7 @@
     <a class="button button-secondary" href="{% url 'core_typography' %}">排版设置</a>
   </p>
 
-  {% if families %}
+  {% if rows %}
     <table class="listing">
       <thead>
         <tr>
@@ -21,11 +21,13 @@
           <th>来源</th>
           <th>授权</th>
           <th>字重</th>
+          <th>磁盘占用</th>
           <th>预览</th>
         </tr>
       </thead>
       <tbody>
-        {% for family in families %}
+        {% for row in rows %}
+          {% with family=row.family %}
           <tr>
             <td><a href="{% url 'core_font_detail' family.pk %}">{{ family.name }}</a></td>
             <td><code>{{ family.css_name }}</code></td>
@@ -38,8 +40,10 @@
                 尚未添加字重
               {% endfor %}
             </td>
+            <td>{{ row.disk_bytes|filesizeformat }}</td>
             <td class="font-preview-{{ family.pk }}">{{ sample_text }}</td>
           </tr>
+          {% endwith %}
         {% endfor %}
       </tbody>
     </table>
