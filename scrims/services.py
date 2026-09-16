@@ -11,6 +11,7 @@ from scrims.models import (
     FINISHED_VISIBLE_DAYS,
     RANK_FIELDS,
     ROLE_FIELDS,
+    ROLE_REQUIREMENTS,
     Role,
     Scrim,
     ScrimSignup,
@@ -297,3 +298,169 @@ def schedule_reminder(scrim) -> None:
             send_scrim_reminder.using(run_after=run_at).enqueue(scrim_id)
 
     transaction.on_commit(enqueue)
+
+
+# --- team splitting (design 9.3-9.6) -------------------------------------------
+
+
+def selected_signups(scrim):
+    return list(
+        scrim.signups.filter(is_selected=True).select_related("user", "game_account")
+    )
+
+
+def all_signups(scrim, *, order="created"):
+    """Design 9.3: the admin may sort by signup time or by rank."""
+    rows = list(scrim.signups.select_related("user", "game_account").all())
+    if order == "rating":
+        rows.sort(key=lambda row: (-(row.best_rating or 0), row.created_at))
+    else:
+        rows.sort(key=lambda row: (row.created_at, row.pk))
+    return rows
+
+
+@transaction.atomic
+def set_selection(*, scrim, signup_ids):
+    """Tick the players who are actually showing up tonight."""
+    wanted = {int(value) for value in signup_ids}
+    for signup in scrim.signups.all():
+        should = signup.pk in wanted
+        if signup.is_selected != should:
+            signup.is_selected = should
+            if not should:
+                signup.team = ""
+                signup.assigned_role = ""
+                signup.rating_used = None
+            signup.save(
+                update_fields=["is_selected", "team", "assigned_role", "rating_used"]
+            )
+    return wanted
+
+
+def generate_teams(scrim, *, rng=None):
+    """Design 9.4. Raises :class:`~scrims.teaming.NoSolution` with a reason."""
+    from scrims import teaming
+
+    signups = selected_signups(scrim)
+    players = teaming.players_from(signups, scrim)
+    split = teaming.generate(players, scrim, rng=rng)
+    return split, players
+
+
+@transaction.atomic
+def save_teams(*, scrim, placements):
+    """Store one placement per signup: {signup_id: (team, role, rating)}.
+
+    Design 9.5 lets the admin save a split that breaks the role counts, so
+    nothing is validated here beyond the ids belonging to this scrim.
+    """
+    rows = {signup.pk: signup for signup in scrim.signups.all()}
+    for signup_id, (team, role, rating) in placements.items():
+        signup = rows.get(int(signup_id))
+        if signup is None:
+            continue
+        signup.team = team or ""
+        signup.assigned_role = role or ""
+        signup.rating_used = rating
+        signup.is_selected = bool(team)
+        signup.save(
+            update_fields=["team", "assigned_role", "rating_used", "is_selected"]
+        )
+    for signup in rows.values():
+        if signup.pk not in {int(key) for key in placements}:
+            if signup.team or signup.assigned_role:
+                signup.team = ""
+                signup.assigned_role = ""
+                signup.rating_used = None
+                signup.save(update_fields=["team", "assigned_role", "rating_used"])
+    now = timezone.now()
+    Scrim.objects.filter(pk=scrim.pk).update(
+        teams_generated_at=now, roster_changed_at=None
+    )
+    scrim.teams_generated_at = now
+    scrim.roster_changed_at = None
+    return scrim
+
+
+def placements_from_split(split, players, scrim):
+    """Turn a freshly generated split into the shape ``save_teams`` wants."""
+    from scrims.teaming import ratings_used
+
+    used = ratings_used(split, players, scrim)
+    placements = {}
+    for team, assignment in (("a", split.a), ("b", split.b)):
+        for role, ids in assignment.by_role.items():
+            for signup_id in ids:
+                placements[signup_id] = (team, role or "", used.get(signup_id))
+    return placements
+
+
+def team_rows(scrim):
+    """Both teams as the admin page and the copy text need them."""
+    rows = {"a": [], "b": []}
+    for signup in scrim.signups.filter(team__in=["a", "b"]).select_related(
+        "user", "game_account"
+    ):
+        rows[signup.team].append(signup)
+    order = {Role.TANK: 0, Role.DAMAGE: 1, Role.SUPPORT: 2, "": 3}
+    for side in rows.values():
+        side.sort(key=lambda row: (order.get(row.assigned_role, 3), row.pk))
+    return rows
+
+
+def team_total(signups) -> int:
+    return sum(signup.rating_used or 0 for signup in signups)
+
+
+def role_counts(signups) -> dict:
+    counts = {role: 0 for role in Role.values}
+    for signup in signups:
+        if signup.assigned_role in counts:
+            counts[signup.assigned_role] += 1
+    return counts
+
+
+def requirement_problems(scrim, signups) -> list[str]:
+    """Design 9.5: flag a split that breaks the format, but still allow saving."""
+    if not scrim.role_queue:
+        return []
+    labels = dict(Role.choices)
+    counts = role_counts(signups)
+    wanted = ROLE_REQUIREMENTS[scrim.format]
+    return [
+        f"{labels[role]} {counts[role]} 人（需要 {needed} 人）"
+        for role, needed in wanted.items()
+        if counts[role] != needed
+    ]
+
+
+def copy_text(scrim) -> str:
+    """Design 9.6: the block the admin pastes into the QQ group."""
+    from accounts.ranks import format_rank
+
+    rows = team_rows(scrim)
+    when = timezone.localtime(scrim.starts_at).strftime("%Y-%m-%d %H:%M")
+    lines = [f"【{scrim.title}】{when} · {scrim.get_format_display()}"]
+    labels = dict(Role.choices)
+    for team, name in (("a", "A 队"), ("b", "B 队")):
+        side = rows[team]
+        lines.append("")
+        lines.append(f"{name}（总分 {team_total(side)}）")
+        if scrim.role_queue:
+            for role in (Role.TANK, Role.DAMAGE, Role.SUPPORT):
+                members = [row for row in side if row.assigned_role == role]
+                if not members:
+                    continue
+                entries = " / ".join(
+                    f"{row.user.nickname} {row.game_account.battletag} "
+                    f"{format_rank(row.rating_used)}"
+                    for row in members
+                )
+                lines.append(f"{labels[role]}：{entries}")
+        else:
+            for row in side:
+                lines.append(
+                    f"{row.user.nickname} {row.game_account.battletag} "
+                    f"{format_rank(row.rating_used)}"
+                )
+    return "\n".join(lines)

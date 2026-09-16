@@ -1,0 +1,36 @@
+<div class="split-team">
+  <h3>{{ label }}（总分 <span data-team-total="{{ team }}">{{ total }}</span>）</h3>
+  {% if problems %}
+    <p class="split-problem">位置人数不符：{{ problems|join:"、" }}</p>
+  {% endif %}
+  <table class="listing">
+    <thead><tr><th>昵称</th><th>游戏 ID</th><th>队伍</th><th>位置</th><th>段位</th></tr></thead>
+    <tbody>
+      {% for signup in members %}
+        <tr data-member data-team="{{ team }}">
+          <td>{{ signup.user.nickname }}</td>
+          <td><code>{{ signup.game_account.battletag }}</code></td>
+          <td>
+            <select name="team-{{ signup.pk }}" data-team-select>
+              <option value="a" {% if signup.team == "a" %}selected{% endif %}>A 队</option>
+              <option value="b" {% if signup.team == "b" %}selected{% endif %}>B 队</option>
+              <option value="">不上场</option>
+            </select>
+          </td>
+          <td>
+            {% if scrim.role_queue %}
+              <select name="role-{{ signup.pk }}" data-role-select data-ratings="{{ signup.rating_map }}">
+                {% for value, role_label in roles %}
+                  <option value="{{ value }}" {% if signup.assigned_role == value %}selected{% endif %}>{{ role_label }}</option>
+                {% endfor %}
+              </select>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td data-rating>{{ signup.rating_used|default:"—" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

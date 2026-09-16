@@ -1,0 +1,92 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load static %}
+
+{% block titletag %}{{ scrim.title }} · 分队{% endblock %}
+
+{% block main_content %}
+  <dl>
+    <dt>规格</dt><dd>{{ scrim.get_format_display }}（每队 {{ scrim.team_size }} 人，共需 {{ needed }} 人）</dd>
+    <dt>开始时间</dt><dd>{{ scrim.starts_at }}</dd>
+    <dt>报名人数</dt><dd>{{ signups|length }}</dd>
+  </dl>
+
+  {% if teams_stale %}
+    <div class="messages"><ul><li class="warning">分队有变化：保存分队之后有人取消报名或换了游戏 ID，请重新生成或手动调整。</li></ul></div>
+  {% endif %}
+
+  <h2>勾选上场</h2>
+  <p class="help-block">
+    排序：
+    <a href="?order=created">按报名时间</a> ·
+    <a href="?order=rating">按段位</a>
+  </p>
+
+  <form method="post" data-split-form>
+    {% csrf_token %}
+    <table class="listing">
+      <thead>
+        <tr><th>上场</th><th>昵称</th><th>游戏 ID</th><th>能打的位置与段位</th><th>报名时间</th></tr>
+      </thead>
+      <tbody>
+        {% for signup in signups %}
+          <tr>
+            <td><input type="checkbox" name="signups" value="{{ signup.pk }}" data-pick {% if signup.is_selected %}checked{% endif %}></td>
+            <td>{{ signup.user.nickname }}</td>
+            <td><code>{{ signup.game_account.battletag }}</code></td>
+            <td>{% include "scrims/admin/_roles.html" with signup=signup %}</td>
+            <td>{{ signup.created_at }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">还没有人报名。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p>
+      已选 <span data-picked>{{ selected_count }}</span> / 需要 <span>{{ needed }}</span> 人
+      <span data-pick-warning class="help-block" {% if selected_count == needed %}hidden{% endif %}>人数正好等于需要人数时才能生成分队。</span>
+    </p>
+    <p>
+      <button type="submit" name="action" value="select" class="button button-secondary">保存上场名单</button>
+      <button type="submit" name="action" value="generate" class="button button-primary"
+              data-generate data-needed="{{ needed }}" {% if selected_count != needed %}disabled{% endif %}>生成分队</button>
+    </p>
+  </form>
+
+  {% if has_teams %}
+    <h2>分队结果</h2>
+    <p>
+      A 队总分 <span data-total-a>{{ total_a }}</span> ·
+      B 队总分 <span data-total-b>{{ total_b }}</span> ·
+      分差 <span data-gap>{{ gap }}</span>
+    </p>
+
+    <form method="post" data-teams-form>
+      {% csrf_token %}
+      <div class="split-teams">
+        {% include "scrims/admin/_team.html" with team="a" label="A 队" members=team_a problems=problems_a total=total_a %}
+        {% include "scrims/admin/_team.html" with team="b" label="B 队" members=team_b problems=problems_b total=total_b %}
+      </div>
+      <p>
+        <button type="submit" name="action" value="save" class="button button-primary">保存分队</button>
+        <a class="button button-secondary" href="{% url 'scrim_split_text' scrim.pk %}" target="_blank" rel="noopener">查看纯文本</a>
+      </p>
+      <p class="help-block">位置人数不符合规格时会标红，但仍然可以保存。</p>
+    </form>
+
+    <h2>复制结果</h2>
+    <p class="help-block">全选下面的文本复制，发到群里。</p>
+    <textarea readonly rows="12" class="split-copy" data-copy-text>{{ copy_text }}</textarea>
+  {% endif %}
+
+  <p><a class="button button-secondary" href="{% url 'scrims:index' %}">返回</a></p>
+{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/scrim-split.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+  {# defer + a readyState guard, because Wagtail may place this before the body #}
+  <script src="{% static 'js/scrim-split.js' %}" defer></script>
+{% endblock %}

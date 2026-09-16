@@ -1,0 +1,21 @@
+/* The admin split page (design 9.5). Wagtail admin only, no Tailwind here. */
+.split-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+.split-team {
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+.split-problem {
+  color: #cd3238;
+  font-weight: 600;
+}
+.split-role {
+  white-space: nowrap;
+}
+.split-copy {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

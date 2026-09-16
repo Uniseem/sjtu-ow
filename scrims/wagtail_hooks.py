@@ -43,6 +43,15 @@ class ScrimIndexView(generic.IndexView):
                     priority=61,
                 )
             )
+        if instance.status != ScrimStatus.DRAFT:
+            buttons.append(
+                ListingMenuItem(
+                    "分队",
+                    url=reverse("scrim_split", args=[instance.pk]),
+                    icon_name="group",
+                    priority=50,
+                )
+            )
         if instance.status != ScrimStatus.CANCELLED:
             buttons.append(
                 ListingMenuItem(
@@ -194,7 +203,15 @@ def scrim_cancel(request, pk):
 
 @hooks.register("register_admin_urls")
 def register_scrim_urls():
+    from scrims import split_admin
+
     return [
         path("scrims/<int:pk>/cancel/", scrim_cancel, name="scrim_cancel"),
+        path("scrims/<int:pk>/split/", split_admin.split_view, name="scrim_split"),
+        path(
+            "scrims/<int:pk>/split/text/",
+            split_admin.copy_view,
+            name="scrim_split_text",
+        ),
         path("scrims/<int:pk>/<str:action>/", scrim_action, name="scrim_action"),
     ]

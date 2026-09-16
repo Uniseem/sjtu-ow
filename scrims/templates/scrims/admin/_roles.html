@@ -1,0 +1,4 @@
+
+{% for role, label in signup.rank_pairs %}
+  <span class="split-role">{{ label }}</span>{% if not forloop.last %} · {% endif %}
+{% endfor %}

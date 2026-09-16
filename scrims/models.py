@@ -204,6 +204,27 @@ class ScrimSignup(models.Model):
         return getattr(self.game_account, RANK_FIELDS[role], None)
 
     @property
+    def rank_pairs(self) -> list[tuple[str, str]]:
+        """Design 9.3: the roles they can play, each with its rank."""
+        from accounts.ranks import format_rank
+
+        labels = dict(Role.choices)
+        pairs = []
+        for role in self.roles:
+            score = self.rating_for(role)
+            text = format_rank(score) if score else "未填段位"
+            pairs.append((role, f"{labels[role]} {text}"))
+        return pairs
+
+    @property
+    def rating_map(self) -> str:
+        """Role -> score as JSON, so the split page can retotal without a round trip."""
+        import json
+
+        scores = {role: self.rating_for(role) or 0 for role in self.roles}
+        return json.dumps(scores)
+
+    @property
     def best_rating(self) -> int | None:
         """Design 9.4: open formats use the highest rank they filled in."""
         scores = [self.rating_for(role) for role in self.roles if self.rating_for(role)]
