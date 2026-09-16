@@ -1,0 +1,64 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}报名审核{% endblock %}
+
+{% block main_content %}
+  <form method="get" class="w-mb-4">
+    <label>赛事
+      <select name="tournament">
+        <option value="">全部赛事</option>
+        {% for item in tournaments %}
+          <option value="{{ item.pk }}" {% if tournament_id == item.pk|stringformat:"s" %}selected{% endif %}>{{ item.title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>状态
+      <select name="status">
+        <option value="">全部</option>
+        {% for value, label in statuses %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="button button-secondary">筛选</button>
+    <a class="button button-secondary" href="{% url 'registration_review_export' %}?status={{ status }}&amp;tournament={{ tournament_id }}">导出 CSV</a>
+  </form>
+
+  <form method="post" action="{% url 'registration_review_bulk' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <table class="listing">
+      <thead>
+        <tr>
+          <th></th>
+          <th>赛事</th>
+          <th>战队</th>
+          <th>人数</th>
+          <th>状态</th>
+          <th>名单版本</th>
+          <th>提交时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for registration in registrations %}
+          <tr>
+            <td><input type="checkbox" name="registration" value="{{ registration.pk }}"></td>
+            <td>{{ registration.tournament.title }}</td>
+            <td><a href="{% url 'registration_review_detail' registration.pk %}">{{ registration.team_name }}</a></td>
+            <td>{{ registration.members.count }}</td>
+            <td>{{ registration.get_status_display }}</td>
+            <td>{{ registration.roster_version }}</td>
+            <td>{{ registration.submitted_at }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">没有符合条件的报名。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p><button type="submit" class="button button-primary">批量通过所选</button></p>
+  </form>
+
+  {% if registrations.has_other_pages %}
+    <p>第 {{ registrations.number }} / {{ registrations.paginator.num_pages }} 页</p>
+  {% endif %}
+{% endblock %}

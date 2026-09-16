@@ -222,9 +222,53 @@ def _breadcrumbs(tournament):
     ]
 
 
+@hooks.register("register_log_actions")
+def register_export_log_action(actions):
+    from tournaments.review_admin import EXPORT_LOG_ACTION
+
+    actions.register_action(EXPORT_LOG_ACTION, "导出报名名单", "导出了报名名单")
+
+
+@hooks.register("register_community_menu_item")
+def register_review_menu_item():
+    return TournamentMenuItem(
+        "报名审核",
+        reverse("registration_review_index"),
+        icon_name="tasks",
+        order=160,
+    )
+
+
 @hooks.register("register_admin_urls")
 def register_tournament_admin_urls():
+    from tournaments import review_admin
+
     return [
+        path(
+            "registrations/",
+            review_admin.review_index,
+            name="registration_review_index",
+        ),
+        path(
+            "registrations/<int:pk>/",
+            review_admin.review_detail,
+            name="registration_review_detail",
+        ),
+        path(
+            "registrations/<int:pk>/action/",
+            review_admin.review_action,
+            name="registration_review_action",
+        ),
+        path(
+            "registrations/bulk-approve/",
+            review_admin.review_bulk_approve,
+            name="registration_review_bulk",
+        ),
+        path(
+            "registrations/export.csv",
+            review_admin.review_export,
+            name="registration_review_export",
+        ),
         path(
             "tournaments/<int:pk>/action/<str:action>/",
             tournament_action,

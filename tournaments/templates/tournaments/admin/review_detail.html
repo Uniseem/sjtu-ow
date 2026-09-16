@@ -1,0 +1,83 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}报名详情{% endblock %}
+
+{% block main_content %}
+  <dl>
+    <dt>赛事</dt><dd>{{ registration.tournament.title }}（{{ registration.tournament.get_review_mode_display }}）</dd>
+    <dt>战队</dt><dd>{{ registration.team_name }}</dd>
+    <dt>状态</dt><dd>{{ registration.get_status_display }}</dd>
+    <dt>名单版本</dt><dd>{{ registration.roster_version }}</dd>
+    <dt>提交时间</dt><dd>{{ registration.submitted_at }}</dd>
+    {% if registration.status_note %}<dt>最近备注</dt><dd>{{ registration.status_note }}</dd>{% endif %}
+  </dl>
+
+  <h2>名单快照</h2>
+  <table class="listing">
+    <thead>
+      <tr>
+        <th>昵称</th><th>游戏 ID</th><th>坦克</th><th>输出</th><th>支援</th><th>交大</th><th>队长</th>
+        {% if show_contacts %}<th>联系方式</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.member.nickname }}</td>
+          <td>{{ row.member.battletag }}</td>
+          <td>{{ row.member.rank_tank|default:"—" }}</td>
+          <td>{{ row.member.rank_damage|default:"—" }}</td>
+          <td>{{ row.member.rank_support|default:"—" }}</td>
+          <td>{% if row.member.is_sjtu %}是{% else %}否{% endif %}</td>
+          <td>{% if row.member.is_captain %}是{% else %}否{% endif %}</td>
+          {% if show_contacts %}<td>{{ row.contacts|join:"；"|default:"—" }}</td>{% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>名单与战队当前成员的差异</h2>
+  {% if added or removed %}
+    <ul>
+      {% for user in added %}<li>战队新增了 {{ user.nickname }}（不在名单里）</li>{% endfor %}
+      {% for member in removed %}<li>{{ member.nickname }} 已经不在战队里（仍在名单中）</li>{% endfor %}
+    </ul>
+  {% else %}
+    <p>名单和当前成员一致。</p>
+  {% endif %}
+
+  <h2>处理</h2>
+  {% if actions.approve or actions.reject or actions.revoke %}
+    <form method="post" action="{% url 'registration_review_action' registration.pk %}">
+      {% csrf_token %}
+      <label for="note">备注（驳回和撤销通过必填，会显示给队长）</label>
+      <input type="text" id="note" name="note" maxlength="300">
+      <p>
+        {% if actions.approve %}<button type="submit" name="action" value="approve" class="button button-primary">通过</button>{% endif %}
+        {% if actions.reject %}<button type="submit" name="action" value="reject" class="button serious">驳回</button>{% endif %}
+        {% if actions.revoke %}<button type="submit" name="action" value="revoke" class="button serious">撤销通过</button>{% endif %}
+      </p>
+    </form>
+  {% else %}
+    <p class="help-block">当前审核模式或状态下，本站不能改这条报名的状态。</p>
+  {% endif %}
+
+  <h2>状态日志</h2>
+  <table class="listing">
+    <thead><tr><th>时间</th><th>动作</th><th>变化</th><th>操作方</th><th>版本</th><th>备注</th></tr></thead>
+    <tbody>
+      {% for entry in logs %}
+        <tr>
+          <td>{{ entry.created_at }}</td>
+          <td>{{ entry.get_action_display }}</td>
+          <td>{{ entry.get_from_status_display|default:"—" }} → {{ entry.get_to_status_display }}</td>
+          <td>{{ entry.get_actor_type_display }}</td>
+          <td>{{ entry.roster_version }}</td>
+          <td>{{ entry.note|default:"—" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a class="button button-secondary" href="{% url 'registration_review_index' %}">返回列表</a></p>
+{% endblock %}
