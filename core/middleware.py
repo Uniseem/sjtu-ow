@@ -1,8 +1,10 @@
-"""Request-ID and Wagtail-admin CSP adjustments. These do not touch the database."""
+"""Request-ID, logged-in hint cookie, and Wagtail-admin CSP adjustments."""
 
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.utils.csp import CSP
+
+OW_LOGGED_IN_COOKIE = "ow_logged_in"
 
 ADMIN_CSP = {
     "default-src": [CSP.SELF],
@@ -40,4 +42,34 @@ class WagtailAdminCSPMiddleware:
         prefix = getattr(settings, "ADMIN_URL_PREFIX", "/admin/")
         if request.path.startswith(prefix):
             response._csp_config = ADMIN_CSP
+        return response
+
+
+class LoggedInHintCookieMiddleware:
+    """Set ``ow_logged_in=1`` for authenticated users (design 13.13.3).
+
+    The cookie has no identity data. Front-end prerender scripts read it, so it
+    is not HttpOnly. Max-age matches the session.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            response.set_cookie(
+                OW_LOGGED_IN_COOKIE,
+                "1",
+                max_age=settings.SESSION_COOKIE_AGE,
+                httponly=False,
+                samesite=settings.SESSION_COOKIE_SAMESITE,
+                secure=getattr(settings, "SESSION_COOKIE_SECURE", False),
+            )
+        elif request.COOKIES.get(OW_LOGGED_IN_COOKIE):
+            response.delete_cookie(
+                OW_LOGGED_IN_COOKIE,
+                samesite=settings.SESSION_COOKIE_SAMESITE,
+            )
         return response

@@ -1,0 +1,18 @@
+{% extends "account/layout.html" %}
+
+{% block head_title %}注册{% endblock %}
+
+{% block account_content %}
+  <h1>注册</h1>
+  <p class="mt-2 mb-6 text-base-content/80">
+    已经有账号？<a href="{{ login_url }}" class="link link-primary">登录</a>
+  </p>
+  <form method="post" action="{% url 'account_signup' %}" class="flex flex-col gap-4">
+    {% csrf_token %}
+    {% include "account/_form.html" %}
+    <p class="text-sm text-base-content/70">
+      用户协议和隐私政策内容由社团提供。两个同意必须分别勾选。
+    </p>
+    <button type="submit" class="btn btn-primary min-h-11 font-button">注册</button>
+  </form>
+{% endblock %}

@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "integrations",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
+    "wagtail.contrib.settings",
     "wagtail.embeds",
     "wagtail.sites",
     "wagtail.users",
@@ -45,6 +46,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "allauth",
+    "allauth.account",
     "django_htmx",
     "django_tailwind_cli",
     "django_tasks_db",
@@ -56,6 +59,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+    "core.middleware.LoggedInHintCookieMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
@@ -120,6 +125,11 @@ TASKS = {
 
 AUTH_USER_MODEL = "accounts.User"
 
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
@@ -170,9 +180,66 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost:8000")
 
-LOGIN_URL = "/accounts/login/"
+LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
+
+EMAIL_BACKEND = "core.mail.QueuedEmailBackend"
+EMAIL_DELIVERY_BACKEND = "core.mail.SiteSettingsEmailBackend"
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "noreply@localhost")
+
+# django-allauth 65.19.3 (official setting names for this series).
+# Match allauth's shipped migrations (integer AutoField PKs).
+ALLAUTH_DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+ALLAUTH_USER_CODE_FORMAT = {"length": 6, "numeric": True, "dashed": False}
+ACCOUNT_ADAPTER = "accounts.adapter.AccountAdapter"
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_USER_DISPLAY = "accounts.adapter.user_display"
+ACCOUNT_SIGNUP_FORM_CLASS = "accounts.forms.SignupExtraForm"
+ACCOUNT_FORMS = {
+    "login": "accounts.allauth_forms.LoginForm",
+    "signup": "accounts.allauth_forms.SignupForm",
+    "add_email": "accounts.allauth_forms.AddEmailForm",
+    "change_email": "accounts.allauth_forms.ChangeEmailForm",
+    "change_password": "accounts.allauth_forms.ChangePasswordForm",
+    "set_password": "accounts.allauth_forms.SetPasswordForm",
+    "reset_password": "accounts.allauth_forms.ResetPasswordForm",
+    "reset_password_from_key": "accounts.allauth_forms.ResetPasswordKeyForm",
+    "reauthenticate": "accounts.allauth_forms.ReauthenticateForm",
+    "confirm_email_verification_code": (
+        "accounts.allauth_forms.ConfirmEmailVerificationCodeForm"
+    ),
+    "confirm_password_reset_code": (
+        "accounts.allauth_forms.ConfirmPasswordResetCodeForm"
+    ),
+}
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_MAX_ATTEMPTS = 3
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_TIMEOUT = 15 * 60
+ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND = True
+ACCOUNT_PASSWORD_RESET_BY_CODE_ENABLED = True
+ACCOUNT_PASSWORD_RESET_BY_CODE_MAX_ATTEMPTS = 3
+ACCOUNT_PASSWORD_RESET_BY_CODE_TIMEOUT = 3 * 60
+ACCOUNT_CHANGE_EMAIL = True
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_PREVENT_ENUMERATION = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_SESSION_REMEMBER = True
+ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+ACCOUNT_RATE_LIMITS = {
+    "signup": "20/m/ip",
+    "login": "30/m/ip",
+    "login_failed": "10/m/ip,5/300s/key",
+    "reset_password": "20/m/ip,5/m/key",
+    "confirm_email": "1/10s/key",
+    "manage_email": "10/m/user",
+    "change_password": "5/m/user",
+    "reset_password_from_key": "20/m/ip",
+    "reauthenticate": "10/m/user",
+}
 
 SECURE_CSP = {
     "default-src": [CSP.SELF],
@@ -188,6 +255,7 @@ SECURE_CSP = {
 
 WAGTAIL_SITE_NAME = "上海交通大学守望先锋社区"
 WAGTAILADMIN_BASE_URL = SITE_URL
+WAGTAILADMIN_LOGIN_URL = "account_login"
 ADMIN_URL_PREFIX = "/admin/"
 WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
 WAGTAILSEARCH_BACKENDS = {
@@ -208,7 +276,7 @@ PRERENDER_ENABLED = env_bool("PRERENDER_ENABLED", False)
 PRERENDER_ROOT = Path(env("PRERENDER_ROOT", str(BASE_DIR / "prerendered")))
 
 # Placeholder until M5 / M2. Read here so production env is complete (design 16.3).
-FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", "")
+FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", "dev-insecure-field-encryption-key")
 MODERATION_API_KEY = env("MODERATION_API_KEY", "")
 MODERATION_BASE_URL = env("MODERATION_BASE_URL", "")
 SENTRY_DSN = env("SENTRY_DSN", "")

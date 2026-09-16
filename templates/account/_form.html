@@ -1,0 +1,5 @@
+{% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+{% for field in form.visible_fields %}
+  {% include "components/form_field.html" %}
+{% endfor %}
+{{ redirect_field }}

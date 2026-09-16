@@ -1,0 +1,14 @@
+{% extends "account/layout.html" %}
+
+{% block head_title %}退出登录{% endblock %}
+
+{% block account_content %}
+  <h1>退出登录</h1>
+  <p class="mt-2 mb-6">确定要退出当前账号吗？</p>
+  <form method="post" action="{% url 'account_logout' %}" class="flex flex-col gap-4">
+    {% csrf_token %}
+    {{ redirect_field }}
+    <button type="submit" class="btn btn-primary min-h-11 font-button">退出</button>
+    <a href="{% url 'home' %}" class="btn btn-ghost min-h-11 font-button">取消</a>
+  </form>
+{% endblock %}

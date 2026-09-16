@@ -5,6 +5,7 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 urlpatterns = [
     path("admin/", include(wagtailadmin_urls)),
+    path("accounts/", include("allauth.urls")),
     path("documents/", include(wagtaildocs_urls)),
     path("", include("core.urls")),
     path("", include(wagtail_urls)),

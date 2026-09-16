@@ -1,10 +1,15 @@
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 
 from core.health import run_health_checks
+from core.mail import SMTPNotConfigured, send_test_email
+from core.models import SiteSettings
 
 
 @require_GET
@@ -48,3 +53,24 @@ def server_error(request):
 
 def too_many_requests(request, retry_after=None):
     return _error_response("errors/429.html", 429, {"retry_after": retry_after})
+
+
+@require_POST
+def send_site_test_email(request):
+    """Send a synchronous test message to the current admin (design 3.6)."""
+    if not request.user.has_perm("core.change_sitesettings"):
+        raise PermissionDenied
+    settings_obj = SiteSettings.load(request)
+    try:
+        send_test_email(request.user.email)
+        messages.success(request, f"测试邮件已发送到 {request.user.email}。")
+    except SMTPNotConfigured as exc:
+        messages.error(request, str(exc))
+    except Exception as exc:  # noqa: BLE001 — show the SMTP error in the admin
+        messages.error(request, f"发送失败：{exc}")
+    return redirect(
+        reverse(
+            "wagtailsettings:edit",
+            args=["core", "sitesettings", settings_obj.pk],
+        )
+    )

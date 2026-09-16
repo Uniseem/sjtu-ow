@@ -13,6 +13,8 @@ dependencies = [
     "django-htmx>=1.23",
     "gunicorn>=23",
     "argon2-cffi>=23",
+    "django-allauth>=65.0,<66",
+    "cryptography>=44",
 ]
 
 [dependency-groups]

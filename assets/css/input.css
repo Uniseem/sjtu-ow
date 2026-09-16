@@ -86,3 +86,24 @@ h6 {
 .htmx-request.htmx-indicator {
   display: inline;
 }
+
+.form-control input[type="text"],
+.form-control input[type="email"],
+.form-control input[type="password"],
+.form-control input[type="number"],
+.form-control textarea,
+.form-control select {
+  @apply input w-full min-h-11;
+}
+
+.form-control input[type="checkbox"] {
+  @apply checkbox;
+}
+
+.form-control input[type="radio"] {
+  @apply radio;
+}
+
+.form-control ul {
+  @apply flex flex-col gap-2;
+}

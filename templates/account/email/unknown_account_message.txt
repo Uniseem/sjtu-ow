@@ -1,0 +1,5 @@
+{% extends "account/email/base_message.txt" %}
+
+{% block content %}有人使用这个邮箱请求了上海交通大学守望先锋社区的账号操作，但本站没有对应账号。
+
+如果你没有进行过这个操作，可以忽略这封邮件。若要注册，请打开：{{ signup_url }}{% endblock %}

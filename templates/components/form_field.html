@@ -1,12 +1,40 @@
-<div class="form-control w-full">
-  <label class="label" for="{{ field.id_for_label }}">
-    <span class="label-text">{{ field.label }}{% if field.field.required %} <span class="text-error">*</span>{% endif %}</span>
-  </label>
-  {{ field }}
-  {% if field.help_text %}
-    <p class="label-text-alt mt-1">{{ field.help_text }}</p>
-  {% endif %}
-  {% if field.errors %}
-    <p class="text-error mt-1" role="alert">{{ field.errors.0 }}</p>
-  {% endif %}
-</div>
+{% if field.field.widget.input_type == "checkbox" %}
+  <div class="form-control w-full">
+    <label class="label cursor-pointer justify-start gap-3 min-h-11" for="{{ field.id_for_label }}">
+      {{ field }}
+      <span class="label-text">{{ field.label }}{% if field.field.required %} <span class="text-error">*</span>{% endif %}</span>
+    </label>
+    {% if field.help_text %}
+      <p class="label-text-alt mt-1">{{ field.help_text }}</p>
+    {% endif %}
+    {% if field.errors %}
+      <p class="text-error mt-1" role="alert">{{ field.errors.0 }}</p>
+    {% endif %}
+  </div>
+{% elif field.field.widget.input_type == "radio" %}
+  <fieldset class="form-control w-full">
+    <legend class="label">
+      <span class="label-text">{{ field.label }}{% if field.field.required %} <span class="text-error">*</span>{% endif %}</span>
+    </legend>
+    <div class="flex flex-col gap-2">{{ field }}</div>
+    {% if field.help_text %}
+      <p class="label-text-alt mt-1">{{ field.help_text }}</p>
+    {% endif %}
+    {% if field.errors %}
+      <p class="text-error mt-1" role="alert">{{ field.errors.0 }}</p>
+    {% endif %}
+  </fieldset>
+{% else %}
+  <div class="form-control w-full">
+    <label class="label" for="{{ field.id_for_label }}">
+      <span class="label-text">{{ field.label }}{% if field.field.required %} <span class="text-error">*</span>{% endif %}</span>
+    </label>
+    {{ field }}
+    {% if field.help_text %}
+      <p class="label-text-alt mt-1">{{ field.help_text }}</p>
+    {% endif %}
+    {% if field.errors %}
+      <p class="text-error mt-1" role="alert">{{ field.errors.0 }}</p>
+    {% endif %}
+  </div>
+{% endif %}

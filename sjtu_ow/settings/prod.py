@@ -20,7 +20,8 @@ FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", required=True)
 
 PRERENDER_ENABLED = env_bool("PRERENDER_ENABLED", True)
 
-EMAIL_BACKEND = "core.mail.DiscardLogEmailBackend"
+EMAIL_BACKEND = "core.mail.QueuedEmailBackend"
+EMAIL_DELIVERY_BACKEND = "core.mail.SiteSettingsEmailBackend"
 
 LOGGING = {
     "version": 1,
@@ -53,6 +54,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+    "core.middleware.LoggedInHintCookieMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",

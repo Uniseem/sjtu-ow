@@ -1,0 +1,7 @@
+{% extends "account/email/base_message.txt" %}
+
+{% block content %}你正在上海交通大学守望先锋社区注册或验证邮箱。
+
+验证码：{{ code }}
+
+如果这不是你本人的操作，请忽略这封邮件。{% endblock %}

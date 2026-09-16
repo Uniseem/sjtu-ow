@@ -3,16 +3,26 @@
 from __future__ import annotations
 
 import shutil
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import connection, transaction
+from django.db.models import Q
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from core.models import HealthProbe
 
 HEALTH_PROBE_BUSY_TIMEOUT_MS = 200
 BUSY_DETAIL = "busy: another write in progress"
 _BUSY_MARKERS = ("database is locked", "database is busy")
+
+WORKER_HEARTBEAT_CACHE_KEY = "sjtu_ow:worker_heartbeat"
+WORKER_HEARTBEAT_INTERVAL_SECONDS = 30
+WORKER_HEARTBEAT_STALE_SECONDS = 120
+TASK_BACKLOG_STALE_SECONDS = 600
 
 
 class _ProbeRollback(Exception):
@@ -94,32 +104,62 @@ def check_disk(path: Path | None = None) -> tuple[bool, str]:
     return True, f"free space {free_ratio:.1%}"
 
 
-def check_worker_heartbeat() -> tuple[bool, str]:
-    """Worker liveness.
+def _parse_heartbeat(raw: object) -> datetime | None:
+    if isinstance(raw, datetime):
+        stamp = raw
+    elif isinstance(raw, str):
+        stamp = parse_datetime(raw)
+        if stamp is None:
+            try:
+                stamp = datetime.fromisoformat(raw)
+            except ValueError:
+                return None
+    else:
+        return None
+    if timezone.is_naive(stamp):
+        stamp = timezone.make_aware(stamp, timezone.get_current_timezone())
+    return stamp
 
-    M1 will have the worker write a cache key every 30 seconds. This check
-    will then fail the overall /healthz response if the key is older than
-    2 minutes. Not included in the 200/503 decision in M0.
-    """
-    return True, "skipped_until_m1"
+
+def check_worker_heartbeat() -> tuple[bool, str]:
+    """Fail when the worker has not written a heartbeat in two minutes."""
+    raw = cache.get(WORKER_HEARTBEAT_CACHE_KEY)
+    if not raw:
+        return False, "心跳缺失"
+    stamp = _parse_heartbeat(raw)
+    if stamp is None:
+        return False, "心跳无效"
+    age = (timezone.now() - stamp).total_seconds()
+    if age > WORKER_HEARTBEAT_STALE_SECONDS:
+        return False, f"心跳过期（{int(age)} 秒未更新）"
+    return True, f"ok ({int(age)}s ago)"
 
 
 def check_task_backlog() -> tuple[bool, str]:
-    """Queued-task backlog.
+    """Fail when a READY task has been waiting more than 10 minutes."""
+    from django_tasks.base import TaskResultStatus
+    from django_tasks_db.models import DBTaskResult, get_date_max
 
-    M1 will fail /healthz when any task has been waiting more than 10 minutes.
-    Not included in the 200/503 decision in M0.
-    """
-    return True, "skipped_until_m1"
+    now = timezone.now()
+    cutoff = now - timedelta(seconds=TASK_BACKLOG_STALE_SECONDS)
+    date_max = get_date_max()
+    waiting = DBTaskResult.objects.filter(
+        status=TaskResultStatus.READY,
+        enqueued_at__lte=cutoff,
+    ).filter(Q(run_after=date_max) | Q(run_after__lte=now))
+    count = waiting.count()
+    if count:
+        return False, f"{count} 个任务等待超过 10 分钟"
+    return True, "ok"
 
 
 def run_health_checks() -> dict:
-    """Run M0 checks that affect the HTTP status, plus M1 placeholders."""
+    """Run checks that affect the HTTP status (database, disk, worker, backlog)."""
     database_ok, database_detail = check_database()
     disk_ok, disk_detail = check_disk()
     heartbeat_ok, heartbeat_detail = check_worker_heartbeat()
     backlog_ok, backlog_detail = check_task_backlog()
-    blocking_ok = database_ok and disk_ok
+    blocking_ok = database_ok and disk_ok and heartbeat_ok and backlog_ok
     return {
         "status": "ok" if blocking_ok else "error",
         "ok": blocking_ok,
@@ -129,12 +169,12 @@ def run_health_checks() -> dict:
             "worker_heartbeat": {
                 "ok": heartbeat_ok,
                 "detail": heartbeat_detail,
-                "affects_status": False,
+                "affects_status": True,
             },
             "task_backlog": {
                 "ok": backlog_ok,
                 "detail": backlog_detail,
-                "affects_status": False,
+                "affects_status": True,
             },
         },
     }

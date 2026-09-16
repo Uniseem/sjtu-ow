@@ -1,0 +1,40 @@
+{% extends "account/layout.html" %}
+
+{% block head_title %}修改邮箱{% endblock %}
+
+{% block account_content %}
+  <h1>修改邮箱</h1>
+  {% if not emailaddresses %}
+    {% include "account/snippets/warn_no_email.html" %}
+  {% endif %}
+  {% if current_emailaddress %}
+    <div class="form-control w-full mt-6">
+      <label class="label" for="current_email">
+        <span class="label-text">当前邮箱</span>
+      </label>
+      <input id="current_email" type="email" class="input w-full min-h-11" value="{{ current_emailaddress.email }}" disabled>
+    </div>
+  {% endif %}
+  {% if new_emailaddress %}
+    <div class="form-control w-full mt-4">
+      <label class="label" for="new_email">
+        <span class="label-text">{% if current_emailaddress %}正在改为{% else %}当前邮箱{% endif %}</span>
+      </label>
+      <input id="new_email" type="email" class="input w-full min-h-11" value="{{ new_emailaddress.email }}" disabled>
+      <p class="label-text-alt mt-1">新邮箱尚未验证。验证通过后才会替换。</p>
+    </div>
+    <form method="post" action="{% url 'account_email' %}" id="pending-email" class="mt-2 flex flex-wrap gap-2">
+      {% csrf_token %}
+      <input type="hidden" name="email" value="{{ new_emailaddress.email }}">
+      <button type="submit" name="action_send" class="btn btn-ghost min-h-11 font-button">重发验证码</button>
+      {% if current_emailaddress %}
+        <button type="submit" name="action_remove" class="btn btn-ghost min-h-11 font-button">取消修改</button>
+      {% endif %}
+    </form>
+  {% endif %}
+  <form method="post" action="{% url 'account_email' %}" class="mt-6 flex flex-col gap-4">
+    {% csrf_token %}
+    {% include "account/_form.html" %}
+    <button type="submit" name="action_add" class="btn btn-primary min-h-11 font-button">更换邮箱</button>
+  </form>
+{% endblock %}

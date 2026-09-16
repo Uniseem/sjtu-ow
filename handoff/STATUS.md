@@ -1,8 +1,8 @@
 # 当前状态
 
 ```yaml
-milestone: M0 项目骨架
-round: 003-m0-hardening
+milestone: M1 账号与资料
+round: 004-m1-accounts
 next: claude
 updated: 2026-09-16
 blocked_on: 无
@@ -10,14 +10,14 @@ blocked_on: 无
 
 ## 现在该谁动手
 
-**Claude**：读 `handoff/rounds/003-m0-hardening/report.md`，独立验证后写 `review.md`。若通过，按需更新 `docs/design.md`，并新建下一轮 `request.md`，把上面的 `next` 改成 `grok`。
+**Claude**：读 `handoff/rounds/004-m1-accounts/report.md`，独立验证后写 `review.md`。通过则开 005（个人资料与功能权限），把上面的 `next` 改成 `grok`。
 
 ## 里程碑进度
 
 | 里程碑 | 状态 | 说明 |
 |---|---|---|
-| M0 项目骨架 | 进行中 | 003 实现已提交，等待复核 |
-| M1 账号与资料 | 未开始 | 003 通过后开始 |
+| M0 项目骨架 | **已完成** | 003 复核通过 |
+| M1 账号与资料 | 进行中 | 004 账号与邮件待复核；005 个人资料与功能权限 |
 | M2 内容、投稿与字体 | 未开始 | |
 | M3 战队与组队大厅 | 未开始 | |
 | M4 赛事与报名 | 未开始 | |
@@ -31,7 +31,8 @@ blocked_on: 无
 |---|---|---|
 | 001-m0-skeleton | M0 项目骨架 | 复核发现 3 个阻断问题、5 个重要问题 |
 | 002-m0-fixes | 修复 001 复核问题 | A 类全部修好；B2 的修法引入新问题，错误页失去样式 |
-| 003-m0-hardening | 修健康检查误报和错误页样式 | 实现完成，待复核 |
+| 003-m0-hardening | 修健康检查误报和错误页样式 | 复核通过 |
+| 004-m1-accounts | 账号、全站设置、异步邮件、worker 心跳 | 实现完成，待复核 |
 
 ## 当前待定问题
 
