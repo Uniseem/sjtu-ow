@@ -353,3 +353,70 @@ def test_unicode_paths_are_allowed(prerender_root, site_tree):
     assert prerender.looks_prerenderable("/news/../etc/") is False
     assert prerender.looks_prerenderable("/news//x/") is False
     assert prerender.looks_prerenderable("/news/\x00/") is False
+
+
+# --- the three safety gates (design 13.13.4, 15.2) -----------------------------
+
+
+@pytest.mark.django_db
+def test_a_response_that_sets_a_cookie_is_never_frozen(prerender_root, monkeypatch):
+    """Design 15.2: a prerendered page carries no personal data.
+
+    A response that sets a cookie is personalised by definition, and freezing
+    it would serve one visitor's cookie to everyone. Round 039 found this
+    gate had no test: removing it turned nothing red, because the pages the
+    other tests render happen not to set cookies.
+    """
+    from django.http import HttpResponse
+    from django.test import Client
+
+    def cookie_page(self, path, **kwargs):
+        response = HttpResponse("<html><body>看起来很普通</body></html>")
+        response["Content-Type"] = "text/html; charset=utf-8"
+        response.set_cookie("sessionid", "somebody-elses-session")
+        return response
+
+    monkeypatch.setattr(Client, "get", cookie_page)
+
+    with pytest.raises(prerender.PrerenderError) as caught:
+        prerender.render_html("/")
+
+    assert "Cookie" in str(caught.value)
+    assert "sessionid" in str(caught.value)
+
+
+@pytest.mark.django_db
+def test_a_page_leaking_a_secret_marker_is_never_frozen(prerender_root, monkeypatch):
+    """The second gate: the body must not contain anything personal."""
+    from django.http import HttpResponse
+    from django.test import Client
+
+    marker = sorted(prerender.SECRET_MARKERS)[0]
+
+    def leaky_page(self, path, **kwargs):
+        response = HttpResponse(f"<html><body>{marker}</body></html>")
+        response["Content-Type"] = "text/html; charset=utf-8"
+        return response
+
+    monkeypatch.setattr(Client, "get", leaky_page)
+
+    with pytest.raises(prerender.PrerenderError):
+        prerender.render_html("/")
+
+
+@pytest.mark.django_db
+def test_a_clean_public_page_is_frozen(prerender_root, monkeypatch):
+    """The gates must not refuse an ordinary page — or they would be useless."""
+    from django.http import HttpResponse
+    from django.test import Client
+
+    def plain_page(self, path, **kwargs):
+        response = HttpResponse("<html><body>公开内容</body></html>")
+        response["Content-Type"] = "text/html; charset=utf-8"
+        return response
+
+    monkeypatch.setattr(Client, "get", plain_page)
+
+    html = prerender.render_html("/")
+
+    assert "公开内容" in html.decode()
