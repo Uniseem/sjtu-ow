@@ -170,6 +170,49 @@ def test_no_n_plus_one_on_the_scrim_detail_signups(client):
     assert_no_n_plus_one(client, f"/scrims/{scrim.pk}/", seed)
 
 
+@pytest.mark.django_db
+def test_no_n_plus_one_on_a_tournament_detail_page(client):
+    """Design 15.1 assumes up to 200 teams in one tournament.
+
+    The list page was covered; the detail page was not, and it counted each
+    team's roster inside the loop — 200 teams meant 200 extra queries.
+    """
+    from teams import services as team_services
+    from tournaments.models import (
+        Registration,
+        RegistrationStatus,
+        Tournament,
+        TournamentStatus,
+    )
+
+    now = timezone.now()
+    tournament = Tournament.objects.create(
+        title="N+1 详情页",
+        registration_opens_at=now - timedelta(days=1),
+        registration_closes_at=now + timedelta(days=7),
+        status=TournamentStatus.PUBLISHED,
+        published_at=now,
+    )
+
+    def seed(count):
+        start = User.objects.count()
+        for index in range(count):
+            captain = make_user(start + index)
+            team = team_services.create_team(
+                user=captain, name=f"N1战队{start + index}"
+            )
+            Registration.objects.create(
+                tournament=tournament,
+                team=team,
+                team_name=team.name,
+                status=RegistrationStatus.APPROVED,
+                submitted_by=captain,
+                submitted_at=now,
+            )
+
+    assert_no_n_plus_one(client, f"/tournaments/{tournament.pk}/", seed)
+
+
 # --- 15.1 homepage weight ------------------------------------------------------
 
 

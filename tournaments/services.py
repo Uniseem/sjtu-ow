@@ -69,24 +69,30 @@ def active_registration_captains(tournament):
 
 
 def approved_teams(tournament):
-    """Approved teams and their size, for the public page (design 8.2)."""
+    """Approved teams and their size, for the public page (design 8.2).
+
+    The count is annotated rather than asked per row: design 15.1 assumes up
+    to 200 teams in one tournament, and counting inside the loop made this
+    page issue one query per team.
+    """
+    from django.db.models import Count
+
     from tournaments.models import RegistrationStatus
 
-    entries = []
     registrations = (
         tournament.registrations.filter(status=RegistrationStatus.APPROVED)
         .select_related("team")
+        .annotate(roster_size=Count("members"))
         .order_by("submitted_at")
     )
-    for registration in registrations:
-        entries.append(
-            {
-                "team": registration.team,
-                "team_name": registration.team_name,
-                "member_count": registration.members.count(),
-            }
-        )
-    return entries
+    return [
+        {
+            "team": registration.team,
+            "team_name": registration.team_name,
+            "member_count": registration.roster_size,
+        }
+        for registration in registrations
+    ]
 
 
 def roster_min_warning(tournament) -> str:
