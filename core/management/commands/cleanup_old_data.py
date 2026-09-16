@@ -11,6 +11,9 @@ from django.utils import timezone
 API_LOG_DAYS = 90
 WEBHOOK_DAYS = 180
 TASK_DAYS = 30
+# Design 15.5: handled moderation records live 180 days. Records nobody has
+# looked at are kept forever, however old they are.
+MODERATION_DAYS = 180
 
 
 class Command(BaseCommand):
@@ -59,6 +62,31 @@ class Command(BaseCommand):
             ).exclude(status=DeliveryStatus.PENDING),
         )
         yield (f"已完成的任务记录（{TASK_DAYS} 天前）", self.finished_tasks(now))
+        yield (
+            f"已处理的 AI 审核记录（{MODERATION_DAYS} 天前）",
+            self.handled_moderation(now),
+        )
+
+    @staticmethod
+    def handled_moderation(now):
+        """Design 15.5: only records a human has ruled on, and only old ones.
+
+        "Handled" means the status moved off ``pending`` — ok, handled and
+        ignored all mean somebody looked. The clock starts when they did;
+        older rows may predate ``reviewed_at``, so fall back to creation.
+        """
+        from django.db.models import Q
+        from django.utils import timezone as tz
+
+        from moderation.models import ModerationItem
+
+        cutoff = now - tz.timedelta(days=MODERATION_DAYS)
+        return ModerationItem.objects.exclude(
+            status=ModerationItem.Status.PENDING
+        ).filter(
+            Q(reviewed_at__lt=cutoff)
+            | Q(reviewed_at__isnull=True, created_at__lt=cutoff)
+        )
 
     @staticmethod
     def finished_tasks(now):

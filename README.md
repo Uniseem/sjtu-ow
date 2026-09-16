@@ -273,7 +273,7 @@ uv run python manage.py cleanup_old_data --dry-run   # 只统计
 uv run python manage.py cleanup_old_data
 ```
 
-API 调用日志 90 天、Webhook 投递记录 180 天（待投递的不删）、已完成任务记录 30 天、过期会话。宿主机 cron 的完整示例见 `deploy/crontab.example`。
+API 调用日志 90 天、Webhook 投递记录 180 天（待投递的不删）、已完成任务记录 30 天、过期会话，以及**已处理的** AI 审核记录 180 天——`pending`（还没人复核过）的审核记录**一条都不删，不管多久以前**（设计 15.5）。宿主机 cron 的完整示例见 `deploy/crontab.example`。
 
 ### 业务接口
 

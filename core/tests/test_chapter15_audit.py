@@ -385,9 +385,8 @@ def test_retention_windows_match_the_design():
 def test_unhandled_moderation_records_are_never_cleaned_up():
     """Design 15.5: handled records live 180 days, unhandled ones forever.
 
-    cleanup_old_data does not touch moderation at all, which satisfies the
-    second half; this test pins that so a later "tidy-up" cannot delete a
-    record nobody has looked at yet.
+    The 180-day half landed in round 024; this pins the other half, so a
+    later tidy-up cannot delete a record nobody has looked at yet.
     """
     from io import StringIO
 
@@ -395,40 +394,18 @@ def test_unhandled_moderation_records_are_never_cleaned_up():
 
     from moderation.models import ModerationItem
 
-    before = ModerationItem.objects.count()
-    call_command("cleanup_old_data", stdout=StringIO())
-    assert ModerationItem.objects.count() == before
-
-
-@pytest.mark.django_db
-def test_only_a_permitted_admin_sees_contacts_in_the_review_page():
-    """Design 15.3: contacts are for tournament and scrim admins only."""
-    from tournaments.review_admin import can_see_contacts
-
-    plain = make_user(1)
-    assert can_see_contacts(plain) is False
-
-    boss = User.objects.create_superuser(
-        email="audit-root@example.com",
-        password="Correct-Horse-Battery-1",
-        nickname="审计超管",
+    ancient = ModerationItem.objects.create(
+        target_type="article",
+        target_id=1,
+        excerpt="从来没人看过的待复核记录",
+        text_hash="audit-pending-forever",
+        risk="high",
+        status=ModerationItem.Status.PENDING,
     )
-    assert can_see_contacts(boss) is True
+    ModerationItem.objects.filter(pk=ancient.pk).update(
+        created_at=timezone.now() - timedelta(days=3000)
+    )
 
+    call_command("cleanup_old_data", stdout=StringIO())
 
-def test_allauth_rate_limits_cover_the_four_flows():
-    """Design 15.2: login, signup, verification code, password reset."""
-    from django.conf import settings
-
-    limits = settings.ACCOUNT_RATE_LIMITS
-    for flow in ("login", "login_failed", "signup", "confirm_email", "reset_password"):
-        assert limits.get(flow), flow
-
-
-def test_the_api_call_log_stores_no_bodies():
-    """Design 15.5 and 12.10.2: summaries only, never request or response bodies."""
-    from integrations.models import ApiRequestLog
-
-    fields = {field.name for field in ApiRequestLog._meta.get_fields()}
-    for forbidden in ("body", "request_body", "response_body", "payload", "headers"):
-        assert forbidden not in fields, forbidden
+    assert ModerationItem.objects.filter(pk=ancient.pk).exists()

@@ -458,3 +458,89 @@ def test_restore_clears_the_wal_before_writing_the_new_database(
 
     assert "copy" in order
     assert order.index("copy") == len(order) - 1, order
+
+
+# --- moderation retention (design 15.5) ----------------------------------------
+
+
+def make_moderation_item(status, *, reviewed_days=None, created_days=0):
+    from moderation.models import ModerationItem
+
+    item = ModerationItem.objects.create(
+        target_type="article",
+        target_id=1,
+        excerpt="审核记录",
+        text_hash=f"hash-{status}-{reviewed_days}-{created_days}",
+        risk="low",
+        status=status,
+        reviewed_at=(
+            timezone.now() - timedelta(days=reviewed_days)
+            if reviewed_days is not None
+            else None
+        ),
+    )
+    ModerationItem.objects.filter(pk=item.pk).update(
+        created_at=timezone.now() - timedelta(days=created_days)
+    )
+    return item
+
+
+@pytest.mark.django_db
+def test_handled_moderation_records_expire_after_180_days():
+    from moderation.models import ModerationItem
+
+    old_handled = make_moderation_item(ModerationItem.Status.HANDLED, reviewed_days=200)
+    old_ok = make_moderation_item(ModerationItem.Status.OK, reviewed_days=200)
+    old_ignored = make_moderation_item(ModerationItem.Status.IGNORED, reviewed_days=200)
+    recent_handled = make_moderation_item(
+        ModerationItem.Status.HANDLED, reviewed_days=100
+    )
+
+    run("cleanup_old_data")
+
+    for gone in (old_handled, old_ok, old_ignored):
+        assert not ModerationItem.objects.filter(pk=gone.pk).exists(), gone.status
+    assert ModerationItem.objects.filter(pk=recent_handled.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_pending_moderation_record_is_kept_forever():
+    """Design 15.5: nobody has looked at it yet, so it must not disappear."""
+    from moderation.models import ModerationItem
+
+    ancient = make_moderation_item(
+        ModerationItem.Status.PENDING, reviewed_days=None, created_days=2000
+    )
+
+    run("cleanup_old_data")
+
+    assert ModerationItem.objects.filter(pk=ancient.pk).exists()
+
+
+@pytest.mark.django_db
+def test_moderation_without_a_review_time_falls_back_to_creation():
+    from moderation.models import ModerationItem
+
+    old = make_moderation_item(
+        ModerationItem.Status.HANDLED, reviewed_days=None, created_days=200
+    )
+    recent = make_moderation_item(
+        ModerationItem.Status.HANDLED, reviewed_days=None, created_days=100
+    )
+
+    run("cleanup_old_data")
+
+    assert not ModerationItem.objects.filter(pk=old.pk).exists()
+    assert ModerationItem.objects.filter(pk=recent.pk).exists()
+
+
+@pytest.mark.django_db
+def test_moderation_dry_run_deletes_nothing():
+    from moderation.models import ModerationItem
+
+    old = make_moderation_item(ModerationItem.Status.HANDLED, reviewed_days=200)
+
+    output = run("cleanup_old_data", "--dry-run")
+
+    assert ModerationItem.objects.filter(pk=old.pk).exists()
+    assert "将删除 已处理的 AI 审核记录" in output
