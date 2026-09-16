@@ -1,0 +1,15 @@
+{% extends "me/base.html" %}
+
+{% block me_title %}账号安全{% endblock %}
+{% block me_heading %}账号安全{% endblock %}
+
+{% block me_content %}
+  <ul class="flex max-w-md flex-col gap-3">
+    <li>
+      <a href="{{ password_url }}" class="btn btn-primary min-h-11 font-button w-full sm:w-auto">修改密码</a>
+    </li>
+    <li>
+      <a href="{{ email_url }}" class="btn btn-outline min-h-11 font-button w-full sm:w-auto">修改邮箱</a>
+    </li>
+  </ul>
+{% endblock %}

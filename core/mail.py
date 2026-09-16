@@ -158,11 +158,9 @@ def _apply_allowlist(message: EmailMessage) -> bool:
 
 
 def build_smtp_backend(site) -> SMTPEmailBackend:
-    from core.crypto import decrypt_value
-
     if not site or not site.smtp_host or not site.from_address:
         raise SMTPNotConfigured
-    password = decrypt_value(site.smtp_password) if site.smtp_password else None
+    password = site.smtp_password or None
     use_ssl = site.smtp_security == site.SmtpSecurity.SSL
     use_tls = site.smtp_security == site.SmtpSecurity.STARTTLS
     return SMTPEmailBackend(

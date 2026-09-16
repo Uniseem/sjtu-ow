@@ -1,6 +1,6 @@
 # 上海交通大学守望先锋社区网站
 
-Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.3）。当前里程碑是 **M1 账号与资料**（本轮完成账号、全站设置与异步邮件；个人资料与功能权限在下一轮）。
+Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.3）。当前里程碑是 **M1 账号与资料**（账号、个人中心、游戏 ID、联系方式、功能权限、全站设置与异步邮件）。
 
 ## 技术栈
 
@@ -115,7 +115,7 @@ docker compose -p sjtu-ow-test -f deploy/docker-compose.yml --env-file .env.test
 
 停掉 `web` 后，Caddy 对会打到后端的请求返回维护页；已经生成的预渲染公开页面仍可访问。
 
-`init_site` 目前创建「交大用户」「校外用户」两个组；其余角色、页面树和字体在后续里程碑写入，命令可重复执行：
+`init_site` 创建全部预置用户组（交大用户、校外用户、内容编辑、赛事管理员、内战管理员、认证作者、投稿者），并为后台角色分配进入 Wagtail 的权限、为赛事/内战管理员分配查看联系方式的权限。页面树、字体和其余业务权限在后续里程碑写入。命令可重复执行，不会改写已有成员关系：
 
 ```bash
 uv run python manage.py init_site

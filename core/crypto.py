@@ -35,4 +35,24 @@ def decrypt_value(ciphertext: str) -> str:
     try:
         return _fernet().decrypt(ciphertext.encode("ascii")).decode("utf-8")
     except (InvalidToken, ValueError) as exc:
-        raise ValueError("Stored secret could not be decrypted.") from exc
+        raise ValueError(
+            "Stored secret is not valid ciphertext for FIELD_ENCRYPTION_KEY. "
+            "If this was saved as plaintext before encryption was enforced, "
+            "save the SiteSettings row again to encrypt it."
+        ) from exc
+
+
+def looks_like_fernet(value: str) -> bool:
+    """True when value has the usual Fernet urlsafe-base64 prefix."""
+    return bool(value) and value.startswith("gAAAAA")
+
+
+def is_fernet_token(value: str) -> bool:
+    """True when value decrypts with the current key."""
+    if not value:
+        return False
+    try:
+        decrypt_value(value)
+    except ValueError:
+        return False
+    return True

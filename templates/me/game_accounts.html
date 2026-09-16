@@ -1,0 +1,123 @@
+{% extends "me/base.html" %}
+
+{% block me_title %}游戏 ID 与段位{% endblock %}
+{% block me_heading %}游戏 ID 与段位{% endblock %}
+
+{% block me_content %}
+  {% partialdef form_body %}
+    <form
+      method="post"
+      action="{{ form_action|default:request.path }}"
+      class="flex flex-col gap-4"
+      hx-post="{{ form_action|default:request.path }}"
+      {% if account %}
+        hx-target="#game-account-{{ account.pk }}"
+        hx-swap="outerHTML"
+      {% else %}
+        hx-target="#game-account-list"
+        hx-swap="outerHTML"
+      {% endif %}
+    >
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
+      {% endif %}
+      {% include "account/_form.html" %}
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary min-h-11 font-button">保存</button>
+        <a
+          href="{% url 'me_game_accounts' %}"
+          class="btn btn-ghost min-h-11 font-button"
+          hx-get="{% url 'me_game_accounts' %}"
+          hx-target="#game-account-list"
+          hx-swap="outerHTML"
+        >取消</a>
+      </div>
+    </form>
+  {% endpartialdef %}
+
+  {% partialdef card %}
+    <article id="game-account-{{ account.pk }}" class="card bg-base-200">
+      <div class="card-body gap-4">
+        {% if editing and editing.pk == account.pk %}
+          {% partial form_body %}
+        {% else %}
+          <h2 class="card-title font-code">{{ account.battletag }}</h2>
+          <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <dt class="text-sm text-base-content/70">坦克</dt>
+              <dd>{% include "components/rank_badge.html" with label=account.tank_label %}</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-base-content/70">输出</dt>
+              <dd>{% include "components/rank_badge.html" with label=account.damage_label %}</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-base-content/70">支援</dt>
+              <dd>{% include "components/rank_badge.html" with label=account.support_label %}</dd>
+            </div>
+          </dl>
+          <p class="text-sm text-base-content/70">段位更新于 {{ account.ranks_updated_at|timesince }}前</p>
+          <div class="card-actions">
+            <a
+              href="{% url 'me_game_account_edit' account.pk %}"
+              class="btn btn-outline btn-sm min-h-11 font-button"
+              hx-get="{% url 'me_game_account_edit' account.pk %}"
+              hx-target="#game-account-{{ account.pk }}"
+              hx-swap="outerHTML"
+            >编辑</a>
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm min-h-11 font-button"
+              hx-post="{% url 'me_game_account_delete' account.pk %}"
+              hx-target="#game-account-list"
+              hx-swap="outerHTML"
+              hx-confirm="确定删除这个游戏 ID？"
+            >删除</button>
+          </div>
+        {% endif %}
+      </div>
+    </article>
+  {% endpartialdef %}
+
+  {% partialdef account_list inline %}
+    {% include "me/_htmx_oob.html" %}
+    <div id="game-account-list" class="flex flex-col gap-4">
+      {% for account in accounts %}
+        {% partial card %}
+      {% empty %}
+        {% include "components/empty_state.html" with title="还没有游戏 ID" message="至少绑定 1 个游戏 ID 后才能报名赛事和内战。" %}
+      {% endfor %}
+      <div id="create-game-account">
+        {% if form and not editing %}
+          {% partial form_body %}
+        {% endif %}
+      </div>
+      {% if at_limit %}
+        <p class="text-base-content/70">每人最多绑定 {{ max_game_accounts }} 个游戏 ID。</p>
+      {% else %}
+        <a
+          href="{% url 'me_game_accounts' %}?new=1"
+          class="btn btn-primary min-h-11 font-button w-full sm:w-auto"
+          hx-get="{% url 'me_game_accounts' %}?new=1"
+          hx-target="#create-game-account"
+          hx-swap="innerHTML"
+        >新增游戏 ID</a>
+      {% endif %}
+    </div>
+  {% endpartialdef %}
+
+  {% partialdef form_response %}
+    {% include "me/_htmx_oob.html" %}
+    <article id="game-account-{{ account.pk|default:'new' }}" class="card bg-base-200">
+      <div class="card-body gap-4">
+        {% partial form_body %}
+      </div>
+    </article>
+  {% endpartialdef %}
+
+  {% partialdef card_response %}
+    {% include "me/_htmx_oob.html" %}
+    {% partial card %}
+  {% endpartialdef %}
+{% endblock %}

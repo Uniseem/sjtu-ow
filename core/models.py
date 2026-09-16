@@ -4,6 +4,8 @@ from django.db import models
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.contrib.settings.models import BaseGenericSetting, register_setting
 
+from core.fields import EncryptedTextField
+
 LATER = "后续里程碑使用"
 
 
@@ -41,7 +43,7 @@ class SiteSettings(BaseGenericSetting):
         default=SmtpSecurity.SSL,
     )
     smtp_username = models.CharField("SMTP 账号", max_length=255, blank=True)
-    smtp_password = models.TextField(
+    smtp_password = EncryptedTextField(
         "SMTP 密码",
         blank=True,
         help_text="加密存储。后台表单不回显原值，留空表示不修改。",
@@ -84,7 +86,6 @@ class SiteSettings(BaseGenericSetting):
     max_game_accounts = models.PositiveIntegerField(
         "每人最多游戏 ID",
         default=5,
-        help_text=LATER,
     )
     lfg_max_active_posts = models.PositiveIntegerField(
         "每人最多未过期车帖",

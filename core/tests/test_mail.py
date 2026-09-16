@@ -7,7 +7,7 @@ from django.utils import timezone
 from django_tasks.base import TaskResultStatus
 from django_tasks_db.models import DBTaskResult, get_date_max
 
-from core.crypto import decrypt_value, encrypt_value
+from core.crypto import decrypt_value
 from core.mail import SMTPNotConfigured, apply_subject_prefix, send_test_email
 from core.models import SiteSettings
 from core.tasks import MAIL_RETRY_DELAYS, deliver_queued_email
@@ -15,19 +15,23 @@ from core.tasks import MAIL_RETRY_DELAYS, deliver_queued_email
 
 @pytest.mark.django_db
 def test_smtp_password_stored_encrypted(db):
-    cipher = encrypt_value("s3cret-pass")
     settings_obj = SiteSettings.objects.create(
         smtp_host="smtp.example.com",
-        smtp_password=cipher,
+        smtp_password="s3cret-pass",
     )
-    stored = (
-        SiteSettings.objects.filter(pk=settings_obj.pk)
-        .values_list("smtp_password", flat=True)
-        .get()
-    )
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT smtp_password FROM core_sitesettings WHERE id = %s",
+            [settings_obj.pk],
+        )
+        stored = cursor.fetchone()[0]
     assert stored != "s3cret-pass"
-    assert stored == cipher
+    assert stored.startswith("gAAAAA")
     assert decrypt_value(stored) == "s3cret-pass"
+    settings_obj.refresh_from_db()
+    assert settings_obj.smtp_password == "s3cret-pass"
 
 
 @pytest.mark.django_db(transaction=True)

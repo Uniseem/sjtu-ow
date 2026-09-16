@@ -1,0 +1,12 @@
+{% extends "me/base.html" %}
+
+{% block me_title %}基本资料{% endblock %}
+{% block me_heading %}基本资料{% endblock %}
+
+{% block me_content %}
+  <form method="post" action="{% url 'me_profile' %}" class="flex max-w-md flex-col gap-4">
+    {% csrf_token %}
+    {% include "account/_form.html" %}
+    <button type="submit" class="btn btn-primary min-h-11 font-button">保存</button>
+  </form>
+{% endblock %}

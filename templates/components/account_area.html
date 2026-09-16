@@ -1,5 +1,6 @@
 {% if user.is_authenticated %}
-  <span class="hidden sm:inline text-sm">{{ user.nickname }}</span>
+  <a href="{% url 'me_profile' %}" class="hidden sm:inline text-sm link link-hover">{{ user.nickname }}</a>
+  <a href="{% url 'me_profile' %}" class="btn btn-ghost btn-sm min-h-11 font-button">个人中心</a>
   <a href="{% url 'account_logout' %}" class="btn btn-ghost btn-sm min-h-11 font-button">退出</a>
 {% else %}
   <a href="{% url 'account_login' %}" class="btn btn-ghost btn-sm min-h-11 font-button">登录</a>

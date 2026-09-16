@@ -1,0 +1,17 @@
+<div id="profile-incomplete" {% if oob %}hx-swap-oob="true"{% endif %}>
+  {% if profile_gaps %}
+    <div class="alert alert-warning mb-6" role="status">
+      <div>
+        <p class="font-medium">资料尚未完整，报名赛事和内战前需要补全：</p>
+        <ul class="mt-2 list-disc pl-5">
+          {% for label, url_name, hint in profile_gaps %}
+            <li>
+              <a href="{% url url_name %}" class="link">{{ label }}</a>
+              <span class="text-base-content/70"> — {{ hint }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% endif %}
+</div>
