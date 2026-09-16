@@ -585,6 +585,31 @@ def test_code_constants_match_appendix_c():
     assert STATE_RATE_LIMIT == 120
 
 
+def test_moderation_constants_match_appendix_c():
+    """附录 C's AI moderation rows. Round 026 checked only the daily cap.
+
+    These decide how much content reaches a third party and how often, so
+    drift here is a privacy and cost question, not just a tuning one.
+    """
+    from moderation import services as moderation_services
+
+    assert moderation_services.MAX_BATCH == 20  # 一次请求最多 20 条
+    assert moderation_services.DEDUPE_DAYS == 30  # 相同内容 30 天内不重复送审
+    assert moderation_services.CHUNK_CHARS == 8000  # 超过约 8000 字按段落分块
+
+
+@pytest.mark.django_db
+def test_moderation_site_settings_match_appendix_c():
+    from core.models import SiteSettings
+
+    site = SiteSettings.load()
+    assert site.moderation_model == "deepseek-v4.1-flash"
+    assert site.moderation_daily_limit == 2000
+    assert site.moderation_image_enabled is False  # 图片审核默认关闭
+    # 高风险立即发邮件，中低风险每日汇总
+    assert site.moderation_high_risk_notify == "immediate"
+
+
 @pytest.mark.django_db
 def test_site_settings_defaults_match_appendix_c():
     """The values an admin can change still have to start where 附录 C says."""
