@@ -26,12 +26,19 @@ logger = logging.getLogger(__name__)
 
 
 class RegistrationError(Exception):
-    """One or more problems to show the captain; ``problems`` lists them all."""
+    """One or more problems to show the captain; ``problems`` lists them all.
 
-    def __init__(self, problems):
+    ``code`` lets the API map a failure onto the right HTTP status (design
+    11.6.7): ``review_not_allowed`` means the actor may never act in this
+    review mode, ``invalid_state`` means the transition is wrong right now,
+    ``validation_error`` means the request itself was incomplete.
+    """
+
+    def __init__(self, problems, *, code="invalid_state"):
         if isinstance(problems, str):
             problems = [problems]
         self.problems = list(problems)
+        self.code = code
         super().__init__("；".join(self.problems))
 
 
@@ -324,23 +331,43 @@ def local_review_allowed(tournament) -> bool:
     return tournament.review_mode in (ReviewMode.LOCAL, ReviewMode.TWO_STAGE)
 
 
+def upstream_review_allowed(tournament) -> bool:
+    """The mirror of :func:`local_review_allowed` for the upstream (design 8.5).
+
+    In ``local`` mode the upstream must not change any status, even though it
+    holds the ``registrations:review`` scope.
+    """
+    return tournament.review_mode in (ReviewMode.UPSTREAM, ReviewMode.TWO_STAGE)
+
+
+def _guard_actor(tournament, actor_type):
+    if actor_type == ActorType.ADMIN and not local_review_allowed(tournament):
+        raise RegistrationError(
+            "这项赛事由上游审核，本站不能改状态", code="review_not_allowed"
+        )
+    if actor_type == ActorType.UPSTREAM and not upstream_review_allowed(tournament):
+        raise RegistrationError(
+            "这项赛事由本站审核，上游不能改状态", code="review_not_allowed"
+        )
+
+
 @transaction.atomic
 def approve(*, registration, actor, actor_type=ActorType.ADMIN) -> Registration:
     tournament = registration.tournament
-    if actor_type == ActorType.ADMIN and not local_review_allowed(tournament):
-        raise RegistrationError("这项赛事由上游审核，本站不能改状态")
+    _guard_actor(tournament, actor_type)
     if registration.status == RegistrationStatus.AWAITING_UPSTREAM:
         if actor_type != ActorType.UPSTREAM:
             raise RegistrationError("这一步要由上游确认")
         to_status = RegistrationStatus.APPROVED
     elif registration.status == RegistrationStatus.PENDING:
-        two_stage_local = (
-            tournament.review_mode == ReviewMode.TWO_STAGE
-            and actor_type == ActorType.ADMIN
-        )
+        two_stage = tournament.review_mode == ReviewMode.TWO_STAGE
+        if two_stage and actor_type == ActorType.UPSTREAM:
+            # Two-stage means this site reviews first; the upstream only
+            # confirms what is already "待上游确认" (design 8.5).
+            raise RegistrationError("这一步要先由本站管理员审核")
         to_status = (
             RegistrationStatus.AWAITING_UPSTREAM
-            if two_stage_local
+            if (two_stage and actor_type == ActorType.ADMIN)
             else RegistrationStatus.APPROVED
         )
     else:
@@ -357,10 +384,9 @@ def approve(*, registration, actor, actor_type=ActorType.ADMIN) -> Registration:
 @transaction.atomic
 def reject(*, registration, actor, note, actor_type=ActorType.ADMIN) -> Registration:
     if not note or not note.strip():
-        raise RegistrationError("驳回必须填写备注")
+        raise RegistrationError("驳回必须填写备注", code="validation_error")
     tournament = registration.tournament
-    if actor_type == ActorType.ADMIN and not local_review_allowed(tournament):
-        raise RegistrationError("这项赛事由上游审核，本站不能改状态")
+    _guard_actor(tournament, actor_type)
     if registration.status == RegistrationStatus.APPROVED:
         action = RegistrationAction.REVOKE
         if actor_type == ActorType.ADMIN and tournament.review_mode != ReviewMode.LOCAL:

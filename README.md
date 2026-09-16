@@ -221,7 +221,33 @@ CRON_TZ=Asia/Shanghai
 - 每个请求要带 `X-Api-Key`、`X-Timestamp`、`X-Nonce`、`X-Signature`，签名是 HMAC-SHA256（算法见设计 11.2.2）。服务端按七步校验：请求头齐全 → Key 有效 → 时间戳 5 分钟内 → Nonce 10 分钟内没用过 → 常数时间比对签名 → 授权范围 → 限流。
 - 每次调用都写一条日志（不含请求体和响应体），在客户端详情页能看到最近 50 条。
 - `GET /api/v1/ping` 用来确认密钥、签名算法和双方时间差。
-- 业务接口和 Webhook 在后续轮次。
+- Webhook 投递和接口文档页面在后续轮次。
+
+### 业务接口
+
+| 方法 | 路径 | 授权范围 |
+|---|---|---|
+| GET | `/api/v1/tournaments` | `tournaments:read` |
+| GET | `/api/v1/tournaments/{id}` | `tournaments:read` |
+| PUT | `/api/v1/tournaments/external/{external_id}` | `tournaments:write` |
+| GET | `/api/v1/registrations` | `registrations:read` |
+| GET | `/api/v1/registrations/{id}` | `registrations:read` |
+| GET | `/api/v1/registrations/{id}/logs` | `registrations:read` |
+| POST | `/api/v1/registrations/{id}/review` | `registrations:review` |
+| POST | `/api/v1/registrations/review-batch` | `registrations:review` |
+| GET | `/api/v1/tournaments/{id}/roster` | `registrations:read` |
+| GET | `/api/v1/tournaments/{id}/roster.csv` | `registrations:read` |
+| GET | `/api/v1/tournaments/{id}/stats` | `registrations:read` |
+
+**几条要点**
+
+- **展开**：`include=tournament,team,members,members.ranks,logs`，每一项都要在客户端的「允许的展开项」里，否则 `403 include_not_allowed`。
+- **裁剪字段**：`fields=status,team.name` 支持点号进入展开对象，`id` 永远保留；字段名不存在返回 `400 invalid_field`。
+- **分页**：游标分页，`limit` 默认 50、最大 200，按 `updated_at, id` 排序；配合 `updated_since` 做增量同步。
+- **创建赛事**：`PUT .../external/{external_id}` 按上游自己的 ID 创建或更新，新建返回 201、更新返回 200。`external_id` 只在本客户端范围内唯一，别的客户端看不到它。已经有报名之后改审核模式返回 `409 review_mode_locked`。`description_html` 会按白名单清洗。
+- **审核**：必须带 `roster_version`；队长在此期间同步过名单就返回 `409 roster_version_mismatch`，`details` 里给当前版本。本站审核模式下上游不能改状态（`403 review_not_allowed`）；两级审核模式下上游只能确认「待上游确认」的报名，其他组合返回 `409 invalid_state_transition`。**同一个操作重复调用是幂等的**，不会重复写日志、重复发通知。
+- **批量审核**：一次最多 100 条，每条独立成败，整体返回 200，失败的那条带自己的错误码。
+- **不返回联系方式**：任何接口都不含邮箱、QQ、微信、手机号。状态日志只给操作方类型（`captain` / `admin` / `upstream` / `system`），不给管理员是谁。
 
 ## 健康检查
 

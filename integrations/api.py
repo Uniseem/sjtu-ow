@@ -24,6 +24,11 @@ ERRORS = {
     "scope_denied": (403, "没有这个接口的授权范围"),
     "include_not_allowed": (403, "没有这个展开项的权限"),
     "rate_limited": (429, "调用过于频繁"),
+    "review_mode_locked": (409, "已经有报名，不能修改审核模式"),
+    "review_not_allowed": (403, "这项赛事不由上游审核"),
+    "invalid_state_transition": (409, "当前状态不能做这个操作"),
+    "roster_version_mismatch": (409, "名单已被队长更新，请重新获取后再审核"),
+    "invalid_field": (400, "字段名不存在"),
     "not_found": (404, "对象不存在"),
     "validation_error": (400, "请求内容不合法"),
 }

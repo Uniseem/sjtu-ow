@@ -71,14 +71,24 @@ def test_registration_window_is_enforced_by_the_database():
 
 
 @pytest.mark.django_db
-def test_external_id_is_unique_when_set():
+def test_external_id_is_unique_per_client():
     from django.db.utils import IntegrityError
 
-    _tournament(external_id="up-1")
+    from integrations import services as api_services
+
+    client, _secret = api_services.create_client(
+        name="上游甲", scopes=["tournaments:write"], allowed_includes=[]
+    )
+    other, _secret2 = api_services.create_client(
+        name="上游乙", scopes=["tournaments:write"], allowed_includes=[]
+    )
+    _tournament(external_id="up-1", source_client=client)
     _tournament(title="第二个", external_id="")
     _tournament(title="第三个", external_id="")  # blanks do not collide
+    # A different upstream may reuse the same id (design 11.6.3).
+    _tournament(title="别的上游", external_id="up-1", source_client=other)
     with pytest.raises(IntegrityError):
-        _tournament(title="重复", external_id="up-1")
+        _tournament(title="重复", external_id="up-1", source_client=client)
 
 
 @pytest.mark.django_db

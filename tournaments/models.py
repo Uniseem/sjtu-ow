@@ -53,8 +53,15 @@ class Tournament(models.Model):
         choices=TournamentStatus.choices,
         default=TournamentStatus.DRAFT,
     )
-    # M5: source_client = FK to integrations.ApiClient. The table does not
-    # exist yet, so the upstream identity is kept as a plain reference.
+    source_client = models.ForeignKey(
+        "integrations.ApiClient",
+        verbose_name="推送来源",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tournaments",
+        help_text="为空表示本站创建。",
+    )
     external_id = models.CharField("上游赛事 ID", max_length=64, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -86,7 +93,7 @@ class Tournament(models.Model):
                 name="tournament_registration_window",
             ),
             models.UniqueConstraint(
-                fields=["external_id"],
+                fields=["source_client", "external_id"],
                 condition=~models.Q(external_id=""),
                 name="tournament_external_id_unique",
             ),
@@ -307,7 +314,14 @@ class RegistrationStatusLog(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
     )
-    # M5: actor_client = FK to integrations.ApiClient for upstream actions.
+    actor_client = models.ForeignKey(
+        "integrations.ApiClient",
+        verbose_name="操作的上游",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
     roster_version = models.PositiveIntegerField("名单版本", default=1)
     roster_snapshot = models.JSONField("名单快照", null=True, blank=True)
     note = models.TextField("备注", blank=True)
