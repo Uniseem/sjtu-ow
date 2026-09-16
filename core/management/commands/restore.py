@@ -199,8 +199,41 @@ class Command(BaseCommand):
         PrerenderedPage.objects.all().delete()
 
         self.stdout.write(self.style.SUCCESS("恢复完成。"))
+        self.warn_if_code_is_newer()
         self.stdout.write(
             "接下来（设计 16.7）：启动 web 和 worker，在后台触发全量重新生成，"
             "检查 /healthz 和关键页面。"
         )
         return None
+
+    def warn_if_code_is_newer(self) -> None:
+        """Design 16.8 step 8: a rollback also has to go back to the old image.
+
+        Restoring a pre-upgrade backup while the new code is still running
+        leaves the schema behind what the code expects. Django will not say
+        so until something touches a missing column, which in a rollback is
+        exactly the wrong moment to find out.
+        """
+        from django.db import connection as db
+        from django.db.migrations.executor import MigrationExecutor
+
+        try:
+            executor = MigrationExecutor(db)
+            plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+        except Exception:  # noqa: BLE001 — a warning must never fail a restore
+            return
+        if not plan:
+            return
+        names = ", ".join(
+            f"{migration.app_label}.{migration.name}" for migration, _ in plan[:5]
+        )
+        more = "……" if len(plan) > 5 else ""
+        self.stdout.write(
+            self.style.WARNING(
+                f"注意：恢复的数据库比当前代码旧，还差 {len(plan)} 个迁移"
+                f"（{names}{more}）。\n"
+                "如果这是升级后的回滚（设计 16.8 第 8 步），**要切回旧镜像**，"
+                "不要用当前代码继续跑——schema 对不上，出问题时才会报错。\n"
+                "如果你确实想让当前代码用这份数据，执行 manage.py migrate。"
+            )
+        )

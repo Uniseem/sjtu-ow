@@ -544,3 +544,57 @@ def test_moderation_dry_run_deletes_nothing():
 
     assert ModerationItem.objects.filter(pk=old.pk).exists()
     assert "将删除 已处理的 AI 审核记录" in output
+
+
+# --- design 16.8 step 8: rolling back also means the old image -----------------
+
+
+@pytest.mark.django_db(transaction=True)
+def test_restore_warns_when_the_code_is_newer_than_the_backup(
+    backups, settings, tmp_path, monkeypatch
+):
+    """Restoring a pre-upgrade backup under new code leaves the schema behind.
+
+    Django says nothing until something touches a missing column, which in
+    the middle of a rollback is the worst possible time to find out.
+    """
+    archive = make_backup(backups, settings, tmp_path)
+    settings.PRERENDER_ROOT = tmp_path / "prerendered"
+
+    # Pretend the running code carries a migration the backup predates.
+    class PendingExecutor:
+        def __init__(self, connection):
+            self.loader = type(
+                "L",
+                (),
+                {"graph": type("G", (), {"leaf_nodes": staticmethod(lambda: [])})()},
+            )()
+
+        def migration_plan(self, targets):
+            fake = type(
+                "M", (), {"app_label": "tournaments", "name": "0099_new_column"}
+            )
+            return [(fake, False)]
+
+    monkeypatch.setattr(
+        "django.db.migrations.executor.MigrationExecutor", PendingExecutor
+    )
+
+    output = run("restore", str(archive), "--yes")
+
+    assert "比当前代码旧" in output
+    assert "切回旧镜像" in output
+    assert "tournaments.0099_new_column" in output
+
+
+@pytest.mark.django_db(transaction=True)
+def test_restore_says_nothing_extra_when_the_schema_matches(
+    backups, settings, tmp_path
+):
+    archive = make_backup(backups, settings, tmp_path)
+    settings.PRERENDER_ROOT = tmp_path / "prerendered"
+
+    output = run("restore", str(archive), "--yes")
+
+    assert "切回旧镜像" not in output
+    assert "恢复完成" in output
