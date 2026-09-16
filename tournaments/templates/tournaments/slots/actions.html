@@ -1,0 +1,16 @@
+<div id="slot-tournament-actions" data-slot="tournament-actions:{{ tournament.pk }}" class="mt-6 flex flex-wrap items-center gap-3"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% if tournament.status == "cancelled" %}
+    <span class="text-sm text-base-content/70">赛事已取消，不再接受报名。</span>
+  {% elif not request.user.is_authenticated %}
+    <a href="{% url 'account_login' %}?next={{ tournament.get_absolute_url }}" class="btn btn-primary min-h-11 font-button">登录后报名</a>
+  {% elif not captain_teams %}
+    <span class="text-sm text-base-content/70">需要由队长为战队报名。</span>
+  {% elif not registration_open %}
+    <span class="text-sm text-base-content/70">当前不在报名时间内。</span>
+  {% else %}
+    <span class="text-sm text-base-content/70">你可以为
+      {% for team in captain_teams %}「{{ team.name }}」{% if not forloop.last %}、{% endif %}{% endfor %}
+      报名。</span>
+    <span class="badge badge-outline">报名功能即将开放</span>
+  {% endif %}
+</div>

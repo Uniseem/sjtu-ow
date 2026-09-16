@@ -1,0 +1,25 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}{{ action_label }}{% endblock %}
+
+{% block main_content %}
+  <dl>
+    <dt>赛事</dt><dd>{{ tournament.title }}</dd>
+    <dt>当前状态</dt><dd>{{ tournament.get_status_display }}</dd>
+    <dt>报名时间</dt><dd>{{ tournament.registration_opens_at }} 至 {{ tournament.registration_closes_at }}</dd>
+  </dl>
+  {% if needs_reason %}
+    <p class="help-block">取消后赛事从列表中消失，详情页仍可访问并显示「已取消」。已报名的队长会收到邮件。</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {% if needs_reason %}
+      <label for="reason">说明（会写进通知邮件）</label>
+      <input type="text" id="reason" name="reason" maxlength="300">
+    {% endif %}
+    <p>
+      <button type="submit" class="button {% if needs_reason %}serious{% else %}button-primary{% endif %}">{{ action_label }}</button>
+      <a class="button button-secondary" href="{% url 'tournaments:index' %}">返回</a>
+    </p>
+  </form>
+{% endblock %}

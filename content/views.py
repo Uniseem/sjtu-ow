@@ -21,6 +21,7 @@ from content.services import article_create_admin_url
 @require_GET
 def sitemap_xml(request):
     from teams.models import Team
+    from tournaments.services import listed_tournaments
 
     urlset = []
     for model in (ArticlePage, StandardPage):
@@ -35,6 +36,14 @@ def sitemap_xml(request):
             {
                 "loc": request.build_absolute_uri(team.get_absolute_url()),
                 "lastmod": team.updated_at,
+            }
+        )
+    # Cancelled tournaments and draft ones stay out (design 13.14).
+    for tournament in listed_tournaments().order_by("pk"):
+        urlset.append(
+            {
+                "loc": request.build_absolute_uri(tournament.get_absolute_url()),
+                "lastmod": tournament.updated_at,
             }
         )
     return render(

@@ -14,6 +14,7 @@ urlpatterns = [
     path("", include("content.urls")),
     path("", include("teams.urls")),
     path("", include("lfg.urls")),
+    path("", include("tournaments.urls")),
     path("", include(wagtail_urls)),
 ]
 

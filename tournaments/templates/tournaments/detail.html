@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load wagtailimages_tags %}
+
+{% block title %}{{ tournament.title }} · 赛事 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-4xl px-4 py-10">
+    {% if tournament.status == "cancelled" %}
+      <div class="alert alert-warning" role="status">这项赛事已取消。</div>
+    {% endif %}
+
+    {% if tournament.cover %}
+      <div class="mt-6">{% image tournament.cover width-1200 class="rounded-xl" alt=tournament.title %}</div>
+    {% endif %}
+
+    <h1 class="mt-6">{{ tournament.title }}</h1>
+    <p class="mt-2 text-sm text-base-content/70">
+      <span class="badge badge-outline">{{ phase_label }}</span>
+      <span class="font-numeric">{{ tournament.roster_min }}–{{ tournament.roster_max }}</span> 人
+      {% if tournament.sjtu_only %}· 仅限交大{% endif %}
+    </p>
+
+    {% if tournament.summary %}<p class="mt-4 text-base-content/80">{{ tournament.summary }}</p>{% endif %}
+
+    <dl class="mt-6 grid gap-2 sm:grid-cols-2">
+      <div>
+        <dt class="text-sm text-base-content/60">报名时间</dt>
+        <dd class="font-numeric">
+          <time datetime="{{ tournament.registration_opens_at|date:'c' }}">{{ tournament.registration_opens_at|date:"Y年n月j日 H:i" }}</time>
+          至
+          <time datetime="{{ tournament.registration_closes_at|date:'c' }}">{{ tournament.registration_closes_at|date:"Y年n月j日 H:i" }}</time>
+        </dd>
+      </div>
+      {% if tournament.starts_at %}
+        <div>
+          <dt class="text-sm text-base-content/60">比赛时间</dt>
+          <dd class="font-numeric"><time datetime="{{ tournament.starts_at|date:'c' }}">{{ tournament.starts_at|date:"Y年n月j日 H:i" }}</time></dd>
+        </div>
+      {% endif %}
+    </dl>
+
+    {% include "tournaments/slots/actions.html" %}
+
+    {% if tournament.description %}
+      <div class="article-body mt-8 whitespace-pre-line text-base-content/80">{{ tournament.description }}</div>
+    {% endif %}
+
+    <h2 class="mt-10">已报名战队</h2>
+    {% if approved_teams %}
+      <ul class="mt-4 flex flex-col gap-2">
+        {% for entry in approved_teams %}
+          <li class="flex items-center gap-2 border-b border-base-300 pb-2">
+            <a href="{{ entry.team.get_absolute_url }}" class="link link-hover">{{ entry.team_name }}</a>
+            <span class="ml-auto font-numeric text-sm text-base-content/60">{{ entry.member_count }} 人</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mt-4 text-base-content/70">暂时还没有通过审核的战队。</p>
+    {% endif %}
+  </section>
+{% endblock %}

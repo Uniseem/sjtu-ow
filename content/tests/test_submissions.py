@@ -249,8 +249,9 @@ def test_submitter_admin_menu_and_restricted_urls(client, site_ready):
     feature_page = _follow(client, reverse("feature_group_restrictions:index"))
     assert feature_page.redirect_chain
 
+    # The tournaments admin exists since M4; a submitter must be bounced out.
     tournaments_page = _follow(client, "/admin/tournaments/")
-    assert tournaments_page.status_code == 404
+    assert tournaments_page.redirect_chain
 
     images = client.get(reverse("wagtailimages:index"))
     assert images.status_code == 200

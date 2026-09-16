@@ -19,6 +19,7 @@ from core.fonts.css import regenerate_font_css
 from core.fonts.services import ensure_typography_rules
 from core.services import ensure_game_modes
 from moderation.services import assign_moderation_permissions
+from tournaments.services import assign_tournament_permissions
 
 
 class Command(BaseCommand):
@@ -86,6 +87,14 @@ class Command(BaseCommand):
             )
         )
 
+        managers = assign_tournament_permissions()
+        if managers:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "已分配赛事权限：" + "、".join(managers) + " 可创建和编辑赛事"
+                )
+            )
+
         reviewers = assign_moderation_permissions()
         if reviewers:
             self.stdout.write(
@@ -116,7 +125,6 @@ class Command(BaseCommand):
         )
 
         later = [
-            "赛事管理员的赛事管理权限（M4）",
             "内战管理员的内战管理权限（M6）",
         ]
         self.stdout.write(

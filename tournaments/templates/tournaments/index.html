@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load wagtailimages_tags %}
+
+{% block title %}赛事 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-5xl px-4 py-10">
+    <h1>赛事</h1>
+
+    {% for phase, label, tournaments in groups %}
+      {% if tournaments %}
+        <h2 class="mt-10">{{ label }}</h2>
+        <ul class="mt-4 grid gap-4 sm:grid-cols-2">
+          {% for tournament in tournaments %}
+            <li class="card bg-base-200">
+              <div class="card-body gap-2">
+                <h3 class="card-title text-lg">
+                  <a href="{{ tournament.get_absolute_url }}" class="link link-hover">{{ tournament.title }}</a>
+                </h3>
+                {% if tournament.summary %}<p class="text-sm text-base-content/80">{{ tournament.summary }}</p>{% endif %}
+                <p class="text-sm text-base-content/70">
+                  <span class="font-numeric">{{ tournament.roster_min }}–{{ tournament.roster_max }}</span> 人
+                  {% if tournament.sjtu_only %}· 仅限交大{% endif %}
+                </p>
+                <p class="text-sm text-base-content/60">
+                  报名
+                  <time datetime="{{ tournament.registration_opens_at|date:'c' }}" class="font-numeric">{{ tournament.registration_opens_at|date:"n月j日 H:i" }}</time>
+                  至
+                  <time datetime="{{ tournament.registration_closes_at|date:'c' }}" class="font-numeric">{{ tournament.registration_closes_at|date:"n月j日 H:i" }}</time>
+                </p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endfor %}
+
+    {% if not groups.0.2 and not groups.1.2 and not groups.2.2 and not groups.3.2 %}
+      {% include "components/empty_state.html" with title="暂无赛事" message="赛事发布后会出现在这里。" %}
+    {% endif %}
+  </section>
+{% endblock %}
