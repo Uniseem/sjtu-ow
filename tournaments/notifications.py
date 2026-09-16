@@ -26,3 +26,17 @@ def tournament_cancelled(tournament, captain, reason="") -> None:
         recipient_list=[captain.email],
         fail_silently=False,
     )
+
+
+def registration_submitted(registration, action) -> None:
+    from tournaments.notifications_registration import registration_submitted as impl
+
+    impl(registration, action)
+
+
+def registration_status_changed(registration, note="") -> None:
+    from tournaments.notifications_registration import (
+        registration_status_changed as impl,
+    )
+
+    impl(registration, note)

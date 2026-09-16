@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from wagtail.fields import RichTextField
 
 
 class ReviewMode(models.TextChoices):
@@ -21,7 +22,11 @@ class TournamentStatus(models.TextChoices):
 class Tournament(models.Model):
     title = models.CharField("标题", max_length=100)
     summary = models.CharField("简介", max_length=300, blank=True)
-    description = models.TextField("详细说明", blank=True)
+    description = RichTextField(
+        "详细说明",
+        blank=True,
+        features=["h2", "h3", "bold", "italic", "ol", "ul", "link", "hr"],
+    )
     cover = models.ForeignKey(
         "wagtailimages.Image",
         verbose_name="封面",
@@ -121,3 +126,197 @@ class Tournament(models.Model):
 
     def registration_open(self, now=None) -> bool:
         return self.status == TournamentStatus.PUBLISHED and self.phase(now) == "open"
+
+
+class RegistrationStatus(models.TextChoices):
+    PENDING = "pending", "待审核"
+    AWAITING_UPSTREAM = "awaiting_upstream", "待上游确认"
+    APPROVED = "approved", "已通过"
+    REJECTED = "rejected", "已驳回"
+    WITHDRAWN = "withdrawn", "已撤回"
+
+
+# Statuses whose roster takes up a place in the tournament (design 8.5).
+ACTIVE_STATUSES = (
+    RegistrationStatus.PENDING,
+    RegistrationStatus.AWAITING_UPSTREAM,
+    RegistrationStatus.APPROVED,
+)
+
+
+class RegistrationAction(models.TextChoices):
+    SUBMIT = "submit", "提交报名"
+    RESUBMIT = "resubmit", "重新提交"
+    SYNC_ROSTER = "sync_roster", "同步名单"
+    APPROVE = "approve", "通过"
+    REJECT = "reject", "驳回"
+    REVOKE = "revoke", "撤销通过"
+    WITHDRAW = "withdraw", "撤回"
+
+
+class ActorType(models.TextChoices):
+    CAPTAIN = "captain", "队长"
+    ADMIN = "admin", "本站管理员"
+    UPSTREAM = "upstream", "上游"
+    SYSTEM = "system", "系统"
+
+
+class Registration(models.Model):
+    """One team's registration for one tournament (design 12.8.2)."""
+
+    tournament = models.ForeignKey(
+        Tournament,
+        verbose_name="赛事",
+        on_delete=models.CASCADE,
+        related_name="registrations",
+    )
+    team = models.ForeignKey(
+        "teams.Team",
+        verbose_name="战队",
+        on_delete=models.PROTECT,
+        related_name="registrations",
+    )
+    status = models.CharField(
+        "状态",
+        max_length=24,
+        choices=RegistrationStatus.choices,
+        default=RegistrationStatus.PENDING,
+    )
+    team_name = models.CharField("战队名称快照", max_length=16)
+    roster_version = models.PositiveIntegerField("名单版本", default=1)
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="提交人",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    submitted_at = models.DateTimeField("提交时间", default=timezone.now)
+    status_note = models.CharField("最近一次审核备注", max_length=300, blank=True)
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    class Meta:
+        verbose_name = "报名"
+        verbose_name_plural = "报名"
+        ordering = ["-submitted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tournament", "team"],
+                name="unique_registration_per_team",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["tournament", "status"]),
+            models.Index(fields=["updated_at", "id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.team_name} · {self.tournament.title}"
+
+    def get_absolute_url(self) -> str:
+        return f"/registrations/{self.pk}/"
+
+    @property
+    def is_active(self) -> bool:
+        return self.status in ACTIVE_STATUSES
+
+
+class RegistrationMember(models.Model):
+    """A frozen copy of one roster entry (design 12.8.3)."""
+
+    registration = models.ForeignKey(
+        Registration,
+        verbose_name="报名",
+        on_delete=models.CASCADE,
+        related_name="members",
+    )
+    tournament = models.ForeignKey(
+        Tournament,
+        verbose_name="赛事",
+        on_delete=models.CASCADE,
+        related_name="roster_members",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="队员",
+        on_delete=models.PROTECT,
+        related_name="registration_entries",
+    )
+    game_account = models.ForeignKey(
+        "accounts.GameAccount",
+        verbose_name="游戏 ID",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    nickname = models.CharField("昵称快照", max_length=16)
+    battletag = models.CharField("游戏 ID 快照", max_length=64)
+    is_sjtu = models.BooleanField("是否交大", default=False)
+    rank_tank = models.PositiveSmallIntegerField("坦克段位", null=True, blank=True)
+    rank_damage = models.PositiveSmallIntegerField("输出段位", null=True, blank=True)
+    rank_support = models.PositiveSmallIntegerField("支援段位", null=True, blank=True)
+    is_captain = models.BooleanField("是否队长", default=False)
+    is_active = models.BooleanField("占名额", default=True)
+
+    class Meta:
+        verbose_name = "名单成员"
+        verbose_name_plural = "名单成员"
+        ordering = ["-is_captain", "nickname"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tournament", "user"],
+                condition=models.Q(is_active=True),
+                name="one_active_roster_per_user_per_tournament",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.nickname}（{self.battletag}）"
+
+
+class RegistrationStatusLog(models.Model):
+    """Append-only history of a registration (design 12.8.4)."""
+
+    registration = models.ForeignKey(
+        Registration,
+        verbose_name="报名",
+        on_delete=models.CASCADE,
+        related_name="logs",
+    )
+    action = models.CharField("操作", max_length=16, choices=RegistrationAction.choices)
+    from_status = models.CharField(
+        "变化前状态",
+        max_length=24,
+        choices=RegistrationStatus.choices,
+        blank=True,
+    )
+    to_status = models.CharField(
+        "变化后状态",
+        max_length=24,
+        choices=RegistrationStatus.choices,
+    )
+    actor_type = models.CharField("操作方", max_length=16, choices=ActorType.choices)
+    actor_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="操作人",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    # M5: actor_client = FK to integrations.ApiClient for upstream actions.
+    roster_version = models.PositiveIntegerField("名单版本", default=1)
+    roster_snapshot = models.JSONField("名单快照", null=True, blank=True)
+    note = models.TextField("备注", blank=True)
+    created_at = models.DateTimeField("时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "报名状态日志"
+        verbose_name_plural = "报名状态日志"
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"{self.registration_id} {self.get_action_display()}"

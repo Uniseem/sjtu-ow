@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}为战队报名 · {{ tournament.title }}{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-3xl px-4 py-10">
+    <h1>为战队报名</h1>
+    <p class="mt-2 text-base-content/70">{{ tournament.title }}</p>
+
+    {% if teams|length > 1 %}
+      <form method="get" class="form-control mt-6 flex flex-row items-end gap-2">
+        <label class="flex flex-col gap-1">
+          <span class="label-text">选择战队</span>
+          <select name="team" class="select min-h-11">
+            {% for item in teams %}
+              <option value="{{ item.pk }}" {% if item.pk == team.pk %}selected{% endif %}>{{ item.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="btn btn-ghost min-h-11 font-button">切换</button>
+      </form>
+    {% endif %}
+
+    {% if problems %}
+      <div class="alert alert-warning mt-6 flex-col items-start" role="alert">
+        <p>下面的问题需要先解决：</p>
+        <ul class="ml-4 list-disc">
+          {% for problem in problems %}<li>{{ problem }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if existing %}
+      <p class="mt-6 text-sm text-base-content/70">
+        这支战队已经报名过（状态：{{ existing.get_status_display }}，名单版本 {{ existing.roster_version }}）。
+        再次提交会同步为当前名单并重新审核。
+        <a href="{{ existing.get_absolute_url }}" class="link link-primary">查看报名</a>
+      </p>
+    {% endif %}
+
+    <form method="post" class="mt-6 flex flex-col gap-4">
+      {% csrf_token %}
+      <input type="hidden" name="team" value="{{ team.pk }}">
+      <input type="hidden" name="action" value="submit">
+      <p class="text-sm text-base-content/70">
+        整支战队报名，不能只挑部分成员。为每个队员选一个游戏 ID（会写进名单快照）。
+      </p>
+      <ul class="flex flex-col gap-3">
+        {% for row in rows %}
+          <li class="card bg-base-200">
+            <div class="card-body gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span>{{ row.user.nickname }}</span>
+                {% if row.membership.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
+                {% if row.user.is_sjtu %}<span class="badge badge-outline">交大</span>{% endif %}
+              </div>
+              {% if row.accounts %}
+                <label class="form-control">
+                  <span class="label-text">游戏 ID</span>
+                  <select name="account-{{ row.user.pk }}" class="select min-h-11">
+                    {% for account in row.accounts %}
+                      <option value="{{ account.pk }}">{{ account.battletag }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              {% else %}
+                <p class="text-error">这位队员还没有填写游戏 ID。</p>
+              {% endif %}
+              {% for problem in row.problems %}
+                <p class="text-warning text-sm">{{ problem }}</p>
+              {% endfor %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary min-h-11 font-button">提交报名</button>
+        <a href="{{ tournament.get_absolute_url }}" class="btn btn-ghost min-h-11 font-button">返回赛事</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

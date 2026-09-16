@@ -1,0 +1,25 @@
+{% extends "me/base.html" %}
+
+{% block me_title %}我的报名{% endblock %}
+{% block me_heading %}我的报名{% endblock %}
+
+{% block me_content %}
+  <h2>赛事报名</h2>
+  {% if registrations %}
+    <ul class="mt-4 flex flex-col gap-2">
+      {% for registration in registrations %}
+        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
+          <a href="{{ registration.get_absolute_url }}" class="link link-hover">{{ registration.tournament.title }}</a>
+          <span class="text-sm text-base-content/70">{{ registration.team_name }}</span>
+          <span class="badge">{{ registration.get_status_display }}</span>
+          <span class="ml-auto text-sm text-base-content/60 font-numeric">{{ registration.submitted_at|date:"Y年n月j日" }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mt-4 text-base-content/70">你还没有参加任何赛事报名。<a href="{% url 'tournament_index' %}" class="link link-primary">去看看赛事</a></p>
+  {% endif %}
+
+  <h2 class="mt-10">内战报名</h2>
+  {% include "components/empty_state.html" with title="即将开放" message="内战报名将在后续里程碑接入。" %}
+{% endblock %}

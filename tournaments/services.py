@@ -49,18 +49,44 @@ def grouped_tournaments(now=None):
 
 
 def has_registrations(tournament) -> bool:
-    """M4 round 015 fills this in; the review mode locks once it is True."""
-    return False
+    """Once anyone has registered, the review mode is locked (design 8.1)."""
+    return tournament.registrations.exists()
 
 
 def active_registration_captains(tournament):
-    """Captains to notify when a tournament is cancelled (design 8.1). M4/015."""
-    return []
+    """Captains with a live registration, for the cancellation mail (8.1)."""
+    from tournaments.models import ACTIVE_STATUSES
+
+    captains = []
+    registrations = tournament.registrations.filter(
+        status__in=ACTIVE_STATUSES
+    ).select_related("team")
+    for registration in registrations:
+        captain = registration.team.captain()
+        if captain is not None:
+            captains.append(captain)
+    return captains
 
 
 def approved_teams(tournament):
-    """Teams whose registration was approved (design 8.2). M4/015."""
-    return []
+    """Approved teams and their size, for the public page (design 8.2)."""
+    from tournaments.models import RegistrationStatus
+
+    entries = []
+    registrations = (
+        tournament.registrations.filter(status=RegistrationStatus.APPROVED)
+        .select_related("team")
+        .order_by("submitted_at")
+    )
+    for registration in registrations:
+        entries.append(
+            {
+                "team": registration.team,
+                "team_name": registration.team_name,
+                "member_count": registration.members.count(),
+            }
+        )
+    return entries
 
 
 def roster_min_warning(tournament) -> str:

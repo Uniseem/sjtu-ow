@@ -8,9 +8,11 @@
   {% elif not registration_open %}
     <span class="text-sm text-base-content/70">当前不在报名时间内。</span>
   {% else %}
-    <span class="text-sm text-base-content/70">你可以为
-      {% for team in captain_teams %}「{{ team.name }}」{% if not forloop.last %}、{% endif %}{% endfor %}
-      报名。</span>
-    <span class="badge badge-outline">报名功能即将开放</span>
+    {% if my_registration %}
+      <span class="badge badge-outline">{{ my_registration.get_status_display }}</span>
+      <a href="{{ my_registration.get_absolute_url }}" class="btn btn-primary min-h-11 font-button">查看报名</a>
+    {% else %}
+      <a href="{% url 'tournament_register' tournament.pk %}" class="btn btn-primary min-h-11 font-button">为战队报名</a>
+    {% endif %}
   {% endif %}
 </div>

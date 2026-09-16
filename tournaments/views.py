@@ -24,13 +24,23 @@ def tournament_detail(request, pk):
     tournament = get_object_or_404(Tournament.objects.select_related("cover"), pk=pk)
     if not tournament.is_public:
         raise Http404("赛事还没有发布。")
-    return render(
-        request,
-        "tournaments/detail.html",
-        {
-            "tournament": tournament,
-            "phase": tournament.phase(),
-            "phase_label": services.PHASE_LABELS[tournament.phase()],
-            "approved_teams": services.approved_teams(tournament),
-        },
+    from content.models import ArticlePage
+
+    articles = (
+        ArticlePage.objects.live()
+        .public()
+        .filter(tournament=tournament)
+        .order_by("-first_published_at")
     )
+    from tournaments.slots import actions_context
+
+    context = {
+        "articles": articles,
+        "phase": tournament.phase(),
+        "phase_label": services.PHASE_LABELS[tournament.phase()],
+        "approved_teams": services.approved_teams(tournament),
+    }
+    # Same context the fragment uses, so a live page and a filled static page
+    # show the same entry (design 13.13.3).
+    context.update(actions_context(request, tournament))
+    return render(request, "tournaments/detail.html", context)

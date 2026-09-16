@@ -272,10 +272,15 @@ class ArticlePage(SeoPageMixin, Page):
         related_name="authored_articles",
         verbose_name="作者",
     )
-    # M4: add tournament = ForeignKey("tournaments.Tournament", null=True,
-    # blank=True, on_delete=SET_NULL, related_name="articles",
-    # verbose_name="关联赛事"). Tournament does not exist yet; do not add a
-    # placeholder FK.
+    tournament = models.ForeignKey(
+        "tournaments.Tournament",
+        verbose_name="关联赛事",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="articles",
+        help_text="选填。关联后这篇文章会显示在赛事页面上。",
+    )
 
     parent_page_types = ["content.ArticleIndexPage"]
     subpage_types = []
@@ -286,6 +291,7 @@ class ArticlePage(SeoPageMixin, Page):
         FieldPanel("cover"),
         FieldPanel("summary"),
         FieldPanel("body"),
+        FieldPanel("tournament"),
         FieldPanel("author"),
     ]
 

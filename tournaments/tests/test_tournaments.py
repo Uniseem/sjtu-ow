@@ -145,8 +145,7 @@ def test_actions_slot_for_each_kind_of_visitor(client):
     team_services.create_team(user=captain, name="报名队")
     client.force_login(captain)
     html = client.get(url).content.decode()
-    assert "报名队" in html
-    assert "即将开放" in html
+    assert "为战队报名" in html
 
 
 @pytest.mark.django_db

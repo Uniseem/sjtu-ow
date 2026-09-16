@@ -22,7 +22,7 @@ ME_NAV = (
     ("me_game_accounts", "游戏 ID 与段位", True),
     ("me_contacts", "联系方式", True),
     ("me_teams", "我的战队", True),
-    ("me_registrations", "我的报名", False),
+    ("me_registrations", "我的报名", True),
     ("me_security", "账号安全", True),
 )
 
