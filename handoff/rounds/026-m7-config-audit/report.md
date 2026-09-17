@@ -166,6 +166,8 @@ $ uv run python manage.py backup --output backups/dev
 - **Caddy 的两条缓存策略**——在 `Caddyfile` 里，023 核查过（`max-age=31536000, immutable` 和 `max-age=300, must-revalidate`）。
 - **cron 相关的三条**——在 `deploy/crontab.example` 里，022 核查过。
 
+> **043 轮更正**：这里漏了附录 C 的「高风险内容暂缓公开 | 默认关闭 | 后台」。它既没有测试，也不在上面的清单里——011 轮明确没做（设计 19.2 第 12 条待定），代码里没有这个开关。所以「附录 C 全部对得上」的结论少了这一行。
+
 ## 需要确认
 
 无新增。前面几轮的五个问题仍未定。

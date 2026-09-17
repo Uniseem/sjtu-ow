@@ -1,6 +1,8 @@
 # 上海交通大学守望先锋社区网站
 
-Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)（v1.5.7）。M0–M4 已完成；当前里程碑是 **M5 开放 API 与 Webhook**（客户端与签名认证已落地，业务接口和 Webhook 在后续轮次）。
+Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)，开发进度见 [`handoff/STATUS.md`](handoff/STATUS.md)。参与开发（包括用 AI 编码助手）先读 [`AGENTS.md`](AGENTS.md)。
+
+本文件只讲怎么运行、怎么用、怎么运维，**不写进度**。
 
 ## 技术栈
 
@@ -87,7 +89,7 @@ uvx pre-commit install
 | 环境 | 说明 |
 |---|---|
 | 本地开发 | `sjtu_ow.settings.dev`。邮件入队后由 worker 打到控制台。`PRERENDER_ENABLED` 默认 `false`，页面由 Django 实时渲染。 |
-| 测试环境 | 与生产部署在同一台服务器上的另一套 Docker Compose 项目（例如 `-p sjtu-ow-test`），独立子域名、数据卷和数据库。配置 `EMAIL_ALLOWLIST`，只给名单里的邮箱发信。页面应显示「测试环境」横幅、`robots.txt` 禁止抓取（横幅和 robots 在后续里程碑落地）。 |
+| 测试环境 | 与生产部署在同一台服务器上的另一套 Docker Compose 项目（例如 `-p sjtu-ow-test`），独立子域名、数据卷和数据库。配置 `EMAIL_ALLOWLIST`，只给名单里的邮箱发信。设计要求页面显示「测试环境」横幅、`robots.txt` 禁止抓取——**这两项还没实现**，部署测试环境前要先做。 |
 | 生产环境 | `sjtu_ow.settings.prod`。`PRERENDER_ENABLED=true`。静态资源收集到持久化 `static` 卷（只新增、不删除旧文件）。SMTP 在后台配置，不放环境变量。 |
 
 复制 [`.env.example`](.env.example) 为 `.env` 后再启动 Compose。`DJANGO_SECRET_KEY` 和 `FIELD_ENCRYPTION_KEY` 必须单独备份。
@@ -213,13 +215,14 @@ CRON_TZ=Asia/Shanghai
 后台内战列表的「分队」进入分队页：
 
 1. 勾选本次上场的人，页面实时显示「已选 X / 需要 Y 人」，**人数正好时「生成分队」才可用**。
-2. 生成后两队并排显示，可以改队伍和位置，总分和分差实时更新。
-3. 位置人数不符合规格会标红，**但仍然允许保存**（管理员可能有特殊安排）。
-4. 「复制结果」下面的文本框全选复制，发到群里；`/admin/scrims/<id>/split/text/` 是同样内容的纯文本。
+2. 生成后两队并排显示，下面有一块**缓冲区**（不上场）。角色限定规格下，**拖进哪个位置区就是分到哪个位置**。每张卡片上也有 A / B / 缓冲 按钮，效果和拖拽一样。总分和分差实时更新，不发请求。
+3. **满员的队伍拖不进去**。要换人，先把队里的一个人拖到缓冲区，再把另一个人拖进来。
+4. 位置人数不符合规格会标红，**但仍然允许保存**（管理员可能有特殊安排）。保存后留在缓冲区的人仍保持「已勾选上场」。
+5. 「复制结果」下面的文本框全选复制，发到群里；`/admin/scrims/<id>/split/text/` 是同样内容的纯文本。
 
 分队算法（设计 9.4）：角色限定规格穷举所有分法和每队的合法位置分配，按「两队总分差」→「各位置对位分差之和」两级评分取最小，并列时随机选一个（所以再点一次「生成分队」可能给出另一个等价方案）。不限位置规格取每人最高段位分，只均衡总分。6v6 最坏情况（12 人全能打三个位置）实测约 0.3 秒。
 
-分队页的交互是外部 JS 文件里的普通事件监听，**没有用 Alpine**——本站装的是 Alpine CSP 构建，属性里的表达式不会求值。
+分队页的拖拽用 SortableJS，交互写在外部文件 `static/js/scrim-split.js` 里，**没有用 Alpine**——本站装的是 Alpine CSP 构建，属性里的表达式不会求值。
 
 ## AI 内容审核
 

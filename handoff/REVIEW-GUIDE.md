@@ -1,4 +1,4 @@
-# 独立复核指南（008–037）
+# 独立复核指南（008–043）
 
 写给做独立复核的人（用户计划交给 Grok）。
 
@@ -96,7 +96,9 @@
 
 ## 数字
 
-- 37 轮，每轮 request / report / review 三份
-- 647 个测试
+截至 043 轮：
+
+- 43 轮，每轮 request / report / review 三份
+- 656 个测试（041 轮全量结果；042、043 没有改测试）
 - `ruff` / `pytest` / `makemigrations --check` / 生产 `check --deploy` 全绿
-- M0–M6 完成，M7 剩真机相关
+- M0–M6 完成，M7 进行中。043 核对设计时发现 4 处没实现，见 `STATUS.md`
