@@ -10,8 +10,19 @@ from django.db.utils import OperationalError
 from django.urls import reverse
 
 
+def _disk_with_free_percent(monkeypatch, percent):
+    from core import health
+
+    usage = SimpleNamespace(total=100, used=100 - percent, free=percent)
+    monkeypatch.setattr(health.shutil, "disk_usage", lambda _path: usage)
+
+
 @pytest.mark.django_db
-def test_healthz_returns_200(client, worker_heartbeat):
+def test_healthz_returns_200(client, worker_heartbeat, monkeypatch):
+    # The disk check reads the host's real free space. GitHub's runners had
+    # 17.8% free, below the 20% threshold (round 045). The threshold has its
+    # own tests below; here the disk must not decide the result.
+    _disk_with_free_percent(monkeypatch, 50)
     response = client.get(reverse("healthz"))
     # A bare 503 says nothing about which check failed (round 044, first CI run).
     assert response.status_code == 200, response.content.decode()
@@ -23,7 +34,10 @@ def test_healthz_returns_200(client, worker_heartbeat):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_healthz_returns_200_when_database_is_busy(client, worker_heartbeat):
+def test_healthz_returns_200_when_database_is_busy(
+    client, worker_heartbeat, monkeypatch
+):
+    _disk_with_free_percent(monkeypatch, 50)
     connection.close()
     db_path = str(connection.settings_dict["NAME"])
     blocker = sqlite3.connect(db_path, timeout=30)
@@ -112,13 +126,6 @@ def test_healthz_returns_503_when_task_backlog(client, worker_heartbeat):
     assert response.status_code == 503
     payload = json.loads(response.content)
     assert payload["checks"]["task_backlog"]["ok"] is False
-
-
-def _disk_with_free_percent(monkeypatch, percent):
-    from core import health
-
-    usage = SimpleNamespace(total=100, used=100 - percent, free=percent)
-    monkeypatch.setattr(health.shutil, "disk_usage", lambda _path: usage)
 
 
 @pytest.mark.parametrize(
