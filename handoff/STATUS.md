@@ -2,7 +2,7 @@
 
 ```yaml
 milestone: M7 上线准备
-round: 047-license-and-public
+round: 048-await-github-cleanup
 next: claude
 updated: 2026-09-18
 blocked_on: 无
@@ -31,10 +31,11 @@ blocked_on: 无
 7. **提交信息（2026-09-18）** → 一律用中文。→ **046 轮**写进 `AGENTS.md` 和设计 17.5。045 及以前的英文提交不改写
 
 8. **许可证（2026-09-18）** → PolyForm Strict 1.0.0，仓库改为公开。→ **047 轮**加了 `LICENSE.md`、`THIRD_PARTY_NOTICES.md` 和设计 17.8。**公开这一步卡在旧提交上**，见「还没定的」
+9. **旧提交（2026-09-18）** → 先请 GitHub 清理，清完再公开。→ **048 轮**写好工单草稿，等你提交
 
 ## 还没定的
 
-**仓库公开前要你选**：强制推送前的旧提交在 GitHub 上还能按编号打开，上面是你的真实姓名和邮箱，直接公开就会暴露。处理办法见 `rounds/047-license-and-public/report.md`。
+**仓库公开在等 GitHub**：强制推送前的旧提交在 GitHub 上还能按编号打开，上面是你的真实姓名和邮箱。你选了先请 GitHub 清理，仓库这期间保持私有。**要你在 support.github.com 提交工单**，草稿和清理后的验证步骤在 `rounds/048-await-github-cleanup/report.md`。GitHub 文档说只清理「敏感数据」，有可能被拒；被拒就换新仓库（047 报告的方式 A）
 
 **043 核对设计时翻出 3 条要你拍板的**：两步验证强制与否、账号注销与导出怎么做、「暂缓公开」开关要不要做。详见下面「设计里还没实现的」。
 
@@ -140,6 +141,7 @@ blocked_on: 无
 | 045-ci-green | 修掉 CI 上最后两条失败 | **Claude 实现**。044 的诊断输出确认 `/healthz` 503 是 GitHub 机器磁盘只剩 17.8%；两条测数据库探活的测试固定磁盘，阈值和健康检查代码不动。本地模拟 17.8% 磁盘复现了失败、验证了修复 |
 | 046-chinese-commits | 提交信息改用中文 | **Claude 实现**。按用户要求写进 `AGENTS.md`、`handoff/README.md` 和设计 17.5；历史提交不改写 |
 | 047-license-and-public | PolyForm Strict 许可证；仓库改为公开 | **Claude 实现，公开未做**。许可证、第三方声明、设计 17.8 已完成。**查出旧提交在 GitHub 上仍可按编号访问，暴露真实身份**，等用户选处理方式 |
+| 048-await-github-cleanup | 准备请 GitHub 清理旧提交 | **Claude 准备，等用户提交工单**。合并请求 0、fork 0、旧提交 41 个、第一个被改的提交 `9bc97f2`；工单草稿在报告里 |
 
 ## 当前待定问题
 
