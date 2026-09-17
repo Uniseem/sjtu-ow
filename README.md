@@ -358,3 +358,17 @@ Django 渲染的 404 / 403 / 429 / 500 引用 `static/css/error.css`。给 Caddy
 ```bash
 uv run python manage.py render_error_pages
 ```
+
+## 许可证
+
+本项目按 [PolyForm Strict License 1.0.0](LICENSE.md) 授权。**这不是开源许可证**，简单说：
+
+- **允许**：出于非商业目的使用本软件——个人学习、研究、测试、业余项目，以及教育机构、公益组织、政府机构等的使用
+- **不允许**：分发本软件，修改本软件，或者基于它做新的作品
+- **商业用途**不在授权范围内
+- 法律规定的合理使用（比如为评论、说明问题适当引用）不受这份许可证限制
+
+以上只是帮助理解的概括，以 `LICENSE.md` 原文为准。
+
+`static/vendor/` 下的第三方文件不适用上面的许可证，按各自的许可证授权，见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+
