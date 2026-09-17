@@ -36,7 +36,7 @@ handoff/rounds/<序号>-<名字>/
 4. 跑验收命令（`AGENTS.md`「常用命令」那组），写 `report.md`，**只放真实输出**
 5. 自查：换个角度重新验证（自己重跑、把实现改坏看测试红不红、对照设计原文逐条核对），写 `review.md`
 6. 更新文档（见 `AGENTS.md` 最后的表）：`STATUS.md` 每轮必更新；改了用法更新 `README.md`
-7. 一个 git 提交，信息以轮次号开头，比如 `031: encrypt backups and keep a copy in object storage`，推送到 `origin`
+7. 一个 git 提交，**提交信息用中文**，第一行以轮次号开头，比如 `046: 提交信息改用中文`；推送到 `origin` 的 `main`
 
 分工做法下，第 2、5 步由设计复核方做，第 3、4 步由实现方做，每步做完把 `STATUS.md` 的 `next` 改成对方。
 
