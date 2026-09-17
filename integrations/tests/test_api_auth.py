@@ -342,3 +342,49 @@ def test_secret_is_stored_encrypted(api_client):
         raw = cursor.fetchone()[0]
     assert secret not in raw
     assert raw.startswith("gAAAAA")
+
+
+# --- the comparison itself (design 11.2.3 step 5) ------------------------------
+
+
+def test_signature_comparison_is_constant_time(monkeypatch):
+    """Design 11.2.3: 常数时间比对签名.
+
+    A plain == leaks how many leading characters matched through its timing,
+    which lets an attacker recover a valid signature byte by byte. That leak
+    cannot be demonstrated reliably in a unit test, so this asserts the
+    primitive instead. Round 039 found that swapping compare_digest for ==
+    left every test green.
+    """
+    from integrations import signing
+
+    calls = []
+    real = signing.hmac.compare_digest
+
+    def spy(left, right):
+        calls.append((left, right))
+        return real(left, right)
+
+    monkeypatch.setattr(signing.hmac, "compare_digest", spy)
+
+    payload = "GET\n/api/v1/ping\n\n1789000000\nnonce\n" + signing.body_digest(b"")
+    good = signing.sign("secret", payload)
+
+    assert signing.verify("secret", payload, good) is True
+    assert calls, "verify() 没有用 hmac.compare_digest"
+
+
+def test_signature_verification_outcomes():
+    from integrations import signing
+
+    payload = "GET\n/api/v1/ping\n\n1789000000\nnonce\n" + signing.body_digest(b"")
+    good = signing.sign("secret", payload)
+
+    assert signing.verify("secret", payload, good) is True
+    assert signing.verify("secret", payload, good.upper()) is True  # hex case
+    one_char_off = good[:-1] + ("1" if good[-1] == "0" else "0")
+    assert signing.verify("secret", payload, one_char_off) is False
+    assert signing.verify("other-secret", payload, good) is False
+    assert signing.verify("secret", payload + "x", good) is False
+    assert signing.verify("secret", payload, "") is False
+    assert signing.verify("secret", payload, None) is False

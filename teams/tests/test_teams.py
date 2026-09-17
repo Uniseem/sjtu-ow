@@ -524,3 +524,80 @@ def test_disband_mail_does_not_leak_addresses(
     assert len(mail.outbox) == 2  # one message per member
     for message in mail.outbox:
         assert len(message.recipients()) == 1
+
+
+# --- a disbanded team stays disbanded (design 7.5) -----------------------------
+#
+# teams/services.py guards four operations with `if team.is_disbanded`. Round
+# 041 removed each guard in turn and the whole suite stayed green four times:
+# nothing had ever tried to act on a team after disbanding it.
+
+
+def _superuser():
+    return User.objects.create_superuser(
+        email="teams-root@example.com",
+        password="Correct-Horse-Battery-1",
+        nickname="超级管理员",
+    )
+
+
+@pytest.mark.django_db
+def test_nobody_can_apply_to_a_disbanded_team(team, applicant, captain):
+    services.disband_team(team=team, actor=captain)
+    team.refresh_from_db()
+
+    allowed, reason = services.can_apply(team, applicant)
+
+    assert allowed is False
+    assert "已解散" in reason
+    with pytest.raises(services.TeamError, match="已解散"):
+        services.apply_to_team(team=team, user=applicant, roles={"tank": True})
+
+
+@pytest.mark.django_db
+def test_a_disbanded_team_cannot_be_edited_even_by_a_superuser(team, captain):
+    """The captain loses membership on disband, so only a superuser reaches
+    this guard — which is exactly why it has to hold."""
+    services.disband_team(team=team, actor=captain)
+    team.refresh_from_db()
+
+    with pytest.raises(services.TeamError, match="已解散"):
+        services.update_team(
+            team=team,
+            user=_superuser(),
+            name="复活的战队",
+            description="",
+            logo=None,
+            is_recruiting=True,
+        )
+    team.refresh_from_db()
+    assert team.name == "交大一队"
+
+
+@pytest.mark.django_db
+def test_a_pending_application_cannot_be_approved_once_disbanded(
+    team, applicant, captain
+):
+    """disband_team cancels pending applications itself, so this guard is the
+    backstop for a team marked disbanded some other way (an admin edit, a
+    data fix) while an application was still open."""
+    application = services.apply_to_team(
+        team=team, user=applicant, roles={"tank": True}
+    )
+    Team.objects.filter(pk=team.pk).update(disbanded_at=timezone.now())
+
+    with pytest.raises(services.TeamError, match="已解散"):
+        services.approve_application(application=application, actor=captain)
+    assert not team.memberships.filter(user=applicant).exists()
+
+
+@pytest.mark.django_db
+def test_a_team_cannot_be_disbanded_twice(team, captain):
+    services.disband_team(team=team, actor=captain)
+    team.refresh_from_db()
+    first = team.disbanded_at
+
+    with pytest.raises(services.TeamError, match="已经解散"):
+        services.disband_team(team=team, actor=_superuser())
+    team.refresh_from_db()
+    assert team.disbanded_at == first  # the original date is kept
