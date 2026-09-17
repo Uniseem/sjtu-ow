@@ -2,7 +2,7 @@
 
 ```yaml
 milestone: M7 上线准备
-round: 048-await-github-cleanup
+round: 049-new-public-repo
 next: claude
 updated: 2026-09-18
 blocked_on: 无
@@ -12,7 +12,7 @@ blocked_on: 无
 
 **Claude**：连做（实现 + 自查，流程见 `handoff/README.md`）。**M0–M6 全部完成，M7 进行中。**
 
-**正式仓库**：`github.com/Uniseem/sjtu-ow`（私有）。之前的 `Uniseem/ow-activity-site` 是测试版。仓库入口说明见根目录 `AGENTS.md`。
+**正式仓库**：`github.com/Uniseem/sjtu-ow`，**公开**，PolyForm Strict 许可证。049 轮新建的，里面没有带真实身份的旧提交。旧仓库改名为 `Uniseem/sjtu-ow-old`，私有，要删由你自己删。更早的 `Uniseem/ow-activity-site` 是测试版。仓库入口说明见根目录 `AGENTS.md`。
 
 **M7 里只有你或真实服务器能做的**：视觉风格定稿、用户协议和隐私政策正文、生产服务器部署、国内多种网络下的访问测试、新服务器上的恢复演练、小范围试运行，以及下面「设计里还没实现的」要你拍板的几条。
 
@@ -30,12 +30,10 @@ blocked_on: 无
 
 7. **提交信息（2026-09-18）** → 一律用中文。→ **046 轮**写进 `AGENTS.md` 和设计 17.5。045 及以前的英文提交不改写
 
-8. **许可证（2026-09-18）** → PolyForm Strict 1.0.0，仓库改为公开。→ **047 轮**加了 `LICENSE.md`、`THIRD_PARTY_NOTICES.md` 和设计 17.8。**公开这一步卡在旧提交上**，见「还没定的」
-9. **旧提交（2026-09-18）** → 先请 GitHub 清理，清完再公开。→ **048 轮**写好工单草稿，等你提交
+8. **许可证（2026-09-18）** → PolyForm Strict 1.0.0，仓库改为公开。→ **047 轮**加了 `LICENSE.md`、`THIRD_PARTY_NOTICES.md` 和设计 17.8。公开见第 9 条
+9. **旧提交（2026-09-18）** → 先想请 GitHub 清理（048 准备了工单），随后改成：旧仓库改名保持私有，新建仓库公开。→ **049 轮完成**，41 个旧提交在新仓库里全部查不到
 
 ## 还没定的
-
-**仓库公开在等 GitHub**：强制推送前的旧提交在 GitHub 上还能按编号打开，上面是你的真实姓名和邮箱。你选了先请 GitHub 清理，仓库这期间保持私有。**要你在 support.github.com 提交工单**，草稿和清理后的验证步骤在 `rounds/048-await-github-cleanup/report.md`。GitHub 文档说只清理「敏感数据」，有可能被拒；被拒就换新仓库（047 报告的方式 A）
 
 **043 核对设计时翻出 3 条要你拍板的**：两步验证强制与否、账号注销与导出怎么做、「暂缓公开」开关要不要做。详见下面「设计里还没实现的」。
 
@@ -142,6 +140,7 @@ blocked_on: 无
 | 046-chinese-commits | 提交信息改用中文 | **Claude 实现**。按用户要求写进 `AGENTS.md`、`handoff/README.md` 和设计 17.5；历史提交不改写 |
 | 047-license-and-public | PolyForm Strict 许可证；仓库改为公开 | **Claude 实现，公开未做**。许可证、第三方声明、设计 17.8 已完成。**查出旧提交在 GitHub 上仍可按编号访问，暴露真实身份**，等用户选处理方式 |
 | 048-await-github-cleanup | 准备请 GitHub 清理旧提交 | **Claude 准备，等用户提交工单**。合并请求 0、fork 0、旧提交 41 个、第一个被改的提交 `9bc97f2`；工单草稿在报告里 |
+| 049-new-public-repo | 换新仓库并公开 | **Claude 实现**。旧仓库改名 `sjtu-ow-old` 保持私有；新建 `sjtu-ow` 先私有推送，验证 41 个旧提交全部不在、47 个提交身份全是 Uniseem，再改公开；公开后不登录访问旧提交返回 404 |
 
 ## 当前待定问题
 
