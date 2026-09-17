@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import time
+from types import SimpleNamespace
 
 import pytest
 from django.db import connection
@@ -12,7 +13,8 @@ from django.urls import reverse
 @pytest.mark.django_db
 def test_healthz_returns_200(client, worker_heartbeat):
     response = client.get(reverse("healthz"))
-    assert response.status_code == 200
+    # A bare 503 says nothing about which check failed (round 044, first CI run).
+    assert response.status_code == 200, response.content.decode()
     payload = json.loads(response.content)
     assert payload["status"] == "ok"
     assert payload["checks"]["database"]["ok"] is True
@@ -36,7 +38,7 @@ def test_healthz_returns_200_when_database_is_busy(client, worker_heartbeat):
         blocker.close()
 
     assert elapsed < 1.0
-    assert response.status_code == 200
+    assert response.status_code == 200, response.content.decode()
     payload = json.loads(response.content)
     assert payload["status"] == "ok"
     assert payload["checks"]["database"]["ok"] is True
@@ -110,6 +112,43 @@ def test_healthz_returns_503_when_task_backlog(client, worker_heartbeat):
     assert response.status_code == 503
     payload = json.loads(response.content)
     assert payload["checks"]["task_backlog"]["ok"] is False
+
+
+def _disk_with_free_percent(monkeypatch, percent):
+    from core import health
+
+    usage = SimpleNamespace(total=100, used=100 - percent, free=percent)
+    monkeypatch.setattr(health.shutil, "disk_usage", lambda _path: usage)
+
+
+@pytest.mark.parametrize(
+    "percent, healthy",
+    [(21, True), (20, False), (19, False)],
+)
+def test_disk_check_needs_more_than_twenty_percent_free(
+    monkeypatch, tmp_path, percent, healthy
+):
+    """Design 16.6: free space must be *more than* 20%, so exactly 20% fails.
+
+    The healthz tests above only ever saw the disk of whatever machine ran
+    them, so the threshold itself had no test.
+    """
+    from core import health
+
+    _disk_with_free_percent(monkeypatch, percent)
+    ok, detail = health.check_disk(tmp_path)
+    assert ok is healthy, detail
+
+
+@pytest.mark.django_db
+def test_healthz_returns_503_when_disk_is_nearly_full(
+    client, worker_heartbeat, monkeypatch
+):
+    _disk_with_free_percent(monkeypatch, 10)
+    response = client.get(reverse("healthz"))
+    assert response.status_code == 503
+    payload = json.loads(response.content)
+    assert payload["checks"]["disk"]["ok"] is False
 
 
 @pytest.mark.django_db

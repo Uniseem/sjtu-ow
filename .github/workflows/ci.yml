@@ -28,6 +28,14 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
 
+      # static/css/app.css is gitignored build output. The homepage weight test
+      # refuses to skip assets it cannot find, so build it the way the
+      # Dockerfile does.
+      - name: Build Tailwind CSS
+        run: |
+          uv run python manage.py tailwind download_cli
+          uv run python manage.py tailwind build
+
       - name: Tests
         run: uv run pytest
 

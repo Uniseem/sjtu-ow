@@ -42,6 +42,7 @@ uv run python manage.py tailwind runserver   # 另开终端：uv run python mana
 
 ```bash
 uv run ruff check . && uv run ruff format --check .
+uv run python manage.py tailwind build   # 测试要读 static/css/app.css，CI 也先编译
 uv run pytest -q
 uv run python manage.py makemigrations --check --dry-run
 DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
@@ -57,7 +58,7 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 ## 硬规则
 
 1. **`docs/design.md` 是唯一设计依据。** 要改设计：需要用户拍板的先问；定了之后**先改文档再改代码**，在附录 D 记版本。实现和设计不一致时，要么改代码，要么改设计，不能两边各说各的
-2. **按轮次工作**（流程见 `handoff/README.md`）：先写 `request.md`，再实现，写 `report.md`，再复核写 `review.md`，更新 `STATUS.md`，**一轮一个提交**，提交信息以轮次号开头（`043: ...`），然后推送
+2. **按轮次工作**（流程见 `handoff/README.md`）：先写 `request.md`，再实现，写 `report.md`，再复核写 `review.md`，更新 `STATUS.md`，**一轮一个提交**，提交信息以轮次号开头（`043: ...`），**直接推送到 `main`**（不开分支保护、不走合并请求，设计 17.5）。推送后看一眼 CI，红了优先修
 3. **报告里只放真实跑过的命令输出。** 没跑的写「未验证」，不写推测结果
 4. **不扩大本轮范围，不新增依赖。** 顺带发现的问题写进报告，留给下一轮；确实要加依赖，先停下来问
 5. **分层**（设计 17.3）：业务逻辑写在各应用的 `services.py`；状态字段只能通过 service 函数改；邮件和 Webhook 用 `transaction.on_commit` 入队；功能权限统一走 `accounts.permissions.can_use()`
@@ -78,6 +79,7 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 - **`handoff/` 在 ruff 的排除列表里**（轮次报告要原样引用代码）。放在里面的脚本要指定路径单独检查
 - **变异测试改回代码后**，如果文件大小和修改时间没变，Python 可能用旧的 `__pycache__`。改回后清一下缓存再跑（027）
 - **预渲染**：从备份恢复后必须清空 `prerendered/`；开发环境默认关闭预渲染
+- **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
 ## 改了什么，就更新哪份文档
 
