@@ -55,6 +55,25 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 
 改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。
 
+## 测试机与部署
+
+**测试机是 `185.99.135.224`，部署先放在这台机器上。** 用户 2026-09-18 指定。
+
+| 项目 | 内容 |
+|---|---|
+| 域名 | `sjtu.ow-shanghaiuniversity.com`，经 CNAME 指向一个线路优化服务，最终解析到 `185.99.135.224`。模拟交大、国内、海外来源查询，结果都是这个 IP（050 轮核对） |
+| 权限 | **助手拥有这台机器的全部权限**，可以直接部署、改配置、重启服务 |
+| 登录 | SSH 密钥登录。登录用户和密钥位置在开发者本机的 SSH 配置里，**不写进仓库**（仓库是公开的） |
+| 部署目录 | `/srv/sjtu-ow`（和 `deploy/crontab.example` 里的路径一致） |
+| 证书 | Caddy 自动申请和续期，走 **HTTP 验证**，不用 DNS 验证。前提是 80 端口对外开放；`CADDY_SITE_ADDRESS` 填域名本身（不带 `http://`），Caddy 才会申请证书 |
+| 跳转 | **HTTP 必须自动跳转到 HTTPS**。站点地址是域名时 Caddy 默认会做，部署后要实测：`curl -I http://sjtu.ow-shanghaiuniversity.com/` 应返回跳转到 `https://` 的 3xx |
+
+**机器上还跑着别的项目**（另一套 Docker Compose 和一个监控探针）。只动 `/srv/sjtu-ow` 和本项目的 Compose 项目：
+
+- 不停、不重启、不删别人的容器、网络和数据卷
+- **不要**执行 `docker system prune`、`docker volume prune` 这类全局清理
+- 本项目的 Caddy 会占用 80 和 443 端口。以后这台机器上别的网站要用域名访问，得经过这个 Caddy 转发
+
 ## 硬规则
 
 1. **`docs/design.md` 是唯一设计依据。** 要改设计：需要用户拍板的先问；定了之后**先改文档再改代码**，在附录 D 记版本。实现和设计不一致时，要么改代码，要么改设计，不能两边各说各的
