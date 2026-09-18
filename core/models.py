@@ -6,8 +6,6 @@ from wagtail.contrib.settings.models import BaseGenericSetting, register_setting
 
 from core.fields import EncryptedTextField
 
-LATER = "后续里程碑使用"
-
 
 class HealthProbe(models.Model):
     """Dedicated table for /healthz write probes (design 16.6). Rows are rolled back."""
@@ -76,12 +74,12 @@ class SiteSettings(BaseGenericSetting):
     team_max_members = models.PositiveIntegerField(
         "战队人数上限",
         default=10,
-        help_text=LATER,
+        help_text="一支战队最多多少人，含队长。",
     )
     team_max_captained = models.PositiveIntegerField(
         "每人最多担任队长数",
         default=3,
-        help_text=LATER,
+        help_text="每人最多同时担任几支战队的队长。",
     )
     max_game_accounts = models.PositiveIntegerField(
         "每人最多游戏 ID",
@@ -90,12 +88,12 @@ class SiteSettings(BaseGenericSetting):
     lfg_max_active_posts = models.PositiveIntegerField(
         "每人最多未过期车帖",
         default=3,
-        help_text=LATER,
+        help_text="每人同时最多有几个没过期的车帖。",
     )
     lfg_expire_hours = models.PositiveIntegerField(
         "车帖过期小时数",
         default=2,
-        help_text=LATER,
+        help_text="车帖在开车时间之后多少小时过期。",
     )
     scrim_reminder_hours = models.PositiveIntegerField(
         "内战提前提醒小时数",
@@ -138,30 +136,30 @@ class SiteSettings(BaseGenericSetting):
     moderation_enabled = models.BooleanField(
         "启用 AI 内容审核",
         default=True,
-        help_text=LATER,
+        help_text="关掉后新内容不再送审。没有配置 MODERATION_API_KEY 时本来就不送审。",
     )
     moderation_model = models.CharField(
         "审核模型",
         max_length=100,
         default="deepseek-v4.1-flash",
-        help_text=LATER,
+        help_text="服务商接口里的模型名。",
     )
     moderation_daily_limit = models.PositiveIntegerField(
         "审核每日调用上限",
         default=2000,
-        help_text=LATER,
+        help_text="每天最多调用多少次审核接口，超出的内容记为「无法判定」转人工。",
     )
     moderation_image_enabled = models.BooleanField(
         "连图片一起审核",
         default=False,
-        help_text=LATER,
+        help_text="开启后投稿里的图片也送审，费用更高。",
     )
     moderation_high_risk_notify = models.CharField(
         "高风险内容通知",
         max_length=16,
         choices=HighRiskNotify.choices,
         default=HighRiskNotify.IMMEDIATE,
-        help_text=LATER,
+        help_text="AI 判为高风险的内容什么时候邮件通知管理员。",
     )
     font_css_path = models.CharField(
         "字体样式表地址",
@@ -206,7 +204,7 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("lfg_expire_hours"),
                 FieldPanel("scrim_reminder_hours"),
             ],
-            heading="社区参数（后续里程碑使用）",
+            heading="社区参数",
         ),
         MultiFieldPanel(
             [
@@ -216,7 +214,7 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("moderation_image_enabled"),
                 FieldPanel("moderation_high_risk_notify"),
             ],
-            heading="AI 审核（后续里程碑使用）",
+            heading="AI 审核",
         ),
         MultiFieldPanel(
             [

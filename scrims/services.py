@@ -177,6 +177,7 @@ def sign_up(*, scrim, user, game_account_id, roles, now=None):
         raise ScrimError("你已经报名过这场内战了") from exc
     if was_placed and changed_account:
         _mark_teams_changed(scrim)
+    _refresh_detail(scrim)
     return signup
 
 
@@ -193,6 +194,7 @@ def cancel(*, scrim, user, now=None):
     signup.delete()
     if was_placed:
         _mark_teams_changed(scrim)
+    _refresh_detail(scrim)
     return was_placed
 
 
@@ -294,6 +296,18 @@ def after_change(scrim, *, actor=None):
     if scrim.status == ScrimStatus.PUBLISHED:
         schedule_reminder(scrim)
     _refresh_pages(scrim)
+
+
+def _refresh_detail(scrim) -> None:
+    """Signups change the counts and the name list on the detail page (13.13.4).
+
+    Requests for one page are merged 30 seconds apart, so a signup rush
+    regenerates it once.
+    """
+    from core import prerender
+
+    if scrim.is_public:
+        prerender.request_page(f"/scrims/{scrim.pk}/", kind="scrim")
 
 
 def _status_changed(scrim) -> None:

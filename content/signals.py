@@ -52,6 +52,13 @@ def public_url(url_path: str) -> str:
     return "/" + url_path[len(root_path) :]
 
 
+def refresh_related_tournament(page) -> None:
+    """An article may be linked to a tournament, whose page lists it (13.13.4)."""
+    tournament = getattr(page.specific, "tournament", None)
+    if tournament is not None and tournament.is_listed:
+        prerender.request_page(tournament.get_absolute_url(), kind="tournament")
+
+
 def refresh_listings(kind: str) -> None:
     """A published article changes the article index and the homepage too."""
     if kind in {"article", "article_index", "home"}:
@@ -72,6 +79,8 @@ def on_page_published(sender, instance, **kwargs):
     if url:
         prerender.request_page(url, kind=kind)
     refresh_listings(kind)
+    if kind == "article":
+        refresh_related_tournament(instance)
 
 
 @receiver(page_unpublished)
@@ -84,6 +93,8 @@ def on_page_unpublished(sender, instance, **kwargs):
     if url:
         prerender.request_removal(url)
     refresh_listings(kind)
+    if kind == "article":
+        refresh_related_tournament(instance)
 
 
 @receiver(post_delete, sender=Page)
@@ -111,6 +122,8 @@ def on_slug_changed(sender, instance, instance_before, **kwargs):
     if new_url and instance.live:
         prerender.request_page(new_url, kind=kind)
     refresh_listings(kind)
+    if kind == "article":
+        refresh_related_tournament(instance)
 
 
 @receiver(post_page_move)
@@ -126,6 +139,8 @@ def on_page_moved(sender, instance, url_path_before, url_path_after, **kwargs):
     if new_url and instance.live:
         prerender.request_page(new_url, kind=kind)
     refresh_listings(kind)
+    if kind == "article":
+        refresh_related_tournament(instance)
 
 
 @receiver(post_save, sender=ArticleCategory)

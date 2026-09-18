@@ -193,3 +193,20 @@ def sync_all_submitter_memberships() -> int:
         if before != after:
             changed += 1
     return changed
+
+
+def refresh_nickname_pages(user) -> None:
+    """Regenerate the public pages that print this user's nickname (13.13.4)."""
+    from content.models import ArticlePage
+    from core import prerender
+
+    for membership in user.team_memberships.select_related("team"):
+        if not membership.team.is_disbanded:
+            prerender.request_page(membership.team.get_absolute_url(), kind="team")
+    for signup in user.scrim_signups.select_related("scrim"):
+        if signup.scrim.is_public:
+            prerender.request_page(f"/scrims/{signup.scrim_id}/", kind="scrim")
+    for article in ArticlePage.objects.live().public().filter(author=user):
+        url = article.get_url()
+        if url:
+            prerender.request_page(url, kind="article")

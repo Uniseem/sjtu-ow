@@ -1,14 +1,37 @@
 from allauth.account.models import EmailAddress
 from allauth.account.signals import email_confirmed
-from django.db.models.signals import m2m_changed, post_delete, post_save
+from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from accounts.models import Feature, FeatureGroupRestriction, FeatureUserRule, User
 from accounts.services import (
+    refresh_nickname_pages,
     sync_sjtu_groups,
     sync_submitter_group,
     sync_submitters_for_group,
 )
+
+
+@receiver(pre_save, sender=User)
+def remember_nickname(sender, instance, raw, update_fields=None, **kwargs):
+    """Keep the stored nickname so post_save can tell whether it changed."""
+    instance._nickname_before = None
+    if raw or instance.pk is None:
+        return
+    if update_fields is not None and "nickname" not in update_fields:
+        return  # a login only saves last_login
+    instance._nickname_before = (
+        User.objects.filter(pk=instance.pk).values_list("nickname", flat=True).first()
+    )
+
+
+@receiver(post_save, sender=User)
+def refresh_pages_showing_nickname(sender, instance, created, raw, **kwargs):
+    """Design 13.13.4: team pages, scrim details and bylines show nicknames."""
+    before = getattr(instance, "_nickname_before", None)
+    if raw or created or before is None or before == instance.nickname:
+        return
+    refresh_nickname_pages(instance)
 
 
 @receiver(post_save, sender=User)

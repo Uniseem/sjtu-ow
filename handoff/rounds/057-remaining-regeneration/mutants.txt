@@ -1,0 +1,13 @@
+✓ 被抓到 报名不刷详情 | 1 failed, 5 passed in 0.86s ['test_signing_up_and_cancelling_refresh_the_scrim_page']
+✓ 被抓到 取消报名不刷详情 | 1 failed, 5 passed in 0.92s ['test_signing_up_and_cancelling_refresh_the_scrim_page']
+✓ 被抓到 改昵称不刷新 | 1 failed, 5 passed in 0.73s ['test_a_new_nickname_refreshes_every_page_that_prints_it']
+✗ 没抓到 登录也算改昵称（只影响性能） | 6 passed in 0.64s []
+✓ 被抓到 昵称没变也刷新 | 1 failed, 5 passed in 0.68s ['test_logging_in_does_not_refresh_anything']
+✓ 被抓到 改昵称不刷战队页 | 1 failed, 5 passed in 0.62s ['test_a_new_nickname_refreshes_every_page_that_prints_it']
+✓ 被抓到 改昵称不刷内战页 | 1 failed, 5 passed in 0.65s ['test_a_new_nickname_refreshes_every_page_that_prints_it']
+✓ 被抓到 改昵称不刷文章 | 1 failed, 5 passed in 0.62s ['test_a_new_nickname_refreshes_every_page_that_prints_it']
+✓ 被抓到 文章不刷关联赛事 | 1 failed, 5 passed in 0.65s ['test_an_article_refreshes_the_tournament_it_is_linked_to']
+✓ 被抓到 新建/修改游戏模式不刷外壳 | 1 failed, 5 passed in 0.67s ['test_changing_a_game_mode_refreshes_the_lfg_shell']
+✓ 被抓到 删除游戏模式不刷外壳 | 1 failed, 5 passed in 0.62s ['test_changing_a_game_mode_refreshes_the_lfg_shell']
+✓ 被抓到 标题改回过时说法 | 1 failed, 5 passed in 0.61s ['test_no_setting_is_still_labelled_for_a_later_milestone']
+11/12 被抓到，全部还原
