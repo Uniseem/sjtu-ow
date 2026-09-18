@@ -298,6 +298,20 @@ def after_change(scrim, *, actor=None):
     _refresh_pages(scrim)
 
 
+def remove_signups_of(user) -> None:
+    """Account deletion (design 3.8): drop the user's signups everywhere.
+
+    Game IDs are PROTECTed by signups, so this has to run before they go.
+    """
+    for signup in list(user.scrim_signups.select_related("scrim")):
+        scrim = signup.scrim
+        was_placed = signup.is_selected or bool(signup.team)
+        signup.delete()
+        if was_placed:
+            _mark_teams_changed(scrim)
+        _refresh_detail(scrim)
+
+
 def _refresh_detail(scrim) -> None:
     """Signups change the counts and the name list on the detail page (13.13.4).
 

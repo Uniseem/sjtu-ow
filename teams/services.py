@@ -253,6 +253,20 @@ def leave_team(*, team, user) -> None:
     on_team_changed(team, author=user)
 
 
+def leave_all_teams(user) -> None:
+    """Account deletion (design 3.8): leave every team, drop pending applications.
+
+    Callers check captaincy first; a captain has to hand over or disband.
+    """
+    for membership in list(user.team_memberships.select_related("team")):
+        team = membership.team
+        membership.delete()
+        on_team_changed(team)
+    user.team_applications.filter(status=ApplicationStatus.PENDING).update(
+        status=ApplicationStatus.CANCELLED, decided_at=timezone.now()
+    )
+
+
 def remove_member(*, team, actor, member_user) -> None:
     if not is_captain(team, actor) and not actor.is_superuser:
         raise TeamError("只有队长可以移除成员。")

@@ -1,0 +1,25 @@
+✓ 被抓到 队长也能注销 | 1 failed, 11 passed in 9.00s ['test_a_captain_must_hand_over_first']
+✓ 被抓到 不删内战报名 | 7 failed, 5 passed in 12.12s ['ERROR    django.request:log.py:249 Internal Server Error: /me/delete/', 'test_deleting_anonymises_the_account']
+✓ 被抓到 不退出战队 | 1 failed, 11 passed in 11.07s ['test_deleting_leaves_teams_and_cancels_applications']
+✓ 被抓到 不删游戏 ID | 2 failed, 10 passed in 12.08s ['test_deleting_removes_game_ids_contacts_groups_and_rules', 'test_the_roster_snapshot_is_kept']
+✓ 被抓到 不删联系方式 | 1 failed, 11 passed in 14.54s ['test_deleting_removes_game_ids_contacts_groups_and_rules']
+✓ 被抓到 不删邮箱验证记录 | 1 failed, 11 passed in 15.17s ['test_deleting_anonymises_the_account']
+✓ 被抓到 不删功能规则 | 1 failed, 11 passed in 14.62s ['test_deleting_removes_game_ids_contacts_groups_and_rules']
+✓ 被抓到 不换邮箱 | 2 failed, 10 passed in 13.16s ['test_deleting_anonymises_the_account', 'test_the_email_can_register_again']
+✓ 被抓到 不改昵称 | 1 failed, 11 passed in 11.56s ['test_deleting_anonymises_the_account']
+✓ 被抓到 不清交大 | 1 failed, 11 passed in 13.02s ['test_deleting_anonymises_the_account']
+✓ 被抓到 不停用 | 1 failed, 11 passed in 10.77s ['test_deleting_anonymises_the_account']
+✓ 被抓到 密码不作废 | 1 failed, 11 passed in 10.01s ['test_deleting_anonymises_the_account']
+✓ 被抓到 不记原因 | 1 failed, 11 passed in 9.11s ['test_deleting_anonymises_the_account']
+✓ 被抓到 不清用户组 | 1 failed, 11 passed in 11.27s ['test_deleting_removes_game_ids_contacts_groups_and_rules']
+✓ 被抓到 不标分队有变化 | 1 failed, 11 passed in 10.41s ['test_deleting_drops_scrim_signups_and_flags_the_split']
+✓ 被抓到 不取消入队申请 | 1 failed, 11 passed in 12.03s ['test_deleting_leaves_teams_and_cancels_applications']
+✓ 被抓到 不校验密码 | 1 failed, 11 passed in 10.81s ['test_the_page_needs_the_current_password']
+✗ 没抓到 注销后不登出 | 12 passed in 12.01s []
+✓ 被抓到 导出不限流 | 1 failed, 11 passed in 14.91s ['test_export_is_rate_limited']
+✓ 被抓到 队长页面不显示原因 | 1 failed, 11 passed in 13.42s ['test_a_captain_sees_why_and_gets_no_form']
+19/20 被抓到，全部还原
+# 第一次跑「注销后不登出」没被抓到（停用本身就让账号失效），补了「会话里不再有用户 ID」的断言后重跑：
+✓ 被抓到 注销后不登出（补断言后） | 1 failed, 11 passed in 13.61s
+✓ 被抓到 不删审核记录里的昵称 | 1 failed, 12 passed in 10.46s
+已还原: True

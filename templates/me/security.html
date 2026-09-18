@@ -12,4 +12,17 @@
       <a href="{{ email_url }}" class="btn btn-outline min-h-11 font-button w-full sm:w-auto">修改邮箱</a>
     </li>
   </ul>
+
+  <h2 class="mt-10">个人信息</h2>
+  <p class="mt-2 max-w-xl text-base-content/80">
+    可以下载本站保存的你的全部个人信息（JSON 文件），也可以注销账号。
+  </p>
+  <ul class="mt-4 flex max-w-md flex-col gap-3">
+    <li>
+      <a href="{% url 'me_export' %}" class="btn btn-outline min-h-11 font-button w-full sm:w-auto">导出我的个人信息</a>
+    </li>
+    <li>
+      <a href="{% url 'me_delete' %}" class="btn btn-error btn-outline min-h-11 font-button w-full sm:w-auto">注销账号</a>
+    </li>
+  </ul>
 {% endblock %}

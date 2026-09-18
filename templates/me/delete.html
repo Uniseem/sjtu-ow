@@ -1,0 +1,33 @@
+{% extends "me/base.html" %}
+
+{% block me_title %}注销账号{% endblock %}
+{% block me_heading %}注销账号{% endblock %}
+
+{% block me_content %}
+  <div class="max-w-xl">
+    <p class="font-semibold">注销后不能恢复。</p>
+    <ul class="mt-3 list-disc pl-5 text-base-content/80">
+      <li>邮箱、游戏 ID、联系方式会被删除，昵称改为「已注销用户」</li>
+      <li>你会退出所有战队，内战报名会被取消</li>
+      <li>已经提交的赛事报名名单会保留提交时的记录；你署名的文章会保留，署名显示「已注销用户」</li>
+      <li>之后可以用同一个邮箱重新注册一个新账号</li>
+    </ul>
+    <p class="mt-3 text-base-content/80">
+      注销前可以先<a href="{% url 'me_export' %}" class="link">导出你的个人信息</a>。
+    </p>
+
+    {% if blockers %}
+      <div class="alert alert-warning mt-6" role="alert" data-deletion-blocked>
+        <ul>
+          {% for reason in blockers %}<li>{{ reason }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      <form method="post" action="{% url 'me_delete' %}" class="mt-6 flex max-w-md flex-col gap-4">
+        {% csrf_token %}
+        {% include "account/_form.html" %}
+        <button type="submit" class="btn btn-error min-h-11 font-button">确认注销</button>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}

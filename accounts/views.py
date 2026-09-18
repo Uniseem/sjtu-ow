@@ -1,21 +1,32 @@
 """Front-end views for personal center (design 13.4 / 13.5)."""
 
 from django.contrib import messages
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.forms import (
     ContactMethodForm,
+    DeleteAccountForm,
     GameAccountForm,
     ProfileForm,
     game_account_limit_reached,
 )
 from accounts.models import ContactMethod, GameAccount
-from accounts.services import deletion_blocked_reason, max_game_accounts, profile_gaps
+from accounts.services import (
+    AccountDeletionError,
+    delete_account,
+    deletion_blocked_reason,
+    deletion_blockers,
+    max_game_accounts,
+    personal_data,
+    profile_gaps,
+)
+from core.ratelimit import over_limit
 
 ME_NAV = (
     ("me_profile", "基本资料", True),
@@ -258,6 +269,46 @@ def me_security(request):
             password_url=reverse("account_change_password"),
             email_url=reverse("account_email"),
         ),
+    )
+
+
+EXPORTS_PER_HOUR = 5  # design 3.8 (default)
+
+
+@login_required
+def me_export(request):
+    """Design 3.8: the user's own data as a JSON download."""
+    if over_limit(f"me-export:{request.user.pk}", EXPORTS_PER_HOUR, 3600):
+        messages.error(request, "导出太频繁了，请一小时后再试。")
+        return redirect("me_security")
+    response = JsonResponse(
+        personal_data(request.user),
+        json_dumps_params={"ensure_ascii": False, "indent": 2},
+    )
+    response["Content-Disposition"] = 'attachment; filename="sjtu-ow-my-data.json"'
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def me_delete(request):
+    """Design 3.8: anonymise the account after the password is confirmed."""
+    blockers = deletion_blockers(request.user)
+    form = DeleteAccountForm(request.POST or None, user=request.user)
+    if request.method == "POST" and not blockers and form.is_valid():
+        try:
+            delete_account(request.user)
+        except AccountDeletionError as exc:
+            blockers = [str(exc)]
+        else:
+            logout(request)
+            messages.success(request, "账号已注销。")
+            return redirect("home")
+    return render(
+        request,
+        "me/delete.html",
+        _me_context(request, "me_security", form=form, blockers=blockers),
     )
 
 

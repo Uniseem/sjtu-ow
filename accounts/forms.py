@@ -184,3 +184,23 @@ class ContactMethodForm(forms.ModelForm):
 
 def game_account_limit_reached(user) -> bool:
     return user.game_accounts.count() >= max_game_accounts()
+
+
+class DeleteAccountForm(forms.Form):
+    """Design 3.8: deleting needs the current password."""
+
+    password = forms.CharField(
+        label="当前密码",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_password(self) -> str:
+        password = self.cleaned_data["password"]
+        if not self.user.check_password(password):
+            raise forms.ValidationError("密码不对。")
+        return password

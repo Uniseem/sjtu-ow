@@ -5,8 +5,15 @@ from __future__ import annotations
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
 
-from accounts.models import ContactMethod, Feature, GameAccount, User
+from accounts.models import (
+    ContactMethod,
+    Feature,
+    FeatureUserRule,
+    GameAccount,
+    User,
+)
 from accounts.permissions import can_use
+from accounts.ranks import format_rank
 
 GROUP_SJTU = "交大用户"
 GROUP_EXTERNAL = "校外用户"
@@ -210,3 +217,171 @@ def refresh_nickname_pages(user) -> None:
         url = article.get_url()
         if url:
             prerender.request_page(url, kind="article")
+
+
+DELETED_NICKNAME = "已注销用户"
+DELETED_NOTE = "用户自行注销"
+
+
+class AccountDeletionError(Exception):
+    """Why the account cannot be deleted right now; shown to the user."""
+
+
+def deletion_blockers(user) -> list[str]:
+    """A captain must hand over or disband first (design 3.8, 7.4)."""
+    from teams.models import TeamMembership, TeamRole
+
+    captained = TeamMembership.objects.filter(
+        user=user, role=TeamRole.CAPTAIN, team__disbanded_at__isnull=True
+    ).select_related("team")
+    return [
+        f"你是战队「{membership.team.name}」的队长，请先转让队长或解散战队。"
+        for membership in captained
+    ]
+
+
+def delete_account(user) -> None:
+    """Anonymise the account in place (design 3.8). Users are never deleted.
+
+    Registration roster snapshots and their logs stay: they record what was
+    submitted. Articles stay and show the new nickname.
+    """
+    from allauth.account.models import EmailAddress
+    from django.db import transaction
+
+    from moderation.models import ModerationItem, TargetType
+    from scrims.services import remove_signups_of
+    from teams.services import leave_all_teams
+
+    blockers = deletion_blockers(user)
+    if blockers:
+        raise AccountDeletionError(blockers[0])
+    with transaction.atomic():
+        remove_signups_of(user)  # before game IDs: signups PROTECT them
+        leave_all_teams(user)
+        user.game_accounts.all().delete()  # their LFG posts cascade
+        user.contact_methods.all().delete()
+        EmailAddress.objects.filter(user=user).delete()
+        FeatureUserRule.objects.filter(user=user).delete()
+        user.email = f"deleted-{user.pk}@deleted.invalid"
+        user.nickname = DELETED_NICKNAME
+        user.is_sjtu = False
+        user.sjtu_verified_via = None
+        user.sjtu_verified_at = None
+        user.is_active = False
+        user.is_staff = False
+        user.deactivation_note = DELETED_NOTE
+        user.set_unusable_password()
+        user.save()
+        # After the save: its signal puts everyone back in 交大用户 / 校外用户.
+        user.groups.clear()
+        # The review queue keeps a copy of each nickname it checked, including
+        # the one the save above just sent.
+        ModerationItem.objects.filter(
+            target_type=TargetType.NICKNAME, target_id=user.pk
+        ).delete()
+
+
+def personal_data(user) -> dict:
+    """Everything the site holds about the user, for download (design 3.8).
+
+    Only the user's own data: no teammates' contacts, no admin records.
+    """
+    from content.models import ArticlePage
+    from lfg.models import LfgPost
+    from scrims.models import ScrimSignup
+    from teams.models import TeamApplication, TeamMembership
+    from tournaments.models import RegistrationMember
+
+    def when(value):
+        return value.isoformat() if value else None
+
+    return {
+        "account": {
+            "email": user.email,
+            "nickname": user.nickname,
+            "is_sjtu": user.is_sjtu,
+            "date_joined": when(user.date_joined),
+            "agreed_terms_at": when(user.agreed_terms_at),
+            "agreed_cross_border_at": when(user.agreed_cross_border_at),
+        },
+        "game_accounts": [
+            {
+                "battletag": account.battletag,
+                "rank_tank": format_rank(account.rank_tank),
+                "rank_damage": format_rank(account.rank_damage),
+                "rank_support": format_rank(account.rank_support),
+                "ranks_updated_at": when(account.ranks_updated_at),
+            }
+            for account in user.game_accounts.all()
+        ],
+        "contact_methods": [
+            {"type": contact.get_type_display(), "value": contact.value}
+            for contact in user.contact_methods.all()
+        ],
+        "teams": [
+            {
+                "team": membership.team.name,
+                "role": membership.get_role_display(),
+                "joined_at": when(membership.joined_at),
+            }
+            for membership in TeamMembership.objects.filter(user=user).select_related(
+                "team"
+            )
+        ],
+        "team_applications": [
+            {
+                "team": application.team.name,
+                "status": application.get_status_display(),
+                "message": application.message,
+                "created_at": when(application.created_at),
+            }
+            for application in TeamApplication.objects.filter(
+                applicant=user
+            ).select_related("team")
+        ],
+        "tournament_registrations": [
+            {
+                "tournament": member.registration.tournament.title,
+                "team": member.registration.team_name,
+                "status": member.registration.get_status_display(),
+                "nickname_snapshot": member.nickname,
+                "battletag_snapshot": member.battletag,
+            }
+            for member in RegistrationMember.objects.filter(user=user).select_related(
+                "registration__tournament"
+            )
+        ],
+        "scrim_signups": [
+            {
+                "scrim": signup.scrim.title,
+                "starts_at": when(signup.scrim.starts_at),
+                "battletag": signup.game_account.battletag,
+                "roles": [
+                    label
+                    for field, label in (
+                        ("role_tank", "坦克"),
+                        ("role_damage", "输出"),
+                        ("role_support", "支援"),
+                    )
+                    if getattr(signup, field)
+                ],
+            }
+            for signup in ScrimSignup.objects.filter(user=user).select_related(
+                "scrim", "game_account"
+            )
+        ],
+        "lfg_posts": [
+            {
+                "mode": post.mode.name,
+                "start_at": when(post.start_at),
+                "note": post.note,
+                "status": post.get_status_display(),
+            }
+            for post in LfgPost.objects.filter(owner=user).select_related("mode")
+        ],
+        "articles": [
+            {"title": page.title, "url": page.get_url()}
+            for page in ArticlePage.objects.filter(author=user)
+        ],
+    }
