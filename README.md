@@ -132,7 +132,16 @@ Caddy 用 HTTP 验证自动申请 Let's Encrypt 证书，前提是 80 端口对�
 
 `web` 启动脚本会执行 `createcachetable` 和 `collectstatic --noinput`（没有 `--clear`，旧的带哈希文件会留在卷上）。`worker` 容器运行 `run_worker`（任务消费 + 心跳）。
 
-**已知问题**（053 发现，还没修）：三个服务都没有重启策略，服务器重启后不会自己起来；`web` 容器自带的健康检查请求 `127.0.0.1` 会被 `ALLOWED_HOSTS` 拒绝（400），容器会显示「不健康」，网站本身不受影响。
+三个服务都是 `restart: unless-stopped`：进程崩溃或服务器重启后会自己起来（054 在测试机上杀掉 Caddy 主进程验证过）。`web` 的健康检查是 `deploy/healthcheck.py`，它像 Caddy 一样带上站点域名和 `X-Forwarded-Proto: https` 去请求 `/healthz`；直接请求 `127.0.0.1` 会被 `ALLOWED_HOSTS` 拒成 400。
+
+**定时任务**：模板是 `deploy/crontab.example`，改 `DC=` 那一行（正式站 `-p sjtu-ow`，测试环境 `-p sjtu-ow-test`）。Debian 12 默认**没装 cron**，而且它的 cron **不支持 `CRON_TZ`**，服务器时区一般又是 UTC，所以要把北京时间减 8 小时换算。测试机用的是独立文件 `/etc/cron.d/sjtu-ow-test`（不碰 root 的 crontab，这台机器上还有别的项目）：
+
+```bash
+apt-get install -y cron
+# 按 crontab.example 写 /etc/cron.d/sjtu-ow-test：时间换成 UTC，每行在时间后面加一列用户名 root，
+# 输出追加到 /var/log/sjtu-ow-test-cron.log。文件权限 644
+journalctl -u cron | grep CMD      # 看任务有没有按时跑
+```
 
 停掉 `web` 后，Caddy 对会打到后端的请求返回维护页；已经生成的预渲染公开页面仍可访问。
 

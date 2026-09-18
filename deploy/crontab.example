@@ -1,36 +1,38 @@
 # 宿主机 crontab（设计 16.5）。表中时间都是北京时间。
 # 海外服务器的系统时区通常不是北京时间，所以显式声明 CRON_TZ；
-# 系统的 cron 不支持 CRON_TZ 时，把下面的小时换算成服务器时区。
+# 系统的 cron 不支持 CRON_TZ 时（Debian 自带的 cron 就不支持），把下面的小时
+# 换算成服务器时区，并删掉 CRON_TZ 这一行。测试机的做法见 README。
 #
 #   crontab -l > /tmp/cron && cat deploy/crontab.example >> /tmp/cron && crontab /tmp/cron
 
 CRON_TZ=Asia/Shanghai
-COMPOSE=/srv/sjtu-ow/deploy/docker-compose.yml
+# 每条命令都要带 -p 和 --env-file（053 轮）。正式站项目名 sjtu-ow，测试环境 sjtu-ow-test
+DC=docker compose -p sjtu-ow -f /srv/sjtu-ow/deploy/docker-compose.yml --env-file /srv/sjtu-ow/.env
 
 # 每天 03:00 备份数据库和上传文件，保留最近 14 天（设计 16.7）
 # 后台开启「异地备份」之后，这条命令会自动加密并上传一份到对象存储。
 # 加密密钥来自环境变量 BACKUP_ENCRYPTION_KEY，不在数据库里——
 # 放数据库里的话，密钥就在它保护的那份备份里，全盘丢失后等于打不开。
-0 3 * * * docker compose -f $COMPOSE exec -T web python manage.py backup
+0 3 * * * $DC exec -T web python manage.py backup
 
 # 每天 04:00 清理过期数据：
 #   API 调用日志 90 天、Webhook 投递记录 180 天、已完成任务记录 30 天、过期会话
-0 4 * * * docker compose -f $COMPOSE exec -T web python manage.py cleanup_old_data
+0 4 * * * $DC exec -T web python manage.py cleanup_old_data
 
 # 每天 04:15 全量重新生成预渲染页面
-15 4 * * * docker compose -f $COMPOSE exec -T web python manage.py prerender
+15 4 * * * $DC exec -T web python manage.py prerender
 
 # 每天 04:20 清理 static 数据卷里不属于当前版本、且超过 30 天的旧文件
-20 4 * * * docker compose -f $COMPOSE exec -T web python manage.py cleanup_static
+20 4 * * * $DC exec -T web python manage.py cleanup_static
 
 # 每周日 04:30 SQLite PRAGMA optimize
-30 4 * * 0 docker compose -f $COMPOSE exec -T web python manage.py optimize_db
+30 4 * * 0 $DC exec -T web python manage.py optimize_db
 
 # 每 10 分钟扫一次到期但没被执行的 Webhook 投递（019 的兜底，防止延时任务丢了）
-*/10 * * * * docker compose -f $COMPOSE exec -T web python manage.py shell -c "from integrations.tasks import deliver_due_webhooks; deliver_due_webhooks.enqueue()"
+*/10 * * * * $DC exec -T web python manage.py shell -c "from integrations.tasks import deliver_due_webhooks; deliver_due_webhooks.enqueue()"
 
 # 每天 09:30 AI 审核的每日汇总邮件
-30 9 * * * docker compose -f $COMPOSE exec -T web python manage.py moderate_scan --digest
+30 9 * * * $DC exec -T web python manage.py moderate_scan --digest
 
 # 恢复：
 #   python manage.py restore --list-s3                 列出对象存储里的备份
