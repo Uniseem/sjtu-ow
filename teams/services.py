@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q
 from django.db.models.functions import Lower
 from django.utils import timezone
 
@@ -323,13 +322,29 @@ def assign_captain(*, team, actor, new_captain) -> None:
 
 
 def disband_blockers(team) -> list[str]:
-    """Reasons the team cannot be disbanded.
+    """Live registrations stop a disband, for captains and superusers (7.5).
 
-    M4 adds the real check: a team with a registration that is pending,
-    awaiting upstream, or approved on a draft/published tournament must
-    withdraw it first (design 7.5).
+    Live: pending, awaiting the upstream, or approved, on a tournament that is
+    still a draft or published. The comment here used to say M4 would add
+    this; it returned an empty list until round 061.
     """
-    return []
+    from tournaments.models import ACTIVE_STATUSES, TournamentStatus
+
+    live = (
+        team.registrations.filter(
+            status__in=ACTIVE_STATUSES,
+            tournament__status__in=[
+                TournamentStatus.DRAFT,
+                TournamentStatus.PUBLISHED,
+            ],
+        )
+        .select_related("tournament")
+        .order_by("tournament__registration_closes_at")
+    )
+    return [
+        f"战队还在赛事「{registration.tournament.title}」的报名里，请先撤回报名。"
+        for registration in live
+    ]
 
 
 @transaction.atomic
@@ -450,8 +465,3 @@ def _submit_moderation(*, target_type, target_id, field, text, url, author):
         )
     except Exception:  # noqa: BLE001 — moderation must never block the action
         logger.warning("送审失败 %s #%s", target_type, target_id, exc_info=True)
-
-
-def blocked_query() -> Q:
-    """Placeholder so M4 can express "teams with live registrations"."""
-    return Q(pk__in=[])

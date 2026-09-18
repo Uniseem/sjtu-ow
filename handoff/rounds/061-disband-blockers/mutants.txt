@@ -1,0 +1,6 @@
+✓ 被抓到 不看报名状态 | 3 failed, 8 passed in 5.89s ['test_a_closed_registration_does_not[rejected]', 'test_a_closed_registration_does_not[withdrawn]']
+✓ 被抓到 不看赛事状态 | 2 failed, 9 passed in 5.88s ['test_a_finished_or_cancelled_tournament_does_not[finished]', 'test_a_finished_or_cancelled_tournament_does_not[cancelled]']
+✓ 被抓到 草稿赛事不算 | 1 failed, 10 passed in 5.87s ['test_a_draft_tournament_still_counts']
+✓ 被抓到 解散时不检查 | 5 failed, 6 passed in 5.89s ['test_a_live_registration_stops_the_captain[pending]', 'test_a_live_registration_stops_the_captain[awaiting_upstream]']
+✓ 被抓到 回到占位（永远返回空） | 6 failed, 5 passed in 5.88s ['test_a_live_registration_stops_the_captain[pending]', 'test_a_live_registration_stops_the_captain[awaiting_upstream]']
+5/5 被抓到，全部还原
