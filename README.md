@@ -134,6 +134,8 @@ Caddy 用 HTTP 验证自动申请 Let's Encrypt 证书，前提是 80 端口对�
 
 三个服务都是 `restart: unless-stopped`：进程崩溃或服务器重启后会自己起来（054 在测试机上杀掉 Caddy 主进程验证过）。`web` 的健康检查是 `deploy/healthcheck.py`，它像 Caddy 一样带上站点域名和 `X-Forwarded-Proto: https` 去请求 `/healthz`；直接请求 `127.0.0.1` 会被 `ALLOWED_HOSTS` 拒成 400。
 
+容器日志用 Docker 的 `json-file` 驱动轮转，每个容器最多 5 个 10MB 的文件，写满覆盖最旧的（设计 15.5）。看日志：`docker compose -p sjtu-ow-test -f deploy/docker-compose.yml --env-file .env logs --tail 100 web`。gunicorn 的访问日志记下的来源是 Caddy 的内网地址，**不含用户 IP**，Caddy 自己不记访问日志——隐私政策是这么写的，要改先改政策。
+
 **定时任务**：模板是 `deploy/crontab.example`，改 `DC=` 那一行（正式站 `-p sjtu-ow`，测试环境 `-p sjtu-ow-test`）。Debian 12 默认**没装 cron**，而且它的 cron **不支持 `CRON_TZ`**，服务器时区一般又是 UTC，所以要把北京时间减 8 小时换算。测试机用的是独立文件 `/etc/cron.d/sjtu-ow-test`（不碰 root 的 crontab，这台机器上还有别的项目）：
 
 ```bash
@@ -364,6 +366,7 @@ uv run python manage.py restore backups/sjtu-ow-20260916-221549.tar.gz --yes  # 
   - 加密密钥来自环境变量 `BACKUP_ENCRYPTION_KEY`，**不在数据库里**——放数据库里的话，密钥就在它保护的那份备份里，服务器整个丢了就等于打不开。和 `DJANGO_SECRET_KEY`、`FIELD_ENCRYPTION_KEY` 一起放密码管理工具。
   - 没设密钥就不会上传，不会把明文传出去。
   - 上传失败会让整条命令失败，不会让一次没送出去的备份看起来像成功了。
+  - 上传成功后，删掉存储桶里超过保留天数（和本地同一个 `--keep-days`，默认 14）的本站备份。只删直接放在前缀下、名字是 `sjtu-ow-年月日-时分秒.tar.gz.enc` 的文件，同一个桶里别的东西不动。清理失败只警告，这次备份仍算成功。**API 令牌要有删除权限**（R2 选「对象读和写」），否则每次都会警告清理失败。
   - 从对象存储恢复：`manage.py restore --list-s3` 看有哪些，`manage.py restore --from-s3 <KEY> --yes` 下载解密并恢复。
 - 恢复会：校验 `FIELD_ENCRYPTION_KEY` 能不能解开备份里的加密字段（**解不开就拒绝**，不然会恢复出一堆没人能读的密文）→ 关掉数据库连接 → 删除旧 WAL → 替换数据库文件 → 恢复 media → **清空 `prerendered`**（否则静态页面会比数据新）。
 - 不加 `--yes` 只打印要做什么，什么都不改。

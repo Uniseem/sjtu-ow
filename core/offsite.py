@@ -20,6 +20,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
+import re
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -162,6 +163,66 @@ def listing(*, config: Config | None = None, limit: int = 50) -> list[dict]:
     items = response.get("Contents", []) or []
     items.sort(key=lambda item: item.get("LastModified", 0), reverse=True)
     return items[:limit]
+
+
+# Only our own archives: the bucket may hold other things (round 063).
+_OURS = re.compile(r"^sjtu-ow-\d{8}-\d{6}\.tar\.gz" + re.escape(ENCRYPTED_SUFFIX) + "$")
+
+
+def _is_ours(key: str, config: Config) -> bool:
+    """Directly under our prefix and named like our archives.
+
+    A listing by prefix "sjtu-ow" also returns "sjtu-ow-….enc" at the bucket
+    root and anything in sub-folders; neither was put there by us.
+    """
+    name = key.rsplit("/", 1)[-1]
+    return bool(_OURS.match(name)) and key == config.key_for(name)
+
+
+def _all_objects(client, config: Config):
+    """Every object under the prefix; S3 returns at most 1000 per page."""
+    kwargs = {"Bucket": config.bucket, "Prefix": config.prefix.strip("/")}
+    while True:
+        response = client.list_objects_v2(**kwargs)
+        yield from response.get("Contents", []) or []
+        if not response.get("IsTruncated"):
+            return
+        kwargs["ContinuationToken"] = response["NextContinuationToken"]
+
+
+def prune(keep_days: int, *, config: Config | None = None, now=None) -> int:
+    """Delete our archives older than ``keep_days`` (design 16.7, round 063).
+
+    Until round 063 only the local copies were pruned; the bucket kept every
+    upload for ever.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    config = config or load_config()
+    if config.missing:
+        raise OffsiteError(f"异地备份还缺这些设置：{'、'.join(config.missing)}")
+    cutoff = (now or timezone.now()) - timedelta(days=keep_days)
+    try:
+        client = client_factory(config)
+        stale = [
+            item["Key"]
+            for item in _all_objects(client, config)
+            if _is_ours(item["Key"], config) and item["LastModified"] < cutoff
+        ]
+        for start in range(0, len(stale), 1000):  # delete_objects takes 1000
+            client.delete_objects(
+                Bucket=config.bucket,
+                Delete={
+                    "Objects": [{"Key": key} for key in stale[start : start + 1000]]
+                },
+            )
+    except OffsiteError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise OffsiteError(f"清理旧备份失败：{exc}") from exc
+    return len(stale)
 
 
 def download(key: str, target: Path, *, config: Config | None = None) -> Path:

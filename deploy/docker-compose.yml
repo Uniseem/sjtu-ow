@@ -1,5 +1,13 @@
 name: sjtu-ow
 
+# Design 15.5: rotate container logs. The json-file driver rotates by size, not
+# by age, so "keep 14 days" is five files of 10 MB per container (round 063).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   web:
     build:
@@ -7,6 +15,7 @@ services:
       dockerfile: Dockerfile
     command: ["/app/deploy/entrypoint-web.sh"]
     restart: unless-stopped
+    logging: *logging
     env_file:
       - ../.env
     environment:
@@ -34,6 +43,7 @@ services:
       dockerfile: Dockerfile
     command: ["/app/deploy/entrypoint-worker.sh"]
     restart: unless-stopped
+    logging: *logging
     env_file:
       - ../.env
     environment:
@@ -48,6 +58,7 @@ services:
   proxy:
     image: caddy:2.10-alpine
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
       - "443:443"

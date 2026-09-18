@@ -7,6 +7,7 @@ first real deployment; nothing local could have.
 """
 
 import importlib.util
+import re
 import urllib.error
 from types import SimpleNamespace
 
@@ -116,3 +117,25 @@ def test_every_service_comes_back_after_a_crash_or_reboot(service):
 def test_the_web_container_is_checked_with_the_script():
     test = _compose()["services"]["web"]["healthcheck"]["test"]
     assert test == ["CMD", "python", "/app/deploy/healthcheck.py"]
+
+
+@pytest.mark.parametrize("service", ["web", "worker", "proxy"])
+def test_every_service_rotates_its_logs(service):
+    """Design 15.5, round 063: json-file never rotated, logs grew until full."""
+    logging = _compose()["services"][service]["logging"]
+    assert logging["driver"] == "json-file"
+    assert logging["options"] == {"max-size": "10m", "max-file": "5"}
+
+
+def test_no_log_records_the_visitor_ip():
+    """Design 15.5 and the privacy policy: request logs carry no user IP.
+
+    gunicorn logs the peer address, which is the Caddy container; Caddy
+    itself writes no access log. Either change would start logging IPs.
+    """
+    deploy = django_settings.BASE_DIR / "deploy"
+    caddyfile = (deploy / "Caddyfile").read_text()
+    entrypoint = (deploy / "entrypoint-web.sh").read_text()
+    assert not re.search(r"^\s*log\b", caddyfile, re.M)
+    assert "--forwarded-allow-ips" not in entrypoint
+    assert "--access-logformat" not in entrypoint

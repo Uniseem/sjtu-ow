@@ -89,10 +89,10 @@ class Command(BaseCommand):
         removed = self.prune(root, keep_days)
         if removed:
             self.stdout.write(f"已清理 {removed} 个超过 {keep_days} 天的旧备份")
-        self.upload(archive, skip=options["no_upload"])
+        self.upload(archive, skip=options["no_upload"], keep_days=keep_days)
         return None
 
-    def upload(self, archive: Path, *, skip: bool) -> None:
+    def upload(self, archive: Path, *, skip: bool, keep_days: int) -> None:
         """Design 16.7 step 3: encrypt and send a copy off the server."""
         from core import offsite
 
@@ -115,6 +115,14 @@ class Command(BaseCommand):
             # A failed upload must not look like a successful backup.
             raise CommandError(f"本地备份已生成，但上传失败：{exc}") from exc
         self.stdout.write(self.style.SUCCESS(f"已加密并上传到 {config.bucket}/{key}"))
+        try:
+            removed = offsite.prune(keep_days, config=config)
+        except offsite.OffsiteError as exc:
+            # Nothing is lost if the old copies stay one more day.
+            self.stdout.write(self.style.WARNING(f"异地旧备份没清理掉：{exc}"))
+        else:
+            if removed:
+                self.stdout.write(f"已清理异地 {removed} 个超过 {keep_days} 天的旧备份")
 
     def prune(self, root: Path, keep_days: int) -> int:
         cutoff = timezone.now() - timedelta(days=keep_days)
