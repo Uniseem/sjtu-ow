@@ -20,6 +20,7 @@ from content.services import article_create_admin_url
 
 @require_GET
 def sitemap_xml(request):
+    from scrims.services import public_scrims
     from teams.models import Team
     from tournaments.services import listed_tournaments
 
@@ -44,6 +45,16 @@ def sitemap_xml(request):
             {
                 "loc": request.build_absolute_uri(tournament.get_absolute_url()),
                 "lastmod": tournament.updated_at,
+            }
+        )
+    # So do cancelled and draft scrims; public ones were missing until 062.
+    for scrim in public_scrims().order_by("pk"):
+        urlset.append(
+            {
+                "loc": request.build_absolute_uri(
+                    reverse("scrim_detail", args=[scrim.pk])
+                ),
+                "lastmod": scrim.updated_at,
             }
         )
     return render(

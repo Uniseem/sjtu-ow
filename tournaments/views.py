@@ -32,9 +32,19 @@ def tournament_detail(request, pk):
         .filter(tournament=tournament)
         .order_by("-first_published_at")
     )
+    from content.seo import absolute_uri, build_seo
     from tournaments.slots import actions_context
 
     context = {
+        # Design 13.14: name, summary, cover.
+        "seo": build_seo(
+            request,
+            title=tournament.title,
+            description=tournament.summary,
+            image=tournament.cover,
+            kind="tournament",
+            canonical=absolute_uri(request, tournament.get_absolute_url()),
+        ),
         "articles": articles,
         "phase": tournament.phase(),
         "phase_label": services.PHASE_LABELS[tournament.phase()],

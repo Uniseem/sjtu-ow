@@ -9,7 +9,7 @@ from core.models import SiteSettings
 SITE_NAME = "上海交通大学守望先锋社区"
 DEFAULT_DESCRIPTION = "上海交通大学守望先锋社区网站"
 
-# Extension point for later milestones: tournament / team / scrim.
+# Design 13.14's page kinds; each detail view passes its own.
 SHARE_KINDS = ("article", "tournament", "team", "scrim", "other")
 
 
@@ -58,8 +58,9 @@ def build_seo(
 ) -> dict:
     """Return template context for <title>, description, canonical, and og:*.
 
-    ``kind`` is ``article`` or ``other`` today. Tournament / team / scrim
-    callers should pass those kinds when those pages exist (M3/M4/M6).
+    Design 13.14 says what each kind shows. Until round 062 only articles
+    passed their own; tournament, team and scrim pages fell back to the
+    site-wide defaults.
     """
     if kind not in SHARE_KINDS:
         kind = "other"

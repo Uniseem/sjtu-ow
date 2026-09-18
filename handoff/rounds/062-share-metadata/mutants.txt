@@ -1,0 +1,9 @@
+✓ 被抓到 赛事不传简介 | 1 failed, 4 passed in 0.32s ['test_a_tournament_previews_with_its_name_summary_and_cover']
+✓ 被抓到 赛事不传封面 | 1 failed, 4 passed in 0.28s ['test_a_tournament_previews_with_its_name_summary_and_cover']
+✓ 被抓到 赛事用站名当标题 | 1 failed, 4 passed in 0.32s ['test_a_tournament_previews_with_its_name_summary_and_cover']
+✓ 被抓到 战队不传简介 | 1 failed, 4 passed in 0.29s ['test_a_team_previews_with_its_name_description_and_logo']
+✓ 被抓到 战队不传队标 | 1 failed, 4 passed in 0.34s ['test_a_team_previews_with_its_name_description_and_logo']
+✓ 被抓到 内战不传分享信息 | 1 failed, 4 passed in 0.30s ['test_a_scrim_previews_with_its_time_format_and_signups']
+✓ 被抓到 内战标题不带时间 | 1 failed, 4 passed in 0.32s ['test_a_scrim_previews_with_its_time_format_and_signups']
+✓ 被抓到 站点地图不列内战 | 1 failed, 4 passed in 0.31s ['test_the_sitemap_lists_public_scrims_only']
+8/8 被抓到，全部还原

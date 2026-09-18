@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from scrims import services
@@ -28,15 +29,37 @@ def _visible_or_404(pk) -> Scrim:
     return scrim
 
 
+def share_info(request, scrim, counts) -> dict:
+    """Design 13.14: title and start time; format and signup count; default image.
+
+    Signups refresh the static page (round 057), so the count stays current.
+    """
+    from django.utils import timezone
+    from django.utils.dateformat import format as format_date
+
+    from content.seo import build_seo
+
+    starts = format_date(timezone.localtime(scrim.starts_at), "n月j日 H:i")
+    return build_seo(
+        request,
+        title=f"{scrim.title} · {starts}",
+        description=f"{scrim.get_format_display()} · 已报名 {counts['total']} 人",
+        kind="scrim",
+        canonical=request.build_absolute_uri(reverse("scrim_detail", args=[scrim.pk])),
+    )
+
+
 @require_GET
 def scrim_detail(request, pk):
     scrim = _visible_or_404(pk)
     signups = scrim.signups.select_related("user").all()
+    counts = services.signup_counts(scrim)
     context = {
+        "seo": share_info(request, scrim, counts),
         "scrim": scrim,
         # Design 9.2: nicknames and roles only. No ranks, no game IDs.
         "signups": signups,
-        "counts": services.signup_counts(scrim),
+        "counts": counts,
         "cancelled": scrim.status == ScrimStatus.CANCELLED,
     }
     context.update(actions_context(request, scrim))
@@ -84,8 +107,6 @@ def scrim_cancel_signup(request, pk):
 
 
 def redirect_to_login(request):
-    from django.urls import reverse
-
     return redirect(f"{reverse('account_login')}?next={request.path}")
 
 

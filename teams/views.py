@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from accounts.models import User
+from content.seo import absolute_uri, build_seo
 from core.ratelimit import over_limit
 from teams import services
 from teams.forms import ApplicationForm, RejectForm, TeamForm
@@ -56,6 +57,15 @@ def team_detail(request, pk):
             "can_apply": can_apply,
             "apply_reason": apply_reason,
             "entries": tournament_services.team_entries(team),
+            # Design 13.14: name, description, logo.
+            "seo": build_seo(
+                request,
+                title=team.name,
+                description=team.description,
+                image=team.logo,
+                kind="team",
+                canonical=absolute_uri(request, team.get_absolute_url()),
+            ),
         },
     )
 
