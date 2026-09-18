@@ -210,6 +210,31 @@ def can_manage(user) -> bool:
     )
 
 
+SCRIM_PERMISSIONS = ("add_scrim", "change_scrim", "delete_scrim", "view_scrim")
+
+
+def assign_scrim_permissions() -> list[str]:
+    """Scrim managers get the scrim model permissions (design 4.1).
+
+    Missed in M6: until round 055 only superusers could manage scrims.
+    """
+    from django.contrib.auth.models import Group, Permission
+
+    from accounts.services import GROUP_SCRIM
+
+    permissions = list(
+        Permission.objects.filter(
+            content_type__app_label="scrims", codename__in=SCRIM_PERMISSIONS
+        )
+    )
+    granted = []
+    group = Group.objects.filter(name=GROUP_SCRIM).first()
+    if group is not None and permissions:
+        group.permissions.add(*permissions)
+        granted.append(group.name)
+    return granted
+
+
 @transaction.atomic
 def publish(*, scrim, actor=None):
     if scrim.status == ScrimStatus.CANCELLED:

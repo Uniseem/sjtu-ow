@@ -19,6 +19,7 @@ from core.fonts.css import regenerate_font_css
 from core.fonts.services import ensure_typography_rules
 from core.services import ensure_game_modes
 from moderation.services import assign_moderation_permissions
+from scrims.services import assign_scrim_permissions
 from tournaments.services import assign_tournament_permissions
 
 
@@ -95,6 +96,16 @@ class Command(BaseCommand):
                 )
             )
 
+        scrim_managers = assign_scrim_permissions()
+        if scrim_managers:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "已分配内战权限："
+                    + "、".join(scrim_managers)
+                    + " 可创建内战、勾选上场、调整分队"
+                )
+            )
+
         reviewers = assign_moderation_permissions()
         if reviewers:
             self.stdout.write(
@@ -124,14 +135,6 @@ class Command(BaseCommand):
             self.style.SUCCESS(f"已同步投稿者组成员（本轮变更 {changed} 人）")
         )
 
-        later = [
-            "内战管理员的内战管理权限（M6）",
-        ]
-        self.stdout.write(
-            self.style.NOTICE("以下内容仍等到后续里程碑写入（命令可重复执行）：")
-        )
-        for item in later:
-            self.stdout.write(f"  - {item}")
         self.stdout.write(
             self.style.NOTICE(
                 "不会改写已有用户组成员关系（投稿者组除外，由系统按验证邮箱"
