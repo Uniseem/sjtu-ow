@@ -818,3 +818,17 @@ def test_family_disk_bytes_counts_original_and_slices(media_root):
     total = services.family_disk_bytes(family)
     assert total > face.total_bytes  # 分片 + 原始文件
     assert total >= face.total_bytes + face.original_file.size
+
+
+# --- refusals the guard sweep found untested (round 059) ------------------------
+
+
+def test_a_bitmap_only_font_cannot_be_used_on_the_web():
+    """OS/2 fsType 0x0200: only bitmap embedding is licensed."""
+    with pytest.raises(EmbeddingNotAllowed, match="点阵"):
+        inspect_font(make_font_bytes("汉字", fs_type=0x0200))
+
+
+def test_a_font_without_characters_is_refused():
+    with pytest.raises(FontError, match="没有任何字符"):
+        inspect_font(make_font_bytes(""))

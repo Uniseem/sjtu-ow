@@ -52,9 +52,10 @@ def member_problems(*, tournament, user, is_captain=False):
     from accounts.services import profile_gaps
 
     problems = []
-    if not user.is_active:
-        problems.append(f"{user.nickname} 的账号已停用")
-    elif not can_use(user, "tournament_register"):
+    # Design 8.3 check 5: one message for a deactivated account and a blocked
+    # feature alike, so the captain never learns why (round 059). can_use()
+    # already says no for an inactive user.
+    if not can_use(user, "tournament_register"):
         problems.append(f"{user.nickname} 暂时无法参加赛事报名")
     gaps = [label for label, _url, _hint in profile_gaps(user)]
     if gaps:

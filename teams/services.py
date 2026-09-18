@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.db.models.functions import Lower
@@ -177,35 +176,39 @@ def apply_to_team(*, team, user, roles, message="") -> TeamApplication:
     return application
 
 
-@transaction.atomic
 def approve_application(*, application, actor) -> TeamApplication:
     """Approve inside one write transaction, re-checking the limits (7.3)."""
-    application = TeamApplication.objects.select_for_update().get(pk=application.pk)
-    team = application.team
-    if not is_captain(team, actor) and not actor.is_superuser:
-        raise TeamError("只有队长可以审批入队申请。")
-    if application.status != ApplicationStatus.PENDING:
-        raise TeamError("这条申请已经处理过了。")
-    if team.is_disbanded:
-        raise TeamError("战队已解散。")
-    if is_member(team, application.applicant):
-        application.status = ApplicationStatus.CANCELLED
-        application.decided_by = actor
-        application.decided_at = timezone.now()
-        application.decision_note = "申请人已经是成员"
-        application.save()
+    with transaction.atomic():
+        application = TeamApplication.objects.select_for_update().get(pk=application.pk)
+        team = application.team
+        if not is_captain(team, actor) and not actor.is_superuser:
+            raise TeamError("只有队长可以审批入队申请。")
+        if application.status != ApplicationStatus.PENDING:
+            raise TeamError("这条申请已经处理过了。")
+        if team.is_disbanded:
+            raise TeamError("战队已解散。")
+        already_member = is_member(team, application.applicant)
+        if already_member:
+            # Close the stale application. Raising inside this block would roll
+            # the cancellation back and leave it pending for ever (round 059).
+            application.status = ApplicationStatus.CANCELLED
+            application.decided_by = actor
+            application.decided_at = timezone.now()
+            application.decision_note = "申请人已经是成员"
+            application.save()
+        else:
+            if is_full(team):
+                raise TeamError("战队人数已满，无法通过。")
+            TeamMembership.objects.create(
+                team=team, user=application.applicant, role=TeamRole.MEMBER
+            )
+            application.status = ApplicationStatus.APPROVED
+            application.decided_by = actor
+            application.decided_at = timezone.now()
+            application.save()
+            transaction.on_commit(lambda: _after_approval(application, team, actor))
+    if already_member:
         raise TeamError("申请人已经是这支战队的成员了。")
-    if is_full(team):
-        raise TeamError("战队人数已满，无法通过。")
-
-    TeamMembership.objects.create(
-        team=team, user=application.applicant, role=TeamRole.MEMBER
-    )
-    application.status = ApplicationStatus.APPROVED
-    application.decided_by = actor
-    application.decided_at = timezone.now()
-    application.save()
-    transaction.on_commit(lambda: _after_approval(application, team, actor))
     return application
 
 
@@ -447,13 +450,6 @@ def _submit_moderation(*, target_type, target_id, field, text, url, author):
         )
     except Exception:  # noqa: BLE001 — moderation must never block the action
         logger.warning("送审失败 %s #%s", target_type, target_id, exc_info=True)
-
-
-def clean_name(name: str) -> str:
-    name = (name or "").strip()
-    if len(name) < 2 or len(name) > 16:
-        raise ValidationError("队名需要 2 到 16 个字符。")
-    return name
 
 
 def blocked_query() -> Q:

@@ -601,3 +601,187 @@ def test_a_team_cannot_be_disbanded_twice(team, captain):
         services.disband_team(team=team, actor=_superuser())
     team.refresh_from_db()
     assert team.disbanded_at == first  # the original date is kept
+
+
+# --- who may do what (round 059: none of these refusals had a test) -------------
+
+
+@pytest.fixture
+def member(team, applicant, captain):
+    application = services.apply_to_team(
+        team=team, user=applicant, roles={"damage": True}
+    )
+    services.approve_application(application=application, actor=captain)
+    return applicant
+
+
+@pytest.mark.django_db
+def test_a_member_cannot_edit_the_team(team, member):
+    with pytest.raises(services.TeamError, match="只有队长"):
+        services.update_team(
+            team=team,
+            user=member,
+            name="被改的名字",
+            description="",
+            logo=None,
+            is_recruiting=True,
+        )
+    team.refresh_from_db()
+    assert team.name == "交大一队"
+
+
+@pytest.mark.django_db
+def test_only_the_captain_can_reject(team, applicant):
+    application = services.apply_to_team(
+        team=team, user=applicant, roles={"damage": True}
+    )
+    outsider = _user("outsider@example.com", "路人丙")
+    with pytest.raises(services.TeamError, match="只有队长"):
+        services.reject_application(application=application, actor=outsider)
+    application.refresh_from_db()
+    assert application.status == ApplicationStatus.PENDING
+
+
+@pytest.mark.django_db
+def test_nobody_else_can_cancel_an_application(team, applicant, captain):
+    application = services.apply_to_team(
+        team=team, user=applicant, roles={"damage": True}
+    )
+    with pytest.raises(services.TeamError, match="自己的申请"):
+        services.cancel_application(application=application, actor=captain)
+    application.refresh_from_db()
+    assert application.status == ApplicationStatus.PENDING
+
+
+@pytest.mark.django_db
+def test_a_decided_application_cannot_be_decided_again(team, applicant, captain):
+    application = services.apply_to_team(
+        team=team, user=applicant, roles={"damage": True}
+    )
+    services.reject_application(application=application, actor=captain)
+    for attempt in (
+        lambda: services.approve_application(application=application, actor=captain),
+        lambda: services.reject_application(application=application, actor=captain),
+        lambda: services.cancel_application(application=application, actor=applicant),
+    ):
+        with pytest.raises(services.TeamError, match="已经处理过"):
+            attempt()
+    application.refresh_from_db()
+    assert application.status == ApplicationStatus.REJECTED
+    assert not team.memberships.filter(user=applicant).exists()
+
+
+@pytest.mark.django_db
+def test_approving_someone_already_in_the_team_is_refused(team, member, captain):
+    """E.g. added by a superuser while the application was pending."""
+    from teams.models import TeamApplication
+
+    stale = TeamApplication.objects.create(
+        team=team, applicant=member, role_damage=True
+    )
+    with pytest.raises(services.TeamError, match="已经是这支战队的成员"):
+        services.approve_application(application=stale, actor=captain)
+    stale.refresh_from_db()
+    assert stale.status == ApplicationStatus.CANCELLED
+    assert team.memberships.filter(user=member).count() == 1
+
+
+@pytest.mark.django_db
+def test_a_member_cannot_remove_anyone(team, member, captain):
+    with pytest.raises(services.TeamError, match="只有队长"):
+        services.remove_member(team=team, actor=member, member_user=captain)
+    assert team.memberships.filter(user=captain).exists()
+
+
+@pytest.mark.django_db
+def test_removing_or_leaving_needs_a_member(team, captain):
+    outsider = _user("outsider@example.com", "路人丙")
+    with pytest.raises(services.TeamError, match="不是战队成员"):
+        services.remove_member(team=team, actor=captain, member_user=outsider)
+    with pytest.raises(services.TeamError, match="不是这支战队的成员"):
+        services.leave_team(team=team, user=outsider)
+
+
+@pytest.mark.django_db
+def test_a_member_cannot_hand_the_captaincy_to_themselves(team, member, captain):
+    with pytest.raises(services.TeamError, match="只有队长"):
+        services.transfer_captain(team=team, actor=member, new_captain=member)
+    assert team.captain() == captain
+
+
+@pytest.mark.django_db
+def test_the_captaincy_cannot_go_to_the_captain(team, captain):
+    with pytest.raises(services.TeamError, match="已经是队长"):
+        services.transfer_captain(team=team, actor=captain, new_captain=captain)
+
+
+@pytest.mark.django_db
+def test_a_transfer_respects_the_captain_limit(team, member, captain):
+    """Design 7.1: at most 3 teams per captain, also when receiving one."""
+    SiteSettings.objects.update(team_max_captained=1)
+    services.create_team(user=member, name="他自己的队")
+    with pytest.raises(services.TeamError, match="已达上限"):
+        services.transfer_captain(team=team, actor=captain, new_captain=member)
+    assert team.captain() == captain
+
+
+@pytest.mark.django_db
+def test_only_a_superuser_can_assign_a_captain(team, member, captain):
+    with pytest.raises(services.TeamError, match="只有超级管理员"):
+        services.assign_captain(team=team, actor=captain, new_captain=member)
+    assert team.captain() == captain
+
+
+# --- the logo upload (round 059) -------------------------------------------------
+# logo_file is an ImageField: Django rejects anything Pillow cannot open before
+# our checks run, and resets content_type from the real image format. So these
+# use real images; an SVG never reaches the type check at all.
+
+
+def _image(fmt, size=(8, 8), noise=False):
+    import io
+    import os
+
+    from PIL import Image
+
+    if noise:
+        image = Image.frombytes("RGB", size, os.urandom(size[0] * size[1] * 3))
+    else:
+        image = Image.new("RGB", size, (200, 30, 30))
+    buffer = io.BytesIO()
+    image.save(buffer, format=fmt)
+    return buffer.getvalue()
+
+
+def _logo_form(name, data):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from teams.forms import TeamForm
+
+    return TeamForm(
+        data={"name": "上传测试队", "description": "", "is_recruiting": "on"},
+        files={"logo_file": SimpleUploadedFile(name, data)},
+    )
+
+
+def test_a_logo_over_5mb_is_refused():
+    from teams.forms import LOGO_MAX_BYTES
+
+    data = _image("PNG", size=(1500, 1500), noise=True)
+    assert len(data) > LOGO_MAX_BYTES
+    form = _logo_form("logo.png", data)
+    assert not form.is_valid()
+    assert "5MB" in str(form.errors["logo_file"])
+
+
+@pytest.mark.parametrize("name", ["logo.gif", "logo.png"])
+def test_only_jpg_png_or_webp_logos(name):
+    """A GIF is refused by name, and by its real format when renamed."""
+    form = _logo_form(name, _image("GIF"))
+    assert not form.is_valid()
+    assert "JPG、PNG 或 WebP" in str(form.errors["logo_file"])
+
+
+def test_a_small_png_logo_is_accepted():
+    form = _logo_form("logo.png", _image("PNG"))
+    assert "logo_file" not in form.errors

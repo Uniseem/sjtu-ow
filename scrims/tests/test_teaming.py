@@ -792,3 +792,46 @@ def test_saving_a_manual_arrangement_from_the_board(client, db):
     assert benched.pk not in {row.pk for row in services.team_rows(scrim)["a"]}
     assert benched.pk not in {row.pk for row in services.team_rows(scrim)["b"]}
     assert benched.user.nickname not in services.copy_text(scrim)
+
+
+# --- no solution (design 17.4; round 059's guard sweep) --------------------------
+
+
+@pytest.mark.django_db
+def test_counts_add_up_but_the_roles_do_not_fit():
+    """5 tank/support players and 5 damage-only players for a 5v5 role queue.
+
+    Every role has enough candidates, so the quick check passes, but only four
+    damage slots exist for five damage-only players. Without the final check
+    the search returned nothing and random.choice([]) raised IndexError.
+    """
+    scrim = make_scrim(ScrimFormat.RQ_5V5)
+    for index in range(5):
+        add_player(
+            scrim,
+            index,
+            [Role.TANK, Role.SUPPORT],
+            {Role.TANK: DIAMOND_3, Role.SUPPORT: DIAMOND_3},
+        )
+    for index in range(5, 10):
+        add_player(scrim, index, [Role.DAMAGE], {Role.DAMAGE: DIAMOND_3})
+    select_all(scrim)
+    players = teaming.players_from(services.selected_signups(scrim), scrim)
+
+    teaming.check_feasible(players, scrim)
+    with pytest.raises(teaming.NoSolution, match="找不到合法的分队方案"):
+        teaming.generate(players, scrim)
+
+
+@pytest.mark.django_db
+def test_a_player_whose_ranks_were_cleared_after_signing_up_is_named():
+    scrim = make_scrim(ScrimFormat.RQ_5V5)
+    fill(scrim, 10)
+    select_all(scrim)
+    victim = scrim.signups.order_by("pk").first()
+    GameAccount.objects.filter(pk=victim.game_account_id).update(
+        rank_tank=None, rank_damage=None, rank_support=None
+    )
+    players = teaming.players_from(services.selected_signups(scrim), scrim)
+    with pytest.raises(teaming.NoSolution, match=victim.user.nickname):
+        teaming.check_feasible(players, scrim)

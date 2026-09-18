@@ -371,3 +371,71 @@ def test_game_modes_are_seeded_once(db):
     assert len(first) == 5
     assert GameMode.objects.count() == 5
     assert [mode.pk for mode in first] == [mode.pk for mode in second]
+
+
+# --- refusals the guard sweep found untested (round 059) ------------------------
+
+
+def _post_kwargs(user, modes, **changes):
+    kwargs = {
+        "user": user,
+        "game_account": user.game_accounts.first(),
+        "mode": modes[0],
+        "roles": {"tank": True},
+        "start_at": timezone.now() + timedelta(minutes=30),
+    }
+    kwargs.update(changes)
+    return kwargs
+
+
+@pytest.mark.django_db
+def test_a_blocked_user_cannot_post_at_all(modes):
+    """can_post() had a test; that create_post() asks it did not."""
+    blocked = _user("blocked-post@example.com", "被禁发车")
+    FeatureUserRule.objects.create(
+        user=blocked, feature=Feature.LFG_POST, allowed=False
+    )
+    with pytest.raises(services.LfgError, match="无法使用"):
+        services.create_post(**_post_kwargs(blocked, modes))
+    assert not LfgPost.objects.filter(owner=blocked).exists()
+
+
+@pytest.mark.django_db
+def test_a_retired_mode_cannot_be_posted_to(driver, modes):
+    GameMode.objects.filter(pk=modes[0].pk).update(is_active=False)
+    modes[0].refresh_from_db()
+    with pytest.raises(services.LfgError, match="停用"):
+        services.create_post(**_post_kwargs(driver, modes))
+
+
+@pytest.mark.django_db
+def test_an_update_cannot_borrow_someone_elses_game_id(post, driver, modes):
+    other = _user("borrowed-lfg@example.com", "被借ID的人")
+    with pytest.raises(services.LfgError, match="自己的游戏 ID"):
+        services.update_post(
+            post=post,
+            **_post_kwargs(driver, modes, game_account=other.game_accounts.first()),
+        )
+    post.refresh_from_db()
+    assert post.game_account.user == driver
+
+
+@pytest.mark.django_db
+def test_an_update_still_needs_a_role(post, driver, modes):
+    with pytest.raises(services.LfgError, match="位置"):
+        services.update_post(post=post, **_post_kwargs(driver, modes, roles={}))
+
+
+@pytest.mark.django_db
+def test_a_closed_post_cannot_be_edited(post, driver, modes):
+    services.set_status(post=post, user=driver, status=LfgStatus.CLOSED)
+    with pytest.raises(services.LfgError, match="已关闭"):
+        services.update_post(post=post, **_post_kwargs(driver, modes, note="改了"))
+
+
+@pytest.mark.django_db
+def test_an_unknown_status_is_refused(post, driver):
+    with pytest.raises(services.LfgError, match="未知的状态"):
+        services.set_status(post=post, user=driver, status="deleted")
+    post.refresh_from_db()
+    assert post.status == LfgStatus.OPEN

@@ -235,9 +235,29 @@ def main() -> None:
     parser.add_argument("--copies", type=Path, default=None)
     parser.add_argument("--out", type=Path, default=Path("mutants.jsonl"))
     parser.add_argument("--only", default="", help="只跑路径包含这个字符串的文件")
+    parser.add_argument(
+        "--resume",
+        type=Path,
+        action="append",
+        default=[],
+        help="跳过这些结果文件里已经跑过的守卫（可以给多次）。"
+        "按文件、函数和条件匹配，不按行号：跑完之后代码可能挪了行",
+    )
     args = parser.parse_args()
 
     guards = [g for path in targets() if args.only in path for g in find_guards(path)]
+    done = set()
+    for previous in args.resume:
+        for line in previous.read_text().splitlines():
+            row = json.loads(line)
+            done.add((row["file"], row["function"], row["condition"]))
+    if done:
+        before = len(guards)
+        guards = [
+            g for g in guards if (g["file"], g["function"], g["condition"]) not in done
+        ]
+        skipped = before - len(guards)
+        print(f"续跑：{before} 个守卫里 {skipped} 个已经跑过，剩 {len(guards)} 个")
     if args.list:
         for g in guards:
             print(f"{g['file']}:{g['line']}  {g['function']}  if {g['condition']}")

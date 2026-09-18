@@ -634,3 +634,32 @@ def test_prerender_targets_track_public_scrims(db):
     assert targets["/scrims/"] == "scrim_index"
     assert targets[f"/scrims/{published.pk}/"] == "scrim"
     assert f"/scrims/{draft.pk}/" not in targets
+
+
+# --- refusals the guard sweep found untested (round 059) ------------------------
+
+
+@pytest.mark.django_db
+def test_a_scrim_cannot_be_cancelled_twice(scrim):
+    """A second cancel would mail everyone who signed up again."""
+    services.cancel_scrim(scrim=scrim)
+    with pytest.raises(services.ScrimError, match="已经取消"):
+        services.cancel_scrim(scrim=scrim)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "method, name",
+    [
+        ("post", "scrim_signup"),
+        ("post", "scrim_cancel_signup"),
+        ("get", "me_scrims"),
+    ],
+)
+def test_signed_out_visitors_are_sent_to_log_in(client, scrim, method, name):
+    from django.urls import reverse
+
+    args = [] if name == "me_scrims" else [scrim.pk]
+    response = getattr(client, method)(reverse(name, args=args))
+    assert response.status_code == 302
+    assert "/accounts/login/" in response["Location"]
