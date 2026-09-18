@@ -92,11 +92,11 @@ Disallow: /
 **其他项目没受影响**，部署前后对比：
 
 ```
-部署前：ayarw-frontend Up 7 days / ayarw-mongo Up 7 days (healthy) / ayarw-redis Up 7 days (healthy) / ayarw-server Up 7 days
-部署后：ayarw-frontend Up 7 days / ayarw-mongo Up 7 days (healthy) / ayarw-redis Up 7 days (healthy) / ayarw-server Up 7 days
+部署前：另一个项目的 4 个容器，均已运行 7 天，其中 2 个 healthy
+部署后：同样 4 个容器，均已运行 7 天，其中 2 个 healthy（没有重启过）
 ```
 
-（这是运行记录，另一个项目的容器名出现在这里；`AGENTS.md` 里没有写。）
+（容器名隐去：仓库是公开的，`AGENTS.md` 规定不写机器上其他项目的名字。）
 
 ## 还没修的问题
 
