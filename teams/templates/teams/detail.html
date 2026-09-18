@@ -48,6 +48,17 @@
     </ul>
 
     <h2 class="mt-10">参赛记录</h2>
-    {% include "components/empty_state.html" with title="即将开放" message="赛事报名将在后续里程碑接入。" %}
+    {% if entries %}
+      <ul class="mt-4 flex flex-col gap-2">
+        {% for entry in entries %}
+          <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2" data-team-entry>
+            <a href="{{ entry.tournament.get_absolute_url }}" class="link link-hover">{{ entry.tournament.title }}</a>
+            {% if entry.tournament.status == "cancelled" %}<span class="badge badge-ghost">已取消</span>{% elif entry.tournament.status == "finished" %}<span class="badge badge-ghost">已结束</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mt-4 text-base-content/70">还没有通过审核的赛事报名。</p>
+    {% endif %}
   </section>
 {% endblock %}

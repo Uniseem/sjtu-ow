@@ -14,6 +14,7 @@ from teams import services
 from teams.forms import ApplicationForm, RejectForm, TeamForm
 from teams.images import create_logo
 from teams.models import ApplicationStatus, Team, TeamApplication
+from tournaments import services as tournament_services
 
 CREATE_LIMIT = 3  # per user per day (design 附录 C)
 APPLY_LIMIT = 20
@@ -54,6 +55,7 @@ def team_detail(request, pk):
             "is_captain": services.is_captain(team, request.user),
             "can_apply": can_apply,
             "apply_reason": apply_reason,
+            "entries": tournament_services.team_entries(team),
         },
     )
 

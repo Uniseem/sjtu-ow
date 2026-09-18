@@ -244,6 +244,7 @@ def submit(*, tournament, team, actor, selections) -> Registration:
     registration.save()
 
     _write_roster(registration, members, chosen)
+    _refresh_public_pages(registration, from_status, registration.status)
     log(
         registration,
         action=action,
@@ -263,6 +264,18 @@ SUBMIT_EVENTS = {
     RegistrationAction.RESUBMIT: "registration.submitted",
     RegistrationAction.SYNC_ROSTER: "registration.roster_synced",
 }
+
+
+def _refresh_public_pages(registration, from_status, to_status) -> None:
+    """Approval shows on the tournament page and the team's record (13.13.4)."""
+    if RegistrationStatus.APPROVED not in (from_status, to_status):
+        return
+    from core import prerender
+
+    prerender.request_page(
+        registration.tournament.get_absolute_url(), kind="tournament"
+    )
+    prerender.request_page(registration.team.get_absolute_url(), kind="team")
 
 
 def _after_submit(registration, action):
@@ -296,6 +309,7 @@ def _set_status(
     registration.save(update_fields=["status", "status_note", "updated_at"])
     # 已驳回和已撤回的名单不占名额（design 8.5）
     registration.members.update(is_active=to_status in ACTIVE_STATUSES)
+    _refresh_public_pages(registration, from_status, to_status)
     log(
         registration,
         action=action,

@@ -184,9 +184,11 @@ class HomePage(SeoPageMixin, Page):
                     :HOME_ARTICLE_COUNT
                 ]
             )
-        # M4 / M6 / M3 data hooks: leave keys in context so templates stay put.
-        context["open_tournaments"] = None
-        context["upcoming_scrims"] = None
+        from scrims.services import upcoming_scrims
+        from tournaments.services import open_tournaments
+
+        context["open_tournaments"] = open_tournaments()
+        context["upcoming_scrims"] = upcoming_scrims()
         # Anonymous (and prerendered) pages show 「登录后查看」; the signed-in
         # count arrives through the home-lfg slot (design 13.13.3).
         user = getattr(request, "user", None)

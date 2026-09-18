@@ -30,6 +30,30 @@ def listed_tournaments():
     ).select_related("cover")
 
 
+def open_tournaments(now=None):
+    """Taking registrations right now, soonest deadline first (design 5.1)."""
+    now = now or timezone.now()
+    return list(
+        Tournament.objects.filter(
+            status=TournamentStatus.PUBLISHED,
+            registration_opens_at__lte=now,
+            registration_closes_at__gte=now,
+        ).order_by("registration_closes_at")
+    )
+
+
+def team_entries(team):
+    """Approved registrations for the team page's record (design 7.2)."""
+    from tournaments.models import RegistrationStatus
+
+    return list(
+        team.registrations.filter(status=RegistrationStatus.APPROVED)
+        .exclude(tournament__status=TournamentStatus.DRAFT)
+        .select_related("tournament")
+        .order_by("-tournament__registration_closes_at")
+    )
+
+
 def grouped_tournaments(now=None):
     """The four groups on the list page, in order (design 8.2)."""
     now = now or timezone.now()
@@ -168,6 +192,8 @@ def after_change(tournament, actor=None) -> None:
     else:
         prerender.request_removal(tournament.get_absolute_url())
     prerender.request_page("/tournaments/", kind="tournament_index")
+    # The homepage lists tournaments open for registration (design 13.13.4).
+    prerender.request_page("/", kind="home")
     schedule_phase_refresh(tournament)
     if tournament.description:
         _submit_moderation(tournament, actor)
@@ -190,6 +216,7 @@ def schedule_phase_refresh(tournament) -> None:
                 tournament.get_absolute_url()
             )
             prerender_page.using(run_after=moment).enqueue("/tournaments/")
+            prerender_page.using(run_after=moment).enqueue("/")
 
 
 def _submit_moderation(tournament, actor) -> None:

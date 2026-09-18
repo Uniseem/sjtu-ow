@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -19,6 +20,9 @@ from scrims.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Appendix C: the homepage shows scrims starting within the next 7 days.
+HOME_SCRIM_DAYS = 7
 
 
 class ScrimError(Exception):
@@ -45,6 +49,18 @@ def public_scrims(now=None):
         Scrim.objects.filter(status=ScrimStatus.PUBLISHED)
         | Scrim.objects.filter(status=ScrimStatus.FINISHED, starts_at__gte=cutoff)
     ).order_by("starts_at")
+
+
+def upcoming_scrims(now=None, days=HOME_SCRIM_DAYS):
+    """Published scrims starting within ``days``, earliest first (design 5.1)."""
+    now = now or timezone.now()
+    return list(
+        Scrim.objects.filter(
+            status=ScrimStatus.PUBLISHED,
+            starts_at__gte=now,
+            starts_at__lte=now + timedelta(days=days),
+        ).order_by("starts_at")
+    )
 
 
 def visible_scrim(pk):
@@ -246,6 +262,7 @@ def publish(*, scrim, actor=None):
         fields.append("created_by")
     scrim.save(update_fields=fields)
     schedule_reminder(scrim)
+    _status_changed(scrim)
     return scrim
 
 
@@ -253,6 +270,7 @@ def publish(*, scrim, actor=None):
 def finish(*, scrim, actor=None):
     scrim.status = ScrimStatus.FINISHED
     scrim.save(update_fields=["status", "updated_at"])
+    _status_changed(scrim)
     return scrim
 
 
@@ -264,6 +282,7 @@ def cancel_scrim(*, scrim, actor=None):
     scrim.status = ScrimStatus.CANCELLED
     scrim.save(update_fields=["status", "updated_at"])
     transaction.on_commit(lambda: _notify_cancelled(scrim.pk))
+    _status_changed(scrim)
     return scrim
 
 
@@ -277,14 +296,50 @@ def after_change(scrim, *, actor=None):
     _refresh_pages(scrim)
 
 
+def _status_changed(scrim) -> None:
+    """The admin's publish / finish / cancel buttons (round 056).
+
+    Only the edit form used to call after_change, so these buttons left the
+    static list and detail pages stale until the nightly rebuild.
+    """
+    from core import prerender
+
+    prerender.forget_targets()
+    _refresh_pages(scrim)
+
+
 def _refresh_pages(scrim) -> None:
     from core import prerender
 
     prerender.request_page("/scrims/", kind="scrim_index")
+    # The homepage lists the next 7 days of scrims (design 13.13.4).
+    prerender.request_page("/", kind="home")
+    schedule_home_refresh(scrim)
     if scrim.is_public:
         prerender.request_page(f"/scrims/{scrim.pk}/", kind="scrim")
     else:
         prerender.request_removal(f"/scrims/{scrim.pk}/")
+
+
+def schedule_home_refresh(scrim) -> None:
+    """Refresh the homepage when the scrim enters the 7-day window and when it starts.
+
+    Stale tasks are harmless: they only regenerate the page from current data.
+    """
+    from core import prerender
+    from core.tasks import prerender_page
+
+    if not prerender.is_enabled() or scrim.status != ScrimStatus.PUBLISHED:
+        return
+    now = timezone.now()
+    moments = [scrim.starts_at - timedelta(days=HOME_SCRIM_DAYS), scrim.starts_at]
+
+    def enqueue():
+        for moment in moments:
+            if moment > now:
+                prerender_page.using(run_after=moment).enqueue("/")
+
+    transaction.on_commit(enqueue)
 
 
 def _notify_cancelled(scrim_id) -> None:
