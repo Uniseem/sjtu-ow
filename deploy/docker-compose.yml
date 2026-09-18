@@ -51,6 +51,8 @@ services:
     volumes:
       - data:/app/data
       - media:/app/media
+      # Prerendering needs collectstatic's manifest (round 064).
+      - static:/app/staticfiles:ro
       - prerendered:/app/prerendered
     depends_on:
       - web

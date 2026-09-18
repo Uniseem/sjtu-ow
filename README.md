@@ -130,7 +130,9 @@ curl https://<域名>/robots.txt  # 测试环境只有 Disallow: /
 
 Caddy 用 HTTP 验证自动申请 Let's Encrypt 证书，前提是 80 端口对外开放；HTTP 到 HTTPS 的跳转也是 Caddy 自动做的。
 
-`web` 启动脚本会执行 `createcachetable` 和 `collectstatic --noinput`（没有 `--clear`，旧的带哈希文件会留在卷上）。`worker` 容器运行 `run_worker`（任务消费 + 心跳）。
+`web` 启动脚本会执行 `createcachetable` 和 `collectstatic --noinput`（没有 `--clear`，旧的带哈希文件会留在卷上）。`worker` 容器运行 `run_worker`（任务消费 + 心跳），**只读挂载 `static` 卷**：预渲染要读 `collectstatic` 的清单，读不到就每页都失败（064 之前就是这样）。升级时 worker 可能比 `web` 的 `collectstatic` 先渲染，所以它每次渲染前检查清单，变了就重新读。
+
+**部署后验证 worker 做的事，要在测试机上真的触发一次**（改一篇内容，一分钟后看静态页变了没有），或看后台「半静态渲染」页有没有失败记录。在 `web` 里跑 `manage.py prerender` 成功，只能说明 `web` 的环境没问题。
 
 三个服务都是 `restart: unless-stopped`：进程崩溃或服务器重启后会自己起来（054 在测试机上杀掉 Caddy 主进程验证过）。`web` 的健康检查是 `deploy/healthcheck.py`，它像 Caddy 一样带上站点域名和 `X-Forwarded-Proto: https` 去请求 `/healthz`；直接请求 `127.0.0.1` 会被 `ALLOWED_HOSTS` 拒成 400。
 

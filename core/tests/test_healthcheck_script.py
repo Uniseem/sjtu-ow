@@ -139,3 +139,11 @@ def test_no_log_records_the_visitor_ip():
     assert not re.search(r"^\s*log\b", caddyfile, re.M)
     assert "--forwarded-allow-ips" not in entrypoint
     assert "--access-logformat" not in entrypoint
+
+
+@pytest.mark.parametrize("service", ["web", "worker"])
+def test_every_service_that_renders_pages_sees_the_static_files(service):
+    """Round 064: without collectstatic's manifest every template that uses
+    {% static %} fails in production, so the worker could not prerender."""
+    volumes = _compose()["services"][service]["volumes"]
+    assert any(v.split(":")[:2] == ["static", "/app/staticfiles"] for v in volumes)

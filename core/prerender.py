@@ -112,10 +112,47 @@ def forget_targets() -> None:
     cache.delete(PATHS_CACHE_KEY)
 
 
+# (mtime, size) of the static manifest this process last read.
+_manifest_seen: tuple[int, int] | None = None
+
+
+def refresh_static_manifest() -> bool:
+    """Re-read collectstatic's manifest if it changed on disk (round 064).
+
+    Django's manifest storage reads the file once per process. On an upgrade
+    the worker starts alongside ``web``, which runs collectstatic only on
+    start-up; a page the worker rendered in between would load the previous
+    version's manifest and keep pointing at the old CSS until the worker
+    restarts. Returns True when the storage was reset.
+    """
+    global _manifest_seen
+    from django.contrib.staticfiles.storage import (
+        ManifestFilesMixin,
+        staticfiles_storage,
+    )
+
+    if not isinstance(staticfiles_storage, ManifestFilesMixin):
+        return False
+    storage = staticfiles_storage
+    try:
+        stat = os.stat(storage.manifest_storage.path(storage.manifest_name))
+        seen = (stat.st_mtime_ns, stat.st_size)
+    except FileNotFoundError:
+        seen = None
+    if seen is not None and seen == _manifest_seen:
+        return False
+    # The instance is cached by django.core.files.storage.storages, so reload
+    # in place the way ManifestFilesMixin.__init__ does.
+    storage.hashed_files, storage.manifest_hash = storage.load_manifest()
+    _manifest_seen = seen
+    return True
+
+
 def render_html(path: str) -> bytes:
     """Render as an anonymous visitor, then refuse anything personal."""
     from django.test import Client
 
+    refresh_static_manifest()
     host, secure = site_host()
     client = Client(
         SERVER_NAME=host,
