@@ -158,6 +158,17 @@ uv run python manage.py init_site
 - **导出我的个人信息**（`/me/export/`）：下载 JSON，含账号、游戏 ID、联系方式、战队、入队申请、赛事和内战报名、车帖、署名文章。每人每小时 5 次
 - **注销账号**（`/me/delete/`）：输入当前密码。**队长要先转让或解散战队**。注销不删用户记录，而是匿名化：邮箱换成 `deleted-<ID>@deleted.invalid`、昵称改为「已注销用户」、删除游戏 ID 和联系方式、退出战队、取消内战报名、清空用户组；赛事报名的名单快照和署名文章保留。原邮箱可以重新注册
 
+## 用户协议与隐私政策
+
+草稿在 `content/legal/terms.md`、`content/legal/privacy.md`（060 轮起草，**【】里的内容要社团填写或决定**）。放在应用目录里而不是 `docs/`，是因为 `.dockerignore` 排除了 `docs/`，那样镜像里没有草稿。改完后发布到网站：
+
+```bash
+python manage.py load_legal_pages          # 页面还没有正文时写入
+python manage.py load_legal_pages --force  # 覆盖后台里已有的正文
+```
+
+不加 `--force` 时，已经有正文的页面会跳过，不会覆盖在后台里改过的内容。
+
 ## 字体与排版
 
 「设置 → 字体库」添加字体（上传文件 / 从 Google Fonts 下载 / 从网址下载），worker 用 fontTools 把字体切成 WOFF2 分片，浏览器只下载页面用到的分片。「设置 → 排版设置」为 9 个区域（正文、一至四级标题、导航栏、按钮、数字与数据、游戏 ID 与代码）分别设置字体、字重、字号、行高和字间距，保存后生成 `media/fonts/css/fonts.<哈希>.css`，全站布局在 `<head>` 里引用它。两个页面都只对超级管理员开放。
