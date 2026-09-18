@@ -2,7 +2,7 @@
 
 ```yaml
 milestone: M7 上线准备
-round: 052-test-env-and-wechat
+round: 053-deploy-test-server
 next: claude
 updated: 2026-09-18
 blocked_on: 无
@@ -14,7 +14,7 @@ blocked_on: 无
 
 **正式仓库**：`github.com/Uniseem/sjtu-ow`，**公开**，PolyForm Strict 许可证。049 轮新建的，里面没有带真实身份的旧提交。旧仓库改名为 `Uniseem/sjtu-ow-old`，私有，要删由你自己删。更早的 `Uniseem/ow-activity-site` 是测试版。仓库入口说明见根目录 `AGENTS.md`。
 
-**测试机**：`185.99.135.224`（域名 `sjtu.ow-shanghaiuniversity.com`），部署先放在上面，详见 `AGENTS.md`「测试机与部署」。
+**测试机**：`185.99.135.224`（域名 `sjtu.ow-shanghaiuniversity.com`），详见 `AGENTS.md`「测试机与部署」。**测试环境已经部署并在运行**（053）：<https://sjtu.ow-shanghaiuniversity.com>，证书、HTTP 跳转、测试环境横幅、`/healthz` 都验证过。
 
 **M7 里只有你或真实服务器能做的**：视觉风格定稿、用户协议和隐私政策正文、国内多种网络下的访问测试、新服务器上的恢复演练、小范围试运行，以及下面「还没定的」几条。
 
@@ -70,6 +70,12 @@ blocked_on: 无
 
 ### 你那边（最耗时，今天就能开始）
 
+**测试机上要你做的两件事**：
+
+1. **备份三把密钥**：在测试机的 `/srv/sjtu-ow/.env` 里，是服务器上随机生成的，没经过我这边。丢了已加密的数据（SMTP 密码、异地备份）就解不开，放进密码管理工具
+2. **创建超级管理员**：`cd /srv/sjtu-ow && docker compose -p sjtu-ow-test -f deploy/docker-compose.yml --env-file .env exec web python manage.py createsuperuser`
+
+
 | 事项 | 状态 |
 |---|---|
 | 服务器、域名 | **测试机已到位**（050）。正式站用不用另一台机器、要不要备用域名，你定 |
@@ -81,7 +87,11 @@ blocked_on: 无
 
 1. ~~**补安全相关的测试空白**~~ —— **051 已完成**：042 的 14 处加上 `processing.py:60` 共 15 处，逐个变异全部被抓到
 2. ~~**测试环境的横幅和禁止抓取**、**微信内置浏览器提示**~~ —— **052 已完成**。测试机上部署时设 `TEST_ENVIRONMENT=1`
-3. **部署到测试机**：按设计 16.4 从零走一遍，边做边写成照着做的上线清单；实测证书和 HTTP 跳转
+3. ~~**部署到测试机**~~ —— **053 已部署**，清单写进了 `README.md`。部署中发现、**还没修**的：
+   - `deploy/docker-compose.yml` 三个服务**没有重启策略**，服务器重启后网站不会自己起来（加 `restart: unless-stopped`）——**最该先修**
+   - `web` 容器的健康检查请求 `127.0.0.1` 被 `ALLOWED_HOSTS` 拒成 400，容器显示「不健康」（网站本身正常）
+   - `init_site` 说「内战管理员的内战管理权限等到 M6」，M6 早做完了：查清是提示过时还是权限真没给
+   - 测试机上还没跑全量预渲染（`$C exec web python manage.py prerender`）
 4. **跑完 042 剩下的 178 个守卫**：脚本先加续跑参数。机器自己跑，只有权限类的问题会卡上线
 5. 你拍板之后：账号注销和导出、两步验证、起草协议
 
@@ -186,6 +196,7 @@ blocked_on: 无
 | 050-test-server | 记录测试机，写上线计划 | **Claude**。核对了域名（国内外都解析到测试机）、SSH 登录、机器现状（另有项目在跑，不能动）；`AGENTS.md` 新增「测试机与部署」；`STATUS.md` 写入上线计划。没部署 |
 | 051-guard-gaps | 补 042 找到的测试空白 | **Claude 实现**，自查通过。15 处各补一条测试，逐个变异 15/15 被抓到。**更正 042**：「上传大小检查等价」的依据 `processing.py:60` 当时也没测试 |
 | 052-test-env-and-wechat | 测试环境横幅与禁止抓取；微信内置浏览器提示 | **Claude 实现**，自查通过。新环境变量 `TEST_ENVIRONMENT`；预渲染页也带横幅；微信提示靠浏览器脚本判断（静态页服务器看不到访客浏览器）。7 处变异全被抓到；真浏览器里伪装微信 UA 验证提示会出现 |
+| 053-deploy-test-server | 部署到测试机 | **Claude 实现，部分完成（用户叫停收尾）**。测试环境已上线：Let's Encrypt 证书（HTTP 验证）、HTTP 308 跳 HTTPS、横幅、robots、`/healthz` 全部实测通过，其他项目不受影响。发现 4 个问题：README 部署命令漏了 `--env-file`（Caddy 会用 localhost，已改）；**没有重启策略**、容器健康检查必然 400、`init_site` 一句过时提示（待修） |
 
 ## 当前待定问题
 

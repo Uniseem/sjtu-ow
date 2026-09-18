@@ -96,30 +96,47 @@ uvx pre-commit install
 
 ## 生产 / 测试环境启动
 
-先执行迁移（不要指望容器自动 migrate，升级流程见设计 16.8 节）：
+下面是 053 轮在测试机上**实际走通**的步骤。测试机的信息见 `AGENTS.md`「测试机与部署」。
+
+**每条 `docker compose` 命令都要带 `--env-file .env`**：Compose 默认去 `deploy/` 目录找 `.env` 来替换 `${CADDY_SITE_ADDRESS}`，找不到就用 `localhost`，Caddy 不会申请证书。容器里的环境变量则固定读仓库根目录的 `.env`（`env_file: ../.env`），所以**一份代码目录只能跑一套环境**，测试和正式要分开放两个目录。
 
 ```bash
-cp .env.example .env
-# 编辑密钥、域名、CADDY_SITE_ADDRESS
-docker compose -f deploy/docker-compose.yml build
-docker compose -f deploy/docker-compose.yml up -d
-docker compose -f deploy/docker-compose.yml exec web python manage.py migrate
-docker compose -f deploy/docker-compose.yml exec web python manage.py createcachetable
-docker compose -f deploy/docker-compose.yml exec web python manage.py init_site
-docker compose -f deploy/docker-compose.yml exec web python manage.py createsuperuser
+cd /srv
+git clone https://github.com/Uniseem/sjtu-ow.git
+cd sjtu-ow
+# 按 .env.example 写 .env：域名、SITE_URL、CADDY_SITE_ADDRESS（只写域名，不带 http://）。
+# 三把密钥在服务器上随机生成，比如 openssl rand -base64 48，然后另外备份。
+# 测试环境再加 TEST_ENVIRONMENT=1。
+chmod 600 .env
+
+C="docker compose -p sjtu-ow-test -f deploy/docker-compose.yml --env-file .env"   # 正式站用 -p sjtu-ow
+$C build
+# 先迁移再启动：worker 一启动就要读任务表
+$C run --rm --no-deps web python manage.py migrate --noinput
+$C run --rm --no-deps web python manage.py createcachetable
+$C run --rm --no-deps web python manage.py init_site
+$C up -d
+$C exec web python manage.py createsuperuser
+$C exec web python manage.py prerender
 ```
+
+检查：
+
+```bash
+curl -I http://<域名>/          # 308 跳到 https://
+curl https://<域名>/healthz     # 200，四项检查都是 ok
+curl https://<域名>/robots.txt  # 测试环境只有 Disallow: /
+```
+
+Caddy 用 HTTP 验证自动申请 Let's Encrypt 证书，前提是 80 端口对外开放；HTTP 到 HTTPS 的跳转也是 Caddy 自动做的。
 
 `web` 启动脚本会执行 `createcachetable` 和 `collectstatic --noinput`（没有 `--clear`，旧的带哈希文件会留在卷上）。`worker` 容器运行 `run_worker`（任务消费 + 心跳）。
 
-测试环境用独立项目名，避免和正式站抢数据卷：
-
-```bash
-docker compose -p sjtu-ow-test -f deploy/docker-compose.yml --env-file .env.test up -d
-```
+**已知问题**（053 发现，还没修）：三个服务都没有重启策略，服务器重启后不会自己起来；`web` 容器自带的健康检查请求 `127.0.0.1` 会被 `ALLOWED_HOSTS` 拒绝（400），容器会显示「不健康」，网站本身不受影响。
 
 停掉 `web` 后，Caddy 对会打到后端的请求返回维护页；已经生成的预渲染公开页面仍可访问。
 
-`init_site` 创建全部预置用户组（交大用户、校外用户、内容编辑、赛事管理员、内战管理员、认证作者、投稿者），删除 Wagtail 自带的 Editors / Moderators，写入文章分类和页面树（首页、「资讯」、用户协议、隐私政策、关于我们），按 `SITE_URL` 设置 Wagtail 默认站点的主机名和端口（`https` 默认 443、`http` 默认 80，带端口时用给定端口），创建「内容审核」工作流并绑定到文章栏目，创建「投稿图片」集合，并为后台角色分配进入 Wagtail 的权限、为赛事/内战管理员分配查看联系方式的权限、为投稿相关角色分配栏目和图片权限。然后按「邮箱已验证且可以使用投稿功能」同步「投稿者」组成员，创建 9 个排版区域（默认系统字体）并生成初始字体样式表。赛事/内战权限在后续里程碑写入。命令可重复执行，不会改写已有成员关系（投稿者组除外）或已改过的分类名称：
+`init_site` 创建全部预置用户组（交大用户、校外用户、内容编辑、赛事管理员、内战管理员、认证作者、投稿者），删除 Wagtail 自带的 Editors / Moderators，写入文章分类和页面树（首页、「资讯」、用户协议、隐私政策、关于我们），按 `SITE_URL` 设置 Wagtail 默认站点的主机名和端口（`https` 默认 443、`http` 默认 80，带端口时用给定端口），创建「内容审核」工作流并绑定到文章栏目，创建「投稿图片」集合，并为后台角色分配进入 Wagtail 的权限、为赛事/内战管理员分配查看联系方式的权限、为投稿相关角色分配栏目和图片权限。然后按「邮箱已验证且可以使用投稿功能」同步「投稿者」组成员，创建 9 个排版区域（默认系统字体）并生成初始字体样式表。命令可重复执行，不会改写已有成员关系（投稿者组除外）或已改过的分类名称：
 
 ```bash
 uv run python manage.py init_site

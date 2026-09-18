@@ -64,7 +64,8 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 | 域名 | `sjtu.ow-shanghaiuniversity.com`，经 CNAME 指向一个线路优化服务，最终解析到 `185.99.135.224`。模拟交大、国内、海外来源查询，结果都是这个 IP（050 轮核对） |
 | 权限 | **助手拥有这台机器的全部权限**，可以直接部署、改配置、重启服务 |
 | 登录 | SSH 密钥登录。登录用户和密钥位置在开发者本机的 SSH 配置里，**不写进仓库**（仓库是公开的） |
-| 部署目录 | `/srv/sjtu-ow`（和 `deploy/crontab.example` 里的路径一致） |
+| 部署目录 | `/srv/sjtu-ow`（和 `deploy/crontab.example` 里的路径一致）。`.env` 在服务器上，权限 600，密钥是在服务器上生成的 |
+| Compose | 项目名 `sjtu-ow-test`。**每条命令都带 `--env-file .env`**，完整步骤见 `README.md`「生产 / 测试环境启动」 |
 | 证书 | Caddy 自动申请和续期，走 **HTTP 验证**，不用 DNS 验证。前提是 80 端口对外开放；`CADDY_SITE_ADDRESS` 填域名本身（不带 `http://`），Caddy 才会申请证书 |
 | 跳转 | **HTTP 必须自动跳转到 HTTPS**。站点地址是域名时 Caddy 默认会做，部署后要实测：`curl -I http://sjtu.ow-shanghaiuniversity.com/` 应返回跳转到 `https://` 的 3xx |
 
