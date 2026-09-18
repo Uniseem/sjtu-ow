@@ -324,3 +324,12 @@ def test_homepage_clean_refuses_a_fourth_pin_before_any_are_saved():
     ]
     with pytest.raises(ValidationError, match="最多 3 篇"):
         home.clean()
+
+
+@pytest.mark.django_db
+def test_robots_disallows_everything_in_the_test_environment(client, settings):
+    """Design 16.10: the test site must stay out of search results."""
+    settings.TEST_ENVIRONMENT = True
+    response = client.get("/robots.txt")
+    assert response.status_code == 200
+    assert response.content.decode("utf-8") == "User-agent: *\nDisallow: /\n"

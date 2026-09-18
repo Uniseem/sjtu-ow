@@ -22,6 +22,11 @@
     <div class="drawer">
       <input id="nav-drawer" type="checkbox" class="drawer-toggle">
       <div class="drawer-content flex min-h-screen flex-col">
+        {% if test_environment %}
+          <div class="bg-warning text-warning-content px-4 py-1 text-center text-sm font-nav" data-test-environment role="note">测试环境：这里不是正式网站，数据随时可能被清空</div>
+        {% endif %}
+        {# Pages are prerendered, so only the browser knows it is WeChat (design 16.9). #}
+        <div id="wechat-hint" class="bg-info text-info-content px-4 py-2 text-center text-sm font-nav" role="note" hidden>点右上角菜单，在浏览器中打开</div>
         <header class="navbar bg-base-100 border-b border-base-300 px-4">
           <div class="navbar-start gap-2">
             <label for="nav-drawer" class="btn btn-ghost btn-square lg:hidden" aria-label="打开导航菜单">

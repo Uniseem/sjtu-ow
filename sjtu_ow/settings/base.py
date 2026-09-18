@@ -91,6 +91,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "content.context_processors.seo",
                 "core.context_processors.fonts",
+                "core.context_processors.site_environment",
             ],
         },
     },
@@ -349,6 +350,9 @@ MODERATION_MAX_OUTPUT_TOKENS = int(env("MODERATION_MAX_OUTPUT_TOKENS", "600"))
 MODERATION_EXTRA_BODY = json.loads(env("MODERATION_EXTRA_BODY", "{}"))
 SENTRY_DSN = env("SENTRY_DSN", "")
 EMAIL_ALLOWLIST = env_list("EMAIL_ALLOWLIST")
+# Design 16.10: the test environment shows a banner on every page and asks
+# crawlers to stay out, so it is never mistaken for the real site.
+TEST_ENVIRONMENT = env_bool("TEST_ENVIRONMENT", False)
 
 DISK_MIN_FREE_RATIO = 0.20
 HEALTH_PROBE_BUSY_TIMEOUT_MS = 200

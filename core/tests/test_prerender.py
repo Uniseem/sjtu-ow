@@ -420,3 +420,13 @@ def test_a_clean_public_page_is_frozen(prerender_root, monkeypatch):
     html = prerender.render_html("/")
 
     assert "公开内容" in html.decode()
+
+
+@pytest.mark.django_db
+def test_a_prerendered_page_carries_the_test_environment_banner(
+    prerender_root, settings
+):
+    """Visitors mostly get the static file, so the banner must be baked in."""
+    settings.TEST_ENVIRONMENT = True
+    html = prerender.render_html("/").decode("utf-8")
+    assert "data-test-environment" in html

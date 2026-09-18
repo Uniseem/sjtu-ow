@@ -63,6 +63,14 @@
     });
   });
 
+  // WeChat may block or warn on this unregistered overseas domain (design 16.9).
+  if (/MicroMessenger/i.test(navigator.userAgent)) {
+    var wechatHint = document.getElementById("wechat-hint");
+    if (wechatHint) {
+      wechatHint.hidden = false;
+    }
+  }
+
   paintRelativeTimes(document);
   document.body.addEventListener("htmx:afterSwap", function (event) {
     paintRelativeTimes(event.target);

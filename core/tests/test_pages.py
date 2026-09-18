@@ -163,3 +163,30 @@ def test_home_returns_200(client):
     response = client.get(reverse("home"))
     assert response.status_code == 200
     assert "上海交通大学守望先锋社区" in response.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+def test_the_test_environment_banner_appears_only_in_the_test_environment(
+    client, settings
+):
+    production = client.get(reverse("home")).content.decode("utf-8")
+    assert "data-test-environment" not in production
+
+    settings.TEST_ENVIRONMENT = True
+    test_site = client.get(reverse("home")).content.decode("utf-8")
+    assert "data-test-environment" in test_site
+    assert "测试环境" in test_site
+
+
+@pytest.mark.django_db
+def test_every_page_carries_a_hidden_wechat_hint(client):
+    """Prerendered HTML is the same for everyone; the browser decides (16.9)."""
+    html = client.get(reverse("home")).content.decode("utf-8")
+    assert 'id="wechat-hint"' in html
+    assert "hidden>点右上角菜单，在浏览器中打开</div>" in html
+
+
+def test_app_js_reveals_the_wechat_hint_for_wechat_only(settings):
+    script = (settings.BASE_DIR / "static" / "js" / "app.js").read_text()
+    assert "/MicroMessenger/i.test(navigator.userAgent)" in script
+    assert 'getElementById("wechat-hint")' in script

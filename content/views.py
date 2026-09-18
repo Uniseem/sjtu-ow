@@ -56,6 +56,11 @@ def sitemap_xml(request):
 
 @require_GET
 def robots_txt(request):
+    if settings.TEST_ENVIRONMENT:
+        # Design 16.10: keep the test site out of search results entirely.
+        return HttpResponse(
+            "User-agent: *\nDisallow: /\n", content_type="text/plain; charset=utf-8"
+        )
     sitemap = request.build_absolute_uri("/sitemap.xml")
     if not sitemap.startswith("http"):
         sitemap = settings.SITE_URL.rstrip("/") + "/sitemap.xml"
