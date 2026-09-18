@@ -4,52 +4,40 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-5xl px-4 py-10">
-    <h1>{{ page.title }}</h1>
-    {% if page.intro %}
-      <div class="article-body mt-4 text-base-content/80">
-        {{ page.intro|richtext }}
-      </div>
-    {% endif %}
+  <div class="side-layout">
+    {% include "content/_news_side.html" with index_url=page.url active=active_category %}
 
-    <nav class="mt-6 flex flex-wrap gap-2" aria-label="文章分类">
-      <a
-        href="{{ page.url }}"
-        class="btn btn-sm min-h-11 font-button {% if not active_category %}btn-primary{% else %}btn-ghost{% endif %}"
-      >全部</a>
-      {% for category in categories %}
-        <a
-          href="{{ page.url }}?category={{ category.slug }}"
-          class="btn btn-sm min-h-11 font-button {% if active_category == category.slug %}btn-primary{% else %}btn-ghost{% endif %}"
-        >{{ category.name }}</a>
-      {% endfor %}
-    </nav>
+    <section class="min-w-0">
+      <h1 class="page-title">{{ page.title }}</h1>
+      {% if page.intro %}
+        <div class="article-body mt-4 text-base-content/80">
+          {{ page.intro|richtext }}
+        </div>
+      {% endif %}
 
-    {% if articles %}
-      <ul class="mt-8 flex flex-col gap-6">
-        {% for article in articles %}
-          <li class="border-b border-base-300 pb-6">
-            <a href="{{ article.url }}" class="link link-hover text-xl font-semibold">
-              {{ article.title }}
-            </a>
-            <p class="mt-1 text-sm text-base-content/70">
-              {{ article.category.name }}
-              ·
-              {{ article.author.nickname }}
-              ·
-              {{ article.first_published_at|date:"Y年n月j日" }}
-            </p>
-            {% if article.summary %}
-              <p class="mt-2 text-base-content/80">{{ article.summary }}</p>
-            {% endif %}
-          </li>
-        {% endfor %}
-      </ul>
-      {% include "components/pagination.html" %}
-    {% else %}
-      <div class="mt-8">
-        {% include "components/empty_state.html" with title="暂无文章" message="这个分类还没有已发布的文章。" %}
-      </div>
-    {% endif %}
-  </section>
+      {% if articles %}
+        <ul class="date-list mt-4">
+          {% for article in articles %}
+            <li>
+              <div class="date-block">
+                <span class="date-block__day">{{ article.first_published_at|date:"d" }}</span>
+                <span class="date-block__month">{{ article.first_published_at|date:"Y.m" }}</span>
+              </div>
+              <div class="min-w-0">
+                <a href="{{ article.url }}" class="date-list__title text-lg">{{ article.title }}</a>
+                <p class="date-list__meta">
+                  {{ article.category.name }} · {{ article.author.nickname }}{% if article.summary %} · {{ article.summary }}{% endif %}
+                </p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        {% include "components/pagination.html" %}
+      {% else %}
+        <div class="mt-8">
+          {% include "components/empty_state.html" with title="暂无文章" message="这个分类还没有已发布的文章。" %}
+        </div>
+      {% endif %}
+    </section>
+  </div>
 {% endblock %}

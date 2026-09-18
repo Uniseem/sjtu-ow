@@ -1,6 +1,6 @@
 <blockquote>
-  <p>{{ value.text }}</p>
+  <p>{{ value.text|linebreaksbr }}</p>
   {% if value.attribution %}
-    <footer>{{ value.attribution }}</footer>
+    <footer>——{{ value.attribution }}</footer>
   {% endif %}
 </blockquote>

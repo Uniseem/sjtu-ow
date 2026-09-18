@@ -1,12 +1,65 @@
 @import "tailwindcss";
-@plugin "daisyui";
+
+/*
+ * Visual style follows www.sjtu.edu.cn (user decision, round 065): 交大红,
+ * beige panels, serif type, square corners, no shadows. Light only.
+ * No university emblem, wordmark or photos: this is a student site.
+ */
+@plugin "daisyui" {
+  themes: false;
+}
+
+@plugin "daisyui/theme" {
+  name: "sjtu";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  --color-base-100: #ffffff;
+  --color-base-200: #f8f2ea;
+  --color-base-300: #e6dacb;
+  --color-base-content: #2f2f2f;
+  --color-primary: #b2141a;
+  --color-primary-content: #ffffff;
+  --color-secondary: #7d0a0f;
+  --color-secondary-content: #ffffff;
+  --color-accent: #9a7148;
+  --color-accent-content: #ffffff;
+  --color-neutral: #3a3a3a;
+  --color-neutral-content: #ffffff;
+  --color-info: #1f5f8b;
+  --color-info-content: #ffffff;
+  --color-success: #2e7d32;
+  --color-success-content: #ffffff;
+  --color-warning: #b36b00;
+  --color-warning-content: #ffffff;
+  --color-error: #d93025;
+  --color-error-content: #ffffff;
+
+  --radius-selector: 0.125rem;
+  --radius-field: 0.125rem;
+  --radius-box: 0.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
 
 @source "../../templates/**/*.html";
 @source "../../**/templates/**/*.html";
 
 :root {
   /* Defaults; "设置 → 排版设置" overrides these in the generated fonts.<hash>.css. */
-  --font-fallback: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  /* Serif like www.sjtu.edu.cn; 排版设置 can still pick other fonts. */
+  --font-fallback: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", serif;
+  /* Secondary colours taken from www.sjtu.edu.cn's homepage. */
+  --sj-rose: #cf8f90;
+  --sj-rose-soft: #f3e3e1;
+  --sj-sand: #f6ede3;
+  --sj-sand-light: #fbf6ef;
+  --sj-bronze: #a8825a;
+  --sj-bronze-line: #d9c2a5;
   --font-mono-fallback: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-body: var(--font-fallback);
   --font-body-weight: 400;
@@ -153,27 +206,28 @@ h6 {
   display: inline;
 }
 
-.article-body .rich-text p {
-  @apply my-4 leading-7;
+.article-body p {
+  /* Like www.sjtu.edu.cn: first-line indent, justified, airy lines. */
+  @apply my-4 indent-[2em] text-justify leading-8;
 }
 
-.article-body .rich-text ul {
+.article-body ul {
   @apply my-4 list-disc pl-6;
 }
 
-.article-body .rich-text ol {
+.article-body ol {
   @apply my-4 list-decimal pl-6;
 }
 
-.article-body .rich-text a {
+.article-body a {
   @apply link link-primary;
 }
 
-.article-body .rich-text h2 {
+.article-body h2 {
   @apply mt-8 mb-3;
 }
 
-.article-body .rich-text h3 {
+.article-body h3 {
   @apply mt-6 mb-2;
 }
 
@@ -181,8 +235,18 @@ h6 {
   @apply mt-2 text-center text-sm text-base-content/70;
 }
 
+/* Quotations the way Chinese print sets them: 楷体, indented on both sides. */
 .article-body blockquote {
-  @apply my-4 border-l-4 border-primary pl-4 text-base-content/80;
+  @apply my-6 px-[2em] text-base-content/85;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", var(--font-body);
+}
+
+.article-body blockquote p {
+  @apply my-0 indent-0;
+}
+
+.article-body blockquote footer {
+  @apply mt-2 text-right text-sm text-base-content/60;
 }
 
 .form-control input[type="text"],
@@ -204,4 +268,423 @@ h6 {
 
 .form-control ul {
   @apply flex flex-col gap-2;
+}
+
+/* ---- Site chrome in the style of www.sjtu.edu.cn (round 065) -------------- */
+
+@layer components {
+  .site-container {
+    @apply mx-auto w-full max-w-6xl px-4;
+  }
+
+  /* Thin dark strip above the red header: account links live here. */
+  .site-topbar {
+    @apply text-xs text-white/85;
+    background-color: #6b0004;
+  }
+  .site-topbar a {
+    @apply transition-colors hover:text-white;
+  }
+
+  .site-header {
+    @apply relative text-white;
+    background-color: var(--color-primary);
+  }
+  .site-brand {
+    @apply flex items-center gap-3;
+  }
+  .site-brand__name {
+    @apply text-xl tracking-[0.12em] sm:text-2xl;
+    font-family: var(--font-nav);
+    font-weight: 600;
+  }
+  /* Our own seal-style mark, read right column first (交大 / 守望). */
+  .site-seal {
+    @apply grid size-12 shrink-0 grid-cols-2 place-items-center border-2 border-white/90 p-0.5 text-base leading-none sm:size-14 sm:text-lg;
+    grid-auto-flow: column;
+    grid-template-rows: 1fr 1fr;
+    direction: rtl;
+    font-family: var(--font-nav);
+    font-weight: 600;
+  }
+  .site-seal--footer {
+    @apply size-14 border-primary text-lg text-primary;
+  }
+  .site-quicklinks {
+    @apply flex items-center gap-5 text-sm text-white/85;
+  }
+  .site-quicklinks a {
+    @apply flex items-center gap-1.5 transition-colors hover:text-white;
+  }
+
+  /* Main navigation: white serif items inside a hairline box. */
+  .site-nav {
+    @apply ml-auto hidden border border-white/60 lg:flex;
+  }
+  .site-nav a {
+    @apply block px-5 py-2 text-[0.95rem] tracking-wider text-white transition-colors hover:bg-black/15;
+    font-family: var(--font-nav);
+  }
+  .site-nav a[aria-current="page"] {
+    @apply bg-black/20;
+  }
+
+  /* Page title in content pages, with a rule running to the right. */
+  .page-title {
+    @apply flex items-center gap-4;
+    font-weight: 500;
+  }
+  .page-title::after {
+    content: "";
+    @apply h-px flex-1 bg-base-300;
+  }
+
+  /* News-style list with a date block, as on university portals. */
+  .date-list > li {
+    @apply flex gap-4 border-b border-dashed border-base-300 py-3 last:border-b-0;
+  }
+  .date-block {
+    @apply flex w-14 shrink-0 flex-col items-center justify-center bg-base-200 py-1.5 text-center;
+  }
+  .date-block__day {
+    @apply text-xl leading-none text-primary;
+    font-family: var(--font-numeric);
+  }
+  .date-block__month {
+    @apply mt-1 text-[0.6875rem] text-base-content/60;
+    font-family: var(--font-numeric);
+  }
+  .date-list__title {
+    @apply line-clamp-1 transition-colors hover:text-primary;
+  }
+  .date-list__meta {
+    @apply mt-1 line-clamp-1 text-sm text-base-content/60;
+  }
+
+  /* Inner pages: beige sidebar on the left, like www.sjtu.edu.cn. */
+  .side-layout {
+    @apply mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-12;
+  }
+  .side-nav {
+    @apply self-start bg-base-200;
+  }
+  .side-nav__title {
+    @apply bg-primary px-5 py-4 text-lg tracking-[0.2em] text-white;
+    font-family: var(--font-nav);
+  }
+  .side-nav ul {
+    @apply flex flex-wrap gap-x-1 px-2 py-2 lg:block lg:px-0 lg:py-3;
+  }
+  .side-nav a {
+    @apply flex min-h-11 items-center gap-2.5 px-3 text-base-content/80 transition-colors hover:text-primary lg:px-6;
+  }
+  .side-nav a::before {
+    content: "";
+    @apply size-2 shrink-0 rounded-full border border-current opacity-50;
+  }
+  .side-nav a[aria-current="page"] {
+    @apply text-primary;
+  }
+  .side-nav a[aria-current="page"]::before {
+    @apply bg-primary opacity-100;
+  }
+
+  .crumbs {
+    @apply text-sm text-base-content/60;
+  }
+  .crumbs a {
+    @apply transition-colors hover:text-primary;
+  }
+
+  /* Article header and credits, like news.sjtu.edu.cn. */
+  .article-head {
+    @apply border-b border-base-300 pb-4;
+  }
+  .article-head h1 {
+    @apply leading-snug;
+  }
+  .article-head__meta {
+    @apply mt-4 text-sm text-base-content/55;
+  }
+  .article-credit {
+    @apply mt-10 ml-auto grid w-fit grid-cols-[auto_auto] gap-x-1 gap-y-1 text-sm text-base-content/55;
+  }
+
+  .menu a[aria-current="page"] {
+    @apply bg-base-200 text-primary;
+  }
+
+  /* Footer: sand stripes, a centred panel, link columns either side. */
+  .site-footer {
+    @apply border-t-4 border-primary text-sm text-base-content/70;
+    background-color: var(--sj-sand);
+    background-image: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.5) 0 22px, transparent 22px 44px);
+  }
+  .site-footer__inner {
+    @apply grid items-start gap-8 py-10 sm:grid-cols-[1fr_auto_1fr];
+  }
+  .site-footer__links {
+    @apply grid grid-cols-2 content-start gap-x-8 gap-y-2.5 sm:justify-self-center;
+  }
+  .site-footer__links a {
+    @apply transition-colors hover:text-primary;
+  }
+  .site-footer__center {
+    @apply order-first flex flex-col items-center bg-base-100/85 px-10 py-6 text-center text-xs leading-6 sm:order-none;
+  }
+
+  /* ---- Homepage (round 065), after www.sjtu.edu.cn ------------------------ */
+
+  /* The red header runs on behind the top half of the carousel. */
+  .home-top {
+    @apply relative isolate bg-base-200 pb-10;
+  }
+  .home-top--band::before {
+    content: "";
+    @apply absolute inset-x-0 top-0 -z-10 bg-primary;
+    height: clamp(6rem, 22vw, 16rem);
+  }
+
+  .carousel-box {
+    @apply relative aspect-[16/7] w-full overflow-hidden bg-neutral;
+  }
+  .carousel-box__slide {
+    @apply absolute inset-0 opacity-0 transition-opacity duration-700 motion-reduce:transition-none;
+  }
+  .carousel-box__slide.is-active {
+    @apply z-10 opacity-100;
+  }
+  .carousel-box__image {
+    @apply size-full object-cover;
+  }
+  .carousel-box__caption {
+    @apply absolute inset-x-0 bottom-0 block truncate bg-black/45 py-2.5 pr-28 pl-6 text-center text-sm text-white sm:py-3.5 sm:text-lg;
+  }
+  .carousel-box__dots {
+    @apply absolute right-4 bottom-2.5 z-20 flex gap-2 sm:bottom-4;
+  }
+  .carousel-box__dots button {
+    @apply size-2.5 cursor-pointer rounded-full border border-white;
+  }
+  .carousel-box__dots button[aria-current="true"] {
+    @apply bg-white;
+  }
+
+  .photo-cards {
+    @apply mt-5 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4;
+  }
+  .photo-cards a {
+    @apply flex h-full flex-col bg-base-100 transition-shadow hover:shadow-md;
+  }
+  .photo-cards__image {
+    @apply aspect-[16/10] w-full object-cover;
+  }
+  .photo-cards__title {
+    @apply line-clamp-2 min-h-[3.5rem] px-3 pt-3 text-sm leading-7 sm:px-4 sm:text-[0.95rem];
+  }
+  .photo-cards a:hover .photo-cards__title {
+    @apply text-primary;
+  }
+  .photo-cards__date {
+    @apply mt-auto flex items-center gap-2 px-4 pt-2 pb-3 text-xs text-base-content/45;
+  }
+  .photo-cards__date::before,
+  .photo-cards__date::after {
+    content: "";
+    @apply h-px flex-1 bg-base-300;
+  }
+
+  .news-panel {
+    @apply mt-5 grid gap-8 bg-base-100 px-5 py-6 sm:px-8 lg:grid-cols-2 lg:gap-14;
+  }
+  .news-panel > section {
+    @apply min-w-0;
+  }
+  .list-head {
+    @apply flex items-center justify-between border-b border-base-300 pb-3;
+  }
+  .list-head h2 {
+    @apply text-lg tracking-wider;
+    font-weight: 600;
+  }
+  .pill-more {
+    @apply inline-flex items-center rounded-full border border-primary/40 px-3 py-0.5 text-xs text-primary transition-colors hover:bg-primary hover:text-white;
+  }
+  .circle-list {
+    @apply mt-3;
+  }
+  .circle-list li {
+    @apply flex items-center gap-2.5 py-1.5;
+  }
+  .circle-list li::before {
+    content: "";
+    @apply size-2 shrink-0 rounded-full border border-primary/60;
+  }
+  .circle-list a {
+    @apply min-w-0 truncate transition-colors hover:text-primary;
+  }
+  .lfg-strip {
+    @apply mt-4 flex items-center gap-3 border-t border-dashed border-base-300 pt-4 text-sm;
+  }
+  .lfg-strip__label {
+    @apply shrink-0 bg-primary px-2 py-0.5 text-xs text-white;
+  }
+
+  .home-section {
+    @apply bg-base-200 py-12 sm:py-16;
+  }
+  .home-section--white {
+    @apply bg-base-100;
+  }
+  /* Section title: characters spaced out between two rules, English beneath. */
+  .sj-title {
+    @apply mb-8 flex flex-col items-center px-4 text-center sm:mb-10;
+  }
+  .sj-title h2 {
+    @apply flex w-full max-w-md items-center gap-5 text-2xl tracking-[0.5em] sm:text-[1.75rem];
+    font-weight: 600;
+    text-indent: 0.5em;
+  }
+  .sj-title h2::before,
+  .sj-title h2::after {
+    content: "";
+    @apply h-px flex-1 bg-base-content/25;
+  }
+  .sj-title p {
+    @apply mt-1 text-[0.6875rem] tracking-[0.4em] text-base-content/45 uppercase;
+  }
+
+  .events {
+    @apply grid gap-8 lg:grid-cols-[minmax(0,1fr)_17rem];
+  }
+  .events__cards {
+    @apply grid content-start bg-base-100 p-2 sm:grid-cols-3;
+    border: 1px solid var(--sj-rose);
+    box-shadow: 10px 10px 0 var(--sj-rose-soft);
+  }
+  .event-card {
+    @apply flex flex-col gap-2 border-t border-base-300 px-4 py-4 first:border-t-0 sm:border-t-0 sm:border-l sm:first:border-l-0;
+  }
+  .event-card__date {
+    @apply self-end text-sm text-primary;
+  }
+  .event-card__title {
+    @apply line-clamp-3 min-h-[4.5rem] leading-6 transition-colors;
+    font-weight: 600;
+  }
+  a.event-card:hover .event-card__title {
+    @apply text-primary;
+  }
+  .event-card__meta {
+    @apply flex items-center gap-1.5 text-sm text-base-content/60;
+  }
+  .event-card__meta svg {
+    @apply shrink-0 text-primary/70;
+  }
+  .event-card--empty {
+    @apply col-span-full py-10 text-center text-base-content/60;
+  }
+
+  .cal {
+    @apply self-start px-5 py-5 text-white;
+    background-color: var(--sj-rose);
+    clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%, 0 6%);
+  }
+  .cal__title {
+    @apply text-center text-xl tracking-[0.3em];
+    font-weight: 600;
+    text-indent: 0.3em;
+  }
+  .cal__month {
+    @apply mt-1 text-center text-sm text-white/80;
+  }
+  .cal table {
+    @apply mt-3 w-full text-center text-sm;
+  }
+  .cal th {
+    @apply pb-2 font-normal text-white/70;
+  }
+  .cal td {
+    @apply py-0.5;
+  }
+  .cal td span {
+    @apply inline-grid size-7 place-items-center;
+    font-family: var(--font-numeric);
+  }
+  .cal .has-event {
+    @apply rounded-sm border border-white;
+  }
+  .cal .is-today {
+    @apply rounded-sm bg-white;
+    color: var(--sj-rose);
+  }
+  .cal__more {
+    @apply mt-3 block text-center text-sm text-white/85 hover:text-white;
+  }
+
+  /* Team cards with arched tops, like the 专栏 section. */
+  .arch-cards {
+    @apply flex snap-x gap-4 overflow-x-auto px-1 pb-6 sm:flex-wrap sm:justify-center sm:overflow-visible lg:gap-5;
+    background: linear-gradient(to bottom, transparent 0 48%, var(--sj-rose-soft) 48% 100%);
+  }
+  .arch-cards > li {
+    @apply w-44 shrink-0 snap-start sm:w-52;
+  }
+  .arch-cards a {
+    @apply flex h-full flex-col bg-base-100;
+  }
+  .arch-cards__frame {
+    @apply relative block aspect-[8/9] overflow-hidden bg-base-200;
+    border-radius: 999px 999px 0 0;
+  }
+  .arch-cards__image {
+    @apply size-full object-cover;
+  }
+  .arch-cards__initial {
+    @apply absolute inset-0 grid place-items-center text-4xl text-primary/70;
+    font-family: var(--font-nav);
+    font-weight: 600;
+  }
+  .arch-cards__label {
+    @apply absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent pt-6 pb-2 text-center text-white;
+  }
+  .arch-cards__name {
+    @apply px-4 pt-3;
+    font-weight: 600;
+  }
+  a:hover .arch-cards__name {
+    @apply text-primary;
+  }
+  .arch-cards__desc {
+    @apply line-clamp-2 px-4 pt-1 pb-4 text-sm text-base-content/60;
+  }
+
+  .quick {
+    @apply py-12;
+  }
+  .line-title {
+    @apply flex items-center gap-5 text-lg tracking-[0.3em] text-base-content/80;
+    text-indent: 0.3em;
+  }
+  .line-title::before,
+  .line-title::after {
+    content: "";
+    @apply h-px flex-1 bg-base-300;
+  }
+  .quick__grid {
+    @apply mt-8 grid grid-cols-4 gap-y-8 sm:grid-cols-8;
+  }
+  .quick__grid a {
+    @apply flex flex-col items-center gap-2.5 text-sm text-base-content/75 transition-colors hover:text-primary;
+  }
+  .quick__grid svg {
+    @apply box-content size-7 border border-b-4 border-double p-3 transition-colors;
+    border-color: var(--sj-bronze-line);
+    background-color: var(--sj-sand-light);
+    color: var(--sj-bronze);
+  }
+  .quick__grid a:hover svg {
+    @apply bg-primary text-white;
+  }
+
 }

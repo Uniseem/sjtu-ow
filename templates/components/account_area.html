@@ -1,8 +1,8 @@
 {% if user.is_authenticated %}
-  <a href="{% url 'me_profile' %}" class="hidden sm:inline text-sm link link-hover">{{ user.nickname }}</a>
-  <a href="{% url 'me_profile' %}" class="btn btn-ghost btn-sm min-h-11 font-button">个人中心</a>
-  <a href="{% url 'account_logout' %}" class="btn btn-ghost btn-sm min-h-11 font-button">退出</a>
+  <span class="hidden sm:inline">{{ user.nickname }}</span>
+  <a href="{% url 'me_profile' %}" class="inline-flex min-h-9 items-center">个人中心</a>
+  <a href="{% url 'account_logout' %}" class="inline-flex min-h-9 items-center">退出</a>
 {% else %}
-  <a href="{% url 'account_login' %}" class="btn btn-ghost btn-sm min-h-11 font-button">登录</a>
-  <a href="{% url 'account_signup' %}" class="btn btn-outline btn-sm min-h-11 font-button">注册</a>
+  <a href="{% url 'account_login' %}" class="inline-flex min-h-9 items-center">登录</a>
+  <a href="{% url 'account_signup' %}" class="inline-flex min-h-9 items-center">注册</a>
 {% endif %}

@@ -210,13 +210,13 @@ def test_home_uses_pinned_articles_when_present(client):
     home, news = _tree()
     author = _user()
     guide = ArticleCategory.objects.get(slug="guide")
-    latest = _article(news, guide, author, title="最新一篇", slug="latest")
     pinned = _article(news, guide, author, title="置顶一篇", slug="pinned")
+    latest = _article(news, guide, author, title="最新一篇", slug="latest")
     HomePagePinnedArticle.objects.create(page=home, article=pinned, sort_order=0)
     response = client.get("/")
     html = response.content.decode("utf-8")
-    assert "置顶一篇" in html
-    assert "最新一篇" not in html
+    # Round 065 (design 5.2): the older pinned article leads, the latest follows.
+    assert html.index("置顶一篇") < html.index("最新一篇")
     # Round 056: the tournament and scrim blocks used to say "即将开放".
     assert "现在没有正在报名的赛事" in html
     assert "未来 7 天没有内战" in html

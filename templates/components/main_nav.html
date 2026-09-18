@@ -1,0 +1,14 @@
+{% comment %}
+  Main navigation, shared by the header and the phone drawer. The current
+  section is marked from the path; prerendered pages are per path, so this is
+  safe to cache.
+{% endcomment %}
+{% with p=request.path %}
+  {% if as_list %}<li>{% endif %}<a href="{% url 'home' %}"{% if p == "/" %} aria-current="page"{% endif %}>首页</a>{% if as_list %}</li>{% endif %}
+  {% if as_list %}<li>{% endif %}<a href="/news/"{% if "/news/" in p %} aria-current="page"{% endif %}>资讯</a>{% if as_list %}</li>{% endif %}
+  {% if as_list %}<li>{% endif %}<a href="{% url 'submit' %}"{% if "/submit/" in p %} aria-current="page"{% endif %}>投稿</a>{% if as_list %}</li>{% endif %}
+  {% if as_list %}<li>{% endif %}<a href="/tournaments/"{% if "/tournaments/" in p %} aria-current="page"{% endif %}>赛事</a>{% if as_list %}</li>{% endif %}
+  {% if as_list %}<li>{% endif %}<a href="/lfg/"{% if "/lfg/" in p %} aria-current="page"{% endif %}>组队大厅</a>{% if as_list %}</li>{% endif %}
+  {% if as_list %}<li>{% endif %}<a href="/teams/"{% if "/teams/" in p %} aria-current="page"{% endif %}>战队</a>{% if as_list %}</li>{% endif %}
+  {% if as_list %}<li>{% endif %}<a href="/scrims/"{% if "/scrims/" in p %} aria-current="page"{% endif %}>内战</a>{% if as_list %}</li>{% endif %}
+{% endwith %}

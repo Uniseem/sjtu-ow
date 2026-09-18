@@ -423,6 +423,8 @@ def refresh_team_list() -> None:
     from core import prerender
 
     prerender.request_page("/teams/", kind="team_index")
+    # The homepage shows the newest teams (round 065).
+    prerender.request_page("/", kind="home")
 
 
 def on_team_changed(team, author=None) -> None:

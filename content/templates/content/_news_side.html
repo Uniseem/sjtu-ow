@@ -1,0 +1,12 @@
+{% comment %}
+  资讯栏目的侧栏：全部 + 各分类。active 是当前分类的 slug，空字符串表示「全部」。
+{% endcomment %}
+<nav class="side-nav" aria-label="文章分类">
+  <p class="side-nav__title">资讯</p>
+  <ul>
+    <li><a href="{{ index_url }}"{% if not active %} aria-current="page"{% endif %}>全部</a></li>
+    {% for category in categories %}
+      <li><a href="{{ index_url }}?category={{ category.slug }}"{% if active == category.slug %} aria-current="page"{% endif %}>{{ category.name }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>

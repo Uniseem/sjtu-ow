@@ -4,28 +4,32 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  <article class="mx-auto w-full max-w-3xl px-4 py-10">
-    <p class="text-sm text-base-content/70">
-      <a href="{{ page.get_parent.url }}" class="link link-hover">资讯</a>
-      ·
-      {{ page.category.name }}
-    </p>
-    <h1 class="mt-2">{{ page.title }}</h1>
-    <p class="mt-3 text-sm text-base-content/70">
-      {{ page.author.nickname }}
-      ·
-      {{ page.first_published_at|date:"Y年n月j日 H:i" }}
-    </p>
-    {% if page.cover %}
-      <figure class="mt-6">
-        {% image page.cover fill-1200x630 class="w-full rounded-box" %}
-      </figure>
-    {% endif %}
-    {% if page.summary %}
-      <p class="mt-6 text-base-content/80">{{ page.summary }}</p>
-    {% endif %}
-    <div class="article-body mt-8">
-      {% include_block page.body %}
+  <div class="side-layout">
+    <div class="order-last lg:order-first">
+      {% include "content/_news_side.html" with index_url=page.get_parent.url active=page.category.slug %}
     </div>
-  </article>
+
+    <article class="min-w-0">
+      <p class="crumbs">
+        当前位置：<a href="/">首页</a> › <a href="{{ page.get_parent.url }}">资讯</a> › <a href="{{ page.get_parent.url }}?category={{ page.category.slug }}">{{ page.category.name }}</a>
+      </p>
+      {# Like news.sjtu.edu.cn: title, date, a rule; the summary is for lists only (design 5.2). #}
+      <header class="article-head mt-6">
+        <h1>{{ page.title }}</h1>
+        <p class="article-head__meta font-numeric">{{ page.first_published_at|date:"Y年m月d日" }}</p>
+      </header>
+      {% if page.cover %}
+        <figure class="mt-6">
+          {% image page.cover fill-1200x630 class="w-full" %}
+        </figure>
+      {% endif %}
+      <div class="article-body mt-6">
+        {% include_block page.body %}
+      </div>
+      <dl class="article-credit">
+        <dt>作者：</dt><dd>{{ page.author.nickname }}</dd>
+        <dt>栏目：</dt><dd>{{ page.category.name }}</dd>
+      </dl>
+    </article>
+  </div>
 {% endblock %}

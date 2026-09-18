@@ -27,27 +27,35 @@
         {% endif %}
         {# Pages are prerendered, so only the browser knows it is WeChat (design 16.9). #}
         <div id="wechat-hint" class="bg-info text-info-content px-4 py-2 text-center text-sm font-nav" role="note" hidden>点右上角菜单，在浏览器中打开</div>
-        <header class="navbar bg-base-100 border-b border-base-300 px-4">
-          <div class="navbar-start gap-2">
-            <label for="nav-drawer" class="btn btn-ghost btn-square lg:hidden" aria-label="打开导航菜单">
+        <div class="site-topbar">
+          <div class="site-container flex h-9 items-center justify-between gap-4">
+            <span class="truncate">学生社团自办网站</span>
+            {% include "slots/account.html" %}
+          </div>
+        </div>
+        <header class="site-header">
+          <div class="site-container flex items-center gap-4 py-4 lg:items-end lg:py-5">
+            <label for="nav-drawer" class="btn btn-ghost btn-square text-white hover:bg-black/15 lg:hidden" aria-label="打开导航菜单">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </label>
-            <a href="{% url 'home' %}" class="text-lg font-semibold font-nav">交大守望先锋</a>
+            <a href="{% url 'home' %}" class="site-brand">
+              <span class="site-seal" aria-hidden="true"><span>交</span><span>大</span><span>守</span><span>望</span></span>
+              <span class="site-brand__name">交大守望先锋</span>
+            </a>
+            <div class="ml-auto hidden flex-col items-end gap-3 lg:flex">
+              <nav class="site-quicklinks" aria-label="常用">
+                <a href="/tournaments/">{% include "components/icon.html" with name="trophy" class="size-4" %}赛事报名</a>
+                <a href="/scrims/">{% include "components/icon.html" with name="calendar" class="size-4" %}内战报名</a>
+                <a href="{% url 'lfg_create' %}">{% include "components/icon.html" with name="plus" class="size-4" %}我要发车</a>
+                <a href="{% url 'submit' %}">{% include "components/icon.html" with name="pen" class="size-4" %}我要投稿</a>
+              </nav>
+              <nav class="site-nav" aria-label="主导航">
+                {% include "components/main_nav.html" %}
+              </nav>
+            </div>
           </div>
-          <nav class="navbar-center hidden lg:flex font-nav" aria-label="主导航">
-            <ul class="menu menu-horizontal gap-1">
-              <li><a href="{% url 'home' %}">首页</a></li>
-              <li><a href="/news/">资讯</a></li>
-              <li><a href="{% url 'submit' %}">投稿</a></li>
-              <li><a href="/tournaments/">赛事</a></li>
-              <li><a href="/lfg/">组队大厅</a></li>
-              <li><a href="/teams/">战队</a></li>
-              <li><a href="/scrims/">内战</a></li>
-            </ul>
-          </nav>
-          {% include "slots/account.html" %}
         </header>
 
         {% include "slots/messages.html" %}
@@ -56,28 +64,40 @@
           {% block content %}{% endblock %}
         </main>
 
-        <footer class="footer footer-horizontal footer-center bg-base-200 text-base-content p-8 font-nav">
-          <nav class="grid grid-flow-col gap-6">
-            <a class="link link-hover" href="/about/">关于我们</a>
-            <a class="link link-hover" href="/terms/">用户协议</a>
-            <a class="link link-hover" href="/privacy/">隐私政策</a>
-          </nav>
-          <aside>
-            <p>上海交通大学守望先锋社区</p>
-          </aside>
+        <footer class="site-footer">
+          <div class="site-container site-footer__inner">
+            <nav class="site-footer__links" aria-label="社区">
+              <a href="/news/">社区资讯</a>
+              <a href="/tournaments/">赛事</a>
+              <a href="/scrims/">内战</a>
+              <a href="/lfg/">组队大厅</a>
+              <a href="/teams/">战队</a>
+              <a href="{% url 'submit' %}">投稿</a>
+            </nav>
+            <div class="site-footer__center">
+              <span class="site-seal site-seal--footer" aria-hidden="true"><span>交</span><span>大</span><span>守</span><span>望</span></span>
+              <p class="mt-3 text-base-content">上海交通大学守望先锋社区</p>
+              <p class="mt-2">学生社团自办网站</p>
+              <p>不是上海交通大学官方网站</p>
+              <p>与游戏开发商、运营商无关</p>
+            </div>
+            <nav class="site-footer__links" aria-label="关于本站">
+              <a href="/about/">关于我们</a>
+              <a href="/terms/">用户协议</a>
+              <a href="/privacy/">隐私政策</a>
+              <a href="{% url 'me_profile' %}">个人中心</a>
+            </nav>
+          </div>
         </footer>
       </div>
       <div class="drawer-side z-40 lg:hidden">
         <label for="nav-drawer" class="drawer-overlay" aria-label="关闭导航菜单"></label>
-        <ul class="menu bg-base-200 min-h-full w-72 p-4 font-nav">
-          <li><a href="{% url 'home' %}">首页</a></li>
-          <li><a href="/news/">资讯</a></li>
-          <li><a href="{% url 'submit' %}">投稿</a></li>
-          <li><a href="/tournaments/">赛事</a></li>
-          <li><a href="/lfg/">组队大厅</a></li>
-          <li><a href="/teams/">战队</a></li>
-          <li><a href="/scrims/">内战</a></li>
-        </ul>
+        <nav class="menu min-h-full w-72 bg-base-100 p-0 font-nav" aria-label="主导航">
+          <div class="site-header px-5 py-5"><span class="site-brand__name">交大守望先锋</span></div>
+          <ul class="menu w-full p-3 text-base">
+            {% include "components/main_nav.html" with as_list=True %}
+          </ul>
+        </nav>
       </div>
     </div>
     <script src="{% static 'vendor/htmx.min.js' %}"></script>

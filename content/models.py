@@ -15,6 +15,7 @@ from content.seo import build_seo
 
 ARTICLES_PER_PAGE = 12
 MAX_PINNED_ARTICLES = 3
+MAX_CAROUSEL_SLIDES = 6
 HOME_ARTICLE_COUNT = 3
 
 # Slugs that would collide with Django routes registered before wagtail_urls
@@ -143,6 +144,67 @@ class HomePagePinnedArticle(Orderable):
             raise ValidationError("置顶文章最多 3 篇。")
 
 
+class HomePageCarouselItem(Orderable):
+    """One photo in the homepage carousel (焦点图, round 065)."""
+
+    page = ParentalKey(
+        "content.HomePage",
+        on_delete=models.CASCADE,
+        related_name="carousel_items",
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image",
+        on_delete=models.CASCADE,
+        related_name="+",
+        verbose_name="图片",
+        help_text="横图，建议 1600×700 以上。",
+    )
+    title = models.CharField("标题", max_length=60)
+    link_page = models.ForeignKey(
+        "wagtailcore.Page",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="链接到页面",
+    )
+    link_url = models.CharField(
+        "或链接地址",
+        max_length=200,
+        blank=True,
+        help_text="站内地址以 / 开头，比如 /tournaments/3/；站外地址以 https:// 开头。",
+    )
+
+    panels = [
+        FieldPanel("image"),
+        FieldPanel("title"),
+        FieldPanel("link_page"),
+        FieldPanel("link_url"),
+    ]
+
+    class Meta(Orderable.Meta):
+        verbose_name = "焦点图"
+        verbose_name_plural = "焦点图"
+
+    def clean(self):
+        super().clean()
+        url = self.link_url.strip()
+        if (
+            url
+            and not (url.startswith("/") and not url.startswith("//"))
+            and not url.startswith("https://")
+        ):
+            raise ValidationError(
+                {"link_url": "站内地址以 / 开头，站外地址以 https:// 开头。"}
+            )
+
+    @property
+    def url(self) -> str:
+        if self.link_page_id and self.link_page.live:
+            return self.link_page.url
+        return self.link_url.strip()
+
+
 class HomePage(SeoPageMixin, Page):
     """Site-unique homepage (design 5.1, 12.5.1)."""
 
@@ -151,6 +213,12 @@ class HomePage(SeoPageMixin, Page):
     subpage_types = ["content.ArticleIndexPage", "content.StandardPage"]
 
     content_panels = Page.content_panels + [
+        InlinePanel(
+            "carousel_items",
+            label="焦点图",
+            max_num=MAX_CAROUSEL_SLIDES,
+            help_text="首页顶部轮播的图片。一张都没有时，用最近带封面的文章。",
+        ),
         InlinePanel(
             "pinned_articles",
             label="置顶文章",
@@ -189,6 +257,17 @@ class HomePage(SeoPageMixin, Page):
 
         context["open_tournaments"] = open_tournaments()
         context["upcoming_scrims"] = upcoming_scrims()
+
+        from content import home
+
+        context["carousel"] = home.carousel_slides(self)
+        context["picture_news"] = home.picture_news()
+        context["news_list"] = home.news_list(pinned)
+        context["calendar"] = home.scrim_calendar()
+        context["event_cards"] = home.event_cards(
+            context["open_tournaments"], context["upcoming_scrims"]
+        )
+        context["home_teams"] = home.teams()
         # Anonymous (and prerendered) pages show 「登录后查看」; the signed-in
         # count arrives through the home-lfg slot (design 13.13.3).
         user = getattr(request, "user", None)
@@ -286,6 +365,13 @@ class ArticlePage(SeoPageMixin, Page):
 
     parent_page_types = ["content.ArticleIndexPage"]
     subpage_types = []
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        # The news sidebar lists every category (round 065).
+        context["categories"] = ArticleCategory.objects.all()
+        return context
+
     base_form_class = ArticlePageForm
 
     content_panels = Page.content_panels + [

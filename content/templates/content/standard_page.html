@@ -4,10 +4,16 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  <article class="mx-auto w-full max-w-3xl px-4 py-10">
-    <h1>{{ page.title }}</h1>
-    <div class="article-body mt-8">
-      {% include_block page.body %}
+  <div class="side-layout">
+    <div class="order-last lg:order-first">
+      {% include "components/about_side.html" %}
     </div>
-  </article>
+
+    <article class="min-w-0">
+      <h1 class="page-title">{{ page.title }}</h1>
+      <div class="article-body mt-6">
+        {% include_block page.body %}
+      </div>
+    </article>
+  </div>
 {% endblock %}
