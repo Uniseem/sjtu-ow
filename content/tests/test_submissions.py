@@ -9,6 +9,7 @@ from django.core.management import call_command
 from django.urls import reverse
 from django.utils import timezone
 from PIL import Image as PILImage
+from wagtail.embeds.exceptions import EmbedNotFoundException
 from wagtail.images.models import Image
 from wagtail.models import Collection, GroupCollectionPermission, Site
 
@@ -408,3 +409,21 @@ def test_site_hostname_sync_updates_canonical(client, settings):
     html = response.content.decode("utf-8")
     assert 'rel="canonical" href="https://ow.example.com' in html
     assert 'property="og:url" content="https://ow.example.com' in html
+
+
+def test_bilibili_finder_refuses_a_page_without_a_video_id():
+    with pytest.raises(EmbedNotFoundException):
+        BilibiliEmbedFinder().find_embed("https://www.bilibili.com/video/")
+
+
+def test_bilibili_finder_refuses_a_short_link_that_leaves_bilibili(monkeypatch):
+    """Design 5.2: Bilibili only, even when the target URL carries a BV id."""
+    from content import embeds
+
+    monkeypatch.setattr(
+        embeds,
+        "follow_b23",
+        lambda _url: "https://evil.example.com/video/BV1xx411c7mD",
+    )
+    with pytest.raises(EmbedNotFoundException):
+        BilibiliEmbedFinder().find_embed("https://b23.tv/abcdef")

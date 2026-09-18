@@ -159,6 +159,8 @@ request 里写了「并行负载可能让计时测试偶发失败，把幸存误
 | `content/services.py:67` 没有默认站点 | 拆掉也报错，只是异常类型从 `DoesNotExist` 变成 `AttributeError` |
 | `core/fonts/forms.py:78`、`:139` 上传大小 | 读入内存前的提前拒绝，后面 `inspect_font` 有同样的长度检查（`processing.py:60`，还没跑到，**如果它也幸存，这两条要改判**） |
 
+> **051 轮更正**：`processing.py:60` 单独变异后确实幸存（字体测试 36 条全过），所以当时三道 30MB 检查一道都没有测试，上面的「等价」没有依据。051 给 `processing.py:60` 补了测试，之后这两条才真正等价。
+
 ## 发现的算子盲区
 
 `accounts/views.py:156` 暴露的：它外面那层 `if blocked:` 才是真正的守卫（有进行中的报名时不许删游戏 ID），但它的拒绝方式是 `messages.error(...)` 加 `return redirect(...)`。**脚本不认识这种形式**——成功路径也是 `redirect`，没法只凭语法区分。

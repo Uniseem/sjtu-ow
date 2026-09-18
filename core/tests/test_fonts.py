@@ -12,9 +12,14 @@ from django.utils import timezone
 from accounts.models import User
 from core.fonts import services
 from core.fonts.css import build_css, ordered_rules, regenerate_font_css
-from core.fonts.download import DownloadError, fetch_bytes, parse_google_css
-from core.fonts.forms import FontUploadForm, variant_warning
-from core.fonts.processing import EmbeddingNotAllowed, inspect_font
+from core.fonts.download import (
+    DownloadError,
+    fetch_bytes,
+    fetch_google_css,
+    parse_google_css,
+)
+from core.fonts.forms import FontFaceAddForm, FontUploadForm, variant_warning
+from core.fonts.processing import EmbeddingNotAllowed, FontError, inspect_font
 from core.fonts.slicing import build_slices, format_unicode_range
 from core.models import FontFace, FontFamily, SiteSettings, TypographyRule
 from core.tests.fonts_factory import make_font_bytes, sample_chars
@@ -444,6 +449,104 @@ def test_google_css_parsing():
             "unicode_range": "U+4E00-4E05, U+4E07",
         }
     ]
+
+
+class _FakeResponse:
+    def __init__(self, body=b"", headers=None):
+        self._body = body
+        self.headers = headers or {}
+
+    def read(self, size=-1):
+        return self._body if size < 0 else self._body[:size]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+@pytest.fixture
+def fake_download(monkeypatch):
+    """Serve a canned response instead of touching the network."""
+    from core.fonts import download
+
+    monkeypatch.setattr(download, "_assert_public_url", lambda _url: None)
+
+    def install(response=None, error=None):
+        class Opener:
+            def open(self, _request, timeout=None):
+                if error is not None:
+                    raise error
+                return response
+
+        monkeypatch.setattr(download, "_opener", Opener())
+
+    return install
+
+
+def test_download_refuses_a_declared_size_over_the_limit(fake_download):
+    # The body itself fits, so only the Content-Length check can refuse it.
+    fake_download(_FakeResponse(b"x" * 10, {"Content-Length": "11"}))
+    with pytest.raises(DownloadError, match="上限"):
+        fetch_bytes("https://fonts.example.com/a.ttf", max_bytes=10)
+
+
+def test_download_refuses_a_body_over_the_limit_without_a_declared_size(
+    fake_download,
+):
+    fake_download(_FakeResponse(b"x" * 11))
+    with pytest.raises(DownloadError, match="上限"):
+        fetch_bytes("https://fonts.example.com/a.ttf", max_bytes=10)
+
+
+def test_download_refuses_an_empty_file(fake_download):
+    fake_download(_FakeResponse(b""))
+    with pytest.raises(DownloadError, match="空的"):
+        fetch_bytes("https://fonts.example.com/a.ttf")
+
+
+def test_google_fonts_400_names_the_missing_family(fake_download):
+    import urllib.error
+
+    fake_download(
+        error=urllib.error.HTTPError(
+            "https://fonts.googleapis.com/css2", 400, "Bad Request", {}, None
+        )
+    )
+    with pytest.raises(DownloadError, match="没有「Not A Font」这个字体"):
+        fetch_google_css("Not A Font", [400])
+
+
+def test_google_css_without_woff2_slices_is_refused():
+    css = """
+    @font-face {
+      font-family: 'X';
+      src: url(https://fonts.gstatic.com/s/x/v1/x.ttf) format('truetype');
+    }
+    """
+    with pytest.raises(DownloadError, match="woff2"):
+        parse_google_css(css)
+
+
+def test_an_empty_font_file_is_reported_as_empty():
+    # Without its own check it still fails, but as "cannot parse".
+    with pytest.raises(FontError, match="空的"):
+        inspect_font(b"")
+
+
+def test_an_oversized_font_file_is_refused_before_parsing(monkeypatch):
+    from core.fonts import processing
+
+    monkeypatch.setattr(processing, "MAX_FONT_BYTES", 10)
+    with pytest.raises(FontError, match="上限"):
+        inspect_font(b"x" * 11)
+
+
+def test_adding_a_weight_needs_a_file_or_a_url():
+    form = FontFaceAddForm(data={}, files={})
+    assert not form.is_valid()
+    assert "请上传字体文件或填写下载地址。" in form.non_field_errors()
 
 
 def test_google_css_rejects_foreign_hosts():

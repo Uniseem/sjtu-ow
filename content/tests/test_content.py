@@ -307,3 +307,20 @@ def test_standard_pages_render(client):
         assert response.status_code == 200
         html = response.content.decode("utf-8")
         assert 'style="' not in html
+
+
+@pytest.mark.django_db
+def test_homepage_clean_refuses_a_fourth_pin_before_any_are_saved():
+    """The editor submits all pins at once; none exist in the database yet."""
+    home, news = _tree()
+    author = _user()
+    guide = ArticleCategory.objects.get(slug="guide")
+    home.pinned_articles = [
+        HomePagePinnedArticle(
+            article=_article(news, guide, author, title=f"待置顶 {i}", slug=f"new-{i}"),
+            sort_order=i,
+        )
+        for i in range(MAX_PINNED_ARTICLES + 1)
+    ]
+    with pytest.raises(ValidationError, match="最多 3 篇"):
+        home.clean()

@@ -153,3 +153,11 @@ def test_game_account_ranks_updated_at_changes_with_ranks():
     account.save()
     account.refresh_from_db()
     assert account.ranks_updated_at >= first
+
+
+@pytest.mark.django_db
+def test_can_use_rejects_an_unknown_feature_name():
+    """A misspelt feature would otherwise fall through to the default allow."""
+    user = _user()
+    with pytest.raises(ValueError, match="Unknown feature"):
+        can_use(user, "tournament_regsiter")

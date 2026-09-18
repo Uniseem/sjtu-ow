@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.db import connection
 
 from core.crypto import decrypt_value, encrypt_value
@@ -51,3 +52,29 @@ def test_existing_ciphertext_is_not_double_encrypted():
     assert _raw_smtp_password(site.pk) == token
     site.refresh_from_db()
     assert site.smtp_password == "already-encrypted"
+
+
+def test_an_empty_key_is_refused_rather_than_hashed(settings):
+    """sha256("") is a key anyone can compute: encrypting with it is plaintext."""
+    settings.FIELD_ENCRYPTION_KEY = ""
+    with pytest.raises(ImproperlyConfigured):
+        encrypt_value("smtp-password")
+
+
+@pytest.mark.django_db
+def test_reading_ciphertext_from_another_key_fails_loudly(settings):
+    """After a key change the stored token must not come back as the password."""
+    site = SiteSettings.objects.create(smtp_password="real-password")
+    settings.FIELD_ENCRYPTION_KEY = "a-different-key"
+    with pytest.raises(ValueError, match="FIELD_ENCRYPTION_KEY"):
+        SiteSettings.objects.get(pk=site.pk)
+
+
+@pytest.mark.django_db
+def test_saving_ciphertext_from_another_key_is_not_encrypted_again(settings):
+    """Wrapping a foreign token in a second layer would lose the password."""
+    settings.FIELD_ENCRYPTION_KEY = "the-old-key"
+    foreign = encrypt_value("real-password")
+    settings.FIELD_ENCRYPTION_KEY = "the-new-key"
+    with pytest.raises(ValueError, match="FIELD_ENCRYPTION_KEY"):
+        SiteSettings.objects.create(smtp_password=foreign)
