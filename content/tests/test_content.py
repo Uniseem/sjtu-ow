@@ -220,7 +220,6 @@ def test_home_uses_pinned_articles_when_present(client):
     # Round 056: the tournament and scrim blocks used to say "即将开放".
     assert "现在没有正在报名的赛事" in html
     assert "未来 7 天没有内战" in html
-    assert "登录后查看" in html
     assert latest.title == "最新一篇"
 
 

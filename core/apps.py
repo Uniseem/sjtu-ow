@@ -13,7 +13,5 @@ class CoreConfig(AppConfig):
 
         SiteSettings.base_form_class = SiteSettingsAdminForm
 
-        # The lfg app owns "home-lfg"; registering it here too would depend on
-        # INSTALLED_APPS order.
         register("account", template_slot("slots/account.html"))
         register("messages", template_slot("slots/messages.html"))

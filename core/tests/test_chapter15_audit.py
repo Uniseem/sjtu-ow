@@ -84,28 +84,26 @@ def test_no_n_plus_one_on_the_team_list(client):
 
 
 @pytest.mark.django_db
-def test_no_n_plus_one_on_the_lfg_list(client):
-    from core.models import GameMode
-    from lfg.models import LfgPost
+def test_no_n_plus_one_on_the_member_page(client):
+    """Round 066: the member showcase replaced the LFG list."""
+    from allauth.account.models import EmailAddress
 
-    mode = GameMode.objects.first() or GameMode.objects.create(name="审计模式")
+    from members.models import MemberGroup, MemberGroupMembership
+    from teams import services as team_services
+
+    group = MemberGroup.objects.create(name="审计分组")
 
     def seed(count):
         start = User.objects.count()
-        now = timezone.now()
         for index in range(count):
             user = make_user(start + index)
-            LfgPost.objects.create(
-                owner=user,
-                game_account=user.game_accounts.first(),
-                mode=mode,
-                role_damage=True,
-                note=f"审计车帖{index}",
-                start_at=now,
-                expires_at=now + timedelta(hours=2),
+            EmailAddress.objects.create(
+                user=user, email=user.email, verified=True, primary=True
             )
+            team_services.create_team(user=user, name=f"审计成员队{start + index}")
+            MemberGroupMembership.objects.create(group=group, user=user, title="组员")
 
-    assert_no_n_plus_one(client, "/_fragments/lfg/", seed)
+    assert_no_n_plus_one(client, "/members/", seed)
 
 
 @pytest.mark.django_db
@@ -316,10 +314,8 @@ def test_a_real_page_carries_no_inline_script(client):
 def test_the_rate_limits_match_the_design():
     """Design 15.2 names exact numbers; drift here is silent."""
     from core.views import STATE_RATE_LIMIT
-    from lfg.views import HOUR, POST_LIMIT
     from teams.views import APPLY_LIMIT, CREATE_LIMIT, DAY
 
-    assert (POST_LIMIT, HOUR) == (10, 3600)  # 发车每人每小时 10 次
     assert (APPLY_LIMIT, DAY) == (20, 86400)  # 申请入队每人每天 20 次
     assert (CREATE_LIMIT, DAY) == (3, 86400)  # 创建战队每人每天 3 次
     assert STATE_RATE_LIMIT == 120  # 状态片段每 IP 每分钟 120 次
@@ -367,10 +363,16 @@ def test_a_prerendered_page_has_no_csrf_token_or_personal_data(settings, tmp_pat
 @pytest.mark.django_db
 def test_contacts_never_reach_a_public_page(client):
     """Design 15.3: only tournament and scrim admins may see contacts."""
+    from allauth.account.models import EmailAddress
+
     from scrims import services as scrim_services
     from scrims.models import Role, Scrim, ScrimStatus
 
     user = make_user(1)
+    # Verified, so the member showcase (round 066) really lists this user.
+    EmailAddress.objects.create(
+        user=user, email=user.email, verified=True, primary=True
+    )
     contact = user.contact_methods.first().value
     scrim = Scrim.objects.create(
         title="联系方式审计",
@@ -384,10 +386,15 @@ def test_contacts_never_reach_a_public_page(client):
         roles=[Role.DAMAGE],
     )
 
-    for url in ("/", "/scrims/", f"/scrims/{scrim.pk}/", "/teams/", "/lfg/"):
+    battletag = user.game_accounts.first().battletag
+    for url in ("/", "/scrims/", f"/scrims/{scrim.pk}/", "/teams/", "/members/"):
         body = client.get(url).content.decode()
         assert contact not in body, url
         assert user.email not in body, url
+    # Design 6.1: the member page shows nicknames, never game IDs.
+    members = client.get("/members/").content.decode()
+    assert user.nickname in members
+    assert battletag not in members
 
 
 # --- 15.3 what the AI moderator is sent ----------------------------------------
@@ -620,8 +627,7 @@ def test_site_settings_defaults_match_appendix_c():
     assert site.max_game_accounts == 5
     assert site.team_max_members == 10
     assert site.team_max_captained == 3
-    assert site.lfg_max_active_posts == 3
-    assert site.lfg_expire_hours == 2
+    assert not hasattr(site, "lfg_max_active_posts")  # removed in round 066
     assert site.scrim_reminder_hours == 2
 
 
@@ -632,10 +638,10 @@ def test_enum_values_match_appendix_b():
     """附录 B lists every stored enum value. They are in URLs, API responses
     and webhook payloads, so a rename is a breaking change for upstreams —
     worth pinning rather than trusting to review."""
+    from accounts.models import Feature
     from core.models import PrerenderedPage, TypographyRule
     from integrations.models import DeliveryStatus, WebhookEvent, WebhookPayloadMode
-    from lfg.models import LfgStatus
-    from moderation.models import ModerationItem, Risk
+    from moderation.models import ModerationItem, Risk, TargetType
     from scrims.models import Role as ScrimRole
     from scrims.models import ScrimFormat, ScrimStatus, Team
     from teams.models import ApplicationStatus, TeamRole
@@ -661,7 +667,24 @@ def test_enum_values_match_appendix_b():
         ScrimFormat: ["rq_5v5", "rq_6v6", "open_5v5", "open_6v6"],
         ScrimRole: ["tank", "damage", "support"],
         Team: ["a", "b"],
-        LfgStatus: ["open", "full", "closed"],
+        Feature: [
+            "team_create",
+            "team_apply",
+            "tournament_register",
+            "scrim_signup",
+            "article_submit",
+        ],
+        TargetType: [
+            "nickname",
+            "team_name",
+            "team_description",
+            "application_message",
+            "article",
+            "tournament_description",
+            "scrim_description",
+            "page",
+            "image",
+        ],
         ApplicationStatus: ["pending", "approved", "rejected", "cancelled"],
         TeamRole: ["captain", "member"],
         PrerenderedPage.Status: ["pending", "ready", "failed"],

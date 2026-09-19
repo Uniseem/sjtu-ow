@@ -59,7 +59,7 @@ known-first-party = [
     "core",
     "content",
     "teams",
-    "lfg",
+    "members",
     "tournaments",
     "scrims",
     "moderation",

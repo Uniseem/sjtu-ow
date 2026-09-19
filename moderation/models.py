@@ -31,7 +31,6 @@ class TargetType(models.TextChoices):
     NICKNAME = "nickname", "昵称"
     TEAM_NAME = "team_name", "队名"
     TEAM_DESCRIPTION = "team_description", "战队简介"
-    LFG_NOTE = "lfg_note", "车帖备注"
     APPLICATION_MESSAGE = "application_message", "入队申请留言"
     ARTICLE = "article", "文章 / 稿件"
     TOURNAMENT_DESCRIPTION = "tournament_description", "赛事说明"

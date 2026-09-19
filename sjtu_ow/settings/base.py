@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     "core",
     "content",
     "teams",
-    "lfg",
+    "members",
     "tournaments",
     "scrims",
     "moderation",

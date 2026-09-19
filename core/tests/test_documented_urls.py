@@ -15,9 +15,7 @@ import pytest
 # raise Resolver404 — it silently falls through to wagtail_serve.
 RESOLVABLE = [
     ("/healthz", "healthz"),
-    ("/lfg/", "lfg_index"),
-    ("/lfg/new/", "lfg_create"),
-    ("/lfg/1/edit/", "lfg_edit"),
+    ("/members/", "members"),
     ("/me/", "me_profile"),
     ("/me/contacts/", "me_contacts"),
     ("/me/game-accounts/", "me_game_accounts"),

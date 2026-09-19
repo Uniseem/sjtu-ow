@@ -2,7 +2,8 @@
 
 Round 056 walked the table and found 8 of its 14 rows incomplete; it fixed the
 ones about the homepage and the team record. These are the rest: signups,
-nickname changes, articles linked to a tournament, and game modes.
+nickname changes and articles linked to a tournament. (Game modes went with
+the LFG board in round 066.)
 """
 
 from datetime import timedelta
@@ -12,7 +13,7 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from content.models import ArticleCategory, ArticleIndexPage, ArticlePage
-from core.models import GameMode, PrerenderedPage, SiteSettings
+from core.models import PrerenderedPage, SiteSettings
 from scrims import services as scrim_services
 from scrims.tests.test_scrims import make_scrim, make_user
 from teams import services as team_services
@@ -146,20 +147,6 @@ def test_an_article_refreshes_the_tournament_it_is_linked_to(prerender_on, famou
     _forget_requests()
     ArticlePage.objects.get(pk=article.pk).unpublish()
     assert tournament.get_absolute_url() in _requested()
-
-
-# --- 游戏模式修改 → 组队大厅外壳 ----------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_changing_a_game_mode_refreshes_the_lfg_shell(prerender_on):
-    _forget_requests()
-    mode = GameMode.objects.create(name="新模式")
-    assert "/lfg/" in _requested()
-
-    _forget_requests()
-    mode.delete()
-    assert "/lfg/" in _requested()
 
 
 # --- 后台设置的说明文字 ----------------------------------------------------------

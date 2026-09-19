@@ -28,7 +28,7 @@ RESERVED_CHILD_SLUGS = frozenset(
         "me",
         "api",
         "tournaments",
-        "lfg",
+        "members",
         "teams",
         "scrims",
         "submit",
@@ -268,15 +268,6 @@ class HomePage(SeoPageMixin, Page):
             context["open_tournaments"], context["upcoming_scrims"]
         )
         context["home_teams"] = home.teams()
-        # Anonymous (and prerendered) pages show 「登录后查看」; the signed-in
-        # count arrives through the home-lfg slot (design 13.13.3).
-        user = getattr(request, "user", None)
-        if user is not None and user.is_authenticated:
-            from lfg import services as lfg_services
-
-            context["lfg_open_count"] = lfg_services.open_count()
-        else:
-            context["lfg_open_count"] = None
         return context
 
     class Meta:

@@ -85,16 +85,6 @@ class SiteSettings(BaseGenericSetting):
         "每人最多游戏 ID",
         default=5,
     )
-    lfg_max_active_posts = models.PositiveIntegerField(
-        "每人最多未过期车帖",
-        default=3,
-        help_text="每人同时最多有几个没过期的车帖。",
-    )
-    lfg_expire_hours = models.PositiveIntegerField(
-        "车帖过期小时数",
-        default=2,
-        help_text="车帖在开车时间之后多少小时过期。",
-    )
     scrim_reminder_hours = models.PositiveIntegerField(
         "内战提前提醒小时数",
         default=2,
@@ -200,8 +190,6 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("team_max_members"),
                 FieldPanel("team_max_captained"),
                 FieldPanel("max_game_accounts"),
-                FieldPanel("lfg_max_active_posts"),
-                FieldPanel("lfg_expire_hours"),
                 FieldPanel("scrim_reminder_hours"),
             ],
             heading="社区参数",
@@ -504,23 +492,3 @@ class PrerenderedPage(models.Model):
 
     def __str__(self):
         return self.path
-
-
-class GameMode(models.Model):
-    """A game mode players can pick when posting to the LFG board (12.4.2)."""
-
-    name = models.CharField("名称", max_length=32, unique=True)
-    sort_order = models.PositiveSmallIntegerField("排序", default=0)
-    is_active = models.BooleanField(
-        "启用",
-        default=True,
-        help_text="停用后发车时不能选，已有车帖不受影响。",
-    )
-
-    class Meta:
-        verbose_name = "游戏模式"
-        verbose_name_plural = "游戏模式"
-        ordering = ["sort_order", "name"]
-
-    def __str__(self):
-        return self.name

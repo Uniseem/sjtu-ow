@@ -19,7 +19,7 @@
 | `content/` | 页面类型、文章分类、投稿、B 站嵌入、sitemap / robots |
 | `core/` | 全站设置、邮件、字体、预渲染、健康检查、备份恢复与运维命令 |
 | `teams/` | 战队 |
-| `lfg/` | 组队大厅（车帖） |
+| `members/` | 成员展示、成员分组（066 轮代替了原来的组队大厅） |
 | `tournaments/` | 赛事、报名（`registration.py` 是状态机）、后台审核 |
 | `integrations/` | 开放 API、签名认证、Webhook |
 | `scrims/` | 内战、分队算法（`teaming.py`）、拖拽分队页 |

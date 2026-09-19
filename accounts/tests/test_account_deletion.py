@@ -69,7 +69,7 @@ def world(db):
     assert signup.is_selected
 
     member.groups.add(Group.objects.create(name="观察名单"))
-    FeatureUserRule.objects.create(user=member, feature="lfg_post", allowed=False)
+    FeatureUserRule.objects.create(user=member, feature="team_create", allowed=False)
     EmailAddress.objects.create(user=member, email=member.email, verified=True)
     return {
         "captain": captain,

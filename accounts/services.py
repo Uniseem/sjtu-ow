@@ -88,8 +88,7 @@ def deletion_blocked_reason(account: GameAccount) -> str | None:
 
     Design 9.2: a signup points at the game ID it was made with, so the ID
     cannot go while an unfinished scrim still uses it — cancel the signup
-    first. Deleting the ID also deletes LFG posts that use it (M3), and
-    tournament roster snapshots (M4) hold copies, not references.
+    first. Tournament roster snapshots (M4) hold copies, not references.
     """
     from scrims.models import ScrimStatus
 
@@ -217,6 +216,7 @@ def refresh_nickname_pages(user) -> None:
         url = article.get_url()
         if url:
             prerender.request_page(url, kind="article")
+    prerender.request_page("/members/", kind="members")
 
 
 DELETED_NICKNAME = "已注销用户"
@@ -249,6 +249,7 @@ def delete_account(user) -> None:
     from allauth.account.models import EmailAddress
     from django.db import transaction
 
+    from members.models import MemberGroupMembership
     from moderation.models import ModerationItem, TargetType
     from scrims.services import remove_signups_of
     from teams.services import leave_all_teams
@@ -259,7 +260,8 @@ def delete_account(user) -> None:
     with transaction.atomic():
         remove_signups_of(user)  # before game IDs: signups PROTECT them
         leave_all_teams(user)
-        user.game_accounts.all().delete()  # their LFG posts cascade
+        user.game_accounts.all().delete()
+        MemberGroupMembership.objects.filter(user=user).delete()  # design 3.8
         user.contact_methods.all().delete()
         EmailAddress.objects.filter(user=user).delete()
         FeatureUserRule.objects.filter(user=user).delete()
@@ -288,7 +290,7 @@ def personal_data(user) -> dict:
     Only the user's own data: no teammates' contacts, no admin records.
     """
     from content.models import ArticlePage
-    from lfg.models import LfgPost
+    from members.models import MemberGroupMembership
     from scrims.models import ScrimSignup
     from teams.models import TeamApplication, TeamMembership
     from tournaments.models import RegistrationMember
@@ -371,14 +373,11 @@ def personal_data(user) -> dict:
                 "scrim", "game_account"
             )
         ],
-        "lfg_posts": [
-            {
-                "mode": post.mode.name,
-                "start_at": when(post.start_at),
-                "note": post.note,
-                "status": post.get_status_display(),
-            }
-            for post in LfgPost.objects.filter(owner=user).select_related("mode")
+        "member_groups": [
+            {"group": membership.group.name, "title": membership.title}
+            for membership in MemberGroupMembership.objects.filter(
+                user=user
+            ).select_related("group")
         ],
         "articles": [
             {"title": page.title, "url": page.get_url()}

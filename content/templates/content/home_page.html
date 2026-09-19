@@ -79,7 +79,6 @@
           {% else %}
             <p class="mt-4 text-base-content/60">现在没有正在报名的赛事。未来 7 天没有内战。</p>
           {% endif %}
-          {% include "slots/home_lfg.html" %}
         </section>
       </div>
     </div>
@@ -159,14 +158,14 @@
   <section class="site-container quick" aria-label="快速入口">
     <p class="line-title">快速入口</p>
     <ul class="quick__grid">
-      <li><a href="/lfg/">{% include "components/icon.html" with name="users" %}<span>组队大厅</span></a></li>
-      <li><a href="{% url 'lfg_create' %}">{% include "components/icon.html" with name="plus" %}<span>我要发车</span></a></li>
+      <li><a href="{% url 'members' %}">{% include "components/icon.html" with name="users" %}<span>成员展示</span></a></li>
+      <li><a href="/teams/">{% include "components/icon.html" with name="shield" %}<span>战队</span></a></li>
       <li><a href="/tournaments/">{% include "components/icon.html" with name="trophy" %}<span>赛事报名</span></a></li>
       <li><a href="/scrims/">{% include "components/icon.html" with name="calendar" %}<span>内战报名</span></a></li>
-      <li><a href="/teams/">{% include "components/icon.html" with name="shield" %}<span>战队</span></a></li>
       <li><a href="/news/">{% include "components/icon.html" with name="news" %}<span>社区资讯</span></a></li>
       <li><a href="{% url 'submit' %}">{% include "components/icon.html" with name="pen" %}<span>我要投稿</span></a></li>
       <li><a href="{% url 'me_profile' %}">{% include "components/icon.html" with name="user" %}<span>个人中心</span></a></li>
+      <li><a href="/about/">{% include "components/icon.html" with name="info" %}<span>关于我们</span></a></li>
     </ul>
   </section>
 {% endblock %}

@@ -410,6 +410,44 @@ h6 {
     @apply mt-10 ml-auto grid w-fit grid-cols-[auto_auto] gap-x-1 gap-y-1 text-sm text-base-content/55;
   }
 
+  /* Member showcase (design 6.3). */
+  .member-group {
+    @apply mt-10 scroll-mt-6;
+  }
+  .member-cards {
+    @apply mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3;
+  }
+  .member-cards > li {
+    @apply flex items-start gap-3 border border-base-300 bg-base-100 px-4 py-3;
+  }
+  .member-cards__seal {
+    @apply grid size-11 shrink-0 place-items-center border border-primary text-lg text-primary;
+    font-family: var(--font-nav);
+    font-weight: 600;
+  }
+  .member-cards__name {
+    @apply block;
+    font-weight: 600;
+  }
+  .member-cards__title {
+    @apply mt-0.5 block text-sm text-primary;
+  }
+  .member-cards__teams {
+    @apply mt-1 block truncate text-sm text-base-content/60;
+  }
+  .member-cards__teams a {
+    @apply transition-colors hover:text-primary;
+  }
+  .member-names {
+    @apply mt-4 grid grid-cols-2 gap-x-6 sm:grid-cols-3 lg:grid-cols-4;
+  }
+  .member-names > li {
+    @apply flex flex-wrap items-center gap-1.5 border-b border-dashed border-base-300 py-2;
+  }
+  .member-names__tag {
+    @apply bg-base-200 px-1.5 text-xs text-base-content/60;
+  }
+
   .menu a[aria-current="page"] {
     @apply bg-base-200 text-primary;
   }
@@ -523,13 +561,6 @@ h6 {
   .circle-list a {
     @apply min-w-0 truncate transition-colors hover:text-primary;
   }
-  .lfg-strip {
-    @apply mt-4 flex items-center gap-3 border-t border-dashed border-base-300 pt-4 text-sm;
-  }
-  .lfg-strip__label {
-    @apply shrink-0 bg-primary px-2 py-0.5 text-xs text-white;
-  }
-
   .home-section {
     @apply bg-base-200 py-12 sm:py-16;
   }

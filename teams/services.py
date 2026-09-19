@@ -425,6 +425,8 @@ def refresh_team_list() -> None:
     prerender.request_page("/teams/", kind="team_index")
     # The homepage shows the newest teams (round 065).
     prerender.request_page("/", kind="home")
+    # The member showcase lists everyone's teams (round 066).
+    prerender.request_page("/members/", kind="members")
 
 
 def on_team_changed(team, author=None) -> None:

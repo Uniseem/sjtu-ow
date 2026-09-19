@@ -136,8 +136,8 @@ def test_can_use_inactive_and_anonymous():
     user = _user()
     user.is_active = False
     user.save(update_fields=["is_active"])
-    assert can_use(user, Feature.LFG_POST) is False
-    assert can_use(None, Feature.LFG_POST) is False
+    assert can_use(user, Feature.TEAM_CREATE) is False
+    assert can_use(None, Feature.TEAM_CREATE) is False
 
 
 @pytest.mark.django_db

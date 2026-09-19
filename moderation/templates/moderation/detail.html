@@ -21,7 +21,7 @@
   <pre class="w-whitespace-pre-wrap">{{ item.excerpt }}</pre>
 
   <h2>记录处理结果</h2>
-  <p class="help-block">这里只记录你做了什么。关闭车帖、退回稿件、停用账号等操作请到对应功能里执行——AI 和这个页面都不会替你改动内容。</p>
+  <p class="help-block">这里只记录你做了什么。退回稿件、清空战队简介、停用账号等操作请到对应功能里执行——AI 和这个页面都不会替你改动内容。</p>
   <form method="post" action="{% url 'moderation_action' item.pk %}">
     {% csrf_token %}
     <label for="handling_note">处理说明</label>

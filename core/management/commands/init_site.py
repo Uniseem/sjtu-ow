@@ -17,7 +17,7 @@ from content.services import (
 )
 from core.fonts.css import regenerate_font_css
 from core.fonts.services import ensure_typography_rules
-from core.services import ensure_game_modes
+from members.services import assign_member_permissions
 from moderation.services import assign_moderation_permissions
 from scrims.services import assign_scrim_permissions
 from tournaments.services import assign_tournament_permissions
@@ -114,12 +114,15 @@ class Command(BaseCommand):
                 )
             )
 
-        modes = ensure_game_modes()
-        self.stdout.write(
-            self.style.SUCCESS(
-                "已确保游戏模式：" + "、".join(mode.name for mode in modes)
+        member_editors = assign_member_permissions()
+        if member_editors:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "已分配成员分组权限："
+                    + "、".join(member_editors)
+                    + " 可管理成员分组"
+                )
             )
-        )
 
         rules = ensure_typography_rules()
         font_css_url = regenerate_font_css()

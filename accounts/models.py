@@ -89,7 +89,6 @@ class User(AbstractUser):
 
 
 class Feature(models.TextChoices):
-    LFG_POST = "lfg_post", "在组队大厅发车"
     TEAM_CREATE = "team_create", "创建战队"
     TEAM_APPLY = "team_apply", "申请加入战队"
     TOURNAMENT_REGISTER = "tournament_register", "报名赛事"
