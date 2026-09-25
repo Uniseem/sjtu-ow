@@ -44,7 +44,12 @@ def can_see_contacts(user) -> bool:
 
 
 def local_actions(registration) -> dict:
-    """Which buttons to show for this status (design 8.5, 8.7)."""
+    """Which buttons to show for this status (design 8.5, 8.7).
+
+    Ad-hoc teams are managed on the board (design 8.8.2), never here.
+    """
+    if registration.team_id is None:
+        return {"approve": False, "reject": False, "revoke": False}
     status = registration.status
     return {
         "approve": status == RegistrationStatus.PENDING,
@@ -98,10 +103,12 @@ def review_detail(request, pk):
     )
     roster = list(registration.members.select_related("user"))
     roster_ids = {member.user_id for member in roster}
-    current = {
-        membership.user_id: membership.user
-        for membership in registration.team.memberships.select_related("user")
-    }
+    current = {}
+    if registration.team_id is not None:
+        current = {
+            membership.user_id: membership.user
+            for membership in registration.team.memberships.select_related("user")
+        }
     contacts = {}
     if can_see_contacts(request.user):
         from accounts.models import ContactMethod
@@ -121,6 +128,7 @@ def review_detail(request, pk):
             "page_title": f"{registration.team_name} · {registration.tournament.title}",
             "header_icon": "tasks",
             "registration": registration,
+            "is_adhoc": registration.team_id is None,
             "rows": rows,
             "show_contacts": can_see_contacts(request.user),
             "added": [

@@ -259,6 +259,23 @@ def deletion_blockers(user) -> list[str]:
     ]
 
 
+def _leave_adhoc_teams(user) -> None:
+    """Design 3.8 + 8.8.2: a placed player leaves their ad-hoc teams first."""
+    from tournaments.models import ACTIVE_STATUSES, TournamentStatus
+    from tournaments.registration import leave
+
+    entries = user.individual_signups.filter(
+        registration__isnull=False,
+        registration__status__in=ACTIVE_STATUSES,
+        registration__tournament__status__in=[
+            TournamentStatus.DRAFT,
+            TournamentStatus.PUBLISHED,
+        ],
+    ).select_related("registration__tournament")
+    for entry in entries:
+        leave(registration=entry.registration, user=user, enforce_deadline=False)
+
+
 def delete_account(user) -> None:
     """Anonymise the account in place (design 3.8). Users are never deleted.
 
@@ -278,6 +295,7 @@ def delete_account(user) -> None:
         raise AccountDeletionError(blockers[0])
     with transaction.atomic():
         remove_signups_of(user)  # before game IDs: signups PROTECT them
+        _leave_adhoc_teams(user)  # design 8.8.2: free the places first
         user.individual_signups.all().delete()  # design 8.8.1, same reason
         leave_all_teams(user)
         user.game_accounts.all().delete()

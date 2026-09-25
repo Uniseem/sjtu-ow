@@ -8,7 +8,12 @@
     <p class="mt-2 text-base-content/70">
       <a href="{{ registration.tournament.get_absolute_url }}" class="link link-hover">{{ registration.tournament.title }}</a>
       ·
-      <a href="{{ registration.team.get_absolute_url }}" class="link link-hover">{{ registration.team_name }}</a>
+      {% if is_adhoc %}
+        <span>{{ registration.team_name }}</span>
+        <span class="badge badge-outline badge-sm">临时队伍</span>
+      {% else %}
+        <a href="{{ registration.team.get_absolute_url }}" class="link link-hover">{{ registration.team_name }}</a>
+      {% endif %}
     </p>
 
     <div class="mt-6 flex flex-wrap items-center gap-2">
@@ -37,6 +42,14 @@
       </div>
     {% elif is_captain %}
       <p class="mt-4 text-sm text-base-content/60">报名已截止，不能再修改。</p>
+    {% elif can_leave %}
+      <form method="post" action="{% url 'registration_leave' registration.pk %}" class="mt-4">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost min-h-11 font-button">退出队伍</button>
+        <span class="ml-2 text-sm text-base-content/60">退出后回到散人池，等赛事管理员重新编队。</span>
+      </form>
+    {% elif is_adhoc and registration.status in active_statuses %}
+      <p class="mt-4 text-sm text-base-content/60">报名已截止，不能再退出。</p>
     {% endif %}
 
     <h2 class="mt-10">名单快照</h2>

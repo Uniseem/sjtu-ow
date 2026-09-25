@@ -31,6 +31,11 @@ urlpatterns = [
         name="registration_withdraw",
     ),
     path(
+        "registrations/<int:pk>/leave/",
+        registration_views.registration_leave,
+        name="registration_leave",
+    ),
+    path(
         "me/registrations/",
         registration_views.me_registrations,
         name="me_registrations",

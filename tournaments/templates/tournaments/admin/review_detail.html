@@ -5,7 +5,7 @@
 {% block main_content %}
   <dl>
     <dt>赛事</dt><dd>{{ registration.tournament.title }}{% if registration.tournament.auto_approve %}（报名自动通过）{% endif %}</dd>
-    <dt>战队</dt><dd>{{ registration.team_name }}</dd>
+    <dt>{% if is_adhoc %}临时队伍{% else %}战队{% endif %}</dt><dd>{{ registration.team_name }}{% if is_adhoc %}（<a href="{% url 'tournament_teams_board' registration.tournament.pk %}">在队伍编排页管理</a>）{% endif %}</dd>
     <dt>状态</dt><dd>{{ registration.get_status_display }}</dd>
     <dt>名单版本</dt><dd>{{ registration.roster_version }}</dd>
     <dt>提交时间</dt><dd>{{ registration.submitted_at }}</dd>
@@ -37,7 +37,9 @@
   </table>
 
   <h2>名单与战队当前成员的差异</h2>
-  {% if added or removed %}
+  {% if is_adhoc %}
+    <p>临时队伍没有战队，名单以编排页为准。</p>
+  {% elif added or removed %}
     <ul>
       {% for user in added %}<li>战队新增了 {{ user.nickname }}（不在名单里）</li>{% endfor %}
       {% for member in removed %}<li>{{ member.nickname }} 已经不在战队里（仍在名单中）</li>{% endfor %}

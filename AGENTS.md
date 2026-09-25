@@ -20,7 +20,7 @@
 | `core/` | 全站设置、邮件、字体、预渲染、健康检查、备份恢复与运维命令 |
 | `teams/` | 战队 |
 | `members/` | 成员展示、成员分组（066 轮代替了原来的组队大厅） |
-| `tournaments/` | 赛事、报名（`registration.py` 是状态机）、后台审核 |
+| `tournaments/` | 赛事、报名（`registration.py` 是状态机，含个人报名和临时队伍）、后台审核、`teams_admin.py` 队伍编排页 |
 | `integrations/` | 只剩迁移历史。067 删了开放 API 与 Webhook；`tournaments/0004` 依赖它的迁移，包不能删 |
 | `scrims/` | 内战、分队算法（`teaming.py`）、拖拽分队页 |
 | `moderation/` | AI 内容审核 |

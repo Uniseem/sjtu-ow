@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
-from django.contrib.auth.models import Group
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils import timezone
@@ -19,20 +18,9 @@ REVIEWER_GROUPS = ("内容编辑",)
 
 def reviewer_emails() -> list[str]:
     """Content editors and superusers (design 5.5.4)."""
-    from accounts.models import User
+    from core.mail import emails_for_groups
 
-    emails = set(
-        User.objects.filter(is_active=True, is_superuser=True).values_list(
-            "email", flat=True
-        )
-    )
-    groups = Group.objects.filter(name__in=REVIEWER_GROUPS)
-    emails.update(
-        User.objects.filter(is_active=True, groups__in=groups).values_list(
-            "email", flat=True
-        )
-    )
-    return sorted(address for address in emails if address)
+    return emails_for_groups(REVIEWER_GROUPS)
 
 
 def _send_one_by_one(subject: str, body: str, recipients) -> None:

@@ -24,6 +24,7 @@ RESOLVABLE = [
     ("/me/teams/", "me_teams"),
     ("/me/scrims/", "me_scrims"),
     ("/registrations/1/", "registration_detail"),
+    ("/registrations/1/leave/", "registration_leave"),
     ("/scrims/", "scrim_index"),
     ("/scrims/1/", "scrim_detail"),
     ("/submit/", "submit"),

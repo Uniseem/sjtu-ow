@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 |---|---|
-| 版本 | v1.7 草案 |
+| 版本 | v1.7.1 草案 |
 | 日期 | 2026-09-26 |
 | 状态 | 开发中。进度见 `handoff/STATUS.md`，本文档不记录进度 |
 | 读者 | 社团负责人、开发成员、以后接手维护的同学 |
@@ -966,13 +966,14 @@ stateDiagram-v2
 - 删除游戏 ID 的限制和 3.5.2 节一样：正用于未结束赛事的个人报名时不能删。注销账号时个人报名一并删除（3.8 节）
 - 不发邮件
 
-#### 8.8.2 编队与临时队伍（070 轮实现）
+#### 8.8.2 编队与临时队伍
 
 - 赛事管理员在后台「队伍编排」页把散人池里的人拖进临时队伍，照内战 9.5 节的拖拽页：左边散人池，右边每个临时队伍一个区块，满员（`roster_max`）拒绝拖入，低于 `roster_min` 标红但允许保存。**服务端同样校验**：只收本赛事池里的人、每队不超过上限、队名 1 到 16 字且在本赛事内唯一、一个人只在一队、逐人重跑 8.3 节的队员校验和名单冲突检查
 - 临时队伍是一条 `team` 为空的报名记录（12.8.2 节），`team_name` 是管理员填的队名；名单快照按当时的散人记录生成，没有队长。它不出现在战队列表和任何战队主页，只出现在这个赛事的「已报名战队」里，标注「临时队伍」
 - **编队完成即已通过**：报名记录直接是「已通过」，状态日志记 `form_team`（操作方管理员）；改动名单记 `sync_roster`；成员收到「已编入队伍」邮件（10.2 节）
 - 报名截止前成员可以在报名详情页退出队伍：名单行删除、个人报名回到散人池，日志记 `member_left`（操作方队员），赛事管理员收到提醒邮件；最后一个人退出时队伍自动解散。截止后成员不能退出，管理员的操作不受截止限制
-- 管理员可以把人移回散人池或解散整支队伍（状态改为「已撤回」，日志记 `dissolve`，成员收信）
+- 管理员可以把人移回散人池（成员收信，日志记 `sync_roster`）或解散整支队伍（状态改为「已撤回」，日志记 `dissolve`，成员收信）
+- 后台「队伍编排」页只管临时队伍；战队报名照 8.7 节审核。散人池里缺段位的人在卡片上标「未填段位」
 - 散人池里的人后来被自己的战队报了名：他的个人报名保留但不能再编入，编排页上标出原因
 - 赛事取消、结束的处理和战队报名一致；临时队伍成员的联系方式只有赛事管理员能看（3.5.3 节）
 
@@ -1119,7 +1120,10 @@ B 队（总分 111）
 | 战队解散 | 全体成员 | **默认** |
 | 报名已提交 | 队长 | 包括首次提交、重新提交、同步名单 |
 | 报名状态变化 | 队长 | 通过、驳回（带备注）、撤销通过。自动通过的报名只发「报名已提交」一封，内容写明已通过 |
-| 赛事取消 | 有效报名的队长 | **默认** |
+| 赛事取消 | 有效报名的队长；临时队伍的全体成员 | **默认** |
+| 已编入临时队伍 | 被编入的成员 | 编队或调整后，每人一封（8.8.2 节） |
+| 移出临时队伍 / 队伍解散 | 受影响的成员 | 管理员移回散人池或解散时 |
+| 临时队伍成员退出 | 赛事管理员组（含超级管理员） | 成员截止前退出时；最后一人退出会写明队伍已自动解散 |
 | 投稿待审核 | 内容编辑 | Wagtail 自带 |
 | 投稿审核结果 | 投稿人 | Wagtail 自带 |
 | 内战开始提醒 | 活动的全部报名者 | 开始前 2 小时 |
@@ -1487,15 +1491,16 @@ erDiagram
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | tournament | FK → Tournament | |
-| team | FK → Team | |
+| team | FK → Team，可空 | 为空表示临时队伍（8.8.2 节） |
 | status | 枚举 | `pending` / `approved` / `rejected` / `withdrawn` |
-| team_name | varchar(16) | 最近一次提交或同步名单时的战队名称快照 |
+| team_name | varchar(16) | 战队报名：最近一次提交或同步名单时的战队名称快照；临时队伍：管理员填的队名 |
 | roster_version | int，默认 1 | |
-| submitted_by | FK → User | 最近一次提交或同步名单的队长 |
-| submitted_at | datetime | |
+| submitted_by | FK → User | 最近一次提交或同步名单的队长；临时队伍是编队的管理员 |
+| submitted_at | datetime | 临时队伍是编队时间 |
 | status_note | varchar(300) | 最近一次审核备注 |
 
-- 唯一约束：(tournament, team)
+- 唯一约束：(tournament, team)。SQLite 里 NULL 互不相等，一个赛事可以有多支临时队伍
+- 检查约束：`team_name` 非空
 - 索引：(tournament, status)、(updated_at, id)
 
 #### 12.8.3 RegistrationMember（名单快照）
@@ -1520,13 +1525,13 @@ erDiagram
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | registration | FK → Registration | |
-| action | 枚举 | `submit` / `resubmit` / `sync_roster` / `approve` / `reject` / `revoke` / `withdraw` |
+| action | 枚举 | `submit` / `resubmit` / `sync_roster` / `approve` / `reject` / `revoke` / `withdraw` / `form_team` / `member_left` / `dissolve` |
 | from_status | 枚举，可空 | |
 | to_status | 枚举 | |
-| actor_type | 枚举 | `captain` / `admin` / `system` |
+| actor_type | 枚举 | `captain` / `admin` / `system` / `member` |
 | actor_user | FK → User，可空 | |
 | roster_version | int | |
-| roster_snapshot | JSON，可空 | 名单有变化时（submit、resubmit、sync_roster）保存完整名单 |
+| roster_snapshot | JSON，可空 | 名单有变化时（submit、resubmit、sync_roster、form_team、member_left）保存完整名单 |
 | note | text | |
 
 - 只增不改，永久保留
@@ -1726,6 +1731,7 @@ DATABASES = {
 | `/tournaments/<id>/signup/` | 个人报名（8.8 节） | 已登录 |
 | `/tournaments/<id>/signup/cancel/` | 取消个人报名（只接受 POST） | 已登录 |
 | `/registrations/<id>/` | 报名详情 | 该报名的队长和名单成员 |
+| `/registrations/<id>/leave/` | 退出临时队伍（只接受 POST，8.8.2 节） | 名单成员 |
 | `/teams/` | 战队列表 | 公开 |
 | `/teams/new/` | 创建战队 | 已登录 |
 | `/teams/<id>/` | 战队主页 | 公开 |
@@ -2061,6 +2067,7 @@ sequenceDiagram
 | 内战活动创建、修改、发布、取消 | 活动详情、活动列表、首页 |
 | 内战报名、修改报名、取消报名 | 活动详情（报名统计和名单） |
 | 赛事的个人报名、修改、取消 | 赛事详情（散人名单） |
+| 临时队伍编队、调整、成员退出、解散 | 赛事详情（散人名单和已报名队伍） |
 | 用户修改昵称 | 该用户所在的战队主页、报名的内战活动详情、有个人报名的赛事详情、署名的文章、成员展示 |
 | 新用户完成邮箱验证；账号停用、恢复或注销 | 成员展示 |
 | 成员分组修改（分组本身、组里的成员和职务） | 成员展示 |
@@ -2159,7 +2166,8 @@ sequenceDiagram
 | 页面 | 功能 | 实现方式 |
 |---|---|---|
 | 赛事 | 新建、编辑、发布、取消、标记结束；有报名之后「报名自动通过」不能再改 | Wagtail `ModelViewSet` |
-| 报名审核 | 列表（筛选、批量通过、导出 CSV）；详情（名单快照含联系方式、名单与战队当前成员的差异、状态日志、审核操作） | `ModelViewSet` 列表 + 自定义详情视图 |
+| 报名审核 | 列表（筛选、批量通过、导出 CSV）；详情（名单快照含联系方式、名单与战队当前成员的差异、状态日志、审核操作）；临时队伍的详情只读，指向队伍编排页 | `ModelViewSet` 列表 + 自定义详情视图 |
+| 队伍编排 | 从赛事列表进入：散人池、每支临时队伍一个区块、固定一个空的「新队伍」区块；拖拽或按钮移动，满员拒绝，低于下限标红；改队名；解散（8.8.2 节） | 自定义视图 + SortableJS |
 | 内战活动 | 新建、编辑、发布、取消；「分队」页面（勾选上场、生成分队、拖拽调整、保存、复制） | `ModelViewSet` + 自定义分队视图 |
 | 战队 | 查看、编辑、指定队长、解散 | `ModelViewSet` + 自定义操作 |
 | 内容审核 | 待复核列表（按风险等级、类型筛选）；详情显示完整内容、AI 理由、作者历史；处置动作和处理记录；一键全量扫描 | `ModelViewSet` + 自定义详情和操作视图 |
@@ -2668,8 +2676,8 @@ sequenceDiagram
 | 联系方式类型 `ContactMethod.type` | `qq` QQ、`wechat` 微信、`phone` 手机号、`other` 其他 |
 | 内战规格 `Scrim.format` | `rq_5v5` 角色限定 5v5、`rq_6v6` 角色限定 6v6、`open_5v5` 不限位置 5v5、`open_6v6` 不限位置 6v6 |
 | 内战队伍 `ScrimSignup.team` | `a` A 队、`b` B 队 |
-| 操作方类型 `actor_type` | `captain` 队长、`admin` 本站管理员、`system` 系统 |
-| 日志动作 `RegistrationStatusLog.action` | `submit` 提交、`resubmit` 重新提交、`sync_roster` 同步名单、`approve` 通过、`reject` 驳回、`revoke` 撤销通过、`withdraw` 撤回 |
+| 操作方类型 `actor_type` | `captain` 队长、`admin` 本站管理员、`system` 系统、`member` 队员 |
+| 日志动作 `RegistrationStatusLog.action` | `submit` 提交、`resubmit` 重新提交、`sync_roster` 同步名单、`approve` 通过、`reject` 驳回、`revoke` 撤销通过、`withdraw` 撤回、`form_team` 编队、`member_left` 退出队伍、`dissolve` 解散队伍 |
 | SMTP 加密方式 | `none` 无、`starttls` STARTTLS、`ssl` SSL |
 | 功能标识 | `team_create` 创建战队、`team_apply` 申请入队、`tournament_register` 报名赛事、`scrim_signup` 报名内战、`article_submit` 投稿 |
 | 字体来源 `FontFamily.source` | `upload` 上传、`google_fonts` 从 Google Fonts 下载、`url` 从网址下载 |
@@ -2786,3 +2794,4 @@ sequenceDiagram
 | design v1.6 草案 | 2026-09-25 | 按用户决定，本站和上游赛事网站独立运营：第 11 章开放 API 与 Webhook 整章删除（章节号保留），`integrations` 只留迁移历史（2.3、12.10 节）；赛事只由后台创建，删掉审核模式、上游推送来源、「待上游确认」状态和「上游」操作方（8.1、8.5、12.8、附录 B）；新增赛事级开关「报名自动通过」，有报名后不能改、后台拦截（8.1、8.3、8.4）；对阵图和赛果改为以战报文章发布（1.1、1.3）；同步更新架构图、角色、术语、邮件清单、路由、后台菜单、非功能需求、定时任务、里程碑（M5 标删除，新增 M8 独立版功能）、风险和附录 C；19.2 第 13 条结案（不做访问统计和错误追踪） |
 | design v1.6.1 草案 | 2026-09-26 | 按 068 轮的修复：12.9.2 节 `ScrimSignup.game_account` 改为可空、删除时置空，落实 3.5.2「只有未结束的内战拦住删除」（原来是 PROTECT，删除用于已结束内战的游戏 ID 会报错）。内容编辑管理文章分类的权限（4.1、14.1）设计一直有，代码这轮才补上 |
 | design v1.7 草案 | 2026-09-26 | 按用户决定新增 8.8 节「个人报名与临时队伍」：8.8.1 个人报名（散人池）本轮实现，8.8.2 编队与临时队伍写明 070 实现；新增 `Tournament.allow_individual_signup` 和 12.8.5 `IndividualSignup` 表；1.2、1.5、3.8、4.4、8.1、8.2、12.1、12.11、13.4、13.13.4 同步 |
+| design v1.7.1 草案 | 2026-09-26 | 8.8.2 编队与临时队伍落地：12.8.2 `Registration.team` 可空、`team_name` 非空约束；12.8.4 新增 `form_team` / `member_left` / `dissolve` 动作和 `member` 操作方；10.2 新增三封邮件；13.4 `/registrations/<id>/leave/`；13.13.4 事件；14.2 后台「队伍编排」页；附录 B |

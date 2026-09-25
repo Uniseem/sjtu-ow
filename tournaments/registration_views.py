@@ -126,12 +126,22 @@ def registration_detail(request, pk):
         raise Http404
     from teams.services import is_captain as is_team_captain
 
-    is_captain = is_team_captain(registration.team, request.user)
+    is_adhoc = registration.team_id is None
+    is_captain = (not is_adhoc) and is_team_captain(registration.team, request.user)
+    on_roster = registration.members.filter(user=request.user).exists()
+    can_leave = (
+        is_adhoc
+        and on_roster
+        and registration.status in ACTIVE_STATUSES
+        and registration_service.captain_can_change(registration)
+    )
     return render(
         request,
         "tournaments/registration_detail.html",
         {
             "registration": registration,
+            "is_adhoc": is_adhoc,
+            "can_leave": can_leave,
             "members": registration.members.all(),
             "logs": registration.logs.all(),
             "is_captain": is_captain,
@@ -158,6 +168,25 @@ def registration_withdraw(request, pk):
     else:
         messages.success(request, "报名已撤回。")
     return redirect("registration_detail", pk=registration.pk)
+
+
+@login_required
+@require_POST
+def registration_leave(request, pk):
+    """A member leaves an ad-hoc team (design 8.8.2)."""
+    registration = get_object_or_404(Registration, pk=pk)
+    try:
+        dissolved = registration_service.leave(
+            registration=registration, user=request.user
+        )
+    except registration_service.RegistrationError as exc:
+        messages.error(request, str(exc))
+        return redirect("registration_detail", pk=registration.pk)
+    if dissolved:
+        messages.success(request, "已退出队伍。队伍里没有人了，已自动解散。")
+    else:
+        messages.success(request, "已退出队伍，回到散人池。")
+    return redirect("tournament_detail", pk=registration.tournament_id)
 
 
 @login_required

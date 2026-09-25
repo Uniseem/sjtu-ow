@@ -1,0 +1,22 @@
+{% comment %}
+One drop target. `key` is "" (the pool), "r<registration pk>" or "new".
+The script reads the data attributes; the hidden inputs in the cards are
+what the view reads back.
+{% endcomment %}
+<div class="split-zone" data-zone data-zone-team="{{ key }}"
+     {% if capacity %}data-zone-capacity="{{ capacity }}"{% endif %}
+     {% if minimum %}data-zone-min="{{ minimum }}"{% endif %}>
+  <h4 class="split-zone-title">
+    {{ label }}
+    {% if capacity %}
+      <span class="split-count"><span data-zone-count>{{ members|length }}</span> / {{ capacity }}</span>
+    {% else %}
+      <span class="split-count"><span data-zone-count>{{ members|length }}</span></span>
+    {% endif %}
+  </h4>
+  <ul class="split-list" data-list>
+    {% for entry in members %}
+      {% include "tournaments/admin/_card.html" with entry=entry %}
+    {% endfor %}
+  </ul>
+</div>

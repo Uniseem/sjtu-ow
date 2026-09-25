@@ -140,12 +140,16 @@ class RegistrationAction(models.TextChoices):
     REJECT = "reject", "驳回"
     REVOKE = "revoke", "撤销通过"
     WITHDRAW = "withdraw", "撤回"
+    FORM_TEAM = "form_team", "编队"
+    MEMBER_LEFT = "member_left", "退出队伍"
+    DISSOLVE = "dissolve", "解散队伍"
 
 
 class ActorType(models.TextChoices):
     CAPTAIN = "captain", "队长"
     ADMIN = "admin", "本站管理员"
     SYSTEM = "system", "系统"
+    MEMBER = "member", "队员"
 
 
 class Registration(models.Model):
@@ -160,7 +164,10 @@ class Registration(models.Model):
     team = models.ForeignKey(
         "teams.Team",
         verbose_name="战队",
+        null=True,
+        blank=True,
         on_delete=models.PROTECT,
+        help_text="为空表示临时队伍（设计 8.8.2）。",
         related_name="registrations",
     )
     status = models.CharField(
@@ -192,7 +199,12 @@ class Registration(models.Model):
             models.UniqueConstraint(
                 fields=["tournament", "team"],
                 name="unique_registration_per_team",
-            )
+            ),
+            # Design 12.8.2: an ad-hoc team has no Team row, only its name.
+            models.CheckConstraint(
+                condition=~models.Q(team_name=""),
+                name="registration_has_a_name",
+            ),
         ]
         indexes = [
             models.Index(fields=["tournament", "status"]),
@@ -208,6 +220,11 @@ class Registration(models.Model):
     @property
     def is_active(self) -> bool:
         return self.status in ACTIVE_STATUSES
+
+    @property
+    def is_adhoc(self) -> bool:
+        """An admin-formed team with no Team row (design 8.8.2)."""
+        return self.team_id is None
 
 
 class RegistrationMember(models.Model):
@@ -383,3 +400,17 @@ class IndividualSignup(models.Model):
     @property
     def is_placed(self) -> bool:
         return self.registration_id is not None
+
+    @property
+    def rank_pairs(self) -> list[tuple[str, str]]:
+        """The roles they can play, each with its rank, for the board."""
+        from accounts.ranks import format_rank
+        from scrims.models import RANK_FIELDS, Role
+
+        labels = dict(Role.choices)
+        pairs = []
+        for role in self.roles:
+            score = getattr(self.game_account, RANK_FIELDS[role], None)
+            text = format_rank(score) if score is not None else "未填段位"
+            pairs.append((role, f"{labels[role]} {text}"))
+        return pairs

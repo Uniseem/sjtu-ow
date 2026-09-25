@@ -1,0 +1,35 @@
+/* The team-forming board (design 8.8.2). Extends scrim-split.css. */
+.split-zone.is-under {
+  border-color: #cd3238;
+}
+.split-zone.is-under .split-count {
+  color: #cd3238;
+  font-weight: 700;
+}
+.split-name {
+  font-size: 0.9em;
+  margin-left: 0.5rem;
+  max-width: 12rem;
+}
+.split-card.is-blocked {
+  background: #f6f6f6;
+  cursor: not-allowed;
+}
+.split-card-blocked {
+  color: #cd3238;
+  flex-basis: 100%;
+  font-size: 0.85em;
+}
+.split-card-flag {
+  background: #eee;
+  border-radius: 3px;
+  font-size: 0.8em;
+  padding: 0 0.3rem;
+}
+.split-dissolve {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}

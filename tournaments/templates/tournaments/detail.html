@@ -89,7 +89,12 @@
       <ul class="mt-4 flex flex-col gap-2">
         {% for entry in approved_teams %}
           <li class="flex items-center gap-2 border-b border-base-300 pb-2">
-            <a href="{{ entry.team.get_absolute_url }}" class="link link-hover">{{ entry.team_name }}</a>
+            {% if entry.is_adhoc %}
+              <span>{{ entry.team_name }}</span>
+              <span class="badge badge-outline badge-sm">临时队伍</span>
+            {% else %}
+              <a href="{{ entry.team.get_absolute_url }}" class="link link-hover">{{ entry.team_name }}</a>
+            {% endif %}
             <span class="ml-auto font-numeric text-sm text-base-content/60">{{ entry.member_count }} 人</span>
           </li>
         {% endfor %}

@@ -632,7 +632,7 @@ def test_enum_values_match_appendix_b():
             "withdrawn",
         ],
         TournamentStatus: ["draft", "published", "finished", "cancelled"],
-        ActorType: ["captain", "admin", "system"],
+        ActorType: ["captain", "admin", "system", "member"],
         ScrimStatus: ["draft", "published", "finished", "cancelled"],
         ScrimFormat: ["rq_5v5", "rq_6v6", "open_5v5", "open_6v6"],
         ScrimRole: ["tank", "damage", "support"],

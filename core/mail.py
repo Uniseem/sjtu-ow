@@ -258,3 +258,29 @@ class QueuedEmailBackend(BaseEmailBackend):
         else:
             enqueue()
         return len(payloads)
+
+
+def emails_for_groups(names, *, include_superusers=True) -> list[str]:
+    """Addresses of active users in these groups, plus superusers (one each).
+
+    Used for admin notifications (design 5.5.4, 8.8.2): the recipients are
+    a role, not a person, so nobody's address is hard-coded anywhere.
+    """
+    from django.contrib.auth import get_user_model
+    from django.contrib.auth.models import Group
+
+    User = get_user_model()
+    emails = set()
+    if include_superusers:
+        emails.update(
+            User.objects.filter(is_active=True, is_superuser=True).values_list(
+                "email", flat=True
+            )
+        )
+    groups = Group.objects.filter(name__in=list(names))
+    emails.update(
+        User.objects.filter(is_active=True, groups__in=groups).values_list(
+            "email", flat=True
+        )
+    )
+    return sorted(address for address in emails if address)

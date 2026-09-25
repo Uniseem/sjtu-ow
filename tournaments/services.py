@@ -77,19 +77,28 @@ def has_registrations(tournament) -> bool:
     return tournament.registrations.exists()
 
 
-def active_registration_captains(tournament):
-    """Captains with a live registration, for the cancellation mail (8.1)."""
+def cancellation_recipients(tournament):
+    """Who hears that a tournament was cancelled (design 8.1, 10.2).
+
+    The captain of every live team registration, and every member of a
+    live ad-hoc team (design 8.8.2), which has no captain.
+    """
     from tournaments.models import ACTIVE_STATUSES
 
-    captains = []
+    users = []
     registrations = tournament.registrations.filter(
         status__in=ACTIVE_STATUSES
     ).select_related("team")
     for registration in registrations:
+        if registration.team_id is None:
+            users.extend(
+                row.user for row in registration.members.select_related("user")
+            )
+            continue
         captain = registration.team.captain()
         if captain is not None:
-            captains.append(captain)
-    return captains
+            users.append(captain)
+    return users
 
 
 def approved_teams(tournament):
@@ -114,6 +123,7 @@ def approved_teams(tournament):
             "team": registration.team,
             "team_name": registration.team_name,
             "member_count": registration.roster_size,
+            "is_adhoc": registration.team_id is None,
         }
         for registration in registrations
     ]
@@ -172,8 +182,8 @@ def notify_cancelled(tournament, reason="") -> None:
     """Mail every captain with a live registration (design 8.1). M4/015."""
     from tournaments import notifications
 
-    for captain in active_registration_captains(tournament):
-        notifications.tournament_cancelled(tournament, captain, reason)
+    for user in cancellation_recipients(tournament):
+        notifications.tournament_cancelled(tournament, user, reason)
 
 
 def can_delete(tournament) -> bool:

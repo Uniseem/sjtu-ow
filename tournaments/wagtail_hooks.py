@@ -62,6 +62,15 @@ class TournamentIndexView(generic.IndexView):
                     priority=61,
                 )
             )
+        if instance.allow_individual_signup:
+            buttons.append(
+                ListingMenuItem(
+                    "队伍编排",
+                    url=reverse("tournament_teams_board", args=[instance.pk]),
+                    icon_name="group",
+                    priority=65,
+                )
+            )
         if instance.status != TournamentStatus.CANCELLED:
             buttons.append(
                 ListingMenuItem(
@@ -264,9 +273,14 @@ def register_review_menu_item():
 
 @hooks.register("register_admin_urls")
 def register_tournament_admin_urls():
-    from tournaments import review_admin
+    from tournaments import review_admin, teams_admin
 
     return [
+        path(
+            "tournaments/<int:pk>/teams/",
+            teams_admin.board_view,
+            name="tournament_teams_board",
+        ),
         path(
             "registrations/",
             review_admin.review_index,
