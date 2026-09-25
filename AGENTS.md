@@ -25,6 +25,7 @@
 | `scrims/` | 内战、分队算法（`teaming.py`）、拖拽分队页 |
 | `moderation/` | AI 内容审核 |
 | `search/` | 站内搜索（四类内容的子串匹配） |
+| `comments/` | 文章评论（YouTube 式回复串、隐藏、置顶、点赞） |
 | `sjtu_ow/settings/` | `base` / `dev` / `prod` |
 | `deploy/` | Docker Compose、Caddy、crontab 示例、维护页 |
 | `handoff/` | 进度、轮次记录、复核指南 |

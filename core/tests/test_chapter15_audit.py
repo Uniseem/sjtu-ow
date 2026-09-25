@@ -313,6 +313,7 @@ def test_a_real_page_carries_no_inline_script(client):
 
 def test_the_rate_limits_match_the_design():
     """Design 15.2 names exact numbers; drift here is silent."""
+    from comments.views import COMMENT_LIMIT_DAY, COMMENT_LIMIT_MINUTE
     from core.views import STATE_RATE_LIMIT
     from search import services as search_services
     from search.views import SEARCH_RATE_LIMIT
@@ -322,6 +323,7 @@ def test_the_rate_limits_match_the_design():
     assert (CREATE_LIMIT, DAY) == (3, 86400)  # 创建战队每人每天 3 次
     assert STATE_RATE_LIMIT == 120  # 状态片段每 IP 每分钟 120 次
     assert SEARCH_RATE_LIMIT == 30  # 站内搜索每 IP 每分钟 30 次
+    assert (COMMENT_LIMIT_MINUTE, COMMENT_LIMIT_DAY) == (3, 100)  # 评论每人限流
     assert search_services.PER_TYPE_LIMIT == 20  # 每类最多 20 条
     assert search_services.MAX_QUERY_LENGTH == 50  # 搜索词最长 50 字
     assert search_services.MAX_TERMS == 5  # 最多 5 个词
@@ -650,6 +652,7 @@ def test_enum_values_match_appendix_b():
             "tournament_register",
             "scrim_signup",
             "article_submit",
+            "article_comment",
         ],
         TargetType: [
             "nickname",
@@ -661,6 +664,7 @@ def test_enum_values_match_appendix_b():
             "scrim_description",
             "page",
             "image",
+            "comment",
         ],
         ApplicationStatus: ["pending", "approved", "rejected", "cancelled"],
         TeamRole: ["captain", "member"],

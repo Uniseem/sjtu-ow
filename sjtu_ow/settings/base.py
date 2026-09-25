@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "scrims",
     "moderation",
     "search",
+    "comments",
     "integrations",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",

@@ -94,6 +94,7 @@ class Feature(models.TextChoices):
     TOURNAMENT_REGISTER = "tournament_register", "报名赛事"
     SCRIM_SIGNUP = "scrim_signup", "报名内战"
     ARTICLE_SUBMIT = "article_submit", "投稿"
+    ARTICLE_COMMENT = "article_comment", "评论文章"
 
 
 BATTLTAG_TAKEN = "该游戏 ID 已被其他账号绑定，如有疑问请联系管理员"

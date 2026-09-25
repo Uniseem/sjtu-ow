@@ -1,0 +1,44 @@
+{% comment %}
+The comment section (design 5.6, 13.13.3). Rendered twice: read-only into
+the prerendered article (interactive=False: no forms, no CSRF, no cookie), and
+interactive for a signed-in visitor (from the state fragment or a live render).
+{% endcomment %}
+<section id="slot-article-comments" data-slot="article-comments:{{ page.pk }}" class="article-comments mt-10"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <h2 id="comments">评论 <span class="font-numeric text-base text-base-content/60">{{ thread.total }}</span></h2>
+
+  {% if not page.comments_enabled %}
+    <p class="mt-3 text-sm text-base-content/70">这篇文章关闭了评论。</p>
+  {% elif interactive %}
+    {% if post_problems %}
+      <ul class="mt-3 list-inside list-disc text-sm text-base-content/70">
+        {% for problem in post_problems %}
+          <li>{% if problem == "请先登录" %}<a href="{% url 'account_login' %}?next={{ page.url }}" class="link link-primary">登录后评论</a>{% else %}{{ problem }}{% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if can_post %}
+      {% include "comments/_composer.html" with action_url=page.pk|stringformat:"s" parent=None %}
+    {% endif %}
+  {% else %}
+    <p class="mt-3 text-sm text-base-content/70"><a href="{% url 'account_login' %}?next={{ page.url }}" class="link link-primary">登录后评论</a></p>
+  {% endif %}
+
+  <ol id="comment-list" class="mt-6 flex flex-col gap-4">
+    {% for item in thread.items %}
+      {% include "comments/_item.html" with item=item %}
+    {% empty %}
+      <li class="text-sm text-base-content/60">还没有评论。</li>
+    {% endfor %}
+  </ol>
+
+  <div id="comments-more" class="mt-4">
+    {% if thread.has_next %}
+      {% if interactive %}
+        <a href="{{ page.url }}?comments={{ thread.next_number }}#comments" class="btn btn-ghost btn-sm min-h-11 font-button"
+           hx-get="{% url 'comment_more' page.pk %}?page={{ thread.next_number }}" hx-target="#comment-list" hx-swap="beforeend">加载更多</a>
+      {% else %}
+        <a href="{{ page.url }}?comments={{ thread.next_number }}#comments" class="btn btn-ghost btn-sm min-h-11 font-button">加载更多</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</section>

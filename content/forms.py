@@ -13,6 +13,8 @@ class ArticlePageForm(WagtailAdminPageForm):
             return
         if "author" in self.fields and not user_can_edit_author(user):
             self.fields.pop("author")
+        if "comments_enabled" in self.fields and is_submitter_only(user):
+            self.fields.pop("comments_enabled")
         if "category" in self.fields and is_submitter_only(user):
             from content.models import ArticleCategory
 

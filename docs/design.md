@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 |---|---|
-| 版本 | v1.8 草案 |
+| 版本 | v1.9 草案 |
 | 日期 | 2026-09-26 |
 | 状态 | 开发中。进度见 `handoff/STATUS.md`，本文档不记录进度 |
 | 读者 | 社团负责人、开发成员、以后接手维护的同学 |
@@ -74,7 +74,7 @@
 - 站内通知中心（只发邮件）
 - 交大身份验证（jAccount 或交大邮箱认证，数据表已预留字段）
 - 收集实名、学号、手机号等敏感信息作为必填项
-- 文章评论、私信（**默认**）。站内搜索 v1.8 起做（13.16 节）
+- 私信（**默认**）。站内搜索 v1.8 起做（13.16 节），文章评论 v1.9 起做（5.6 节）
 - 前台投稿编辑器（投稿在 Wagtail 后台完成）
 - 用户举报功能（由 AI 自动审核 + 管理员在后台处理代替，5.5 节）
 - 由 AI 自动删除、隐藏、修改内容或处理账号（**AI 只有读取权限**，5.5 节）
@@ -190,6 +190,7 @@ flowchart LR
 | `tournaments` | 赛事、报名、名单快照、状态日志、后台审核页面 |
 | `scrims` | 内战活动、内战报名、分队算法、后台分队页面 |
 | `moderation` | AI 内容审核：送审、结果记录、后台复核界面 |
+| `comments` | 文章评论：回复串、隐藏、置顶、点赞（5.6 节） |
 | `search` | 站内搜索：四类内容的子串匹配、结果页（13.16 节） |
 | `integrations` | **只剩迁移历史**。开放 API 与 Webhook 在 v1.6 删除；`tournaments` 的旧迁移依赖它的迁移，所以包和迁移文件保留 |
 
@@ -426,6 +427,7 @@ sjtu-ow/
 | `tournament_register` | 报名赛事（以队长身份提交，或者作为名单里的队员） |
 | `scrim_signup` | 报名内战 |
 | `article_submit` | 投稿 |
+| `article_comment` | 评论文章（5.6 节） |
 
 #### 4.3.2 判定规则
 
@@ -472,6 +474,7 @@ def can_use(user, feature):
 | 个人报名赛事、修改、取消 | 已登录用户 | `tournament_register`；资料完整；满足参与条件；赛事开放个人报名且在报名时间内；不在该赛事任何有效名单里；已编入临时队伍的不能改、不能取消（8.8 节） |
 | 报名内战、取消报名 | 已登录用户 | `scrim_signup`；资料完整；满足参与条件；在报名时间内 |
 | 投稿 | 「投稿者」组成员 | 5.4 节 |
+| 评论文章、回复 | 已登录用户 | `article_comment`；文章已发布且开放评论；每人每分钟 3 条、每天 100 条（5.6 节） |
 
 ---
 
@@ -611,6 +614,7 @@ flowchart TD
 | 入队申请留言 | 提交时 | 只有队长能看到 |
 | 投稿稿件（标题、摘要、正文） | 提交审核时 | 内容编辑审核通过后才公开 |
 | 管理员发布的文章、赛事说明、内战活动说明、普通页面 | 发布、修改时 | 立即公开 |
+| 文章评论 | 发表、编辑时 | 立即公开；内容编辑可隐藏（5.6 节） |
 | 图片（队标、封面、投稿图片） | 上传时 | 默认**不送审**，可以在后台开启 |
 
 - 投稿稿件本来就要人工审核，AI 的判断显示在审核界面上，作为内容编辑的参考
@@ -677,6 +681,24 @@ AI 对每段内容给出风险等级（无风险 / 低 / 中 / 高 / 无法判�
 
 - 「高风险内容暂缓公开」：默认**关闭**。开启后，AI 判为高风险的内容在管理员复核前不对外显示。注意这是**系统**按 AI 的结论执行的规则，不是 AI 自己在处置，是否开启见第 19 章待定问题
 - AI 审核整体可以在后台关掉；关掉后内容照常发布，只是没有自动检查
+
+### 5.6 文章评论
+
+用户 2026-09-25 决定：文章页可以评论，照 YouTube 评论区的样子做；只挂在文章页。
+
+**谁能发**：已登录用户（登录本来就要求验证过邮箱），受功能权限 `article_comment` 控制（4.3 节），可以对某个组或某个人禁言。每人每分钟最多 3 条、每天 100 条（**默认**）。每篇文章有「开放评论」开关，默认开；关闭后已有评论仍显示，只是不能再发。
+
+**结构**：顶层评论，每条下面是一串回复，默认折叠成「N 条回复」。回复的回复仍挂在同一条顶层评论下，正文前带「@被回复者昵称」。不做多层嵌套。正文最多 500 字，纯文本，保留换行。
+
+**审核**：先发后审。每条评论和每次编辑都送 AI 审核（5.5 节，`comment` 类型，和昵称一样走短内容合并送审），疑似问题进后台待复核列表；内容编辑可以在文章页上或后台「评论」列表里隐藏、恢复、置顶。隐藏的评论对读者不显示；一条被隐藏的顶层评论如果还有可见的回复，显示成没有正文的占位，保住回复串。作者可以编辑和删除自己的评论（v1.9.1）。不发邮件。
+
+**排序与分页**：置顶的永远在最前；默认按时间倒序，可以切到「最热」（按赞数、回复数）；顶层评论每次显示 20 条，「加载更多」取下一页。点赞、排序、置顶、编辑、删除在 v1.9.1 落地。
+
+**渲染（13.13.3 节）**：文章页是预渲染的。评论列表是公开内容，直接进静态页，只读：折叠用 `<details>`，没有表单、没有 CSRF、不写 Cookie、没有「退出」之类的登录态字样。已登录访客由占位区域 `article-comments:<文章 ID>` 把整块换成交互版（发表框、回复框、内容编辑的隐藏 / 恢复按钮）；Django 为已登录访客实时渲染文章页时直接给交互版。发表、回复、隐藏都用 HTMX 提交，响应是重新渲染的整块评论区。评论的每次变化（新增、隐藏、恢复、置顶、编辑、删除、点赞，以及作者改昵称）都重新生成文章页（13.13.4 节），30 秒合并。
+
+**后台**：「社区 → 评论」列表（内容编辑、超级管理员），按文章、隐藏、置顶筛选，搜正文；文章编辑页有「开放评论」开关，投稿者看不到这个字段。
+
+**不做**：邮件通知、图片、富文本、赛事和内战页的评论、访客评论。
 
 ---
 
@@ -1384,7 +1406,7 @@ erDiagram
 |---|---|
 | HomePage | 置顶文章（通过子表 `HomePagePinnedArticle` 维护，可排序，最多 3 篇）；焦点图（子表 `HomePageCarouselItem`：图片、标题、链接到页面或填写地址，可排序，最多 6 张。地址只能以 `/` 或 `https://` 开头；链接的页面没发布时用填写的地址） |
 | ArticleIndexPage | intro（栏目介绍） |
-| ArticlePage | category（FK → ArticleCategory）、cover（FK → Wagtail 图片，可空）、summary（varchar 200）、body（StreamField）、author（FK → User）、tournament（FK → Tournament，可空，删除时置空） |
+| ArticlePage | category（FK → ArticleCategory）、cover（FK → Wagtail 图片，可空）、summary（varchar 200）、body（StreamField）、author（FK → User）、tournament（FK → Tournament，可空，删除时置空）、comments_enabled（bool，默认 true，开放评论，5.6 节） |
 | StandardPage | body（StreamField） |
 
 #### 12.5.2 ArticleCategory（文章分类）
@@ -1640,7 +1662,7 @@ DATABASES = {
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| target_type | varchar(32) | 内容类型：`nickname` / `team_name` / `team_description` / `application_message` / `article` / `tournament_description` / `scrim_description` / `page` / `image` |
+| target_type | varchar(32) | 内容类型：`nickname` / `team_name` / `team_description` / `application_message` / `article` / `tournament_description` / `scrim_description` / `page` / `image` / `comment` |
 | target_id | int | 对应对象的 ID |
 | field | varchar(32) | 具体字段，比如 `description` |
 | url | varchar(500) | 内容所在页面或后台编辑页的地址 |
@@ -1673,6 +1695,26 @@ DATABASES = {
 | calls | int | 当天的接口调用次数（一次批量调用算一次） |
 | items | int | 当天送审的内容条数 |
 | input_tokens / output_tokens | bigint | 当天累计 token，用于估算花费 |
+
+### 12.15 comments：文章评论
+
+#### 12.15.1 Comment（评论）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| page | FK → ArticlePage，级联删除 | |
+| author | FK → User，PROTECT | 用户只匿名化不删除 |
+| parent | FK → Comment，可空，级联删除 | 只指向顶层评论；回复的回复仍挂在同一条顶层下 |
+| reply_to_user | FK → User，可空，删除时置空 | 回复的是谁，正文前显示 @昵称 |
+| body | text，最多 500 字 | 纯文本 |
+| created_at / edited_at | datetime | 编辑时间可空 |
+| is_pinned | bool | 置顶（v1.9.1） |
+| is_hidden | bool | 内容编辑隐藏 |
+| is_deleted | bool | 作者删除（v1.9.1）：正文清空、行保留，回复串不断 |
+| like_count | int，默认 0 | 冗余计数（v1.9.1） |
+
+- 索引：(page, created_at)、(page, is_pinned, like_count)
+- 「parent 只能是顶层」在 service 里保证，数据库表达不了
 
 ---
 
@@ -1751,6 +1793,9 @@ DATABASES = {
 | `/me/delete/` | 注销账号（3.8 节） | 已登录 |
 | `/accounts/…` | 登录、注册、验证、找回密码（allauth） | 公开 |
 | `/submit/` | 投稿入口，跳转到后台新建稿件页，或提示不能投稿的原因 | 已登录 |
+| `/comments/<文章 ID>/new/`、`/comments/<评论 ID>/reply/` | 发表评论、回复（只接受 POST，5.6 节） | 已登录 |
+| `/comments/<文章 ID>/more/` | 下一页顶层评论（实时渲染） | 公开 |
+| `/comments/<评论 ID>/hide/`、`/unhide/` | 隐藏、恢复评论（只接受 POST） | 内容编辑 |
 | `/admin/` | Wagtail 后台 | 有后台权限 |
 | `/healthz` | 健康检查 | 公开，只返回状态 |
 | `/_fragments/state/` | 预渲染页面加载后获取个人相关区域的内容（13.13.3 节） | 公开，按登录状态返回不同内容 |
@@ -2026,6 +2071,7 @@ sequenceDiagram
 | 报名入口 | 赛事详情 | 按身份显示：请登录 / 需要由队长报名 / 为战队报名 / 查看报名 |
 | 入队按钮 | 战队主页 | 申请加入 / 已申请 / 已是成员 / 管理战队 |
 | 内战报名 | 内战活动详情 | 报名 / 修改报名 / 取消报名 / 不符合条件的原因 |
+| 评论区 | 文章页 | 整块替换：静态页是只读列表，登录后换成带发表框、回复框和管理按钮的版本（5.6 节） |
 
 **未登录访客不发任何额外请求**
 
@@ -2068,9 +2114,10 @@ sequenceDiagram
 | 战队创建、修改、成员变动、招募状态变化、解散 | 战队主页、战队列表、首页（战队区块）、成员展示 |
 | 内战活动创建、修改、发布、取消 | 活动详情、活动列表、首页 |
 | 内战报名、修改报名、取消报名 | 活动详情（报名统计和名单） |
+| 文章评论新增、隐藏、恢复、置顶、编辑、删除、点赞 | 该文章 |
 | 赛事的个人报名、修改、取消 | 赛事详情（散人名单） |
 | 临时队伍编队、调整、成员退出、解散 | 赛事详情（散人名单和已报名队伍） |
-| 用户修改昵称 | 该用户所在的战队主页、报名的内战活动详情、有个人报名的赛事详情、署名的文章、成员展示 |
+| 用户修改昵称 | 该用户所在的战队主页、报名的内战活动详情、有个人报名的赛事详情、署名的文章、评论过或被 @ 的文章、成员展示 |
 | 新用户完成邮箱验证；账号停用、恢复或注销 | 成员展示 |
 | 成员分组修改（分组本身、组里的成员和职务） | 成员展示 |
 | 文章分类修改 | 相关列表页 |
@@ -2176,6 +2223,7 @@ sequenceDiagram
 | | 内战活动 | 超级管理员、内战管理员 |
 | | 战队 | 超级管理员 |
 | | 内容审核 | 超级管理员、内容编辑 |
+| | 评论 | 超级管理员、内容编辑 |
 | 成员分组、文章分类 | —（左侧菜单单独一项） | 超级管理员、内容编辑 |
 | 用户 | 用户、用户组、功能权限 | 超级管理员 |
 | 设置 | 全站设置、字体库、排版设置、静态页面 | 超级管理员 |
@@ -2194,6 +2242,7 @@ sequenceDiagram
 | 内战活动 | 新建、编辑、发布、取消；「分队」页面（勾选上场、生成分队、拖拽调整、保存、复制） | `ModelViewSet` + 自定义分队视图 |
 | 战队 | 查看、编辑、指定队长、解散 | `ModelViewSet` + 自定义操作 |
 | 内容审核 | 待复核列表（按风险等级、类型筛选）；详情显示完整内容、AI 理由、作者历史；处置动作和处理记录；一键全量扫描 | `ModelViewSet` + 自定义详情和操作视图 |
+| 评论 | 列表（按文章、隐藏、置顶筛选，搜正文）；编辑页只有隐藏、置顶两个开关（5.6 节） | `ModelViewSet` |
 | 成员分组、文章分类 | 增删改、排序；成员分组的编辑页里添加成员、填职务、组内排序 | `SnippetViewSet` |
 | 用户 | Wagtail 自带的用户管理，扩展昵称、是否交大、停用原因；详情里显示游戏 ID、联系方式（需权限）、所在战队、功能权限规则 | 扩展 Wagtail 用户表单和视图 |
 | 功能权限 | 用户组限制、单个用户规则两个列表 | 两个 `ModelViewSet` |
@@ -2277,6 +2326,7 @@ sequenceDiagram
 | 备份 | 备份包含用户邮箱和联系方式，传到服务器以外之前先加密；解密密钥和环境变量里的密钥不和备份放在一起（16.7 节） |
 | 日志 | 应用日志不记录密码、验证码、联系方式、完整的 Cookie 和请求体 |
 | 站内搜索 | 只搜公开内容；每个 IP 每分钟 30 次；搜索词截断到 50 字（13.16 节） |
+| 文章评论 | 纯文本、模板转义；每人每分钟 3 条、每天 100 条；先发后审，内容编辑可隐藏（5.6 节） |
 | 依赖 | 定期更新 Django、Wagtail 等依赖，关注安全公告 |
 
 ### 15.3 隐私与合规
@@ -2703,7 +2753,7 @@ sequenceDiagram
 | 操作方类型 `actor_type` | `captain` 队长、`admin` 本站管理员、`system` 系统、`member` 队员 |
 | 日志动作 `RegistrationStatusLog.action` | `submit` 提交、`resubmit` 重新提交、`sync_roster` 同步名单、`approve` 通过、`reject` 驳回、`revoke` 撤销通过、`withdraw` 撤回、`form_team` 编队、`member_left` 退出队伍、`dissolve` 解散队伍 |
 | SMTP 加密方式 | `none` 无、`starttls` STARTTLS、`ssl` SSL |
-| 功能标识 | `team_create` 创建战队、`team_apply` 申请入队、`tournament_register` 报名赛事、`scrim_signup` 报名内战、`article_submit` 投稿 |
+| 功能标识 | `team_create` 创建战队、`team_apply` 申请入队、`tournament_register` 报名赛事、`scrim_signup` 报名内战、`article_submit` 投稿、`article_comment` 评论文章 |
 | 字体来源 `FontFamily.source` | `upload` 上传、`google_fonts` 从 Google Fonts 下载、`url` 从网址下载 |
 | 字体授权类型 `FontFamily.license_type` | `open_source` 开源授权、`web_license` 已购买网页嵌入授权、`other` 其他 |
 | 字重文件状态 `FontFace.status` | `pending` 等待处理、`processing` 处理中、`ready` 可用、`failed` 失败 |
@@ -2712,7 +2762,7 @@ sequenceDiagram
 | 预渲染状态 `PrerenderedPage.status` | `pending` 等待生成、`ready` 已生成、`failed` 生成失败 |
 | 审核风险等级 `ModerationItem.risk` | `none` 无风险、`low` 低、`medium` 中、`high` 高、`unknown` 无法判定 |
 | 审核记录状态 `ModerationItem.status` | `pending` 待复核、`ok` 判定无问题、`handled` 已处置、`ignored` 忽略 |
-| 送审内容类型 `ModerationItem.target_type` | `nickname` 昵称、`team_name` 队名、`team_description` 战队简介、`application_message` 入队留言、`article` 文章或稿件、`tournament_description` 赛事说明、`scrim_description` 内战说明、`page` 普通页面、`image` 图片 |
+| 送审内容类型 `ModerationItem.target_type` | `nickname` 昵称、`team_name` 队名、`team_description` 战队简介、`application_message` 入队留言、`article` 文章或稿件、`tournament_description` 赛事说明、`scrim_description` 内战说明、`page` 普通页面、`image` 图片、`comment` 评论 |
 
 ---
 
@@ -2759,6 +2809,7 @@ sequenceDiagram
 | 半静态页面的提示 Cookie | `ow_logged_in=1`（有效期和会话一致）、`ow_flash=1`（提示显示后删除），都不含身份信息 | 配置 |
 | 前台业务操作限流 | 申请入队每人每天 20 次；创建战队每人每天 3 次；页面状态片段每个 IP 每分钟 120 次（取 `X-Forwarded-For` 最后一段，即 Caddy 记录的来访 IP）；站内搜索每个 IP 每分钟 30 次 | 配置 |
 | 站内搜索 | 每类最多 20 条；搜索词最长 50 字、最多 5 个词；摘录首次命中前后各 40 字 | 配置 |
+| 文章评论 | 正文最多 500 字；每人每分钟 3 条、每天 100 条；顶层评论每页 20 条 | 配置 |
 | 旧版本静态资源保留 | 30 天 | 宿主机 cron |
 | 定时任务时区 | 北京时间 | 宿主机 cron |
 | 内战活动列表 | 已发布的活动，以及最近 30 天内已结束的活动 | 配置 |
@@ -2821,3 +2872,4 @@ sequenceDiagram
 | design v1.7 草案 | 2026-09-26 | 按用户决定新增 8.8 节「个人报名与临时队伍」：8.8.1 个人报名（散人池）本轮实现，8.8.2 编队与临时队伍写明 070 实现；新增 `Tournament.allow_individual_signup` 和 12.8.5 `IndividualSignup` 表；1.2、1.5、3.8、4.4、8.1、8.2、12.1、12.11、13.4、13.13.4 同步 |
 | design v1.7.1 草案 | 2026-09-26 | 8.8.2 编队与临时队伍落地：12.8.2 `Registration.team` 可空、`team_name` 非空约束；12.8.4 新增 `form_team` / `member_left` / `dissolve` 动作和 `member` 操作方；10.2 新增三封邮件；13.4 `/registrations/<id>/leave/`；13.13.4 事件；14.2 后台「队伍编排」页；附录 B |
 | design v1.8 草案 | 2026-09-26 | 按用户决定新增 13.16 节「站内搜索」：文章、赛事与内战、战队、成员四类，子串匹配不分词，每类最多 20 条，每 IP 每分钟 30 次；新增 `search` 应用（2.3 节）、路由 `/search/`（13.4 节）；1.3 节把站内搜索从「不做」里拿掉；15.2 和附录 C 同步 |
+| design v1.9 草案 | 2026-09-26 | 按用户决定新增 5.6 节「文章评论」（YouTube 式回复串、先发后审、只挂文章页）和 12.15 `comments` 表；功能标识 `article_comment`（4.3.1、4.4）；送审范围加评论（5.5.1）；`ArticlePage.comments_enabled`（12.5.1）；路由（13.4）、评论区占位区域（13.13.3）、重新生成事件（13.13.4）、后台「评论」（14.1、14.2）、15.2、附录 B/C 同步。点赞、排序、置顶、编辑、删除在 v1.9.1 |

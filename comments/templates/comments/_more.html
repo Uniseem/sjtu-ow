@@ -1,0 +1,10 @@
+{% comment %}Items for the next page, plus an out-of-band swap of the 「加载更多」 control.{% endcomment %}
+{% for item in thread.items %}
+  {% include "comments/_item.html" with item=item %}
+{% endfor %}
+<div id="comments-more" class="mt-4" hx-swap-oob="true">
+  {% if thread.has_next %}
+    <a href="{{ page.url }}?comments={{ thread.next_number }}#comments" class="btn btn-ghost btn-sm min-h-11 font-button"
+       hx-get="{% url 'comment_more' page.pk %}?page={{ thread.next_number }}" hx-target="#comment-list" hx-swap="beforeend">加载更多</a>
+  {% endif %}
+</div>

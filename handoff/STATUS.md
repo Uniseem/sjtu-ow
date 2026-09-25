@@ -2,7 +2,7 @@
 
 ```yaml
 milestone: M8 独立版功能（M7 上线准备暂停，等 M8 做完一起上线）
-round: 071-site-search
+round: 072-comments
 next: claude
 updated: 2026-09-26
 blocked_on: 无
@@ -122,7 +122,7 @@ blocked_on: 无
 11. ~~**068 顺带修复**~~ —— **068 已完成**（7 项，9 处变异全被抓到）：内容编辑能管文章分类了；`restore.py` 也检查 R2 密钥；「我的内战」进了个人中心导航；`prod.py` 补上 `PrerenderMissMiddleware`（**测试机部署后要看一眼缺页兜底是否生效**）；青铜 5（分数 0）不再被当成没填段位；删除用于已结束内战的游戏 ID 不再 500（外键改为置空，设计 v1.6.1）
 12. ~~**069 赛事个人报名（散人池）**~~ —— **069 已完成**（设计 v1.7 新增 8.8 节，8.8.2 编队写明 070 实现；37 条测试，13/13 变异被抓到）。**070 也已完成**（设计 v1.7.1；40 条测试，18/18 变异被抓到）。当初的要点留作记录：`Tournament.allow_individual_signup`；`IndividualSignup` 表（`game_account` PROTECT，照内战）；报名校验复用 `member_problems` + `existing_roster_conflict`；`Registration.team` 改可空、`team_name` 作临时队名；编排页照内战 032 的拖拽页，普通表单 POST，**服务端校验人数、队名、一人一队**；退出要**删名单行**（`_set_status` 会整体重写 `is_active`），最后一人退出自动解散；`ActorType` 加 `member`；邮件收件人对临时队伍是在册成员，`_captain()` 这类假设 `team` 非空的地方逐处加分支；静态页里不能出现「退出」和 CSRF（预渲染会拒绝）
 13. ~~**071 站内搜索**~~ —— **071 已完成**（设计 v1.8 新增 13.16 节；新应用 `search`；文章正文是 StreamField、JSON 里中文被转义，所以全部在应用层匹配；16 条测试，9/9 变异被抓到）
-14. **072 文章评论基础** 和 **073 评论增强**（v1.9）：新应用 `comments`；`Feature` 加 `article_comment`，`TargetType` 加 `comment`，`ArticlePage.comments_enabled`；静态页只放只读列表（无 CSRF、不写 cookie、不含「退出」），登录用户由槽位 `article-comments:<page_id>` 整体换成交互版；每条变化触发文章页重新生成；`RESERVED_CHILD_SLUGS` 加 `comments`；点赞、最新/最热、置顶、编辑、删除在 073
+14. ~~**072 文章评论基础**~~ —— **072 已完成**（设计 v1.9 新增 5.6 节和 12.15 表；新应用 `comments`；24 条测试，14/14 变异被抓到）。接着做 **073 评论增强**：新应用 `comments`；`Feature` 加 `article_comment`，`TargetType` 加 `comment`，`ArticlePage.comments_enabled`；静态页只放只读列表（无 CSRF、不写 cookie、不含「退出」），登录用户由槽位 `article-comments:<page_id>` 整体换成交互版；每条变化触发文章页重新生成；`RESERVED_CHILD_SLUGS` 加 `comments`；点赞、最新/最热、置顶、编辑、删除在 073
 15. **074 上线前收尾**：更新上线清单、REVIEW-GUIDE，测试机重新部署（先解决 SSH 主机密钥变化；迁移后跑 `remove_stale_contenttypes`，删 cron 里的 webhook 行）
 
 ### 服务器上
@@ -170,7 +170,7 @@ blocked_on: 无
 | M5 ~~开放 API 与 Webhook~~ | **已删除**（067） | 017–019 实现过；2026-09-25 本站独立后没有使用者，整体删除，`integrations` 只留迁移历史 |
 | M6 内战 | **已完成** | 020 活动与报名、021 分队算法与后台分队页（Claude 实现 + 自查，待 Grok 独立复核） |
 | M7 上线准备 | 进行中 | 022–031 运维命令、第 15 章与附录 A/B/C 核查、地址与错误码核查、异地加密备份已完成；033–037 状态表、规模、并发、升级演练已完成；039–042 测试有效性（变异测试）完成。**2026-09-25 起暂停，等 M8 做完一起上线**；部署、国内网络测试、协议正文、试运行仍等你 |
-| M8 独立版功能 | 进行中 | 067 去掉上游、报名自动通过（完成）；068 顺带修复（完成）；069 个人报名（完成）；070 编队与临时队伍（完成）；071 站内搜索（完成）；072–073 文章评论；074 上线前收尾。决定见「你已经拍板的」第 15 条 |
+| M8 独立版功能 | 进行中 | 067 去掉上游、报名自动通过（完成）；068 顺带修复（完成）；069 个人报名（完成）；070 编队与临时队伍（完成）；071 站内搜索（完成）；072 文章评论基础（完成）；073 评论增强；074 上线前收尾。决定见「你已经拍板的」第 15 条 |
 
 ## 轮次记录
 
@@ -247,6 +247,7 @@ blocked_on: 无
 | 069-individual-signup | 赛事个人报名（散人池） | **Claude 实现**，自查通过。设计 v1.7 新增 8.8 节；`Tournament.allow_individual_signup`、`IndividualSignup` 表；报名和取消服务复用队员校验和名单冲突检查；赛事页散人名单（昵称、位置）和入口槽位分支；个人中心「个人报名」区；删除游戏 ID、注销、导出、改昵称刷新都接上。37 条测试，13/13 变异被抓到。不发邮件；编队在 070 |
 | 070-adhoc-teams | 后台拖拽编队与临时队伍 | **Claude 实现**，自查通过。设计 v1.7.1。`Registration.team` 可空，临时队伍是没有战队的已通过报名；`form_teams()` 先校验整张版面再写（超员、队名、一人一队、队员校验、名单冲突），先移出再编入避免撞唯一约束；`leave()` 删名单行、最后一人退出自动解散；`dissolve()`；三封邮件，`core.mail.emails_for_groups()` 从 moderation 泛化；十几处假设 `team` 非空的地方加分支；编排页照内战 032 的拖拽页，服务端校验人数。40 条测试，18/18 变异被抓到 |
 | 071-site-search | 站内搜索 | **Claude 实现**，自查通过。设计 v1.8 新增 13.16 节。新应用 `search`：文章（标题、摘要、正文）、赛事与内战、战队、成员四类，子串匹配不分词、每类 20 条、每 IP 每分钟 30 次；页头搜索框；`robots.txt` 禁止抓取 `/search/`。**文章正文在应用层匹配**：StreamField 存 JSON 时中文被转义，数据库 `icontains` 对正文无效。16 条测试，9/9 变异被抓到 |
+| 072-comments | 文章评论基础 | **Claude 实现**，自查通过。设计 v1.9 新增 5.6 节、12.15 表，功能标识 `article_comment`，送审类型 `comment`，`ArticlePage.comments_enabled`。新应用 `comments`：顶层评论 + 折叠回复串（回复的回复仍挂顶层，带 @）；先发后审，内容编辑可隐藏、恢复；静态页只读列表，登录后由槽位 `article-comments:<id>` 整块换成交互版；HTMX 提交返回整块评论区；每人每分钟 3 条、每天 100 条。四个迁移（accounts、moderation、content、comments）。24 条测试，14/14 变异被抓到 |
 
 ## 当前待定问题
 

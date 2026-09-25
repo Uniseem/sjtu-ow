@@ -6,6 +6,7 @@ from accounts.services import (
     ensure_preset_groups,
     sync_all_submitter_memberships,
 )
+from comments.services import assign_comment_permissions
 from content.services import (
     assign_content_permissions,
     ensure_article_categories,
@@ -111,6 +112,16 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(
                     "已分配内容审核权限：" + "、".join(reviewers) + " 可复核 AI 标记"
+                )
+            )
+
+        comment_editors = assign_comment_permissions()
+        if comment_editors:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "已分配评论权限："
+                    + "、".join(comment_editors)
+                    + " 可隐藏和置顶评论"
                 )
             )
 

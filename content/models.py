@@ -24,6 +24,7 @@ RESERVED_CHILD_SLUGS = frozenset(
     {
         "admin",
         "accounts",
+        "comments",
         "documents",
         "me",
         "api",
@@ -344,6 +345,11 @@ class ArticlePage(SeoPageMixin, Page):
         related_name="authored_articles",
         verbose_name="作者",
     )
+    comments_enabled = models.BooleanField(
+        "开放评论",
+        default=True,
+        help_text="关闭后已有评论仍显示，只是不能再发。",
+    )
     tournament = models.ForeignKey(
         "tournaments.Tournament",
         verbose_name="关联赛事",
@@ -361,6 +367,19 @@ class ArticlePage(SeoPageMixin, Page):
         context = super().get_context(request, *args, **kwargs)
         # The news sidebar lists every category (round 065).
         context["categories"] = ArticleCategory.objects.all()
+        # Design 5.6: the comment section, read-only for visitors; a signed-in
+        # live render gets the interactive one (13.13.3).
+        from comments.rendering import section_context
+
+        user = getattr(request, "user", None)
+        context.update(
+            section_context(
+                request,
+                self,
+                interactive=bool(user and user.is_authenticated),
+                page_number=request.GET.get("comments"),
+            )
+        )
         return context
 
     base_form_class = ArticlePageForm
@@ -372,6 +391,7 @@ class ArticlePage(SeoPageMixin, Page):
         FieldPanel("body"),
         FieldPanel("tournament"),
         FieldPanel("author"),
+        FieldPanel("comments_enabled"),
     ]
 
     def get_share_image(self):

@@ -231,7 +231,12 @@ def refresh_nickname_pages(user) -> None:
             prerender.request_page(
                 entry.tournament.get_absolute_url(), kind="tournament"
             )
-    for article in ArticlePage.objects.live().public().filter(author=user):
+    from django.db.models import Q
+
+    commented = (
+        Q(author=user) | Q(comments__author=user) | Q(comments__reply_to_user=user)
+    )
+    for article in ArticlePage.objects.live().public().filter(commented).distinct():
         url = article.get_url()
         if url:
             prerender.request_page(url, kind="article")

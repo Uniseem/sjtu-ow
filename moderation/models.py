@@ -37,6 +37,7 @@ class TargetType(models.TextChoices):
     SCRIM_DESCRIPTION = "scrim_description", "内战说明"
     PAGE = "page", "普通页面"
     IMAGE = "image", "图片"
+    COMMENT = "comment", "评论"
 
 
 class ModerationItem(models.Model):

@@ -25,6 +25,7 @@ EXCERPT_CHARS = 2000
 SHORT_TYPES = {
     TargetType.NICKNAME,
     TargetType.TEAM_NAME,
+    TargetType.COMMENT,
 }
 BATCH_DELAY_SECONDS = 10
 # Peak price, USD per million tokens (design 5.5.3).
