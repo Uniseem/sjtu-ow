@@ -138,6 +138,23 @@ def test_application_mails_the_captain(team, applicant, captain):
     assert captain.email in mail.outbox[0].recipients()
 
 
+@pytest.mark.django_db
+def test_the_tank_role_is_called_tank(client, team, applicant, captain):
+    """Round 078: the application form and the captain's mail said 「重装」,
+    while the design, scrims and individual signup all say 「坦克」."""
+    client.force_login(applicant)
+    page = client.get(reverse("team_apply", args=[team.pk])).content.decode()
+    assert "坦克" in page
+    assert "重装" not in page
+
+    mail.outbox.clear()
+    application = services.apply_to_team(
+        team=team, user=applicant, roles={"tank": True, "support": True}
+    )
+    assert application.role_labels() == ["坦克", "支援"]
+    assert "意向位置：坦克、支援" in mail.outbox[0].body
+
+
 # --- approving -----------------------------------------------------------------
 
 

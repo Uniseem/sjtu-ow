@@ -232,6 +232,34 @@ def test_reserved_slug_rejected_on_homepage_children():
 
 
 @pytest.mark.django_db
+def test_every_fixed_top_level_route_is_reserved():
+    """Round 078: 071 added /search/ but a page with the slug 「search」 could
+    still be created under the home page, and the search view would hide it.
+    Every first path segment Django routes before Wagtail, plus the two that
+    Caddy serves itself (deploy/Caddyfile), must be reserved."""
+    from django.urls import URLResolver, get_resolver
+
+    from content.models import RESERVED_CHILD_SLUGS
+
+    def first_segments(patterns):
+        for pattern in patterns:
+            route = str(pattern.pattern)
+            if isinstance(pattern, URLResolver) and route == "":
+                yield from first_segments(pattern.url_patterns)
+            elif route and not route.startswith("^"):
+                yield route.split("/", 1)[0]
+
+    fixed = set(first_segments(get_resolver().url_patterns)) | {"static", "media"}
+    fixed.discard("")
+    assert {"search", "registrations", "healthz"} <= fixed
+    assert sorted(fixed - RESERVED_CHILD_SLUGS) == []
+    for slug in ("search", "registrations", "static"):
+        page = StandardPage(title="占位", slug=slug, body=[])
+        with pytest.raises(ValidationError, match="固定路由"):
+            page.clean()
+
+
+@pytest.mark.django_db
 def test_page_meta_open_graph_and_canonical(client):
     _home, news = _tree()
     author = _user()

@@ -351,6 +351,24 @@ def test_the_account_menu_is_numbered_and_marks_the_current_page(client, home):
     assert menu.count('aria-current="page"') == 1
 
 
+def test_the_phone_tab_strip_opens_on_the_current_page(client, home):
+    """Round 078: on a phone the account centre's tabs scroll sideways and
+    「账号安全」 opened hidden past the right edge. app.js scrolls every
+    c-tabs strip to its aria-current item (checked in a real browser in the
+    078 report); this pins the markup and the script to each other."""
+    client.force_login(_person("tabs-me@example.com"))
+    html = client.get("/me/security/").content.decode("utf-8")
+    start = html.index('<div class="c-tabs')
+    strip = html[start : html.index("</div>", start)]
+    assert strip.count('aria-current="page"') == 1
+    assert '<a href="/me/security/" aria-current="page">' in strip
+
+    script = (Path(settings.BASE_DIR) / "static" / "js" / "app.js").read_text()
+    assert 'document.querySelectorAll(".c-tabs")' in script
+    assert 'querySelector(\'[aria-current="page"]' in script
+    assert ".scrollLeft = current.offsetLeft" in script
+
+
 def test_a_game_id_panel_sets_each_rank_as_a_figure(client, home):
     user = _person("ranks@example.com")
     user.game_accounts.create(battletag="Genji#51234", rank_tank=22, rank_support=40)

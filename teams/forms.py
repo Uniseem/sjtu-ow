@@ -55,7 +55,7 @@ class TeamForm(forms.ModelForm):
 
 
 class ApplicationForm(forms.Form):
-    role_tank = forms.BooleanField(label="重装", required=False)
+    role_tank = forms.BooleanField(label="坦克", required=False)
     role_damage = forms.BooleanField(label="输出", required=False)
     role_support = forms.BooleanField(label="支援", required=False)
     message = forms.CharField(

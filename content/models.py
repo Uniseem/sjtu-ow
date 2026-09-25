@@ -19,7 +19,8 @@ MAX_CAROUSEL_SLIDES = 6
 RELATED_ARTICLE_COUNT = 4
 
 # Slugs that would collide with Django routes registered before wagtail_urls
-# (design 13.4). Enforced on HomePage children only.
+# (design 13.4), or with the paths Caddy serves itself (/static/, /media/).
+# Enforced on HomePage children only.
 RESERVED_CHILD_SLUGS = frozenset(
     {
         "admin",
@@ -33,8 +34,13 @@ RESERVED_CHILD_SLUGS = frozenset(
         "teams",
         "scrims",
         "submit",
+        "search",
+        "registrations",
+        "static",
+        "media",
         "_fragments",
         "_styleguide",
+        "_util",
         "healthz",
         "sitemap.xml",
         "robots.txt",

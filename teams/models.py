@@ -123,7 +123,7 @@ class TeamApplication(models.Model):
         on_delete=models.CASCADE,
         related_name="team_applications",
     )
-    role_tank = models.BooleanField("重装", default=False)
+    role_tank = models.BooleanField("坦克", default=False)
     role_damage = models.BooleanField("输出", default=False)
     role_support = models.BooleanField("支援", default=False)
     message = models.CharField("留言", max_length=200, blank=True)
@@ -163,7 +163,7 @@ class TeamApplication(models.Model):
     def role_labels(self) -> list[str]:
         labels = []
         if self.role_tank:
-            labels.append("重装")
+            labels.append("坦克")
         if self.role_damage:
             labels.append("输出")
         if self.role_support:
