@@ -35,6 +35,11 @@ class Tournament(models.Model):
     roster_min = models.PositiveSmallIntegerField("参赛人数下限", default=5)
     roster_max = models.PositiveSmallIntegerField("参赛人数上限", default=6)
     sjtu_only = models.BooleanField("仅限交大", default=False)
+    allow_individual_signup = models.BooleanField(
+        "开放个人报名",
+        default=False,
+        help_text="打开后，没有战队的用户可以个人报名，由赛事管理员编成临时队伍。",
+    )
     auto_approve = models.BooleanField(
         "报名自动通过",
         default=False,
@@ -301,3 +306,80 @@ class RegistrationStatusLog(models.Model):
 
     def __str__(self):
         return f"{self.registration_id} {self.get_action_display()}"
+
+
+class IndividualSignup(models.Model):
+    """A player without a team, waiting to be placed (design 8.8, 12.8.5).
+
+    ``registration`` is set once an admin puts them on an ad-hoc team (round
+    070); until then the row is the pool entry.
+    """
+
+    tournament = models.ForeignKey(
+        Tournament,
+        verbose_name="赛事",
+        on_delete=models.CASCADE,
+        related_name="individual_signups",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="用户",
+        on_delete=models.CASCADE,
+        related_name="individual_signups",
+    )
+    game_account = models.ForeignKey(
+        "accounts.GameAccount",
+        verbose_name="游戏 ID",
+        on_delete=models.PROTECT,
+        related_name="individual_signups",
+        help_text="设计 3.5.2：未结束赛事的个人报名拦住删除。",
+    )
+    role_tank = models.BooleanField("坦克", default=False)
+    role_damage = models.BooleanField("输出", default=False)
+    role_support = models.BooleanField("支援", default=False)
+    registration = models.ForeignKey(
+        Registration,
+        verbose_name="编入的队伍",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="individual_signups",
+    )
+    created_at = models.DateTimeField("报名时间", auto_now_add=True)
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    class Meta:
+        verbose_name = "个人报名"
+        verbose_name_plural = "个人报名"
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tournament", "user"], name="individual_signup_unique_per_user"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(role_tank=True)
+                | models.Q(role_damage=True)
+                | models.Q(role_support=True),
+                name="individual_signup_needs_a_role",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.tournament_id}:{self.user_id}"
+
+    @property
+    def roles(self) -> list[str]:
+        from scrims.models import ROLE_FIELDS
+
+        return [role for role, field in ROLE_FIELDS.items() if getattr(self, field)]
+
+    @property
+    def role_labels(self) -> list[str]:
+        from scrims.models import Role
+
+        labels = dict(Role.choices)
+        return [labels[role] for role in self.roles]
+
+    @property
+    def is_placed(self) -> bool:
+        return self.registration_id is not None

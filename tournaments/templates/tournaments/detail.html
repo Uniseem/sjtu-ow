@@ -57,6 +57,33 @@
       </ul>
     {% endif %}
 
+    {% if tournament.allow_individual_signup %}
+      <h2 class="mt-10">个人报名</h2>
+      <p class="mt-2 text-sm text-base-content/80">
+        共 <span class="font-numeric">{{ pool_counts.total }}</span> 人 ·
+        坦克 <span class="font-numeric">{{ pool_counts.tank }}</span> ·
+        输出 <span class="font-numeric">{{ pool_counts.damage }}</span> ·
+        支援 <span class="font-numeric">{{ pool_counts.support }}</span>
+      </p>
+      {% if pool %}
+        <ul class="mt-4 divide-y divide-base-300 rounded-box bg-base-200">
+          {% for entry in pool %}
+            <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+              <span>{{ entry.user.nickname }}</span>
+              <span class="flex gap-1">
+                {% for label in entry.role_labels %}
+                  <span class="badge badge-outline badge-sm">{{ label }}</span>
+                {% endfor %}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="mt-2 text-xs text-base-content/60">名单只显示昵称和能打的位置，由赛事管理员编成临时队伍。</p>
+      {% else %}
+        <p class="mt-4 text-sm text-base-content/70">还没有人个人报名。</p>
+      {% endif %}
+    {% endif %}
+
     <h2 class="mt-10">已报名战队</h2>
     {% if approved_teams %}
       <ul class="mt-4 flex flex-col gap-2">

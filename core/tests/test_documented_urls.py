@@ -35,6 +35,8 @@ RESOLVABLE = [
     ("/tournaments/", "tournament_index"),
     ("/tournaments/1/", "tournament_detail"),
     ("/tournaments/1/register/", "tournament_register"),
+    ("/tournaments/1/signup/", "tournament_individual_signup"),
+    ("/tournaments/1/signup/cancel/", "tournament_individual_cancel"),
     ("/_fragments/state/", "state_fragment"),
 ]
 

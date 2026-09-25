@@ -50,6 +50,12 @@ def tournament_detail(request, pk):
         "phase_label": services.PHASE_LABELS[tournament.phase()],
         "approved_teams": services.approved_teams(tournament),
     }
+    if tournament.allow_individual_signup:
+        from tournaments import registration as registration_service
+
+        pool = registration_service.individual_pool(tournament)
+        context["pool"] = pool
+        context["pool_counts"] = registration_service.pool_counts(pool)
     # Same context the fragment uses, so a live page and a filled static page
     # show the same entry (design 13.13.3).
     context.update(actions_context(request, tournament))

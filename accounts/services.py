@@ -104,6 +104,20 @@ def deletion_blocked_reason(account: GameAccount) -> str | None:
             f"这个游戏 ID 正用于内战「{signup.scrim.title}」的报名，"
             f"请先取消报名再删除。"
         )
+    from tournaments.models import TournamentStatus
+
+    entry = (
+        account.individual_signups.filter(
+            tournament__status__in=[TournamentStatus.DRAFT, TournamentStatus.PUBLISHED]
+        )
+        .select_related("tournament")
+        .first()
+    )
+    if entry is not None:
+        return (
+            f"这个游戏 ID 正用于赛事「{entry.tournament.title}」的个人报名，"
+            f"请先取消报名再删除。"
+        )
     return None
 
 
@@ -212,6 +226,11 @@ def refresh_nickname_pages(user) -> None:
     for signup in user.scrim_signups.select_related("scrim"):
         if signup.scrim.is_public:
             prerender.request_page(f"/scrims/{signup.scrim_id}/", kind="scrim")
+    for entry in user.individual_signups.select_related("tournament"):
+        if entry.tournament.is_listed:  # the pool prints live nicknames (8.8.1)
+            prerender.request_page(
+                entry.tournament.get_absolute_url(), kind="tournament"
+            )
     for article in ArticlePage.objects.live().public().filter(author=user):
         url = article.get_url()
         if url:
@@ -259,6 +278,7 @@ def delete_account(user) -> None:
         raise AccountDeletionError(blockers[0])
     with transaction.atomic():
         remove_signups_of(user)  # before game IDs: signups PROTECT them
+        user.individual_signups.all().delete()  # design 8.8.1, same reason
         leave_all_teams(user)
         user.game_accounts.all().delete()
         MemberGroupMembership.objects.filter(user=user).delete()  # design 3.8
@@ -352,6 +372,18 @@ def personal_data(user) -> dict:
             }
             for member in RegistrationMember.objects.filter(user=user).select_related(
                 "registration__tournament"
+            )
+        ],
+        "individual_signups": [
+            {
+                "tournament": entry.tournament.title,
+                "battletag": entry.game_account.battletag,
+                "roles": entry.role_labels,
+                "created_at": when(entry.created_at),
+                "team": entry.registration.team_name if entry.registration else None,
+            }
+            for entry in user.individual_signups.select_related(
+                "tournament", "game_account", "registration"
             )
         ],
         "scrim_signups": [

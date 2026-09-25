@@ -6,7 +6,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import (
+    require_GET,
+    require_http_methods,
+    require_POST,
+)
 
 from teams.models import TeamMembership, TeamRole
 from tournaments import registration as registration_service
@@ -168,5 +172,69 @@ def me_registrations(request):
             request,
             "me_registrations",
             registrations=registration_service.my_registrations(request.user),
+            individual_signups=registration_service.my_individual_signups(request.user),
         ),
     )
+
+
+# --- individual signups (design 8.8.1) ----------------------------------------
+
+
+def _public_tournament_or_404(pk):
+    tournament = get_object_or_404(Tournament, pk=pk)
+    if not tournament.is_public:
+        raise Http404("赛事还没有发布。")
+    return tournament
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def individual_signup(request, pk):
+    from scrims.models import Role
+
+    tournament = _public_tournament_or_404(pk)
+    my_signup = tournament.individual_signups.filter(user=request.user).first()
+    problems = []
+    if request.method == "POST":
+        roles = [role for role in request.POST.getlist("roles") if role in Role.values]
+        try:
+            registration_service.sign_up_individual(
+                tournament=tournament,
+                user=request.user,
+                game_account_id=request.POST.get("game_account"),
+                roles=roles,
+            )
+        except registration_service.RegistrationError as exc:
+            problems = exc.problems
+        else:
+            messages.success(request, "个人报名已提交，等赛事管理员编队。")
+            return redirect("tournament_detail", pk=tournament.pk)
+    elif my_signup is None:
+        # The pre-check, so people see what to fix before they fill the form.
+        problems = registration_service.individual_problems(
+            tournament=tournament, user=request.user
+        )
+    return render(
+        request,
+        "tournaments/individual_signup.html",
+        {
+            "tournament": tournament,
+            "my_signup": my_signup,
+            "problems": problems,
+            "game_accounts": list(request.user.game_accounts.all()),
+            "role_choices": Role.choices,
+        },
+    )
+
+
+@login_required
+@require_POST
+def individual_cancel(request, pk):
+    tournament = get_object_or_404(Tournament, pk=pk)
+    try:
+        registration_service.cancel_individual(tournament=tournament, user=request.user)
+    except registration_service.RegistrationError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "个人报名已取消。")
+    return redirect("tournament_detail", pk=tournament.pk)

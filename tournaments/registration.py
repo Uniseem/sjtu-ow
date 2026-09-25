@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import logging
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from tournaments.models import (
     ACTIVE_STATUSES,
     ActorType,
+    IndividualSignup,
     Registration,
     RegistrationAction,
     RegistrationMember,
@@ -413,4 +414,116 @@ def my_registrations(user):
         .select_related("tournament", "team")
         .distinct()
         .order_by("-submitted_at")
+    )
+
+
+# --- individual signups: the pool (design 8.8.1) --------------------------------
+
+ROLE_FIELDS = {"tank": "role_tank", "damage": "role_damage", "support": "role_support"}
+NOT_SIGNED_IN = "请先登录"
+
+
+def individual_problems(*, tournament, user, now=None) -> list[str]:
+    """Everything stopping this person from signing up alone (design 8.8.1).
+
+    Same checks as a team member gets in 8.3, plus the switch and the window.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return [NOT_SIGNED_IN]
+    problems = []
+    if not tournament.allow_individual_signup:
+        problems.append("这项赛事不接受个人报名")
+    if not tournament.registration_open(now):
+        problems.append("当前不在报名时间内")
+    problems.extend(member_problems(tournament=tournament, user=user))
+    conflict = existing_roster_conflict(tournament=tournament, user=user)
+    if conflict:
+        problems.append(conflict)
+    return problems
+
+
+def individual_pool(tournament) -> list[IndividualSignup]:
+    return list(
+        tournament.individual_signups.select_related("user").order_by(
+            "created_at", "id"
+        )
+    )
+
+
+def pool_counts(pool) -> dict:
+    return {
+        "total": len(pool),
+        "tank": sum(1 for entry in pool if entry.role_tank),
+        "damage": sum(1 for entry in pool if entry.role_damage),
+        "support": sum(1 for entry in pool if entry.role_support),
+    }
+
+
+def _own_account(user, game_account_id):
+    try:
+        return user.game_accounts.filter(pk=int(game_account_id)).first()
+    except (TypeError, ValueError):
+        return None
+
+
+@transaction.atomic
+def sign_up_individual(*, tournament, user, game_account_id, roles) -> IndividualSignup:
+    """Create or update this person's pool entry (design 8.8.1)."""
+    problems = individual_problems(tournament=tournament, user=user)
+    account = None
+    if NOT_SIGNED_IN not in problems:
+        account = _own_account(user, game_account_id)
+        if account is None:
+            problems.append("请选择你自己的游戏 ID")
+    roles = [role for role in roles if role in ROLE_FIELDS]
+    if not roles:
+        problems.append("至少要勾选一个能打的位置")
+    if problems:
+        raise RegistrationError(problems)
+
+    signup = tournament.individual_signups.filter(user=user).first()
+    if signup is not None and signup.is_placed:
+        raise RegistrationError("你已经被编入队伍，要改动请联系赛事管理员")
+    if signup is None:
+        signup = IndividualSignup(tournament=tournament, user=user)
+    signup.game_account = account
+    for role, field in ROLE_FIELDS.items():
+        setattr(signup, field, role in roles)
+    try:
+        signup.save()
+    except IntegrityError as exc:  # concurrent double submit
+        raise RegistrationError("你已经报名过这项赛事了") from exc
+    _refresh_tournament_page(tournament)
+    return signup
+
+
+@transaction.atomic
+def cancel_individual(*, tournament, user, now=None) -> None:
+    """Leave the pool before the deadline (design 8.8.1)."""
+    now = now or timezone.now()
+    signup = tournament.individual_signups.filter(user=user).first()
+    if signup is None:
+        raise RegistrationError("你还没有个人报名这项赛事")
+    if signup.is_placed:
+        raise RegistrationError("你已经被编入队伍，要退出请在报名详情页操作")
+    if now > tournament.registration_closes_at:
+        raise RegistrationError("报名已截止，不能再取消")
+    signup.delete()
+    _refresh_tournament_page(tournament)
+
+
+def _refresh_tournament_page(tournament) -> None:
+    """Design 13.13.4: the pool is printed on the public tournament page."""
+    if not tournament.is_listed:
+        return
+    from core import prerender
+
+    prerender.request_page(tournament.get_absolute_url(), kind="tournament")
+
+
+def my_individual_signups(user):
+    return list(
+        user.individual_signups.select_related("tournament", "registration").order_by(
+            "-created_at"
+        )
     )

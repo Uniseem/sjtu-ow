@@ -11,6 +11,16 @@ urlpatterns = [
         name="tournament_register",
     ),
     path(
+        "tournaments/<int:pk>/signup/",
+        registration_views.individual_signup,
+        name="tournament_individual_signup",
+    ),
+    path(
+        "tournaments/<int:pk>/signup/cancel/",
+        registration_views.individual_cancel,
+        name="tournament_individual_cancel",
+    ),
+    path(
         "registrations/<int:pk>/",
         registration_views.registration_detail,
         name="registration_detail",

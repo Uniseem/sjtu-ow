@@ -25,9 +25,12 @@ def captain_teams_for(user):
 
 
 def actions_context(request, tournament) -> dict:
-    from tournaments.models import Registration
+    from tournaments import registration as registration_service
+    from tournaments.models import IndividualSignup, Registration
 
-    captain_teams = captain_teams_for(getattr(request, "user", None))
+    user = getattr(request, "user", None)
+    signed_in = bool(getattr(user, "is_authenticated", False))
+    captain_teams = captain_teams_for(user)
     my_registration = None
     if captain_teams:
         my_registration = (
@@ -35,11 +38,26 @@ def actions_context(request, tournament) -> dict:
             .order_by("-submitted_at")
             .first()
         )
+    my_signup = None
+    individual_problems = []
+    if signed_in and not captain_teams and tournament.allow_individual_signup:
+        my_signup = (
+            IndividualSignup.objects.filter(tournament=tournament, user=user)
+            .select_related("registration")
+            .first()
+        )
+        if my_signup is None:
+            individual_problems = registration_service.individual_problems(
+                tournament=tournament, user=user
+            )
     return {
         "tournament": tournament,
         "captain_teams": captain_teams,
         "registration_open": tournament.registration_open(),
         "my_registration": my_registration,
+        "individual_enabled": tournament.allow_individual_signup,
+        "my_signup": my_signup,
+        "individual_problems": individual_problems,
     }
 
 

@@ -112,7 +112,7 @@ class TournamentViewSet(ModelViewSet):
         "registration_opens_at",
         "registration_closes_at",
     ]
-    list_filter = ["status", "auto_approve", "sjtu_only"]
+    list_filter = ["status", "auto_approve", "allow_individual_signup", "sjtu_only"]
     search_fields = ["title", "summary"]
     panels = [
         MultiFieldPanel(
@@ -138,6 +138,7 @@ class TournamentViewSet(ModelViewSet):
                 FieldPanel("roster_max"),
                 FieldPanel("sjtu_only"),
                 FieldPanel("auto_approve"),
+                FieldPanel("allow_individual_signup"),
             ],
             heading="报名规则",
         ),

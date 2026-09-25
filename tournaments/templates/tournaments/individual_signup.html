@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}个人报名 · {{ tournament.title }}{% endblock %}
+
+{% block content %}
+  <section class="mx-auto w-full max-w-3xl px-4 py-10">
+    <h1>个人报名</h1>
+    <p class="mt-2 text-base-content/70">
+      <a href="{{ tournament.get_absolute_url }}" class="link link-hover">{{ tournament.title }}</a>
+      · 报名后由赛事管理员编成临时队伍
+    </p>
+
+    {% if problems %}
+      <div class="alert alert-warning mt-6 flex-col items-start" role="alert">
+        <p>下面的问题需要先解决：</p>
+        <ul class="ml-4 list-disc">
+          {% for problem in problems %}<li>{{ problem }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if my_signup and my_signup.is_placed %}
+      <p class="mt-6 text-base-content/80">你已经被编入「{{ my_signup.registration.team_name }}」，要改动请联系赛事管理员。</p>
+    {% elif not game_accounts %}
+      <p class="mt-6 text-base-content/80">需要先绑定游戏 ID，<a href="{% url 'me_game_accounts' %}" class="link link-primary">去添加</a>。</p>
+    {% else %}
+      <form method="post" class="mt-6 flex flex-col gap-4">
+        {% csrf_token %}
+        <label class="form-control">
+          <span class="label-text">游戏 ID</span>
+          <select name="game_account" class="select select-bordered min-h-11" required>
+            {% for account in game_accounts %}
+              <option value="{{ account.pk }}" {% if my_signup and my_signup.game_account_id == account.pk %}selected{% endif %}>{{ account.battletag }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <fieldset class="flex flex-wrap gap-4">
+          <legend class="label-text">能打的位置（至少一个）</legend>
+          {% for value, label in role_choices %}
+            <label class="flex items-center gap-2">
+              <input type="checkbox" name="roles" value="{{ value }}" class="checkbox"
+                     {% if my_signup %}{% if value == "tank" and my_signup.role_tank %}checked{% endif %}{% if value == "damage" and my_signup.role_damage %}checked{% endif %}{% if value == "support" and my_signup.role_support %}checked{% endif %}{% endif %}>
+              <span>{{ label }}</span>
+            </label>
+          {% endfor %}
+        </fieldset>
+        <p class="text-xs text-base-content/60">不要求填段位，但管理员编队时会参考这个游戏 ID 上的段位。</p>
+        <button type="submit" class="btn btn-primary min-h-11 font-button self-start">{% if my_signup %}保存修改{% else %}提交个人报名{% endif %}</button>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

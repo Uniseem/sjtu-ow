@@ -20,6 +20,32 @@
     <p class="mt-4 text-base-content/70">你还没有参加任何赛事报名。<a href="{% url 'tournament_index' %}" class="link link-primary">去看看赛事</a></p>
   {% endif %}
 
+  <h2 class="mt-10">个人报名</h2>
+  {% if individual_signups %}
+    <ul class="mt-4 flex flex-col gap-2">
+      {% for signup in individual_signups %}
+        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
+          <a href="{{ signup.tournament.get_absolute_url }}" class="link link-hover">{{ signup.tournament.title }}</a>
+          <span class="text-sm text-base-content/70">{% for label in signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}</span>
+          {% if signup.is_placed %}
+            <span class="badge badge-success">已编入「{{ signup.registration.team_name }}」</span>
+            <a href="{{ signup.registration.get_absolute_url }}" class="link link-primary text-sm">查看报名</a>
+          {% else %}
+            <span class="badge">等待编队</span>
+            {% if signup.tournament.registration_open %}
+              <form method="post" action="{% url 'tournament_individual_cancel' signup.tournament.pk %}" class="ml-auto">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-xs font-button">取消</button>
+              </form>
+            {% endif %}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mt-4 text-base-content/70">没有个人报名。开放个人报名的赛事，在赛事页可以以个人身份报名。</p>
+  {% endif %}
+
   <h2 class="mt-10">内战报名</h2>
   <p class="mt-4 text-base-content/70">内战报名在<a href="{% url 'me_scrims' %}" class="link link-primary">我的内战</a>里查看。</p>
 {% endblock %}
