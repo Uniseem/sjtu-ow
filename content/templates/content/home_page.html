@@ -139,7 +139,7 @@
       {% include "components/section_head.html" with index="03" title="战队" en="TEAMS" more_url="/teams/" more_label="全部战队" heading_id="home-teams" %}
       <ul class="c-tiles">
         {% for team in home_teams %}
-          {% include "components/team_tile.html" %}
+          {% include "components/team_tile.html" with members=team.member_count %}
         {% endfor %}
       </ul>
     </section>
@@ -155,7 +155,7 @@
         </li>
         <li class="relative border-b border-rule py-5 sm:pl-6 lg:border-b-0 lg:border-r lg:px-6">
           <a href="/scrims/" class="c-stretch font-semibold">报名内战</a>
-          <p class="mt-2 text-sm leading-6 text-fg-2">填好游戏 ID 和段位，选能打的位置，开始前系统自动分队。</p>
+          <p class="mt-2 text-sm leading-6 text-fg-2">填好游戏 ID 和段位，选能打的位置；管理员用系统自动分队，结果发到群里。</p>
         </li>
         <li class="relative border-b border-rule py-5 sm:pr-6 sm:border-b-0 lg:border-r lg:px-6">
           <a href="/teams/" class="c-stretch font-semibold">组建或加入战队</a>

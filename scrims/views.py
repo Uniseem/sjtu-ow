@@ -15,10 +15,19 @@ from scrims.slots import actions_context
 
 @require_GET
 def scrim_index(request):
+    scrims = list(services.public_scrims())
+    upcoming = [item for item in scrims if item.status == ScrimStatus.PUBLISHED]
+    finished = [item for item in scrims if item.status == ScrimStatus.FINISHED]
     return render(
         request,
         "scrims/index.html",
-        {"scrims": services.public_scrims().select_related()},
+        {
+            "scrims": scrims,
+            "upcoming": upcoming,
+            # Most recent first once they are over (design 9.2 lists by start).
+            "finished": finished[::-1],
+            "signup_totals": services.signup_totals(scrims),
+        },
     )
 
 

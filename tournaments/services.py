@@ -101,6 +101,26 @@ def cancellation_recipients(tournament):
     return users
 
 
+def approved_counts(tournaments) -> dict:
+    """Approved registrations per tournament, in one query (design 8.2, 5.2).
+
+    Only approved teams are public, so this is the number cards may show.
+    """
+    from django.db.models import Count
+
+    from tournaments.models import Registration, RegistrationStatus
+
+    rows = (
+        Registration.objects.filter(
+            tournament_id__in=[item.pk for item in tournaments],
+            status=RegistrationStatus.APPROVED,
+        )
+        .values("tournament_id")
+        .annotate(n=Count("id"))
+    )
+    return {row["tournament_id"]: row["n"] for row in rows}
+
+
 def approved_teams(tournament):
     """Approved teams and their size, for the public page (design 8.2).
 

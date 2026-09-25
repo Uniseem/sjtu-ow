@@ -503,8 +503,9 @@ def test_team_list_does_not_run_a_query_per_team(
         services.create_team(
             user=_user(f"cap{index}@example.com", f"队长{index}"), name=f"计数队{index}"
         )
-    # 3 teams, still a constant number of queries (session, settings, list).
-    with django_assert_num_queries(3):
+    # 3 teams, still a constant number of queries: session, settings, the
+    # totals for the page head (one aggregate, round 076), the list.
+    with django_assert_num_queries(4):
         response = client.get(reverse("team_index"))
     assert response.status_code == 200
     assert "计数队0" in response.content.decode()

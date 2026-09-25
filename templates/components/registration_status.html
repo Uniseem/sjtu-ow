@@ -1,0 +1,7 @@
+{% comment %}
+  A registration's status as a shape and a word (design 13.2.6).
+{% endcomment %}
+{% if registration.status == "approved" %}{% include "components/status_badge.html" with kind="ok" label=registration.get_status_display %}
+{% elif registration.status == "pending" %}{% include "components/status_badge.html" with kind="warn" label=registration.get_status_display %}
+{% elif registration.status == "rejected" %}{% include "components/status_badge.html" with kind="rejected" label=registration.get_status_display %}
+{% else %}{% include "components/status_badge.html" with kind="off" label=registration.get_status_display %}{% endif %}

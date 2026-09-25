@@ -1,64 +1,99 @@
 {% extends "base.html" %}
-{% load wagtailimages_tags %}
+{% load ow wagtailimages_tags %}
 
 {% block title %}{{ team.name }} · 战队 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-4xl px-4 py-10">
-    {% if team.is_disbanded %}
-      <div class="alert alert-warning" role="status">该战队已解散。</div>
-    {% endif %}
-
-    <div class="mt-6 flex flex-wrap items-center gap-4">
-      {% if team.logo %}
-        {% image team.logo fill-96x96 class="rounded-xl" alt=team.name %}
-      {% else %}
-        <div class="flex h-24 w-24 items-center justify-center rounded-xl bg-base-300 text-2xl font-semibold">{{ team.name|slice:":2" }}</div>
-      {% endif %}
-      <div>
-        <h1>{{ team.name }}</h1>
-        <p class="mt-1 text-sm text-base-content/70">
-          <span class="font-numeric">{{ memberships|length }} / {{ max_members }}</span> 人
-          ·
-          {% if team.is_recruiting %}招募中{% else %}暂不招募{% endif %}
-          {% if captain %}· 队长 {{ captain.nickname }}{% endif %}
-        </p>
+  <header class="c-pagehead c-pagehead--night on-night">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/teams/">战队</a><span class="c-crumbs__sep">/</span><span>{{ team.name }}</span></nav>
+      <div class="flex flex-col gap-6 sm:flex-row sm:items-end">
+        <span class="c-tile__art w-28 shrink-0 sm:w-36{% if not team.logo %} c-hatch{% endif %}">
+          {% if team.logo %}{% image team.logo fill-288x288 alt=team.name %}{% else %}<span class="c-tile__initial text-5xl">{{ team.name|initial }}</span>{% endif %}
+        </span>
+        <div class="min-w-0">
+          <p class="flex flex-wrap items-center gap-3">
+            {% if team.is_disbanded %}{% include "components/status_badge.html" with kind="off" label="已解散" %}
+            {% elif team.is_recruiting %}{% include "components/status_badge.html" with kind="live" label="招募中" %}
+            {% else %}{% include "components/status_badge.html" with kind="done" label="暂不招募" %}{% endif %}
+          </p>
+          <h1 class="mt-2">{{ team.name }}</h1>
+          <p class="c-pagehead__meta mt-2">
+            {% if captain %}<span>队长 <span class="font-semibold text-fg">{{ captain.nickname }}</span></span>{% endif %}
+            <span>成立于 <time class="font-numeric" datetime="{{ team.created_at|date:'c' }}">{{ team.created_at|ow_date }}</time></span>
+          </p>
+        </div>
       </div>
+      <div class="c-factbar">
+        <div class="c-stat"><span class="c-stat__label">成员</span><span class="c-stat__value">{{ memberships|length }}<small>/ {{ max_members }} 人</small></span>{% include "components/slots.html" with taken=memberships|length capacity=max_members hide_count=True %}</div>
+        <div class="c-stat"><span class="c-stat__label">参赛</span><span class="c-stat__value">{{ entries|length }}<small>次</small></span></div>
+      </div>
+      {% if not team.is_disbanded %}
+        {% include "teams/slots/join.html" %}
+      {% endif %}
     </div>
+  </header>
 
-    {% if team.description %}
-      <p class="mt-6 whitespace-pre-line text-base-content/80">{{ team.description }}</p>
+  <div class="l-container l-section">
+    {% if team.is_disbanded %}
+      <div class="c-notice c-notice--warn mb-10" role="status">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">该战队已解散。</div></div>
     {% endif %}
+    <div class="l-split">
+      <div class="flex min-w-0 flex-col gap-14">
+        {% if team.description %}
+          <section aria-labelledby="team-about">
+            {% include "components/section_head.html" with title="简介" en="ABOUT" heading_id="team-about" %}
+            <p class="l-prose whitespace-pre-line leading-8">{{ team.description }}</p>
+          </section>
+        {% endif %}
 
-    {% if not team.is_disbanded %}
-      {% include "teams/slots/join.html" %}
-    {% endif %}
+        <section aria-labelledby="team-roster">
+          {% include "components/section_head.html" with title="成员" en="ROSTER" heading_id="team-roster" %}
+          {% if memberships %}
+            <table class="c-table">
+              <thead><tr><th scope="col" class="w-12">序号</th><th scope="col">昵称</th><th scope="col" class="is-num">入队</th></tr></thead>
+              <tbody>
+                {% for membership in memberships %}
+                  <tr>
+                    <td class="font-numeric text-fg-3">{{ forloop.counter|ow_index }}</td>
+                    <td><span class="inline-flex items-center gap-3"><span class="c-avatar c-avatar--sm" aria-hidden="true">{{ membership.user.nickname|initial }}</span><span class="font-semibold">{{ membership.user.nickname }}</span>{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}</span></td>
+                    <td class="is-num font-numeric">{{ membership.joined_at|ow_date }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-fg-2">还没有成员。</p>
+          {% endif %}
+        </section>
 
-    <h2 class="mt-10">成员</h2>
-    <ul class="mt-4 flex flex-col gap-2">
-      {% for membership in memberships %}
-        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
-          <span>{{ membership.user.nickname }}</span>
-          {% if membership.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
-          <span class="ml-auto text-sm text-base-content/60 font-numeric">{{ membership.joined_at|date:"Y年n月j日" }} 加入</span>
-        </li>
-      {% empty %}
-        <li class="text-base-content/70">还没有成员。</li>
-      {% endfor %}
-    </ul>
-
-    <h2 class="mt-10">参赛记录</h2>
-    {% if entries %}
-      <ul class="mt-4 flex flex-col gap-2">
-        {% for entry in entries %}
-          <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2" data-team-entry>
-            <a href="{{ entry.tournament.get_absolute_url }}" class="link link-hover">{{ entry.tournament.title }}</a>
-            {% if entry.tournament.status == "cancelled" %}<span class="badge badge-ghost">已取消</span>{% elif entry.tournament.status == "finished" %}<span class="badge badge-ghost">已结束</span>{% endif %}
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="mt-4 text-base-content/70">还没有通过审核的赛事报名。</p>
-    {% endif %}
-  </section>
+        <section aria-labelledby="team-record">
+          {% include "components/section_head.html" with title="参赛记录" en="RECORD" heading_id="team-record" %}
+          {% if entries %}
+            <table class="c-table">
+              <thead><tr><th scope="col">赛事</th><th scope="col" class="is-num">状态</th></tr></thead>
+              <tbody>
+                {% for entry in entries %}
+                  <tr data-team-entry>
+                    <td><a href="{{ entry.tournament.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ entry.tournament.title }}</a></td>
+                    <td class="is-num">{% if entry.tournament.status == "cancelled" %}{% include "components/status_badge.html" with kind="off" label="已取消" %}{% elif entry.tournament.status == "finished" %}{% include "components/status_badge.html" with kind="done" label="已结束" %}{% else %}{% include "components/status_badge.html" with kind="ok" label="已通过" %}{% endif %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-fg-2">还没有通过审核的赛事报名。</p>
+          {% endif %}
+        </section>
+      </div>
+      <aside>
+        <dl class="c-facts">
+          <dt>队长</dt><dd>{% if captain %}{{ captain.nickname }}{% else %}—{% endif %}</dd>
+          <dt>成立</dt><dd class="font-numeric">{{ team.created_at|ow_date }}</dd>
+          <dt>人数</dt><dd class="font-numeric">{{ memberships|length }} / {{ max_members }}</dd>
+          <dt>招募</dt><dd>{% if team.is_recruiting and not team.is_disbanded %}招募中{% else %}暂不招募{% endif %}</dd>
+        </dl>
+      </aside>
+    </div>
+  </div>
 {% endblock %}

@@ -95,7 +95,7 @@ def test_groups_come_in_order_with_titles_and_teams(client):
         html.index(f'id="group-{first.pk}"') : html.index(f'id="group-{second.pk}"')
     ]
     assert officers.index("甲同学") < officers.index("乙同学")
-    assert '<span class="member-cards__title">社长</span>' in officers
+    assert '<span class="c-person__title">社长</span>' in officers
     assert "负责社团日常" in officers
     assert "思源湖电竞" in officers
 

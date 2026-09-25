@@ -27,7 +27,7 @@
   <div class="c-ticket__body">
     <p class="c-ticket__kicker">
       {% if phase == "open" %}{% include "components/status_badge.html" with kind="live" label="报名中" %}
-      {% elif phase == "upcoming" %}{% include "components/status_badge.html" with kind="info" label="即将开放" %}
+      {% elif phase == "upcoming" %}{% include "components/status_badge.html" with kind="info" label="即将开始报名" %}
       {% elif phase == "closed" %}{% include "components/status_badge.html" with kind="done" label="已截止" %}
       {% elif phase == "finished" %}{% include "components/status_badge.html" with kind="done" label="已结束" %}
       {% else %}{% include "components/status_badge.html" with kind="off" label="已取消" %}{% endif %}

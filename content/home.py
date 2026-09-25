@@ -162,33 +162,15 @@ def arena_tournaments(limit: int = ARENA_TOURNAMENT_COUNT) -> list[tuple[str, ob
 
 
 def approved_counts(tournaments) -> dict:
-    """Approved registrations per tournament: the number the public may see (8.2)."""
-    from django.db.models import Count
+    from tournaments.services import approved_counts
 
-    from tournaments.models import Registration, RegistrationStatus
-
-    ids = [item.pk for item in tournaments]
-    rows = (
-        Registration.objects.filter(
-            tournament_id__in=ids, status=RegistrationStatus.APPROVED
-        )
-        .values("tournament_id")
-        .annotate(n=Count("id"))
-    )
-    return {row["tournament_id"]: row["n"] for row in rows}
+    return approved_counts(tournaments)
 
 
 def signup_counts(scrims) -> dict:
-    from django.db.models import Count
+    from scrims.services import signup_totals
 
-    from scrims.models import ScrimSignup
-
-    rows = (
-        ScrimSignup.objects.filter(scrim_id__in=[item.pk for item in scrims])
-        .values("scrim_id")
-        .annotate(n=Count("id"))
-    )
-    return {row["scrim_id"]: row["n"] for row in rows}
+    return signup_totals(scrims)
 
 
 def teams(limit: int = HOME_TEAM_COUNT):

@@ -1,42 +1,59 @@
 {% extends "base.html" %}
-{% load wagtailimages_tags %}
+{% load ow %}
 
 {% block title %}赛事 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-5xl px-4 py-10">
-    <h1>赛事</h1>
+  <header class="c-pagehead c-pagehead--night on-night">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>赛事</span></nav>
+      <p class="c-eyebrow">TOURNAMENTS</p>
+      <h1>赛事</h1>
+      <p class="c-pagehead__lede">社团自己办的比赛。队长为战队报名；开放个人报名的赛事也可以一个人报名，由赛事组编成临时队伍。</p>
+      <div class="c-factbar" data-phase-counts>
+        {% for label, count in phase_counts %}
+          <div class="c-stat"><span class="c-stat__label">{{ label }}</span><span class="c-stat__value">{{ count }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+  </header>
 
+  <div class="l-container l-section flex flex-col gap-14">
     {% for phase, label, tournaments in groups %}
       {% if tournaments %}
-        <h2 class="mt-10">{{ label }}</h2>
-        <ul class="mt-4 grid gap-4 sm:grid-cols-2">
-          {% for tournament in tournaments %}
-            <li class="card bg-base-200">
-              <div class="card-body gap-2">
-                <h3 class="card-title text-lg">
-                  <a href="{{ tournament.get_absolute_url }}" class="link link-hover">{{ tournament.title }}</a>
-                </h3>
-                {% if tournament.summary %}<p class="text-sm text-base-content/80">{{ tournament.summary }}</p>{% endif %}
-                <p class="text-sm text-base-content/70">
-                  <span class="font-numeric">{{ tournament.roster_min }}–{{ tournament.roster_max }}</span> 人
-                  {% if tournament.sjtu_only %}· 仅限交大{% endif %}
-                </p>
-                <p class="text-sm text-base-content/60">
-                  报名
-                  <time datetime="{{ tournament.registration_opens_at|date:'c' }}" class="font-numeric">{{ tournament.registration_opens_at|date:"n月j日 H:i" }}</time>
-                  至
-                  <time datetime="{{ tournament.registration_closes_at|date:'c' }}" class="font-numeric">{{ tournament.registration_closes_at|date:"n月j日 H:i" }}</time>
-                </p>
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
+        <section aria-labelledby="phase-{{ phase }}" data-phase="{{ phase }}">
+          <div class="c-sectionhead">
+            <h2 id="phase-{{ phase }}">{{ label }}</h2>
+            <span class="c-comments__count">{{ tournaments|length }}</span>
+            <span class="c-sectionhead__rule" aria-hidden="true"></span>
+          </div>
+          {% if phase == "open" or phase == "upcoming" %}
+            <ol class="grid gap-4 lg:grid-cols-2">
+              {% for tournament in tournaments %}
+                <li>{% include "components/tournament_ticket.html" with show_count=True approved=approved_counts|lookup:tournament.pk %}</li>
+              {% endfor %}
+            </ol>
+          {% else %}
+            <table class="c-table c-table--stack">
+              <thead><tr><th scope="col">赛事</th><th scope="col">比赛时间</th><th scope="col">人数</th><th scope="col" class="is-num">已通过</th></tr></thead>
+              <tbody>
+                {% for tournament in tournaments %}
+                  <tr class="relative">
+                    <td data-label="赛事"><a href="{{ tournament.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ tournament.title }}</a></td>
+                    <td data-label="比赛时间" class="font-numeric">{% if tournament.starts_at %}{{ tournament.starts_at|ow_date }}{% else %}待定{% endif %}</td>
+                    <td data-label="人数" class="font-numeric">{{ tournament.roster_min }}–{{ tournament.roster_max }} 人</td>
+                    <td data-label="已通过" class="is-num font-numeric">{{ approved_counts|lookup:tournament.pk|default:0 }} 队</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+        </section>
       {% endif %}
     {% endfor %}
 
-    {% if not groups.0.2 and not groups.1.2 and not groups.2.2 and not groups.3.2 %}
+    {% if not any_listed %}
       {% include "components/empty_state.html" with title="暂无赛事" message="赛事发布后会出现在这里。" %}
     {% endif %}
-  </section>
+  </div>
 {% endblock %}

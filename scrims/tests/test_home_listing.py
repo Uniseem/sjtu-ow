@@ -98,6 +98,29 @@ def test_the_homepage_is_refreshed_as_the_scrim_enters_the_window_and_starts(
 
 
 @pytest.mark.django_db
+def test_list_and_detail_are_refreshed_when_signup_closes_and_the_scrim_starts(
+    prerender_on, django_capture_on_commit_callbacks
+):
+    """Round 076: their tickets say 「报名中」, which the clock ends."""
+    from django_tasks_db.models import DBTaskResult
+
+    scrim = _in(3, status=ScrimStatus.DRAFT)
+    scrim.signup_closes_at = scrim.starts_at - timedelta(hours=2)
+    scrim.save()
+    with django_capture_on_commit_callbacks(execute=True):
+        services.publish(scrim=scrim)
+
+    runs = {
+        (row.args_kwargs["args"][0], row.run_after)
+        for row in DBTaskResult.objects.filter(task_path="core.tasks.prerender_page")
+        if row.run_after
+    }
+    for path in ("/", "/scrims/", f"/scrims/{scrim.pk}/"):
+        assert (path, scrim.signup_closes_at) in runs, path
+        assert (path, scrim.starts_at) in runs, path
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "action, start",
     [

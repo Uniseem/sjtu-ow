@@ -33,6 +33,7 @@ def team_index(request):
             "teams": teams,
             "recruiting_only": recruiting_only,
             "max_members": services.max_members(),
+            **services.team_totals(),
         },
     )
 

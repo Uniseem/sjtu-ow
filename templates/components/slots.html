@@ -1,6 +1,7 @@
 {% load ow %}
 {% comment %}
-  Slot meter (design 13.2.6). taken, capacity; optional unit ("人"), label.
+  Slot meter (design 13.2.6). taken, capacity; optional unit ("人"), label;
+  hide_count when the number is already printed next to it.
   Up to 24 cells as squares; beyond that a bar. Screen readers get one sentence.
 {% endcomment %}
 {% with cells=taken|slot_cells:capacity %}
@@ -10,6 +11,10 @@
     {% else %}
       <svg class="c-slots-bar w-32" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect class="track" width="100" height="6"/><rect class="fill" width="{{ taken|percent_of:capacity }}" height="6"/></svg>
     {% endif %}
-    <span class="c-meter__count"><span class="sr-only">{{ label|default:"已报" }} </span>{{ taken }}<span> / {{ capacity }}</span>{% if unit %}<small class="ml-1 font-sans text-xs font-normal text-fg-2">{{ unit }}</small>{% endif %}</span>
+    {% if hide_count %}
+      <span class="sr-only">{{ label|default:"已报" }} {{ taken }} / {{ capacity }}</span>
+    {% else %}
+      <span class="c-meter__count"><span class="sr-only">{{ label|default:"已报" }} </span>{{ taken }}<span> / {{ capacity }}</span>{% if unit %}<small class="ml-1 font-sans text-xs font-normal text-fg-2">{{ unit }}</small>{% endif %}</span>
+    {% endif %}
   </span>
 {% endwith %}

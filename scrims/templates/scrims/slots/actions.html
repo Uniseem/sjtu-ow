@@ -1,54 +1,50 @@
-<div id="slot-scrim-actions" data-slot="scrim-actions:{{ scrim.pk }}" class="mt-6"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="slot-scrim-actions" data-slot="scrim-actions:{{ scrim.pk }}" class="mt-8"{% if oob %} hx-swap-oob="true"{% endif %}>
   {% if cancelled %}
-    <p class="text-sm text-base-content/70">这场内战已取消，不再接受报名。</p>
+    <p class="text-sm text-fg-2">这场内战已取消，不再接受报名。</p>
   {% elif not request.user.is_authenticated %}
-    <a href="{% url 'account_login' %}?next={% url 'scrim_detail' scrim.pk %}" class="btn btn-primary min-h-11 font-button">登录后报名</a>
+    <a href="{% url 'account_login' %}?next={% url 'scrim_detail' scrim.pk %}" class="c-btn c-btn--primary">登录后报名</a>
   {% elif my_signup %}
-    <div class="card bg-base-200">
-      <div class="card-body gap-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="badge badge-success">已报名</span>
-          <span class="text-sm text-base-content/80">
-            {{ my_signup.battletag }} ·
-            {% for label in my_signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}
-          </span>
-        </div>
-        {% if signup_open %}
-          <form method="post" action="{% url 'scrim_cancel_signup' scrim.pk %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">取消报名</button>
-          </form>
+    <div class="max-w-2xl border border-rule bg-panel p-5">
+      <p class="flex flex-wrap items-center gap-3">
+        {% include "components/status_badge.html" with kind="ok" label="已报名" %}
+        <span class="font-code text-sm">{{ my_signup.battletag }}</span>
+        {% include "components/role_icons.html" with role_tank=my_signup.role_tank role_damage=my_signup.role_damage role_support=my_signup.role_support %}
+      </p>
+      {% if signup_open %}
+        <div class="mt-4 flex flex-wrap items-start gap-3">
           {# <details> needs no script, so it works under the site CSP. #}
-          <details class="mt-2">
-            <summary class="btn btn-outline btn-sm min-h-11 font-button">修改报名</summary>
-            <div class="mt-3">
+          <details class="open:order-last open:basis-full">
+            <summary class="c-btn c-btn--secondary c-btn--sm">修改报名</summary>
+            <div class="mt-4">
               {% include "scrims/slots/_form.html" %}
             </div>
           </details>
-        {% else %}
-          <p class="text-sm text-base-content/70">报名已截止，不能再修改。</p>
-        {% endif %}
-      </div>
+          <form method="post" action="{% url 'scrim_cancel_signup' scrim.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消报名</button>
+          </form>
+        </div>
+      {% else %}
+        <p class="mt-3 text-sm text-fg-2">报名已截止，不能再修改。</p>
+      {% endif %}
     </div>
   {% elif signup_problems %}
-    <div class="card bg-base-200">
-      <div class="card-body gap-2">
-        <p class="text-sm text-base-content/80">暂时不能报名：</p>
-        <ul class="list-inside list-disc text-sm text-base-content/70">
+    <div class="c-notice c-notice--warn max-w-2xl">{% include "components/icon.html" with name="alert" %}
+      <div class="c-notice__body">
+        <p>暂时不能报名：</p>
+        <ul class="mt-1 list-[square] pl-5">
           {% for problem in signup_problems %}<li>{{ problem }}</li>{% endfor %}
         </ul>
       </div>
     </div>
   {% elif not game_accounts %}
-    <p class="text-sm text-base-content/70">
-      需要先绑定游戏 ID，<a href="{% url 'me_game_accounts' %}" class="link">去添加</a>。
-    </p>
+    <div class="c-notice c-notice--info max-w-2xl">{% include "components/icon.html" with name="info" %}
+      <div class="c-notice__body">需要先绑定游戏 ID，<a href="{% url 'me_game_accounts' %}">去添加</a>。</div>
+    </div>
   {% else %}
-    <div class="card bg-base-200">
-      <div class="card-body gap-3">
-        <h2 class="card-title text-base">报名</h2>
-        {% include "scrims/slots/_form.html" %}
-      </div>
+    <div class="max-w-2xl border border-rule bg-panel p-5">
+      <h2 class="text-lg">报名</h2>
+      <div class="mt-4">{% include "scrims/slots/_form.html" %}</div>
     </div>
   {% endif %}
 </div>

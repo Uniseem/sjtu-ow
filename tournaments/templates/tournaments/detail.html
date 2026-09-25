@@ -1,106 +1,130 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags wagtailimages_tags %}
+{% load ow wagtailcore_tags wagtailimages_tags %}
 
 {% block title %}{{ tournament.title }} · 赛事 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-4xl px-4 py-10">
-    {% if tournament.status == "cancelled" %}
-      <div class="alert alert-warning" role="status">这项赛事已取消。</div>
-    {% endif %}
-
-    {% if tournament.cover %}
-      <div class="mt-6">{% image tournament.cover width-1200 class="rounded-xl" alt=tournament.title %}</div>
-    {% endif %}
-
-    <h1 class="page-title mt-6">{{ tournament.title }}</h1>
-    <p class="mt-2 text-sm text-base-content/70">
-      <span class="badge badge-outline">{{ phase_label }}</span>
-      <span class="font-numeric">{{ tournament.roster_min }}–{{ tournament.roster_max }}</span> 人
-      {% if tournament.sjtu_only %}· 仅限交大{% endif %}
-    </p>
-
-    {% if tournament.summary %}<p class="mt-4 text-base-content/80">{{ tournament.summary }}</p>{% endif %}
-
-    <dl class="mt-6 grid gap-2 sm:grid-cols-2">
-      <div>
-        <dt class="text-sm text-base-content/60">报名时间</dt>
-        <dd class="font-numeric">
-          <time datetime="{{ tournament.registration_opens_at|date:'c' }}">{{ tournament.registration_opens_at|date:"Y年n月j日 H:i" }}</time>
-          至
-          <time datetime="{{ tournament.registration_closes_at|date:'c' }}">{{ tournament.registration_closes_at|date:"Y年n月j日 H:i" }}</time>
-        </dd>
-      </div>
-      {% if tournament.starts_at %}
-        <div>
-          <dt class="text-sm text-base-content/60">比赛时间</dt>
-          <dd class="font-numeric"><time datetime="{{ tournament.starts_at|date:'c' }}">{{ tournament.starts_at|date:"Y年n月j日 H:i" }}</time></dd>
-        </div>
-      {% endif %}
-    </dl>
-
-    {% include "tournaments/slots/actions.html" %}
-
-    {% if tournament.description %}
-      <div class="article-body mt-8 text-base-content/80">{{ tournament.description|richtext }}</div>
-    {% endif %}
-
-    {% if articles %}
-      <h2 class="mt-10">相关文章</h2>
-      <ul class="mt-4 flex flex-col gap-2">
-        {% for article in articles %}
-          <li class="border-b border-base-300 pb-2">
-            <a href="{{ article.url }}" class="link link-hover">{{ article.title }}</a>
-            <span class="ml-2 text-sm text-base-content/60 font-numeric">{{ article.first_published_at|date:"Y年n月j日" }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-
-    {% if tournament.allow_individual_signup %}
-      <h2 class="mt-10">个人报名</h2>
-      <p class="mt-2 text-sm text-base-content/80">
-        共 <span class="font-numeric">{{ pool_counts.total }}</span> 人 ·
-        坦克 <span class="font-numeric">{{ pool_counts.tank }}</span> ·
-        输出 <span class="font-numeric">{{ pool_counts.damage }}</span> ·
-        支援 <span class="font-numeric">{{ pool_counts.support }}</span>
+  {# 赛场详情 (design 13.2.8). #}
+  <header class="c-pagehead c-pagehead--night on-night">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/tournaments/">赛事</a><span class="c-crumbs__sep">/</span><span>{{ tournament.title }}</span></nav>
+      <p class="flex flex-wrap items-center gap-3">
+        {% if phase == "open" %}{% include "components/status_badge.html" with kind="live" label=phase_label %}
+        {% elif phase == "upcoming" %}{% include "components/status_badge.html" with kind="info" label=phase_label %}
+        {% elif phase == "cancelled" %}{% include "components/status_badge.html" with kind="off" label=phase_label %}
+        {% else %}{% include "components/status_badge.html" with kind="done" label=phase_label %}{% endif %}
+        {% if tournament.sjtu_only %}<span class="c-tag">仅限交大</span>{% endif %}
+        {% if tournament.allow_individual_signup %}<span class="c-tag">支持个人报名</span>{% endif %}
       </p>
-      {% if pool %}
-        <ul class="mt-4 divide-y divide-base-300 rounded-box bg-base-200">
-          {% for entry in pool %}
-            <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-              <span>{{ entry.user.nickname }}</span>
-              <span class="flex gap-1">
-                {% for label in entry.role_labels %}
-                  <span class="badge badge-outline badge-sm">{{ label }}</span>
-                {% endfor %}
-              </span>
-            </li>
-          {% endfor %}
-        </ul>
-        <p class="mt-2 text-xs text-base-content/60">名单只显示昵称和能打的位置，由赛事管理员编成临时队伍。</p>
-      {% else %}
-        <p class="mt-4 text-sm text-base-content/70">还没有人个人报名。</p>
-      {% endif %}
-    {% endif %}
+      <h1>{{ tournament.title }}</h1>
+      {% if tournament.summary %}<p class="c-pagehead__lede">{{ tournament.summary }}</p>{% endif %}
+      <div class="c-factbar" data-key-facts>
+        <div class="c-stat"><span class="c-stat__label">报名截止</span><span class="c-stat__value">{{ tournament.registration_closes_at|ow_md }}<small>{{ tournament.registration_closes_at|ow_weekday }} {{ tournament.registration_closes_at|ow_time }}</small></span></div>
+        <div class="c-stat"><span class="c-stat__label">比赛时间</span><span class="c-stat__value">{% if tournament.starts_at %}{{ tournament.starts_at|ow_md }}<small>{{ tournament.starts_at|ow_weekday }} {{ tournament.starts_at|ow_time }}</small>{% else %}<span class="c-stat__value--text">待定</span>{% endif %}</span></div>
+        <div class="c-stat"><span class="c-stat__label">每队人数</span><span class="c-stat__value">{{ tournament.roster_min }}–{{ tournament.roster_max }}<small>人</small></span></div>
+        <div class="c-stat"><span class="c-stat__label">已通过</span><span class="c-stat__value">{{ approved_teams|length }}<small>队</small></span></div>
+        {% if tournament.allow_individual_signup %}
+          <div class="c-stat"><span class="c-stat__label">个人报名</span><span class="c-stat__value">{{ pool_counts.total }}<small>人</small></span></div>
+        {% endif %}
+      </div>
+      {% include "tournaments/slots/actions.html" %}
+    </div>
+  </header>
 
-    <h2 class="mt-10">已报名战队</h2>
-    {% if approved_teams %}
-      <ul class="mt-4 flex flex-col gap-2">
-        {% for entry in approved_teams %}
-          <li class="flex items-center gap-2 border-b border-base-300 pb-2">
-            {% if entry.is_adhoc %}
-              <span>{{ entry.team_name }}</span>
-              <span class="badge badge-outline badge-sm">临时队伍</span>
-            {% else %}
-              <a href="{{ entry.team.get_absolute_url }}" class="link link-hover">{{ entry.team_name }}</a>
-            {% endif %}
-            <span class="ml-auto font-numeric text-sm text-base-content/60">{{ entry.member_count }} 人</span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="mt-4 text-base-content/70">暂时还没有通过审核的战队。</p>
+  <div class="l-container l-section">
+    {% if tournament.status == "cancelled" %}
+      <div class="c-notice c-notice--warn mb-10" role="status">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">这项赛事已取消。</div></div>
     {% endif %}
-  </section>
+    <div class="l-split">
+      <div class="flex min-w-0 flex-col gap-14">
+        {% if tournament.cover %}
+          <figure class="c-cut">{% image tournament.cover width-1200 class="w-full" alt=tournament.title %}</figure>
+        {% endif %}
+
+        {% if tournament.description %}
+          <section aria-labelledby="t-rules">
+            {% include "components/section_head.html" with title="赛事说明" en="RULES" heading_id="t-rules" %}
+            <div class="c-prose l-prose">{{ tournament.description|richtext }}</div>
+          </section>
+        {% endif %}
+
+        <section aria-labelledby="t-teams">
+          {% include "components/section_head.html" with title="已通过的队伍" en="TEAMS" heading_id="t-teams" %}
+          {% if approved_teams %}
+            <table class="c-table">
+              <thead><tr><th scope="col" class="w-12">序号</th><th scope="col">队伍</th><th scope="col" class="is-num">人数</th></tr></thead>
+              <tbody>
+                {% for entry in approved_teams %}
+                  <tr>
+                    <td class="font-numeric text-fg-3">{{ forloop.counter|ow_index }}</td>
+                    <td>
+                      {% if entry.is_adhoc %}
+                        <span class="font-semibold">{{ entry.team_name }}</span> <span class="c-tag ml-2">临时队伍</span>
+                      {% else %}
+                        <a href="{{ entry.team.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ entry.team_name }}</a>
+                      {% endif %}
+                    </td>
+                    <td class="is-num font-numeric">{{ entry.member_count }} 人</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-fg-2">暂时还没有通过审核的战队。</p>
+          {% endif %}
+        </section>
+
+        {% if tournament.allow_individual_signup %}
+          <section aria-labelledby="t-pool">
+            {% include "components/section_head.html" with title="个人报名" en="FREE AGENTS" heading_id="t-pool" %}
+            <p class="text-sm text-fg-2">
+              共 <span class="font-numeric">{{ pool_counts.total }}</span> 人 ·
+              坦克 <span class="font-numeric">{{ pool_counts.tank }}</span> ·
+              输出 <span class="font-numeric">{{ pool_counts.damage }}</span> ·
+              支援 <span class="font-numeric">{{ pool_counts.support }}</span>
+            </p>
+            {% if pool %}
+              <ul class="c-people mt-4">
+                {% for entry in pool %}
+                  <li class="c-person">
+                    <span class="c-avatar c-avatar--sm" aria-hidden="true">{{ entry.user.nickname|initial }}</span>
+                    <span class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
+                      <span class="c-person__name">{{ entry.user.nickname }}</span>
+                      {% include "components/role_icons.html" with role_tank=entry.role_tank role_damage=entry.role_damage role_support=entry.role_support %}
+                    </span>
+                  </li>
+                {% endfor %}
+              </ul>
+              <p class="mt-3 text-xs text-fg-3">名单只显示昵称和能打的位置，由赛事管理员编成临时队伍。</p>
+            {% else %}
+              <p class="mt-4 text-sm text-fg-2">还没有人个人报名。</p>
+            {% endif %}
+          </section>
+        {% endif %}
+      </div>
+
+      <aside class="flex flex-col gap-10">
+        <dl class="c-facts">
+          <dt>报名开放</dt><dd class="font-numeric">{{ tournament.registration_opens_at|ow_date }} {{ tournament.registration_opens_at|ow_time }}</dd>
+          <dt>报名截止</dt><dd class="font-numeric">{{ tournament.registration_closes_at|ow_date }} {{ tournament.registration_closes_at|ow_time }}</dd>
+          <dt>比赛时间</dt><dd class="font-numeric">{% if tournament.starts_at %}{{ tournament.starts_at|ow_date }} {{ tournament.starts_at|ow_time }}{% else %}待定{% endif %}</dd>
+          <dt>每队人数</dt><dd>{{ tournament.roster_min }}–{{ tournament.roster_max }} 人</dd>
+          <dt>参赛条件</dt><dd>{% if tournament.sjtu_only %}仅限交大{% else %}不限学校{% endif %}{% if tournament.allow_individual_signup %} · 支持个人报名{% endif %}</dd>
+        </dl>
+        {% if articles %}
+          <section aria-labelledby="t-articles">
+            <h2 id="t-articles" class="border-b-2 border-fg pb-3 text-base">相关文章</h2>
+            <ol>
+              {% for article in articles %}
+                <li class="relative border-b border-rule py-4">
+                  <time class="font-numeric text-xs text-fg-3" datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_date }}</time>
+                  <a href="{{ article.url }}" class="c-stretch mt-1 block font-semibold leading-6 hover:text-fg-red">{{ article.title }}</a>
+                </li>
+              {% endfor %}
+            </ol>
+          </section>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
 {% endblock %}

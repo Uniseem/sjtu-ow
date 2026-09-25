@@ -51,6 +51,18 @@ def public_scrims(now=None):
     ).order_by("starts_at")
 
 
+def signup_totals(scrims) -> dict:
+    """Sign-ups per scrim, in one query, for slot meters on lists (5.2, 9.2)."""
+    from django.db.models import Count
+
+    rows = (
+        ScrimSignup.objects.filter(scrim_id__in=[item.pk for item in scrims])
+        .values("scrim_id")
+        .annotate(n=Count("id"))
+    )
+    return {row["scrim_id"]: row["n"] for row in rows}
+
+
 def upcoming_scrims(now=None, days=HOME_SCRIM_DAYS):
     """Published scrims starting within ``days``, earliest first (design 5.1)."""
     now = now or timezone.now()
@@ -350,8 +362,11 @@ def _refresh_pages(scrim) -> None:
 
 
 def schedule_home_refresh(scrim) -> None:
-    """Refresh the homepage when the scrim enters the 7-day window and when it starts.
+    """Regenerate the pages whose content turns with the clock (design 13.13.4).
 
+    The homepage when the scrim enters the 7-day window. Since round 076 the
+    list, detail and homepage tickets also say 「报名中」, so all three again
+    when sign-up closes and when the scrim starts.
     Stale tasks are harmless: they only regenerate the page from current data.
     """
     from core import prerender
@@ -360,12 +375,17 @@ def schedule_home_refresh(scrim) -> None:
     if not prerender.is_enabled() or scrim.status != ScrimStatus.PUBLISHED:
         return
     now = timezone.now()
-    moments = [scrim.starts_at - timedelta(days=HOME_SCRIM_DAYS), scrim.starts_at]
+    status_pages = ["/", "/scrims/", f"/scrims/{scrim.pk}/"]
+    runs = [(scrim.starts_at - timedelta(days=HOME_SCRIM_DAYS), ["/"])]
+    runs += [(scrim.signup_deadline, status_pages), (scrim.starts_at, status_pages)]
 
     def enqueue():
-        for moment in moments:
-            if moment > now:
-                prerender_page.using(run_after=moment).enqueue("/")
+        seen = set()
+        for moment, paths in runs:
+            for path in paths:
+                if moment > now and (moment, path) not in seen:
+                    seen.add((moment, path))
+                    prerender_page.using(run_after=moment).enqueue(path)
 
     transaction.on_commit(enqueue)
 

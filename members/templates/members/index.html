@@ -1,69 +1,73 @@
 {% extends "base.html" %}
+{% load ow %}
 
 {% block title %}成员 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <div class="side-layout">
-    <nav class="side-nav" aria-label="成员分组">
-      <p class="side-nav__title">成员</p>
-      <ul>
-        {% for section in sections %}
-          <li><a href="#group-{{ section.group.pk }}">{{ section.group.name }}</a></li>
-        {% endfor %}
-        <li><a href="#all-members">全部成员</a></li>
-      </ul>
+  {# 名册 (design 6.3, 13.2.8). #}
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>成员</span></nav>
+      <p class="c-eyebrow">MEMBERS</p>
+      <h1>成员展示</h1>
+      <p class="c-pagehead__meta">共 <span class="font-numeric">{{ members|length }}</span> 位成员</p>
+    </div>
+  </header>
+
+  <div class="l-container pt-6 pb-16 lg:pb-24">
+    <nav class="c-tabs" aria-label="成员分组">
+      {% for section in sections %}
+        <a href="#group-{{ section.group.pk }}">{{ section.group.name }}<span class="c-tabs__count">{{ section.entries|length }}</span></a>
+      {% endfor %}
+      <a href="#all-members">全部成员<span class="c-tabs__count">{{ members|length }}</span></a>
     </nav>
 
-    <div class="min-w-0">
-      <h1 class="page-title">成员展示</h1>
-      <p class="mt-3 text-base-content/70">共 <span class="font-numeric">{{ members|length }}</span> 位成员</p>
-
+    <div class="mt-12 flex flex-col gap-16">
       {% for section in sections %}
-        <section id="group-{{ section.group.pk }}" class="member-group" data-member-group>
-          <div class="list-head">
-            <h2>{{ section.group.name }}</h2>
-            <span class="text-sm text-base-content/50"><span class="font-numeric">{{ section.entries|length }}</span> 人</span>
-          </div>
+        <section id="group-{{ section.group.pk }}" class="scroll-mt-6" data-member-group aria-labelledby="group-title-{{ section.group.pk }}">
+          {% include "components/section_head.html" with index=forloop.counter|ow_index title=section.group.name heading_id="group-title-"|add:section.group.pk|stringformat:"s" %}
           {% if section.group.description %}
-            <p class="mt-3 text-base-content/70">{{ section.group.description }}</p>
+            <p class="-mt-2 mb-6 max-w-2xl text-fg-2">{{ section.group.description }}</p>
           {% endif %}
           {% if section.entries %}
-            <ul class="member-cards">
+            <ul class="c-people">
               {% for title, member in section.entries %}
-                <li>
-                  <span class="member-cards__seal" aria-hidden="true">{{ member.user.nickname|slice:":1" }}</span>
+                <li class="c-person">
+                  <span class="c-avatar" aria-hidden="true">{{ member.user.nickname|initial }}</span>
                   <span class="min-w-0">
-                    <span class="member-cards__name">{{ member.user.nickname }}</span>
-                    {% if title %}<span class="member-cards__title">{{ title }}</span>{% endif %}
+                    <span class="c-person__name">{{ member.user.nickname }}</span>
+                    {% if title %}<span class="c-person__title">{{ title }}</span>{% endif %}
                     {% if member.teams %}
-                      <span class="member-cards__teams">{% for team in member.teams %}<a href="{{ team.get_absolute_url }}">{{ team.name }}</a>{% if not forloop.last %}、{% endif %}{% endfor %}</span>
+                      <span class="c-person__meta">{% for team in member.teams %}<a href="{{ team.get_absolute_url }}">{{ team.name }}</a>{% if not forloop.last %}、{% endif %}{% endfor %}</span>
                     {% endif %}
                   </span>
                 </li>
               {% endfor %}
             </ul>
           {% else %}
-            <p class="mt-4 text-base-content/60">这个分组暂时没有成员。</p>
+            <p class="text-fg-2">这个分组暂时没有成员。</p>
           {% endif %}
         </section>
       {% endfor %}
 
-      <section id="all-members" class="member-group">
-        <div class="list-head">
-          <h2>全部成员</h2>
-          <span class="text-sm text-base-content/50">按加入先后</span>
+      <section id="all-members" class="scroll-mt-6" aria-labelledby="all-members-title">
+        <div class="c-sectionhead">
+          <h2 id="all-members-title">全部成员</h2>
+          <span class="c-sectionhead__en">按加入先后</span>
+          <span class="c-sectionhead__rule" aria-hidden="true"></span>
         </div>
         {% if members %}
-          <ul class="member-names">
+          <ol class="grid border-t border-rule sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4">
             {% for member in members %}
-              <li data-member>
-                <span>{{ member.user.nickname }}</span>
-                {% for group_name in member.groups %}<span class="member-names__tag">{{ group_name }}</span>{% endfor %}
+              <li class="flex min-h-11 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-rule py-2.5" data-member>
+                <span class="font-numeric w-9 text-sm text-fg-3" data-member-number>{{ forloop.counter|stringformat:"03d" }}</span>
+                <span class="font-semibold">{{ member.user.nickname }}</span>
+                {% for group_name in member.groups %}<span class="c-tag">{{ group_name }}</span>{% endfor %}
               </li>
             {% endfor %}
-          </ul>
+          </ol>
         {% else %}
-          <p class="mt-4 text-base-content/60">还没有成员。</p>
+          <p class="text-fg-2">还没有成员。</p>
         {% endif %}
       </section>
     </div>

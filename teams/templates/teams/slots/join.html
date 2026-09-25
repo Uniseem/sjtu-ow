@@ -1,17 +1,17 @@
-<div id="slot-team-join" data-slot="team-join:{{ team.pk }}" class="mt-6 flex flex-wrap items-center gap-3"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="slot-team-join" data-slot="team-join:{{ team.pk }}" class="mt-8 flex flex-wrap items-center gap-3"{% if oob %} hx-swap-oob="true"{% endif %}>
   {% if is_captain %}
-    <a href="{% url 'team_manage' team.pk %}" class="btn btn-primary min-h-11 font-button">管理战队</a>
+    <a href="{% url 'team_manage' team.pk %}" class="c-btn c-btn--primary">{% include "components/icon.html" with name="settings" %}管理战队</a>
   {% elif is_member %}
-    <span class="badge badge-success">你已是成员</span>
+    {% include "components/status_badge.html" with kind="ok" label="你已是成员" %}
     <form method="post" action="{% url 'team_leave' team.pk %}">
       {% csrf_token %}
-      <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">退出战队</button>
+      <button type="submit" class="c-btn c-btn--danger c-btn--sm">退出战队</button>
     </form>
   {% elif can_apply %}
-    <a href="{% url 'team_apply' team.pk %}" class="btn btn-primary min-h-11 font-button">申请加入</a>
+    <a href="{% url 'team_apply' team.pk %}" class="c-btn c-btn--primary">申请加入</a>
   {% elif request.user.is_authenticated %}
-    <span class="text-sm text-base-content/70">{{ apply_reason }}</span>
+    <span class="text-sm text-fg-2">{{ apply_reason }}</span>
   {% else %}
-    <a href="{% url 'account_login' %}?next={{ team.get_absolute_url }}" class="btn btn-primary min-h-11 font-button">登录后申请</a>
+    <a href="{% url 'account_login' %}?next={{ team.get_absolute_url }}" class="c-btn c-btn--primary">登录后申请</a>
   {% endif %}
 </div>

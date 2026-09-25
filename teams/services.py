@@ -405,6 +405,16 @@ def pending_applications(team):
     )
 
 
+def team_totals() -> dict:
+    """How many active teams, and how many recruit, in one query (design 7.6)."""
+    from django.db.models import Count, Q
+
+    return active_teams().aggregate(
+        team_total=Count("id"),
+        recruiting_total=Count("id", filter=Q(is_recruiting=True)),
+    )
+
+
 def open_teams(recruiting_only=False):
     """Team list: one query, with the member count annotated (no N+1)."""
     from django.db.models import Count

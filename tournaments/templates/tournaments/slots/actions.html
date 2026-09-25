@@ -1,51 +1,51 @@
-<div id="slot-tournament-actions" data-slot="tournament-actions:{{ tournament.pk }}" class="mt-6 flex flex-wrap items-center gap-3"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="slot-tournament-actions" data-slot="tournament-actions:{{ tournament.pk }}" class="mt-8 flex flex-wrap items-center gap-3"{% if oob %} hx-swap-oob="true"{% endif %}>
   {% if tournament.status == "cancelled" %}
-    <span class="text-sm text-base-content/70">赛事已取消，不再接受报名。</span>
+    <span class="text-sm text-fg-2">赛事已取消，不再接受报名。</span>
   {% elif not request.user.is_authenticated %}
-    <a href="{% url 'account_login' %}?next={{ tournament.get_absolute_url }}" class="btn btn-primary min-h-11 font-button">登录后报名</a>
+    <a href="{% url 'account_login' %}?next={{ tournament.get_absolute_url }}" class="c-btn c-btn--primary">登录后报名</a>
   {% elif captain_teams %}
     {% if my_registration %}
-      <span class="badge badge-outline">{{ my_registration.get_status_display }}</span>
-      <a href="{{ my_registration.get_absolute_url }}" class="btn btn-primary min-h-11 font-button">查看报名</a>
+      {% include "components/registration_status.html" with registration=my_registration %}
+      <a href="{{ my_registration.get_absolute_url }}" class="c-btn c-btn--primary">查看报名</a>
     {% elif not registration_open %}
-      <span class="text-sm text-base-content/70">当前不在报名时间内。</span>
+      <span class="text-sm text-fg-2">当前不在报名时间内。</span>
     {% else %}
-      <a href="{% url 'tournament_register' tournament.pk %}" class="btn btn-primary min-h-11 font-button">为战队报名</a>
+      <a href="{% url 'tournament_register' tournament.pk %}" class="c-btn c-btn--primary">为战队报名</a>
     {% endif %}
   {% elif my_signup %}
     {% if my_signup.is_placed %}
-      <span class="badge badge-success">已编入「{{ my_signup.registration.team_name }}」</span>
-      <a href="{{ my_signup.registration.get_absolute_url }}" class="btn btn-primary min-h-11 font-button">查看报名</a>
+      {% include "components/status_badge.html" with kind="ok" label="已编入「"|add:my_signup.registration.team_name|add:"」" %}
+      <a href="{{ my_signup.registration.get_absolute_url }}" class="c-btn c-btn--primary">查看报名</a>
     {% else %}
-      <span class="badge badge-success">已个人报名，等待编队</span>
-      <span class="text-sm text-base-content/80">{% for label in my_signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}</span>
+      {% include "components/status_badge.html" with kind="ok" label="已个人报名，等待编队" %}
+      <span class="text-sm text-fg-2">{% for label in my_signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}</span>
       {% if registration_open %}
-        <a href="{% url 'tournament_individual_signup' tournament.pk %}" class="btn btn-outline btn-sm min-h-11 font-button">修改</a>
+        <a href="{% url 'tournament_individual_signup' tournament.pk %}" class="c-btn c-btn--secondary c-btn--sm">修改</a>
         <form method="post" action="{% url 'tournament_individual_cancel' tournament.pk %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">取消个人报名</button>
+          <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消个人报名</button>
         </form>
       {% else %}
-        <span class="text-sm text-base-content/70">报名已截止，不能再修改。</span>
+        <span class="text-sm text-fg-2">报名已截止，不能再修改。</span>
       {% endif %}
     {% endif %}
   {% elif individual_enabled %}
     {% if not registration_open %}
-      <span class="text-sm text-base-content/70">当前不在报名时间内。</span>
+      <span class="text-sm text-fg-2">当前不在报名时间内。</span>
     {% elif individual_problems %}
-      <div class="card bg-base-200">
-        <div class="card-body gap-2">
-          <p class="text-sm text-base-content/80">暂时不能个人报名：</p>
-          <ul class="list-inside list-disc text-sm text-base-content/70">
+      <div class="c-notice c-notice--warn w-full max-w-2xl">{% include "components/icon.html" with name="alert" %}
+        <div class="c-notice__body">
+          <p>暂时不能个人报名：</p>
+          <ul class="mt-1 list-[square] pl-5">
             {% for problem in individual_problems %}<li>{{ problem }}</li>{% endfor %}
           </ul>
         </div>
       </div>
     {% else %}
-      <a href="{% url 'tournament_individual_signup' tournament.pk %}" class="btn btn-primary min-h-11 font-button">个人报名</a>
-      <span class="text-sm text-base-content/70">没有战队？报名后由赛事管理员编队。</span>
+      <a href="{% url 'tournament_individual_signup' tournament.pk %}" class="c-btn c-btn--primary">个人报名</a>
+      <span class="text-sm text-fg-2">没有战队？报名后由赛事管理员编队。</span>
     {% endif %}
   {% else %}
-    <span class="text-sm text-base-content/70">需要由队长为战队报名。</span>
+    <span class="text-sm text-fg-2">需要由队长为战队报名。</span>
   {% endif %}
 </div>

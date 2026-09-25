@@ -12,10 +12,18 @@ from tournaments.models import Tournament
 
 @require_GET
 def tournament_index(request):
+    groups = services.grouped_tournaments()
+    listed = [item for _phase, _label, items in groups for item in items]
     return render(
         request,
         "tournaments/index.html",
-        {"groups": services.grouped_tournaments()},
+        {
+            "groups": groups,
+            # Design 13.2.8: the night page head counts each phase.
+            "phase_counts": [(label, len(items)) for _phase, label, items in groups],
+            "approved_counts": services.approved_counts(listed),
+            "any_listed": bool(listed),
+        },
     )
 
 
