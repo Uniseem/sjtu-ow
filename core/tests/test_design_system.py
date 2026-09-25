@@ -131,6 +131,116 @@ def test_error_css_uses_the_same_token_values():
         assert site.get(name, "").lower() == value.lower(), name
 
 
+# --- contrast (13.2.3, WCAG 2.1 AA) ----------------------------------------------
+
+
+def _luminance(value):
+    channels = [int(value[i : i + 2], 16) / 255 for i in (1, 3, 5)]
+    linear = [
+        c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels
+    ]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast(a, b):
+    light, dark = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (light + 0.05) / (dark + 0.05)
+
+
+# The table in design 13.2.3: text needs 4.5:1, field borders 3:1.
+CONTRAST_PAIRS = [
+    (
+        ("ink", "ink-2", "ink-3", "red", "red-deep", "ok", "warn", "info"),
+        ("canvas", "surface", "sunken", "red-tint"),
+        4.5,
+    ),
+    (
+        (
+            "night-ink",
+            "night-ink-2",
+            "night-ink-3",
+            "red-bright",
+            "ok-bright",
+            "warn-bright",
+            "info-bright",
+        ),
+        ("night", "night-2"),
+        4.5,
+    ),
+    (("white",), ("red", "red-deep"), 4.5),
+    (("control",), ("canvas", "surface", "sunken"), 3),
+    (("night-control",), ("night", "night-2"), 3),
+]
+
+
+def test_the_contrast_helper_matches_known_values():
+    assert round(_contrast("#000000", "#ffffff"), 2) == 21.0
+    assert round(_contrast("#767676", "#ffffff"), 2) == 4.54
+
+
+def test_text_and_field_colours_meet_wcag_aa():
+    """Round 079: ink-3 was 3.75:1 on the page and field borders about 2:1."""
+    tokens = _tokens(INPUT_CSS.read_text(encoding="utf-8"))
+    failures = []
+    for foregrounds, backgrounds, minimum in CONTRAST_PAIRS:
+        for fg in foregrounds:
+            for bg in backgrounds:
+                ratio = _contrast(tokens[fg], tokens[bg])
+                if ratio < minimum:
+                    failures.append(f"{fg} on {bg}: {ratio:.2f} < {minimum}")
+    assert failures == []
+
+
+def test_the_style_guide_shows_every_colour_token_at_its_real_value():
+    """The swatches repeat the hex values; 079 found ink-3 still at the old one."""
+    from core.styleguide import COLOURS
+
+    tokens = _tokens(INPUT_CSS.read_text(encoding="utf-8"))
+    shown = {token: value.lower() for _label, token, _cls, value in COLOURS}
+    expected = {k: v.lower() for k, v in tokens.items() if k not in ("white", "black")}
+    assert shown == expected
+    assert all(cls == f"bg-{token}" for _label, token, cls, _value in COLOURS)
+
+
+def _block(css, head):
+    start = css.index(head)
+    return css[start : css.index("}", start)]
+
+
+def test_night_regions_switch_to_the_night_tokens():
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    light = _block(css, "\n:root {")
+    night = _block(css, "\n.on-night {")
+    assert "--tone-fg-3: var(--color-ink-3);" in light
+    assert "--tone-control: var(--color-control);" in light
+    assert "--tone-fg-3: var(--color-night-ink-3);" in night
+    assert "--tone-control: var(--color-night-control);" in night
+
+
+def test_colours_are_only_defined_as_tokens():
+    """13.2.3: a colour written outside @theme escapes the contrast check."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    outside = re.sub(r"@theme \{.*?\n\}", "", css, flags=re.S)
+    assert re.findall(r"#[0-9a-fA-F]{3,8}\b", outside) == []
+
+
+@pytest.mark.parametrize(
+    "head",
+    [
+        "\n  .c-input {",
+        "\n  .c-check input {",
+        "\n  .c-choice {",
+        "\n  .c-search input {",
+        "\n  .c-drawer__search input {",
+    ],
+)
+def test_form_fields_have_a_border_you_can_see(head):
+    """WCAG 1.4.11: the edge that says "type here" needs 3:1, which the
+    decorative line-strong (about 2:1) does not have."""
+    rule = _block(INPUT_CSS.read_text(encoding="utf-8"), head)
+    assert "var(--tone-control)" in rule
+
+
 # --- --font-figure (13.2.4, 13.12.4) --------------------------------------------
 
 

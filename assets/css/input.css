@@ -36,9 +36,10 @@
   --color-sunken: #efedec;
   --color-line: #ddd9d7;
   --color-line-strong: #b6b0ae;
+  --color-control: #847c7a;
   --color-ink: #1d1716;
   --color-ink-2: #5c5452;
-  --color-ink-3: #847c7a;
+  --color-ink-3: #726a68;
 
   /* Night: masthead, footer, arena bands. */
   --color-night: #141010;
@@ -46,11 +47,17 @@
   --color-night-line: #3a3231;
   --color-night-ink: #f5f2f1;
   --color-night-ink-2: #ada5a3;
+  --color-night-ink-3: #8f8785;
+  --color-night-line-strong: #5a5150;
+  --color-night-control: #736a69;
 
   /* Status colours; always paired with a shape and a word (13.2.6). */
   --color-ok: #2f6f45;
   --color-warn: #8f5b06;
   --color-info: #3f6789;
+  --color-ok-bright: #7cc093;
+  --color-warn-bright: #e0a84a;
+  --color-info-bright: #8fb1cf;
 
   --shadow-*: initial;
   --ease-ow: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -85,6 +92,8 @@
   --tone-fg-3: var(--color-ink-3);
   --tone-line: var(--color-line);
   --tone-line-strong: var(--color-line-strong);
+  /* Borders that tell you "this is a field" need 3:1 (WCAG 1.4.11, 13.2.3). */
+  --tone-control: var(--color-control);
   /* Red for text and rules: the deep one reads better on light grounds. */
   --tone-accent: var(--color-red-deep);
   --tone-focus: var(--color-red);
@@ -147,9 +156,10 @@
   --tone-sunken: var(--color-night-2);
   --tone-fg: var(--color-night-ink);
   --tone-fg-2: var(--color-night-ink-2);
-  --tone-fg-3: #847c7a;
+  --tone-fg-3: var(--color-night-ink-3);
   --tone-line: var(--color-night-line);
-  --tone-line-strong: #5a5150;
+  --tone-line-strong: var(--color-night-line-strong);
+  --tone-control: var(--color-night-control);
   --tone-accent: var(--color-red-bright);
   --tone-focus: var(--color-red-bright);
   background-color: var(--color-night);
@@ -544,7 +554,7 @@
     width: 12rem;
     height: 2.25rem;
     padding: 0 2.25rem 0 0.75rem;
-    border: 1px solid var(--tone-line);
+    border: 1px solid var(--tone-control);
     background-color: var(--tone-panel);
     color: var(--tone-fg);
     font-size: 0.875rem;
@@ -748,7 +758,7 @@
     min-width: 0;
     height: 44px;
     padding-inline: 0.75rem;
-    border: 1px solid var(--tone-line-strong);
+    border: 1px solid var(--tone-control);
     background-color: var(--tone-panel);
     color: var(--tone-fg);
     font-size: 1rem;
@@ -1212,7 +1222,7 @@
   }
 
   .on-night .c-status--ok {
-    color: #7cc093;
+    color: var(--color-ok-bright);
   }
 
   .c-status--ok::before {
@@ -1230,7 +1240,7 @@
   }
 
   .on-night .c-status--warn {
-    color: #e0a84a;
+    color: var(--color-warn-bright);
   }
 
   .c-status--warn::before {
@@ -1244,7 +1254,7 @@
   }
 
   .on-night .c-status--info {
-    color: #8fb1cf;
+    color: var(--color-info-bright);
   }
 
   .c-status--info::before {
@@ -2249,7 +2259,7 @@
     width: 100%;
     min-height: 44px;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--tone-line-strong);
+    border: 1px solid var(--tone-control);
     background-color: var(--tone-panel);
     color: var(--tone-fg);
     font-size: 1rem;
@@ -2316,7 +2326,7 @@
     width: 1.25rem;
     height: 1.25rem;
     margin: 0;
-    border: 1.5px solid var(--tone-line-strong);
+    border: 1.5px solid var(--tone-control);
     background-color: var(--tone-panel);
     background-position: center;
     background-repeat: no-repeat;
@@ -2372,7 +2382,7 @@
     gap: 0.5rem;
     min-height: 44px;
     padding-inline: 0.875rem;
-    border: 1px solid var(--tone-line-strong);
+    border: 1px solid var(--tone-control);
     background-color: var(--tone-panel);
     cursor: pointer;
     font-size: 0.9375rem;
@@ -2570,11 +2580,11 @@
   }
 
   .c-toast--success svg {
-    color: #7cc093;
+    color: var(--color-ok-bright);
   }
 
   .c-toast--warning svg {
-    color: #e0a84a;
+    color: var(--color-warn-bright);
   }
 
   .c-toast--error svg {
@@ -2582,7 +2592,7 @@
   }
 
   .c-toast--info svg {
-    color: #8fb1cf;
+    color: var(--color-info-bright);
   }
 
   @keyframes c-toast-in {
