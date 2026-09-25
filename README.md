@@ -9,7 +9,7 @@ Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)，�
 - Python 3.13，依赖用 [uv](https://docs.astral.sh/uv/) 管理
 - Django 6.0、Wagtail 8.0、SQLite（WAL）
 - 账号：django-allauth（邮箱登录、验证码注册 / 找回密码 / 改邮箱）
-- 前台：Django 模板 + HTMX + Alpine.js（CSP 构建）+ Tailwind CSS v4 + daisyUI
+- 前台：Django 模板 + HTMX + Alpine.js（CSP 构建）+ Tailwind CSS v4，组件是本站自己写的（设计 13.2 节）
 - 样式由 `django-tailwind-cli` 编译，不安装 Node。源文件在 `assets/css/input.css`（不能放进 `STATICFILES_DIRS`，否则 WhiteNoise 哈希存储会处理 `@import "tailwindcss"` 并失败），编译结果在 `static/css/app.css`。
 - 静态资源：WhiteNoise 存储后端（内容哈希 + 预压缩）；生产由 Caddy 直接提供
 - 异步任务：Django Tasks + `django-tasks-db`；应用层发信走队列，由 worker 按后台 SMTP 发送
@@ -174,7 +174,13 @@ python manage.py load_legal_pages --force  # 覆盖后台里已有的正文
 
 ## 视觉风格与首页
 
-风格照上海交大官网（设计 13.2 节）：交大红、米色、宋体、直角，只做浅色。颜色和形状都在 `assets/css/input.css` 的 daisyUI 主题 `sjtu` 和 `--sj-*` 变量里，模板只用语义类名。**不用交大的校徽、书法校名和照片**；页脚写明不是官方网站。
+前台按设计 13.2 节的「设计体系」做（v2.0 起，065 照交大官网的风格作废）：主色交大红，浅色页面加深色的页头、页脚和赛场区块，直角，系统字体。**不用交大的校徽、书法校名和照片**；页脚写明不是官方网站。
+
+- 颜色、字体变量、全部组件（`c-*`）和布局类（`l-*`）只写在 `assets/css/input.css` 里；模板只用语义颜色（`text-fg-2`、`border-rule`、`bg-canvas`）和组件类，**不写色值**。Tailwind 自带的色板已经关掉，写 `bg-orange-500` 不会生效
+- 日期、时间、星期、编号、名额格的格式统一用 `core/templatetags/ow.py` 的过滤器（`{% load ow %}`）
+- **样张页 `/_styleguide/`**：每个组件的每种状态排在一页上，能进后台的账号登录后可以看，其他人 404。改组件先在这里看
+- 只改模板、用了新的工具类时要 `tailwind build --force`（见 `AGENTS.md` 的坑）
+- 过渡期（074–076）：还没改完的页面仍用 daisyUI 的类，所以样式表暂时还加载 daisyUI 插件（中性主题），077 去掉
 
 首页版式见设计 5.2 节。后台要维护的只有两处，都在「页面 → 首页 → 编辑」：
 

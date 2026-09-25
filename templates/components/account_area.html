@@ -1,8 +1,20 @@
+{% load ow %}
 {% if user.is_authenticated %}
-  <span class="hidden sm:inline">{{ user.nickname }}</span>
-  <a href="{% url 'me_profile' %}" class="inline-flex min-h-9 items-center">个人中心</a>
-  <a href="{% url 'account_logout' %}" class="inline-flex min-h-9 items-center">退出</a>
+  <details class="c-menu">
+    <summary aria-label="账号菜单：{{ user.nickname }}">
+      <span class="c-avatar c-avatar--sm">{{ user.nickname|initial }}</span>
+      <span class="hidden max-w-[8rem] truncate sm:inline">{{ user.nickname }}</span>
+      {% include "components/icon.html" with name="chevron-down" class="size-4 text-fg-2" %}
+    </summary>
+    <div class="c-menu__panel">
+      <a href="{% url 'me_profile' %}">个人中心</a>
+      <a href="{% url 'me_registrations' %}">我的报名</a>
+      <a href="{% url 'me_teams' %}">我的战队</a>
+      <hr>
+      <a href="{% url 'account_logout' %}">退出</a>
+    </div>
+  </details>
 {% else %}
-  <a href="{% url 'account_login' %}" class="inline-flex min-h-9 items-center">登录</a>
-  <a href="{% url 'account_signup' %}" class="inline-flex min-h-9 items-center">注册</a>
+  <a href="{% url 'account_login' %}" class="c-account__link">登录</a>
+  <a href="{% url 'account_signup' %}" class="c-btn c-btn--secondary c-btn--sm hidden sm:inline-flex">注册</a>
 {% endif %}

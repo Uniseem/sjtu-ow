@@ -40,7 +40,8 @@ REGION_SELECTORS = {
     "h3": "h3",
     "h4": "h4, h5, h6",
     "nav": ".font-nav",
-    "button": ".font-button",
+    # c-btn is the design system's button (13.2.7); it reads --font-button.
+    "button": ".font-button, .c-btn",
     "numeric": ".font-numeric",
     "mono": ".font-code",
 }
@@ -138,6 +139,10 @@ def build_css(rules) -> str:
         if var is None:
             continue
         variables.append(f"  --font-{var}: {_family_value(rule)};")
+        if rule.region == "numeric" and rule.mode == "custom" and rule.family_id:
+            # Big figures default to the system DIN faces (design 13.2.4); a
+            # library font chosen for 「数字与数据」 replaces them as well.
+            variables.append(f"  --font-figure: {_family_value(rule)};")
         declarations = []
         if rule.region in ELEMENT_REGIONS:
             variables.append(f"  --font-{var}-weight: {rule.weight};")

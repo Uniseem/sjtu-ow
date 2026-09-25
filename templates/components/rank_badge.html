@@ -1,1 +1,8 @@
-<span class="badge badge-outline font-numeric">{{ label|default:"未定级" }}</span>
+{% load ow %}
+{% with parts=label|rank_parts %}
+  {% if not label or label == "未定级" %}
+    <span class="c-rank c-rank--none">未定级</span>
+  {% else %}
+    <span class="c-rank">{{ parts.0 }}{% if parts.1 %} <span class="c-rank__div">{{ parts.1 }}</span>{% endif %}</span>
+  {% endif %}
+{% endwith %}

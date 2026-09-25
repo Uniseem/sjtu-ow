@@ -210,11 +210,14 @@ def test_a_quote_names_its_source(client, site):
 
 def test_body_text_rules_match_what_wagtail_renders(settings):
     """Wagtail does not wrap rich text in .rich-text, so rules keyed on it never
-    applied: paragraphs, lists and links in articles had no styling (round 065)."""
+    applied: paragraphs, lists and links in articles had no styling (round 065).
+    Round 074 moved body text to the design system's c-prose (design 13.2.7):
+    paragraphs spaced, not indented; quotes between two rules."""
     css = (settings.BASE_DIR / "static" / "css" / "app.css").read_text()
     assert ".rich-text" not in css
-    assert re.search(r"\.article-body p\{[^}]*text-indent", css)
-    assert re.search(r"\.article-body blockquote\{[^}]*Kaiti", css)
+    assert re.search(r"\.c-prose p\{[^}]*margin", css)
+    assert not re.search(r"\.c-prose p\{[^}]*text-indent", css)
+    assert re.search(r"\.c-prose blockquote\{[^}]*border-top", css)
 
 
 @pytest.mark.django_db

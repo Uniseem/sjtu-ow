@@ -1,0 +1,11 @@
+{% comment %}
+  Section head (design 13.2.7): number, title, Latin eyebrow, a rule running
+  right, and an optional "全部 →" link.
+{% endcomment %}
+<div class="c-sectionhead">
+  {% if index %}<span class="c-sectionhead__index">{{ index }}</span>{% endif %}
+  <h2{% if heading_id %} id="{{ heading_id }}"{% endif %}>{{ title }}</h2>
+  {% if en %}<span class="c-sectionhead__en">{{ en }}</span>{% endif %}
+  <span class="c-sectionhead__rule" aria-hidden="true"></span>
+  {% if more_url %}<a href="{{ more_url }}" class="c-btn c-btn--quiet shrink-0 text-sm">{{ more_label|default:"全部" }}{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>{% endif %}
+</div>

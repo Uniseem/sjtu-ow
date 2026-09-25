@@ -1,17 +1,15 @@
 {% if page_obj and page_obj.paginator.num_pages > 1 %}
-  <nav class="join mt-6" aria-label="分页">
+  <nav class="c-pager" aria-label="分页">
     {% if page_obj.has_previous %}
-      <a class="join-item btn min-h-11" href="?{% if extra_query %}{{ extra_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">上一页</a>
+      <a class="c-btn c-btn--secondary c-btn--sm" href="?{% if extra_query %}{{ extra_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}" rel="prev">{% include "components/icon.html" with name="arrow-left" %}上一页</a>
     {% else %}
-      <span class="join-item btn btn-disabled min-h-11">上一页</span>
+      <span class="c-btn c-btn--secondary c-btn--sm" aria-disabled="true">{% include "components/icon.html" with name="arrow-left" %}上一页</span>
     {% endif %}
-    <span class="join-item btn btn-ghost pointer-events-none min-h-11">
-      {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-    </span>
+    <span class="c-pager__pos"><strong>{{ page_obj.number }}</strong> / {{ page_obj.paginator.num_pages }}</span>
     {% if page_obj.has_next %}
-      <a class="join-item btn min-h-11" href="?{% if extra_query %}{{ extra_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">下一页</a>
+      <a class="c-btn c-btn--secondary c-btn--sm" href="?{% if extra_query %}{{ extra_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}" rel="next">下一页{% include "components/icon.html" with name="arrow-right" %}</a>
     {% else %}
-      <span class="join-item btn btn-disabled min-h-11">下一页</span>
+      <span class="c-btn c-btn--secondary c-btn--sm" aria-disabled="true">下一页{% include "components/icon.html" with name="arrow-right" %}</span>
     {% endif %}
   </nav>
 {% endif %}

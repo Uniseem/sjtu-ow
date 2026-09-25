@@ -4,6 +4,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#141010">
     <title>{% block title %}{{ seo.document_title }}{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}{{ seo.description }}{% endblock %}">
     <link rel="canonical" href="{% block canonical %}{{ seo.canonical }}{% endblock %}">
@@ -13,97 +14,105 @@
     {% if seo.og_image %}
       <meta property="og:image" content="{{ seo.og_image }}">
     {% endif %}
+    <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
     {% tailwind_css %}
     {% if font_css_url %}<link rel="stylesheet" href="{{ font_css_url }}">{% endif %}
     <script src="{% static 'js/state.js' %}"></script>
     {% block extra_head %}{% endblock %}
   </head>
-  <body class="min-h-screen bg-base-100 text-base-content" data-state-filled="{% if request.user.is_authenticated %}1{% else %}0{% endif %}">
-    <div class="drawer">
-      <input id="nav-drawer" type="checkbox" class="drawer-toggle">
-      <div class="drawer-content flex min-h-screen flex-col">
-        {% if test_environment %}
-          <div class="bg-warning text-warning-content px-4 py-1 text-center text-sm font-nav" data-test-environment role="note">测试环境：这里不是正式网站，数据随时可能被清空</div>
-        {% endif %}
-        {# Pages are prerendered, so only the browser knows it is WeChat (design 16.9). #}
-        <div id="wechat-hint" class="bg-info text-info-content px-4 py-2 text-center text-sm font-nav" role="note" hidden>点右上角菜单，在浏览器中打开</div>
-        <div class="site-topbar">
-          <div class="site-container flex h-9 items-center justify-between gap-4">
-            <span class="truncate">学生社团自办网站</span>
-            <form action="{% url 'search' %}" method="get" role="search" class="ml-auto flex items-center gap-1">
-              <input type="search" name="q" maxlength="50" placeholder="搜索" aria-label="站内搜索" class="input input-xs input-bordered w-24 text-base-content sm:w-40">
-              <button type="submit" class="btn btn-xs btn-ghost font-nav">搜索</button>
-            </form>
-            {% include "slots/account.html" %}
-          </div>
-        </div>
-        <header class="site-header">
-          <div class="site-container flex items-center gap-4 py-4 lg:items-end lg:py-5">
-            <label for="nav-drawer" class="btn btn-ghost btn-square text-white hover:bg-black/15 lg:hidden" aria-label="打开导航菜单">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </label>
-            <a href="{% url 'home' %}" class="site-brand">
-              <span class="site-seal" aria-hidden="true"><span>交</span><span>大</span><span>守</span><span>望</span></span>
-              <span class="site-brand__name">交大守望先锋</span>
-            </a>
-            <div class="ml-auto hidden flex-col items-end gap-3 lg:flex">
-              <nav class="site-quicklinks" aria-label="常用">
-                <a href="/tournaments/">{% include "components/icon.html" with name="trophy" class="size-4" %}赛事报名</a>
-                <a href="/scrims/">{% include "components/icon.html" with name="calendar" class="size-4" %}内战报名</a>
-                <a href="{% url 'members' %}">{% include "components/icon.html" with name="users" class="size-4" %}成员展示</a>
-                <a href="{% url 'submit' %}">{% include "components/icon.html" with name="pen" class="size-4" %}我要投稿</a>
+  <body class="flex min-h-screen flex-col" data-state-filled="{% if request.user.is_authenticated %}1{% else %}0{% endif %}">
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-surface focus:px-4 focus:py-2">跳到正文</a>
+    {% if test_environment %}
+      <div class="c-banner c-banner--test" data-test-environment role="note">测试环境：这里不是正式网站，数据随时可能被清空</div>
+    {% endif %}
+    {# Pages are prerendered, so only the browser knows it is WeChat (design 16.9). #}
+    <div id="wechat-hint" class="c-banner c-banner--hint" role="note" hidden>点右上角菜单，在浏览器中打开</div>
+
+    <header class="c-masthead on-night">
+      <div class="l-container c-masthead__bar">
+        {% include "components/brand.html" with compact=True %}
+        <nav class="c-nav font-nav" aria-label="主导航">
+          {% include "components/main_nav.html" %}
+        </nav>
+        <div class="c-masthead__end">
+          <form action="{% url 'search' %}" method="get" role="search" class="c-search">
+            <input type="search" name="q" maxlength="50" placeholder="搜索文章、赛事、战队、成员" aria-label="站内搜索">
+            <button type="submit" aria-label="搜索">{% include "components/icon.html" with name="search" class="size-[1.125rem]" %}</button>
+          </form>
+          {% include "slots/account.html" %}
+          <a href="{% url 'search' %}" class="c-iconbtn lg:hidden" aria-label="搜索">{% include "components/icon.html" with name="search" %}</a>
+          <details class="c-drawer lg:hidden">
+            <summary class="c-iconbtn -mr-2.5" aria-label="导航菜单">
+              <span class="c-drawer__open">{% include "components/icon.html" with name="menu" class="size-6" %}</span>
+              <span class="c-drawer__close">{% include "components/icon.html" with name="close" class="size-6" %}</span>
+            </summary>
+            <div class="c-drawer__panel on-night">
+              <nav class="c-drawer__nav font-nav" aria-label="主导航">
+                {% include "components/main_nav.html" with numbered=True %}
               </nav>
-              <nav class="site-nav" aria-label="主导航">
-                {% include "components/main_nav.html" %}
+              <form action="{% url 'search' %}" method="get" role="search" class="c-drawer__search">
+                <input type="search" name="q" maxlength="50" placeholder="搜索" aria-label="站内搜索">
+                <button type="submit" class="c-btn c-btn--secondary">搜索</button>
+              </form>
+              <p class="c-eyebrow mt-8">MORE · 更多</p>
+              <nav class="mt-3 grid grid-cols-2 gap-x-6 font-nav" aria-label="更多">
+                <a href="{% url 'submit' %}" class="flex min-h-11 items-center text-fg-2">我要投稿</a>
+                <a href="{% url 'me_profile' %}" class="flex min-h-11 items-center text-fg-2">个人中心</a>
+                <a href="/about/" class="flex min-h-11 items-center text-fg-2">关于我们</a>
+                <a href="/privacy/" class="flex min-h-11 items-center text-fg-2">隐私政策</a>
               </nav>
             </div>
+          </details>
+        </div>
+      </div>
+    </header>
+
+    {% include "slots/messages.html" %}
+
+    <main id="main" class="flex-1">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="c-footer on-night">
+      <div class="l-container">
+        <div class="c-footer__grid">
+          <div>
+            {% include "components/brand.html" %}
+            <p class="c-footer__statement">上海交通大学守望先锋社区的网站，由学生社团自己建设和维护。不是上海交通大学官方网站，与游戏开发商、运营商无关。</p>
           </div>
-        </header>
-
-        {% include "slots/messages.html" %}
-
-        <main class="flex-1">
-          {% block content %}{% endblock %}
-        </main>
-
-        <footer class="site-footer">
-          <div class="site-container site-footer__inner">
-            <nav class="site-footer__links" aria-label="社区">
+          <div class="c-footer__links">
+            <nav class="c-footer__col font-nav" aria-label="社区">
+              <h2 class="c-eyebrow">社区</h2>
               <a href="/news/">社区资讯</a>
-              <a href="/tournaments/">赛事</a>
-              <a href="/scrims/">内战</a>
               <a href="{% url 'members' %}">成员展示</a>
               <a href="/teams/">战队</a>
-              <a href="{% url 'submit' %}">投稿</a>
             </nav>
-            <div class="site-footer__center">
-              <span class="site-seal site-seal--footer" aria-hidden="true"><span>交</span><span>大</span><span>守</span><span>望</span></span>
-              <p class="mt-3 text-base-content">上海交通大学守望先锋社区</p>
-              <p class="mt-2">学生社团自办网站</p>
-              <p>不是上海交通大学官方网站</p>
-              <p>与游戏开发商、运营商无关</p>
-            </div>
-            <nav class="site-footer__links" aria-label="关于本站">
+            <nav class="c-footer__col font-nav" aria-label="参与">
+              <h2 class="c-eyebrow">参与</h2>
+              <a href="/tournaments/">赛事</a>
+              <a href="/scrims/">内战</a>
+              <a href="{% url 'submit' %}">我要投稿</a>
+            </nav>
+            <nav class="c-footer__col font-nav" aria-label="账号">
+              <h2 class="c-eyebrow">账号</h2>
+              <a href="{% url 'me_profile' %}">个人中心</a>
+              <a href="{% url 'account_login' %}">登录</a>
+              <a href="{% url 'account_signup' %}">注册</a>
+            </nav>
+            <nav class="c-footer__col font-nav" aria-label="关于本站">
+              <h2 class="c-eyebrow">关于</h2>
               <a href="/about/">关于我们</a>
               <a href="/terms/">用户协议</a>
               <a href="/privacy/">隐私政策</a>
-              <a href="{% url 'me_profile' %}">个人中心</a>
             </nav>
           </div>
-        </footer>
+        </div>
+        <div class="c-footer__base">
+          <span>© {% now "Y" %} 上海交通大学守望先锋社区 · 学生社团自办网站</span>
+          <span>不是上海交通大学官方网站 · 与游戏开发商、运营商无关</span>
+        </div>
       </div>
-      <div class="drawer-side z-40 lg:hidden">
-        <label for="nav-drawer" class="drawer-overlay" aria-label="关闭导航菜单"></label>
-        <nav class="menu min-h-full w-72 bg-base-100 p-0 font-nav" aria-label="主导航">
-          <div class="site-header px-5 py-5"><span class="site-brand__name">交大守望先锋</span></div>
-          <ul class="menu w-full p-3 text-base">
-            {% include "components/main_nav.html" with as_list=True %}
-          </ul>
-        </nav>
-      </div>
-    </div>
+    </footer>
     <script src="{% static 'vendor/htmx.min.js' %}"></script>
     <script src="{% static 'vendor/alpine.csp.min.js' %}" defer></script>
     <script src="{% static 'js/app.js' %}"></script>

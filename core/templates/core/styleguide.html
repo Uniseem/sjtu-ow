@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% load ow %}
+{% block title %}设计体系样张 · 交大守望先锋{% endblock %}
+{% block content %}
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>设计体系样张</span></nav>
+      <p class="c-eyebrow"><span class="c-eyebrow__index">v2.0</span>STYLE GUIDE</p>
+      <h1>设计体系样张</h1>
+      <p class="c-pagehead__lede">每个组件的每种状态都排在这一页上（设计 13.2 节）。改组件先在这里看；新组件先写进设计文档再加进来。这一页只有能进后台的人能看到。</p>
+    </div>
+  </header>
+
+  <div class="l-container l-section flex flex-col gap-16">
+
+    <section aria-labelledby="sg-colour">
+      {% include "components/section_head.html" with index="01" title="颜色" en="COLOUR" heading_id="sg-colour" %}
+      <ul class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-10">
+        {% for label, token, cls, hex in colours %}
+          <li class="c-swatch">
+            <span class="c-swatch__chip {{ cls }}"></span>
+            <span class="font-semibold">{{ label }}</span>
+            <span class="font-code text-xs text-fg-2">{{ token }} {{ hex }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section aria-labelledby="sg-type">
+      {% include "components/section_head.html" with index="02" title="字体与数字" en="TYPE" heading_id="sg-type" %}
+      <div class="grid gap-10 lg:grid-cols-2">
+        <div class="flex flex-col gap-4">
+          <p class="c-figure text-[3.5rem]">09.28</p>
+          <h1>一级标题 · 2026 秋季校内赛</h1>
+          <h2>二级标题 · 小组赛：老队的底蕴</h2>
+          <h3>三级标题 · 周五夜间内战</h3>
+          <p>正文：本学期的第一场校内赛在闵行校区学生中心落下帷幕。十二支队伍在两天里打完了四十一张地图。</p>
+          <p class="text-sm text-fg-2">小字：发布于 {{ sample_day|ow_date }} · 作者 夜航</p>
+          <p class="c-eyebrow"><span class="c-eyebrow__index">01</span>NEWS · 眉标</p>
+          <p class="font-code">Genji#51234 · 游戏 ID</p>
+        </div>
+        <dl class="c-facts">
+          <dt>日期</dt><dd class="font-numeric">{{ sample_day|ow_date }}</dd>
+          <dt>同年列表</dt><dd class="font-numeric">{{ sample_day|ow_md }}</dd>
+          <dt>时间</dt><dd class="font-numeric">{{ sample_day|ow_time }}</dd>
+          <dt>星期</dt><dd>{{ sample_day|ow_weekday }}</dd>
+          <dt>名额</dt><dd class="font-numeric">8 / 10</dd>
+          <dt>编号</dt><dd class="font-numeric">{{ 3|ow_index }}</dd>
+          <dt>段位</dt><dd>{% include "components/rank_badge.html" with label="钻石 3" %}　{% include "components/rank_badge.html" with label="前 500" %}　{% include "components/rank_badge.html" with label="未定级" %}</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-sign">
+      {% include "components/section_head.html" with index="03" title="标志性元素" en="SIGNATURES" heading_id="sg-sign" %}
+      <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <p class="mb-3 text-sm text-fg-2">红线：当前位置</p>
+          <nav class="c-tabs" aria-label="示例"><a href="#sg-sign" aria-current="page">全部</a><a href="#sg-sign">公告</a><a href="#sg-sign">战报</a></nav>
+        </div>
+        <div>
+          <p class="mb-3 text-sm text-fg-2">切角：主要操作、票根、大图</p>
+          <span class="block h-20 bg-ink c-cut"></span>
+        </div>
+        <div>
+          <p class="mb-3 text-sm text-fg-2">斜纹：「没有」</p>
+          <span class="block h-20 border border-line c-hatch"></span>
+        </div>
+        <div>
+          <p class="mb-3 text-sm text-fg-2">名额格：8 / 10</p>
+          {% include "components/slots.html" with taken=8 capacity=10 unit="人" %}
+        </div>
+        <div>
+          <p class="mb-3 text-sm text-fg-2">名额格：超出上限（替补）</p>
+          {% include "components/slots.html" with taken=12 capacity=10 unit="人" %}
+        </div>
+        <div>
+          <p class="mb-3 text-sm text-fg-2">名额格：超过 24 格改成条</p>
+          {% include "components/slots.html" with taken=31 capacity=48 unit="人" %}
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-actions">
+      {% include "components/section_head.html" with index="04" title="按钮" en="ACTIONS" heading_id="sg-actions" %}
+      <div class="flex flex-wrap items-center gap-4">
+        <a href="#sg-actions" class="c-btn c-btn--primary">为战队报名</a>
+        <a href="#sg-actions" class="c-btn c-btn--secondary">个人报名</a>
+        <a href="#sg-actions" class="c-btn c-btn--quiet">查看全部{% include "components/icon.html" with name="arrow-right" %}</a>
+        <button type="button" class="c-btn c-btn--danger">取消报名</button>
+        <button type="button" class="c-btn c-btn--primary" disabled>报名已截止</button>
+        <a href="#sg-actions" class="c-btn c-btn--secondary c-btn--sm">{% include "components/icon.html" with name="edit" %}编辑</a>
+        <a href="#sg-actions" class="c-btn c-btn--primary c-btn--sm">通过</a>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-labels">
+      {% include "components/section_head.html" with index="05" title="标签、状态、段位、位置" en="LABELS" heading_id="sg-labels" %}
+      <div class="flex flex-col gap-6">
+        <div class="flex flex-wrap items-center gap-3"><span class="c-tag">战报</span><span class="c-tag">角色限定 5v5</span><span class="c-tag c-tag--strong">仅限交大</span><span class="c-tag c-tag--accent">置顶</span></div>
+        <div class="flex flex-wrap items-center gap-6">
+          {% for kind, label in statuses %}{% include "components/status_badge.html" with kind=kind label=label %}{% endfor %}
+        </div>
+        <div class="flex flex-wrap items-center gap-6">
+          {% include "components/role_icons.html" with role_tank=True role_damage=True role_support=True %}
+          {% include "components/role_icons.html" with role_support=True %}
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-icons">
+      {% include "components/section_head.html" with index="06" title="图标" en="ICONS" heading_id="sg-icons" %}
+      <ul class="grid grid-cols-4 gap-x-4 gap-y-6 sm:grid-cols-8 lg:grid-cols-11">
+        {% for name in icons %}
+          <li class="flex flex-col items-center gap-2 text-center">
+            {% include "components/icon.html" with name=name class="size-6" %}
+            <span class="font-code text-[0.6875rem] text-fg-2">{{ name }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section aria-labelledby="sg-lists">
+      {% include "components/section_head.html" with index="07" title="列表行" en="ROWS" more_url="#sg-lists" more_label="全部资讯" heading_id="sg-lists" %}
+      <ol class="c-rowlist">
+        {% for title, cat, summary in rows %}
+          <li class="c-row{% if forloop.first %} c-row--thumb{% endif %}">
+            <time class="c-row__date" datetime="{{ sample_past|date:'c' }}"><span class="c-row__md">{{ sample_past|ow_md }}</span><span class="c-row__sub">{{ sample_past|date:"Y" }}</span></time>
+            <div>
+              <p class="c-row__kicker"><span class="c-tag">{{ cat }}</span>{% if forloop.first %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}</p>
+              <h3 class="c-row__title"><a href="#sg-lists" class="c-stretch">{{ title }}</a></h3>
+              <p class="c-row__summary">{{ summary }}</p>
+            </div>
+            {% if forloop.first %}<span class="c-row__thumb c-hatch"></span>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <section aria-labelledby="sg-facts">
+      {% include "components/section_head.html" with index="08" title="数据、资料表、表格" en="DATA" heading_id="sg-facts" %}
+      <div class="grid gap-10 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <div class="flex flex-col gap-8">
+          <div class="grid grid-cols-3 gap-4">
+            <div class="c-stat"><span class="c-stat__label">已报名</span><span class="c-stat__value">12<small>队</small></span></div>
+            <div class="c-stat"><span class="c-stat__label">个人</span><span class="c-stat__value">5<small>人</small></span></div>
+            <div class="c-stat"><span class="c-stat__label">截止</span><span class="c-stat__value">{{ sample_close|ow_md }}</span></div>
+          </div>
+          <dl class="c-facts">
+            <dt>报名截止</dt><dd>{{ sample_close|ow_date }} {{ sample_close|ow_time }}</dd>
+            <dt>比赛时间</dt><dd>{{ sample_day|ow_date }} {{ sample_day|ow_weekday }}</dd>
+            <dt>人数</dt><dd>5–7 人</dd>
+            <dt>限制</dt><dd>仅限交大 · 支持个人报名</dd>
+          </dl>
+        </div>
+        <table class="c-table c-table--stack">
+          <thead><tr><th scope="col">队伍</th><th scope="col">人数</th><th scope="col">状态</th><th scope="col" class="is-num">提交时间</th></tr></thead>
+          <tbody>
+            <tr><td data-label="队伍">思源</td><td data-label="人数" class="font-numeric">6</td><td data-label="状态">{% include "components/status_badge.html" with kind="ok" label="已通过" %}</td><td data-label="提交时间" class="is-num font-numeric">{{ sample_past|ow_md }} {{ sample_past|ow_time }}</td></tr>
+            <tr><td data-label="队伍">东川路电竞</td><td data-label="人数" class="font-numeric">5</td><td data-label="状态">{% include "components/status_badge.html" with kind="warn" label="待审核" %}</td><td data-label="提交时间" class="is-num font-numeric">{{ sample_past|ow_md }} {{ sample_past|ow_time }}</td></tr>
+            <tr><td data-label="队伍">零点整</td><td data-label="人数" class="font-numeric">7</td><td data-label="状态">{% include "components/status_badge.html" with kind="rejected" label="已驳回" %}</td><td data-label="提交时间" class="is-num font-numeric">{{ sample_past|ow_md }} {{ sample_past|ow_time }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-people">
+      {% include "components/section_head.html" with index="09" title="图块与名片" en="TEAMS · PEOPLE" heading_id="sg-people" %}
+      <ul class="c-tiles">
+        <li class="c-tile"><span class="c-tile__art"><span class="c-tile__initial">思</span></span><a href="#sg-people" class="c-tile__name c-stretch">思源</a><span class="c-tile__meta"><span class="font-numeric">6 人</span>{% include "components/status_badge.html" with kind="live" label="招募中" %}</span></li>
+        <li class="c-tile"><span class="c-tile__art c-hatch"><span class="c-tile__initial">C</span></span><a href="#sg-people" class="c-tile__name c-stretch">Cyan Tide</a><span class="c-tile__meta"><span class="font-numeric">5 人</span></span></li>
+      </ul>
+      <ul class="c-people mt-10">
+        {% for name, title, team in people %}
+          <li class="c-person"><span class="c-avatar">{{ name|initial }}</span><span class="min-w-0"><span class="c-person__name">{{ name }}</span>{% if title %}<span class="c-person__title">{{ title }}</span>{% endif %}<span class="c-person__meta">{{ team|default:"未加入战队" }}</span></span></li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section aria-labelledby="sg-form">
+      {% include "components/section_head.html" with index="10" title="表单" en="FORMS" heading_id="sg-form" %}
+      <form class="c-form max-w-xl" action="#sg-form">
+        <div class="c-step">
+          <div class="c-step__head"><span class="c-step__index">01</span><h3>选择游戏 ID</h3></div>
+          <div class="c-field">
+            <label class="c-field__label" for="sg-account">游戏 ID<span class="c-field__req" aria-hidden="true">*</span></label>
+            <select id="sg-account"><option>Genji#51234 · 钻石 3</option><option>Player#88123</option></select>
+            <p class="c-field__help">只列出你自己绑定的游戏 ID。</p>
+          </div>
+        </div>
+        <div class="c-step">
+          <div class="c-step__head"><span class="c-step__index">02</span><h3>能打的位置</h3></div>
+          <div class="c-choices">
+            <label class="c-choice"><input type="checkbox" checked>{% include "components/icon.html" with name="role-tank" class="size-4" %}坦克</label>
+            <label class="c-choice"><input type="checkbox">{% include "components/icon.html" with name="role-damage" class="size-4" %}输出</label>
+            <label class="c-choice"><input type="checkbox" checked>{% include "components/icon.html" with name="role-support" class="size-4" %}支援</label>
+          </div>
+          <div class="c-field is-invalid">
+            <label class="c-field__label" for="sg-name">队名<span class="c-field__req" aria-hidden="true">*</span></label>
+            <input id="sg-name" type="text" value="思源">
+            <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>这个队名已经有人用了。</span></p>
+          </div>
+          <div class="c-field">
+            <label class="c-field__label" for="sg-note">留言</label>
+            <textarea id="sg-note" placeholder="想对队长说的话（选填）"></textarea>
+          </div>
+          <label class="c-check"><input type="checkbox" checked>我已阅读并同意赛事规则</label>
+        </div>
+        <div class="c-formbar">
+          <button type="button" class="c-btn c-btn--primary">提交报名</button>
+          <a href="#sg-form" class="c-btn c-btn--quiet">取消</a>
+        </div>
+      </form>
+    </section>
+
+    <section aria-labelledby="sg-feedback">
+      {% include "components/section_head.html" with index="11" title="提示、空状态、分页" en="FEEDBACK" heading_id="sg-feedback" %}
+      <div class="grid gap-4 lg:grid-cols-2">
+        <div class="c-notice c-notice--info">{% include "components/icon.html" with name="info" %}<div class="c-notice__body">报名截止前可以修改或取消报名。</div></div>
+        <div class="c-notice c-notice--warn">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">资料还不完整：缺少联系方式。<a href="#sg-feedback">去补全</a></div></div>
+        <div class="c-notice c-notice--ok">{% include "components/icon.html" with name="check-circle" %}<div class="c-notice__body">报名已通过。</div></div>
+        <div class="c-notice c-notice--error">{% include "components/icon.html" with name="x-circle" %}<div class="c-notice__body">提交失败：名单里有人已经在别的队伍报名了这场赛事。</div></div>
+      </div>
+      <div class="mt-8">{% include "components/empty_state.html" with title="还没有战队" message="第一支战队可以由你来建。" action_url="#sg-feedback" action_label="创建战队" %}</div>
+      <nav class="c-pager" aria-label="分页示例"><span class="c-btn c-btn--secondary c-btn--sm" aria-disabled="true">{% include "components/icon.html" with name="arrow-left" %}上一页</span><span class="c-pager__pos"><strong>1</strong> / 7</span><a class="c-btn c-btn--secondary c-btn--sm" href="#sg-feedback">下一页{% include "components/icon.html" with name="arrow-right" %}</a></nav>
+    </section>
+
+    <section aria-labelledby="sg-prose">
+      {% include "components/section_head.html" with index="12" title="正文" en="PROSE" heading_id="sg-prose" %}
+      <div class="c-prose l-prose">
+        <p>本学期的第一场校内赛在闵行校区学生中心落下帷幕。十二支队伍在两天里打完了四十一张地图，从小组赛一路打到决赛。<a href="#sg-prose">完整赛程</a>在赛事页。</p>
+        <h2>小组赛：老队的底蕴</h2>
+        <p>思源在小组赛里没丢一张图。他们的辅助位是上学期从内战里挖来的新人。</p>
+        <ul><li>小组赛采用 BO3</li><li>淘汰赛 BO5，决赛 BO7</li></ul>
+        <blockquote><p>我们练得最多的不是枪法，是交流。</p><footer>——思源战队队长</footer></blockquote>
+        <p>下学期的秋季赛报名已经开放，个人也可以报名。</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="on-night l-section" aria-labelledby="sg-night">
+    <div class="l-container">
+      {% include "components/section_head.html" with index="13" title="赛场：深色区块" en="ARENA" heading_id="sg-night" %}
+      <ol class="c-daystrip" aria-label="未来 14 天">
+        {% for day in days %}
+          <li class="c-day{% if day.count %} has-event{% endif %}{% if day.today %} is-today{% endif %}">
+            <span class="c-day__wk">{% if day.today %}今天{% else %}{{ day.date|ow_weekday }}{% endif %}</span>
+            <span class="c-day__d">{{ day.date|date:"j" }}</span>
+            {% if day.count %}<span class="c-day__n">{{ day.count }} 场</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+      <div class="mt-8 grid gap-4 lg:grid-cols-2">
+        <article class="c-ticket">
+          <div class="c-ticket__stub"><span class="c-ticket__label">截止</span><span class="c-ticket__md">{{ sample_close|ow_md }}</span><span class="c-ticket__when">{{ sample_close|ow_weekday }} {{ sample_close|ow_time }}</span></div>
+          <div class="c-ticket__body">
+            <p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="live" label="报名中" %}<span class="c-tag">赛事</span></p>
+            <h3 class="c-ticket__title"><a href="#sg-night" class="c-stretch">2026 秋季校内赛</a></h3>
+            <p class="c-ticket__meta"><span>5–7 人一队</span><span>仅限交大</span><span>支持个人报名</span></p>
+            <div class="c-ticket__foot"><span class="c-meter"><span class="c-meter__count">4</span><span class="text-sm text-fg-2">支队伍已报名</span></span></div>
+          </div>
+        </article>
+        <article class="c-ticket">
+          <div class="c-ticket__stub"><span class="c-ticket__label">开始</span><span class="c-ticket__md">{{ sample_day|ow_md }}</span><span class="c-ticket__when">{{ sample_day|ow_weekday }} {{ sample_day|ow_time }}</span></div>
+          <div class="c-ticket__body">
+            <p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="live" label="报名中" %}<span class="c-tag">角色限定 5v5</span></p>
+            <h3 class="c-ticket__title"><a href="#sg-night" class="c-stretch">周五夜间内战</a></h3>
+            <div class="c-ticket__foot">{% include "components/slots.html" with taken=8 capacity=10 unit="人" %}</div>
+          </div>
+        </article>
+      </div>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a href="#sg-night" class="c-btn c-btn--primary">报名</a>
+        <a href="#sg-night" class="c-btn c-btn--secondary">查看名单</a>
+        <a href="#sg-night" class="c-btn c-btn--quiet">全部内战{% include "components/icon.html" with name="arrow-right" %}</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="l-container l-section">
+    {% include "components/section_head.html" with index="14" title="浅色票根" en="TICKET" %}
+    <div class="grid gap-4 lg:grid-cols-3">
+      <article class="c-ticket c-ticket--compact">
+        <div class="c-ticket__stub"><span class="c-ticket__label">开始</span><span class="c-ticket__md">{{ sample_day|ow_md }}</span><span class="c-ticket__when">{{ sample_day|ow_time }}</span></div>
+        <div class="c-ticket__body"><p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="live" label="报名中" %}</p><h3 class="c-ticket__title"><a href="#" class="c-stretch">周五夜间内战</a></h3></div>
+      </article>
+      <article class="c-ticket c-ticket--compact">
+        <div class="c-ticket__stub"><span class="c-ticket__label">开放</span><span class="c-ticket__md">{{ sample_close|ow_md }}</span><span class="c-ticket__when">{{ sample_close|ow_time }}</span></div>
+        <div class="c-ticket__body"><p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="info" label="即将开放" %}</p><h3 class="c-ticket__title"><a href="#" class="c-stretch">新生杯</a></h3></div>
+      </article>
+      <article class="c-ticket c-ticket--compact">
+        <div class="c-ticket__stub"><span class="c-ticket__label">结束</span><span class="c-ticket__md">{{ sample_past|ow_md }}</span><span class="c-ticket__when">{{ sample_past|ow_time }}</span></div>
+        <div class="c-ticket__body"><p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="done" label="已结束" %}</p><h3 class="c-ticket__title"><a href="#" class="c-stretch">暑期大内战</a></h3></div>
+      </article>
+    </div>
+  </div>
+{% endblock %}

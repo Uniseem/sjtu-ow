@@ -1,6 +1,7 @@
-<div id="slot-messages" data-slot="messages" class="toast toast-top toast-end z-50" aria-live="polite"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="slot-messages" data-slot="messages" class="c-toasts" aria-live="polite"{% if oob %} hx-swap-oob="true"{% endif %}>
   {% for message in messages %}
-    <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+    <div class="c-toast c-toast--{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %}" role="status">
+      {% if message.tags == 'error' %}{% include "components/icon.html" with name="x-circle" %}{% elif message.tags == 'success' %}{% include "components/icon.html" with name="check-circle" %}{% elif message.tags == 'warning' %}{% include "components/icon.html" with name="alert" %}{% else %}{% include "components/icon.html" with name="info" %}{% endif %}
       <span>{{ message }}</span>
     </div>
   {% endfor %}

@@ -2,6 +2,9 @@
 
 {% block title %}没有权限 · 上海交通大学守望先锋社区{% endblock %}
 
+{% block code %}403{% endblock %}
+{% block eyebrow %}FORBIDDEN{% endblock %}
+
 {% block error_body %}
   <h1>没有权限</h1>
   <p>{{ reason|default:"你没有权限查看这个页面。" }}</p>

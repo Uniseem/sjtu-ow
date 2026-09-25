@@ -1,13 +1,7 @@
-{% with kind=kind|default:"neutral" %}
-  {% if kind == "success" %}
-    <span class="badge badge-success">{{ label }}</span>
-  {% elif kind == "warning" %}
-    <span class="badge badge-warning">{{ label }}</span>
-  {% elif kind == "error" %}
-    <span class="badge badge-error">{{ label }}</span>
-  {% elif kind == "info" %}
-    <span class="badge badge-info">{{ label }}</span>
-  {% else %}
-    <span class="badge badge-neutral">{{ label }}</span>
-  {% endif %}
+{% comment %}
+  Status (design 13.2.6): a shape and a word. kind: live, ok, warn, info,
+  done, off, rejected. The old names still map while pages are converted.
+{% endcomment %}
+{% with k=kind|default:"done" %}
+  <span class="c-status c-status--{% if k == 'success' %}ok{% elif k == 'warning' %}warn{% elif k == 'error' %}rejected{% elif k == 'neutral' %}done{% elif k == 'primary' %}live{% else %}{{ k }}{% endif %}">{{ label }}</span>
 {% endwith %}

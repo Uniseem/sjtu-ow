@@ -4,18 +4,40 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#141010">
     <title>维护中 · 上海交通大学守望先锋社区</title>
     
       <style>
+/*
+ * Error and maintenance pages (design 13.15). Hand-written and independent of
+ * the site stylesheet; the values copy the tokens in assets/css/input.css
+ * (design 13.2.3) and a test checks they still match.
+ */
 :root {
-  --font-fallback: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --color-red: #b2141a;
+  --color-red-deep: #861116;
+  --color-canvas: #f6f5f4;
+  --color-line: #ddd9d7;
+  --color-ink: #1d1716;
+  --color-ink-2: #5c5452;
+  --color-ink-3: #847c7a;
+  --color-night: #141010;
+  --color-night-line: #3a3231;
+  --color-night-ink: #f5f2f1;
+  --color-night-ink-2: #ada5a3;
+  --font-fallback:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC",
+    "MiSans", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC",
+    "Source Han Sans SC", "Noto Sans SC", sans-serif;
   --font-body: var(--font-fallback);
   --font-h1: var(--font-body);
   --font-h1-weight: 700;
   --font-h1-size: 2rem;
   --font-nav: var(--font-body);
   --font-button: var(--font-body);
-  --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-figure: "DIN Condensed", "Bahnschrift", "DIN Alternate", var(--font-body);
+  --font-code: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --cut: 8px;
 }
 
 * {
@@ -23,75 +45,151 @@
 }
 
 body {
+  display: flex;
+  flex-direction: column;
   margin: 0;
   min-height: 100vh;
   font-family: var(--font-body);
-  color: #1f2937;
-  background: #f8fafc;
+  line-height: 1.7;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  -webkit-font-smoothing: antialiased;
 }
 
 header {
-  font-family: var(--font-nav);
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fff;
+  display: flex;
+  align-items: center;
+  height: 4rem;
+  padding: 0 1rem;
+  background: var(--color-night);
+  border-bottom: 1px solid var(--color-night-line);
 }
 
-header a {
-  color: inherit;
+header .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-nav);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-night-ink);
   text-decoration: none;
-  font-weight: 600;
+}
+
+header .mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  background: var(--color-red);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%);
 }
 
 main {
-  max-width: 36rem;
-  margin: 12vh auto 0;
-  padding: 0 1.5rem 3rem;
-  text-align: center;
+  flex: 1;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 12vh 1rem 4rem;
+}
+
+.code {
+  margin: 0;
+  font-family: var(--font-figure);
+  font-stretch: 85%;
+  font-size: 6rem;
+  font-weight: 600;
+  line-height: 0.9;
+  color: var(--color-ink);
+}
+
+.eyebrow {
+  margin: 1.25rem 0 0;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--color-ink);
+  font-family: var(--font-figure);
+  font-stretch: 85%;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--color-red-deep);
 }
 
 h1 {
+  margin: 1.5rem 0 0.75rem;
   font-family: var(--font-h1);
   font-weight: var(--font-h1-weight);
   font-size: var(--font-h1-size);
-  margin: 0 0 1rem;
+  line-height: 1.3;
 }
 
 p {
-  line-height: 1.6;
-  color: #4b5563;
+  margin: 0 0 0.5rem;
+  color: var(--color-ink-2);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  justify-content: center;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
 
 .actions a {
-  font-family: var(--font-button);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: 0 1rem;
-  border-radius: 0.5rem;
+  padding: 0.5rem 1.5rem 0.5rem 1.25rem;
+  font-family: var(--font-button);
+  font-size: 0.9375rem;
+  font-weight: 600;
   text-decoration: none;
   color: #fff;
-  background: #1f2937;
+  background: var(--color-red);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%);
+}
+
+.actions a:hover {
+  background: var(--color-red-deep);
 }
 
 .actions a.secondary {
-  color: #1f2937;
-  background: #fff;
-  border: 1px solid #d1d5db;
+  padding-right: 1.25rem;
+  color: var(--color-ink);
+  background: transparent;
+  border: 1px solid var(--color-ink);
+  clip-path: none;
+}
+
+.actions a.secondary:hover {
+  color: var(--color-canvas);
+  background: var(--color-ink);
 }
 
 .request-id {
   font-family: var(--font-code);
   font-size: 0.875rem;
+  color: var(--color-ink);
+}
+
+footer {
+  padding: 1.25rem 1rem;
+  border-top: 1px solid var(--color-line);
+  font-size: 0.8125rem;
+  color: var(--color-ink-3);
+}
+
+@media (min-width: 640px) {
+  header,
+  main,
+  footer {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  .code {
+    font-size: 8rem;
+  }
 }
 
       </style>
@@ -99,9 +197,11 @@ p {
   </head>
   <body>
     <header>
-      <a href="/">交大守望先锋</a>
+      <a href="/" class="brand"><span class="mark" aria-hidden="true"></span>交大守望先锋</a>
     </header>
     <main>
+      <p class="code" aria-hidden="true">503</p>
+      <p class="eyebrow">MAINTENANCE</p>
       
   <h1>网站维护中</h1>
   <p>
@@ -112,5 +212,6 @@ p {
   </div>
 
     </main>
+    <footer>学生社团自办网站 · 不是上海交通大学官方网站</footer>
   </body>
 </html>

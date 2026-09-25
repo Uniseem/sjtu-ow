@@ -1,40 +1,30 @@
-{% if field.field.widget.input_type == "checkbox" %}
-  <div class="form-control w-full">
-    <label class="label cursor-pointer justify-start gap-3 min-h-11" for="{{ field.id_for_label }}">
+{% comment %}
+  Form field (design 13.2.7, c-field): label on top, 44px controls, help text,
+  and the first error with an icon. Widgets are styled from input.css.
+{% endcomment %}
+{% with input_type=field.field.widget.input_type %}
+  {% if input_type == "checkbox" and not field.field.widget.allow_multiple_selected %}
+    <div class="c-field{% if field.errors %} is-invalid{% endif %}">
+      <label class="c-check" for="{{ field.id_for_label }}">
+        {{ field }}
+        <span>{{ field.label }}{% if field.field.required %}<span class="c-field__req" aria-hidden="true">*</span>{% endif %}</span>
+      </label>
+      {% if field.help_text %}<p class="c-field__help">{{ field.help_text }}</p>{% endif %}
+      {% if field.errors %}<p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ field.errors.0 }}</span></p>{% endif %}
+    </div>
+  {% elif input_type == "radio" or input_type == "checkbox" %}
+    <fieldset class="c-field{% if field.errors %} is-invalid{% endif %}">
+      <legend class="c-field__label mb-2">{{ field.label }}{% if field.field.required %}<span class="c-field__req" aria-hidden="true">*</span>{% endif %}</legend>
       {{ field }}
-      <span class="label-text">{{ field.label }}{% if field.field.required %} <span class="text-error">*</span>{% endif %}</span>
-    </label>
-    {% if field.help_text %}
-      <p class="label-text-alt mt-1">{{ field.help_text }}</p>
-    {% endif %}
-    {% if field.errors %}
-      <p class="text-error mt-1" role="alert">{{ field.errors.0 }}</p>
-    {% endif %}
-  </div>
-{% elif field.field.widget.input_type == "radio" %}
-  <fieldset class="form-control w-full">
-    <legend class="label">
-      <span class="label-text">{{ field.label }}{% if field.field.required %} <span class="text-error">*</span>{% endif %}</span>
-    </legend>
-    <div class="flex flex-col gap-2">{{ field }}</div>
-    {% if field.help_text %}
-      <p class="label-text-alt mt-1">{{ field.help_text }}</p>
-    {% endif %}
-    {% if field.errors %}
-      <p class="text-error mt-1" role="alert">{{ field.errors.0 }}</p>
-    {% endif %}
-  </fieldset>
-{% else %}
-  <div class="form-control w-full">
-    <label class="label" for="{{ field.id_for_label }}">
-      <span class="label-text">{{ field.label }}{% if field.field.required %} <span class="text-error">*</span>{% endif %}</span>
-    </label>
-    {{ field }}
-    {% if field.help_text %}
-      <p class="label-text-alt mt-1">{{ field.help_text }}</p>
-    {% endif %}
-    {% if field.errors %}
-      <p class="text-error mt-1" role="alert">{{ field.errors.0 }}</p>
-    {% endif %}
-  </div>
-{% endif %}
+      {% if field.help_text %}<p class="c-field__help">{{ field.help_text }}</p>{% endif %}
+      {% if field.errors %}<p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ field.errors.0 }}</span></p>{% endif %}
+    </fieldset>
+  {% else %}
+    <div class="c-field{% if field.errors %} is-invalid{% endif %}">
+      <label class="c-field__label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="c-field__req" aria-hidden="true">*</span>{% endif %}</label>
+      {{ field }}
+      {% if field.help_text %}<p class="c-field__help">{{ field.help_text }}</p>{% endif %}
+      {% if field.errors %}<p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ field.errors.0 }}</span></p>{% endif %}
+    </div>
+  {% endif %}
+{% endwith %}

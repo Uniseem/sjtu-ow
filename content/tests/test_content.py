@@ -132,13 +132,14 @@ def test_article_list_pagination_and_category_filter(client):
     listing = client.get("/news/")
     assert listing.status_code == 200
     html = listing.content.decode("utf-8")
-    assert "1 / 2" in html
+    # The pager sets the current page in bold (design 13.2.7, c-pager).
+    assert "<strong>1</strong> / 2" in html
     assert "下一页" in html
 
     page_two = client.get("/news/?page=2")
     assert page_two.status_code == 200
     html_two = page_two.content.decode("utf-8")
-    assert "2 / 2" in html_two
+    assert "<strong>2</strong> / 2" in html_two
     assert "上一页" in html_two
 
     filtered = client.get("/news/?category=notice")

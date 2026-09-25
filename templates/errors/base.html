@@ -4,6 +4,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#141010">
     <title>{% block title %}出错了 · 上海交通大学守望先锋社区{% endblock %}</title>
     {% if error_css_inline %}
       <style>
@@ -15,10 +16,13 @@
   </head>
   <body>
     <header>
-      <a href="/">交大守望先锋</a>
+      <a href="/" class="brand"><span class="mark" aria-hidden="true"></span>交大守望先锋</a>
     </header>
     <main>
+      <p class="code" aria-hidden="true">{% block code %}!{% endblock %}</p>
+      <p class="eyebrow">{% block eyebrow %}ERROR{% endblock %}</p>
       {% block error_body %}{% endblock %}
     </main>
+    <footer>学生社团自办网站 · 不是上海交通大学官方网站</footer>
   </body>
 </html>

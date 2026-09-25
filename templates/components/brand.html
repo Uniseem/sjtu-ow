@@ -1,0 +1,11 @@
+{% comment %}
+  Site mark (design 13.2.9): a red square with the system's cut corner, the
+  name, and one line of Latin. Not the university emblem or wordmark.
+{% endcomment %}
+<a href="{% url 'home' %}" class="c-brand" aria-label="交大守望先锋 首页">
+  <span class="c-brand__mark" aria-hidden="true"></span>
+  <span class="c-brand__text">
+    <span class="c-brand__name">交大守望先锋</span>
+    <span class="c-brand__sub{% if compact %} hidden sm:block{% endif %}">SJTU OVERWATCH COMMUNITY</span>
+  </span>
+</a>

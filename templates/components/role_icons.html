@@ -1,6 +1,6 @@
-{# Placeholder role markers. Official Overwatch art is not used. #}
-<span class="join">
-  {% if role_tank %}<span class="badge badge-neutral join-item">坦克</span>{% endif %}
-  {% if role_damage %}<span class="badge badge-neutral join-item">输出</span>{% endif %}
-  {% if role_support %}<span class="badge badge-neutral join-item">支援</span>{% endif %}
+{# Positions (design 13.2.7): our own glyphs plus the word; no official art. #}
+<span class="c-roles">
+  {% if role_tank %}<span class="c-role">{% include "components/icon.html" with name="role-tank" class="size-3.5" %}坦克</span>{% endif %}
+  {% if role_damage %}<span class="c-role">{% include "components/icon.html" with name="role-damage" class="size-3.5" %}输出</span>{% endif %}
+  {% if role_support %}<span class="c-role">{% include "components/icon.html" with name="role-support" class="size-3.5" %}支援</span>{% endif %}
 </span>
