@@ -16,6 +16,7 @@ from core.ratelimit import over_limit
 
 COMMENT_LIMIT_MINUTE = 3
 COMMENT_LIMIT_DAY = 100
+LIKE_LIMIT_MINUTE = 60
 DAY = 86400
 
 
@@ -38,7 +39,8 @@ def _login_response(request):
 def _section_response(request, page, problems=()):
     """Re-render the interactive section, or bounce back to the article."""
     if getattr(request, "htmx", False):
-        context = section_context(request, page, interactive=True)
+        sort = request.POST.get("sort") or request.GET.get("sort")
+        context = section_context(request, page, interactive=True, sort=sort)
         if problems:
             context["post_problems"] = list(problems)
             context["can_post"] = False
@@ -91,7 +93,11 @@ def more(request, page_pk):
     page = _page_or_404(page_pk)
     interactive = request.user.is_authenticated
     context = section_context(
-        request, page, interactive=interactive, page_number=request.GET.get("page")
+        request,
+        page,
+        interactive=interactive,
+        page_number=request.GET.get("page"),
+        sort=request.GET.get("sort"),
     )
     return render(request, "comments/_more.html", context)
 
@@ -115,3 +121,53 @@ def hide(request, pk):
 @require_POST
 def unhide(request, pk):
     return _moderate(request, pk, services.unhide)
+
+
+# --- likes, pins, the author's own edits (design 5.6, v1.9.1) ----------------------
+
+
+def _act(request, pk, action, **kwargs):
+    if not request.user.is_authenticated:
+        return _login_response(request)
+    comment = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
+    try:
+        action(comment=comment, **kwargs)
+    except services.CommentError as exc:
+        return _section_response(request, comment.page, exc.problems)
+    return _section_response(request, comment.page)
+
+
+@require_POST
+def like(request, pk):
+    if request.user.is_authenticated and over_limit(
+        f"comment:like:{request.user.pk}", LIKE_LIMIT_MINUTE, 60
+    ):
+        comment = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
+        return _section_response(request, comment.page, ["点赞太频繁了，稍后再试"])
+    return _act(request, pk, services.toggle_like, user=request.user)
+
+
+@require_POST
+def edit(request, pk):
+    return _act(
+        request,
+        pk,
+        services.edit,
+        actor=request.user,
+        body=request.POST.get("body", ""),
+    )
+
+
+@require_POST
+def delete(request, pk):
+    return _act(request, pk, services.delete, actor=request.user)
+
+
+@require_POST
+def pin(request, pk):
+    return _act(request, pk, services.pin, actor=request.user)
+
+
+@require_POST
+def unpin(request, pk):
+    return _act(request, pk, services.unpin, actor=request.user)

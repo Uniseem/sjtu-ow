@@ -56,6 +56,13 @@ class Comment(models.Model):
             models.Index(fields=["page", "created_at"]),
             models.Index(fields=["page", "is_pinned", "like_count"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["page"],
+                condition=models.Q(is_pinned=True),
+                name="one_pinned_comment_per_page",
+            )
+        ]
 
     def __str__(self):
         return f"#{self.pk} {self.body[:20]}"
@@ -76,3 +83,27 @@ class Comment(models.Model):
     @property
     def anchor(self) -> str:
         return f"comment-{self.pk}"
+
+
+class CommentLike(models.Model):
+    """One like per person per comment (design 12.15.2)."""
+
+    comment = models.ForeignKey(
+        Comment, verbose_name="评论", on_delete=models.CASCADE, related_name="likes"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="用户",
+        on_delete=models.CASCADE,
+        related_name="comment_likes",
+    )
+    created_at = models.DateTimeField("时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "评论点赞"
+        verbose_name_plural = "评论点赞"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "user"], name="comment_like_once_per_user"
+            )
+        ]

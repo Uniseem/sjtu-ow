@@ -1,0 +1,9 @@
+{% if interactive and request.user.is_authenticated %}
+  <button type="button" class="btn btn-ghost btn-xs font-button{% if comment.pk in liked %} btn-active{% endif %}"
+          hx-post="{% url 'comment_like' comment.pk %}" hx-target="#slot-article-comments" hx-swap="outerHTML"
+          aria-pressed="{% if comment.pk in liked %}true{% else %}false{% endif %}">
+    {% if comment.pk in liked %}已赞{% else %}赞{% endif %} <span class="font-numeric" data-like-count>{{ comment.like_count }}</span>
+  </button>
+{% else %}
+  <span class="text-xs text-base-content/60">赞 <span class="font-numeric" data-like-count>{{ comment.like_count }}</span></span>
+{% endif %}

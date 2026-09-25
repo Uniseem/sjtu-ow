@@ -1,6 +1,8 @@
 {% with comment=item.comment %}
 <li id="{{ comment.anchor }}" class="comment{% if comment.is_pinned %} comment--pinned{% endif %}">
-  {% if comment.is_hidden and not can_moderate %}
+  {% if comment.is_deleted %}
+    <p class="text-sm text-base-content/50">评论已删除。</p>
+  {% elif comment.is_hidden and not can_moderate %}
     <p class="text-sm text-base-content/50">该评论已隐藏。</p>
   {% else %}
     <p class="text-sm text-base-content/60">
@@ -11,8 +13,9 @@
       {% if comment.edited_at %}<span class="ml-2">（已编辑）</span>{% endif %}
     </p>
     <p class="comment-body mt-1 whitespace-pre-line">{{ comment.body }}</p>
-    {% if interactive %}
-      <div class="mt-2 flex flex-wrap gap-2">
+    <div class="mt-2 flex flex-wrap items-center gap-2">
+      {% include "comments/_like.html" with comment=comment %}
+      {% if interactive %}
         {% if can_post %}
           <details class="comment-reply">
             <summary class="btn btn-ghost btn-xs font-button">回复</summary>
@@ -21,15 +24,21 @@
             </div>
           </details>
         {% endif %}
+        {% include "comments/_own.html" with comment=comment %}
         {% if can_moderate %}
+          {% if comment.is_pinned %}
+            <button type="button" class="btn btn-ghost btn-xs font-button" hx-post="{% url 'comment_unpin' comment.pk %}" hx-target="#slot-article-comments" hx-swap="outerHTML">取消置顶</button>
+          {% else %}
+            <button type="button" class="btn btn-ghost btn-xs font-button" hx-post="{% url 'comment_pin' comment.pk %}" hx-target="#slot-article-comments" hx-swap="outerHTML">置顶</button>
+          {% endif %}
           {% if comment.is_hidden %}
             <button type="button" class="btn btn-ghost btn-xs font-button" hx-post="{% url 'comment_unhide' comment.pk %}" hx-target="#slot-article-comments" hx-swap="outerHTML">恢复</button>
           {% else %}
             <button type="button" class="btn btn-ghost btn-xs font-button" hx-post="{% url 'comment_hide' comment.pk %}" hx-target="#slot-article-comments" hx-swap="outerHTML" hx-confirm="隐藏这条评论？">隐藏</button>
           {% endif %}
         {% endif %}
-      </div>
-    {% endif %}
+      {% endif %}
+    </div>
   {% endif %}
   {% if item.replies %}
     <details class="comment-thread mt-2 ml-4">

@@ -313,7 +313,11 @@ def test_a_real_page_carries_no_inline_script(client):
 
 def test_the_rate_limits_match_the_design():
     """Design 15.2 names exact numbers; drift here is silent."""
-    from comments.views import COMMENT_LIMIT_DAY, COMMENT_LIMIT_MINUTE
+    from comments.views import (
+        COMMENT_LIMIT_DAY,
+        COMMENT_LIMIT_MINUTE,
+        LIKE_LIMIT_MINUTE,
+    )
     from core.views import STATE_RATE_LIMIT
     from search import services as search_services
     from search.views import SEARCH_RATE_LIMIT
@@ -324,6 +328,7 @@ def test_the_rate_limits_match_the_design():
     assert STATE_RATE_LIMIT == 120  # 状态片段每 IP 每分钟 120 次
     assert SEARCH_RATE_LIMIT == 30  # 站内搜索每 IP 每分钟 30 次
     assert (COMMENT_LIMIT_MINUTE, COMMENT_LIMIT_DAY) == (3, 100)  # 评论每人限流
+    assert LIKE_LIMIT_MINUTE == 60  # 点赞每人每分钟 60 次
     assert search_services.PER_TYPE_LIMIT == 20  # 每类最多 20 条
     assert search_services.MAX_QUERY_LENGTH == 50  # 搜索词最长 50 字
     assert search_services.MAX_TERMS == 5  # 最多 5 个词

@@ -378,6 +378,7 @@ class ArticlePage(SeoPageMixin, Page):
                 self,
                 interactive=bool(user and user.is_authenticated),
                 page_number=request.GET.get("comments"),
+                sort=request.GET.get("sort"),
             )
         )
         return context

@@ -11,7 +11,25 @@ from comments.models import Comment
 
 
 class CommentEditView(generic.EditView):
+    def get_form_class(self):
+        base = super().get_form_class()
+
+        class CommentAdminForm(base):
+            def clean(self):
+                data = super().clean()
+                if data.get("is_pinned"):
+                    problem = services.pin_problem(
+                        self.instance, hidden=data.get("is_hidden")
+                    )
+                    if problem:
+                        self.add_error("is_pinned", problem)
+                return data
+
+        return CommentAdminForm
+
     def save_instance(self):
+        if self.form.cleaned_data.get("is_pinned"):
+            services.release_pin(self.form.instance.page_id, keep=self.form.instance.pk)
         instance = super().save_instance()
         services.refresh_page(instance.page)  # hidden or pinned: the page changes
         return instance

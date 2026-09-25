@@ -13,15 +13,21 @@ from django.template.loader import render_to_string
 from comments import services
 
 
-def section_context(request, page, *, interactive: bool, page_number=None) -> dict:
+def section_context(
+    request, page, *, interactive: bool, page_number=None, sort=None
+) -> dict:
     user = getattr(request, "user", None) if interactive else None
-    data = services.thread(page, viewer=user, page_number=page_number or 1)
+    data = services.thread(
+        page, viewer=user, page_number=page_number or 1, sort=sort or "new"
+    )
     context = {
         "page": page,
         "thread": data,
         "interactive": interactive,
         "can_moderate": services.can_moderate(user) if interactive else False,
         "post_problems": services.can_comment(user, page) if interactive else [],
+        "liked": data["liked"],
+        "sort": data["sort"],
     }
     context["can_post"] = interactive and not context["post_problems"]
     return context
