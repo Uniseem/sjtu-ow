@@ -1,98 +1,127 @@
 {% extends "base.html" %}
+{% load ow %}
 
 {% block title %}管理 {{ team.name }} · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-4xl px-4 py-10">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <h1>管理「{{ team.name }}」</h1>
-      <a href="{{ team.get_absolute_url }}" class="btn btn-ghost min-h-11 font-button">查看主页</a>
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'team_index' %}">战队</a><span class="c-crumbs__sep">/</span><a href="{{ team.get_absolute_url }}">{{ team.name }}</a><span class="c-crumbs__sep">/</span><span>管理</span></nav>
+      <div class="c-pagehead__row">
+        <div>
+          <p class="c-eyebrow">MANAGE</p>
+          <h1>管理「{{ team.name }}」</h1>
+          <p class="c-pagehead__meta"><span>成员 <span class="font-numeric">{{ memberships|length }} / {{ max_members }}</span></span><span>待审批 <span class="font-numeric">{{ applications|length }}</span></span></p>
+        </div>
+        <div class="c-pagehead__actions"><a href="{{ team.get_absolute_url }}" class="c-btn c-btn--secondary">查看主页</a></div>
+      </div>
     </div>
+  </header>
 
-    <h2 class="mt-8">待审批的申请</h2>
-    {% if applications %}
-      <ul class="mt-4 flex flex-col gap-4">
-        {% for application in applications %}
-          <li class="card bg-base-200">
-            <div class="card-body gap-3">
-              <p>
-                <strong>{{ application.applicant.nickname }}</strong>
-                <span class="text-sm text-base-content/70">意向位置：{{ application.role_labels|join:"、" }}</span>
-              </p>
-              {% if application.message %}<p class="text-base-content/80">{{ application.message }}</p>{% endif %}
-              <div class="text-sm text-base-content/70">
-                游戏 ID 与段位：
-                {% for account in application.applicant.game_accounts.all %}
-                  <span class="font-code">{{ account.battletag }}</span>
-                  {% if not forloop.last %}、{% endif %}
-                {% empty %}
-                  （未填写）
-                {% endfor %}
-              </div>
-              <div class="flex flex-wrap items-end gap-2">
-                <form method="post" action="{% url 'application_approve' application.pk %}">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-primary btn-sm min-h-11 font-button">通过</button>
-                </form>
-                <form method="post" action="{% url 'application_reject' application.pk %}" class="form-control flex flex-row items-end gap-2">
-                  {% csrf_token %}
-                  <input type="text" name="note" maxlength="200" placeholder="拒绝原因（可选）" class="input input-sm">
-                  <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">拒绝</button>
-                </form>
-              </div>
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="mt-4 text-base-content/70">暂时没有待审批的申请。</p>
-    {% endif %}
-
-    <h2 class="mt-10">成员（<span class="font-numeric">{{ memberships|length }} / {{ max_members }}</span>）</h2>
-    <ul class="mt-4 flex flex-col gap-2">
-      {% for membership in memberships %}
-        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
-          <span>{{ membership.user.nickname }}</span>
-          {% if membership.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
-          <span class="text-sm text-base-content/60">
-            {% for account in membership.user.game_accounts.all %}
-              <span class="font-code">{{ account.battletag }}</span>{% if not forloop.last %}、{% endif %}
+  <div class="l-container pt-8 pb-16 lg:pb-24">
+    <div class="flex max-w-4xl flex-col gap-14">
+      <section aria-labelledby="manage-apps">
+        {% include "components/section_head.html" with index="01" title="待审批的申请" heading_id="manage-apps" %}
+        {% if applications %}
+          <ul class="flex flex-col gap-4">
+            {% for application in applications %}
+              <li class="c-panel">
+                <div class="c-panel__head">
+                  <p class="flex flex-wrap items-center gap-3">
+                    <span class="c-avatar c-avatar--sm" aria-hidden="true">{{ application.applicant.nickname|initial }}</span>
+                    <strong>{{ application.applicant.nickname }}</strong>
+                    {% include "components/role_icons.html" with role_tank=application.role_tank role_damage=application.role_damage role_support=application.role_support %}
+                  </p>
+                  <time class="font-numeric text-sm text-fg-3" datetime="{{ application.created_at|date:'c' }}">{{ application.created_at|ow_date }}</time>
+                </div>
+                {% if application.message %}<p class="mt-3 leading-7">{{ application.message }}</p>{% endif %}
+                <p class="mt-3 text-sm text-fg-2">
+                  游戏 ID：
+                  {% for account in application.applicant.game_accounts.all %}
+                    <span class="font-code text-fg">{{ account.battletag }}</span>{% if not forloop.last %}、{% endif %}
+                  {% empty %}
+                    （未填写）
+                  {% endfor %}
+                </p>
+                <div class="c-panel__actions items-end">
+                  <form method="post" action="{% url 'application_approve' application.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="c-btn c-btn--primary c-btn--sm">通过</button>
+                  </form>
+                  <form method="post" action="{% url 'application_reject' application.pk %}" class="flex flex-1 flex-wrap items-end gap-2">
+                    {% csrf_token %}
+                    <label class="sr-only" for="reject-{{ application.pk }}">拒绝原因</label>
+                    <input id="reject-{{ application.pk }}" type="text" name="note" maxlength="200" placeholder="拒绝原因（可选）" class="c-input min-h-9 max-w-xs flex-1 py-1.5 text-sm">
+                    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">拒绝</button>
+                  </form>
+                </div>
+              </li>
             {% endfor %}
-          </span>
-          {% if not membership.is_captain %}
-            <span class="ml-auto flex flex-wrap gap-2">
-              <form method="post" action="{% url 'captain_transfer' team.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="user" value="{{ membership.user.pk }}">
-                <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">转让队长</button>
-              </form>
-              <form method="post" action="{% url 'member_remove' team.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="user" value="{{ membership.user.pk }}">
-                <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">移除</button>
-              </form>
-            </span>
+          </ul>
+        {% else %}
+          <p class="text-fg-2">暂时没有待审批的申请。</p>
+        {% endif %}
+      </section>
+
+      <section aria-labelledby="manage-roster">
+        {% include "components/section_head.html" with index="02" title="成员" heading_id="manage-roster" %}
+        <table class="c-table c-table--stack">
+          <thead><tr><th scope="col">昵称</th><th scope="col">游戏 ID</th><th scope="col" class="is-num">操作</th></tr></thead>
+          <tbody>
+            {% for membership in memberships %}
+              <tr>
+                <td data-label="昵称"><span class="font-semibold">{{ membership.user.nickname }}</span>{% if membership.is_captain %} <span class="c-tag c-tag--strong ml-1">队长</span>{% endif %}</td>
+                <td data-label="游戏 ID" class="text-sm">
+                  {% for account in membership.user.game_accounts.all %}<span class="font-code">{{ account.battletag }}</span>{% if not forloop.last %}、{% endif %}{% empty %}<span class="text-fg-3">未填写</span>{% endfor %}
+                </td>
+                <td data-label="操作" class="is-num">
+                  {% if not membership.is_captain %}
+                    <span class="inline-flex flex-wrap justify-end gap-2">
+                      <form method="post" action="{% url 'captain_transfer' team.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="user" value="{{ membership.user.pk }}">
+                        <button type="submit" class="c-btn c-btn--secondary c-btn--sm">转让队长</button>
+                      </form>
+                      <form method="post" action="{% url 'member_remove' team.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="user" value="{{ membership.user.pk }}">
+                        <button type="submit" class="c-btn c-btn--danger c-btn--sm">移除</button>
+                      </form>
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section aria-labelledby="manage-profile">
+        {% include "components/section_head.html" with index="03" title="战队资料" heading_id="manage-profile" %}
+        <form method="post" enctype="multipart/form-data" class="c-form max-w-xl">
+          {% csrf_token %}
+          <input type="hidden" name="form" value="profile">
+          {% if form.non_field_errors %}
+            <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ form.non_field_errors.0 }}</span></p>
           {% endif %}
-        </li>
-      {% endfor %}
-    </ul>
+          {% include "account/_form.html" %}
+          <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
+        </form>
+      </section>
 
-    <h2 class="mt-10">战队资料</h2>
-    <form method="post" enctype="multipart/form-data" class="form-control mt-4 flex flex-col gap-4">
-      {% csrf_token %}
-      <input type="hidden" name="form" value="profile">
-      {% if form.non_field_errors %}
-        <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
-      {% endif %}
-      {% include "account/_form.html" %}
-      <div><button type="submit" class="btn btn-primary min-h-11 font-button">保存</button></div>
-    </form>
-
-    <h2 class="mt-10">解散战队</h2>
-    <p class="mt-2 text-sm text-base-content/70">解散后成员会被清空、待审批的申请会取消，队名可以被其他战队使用。</p>
-    <form method="post" action="{% url 'team_disband' team.pk %}" class="mt-4">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-error min-h-11 font-button">解散战队</button>
-    </form>
-  </section>
+      <section aria-labelledby="manage-disband">
+        {% include "components/section_head.html" with index="04" title="解散战队" heading_id="manage-disband" %}
+        <div class="c-notice c-notice--error max-w-2xl">
+          {% include "components/icon.html" with name="alert" %}
+          <div class="c-notice__body">
+            <p>解散后成员会被清空、待审批的申请会取消，队名可以被其他战队使用。</p>
+            <form method="post" action="{% url 'team_disband' team.pk %}" class="mt-4">
+              {% csrf_token %}
+              <button type="submit" class="c-btn c-btn--danger">解散战队</button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
 {% endblock %}

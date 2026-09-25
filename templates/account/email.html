@@ -5,35 +5,38 @@
 {% block account_content %}
   <h1>邮箱地址</h1>
   {% if emailaddresses %}
-    <form method="post" action="{% url 'account_email' %}" class="mt-6 flex flex-col gap-4">
+    <form method="post" action="{% url 'account_email' %}">
       {% csrf_token %}
-      {% for radio in emailaddress_radios %}
-        {% with emailaddress=radio.emailaddress %}
-          <label class="label cursor-pointer justify-start gap-3 min-h-11" for="{{ radio.id }}">
-            <input type="radio" name="email" id="{{ radio.id }}" value="{{ emailaddress.email }}" class="radio" {% if radio.checked %}checked{% endif %}>
-            <span class="label-text">
-              {{ emailaddress.email }}
-              {% if emailaddress.verified %}（已验证）{% else %}（未验证）{% endif %}
-              {% if emailaddress.primary %}（登录邮箱）{% endif %}
-            </span>
-          </label>
-        {% endwith %}
-      {% endfor %}
-      <div class="flex flex-wrap gap-2">
-        <button type="submit" name="action_primary" class="btn btn-primary min-h-11 font-button">设为登录邮箱</button>
-        <button type="submit" name="action_send" class="btn btn-ghost min-h-11 font-button">重发验证</button>
-        <button type="submit" name="action_remove" class="btn btn-ghost min-h-11 font-button">删除</button>
+      <fieldset class="c-field">
+        <legend class="c-field__label mb-2">选择一个邮箱</legend>
+        {% for radio in emailaddress_radios %}
+          {% with emailaddress=radio.emailaddress %}
+            <label class="c-check" for="{{ radio.id }}">
+              <input type="radio" name="email" id="{{ radio.id }}" value="{{ emailaddress.email }}" {% if radio.checked %}checked{% endif %}>
+              <span>
+                <span class="font-code">{{ emailaddress.email }}</span>
+                {% if emailaddress.verified %}<span class="c-tag ml-1">已验证</span>{% else %}<span class="c-tag ml-1">未验证</span>{% endif %}
+                {% if emailaddress.primary %}<span class="c-tag c-tag--strong ml-1">登录邮箱</span>{% endif %}
+              </span>
+            </label>
+          {% endwith %}
+        {% endfor %}
+      </fieldset>
+      <div class="flex flex-wrap gap-3">
+        <button type="submit" name="action_primary" class="c-btn c-btn--primary">设为登录邮箱</button>
+        <button type="submit" name="action_send" class="c-btn c-btn--secondary">重发验证</button>
+        <button type="submit" name="action_remove" class="c-btn c-btn--danger">删除</button>
       </div>
     </form>
   {% else %}
     {% include "account/snippets/warn_no_email.html" %}
   {% endif %}
   {% if can_add_email %}
-    <h2 class="mt-8">添加邮箱</h2>
-    <form method="post" action="{% url 'account_email' %}" class="mt-4 flex flex-col gap-4">
+    <h2>添加邮箱</h2>
+    <form method="post" action="{% url 'account_email' %}">
       {% csrf_token %}
       {% include "account/_form.html" %}
-      <button type="submit" name="action_add" class="btn btn-primary min-h-11 font-button">添加</button>
+      <div><button type="submit" name="action_add" class="c-btn c-btn--primary">添加</button></div>
     </form>
   {% endif %}
 {% endblock %}

@@ -2,14 +2,12 @@
 
 {% block me_title %}基本资料{% endblock %}
 {% block me_heading %}基本资料{% endblock %}
+{% block me_actions %}<a href="{% url 'submit' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="pen" %}我要投稿</a>{% endblock %}
 
 {% block me_content %}
-  <p class="mb-6">
-    <a href="{% url 'submit' %}" class="btn btn-primary min-h-11 font-button">投稿</a>
-  </p>
-  <form method="post" action="{% url 'me_profile' %}" class="flex max-w-md flex-col gap-4">
+  <form method="post" action="{% url 'me_profile' %}" class="c-form max-w-xl">
     {% csrf_token %}
     {% include "account/_form.html" %}
-    <button type="submit" class="btn btn-primary min-h-11 font-button">保存</button>
+    <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
   </form>
 {% endblock %}

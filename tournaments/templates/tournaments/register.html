@@ -1,82 +1,97 @@
 {% extends "base.html" %}
+{% load ow %}
 
 {% block title %}为战队报名 · {{ tournament.title }}{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-3xl px-4 py-10">
-    <h1>为战队报名</h1>
-    <p class="mt-2 text-base-content/70">{{ tournament.title }}</p>
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/tournaments/">赛事</a><span class="c-crumbs__sep">/</span><a href="{{ tournament.get_absolute_url }}">{{ tournament.title }}</a><span class="c-crumbs__sep">/</span><span>为战队报名</span></nav>
+      <p class="c-eyebrow">REGISTER</p>
+      <h1>为战队报名</h1>
+      <p class="c-pagehead__meta"><span>{{ tournament.title }}</span><span>每队 <span class="font-numeric">{{ tournament.roster_min }}–{{ tournament.roster_max }}</span> 人</span><span>报名截止 <span class="font-numeric">{{ tournament.registration_closes_at|ow_date }} {{ tournament.registration_closes_at|ow_time }}</span></span></p>
+    </div>
+  </header>
 
-    {% if teams|length > 1 %}
-      <form method="get" class="form-control mt-6 flex flex-row items-end gap-2">
-        <label class="flex flex-col gap-1">
-          <span class="label-text">选择战队</span>
-          <select name="team" class="select min-h-11">
-            {% for item in teams %}
-              <option value="{{ item.pk }}" {% if item.pk == team.pk %}selected{% endif %}>{{ item.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <button type="submit" class="btn btn-ghost min-h-11 font-button">切换</button>
-      </form>
-    {% endif %}
-
-    {% if problems %}
-      <div class="alert alert-warning mt-6 flex-col items-start" role="alert">
-        <p>下面的问题需要先解决：</p>
-        <ul class="ml-4 list-disc">
-          {% for problem in problems %}<li>{{ problem }}</li>{% endfor %}
-        </ul>
-      </div>
-    {% endif %}
-
-    {% if existing %}
-      <p class="mt-6 text-sm text-base-content/70">
-        这支战队已经报名过（状态：{{ existing.get_status_display }}，名单版本 {{ existing.roster_version }}）。
-        再次提交会同步为当前名单{% if tournament.auto_approve %}并自动通过{% else %}并重新审核{% endif %}。
-        <a href="{{ existing.get_absolute_url }}" class="link link-primary">查看报名</a>
-      </p>
-    {% endif %}
-
-    <form method="post" class="mt-6 flex flex-col gap-4">
-      {% csrf_token %}
-      <input type="hidden" name="team" value="{{ team.pk }}">
-      <input type="hidden" name="action" value="submit">
-      <p class="text-sm text-base-content/70">
-        整支战队报名，不能只挑部分成员。为每个队员选一个游戏 ID（会写进名单快照）。
-      </p>
-      <ul class="flex flex-col gap-3">
-        {% for row in rows %}
-          <li class="card bg-base-200">
-            <div class="card-body gap-2">
-              <div class="flex flex-wrap items-center gap-2">
-                <span>{{ row.user.nickname }}</span>
-                {% if row.membership.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
-                {% if row.user.is_sjtu %}<span class="badge badge-outline">交大</span>{% endif %}
-              </div>
-              {% if row.accounts %}
-                <label class="form-control">
-                  <span class="label-text">游戏 ID</span>
-                  <select name="account-{{ row.user.pk }}" class="select min-h-11">
-                    {% for account in row.accounts %}
-                      <option value="{{ account.pk }}">{{ account.battletag }}</option>
-                    {% endfor %}
-                  </select>
-                </label>
-              {% else %}
-                <p class="text-error">这位队员还没有填写游戏 ID。</p>
-              {% endif %}
-              {% for problem in row.problems %}
-                <p class="text-warning text-sm">{{ problem }}</p>
+  <div class="l-container pt-8 pb-16 lg:pb-24">
+    <div class="flex max-w-3xl flex-col gap-8">
+      {% if teams|length > 1 %}
+        <form method="get" class="flex flex-wrap items-end gap-3">
+          <div class="c-field min-w-[14rem] flex-1">
+            <label class="c-field__label" for="register-team">选择战队</label>
+            <select id="register-team" name="team">
+              {% for item in teams %}
+                <option value="{{ item.pk }}" {% if item.pk == team.pk %}selected{% endif %}>{{ item.name }}</option>
               {% endfor %}
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
-      <div class="flex flex-wrap gap-2">
-        <button type="submit" class="btn btn-primary min-h-11 font-button">提交报名</button>
-        <a href="{{ tournament.get_absolute_url }}" class="btn btn-ghost min-h-11 font-button">返回赛事</a>
-      </div>
-    </form>
-  </section>
+            </select>
+          </div>
+          <button type="submit" class="c-btn c-btn--secondary">切换</button>
+        </form>
+      {% endif %}
+
+      {% if problems %}
+        <div class="c-notice c-notice--error" role="alert">
+          {% include "components/icon.html" with name="x-circle" %}
+          <div class="c-notice__body">
+            <p class="font-semibold">下面的问题需要先解决：</p>
+            <ul class="mt-1 list-[square] pl-5">
+              {% for problem in problems %}<li>{{ problem }}</li>{% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if existing %}
+        <div class="c-notice c-notice--info">
+          {% include "components/icon.html" with name="info" %}
+          <p class="c-notice__body">
+            这支战队已经报名过（状态：{{ existing.get_status_display }}，名单版本 {{ existing.roster_version }}）。
+            再次提交会同步为当前名单{% if tournament.auto_approve %}并自动通过{% else %}并重新审核{% endif %}。
+            <a href="{{ existing.get_absolute_url }}">查看报名</a>
+          </p>
+        </div>
+      {% endif %}
+
+      <form method="post" class="c-form">
+        {% csrf_token %}
+        <input type="hidden" name="team" value="{{ team.pk }}">
+        <input type="hidden" name="action" value="submit">
+        <div class="c-step">
+          <div class="c-step__head"><span class="c-step__index">01</span><h2 class="text-lg">「{{ team.name }}」的名单</h2></div>
+          <p class="text-sm text-fg-2">整支战队报名，不能只挑部分成员。为每个队员选一个游戏 ID（会写进名单快照）。</p>
+          <ol class="border-t border-rule">
+            {% for row in rows %}
+              <li class="grid gap-3 border-b border-rule py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] sm:items-center" data-roster-row>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-numeric w-7 text-sm text-fg-3">{{ forloop.counter|ow_index }}</span>
+                  <span class="font-semibold">{{ row.user.nickname }}</span>
+                  {% if row.membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}
+                  {% if row.user.is_sjtu %}<span class="c-tag">交大</span>{% endif %}
+                </div>
+                <div class="c-field{% if row.problems or not row.accounts %} is-invalid{% endif %}">
+                  {% if row.accounts %}
+                    <label class="sr-only" for="account-{{ row.user.pk }}">{{ row.user.nickname }} 的游戏 ID</label>
+                    <select id="account-{{ row.user.pk }}" name="account-{{ row.user.pk }}">
+                      {% for account in row.accounts %}
+                        <option value="{{ account.pk }}">{{ account.battletag }}</option>
+                      {% endfor %}
+                    </select>
+                  {% else %}
+                    <p class="c-field__error">{% include "components/icon.html" with name="alert" %}<span>这位队员还没有填写游戏 ID。</span></p>
+                  {% endif %}
+                  {% for problem in row.problems %}
+                    <p class="c-field__error">{% include "components/icon.html" with name="alert" %}<span>{{ problem }}</span></p>
+                  {% endfor %}
+                </div>
+              </li>
+            {% endfor %}
+          </ol>
+        </div>
+        <div class="c-formbar">
+          <button type="submit" class="c-btn c-btn--primary">提交报名</button>
+          <a href="{{ tournament.get_absolute_url }}" class="c-btn c-btn--quiet">返回赛事</a>
+        </div>
+      </form>
+    </div>
+  </div>
 {% endblock %}

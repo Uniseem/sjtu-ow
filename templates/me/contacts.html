@@ -8,7 +8,7 @@
     <form
       method="post"
       action="{{ form_action|default:request.path }}"
-      class="flex flex-col gap-4"
+      class="c-form"
       hx-post="{{ form_action|default:request.path }}"
       {% if contact %}
         hx-target="#contact-{{ contact.pk }}"
@@ -20,14 +20,14 @@
     >
       {% csrf_token %}
       {% if form.non_field_errors %}
-        <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
+        <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ form.non_field_errors.0 }}</span></p>
       {% endif %}
       {% include "account/_form.html" %}
-      <div class="flex flex-wrap gap-2">
-        <button type="submit" class="btn btn-primary min-h-11 font-button">保存</button>
+      <div class="flex flex-wrap gap-3">
+        <button type="submit" class="c-btn c-btn--primary">保存</button>
         <a
           href="{% url 'me_contacts' %}"
-          class="btn btn-ghost min-h-11 font-button"
+          class="c-btn c-btn--quiet"
           hx-get="{% url 'me_contacts' %}"
           hx-target="#contact-list"
           hx-swap="outerHTML"
@@ -37,34 +37,34 @@
   {% endpartialdef %}
 
   {% partialdef row %}
-    <article id="contact-{{ contact.pk }}" class="card bg-base-200">
-      <div class="card-body gap-3">
+    <article id="contact-{{ contact.pk }}" class="c-panel">
         {% if editing and editing.pk == contact.pk %}
           {% partial form_body %}
         {% else %}
-          <p>
-            <span class="font-medium">{{ contact.get_type_display }}</span>
-            <span class="font-code"> {{ contact.value }}</span>
-          </p>
-          <div class="card-actions">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="flex flex-wrap items-baseline gap-3">
+              <span class="c-tag c-tag--strong">{{ contact.get_type_display }}</span>
+              <span class="font-code text-lg">{{ contact.value }}</span>
+            </p>
+            <div class="flex flex-wrap gap-2">
             <a
               href="{% url 'me_contact_edit' contact.pk %}"
-              class="btn btn-outline btn-sm min-h-11 font-button"
+              class="c-btn c-btn--secondary c-btn--sm"
               hx-get="{% url 'me_contact_edit' contact.pk %}"
               hx-target="#contact-{{ contact.pk }}"
               hx-swap="outerHTML"
-            >编辑</a>
+            >{% include "components/icon.html" with name="edit" %}编辑</a>
             <button
               type="button"
-              class="btn btn-ghost btn-sm min-h-11 font-button"
+              class="c-btn c-btn--danger c-btn--sm"
               hx-post="{% url 'me_contact_delete' contact.pk %}"
               hx-target="#contact-list"
               hx-swap="outerHTML"
               hx-confirm="确定删除这个联系方式？"
-            >删除</button>
+            >{% include "components/icon.html" with name="trash" %}删除</button>
+            </div>
           </div>
         {% endif %}
-      </div>
     </article>
   {% endpartialdef %}
 
@@ -83,20 +83,18 @@
       </div>
       <a
         href="{% url 'me_contacts' %}?new=1"
-        class="btn btn-primary min-h-11 font-button w-full sm:w-auto"
+        class="c-btn c-btn--primary self-start"
         hx-get="{% url 'me_contacts' %}?new=1"
         hx-target="#create-contact"
         hx-swap="innerHTML"
-      >新增联系方式</a>
+      >{% include "components/icon.html" with name="plus" %}新增联系方式</a>
     </div>
   {% endpartialdef %}
 
   {% partialdef form_response %}
     {% include "me/_htmx_oob.html" %}
-    <article id="contact-{{ contact.pk|default:'new' }}" class="card bg-base-200">
-      <div class="card-body gap-3">
+    <article id="contact-{{ contact.pk|default:'new' }}" class="c-panel">
         {% partial form_body %}
-      </div>
     </article>
   {% endpartialdef %}
 

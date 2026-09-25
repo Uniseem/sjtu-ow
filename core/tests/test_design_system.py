@@ -269,3 +269,117 @@ def test_style_guide_stays_out_of_robots_and_page_slugs(client, home):
     assert "_styleguide" in RESERVED_CHILD_SLUGS
     assert "Disallow: /_styleguide/" in client.get("/robots.txt").content.decode()
     assert "_styleguide" not in client.get("/sitemap.xml").content.decode()
+
+
+# --- no daisyUI (13.2.7, round 077) -----------------------------------------------
+
+# Wagtail admin templates never load the front-end stylesheet.
+ADMIN_TEMPLATE_PARTS = (
+    "/admin/",
+    "core/templates/core/fonts",
+    "core/templates/core/prerender",
+    "moderation/templates",
+    "templates/wagtail",
+    "content/templates/content/admin",
+)
+DAISY_CLASS = re.compile(
+    r"^(btn(-.+)?|badge(-.+)?|card(-.+)?|alert(-.+)?|menu(-.+)?|tabs?(-.+)?"
+    r"|join(-item)?|toast(-.+)?|hero(-.+)?|link(-primary|-hover)?"
+    r"|label(-text(-alt)?)?|form-control|input(-bordered|-sm|-xs)?"
+    r"|select(-bordered)?|textarea(-bordered)?|checkbox|radio|toggle"
+    r"|drawer(-.+)?|divider|stat(-.+)?|collapse(-.+)?|loading(-.+)?|rounded-box"
+    r"|(bg|text|border|divide)-(base-\d00|base-content|primary|secondary|accent"
+    r"|neutral|info|success|warning|error)(-content)?(/\d+)?)$"
+)
+
+
+def _front_templates():
+    base = Path(settings.BASE_DIR)
+    for root in [base / "templates", *sorted(base.glob("*/templates"))]:
+        for path in root.rglob("*.html"):
+            relative = str(path.relative_to(base))
+            if not any(part in relative for part in ADMIN_TEMPLATE_PARTS):
+                yield relative, path.read_text(encoding="utf-8")
+
+
+def test_front_end_templates_use_no_daisyui_classes():
+    offenders = []
+    for relative, text in _front_templates():
+        for match in re.finditer(r'class="([^"]*)"', text):
+            for token in match.group(1).split():
+                if DAISY_CLASS.match(token.split(":")[-1]):
+                    offenders.append(f"{relative}: {token}")
+    assert offenders == []
+
+
+def test_the_stylesheet_no_longer_loads_daisyui():
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    assert "daisyui" not in css
+    compiled = APP_CSS.read_text(encoding="utf-8")
+    assert ".btn{" not in compiled.replace(" ", "")
+    assert "--color-base-100" not in compiled
+
+
+def test_the_account_centre_is_not_marked_as_a_section(client, home):
+    """/me/teams/ and /me/registrations/ contain /teams/ and /registrations/."""
+    client.force_login(_person("nav-me@example.com"))
+    for path in ("/me/teams/", "/me/registrations/", "/me/scrims/"):
+        html = client.get(path).content.decode("utf-8")
+        nav = html[html.index('class="c-nav') : html.index("</nav>")]
+        assert 'aria-current="page"' not in nav, path
+    html = client.get("/teams/").content.decode("utf-8")
+    nav = html[html.index('class="c-nav') : html.index("</nav>")]
+    assert '<a href="/teams/" aria-current="page">战队</a>' in nav
+
+
+# --- account centre (13.5, round 077) ---------------------------------------------
+
+
+def test_the_account_menu_is_numbered_and_marks_the_current_page(client, home):
+    client.force_login(_person("menu-me@example.com"))
+    html = client.get("/me/game-accounts/").content.decode("utf-8")
+    menu = html[
+        html.index('<ul class="c-sidenav') : html.index(
+            "</ul>", html.index('<ul class="c-sidenav')
+        )
+    ]
+    assert menu.count('class="c-sidenav__index"') == 7
+    assert (
+        '<a href="/me/game-accounts/" aria-current="page">'
+        '<span class="c-sidenav__index">02</span>游戏 ID 与段位</a>'
+    ) in menu
+    assert menu.count('aria-current="page"') == 1
+
+
+def test_a_game_id_panel_sets_each_rank_as_a_figure(client, home):
+    user = _person("ranks@example.com")
+    user.game_accounts.create(battletag="Genji#51234", rank_tank=22, rank_support=40)
+    client.force_login(user)
+    html = client.get("/me/game-accounts/").content.decode("utf-8")
+    panel = html[html.index("data-game-account") :]
+    assert '钻石 <span class="c-rank__div">3</span>' in panel
+    assert '前 <span class="c-rank__div">500</span>' in panel
+    assert "c-rank--none" in panel  # damage is unranked
+
+
+@pytest.mark.parametrize(
+    "status, shape",
+    [
+        ("approved", "c-status--ok"),
+        ("pending", "c-status--warn"),
+        ("rejected", "c-status--rejected"),
+        ("withdrawn", "c-status--off"),
+    ],
+)
+def test_registration_status_has_its_own_shape(status, shape):
+    class Registration:
+        def __init__(self):
+            self.status = status
+
+        def get_status_display(self):
+            return status
+
+    html = Template('{% include "components/registration_status.html" %}').render(
+        Context({"registration": Registration()})
+    )
+    assert shape in html

@@ -1,12 +1,30 @@
 {% extends "base.html" %}
+{% load ow %}
 
 {% block title %}{% block me_title %}个人中心{% endblock %} · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-5xl px-4 py-8">
-    <h1 class="mb-6">{% block me_heading %}个人中心{% endblock %}</h1>
-    {% include "me/_nav.html" %}
-    {% include "me/_incomplete.html" %}
-    {% block me_content %}{% endblock %}
-  </section>
+  {# 个人中心 (design 13.5, 13.2.8). Live-rendered only, never prerendered. #}
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>个人中心</span></nav>
+      <div class="c-pagehead__row">
+        <div>
+          <p class="c-eyebrow">ACCOUNT · {{ request.user.nickname }}</p>
+          <h1>{% block me_heading %}个人中心{% endblock %}</h1>
+        </div>
+        <div class="c-pagehead__actions">{% block me_actions %}{% endblock %}</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="l-container pt-6 pb-16 lg:pt-10 lg:pb-24">
+    <div class="grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-14">
+      {% include "me/_nav.html" %}
+      <div class="flex min-w-0 flex-col gap-10">
+        {% include "me/_incomplete.html" %}
+        {% block me_content %}{% endblock %}
+      </div>
+    </div>
+  </div>
 {% endblock %}

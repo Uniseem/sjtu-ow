@@ -180,7 +180,7 @@ python manage.py load_legal_pages --force  # 覆盖后台里已有的正文
 - 日期、时间、星期、编号、名额格的格式统一用 `core/templatetags/ow.py` 的过滤器（`{% load ow %}`）
 - **样张页 `/_styleguide/`**：每个组件的每种状态排在一页上，能进后台的账号登录后可以看，其他人 404。改组件先在这里看
 - 只改模板、用了新的工具类时要 `tailwind build --force`（见 `AGENTS.md` 的坑）
-- 过渡期（074–076）：还没改完的页面仍用 daisyUI 的类，所以样式表暂时还加载 daisyUI 插件（中性主题），077 去掉
+- 前台不用 daisyUI（077 起样式表里不再加载插件），模板里写了 daisyUI 的类名会被测试拦下
 
 首页版式见设计 5.2 节。后台要维护的只有两处，都在「页面 → 首页 → 编辑」：
 

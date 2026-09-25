@@ -4,27 +4,27 @@
 
 {% block account_content %}
   <h1>输入邮箱验证码</h1>
-  <p class="mt-2 mb-6 text-base-content/80">
-    验证码已发送到 <a href="mailto:{{ email }}" class="link">{{ email }}</a>，有效期较短，请尽快输入。
+  <p>
+    验证码已发送到 <a href="mailto:{{ email }}" class="c-link">{{ email }}</a>，有效期较短，请尽快输入。
   </p>
-  <form method="post" action="{% url 'account_email_verification_sent' %}" class="flex flex-col gap-4">
+  <form method="post" action="{% url 'account_email_verification_sent' %}">
     {% csrf_token %}
     {% include "account/_form.html" with form=verify_form %}
-    <button type="submit" class="btn btn-primary min-h-11 font-button">确认</button>
+    <button type="submit" class="c-btn c-btn--primary">确认</button>
   </form>
   {% if can_resend %}
-    <form method="post" action="{% url 'account_email_verification_sent' %}" class="mt-4">
+    <form method="post" action="{% url 'account_email_verification_sent' %}">
       {% csrf_token %}
       {{ redirect_field }}
       <input type="hidden" name="action" value="resend">
-      <button type="submit" class="btn btn-ghost min-h-11 font-button">重新发送验证码</button>
+      <button type="submit" class="c-btn c-btn--quiet">重新发送验证码</button>
     </form>
   {% endif %}
   {% if not cancel_url %}
-    <form method="post" action="{% url 'account_logout' %}" class="mt-2">
+    <form method="post" action="{% url 'account_logout' %}">
       {% csrf_token %}
       <input type="hidden" name="next" value="{% url 'account_login' %}">
-      <button type="submit" class="btn btn-ghost min-h-11 font-button">取消</button>
+      <button type="submit" class="c-btn c-btn--quiet">取消</button>
     </form>
   {% endif %}
 {% endblock %}

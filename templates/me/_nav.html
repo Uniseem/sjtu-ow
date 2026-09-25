@@ -1,24 +1,21 @@
-<nav class="mb-6" aria-label="个人中心">
-  <ul class="menu bg-base-200 rounded-box hidden lg:flex">
+{% load ow %}
+<nav aria-label="个人中心" class="font-nav min-w-0">
+  <ul class="c-sidenav hidden self-start lg:block">
     {% for name, label, available in me_nav %}
       <li>
         {% if available %}
-          <a href="{% url name %}" {% if current_me == name %}class="menu-active" aria-current="page"{% endif %}>{{ label }}</a>
+          <a href="{% url name %}"{% if current_me == name %} aria-current="page"{% endif %}><span class="c-sidenav__index">{{ forloop.counter|ow_index }}</span>{{ label }}</a>
         {% else %}
-          <span class="text-base-content/40">{{ label }}</span>
+          <span class="flex min-h-11 items-center pl-4 text-fg-3">{{ label }}</span>
         {% endif %}
       </li>
     {% endfor %}
   </ul>
-  <div class="lg:hidden overflow-x-auto">
-    <div class="tabs tabs-box flex-nowrap" role="tablist" aria-label="个人中心">
-      {% for name, label, available in me_nav %}
-        {% if available %}
-          <a href="{% url name %}" role="tab" class="tab shrink-0 {% if current_me == name %}tab-active{% endif %}">{{ label }}</a>
-        {% else %}
-          <span role="tab" class="tab tab-disabled shrink-0">{{ label }}</span>
-        {% endif %}
-      {% endfor %}
-    </div>
+  <div class="c-tabs lg:hidden">
+    {% for name, label, available in me_nav %}
+      {% if available %}
+        <a href="{% url name %}"{% if current_me == name %} aria-current="page"{% endif %}>{{ label }}</a>
+      {% endif %}
+    {% endfor %}
   </div>
 </nav>

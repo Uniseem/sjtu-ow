@@ -8,7 +8,7 @@
     <form
       method="post"
       action="{{ form_action|default:request.path }}"
-      class="flex flex-col gap-4"
+      class="c-form"
       hx-post="{{ form_action|default:request.path }}"
       {% if account %}
         hx-target="#game-account-{{ account.pk }}"
@@ -20,14 +20,14 @@
     >
       {% csrf_token %}
       {% if form.non_field_errors %}
-        <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
+        <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ form.non_field_errors.0 }}</span></p>
       {% endif %}
       {% include "account/_form.html" %}
-      <div class="flex flex-wrap gap-2">
-        <button type="submit" class="btn btn-primary min-h-11 font-button">保存</button>
+      <div class="flex flex-wrap gap-3">
+        <button type="submit" class="c-btn c-btn--primary">保存</button>
         <a
           href="{% url 'me_game_accounts' %}"
-          class="btn btn-ghost min-h-11 font-button"
+          class="c-btn c-btn--quiet"
           hx-get="{% url 'me_game_accounts' %}"
           hx-target="#game-account-list"
           hx-swap="outerHTML"
@@ -37,46 +37,46 @@
   {% endpartialdef %}
 
   {% partialdef card %}
-    <article id="game-account-{{ account.pk }}" class="card bg-base-200">
-      <div class="card-body gap-4">
+    <article id="game-account-{{ account.pk }}" class="c-panel" data-game-account>
         {% if editing and editing.pk == account.pk %}
           {% partial form_body %}
         {% else %}
-          <h2 class="card-title font-code">{{ account.battletag }}</h2>
-          <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <dt class="text-sm text-base-content/70">坦克</dt>
-              <dd>{% include "components/rank_badge.html" with label=account.tank_label %}</dd>
+          <div class="c-panel__head">
+            <h2 class="font-code text-lg">{{ account.battletag }}</h2>
+            <p class="text-sm text-fg-3">段位更新于 {{ account.ranks_updated_at|timesince }}前</p>
+          </div>
+          <dl class="mt-4 grid grid-cols-3 border-y border-rule">
+            <div class="py-3 pr-3">
+              <dt class="inline-flex items-center gap-1.5 text-sm text-fg-2">{% include "components/icon.html" with name="role-tank" class="size-4" %}坦克</dt>
+              <dd class="mt-1">{% include "components/rank_badge.html" with label=account.tank_label %}</dd>
             </div>
-            <div>
-              <dt class="text-sm text-base-content/70">输出</dt>
-              <dd>{% include "components/rank_badge.html" with label=account.damage_label %}</dd>
+            <div class="border-l border-rule py-3 pl-3">
+              <dt class="inline-flex items-center gap-1.5 text-sm text-fg-2">{% include "components/icon.html" with name="role-damage" class="size-4" %}输出</dt>
+              <dd class="mt-1">{% include "components/rank_badge.html" with label=account.damage_label %}</dd>
             </div>
-            <div>
-              <dt class="text-sm text-base-content/70">支援</dt>
-              <dd>{% include "components/rank_badge.html" with label=account.support_label %}</dd>
+            <div class="border-l border-rule py-3 pl-3">
+              <dt class="inline-flex items-center gap-1.5 text-sm text-fg-2">{% include "components/icon.html" with name="role-support" class="size-4" %}支援</dt>
+              <dd class="mt-1">{% include "components/rank_badge.html" with label=account.support_label %}</dd>
             </div>
           </dl>
-          <p class="text-sm text-base-content/70">段位更新于 {{ account.ranks_updated_at|timesince }}前</p>
-          <div class="card-actions">
+          <div class="c-panel__actions">
             <a
               href="{% url 'me_game_account_edit' account.pk %}"
-              class="btn btn-outline btn-sm min-h-11 font-button"
+              class="c-btn c-btn--secondary c-btn--sm"
               hx-get="{% url 'me_game_account_edit' account.pk %}"
               hx-target="#game-account-{{ account.pk }}"
               hx-swap="outerHTML"
-            >编辑</a>
+            >{% include "components/icon.html" with name="edit" %}编辑</a>
             <button
               type="button"
-              class="btn btn-ghost btn-sm min-h-11 font-button"
+              class="c-btn c-btn--danger c-btn--sm"
               hx-post="{% url 'me_game_account_delete' account.pk %}"
               hx-target="#game-account-list"
               hx-swap="outerHTML"
               hx-confirm="确定删除这个游戏 ID？"
-            >删除</button>
+            >{% include "components/icon.html" with name="trash" %}删除</button>
           </div>
         {% endif %}
-      </div>
     </article>
   {% endpartialdef %}
 
@@ -94,25 +94,23 @@
         {% endif %}
       </div>
       {% if at_limit %}
-        <p class="text-base-content/70">每人最多绑定 {{ max_game_accounts }} 个游戏 ID。</p>
+        <p class="text-sm text-fg-2">每人最多绑定 {{ max_game_accounts }} 个游戏 ID。</p>
       {% else %}
         <a
           href="{% url 'me_game_accounts' %}?new=1"
-          class="btn btn-primary min-h-11 font-button w-full sm:w-auto"
+          class="c-btn c-btn--primary self-start"
           hx-get="{% url 'me_game_accounts' %}?new=1"
           hx-target="#create-game-account"
           hx-swap="innerHTML"
-        >新增游戏 ID</a>
+        >{% include "components/icon.html" with name="plus" %}新增游戏 ID</a>
       {% endif %}
     </div>
   {% endpartialdef %}
 
   {% partialdef form_response %}
     {% include "me/_htmx_oob.html" %}
-    <article id="game-account-{{ account.pk|default:'new' }}" class="card bg-base-200">
-      <div class="card-body gap-4">
+    <article id="game-account-{{ account.pk|default:'new' }}" class="c-panel">
         {% partial form_body %}
-      </div>
     </article>
   {% endpartialdef %}
 

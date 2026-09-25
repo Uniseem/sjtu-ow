@@ -1,55 +1,71 @@
 {% extends "me/base.html" %}
+{% load ow %}
 
 {% block me_title %}我的战队{% endblock %}
 {% block me_heading %}我的战队{% endblock %}
+{% block me_actions %}<a href="{% url 'team_create' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="plus" %}创建战队</a>{% endblock %}
 
 {% block me_content %}
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <h2>我所在的战队</h2>
-    <a href="{% url 'team_create' %}" class="btn btn-primary btn-sm min-h-11 font-button">创建战队</a>
-  </div>
-  {% if teams %}
-    <ul class="mt-4 flex flex-col gap-2">
-      {% for membership in teams %}
-        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
-          <a href="{{ membership.team.get_absolute_url }}" class="link link-hover">{{ membership.team.name }}</a>
-          {% if membership.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
-          <span class="ml-auto flex gap-2">
-            {% if membership.is_captain %}
-              <a href="{% url 'team_manage' membership.team.pk %}" class="btn btn-ghost btn-sm min-h-11 font-button">管理</a>
-            {% else %}
-              <form method="post" action="{% url 'team_leave' membership.team.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">退出</button>
-              </form>
-            {% endif %}
-          </span>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="mt-4 text-base-content/70">你还没有加入任何战队。<a href="{% url 'team_index' %}" class="link link-primary">去看看</a></p>
-  {% endif %}
+  <section aria-labelledby="me-teams">
+    {% include "components/section_head.html" with title="我所在的战队" heading_id="me-teams" %}
+    {% if teams %}
+      <table class="c-table c-table--stack">
+        <thead><tr><th scope="col">战队</th><th scope="col">身份</th><th scope="col" class="is-num">操作</th></tr></thead>
+        <tbody>
+          {% for membership in teams %}
+            <tr>
+              <td data-label="战队"><a href="{{ membership.team.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ membership.team.name }}</a></td>
+              <td data-label="身份">{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% else %}队员{% endif %}</td>
+              <td data-label="操作" class="is-num">
+                {% if membership.is_captain %}
+                  <a href="{% url 'team_manage' membership.team.pk %}" class="c-btn c-btn--secondary c-btn--sm">{% include "components/icon.html" with name="settings" %}管理</a>
+                {% else %}
+                  <form method="post" action="{% url 'team_leave' membership.team.pk %}" class="inline-block">
+                    {% csrf_token %}
+                    <button type="submit" class="c-btn c-btn--danger c-btn--sm">退出</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-fg-2">你还没有加入任何战队。<a href="{% url 'team_index' %}" class="c-link">去看看</a></p>
+    {% endif %}
+  </section>
 
-  <h2 class="mt-10">我的入队申请</h2>
-  {% if applications %}
-    <ul class="mt-4 flex flex-col gap-2">
-      {% for application in applications %}
-        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
-          <a href="{{ application.team.get_absolute_url }}" class="link link-hover">{{ application.team.name }}</a>
-          <span class="badge">{{ application.get_status_display }}</span>
-          {% if application.decision_note %}<span class="text-sm text-base-content/70">{{ application.decision_note }}</span>{% endif %}
-          <span class="ml-auto text-sm text-base-content/60 font-numeric">{{ application.created_at|date:"Y年n月j日" }}</span>
-          {% if application.status == pending_status %}
-            <form method="post" action="{% url 'application_cancel' application.pk %}">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-ghost btn-sm min-h-11 font-button">撤回</button>
-            </form>
-          {% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="mt-4 text-base-content/70">还没有提交过入队申请。</p>
-  {% endif %}
+  <section aria-labelledby="me-applications">
+    {% include "components/section_head.html" with title="我的入队申请" heading_id="me-applications" %}
+    {% if applications %}
+      <table class="c-table c-table--stack">
+        <thead><tr><th scope="col">战队</th><th scope="col">状态</th><th scope="col">提交</th><th scope="col" class="is-num">操作</th></tr></thead>
+        <tbody>
+          {% for application in applications %}
+            <tr>
+              <td data-label="战队"><a href="{{ application.team.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ application.team.name }}</a></td>
+              <td data-label="状态">
+                {% if application.status == "approved" %}{% include "components/status_badge.html" with kind="ok" label=application.get_status_display %}
+                {% elif application.status == "pending" %}{% include "components/status_badge.html" with kind="warn" label=application.get_status_display %}
+                {% elif application.status == "rejected" %}{% include "components/status_badge.html" with kind="rejected" label=application.get_status_display %}
+                {% else %}{% include "components/status_badge.html" with kind="off" label=application.get_status_display %}{% endif %}
+                {% if application.decision_note %}<span class="mt-1 block text-sm text-fg-2">{{ application.decision_note }}</span>{% endif %}
+              </td>
+              <td data-label="提交" class="font-numeric">{{ application.created_at|ow_date }}</td>
+              <td data-label="操作" class="is-num">
+                {% if application.status == pending_status %}
+                  <form method="post" action="{% url 'application_cancel' application.pk %}" class="inline-block">
+                    {% csrf_token %}
+                    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">撤回</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-fg-2">还没有提交过入队申请。</p>
+    {% endif %}
+  </section>
 {% endblock %}

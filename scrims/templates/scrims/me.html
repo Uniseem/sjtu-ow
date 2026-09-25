@@ -1,25 +1,29 @@
 {% extends "me/base.html" %}
+{% load ow %}
 
 {% block me_title %}我的内战{% endblock %}
 {% block me_heading %}我的内战{% endblock %}
 
 {% block me_content %}
-    {% if signups %}
-      <ul class="mt-6 divide-y divide-base-300 rounded-box bg-base-200">
+  {% if signups %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th scope="col">内战</th><th scope="col">开始</th><th scope="col">位置</th><th scope="col" class="is-num">状态</th></tr></thead>
+      <tbody>
         {% for signup in signups %}
-          <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-            <span>
-              <a href="{% url 'scrim_detail' signup.scrim.pk %}" class="link link-hover">{{ signup.scrim.title }}</a>
-              <span class="ml-2 text-sm text-base-content/70 font-numeric">{{ signup.scrim.starts_at|date:"n月j日 H:i" }}</span>
-            </span>
-            <span class="flex items-center gap-1">
-              {% if signup.scrim.status == "cancelled" %}<span class="badge badge-warning badge-sm">已取消</span>{% endif %}
-              {% for label in signup.role_labels %}<span class="badge badge-outline badge-sm">{{ label }}</span>{% endfor %}
-            </span>
-          </li>
+          <tr>
+            <td data-label="内战"><a href="{% url 'scrim_detail' signup.scrim.pk %}" class="font-semibold hover:text-fg-red">{{ signup.scrim.title }}</a></td>
+            <td data-label="开始" class="font-numeric">{{ signup.scrim.starts_at|ow_date }} {{ signup.scrim.starts_at|ow_time }}</td>
+            <td data-label="位置">{% include "components/role_icons.html" with role_tank=signup.role_tank role_damage=signup.role_damage role_support=signup.role_support %}</td>
+            <td data-label="状态" class="is-num">
+              {% if signup.scrim.status == "cancelled" %}{% include "components/status_badge.html" with kind="off" label="已取消" %}
+              {% elif signup.scrim.status == "finished" %}{% include "components/status_badge.html" with kind="done" label="已结束" %}
+              {% else %}{% include "components/status_badge.html" with kind="ok" label="已报名" %}{% endif %}
+            </td>
+          </tr>
         {% endfor %}
-      </ul>
-    {% else %}
-      {% include "components/empty_state.html" with title="还没有报名内战" message="在内战页面报名后会出现在这里。" %}
-    {% endif %}
+      </tbody>
+    </table>
+  {% else %}
+    {% include "components/empty_state.html" with title="还没有报名内战" message="在内战页面报名后会出现在这里。" action_url="/scrims/" action_label="去看看内战" %}
+  {% endif %}
 {% endblock %}

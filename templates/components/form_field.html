@@ -9,21 +9,21 @@
         {{ field }}
         <span>{{ field.label }}{% if field.field.required %}<span class="c-field__req" aria-hidden="true">*</span>{% endif %}</span>
       </label>
-      {% if field.help_text %}<p class="c-field__help">{{ field.help_text }}</p>{% endif %}
+      {% if field.help_text %}<div class="c-field__help">{{ field.help_text }}</div>{% endif %}
       {% if field.errors %}<p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ field.errors.0 }}</span></p>{% endif %}
     </div>
   {% elif input_type == "radio" or input_type == "checkbox" %}
     <fieldset class="c-field{% if field.errors %} is-invalid{% endif %}">
       <legend class="c-field__label mb-2">{{ field.label }}{% if field.field.required %}<span class="c-field__req" aria-hidden="true">*</span>{% endif %}</legend>
       {{ field }}
-      {% if field.help_text %}<p class="c-field__help">{{ field.help_text }}</p>{% endif %}
+      {% if field.help_text %}<div class="c-field__help">{{ field.help_text }}</div>{% endif %}
       {% if field.errors %}<p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ field.errors.0 }}</span></p>{% endif %}
     </fieldset>
   {% else %}
     <div class="c-field{% if field.errors %} is-invalid{% endif %}">
       <label class="c-field__label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="c-field__req" aria-hidden="true">*</span>{% endif %}</label>
       {{ field }}
-      {% if field.help_text %}<p class="c-field__help">{{ field.help_text }}</p>{% endif %}
+      {% if field.help_text %}<div class="c-field__help">{{ field.help_text }}</div>{% endif %}
       {% if field.errors %}<p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ field.errors.0 }}</span></p>{% endif %}
     </div>
   {% endif %}

@@ -3,23 +3,30 @@
 {% block title %}申请加入 {{ team.name }} · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-2xl px-4 py-10">
-    <h1>申请加入「{{ team.name }}」</h1>
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'team_index' %}">战队</a><span class="c-crumbs__sep">/</span><a href="{{ team.get_absolute_url }}">{{ team.name }}</a><span class="c-crumbs__sep">/</span><span>申请加入</span></nav>
+      <p class="c-eyebrow">APPLY</p>
+      <h1>申请加入「{{ team.name }}」</h1>
+      <p class="c-pagehead__lede">队长会看到你的昵称、意向位置、留言和游戏 ID，通过后你就是队员了。</p>
+    </div>
+  </header>
+  <div class="l-container pt-8 pb-16 lg:pb-24">
     {% if not allowed %}
-      <div class="alert alert-warning mt-6" role="status">{{ reason }}</div>
-      <p class="mt-4"><a href="{{ team.get_absolute_url }}" class="btn btn-ghost min-h-11 font-button">返回战队主页</a></p>
+      <div class="c-notice c-notice--warn max-w-xl" role="status">{% include "components/icon.html" with name="alert" %}<p class="c-notice__body">{{ reason }}</p></div>
+      <p class="mt-6"><a href="{{ team.get_absolute_url }}" class="c-btn c-btn--secondary">返回战队主页</a></p>
     {% else %}
-      <form method="post" class="form-control mt-6 flex flex-col gap-4">
+      <form method="post" class="c-form max-w-xl">
         {% csrf_token %}
         {% if form.non_field_errors %}
-          <p class="text-error" role="alert">{{ form.non_field_errors.0 }}</p>
+          <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ form.non_field_errors.0 }}</span></p>
         {% endif %}
         {% include "account/_form.html" %}
-        <div class="flex flex-wrap gap-2">
-          <button type="submit" class="btn btn-primary min-h-11 font-button">提交申请</button>
-          <a href="{{ team.get_absolute_url }}" class="btn btn-ghost min-h-11 font-button">取消</a>
+        <div class="c-formbar">
+          <button type="submit" class="c-btn c-btn--primary">提交申请</button>
+          <a href="{{ team.get_absolute_url }}" class="c-btn c-btn--quiet">取消</a>
         </div>
       </form>
     {% endif %}
-  </section>
+  </div>
 {% endblock %}

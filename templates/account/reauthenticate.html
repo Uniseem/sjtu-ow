@@ -4,12 +4,12 @@
 
 {% block account_content %}
   <h1>确认身份</h1>
-  <p class="mt-2 mb-6">为了保护账号，请再次输入密码。</p>
+  <p>为了保护账号，请再次输入密码。</p>
   {% block reauthenticate_content %}
-    <form method="post" action="{% url 'account_reauthenticate' %}" class="flex flex-col gap-4">
+    <form method="post" action="{% url 'account_reauthenticate' %}">
       {% csrf_token %}
       {% include "account/_form.html" %}
-      <button type="submit" class="btn btn-primary min-h-11 font-button">确认</button>
+      <button type="submit" class="c-btn c-btn--primary">确认</button>
     </form>
   {% endblock %}
 {% endblock %}

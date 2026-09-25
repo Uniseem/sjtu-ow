@@ -3,7 +3,14 @@
 {% block title %}{% block head_title %}账号{% endblock %} · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-md px-4 py-10">
-    {% block account_content %}{% endblock %}
-  </section>
+  {# Account pages (design 13.2.8 「表单」): one narrow column, live-rendered. #}
+  <div class="l-container pt-10 pb-20 lg:pt-16 lg:pb-28">
+    <div class="grid items-start gap-12 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:gap-24">
+      <section class="c-auth">
+        <p class="c-eyebrow">ACCOUNT</p>
+        {% block account_content %}{% endblock %}
+      </section>
+      {% block account_aside %}{% endblock %}
+    </div>
+  </div>
 {% endblock %}

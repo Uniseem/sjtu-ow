@@ -3,20 +3,16 @@
 {% block title %}首页 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="hero min-h-[60vh] bg-base-200">
-    <div class="hero-content text-center">
-      <div class="max-w-xl">
-        <h1>
-          上海交通大学守望先锋社区
-        </h1>
-        <p class="py-6 text-base-content/80">
-          资讯、赛事、组队、战队和内战功能正在建设中。当前页面用于确认站点骨架、样式和部署流程。
-        </p>
-        <div class="flex flex-wrap justify-center gap-3">
-          <a href="/tournaments/" class="btn btn-primary min-h-11 font-button">查看赛事</a>
-          <a href="/teams/" class="btn btn-outline min-h-11 font-button">浏览战队</a>
-        </div>
+  {# Only shown before init_site has created the Wagtail homepage (core.views.home). #}
+  <header class="c-pagehead">
+    <div class="l-container">
+      <p class="c-eyebrow">SJTU OVERWATCH COMMUNITY</p>
+      <h1>上海交通大学守望先锋社区</h1>
+      <p class="c-pagehead__lede">首页还没有初始化。管理员运行 <code class="font-code">python manage.py init_site</code> 后，这里会换成正式首页。</p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="/tournaments/" class="c-btn c-btn--primary">查看赛事</a>
+        <a href="/teams/" class="c-btn c-btn--secondary">浏览战队</a>
       </div>
     </div>
-  </section>
+  </header>
 {% endblock %}

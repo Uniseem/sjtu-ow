@@ -1,13 +1,14 @@
 {% comment %}
   Main navigation (design 13.3), shared by the masthead and the phone drawer.
-  The current section is marked from the path; prerendered pages are per
-  path, so this is safe to cache. In the drawer each item carries its number.
+  The current section is marked from the start of the path (so /me/teams/ is
+  not 战队); prerendered pages are per path, so this is safe to cache. In the
+  drawer each item carries its number.
 {% endcomment %}
 {% with p=request.path %}
   <a href="{% url 'home' %}"{% if p == "/" %} aria-current="page"{% endif %}>{% if numbered %}<span>01</span>{% endif %}首页</a>
-  <a href="/news/"{% if "/news/" in p %} aria-current="page"{% endif %}>{% if numbered %}<span>02</span>{% endif %}资讯</a>
-  <a href="/tournaments/"{% if "/tournaments/" in p or "/registrations/" in p %} aria-current="page"{% endif %}>{% if numbered %}<span>03</span>{% endif %}赛事</a>
-  <a href="/scrims/"{% if "/scrims/" in p %} aria-current="page"{% endif %}>{% if numbered %}<span>04</span>{% endif %}内战</a>
-  <a href="/teams/"{% if "/teams/" in p %} aria-current="page"{% endif %}>{% if numbered %}<span>05</span>{% endif %}战队</a>
-  <a href="/members/"{% if "/members/" in p %} aria-current="page"{% endif %}>{% if numbered %}<span>06</span>{% endif %}成员</a>
+  <a href="/news/"{% if p|slice:":6" == "/news/" %} aria-current="page"{% endif %}>{% if numbered %}<span>02</span>{% endif %}资讯</a>
+  <a href="/tournaments/"{% if p|slice:":13" == "/tournaments/" or p|slice:":15" == "/registrations/" %} aria-current="page"{% endif %}>{% if numbered %}<span>03</span>{% endif %}赛事</a>
+  <a href="/scrims/"{% if p|slice:":8" == "/scrims/" %} aria-current="page"{% endif %}>{% if numbered %}<span>04</span>{% endif %}内战</a>
+  <a href="/teams/"{% if p|slice:":7" == "/teams/" %} aria-current="page"{% endif %}>{% if numbered %}<span>05</span>{% endif %}战队</a>
+  <a href="/members/"{% if p|slice:":9" == "/members/" %} aria-current="page"{% endif %}>{% if numbered %}<span>06</span>{% endif %}成员</a>
 {% endwith %}

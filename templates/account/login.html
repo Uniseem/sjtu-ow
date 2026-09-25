@@ -4,15 +4,13 @@
 
 {% block account_content %}
   <h1>登录</h1>
-  <p class="mt-2 mb-6 text-base-content/80">
-    还没有账号？<a href="{{ signup_url }}" class="link link-primary">注册</a>
-  </p>
-  <form method="post" action="{% url 'account_login' %}" class="flex flex-col gap-4">
+  <p>还没有账号？<a href="{{ signup_url }}" class="c-link">注册</a></p>
+  <form method="post" action="{% url 'account_login' %}">
     {% csrf_token %}
     {% include "account/_form.html" %}
-    <button type="submit" class="btn btn-primary min-h-11 font-button">登录</button>
+    <div><button type="submit" class="c-btn c-btn--primary c-btn--block">登录</button></div>
   </form>
-  <p class="mt-4">
-    <a href="{% url 'account_reset_password' %}" class="link">忘记密码？</a>
-  </p>
+  <p class="c-auth__foot"><a href="{% url 'account_reset_password' %}" class="c-link">忘记密码？</a></p>
 {% endblock %}
+
+{% block account_aside %}{% include "account/_why.html" %}{% endblock %}

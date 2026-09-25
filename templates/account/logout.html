@@ -4,11 +4,11 @@
 
 {% block account_content %}
   <h1>退出登录</h1>
-  <p class="mt-2 mb-6">确定要退出当前账号吗？</p>
-  <form method="post" action="{% url 'account_logout' %}" class="flex flex-col gap-4">
+  <p>确定要退出当前账号吗？</p>
+  <form method="post" action="{% url 'account_logout' %}">
     {% csrf_token %}
     {{ redirect_field }}
-    <button type="submit" class="btn btn-primary min-h-11 font-button">退出</button>
-    <a href="{% url 'home' %}" class="btn btn-ghost min-h-11 font-button">取消</a>
+    <button type="submit" class="c-btn c-btn--primary">退出</button>
+    <a href="{% url 'home' %}" class="c-btn c-btn--quiet">取消</a>
   </form>
 {% endblock %}

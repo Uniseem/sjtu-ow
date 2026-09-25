@@ -1,51 +1,69 @@
 {% extends "me/base.html" %}
+{% load ow %}
 
 {% block me_title %}我的报名{% endblock %}
 {% block me_heading %}我的报名{% endblock %}
 
 {% block me_content %}
-  <h2>赛事报名</h2>
-  {% if registrations %}
-    <ul class="mt-4 flex flex-col gap-2">
-      {% for registration in registrations %}
-        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
-          <a href="{{ registration.get_absolute_url }}" class="link link-hover">{{ registration.tournament.title }}</a>
-          <span class="text-sm text-base-content/70">{{ registration.team_name }}</span>
-          <span class="badge">{{ registration.get_status_display }}</span>
-          <span class="ml-auto text-sm text-base-content/60 font-numeric">{{ registration.submitted_at|date:"Y年n月j日" }}</span>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="mt-4 text-base-content/70">你还没有参加任何赛事报名。<a href="{% url 'tournament_index' %}" class="link link-primary">去看看赛事</a></p>
-  {% endif %}
+  <section aria-labelledby="me-regs">
+    {% include "components/section_head.html" with title="赛事报名" heading_id="me-regs" %}
+    {% if registrations %}
+      <table class="c-table c-table--stack">
+        <thead><tr><th scope="col">赛事</th><th scope="col">队伍</th><th scope="col">状态</th><th scope="col" class="is-num">提交</th></tr></thead>
+        <tbody>
+          {% for registration in registrations %}
+            <tr>
+              <td data-label="赛事"><a href="{{ registration.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ registration.tournament.title }}</a></td>
+              <td data-label="队伍">{{ registration.team_name }}{% if not registration.team_id %} <span class="c-tag ml-1">临时队伍</span>{% endif %}</td>
+              <td data-label="状态">{% include "components/registration_status.html" %}</td>
+              <td data-label="提交" class="is-num font-numeric">{{ registration.submitted_at|ow_date }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-fg-2">你还没有参加任何赛事报名。<a href="{% url 'tournament_index' %}" class="c-link">去看看赛事</a></p>
+    {% endif %}
+  </section>
 
-  <h2 class="mt-10">个人报名</h2>
-  {% if individual_signups %}
-    <ul class="mt-4 flex flex-col gap-2">
-      {% for signup in individual_signups %}
-        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
-          <a href="{{ signup.tournament.get_absolute_url }}" class="link link-hover">{{ signup.tournament.title }}</a>
-          <span class="text-sm text-base-content/70">{% for label in signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}</span>
-          {% if signup.is_placed %}
-            <span class="badge badge-success">已编入「{{ signup.registration.team_name }}」</span>
-            <a href="{{ signup.registration.get_absolute_url }}" class="link link-primary text-sm">查看报名</a>
-          {% else %}
-            <span class="badge">等待编队</span>
-            {% if signup.tournament.registration_open %}
-              <form method="post" action="{% url 'tournament_individual_cancel' signup.tournament.pk %}" class="ml-auto">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-ghost btn-xs font-button">取消</button>
-              </form>
-            {% endif %}
-          {% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="mt-4 text-base-content/70">没有个人报名。开放个人报名的赛事，在赛事页可以以个人身份报名。</p>
-  {% endif %}
+  <section aria-labelledby="me-individual">
+    {% include "components/section_head.html" with title="个人报名" heading_id="me-individual" %}
+    {% if individual_signups %}
+      <table class="c-table c-table--stack">
+        <thead><tr><th scope="col">赛事</th><th scope="col">位置</th><th scope="col">状态</th><th scope="col" class="is-num">操作</th></tr></thead>
+        <tbody>
+          {% for signup in individual_signups %}
+            <tr>
+              <td data-label="赛事"><a href="{{ signup.tournament.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ signup.tournament.title }}</a></td>
+              <td data-label="位置">{% include "components/role_icons.html" with role_tank=signup.role_tank role_damage=signup.role_damage role_support=signup.role_support %}</td>
+              <td data-label="状态">
+                {% if signup.is_placed %}
+                  {% include "components/status_badge.html" with kind="ok" label="已编入「"|add:signup.registration.team_name|add:"」" %}
+                {% else %}
+                  {% include "components/status_badge.html" with kind="warn" label="等待编队" %}
+                {% endif %}
+              </td>
+              <td data-label="操作" class="is-num">
+                {% if signup.is_placed %}
+                  <a href="{{ signup.registration.get_absolute_url }}" class="c-btn c-btn--secondary c-btn--sm">查看报名</a>
+                {% elif signup.tournament.registration_open %}
+                  <form method="post" action="{% url 'tournament_individual_cancel' signup.tournament.pk %}" class="inline-block">
+                    {% csrf_token %}
+                    <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-fg-2">没有个人报名。开放个人报名的赛事，在赛事页可以以个人身份报名。</p>
+    {% endif %}
+  </section>
 
-  <h2 class="mt-10">内战报名</h2>
-  <p class="mt-4 text-base-content/70">内战报名在<a href="{% url 'me_scrims' %}" class="link link-primary">我的内战</a>里查看。</p>
+  <section aria-labelledby="me-scrim-link">
+    {% include "components/section_head.html" with title="内战报名" heading_id="me-scrim-link" %}
+    <p class="text-fg-2">内战报名在<a href="{% url 'me_scrims' %}" class="c-link">我的内战</a>里查看。</p>
+  </section>
 {% endblock %}

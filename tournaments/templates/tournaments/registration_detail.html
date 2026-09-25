@@ -1,79 +1,87 @@
 {% extends "base.html" %}
+{% load ow %}
 
 {% block title %}报名详情 · {{ registration.tournament.title }}{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-3xl px-4 py-10">
-    <h1>报名详情</h1>
-    <p class="mt-2 text-base-content/70">
-      <a href="{{ registration.tournament.get_absolute_url }}" class="link link-hover">{{ registration.tournament.title }}</a>
-      ·
-      {% if is_adhoc %}
-        <span>{{ registration.team_name }}</span>
-        <span class="badge badge-outline badge-sm">临时队伍</span>
-      {% else %}
-        <a href="{{ registration.team.get_absolute_url }}" class="link link-hover">{{ registration.team_name }}</a>
-      {% endif %}
-    </p>
-
-    <div class="mt-6 flex flex-wrap items-center gap-2">
-      <span class="badge badge-lg">{{ registration.get_status_display }}</span>
-      <span class="text-sm text-base-content/60 font-numeric">名单版本 {{ registration.roster_version }}</span>
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'me_registrations' %}">我的报名</a><span class="c-crumbs__sep">/</span><span>报名详情</span></nav>
+      <p class="c-eyebrow">REGISTRATION</p>
+      <h1>
+        {% if is_adhoc %}{{ registration.team_name }}{% else %}<a href="{{ registration.team.get_absolute_url }}" class="hover:text-fg-red">{{ registration.team_name }}</a>{% endif %}
+      </h1>
+      <p class="c-pagehead__meta">
+        <a href="{{ registration.tournament.get_absolute_url }}" class="c-link">{{ registration.tournament.title }}</a>
+        {% if is_adhoc %}<span class="c-tag">临时队伍</span>{% endif %}
+        {% include "components/registration_status.html" %}
+        <span class="font-numeric">名单版本 {{ registration.roster_version }}</span>
+      </p>
     </div>
-    {% if registration.status_note %}
-      <p class="mt-2 text-base-content/80">审核备注：{{ registration.status_note }}</p>
-    {% endif %}
+  </header>
 
-    {% if roster_differs and is_captain %}
-      <div class="alert alert-warning mt-4" role="status">战队成员已发生变化，名单可能需要同步。</div>
-    {% endif %}
+  <div class="l-container pt-8 pb-16 lg:pb-24">
+    <div class="flex max-w-3xl flex-col gap-12">
+      <div class="flex flex-col gap-4">
+        {% if registration.status_note %}
+          <div class="c-notice">{% include "components/icon.html" with name="info" %}<p class="c-notice__body">审核备注：{{ registration.status_note }}</p></div>
+        {% endif %}
+        {% if roster_differs and is_captain %}
+          <div class="c-notice c-notice--warn" role="status">{% include "components/icon.html" with name="alert" %}<p class="c-notice__body">战队成员已发生变化，名单可能需要同步。</p></div>
+        {% endif %}
 
-    {% if can_change %}
-      <div class="mt-4 flex flex-wrap gap-2">
-        <a href="{% url 'tournament_register' registration.tournament.pk %}?team={{ registration.team.pk }}" class="btn btn-primary min-h-11 font-button">
-          {% if resubmittable %}重新提交{% else %}同步名单{% endif %}
-        </a>
-        {% if registration.status in active_statuses %}
-          <form method="post" action="{% url 'registration_withdraw' registration.pk %}">
+        {% if can_change %}
+          <div class="flex flex-wrap gap-3">
+            <a href="{% url 'tournament_register' registration.tournament.pk %}?team={{ registration.team.pk }}" class="c-btn c-btn--primary">
+              {% if resubmittable %}重新提交{% else %}同步名单{% endif %}
+            </a>
+            {% if registration.status in active_statuses %}
+              <form method="post" action="{% url 'registration_withdraw' registration.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="c-btn c-btn--danger">撤回报名</button>
+              </form>
+            {% endif %}
+          </div>
+        {% elif is_captain %}
+          <p class="text-sm text-fg-2">报名已截止，不能再修改。</p>
+        {% elif can_leave %}
+          <form method="post" action="{% url 'registration_leave' registration.pk %}" class="flex flex-wrap items-center gap-3">
             {% csrf_token %}
-            <button type="submit" class="btn btn-ghost min-h-11 font-button">撤回报名</button>
+            <button type="submit" class="c-btn c-btn--danger">退出队伍</button>
+            <span class="text-sm text-fg-2">退出后回到散人池，等赛事管理员重新编队。</span>
           </form>
+        {% elif is_adhoc and registration.status in active_statuses %}
+          <p class="text-sm text-fg-2">报名已截止，不能再退出。</p>
         {% endif %}
       </div>
-    {% elif is_captain %}
-      <p class="mt-4 text-sm text-base-content/60">报名已截止，不能再修改。</p>
-    {% elif can_leave %}
-      <form method="post" action="{% url 'registration_leave' registration.pk %}" class="mt-4">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-ghost min-h-11 font-button">退出队伍</button>
-        <span class="ml-2 text-sm text-base-content/60">退出后回到散人池，等赛事管理员重新编队。</span>
-      </form>
-    {% elif is_adhoc and registration.status in active_statuses %}
-      <p class="mt-4 text-sm text-base-content/60">报名已截止，不能再退出。</p>
-    {% endif %}
 
-    <h2 class="mt-10">名单快照</h2>
-    <ul class="mt-4 flex flex-col gap-2">
-      {% for member in members %}
-        <li class="flex flex-wrap items-center gap-2 border-b border-base-300 pb-2">
-          <span>{{ member.nickname }}</span>
-          {% if member.is_captain %}<span class="badge badge-primary">队长</span>{% endif %}
-          <span class="font-code">{{ member.battletag }}</span>
-          {% if member.is_sjtu %}<span class="badge badge-outline">交大</span>{% endif %}
-        </li>
-      {% endfor %}
-    </ul>
+      <section aria-labelledby="reg-roster">
+        {% include "components/section_head.html" with title="名单快照" en="ROSTER" heading_id="reg-roster" %}
+        <table class="c-table c-table--stack">
+          <thead><tr><th scope="col">昵称</th><th scope="col">游戏 ID</th><th scope="col" class="is-num">身份</th></tr></thead>
+          <tbody>
+            {% for member in members %}
+              <tr>
+                <td data-label="昵称" class="font-semibold">{{ member.nickname }}</td>
+                <td data-label="游戏 ID" class="font-code">{{ member.battletag }}</td>
+                <td data-label="身份" class="is-num">{% if member.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}{% if member.is_sjtu %}<span class="c-tag ml-1">交大</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
 
-    <h2 class="mt-10">状态历史</h2>
-    <ul class="mt-4 flex flex-col gap-2">
-      {% for entry in logs %}
-        <li class="border-b border-base-300 pb-2 text-sm">
-          <time datetime="{{ entry.created_at|date:'c' }}" class="font-numeric text-base-content/60">{{ entry.created_at|date:"Y年n月j日 H:i" }}</time>
-          <span class="ml-2">{{ entry.get_action_display }}</span>
-          <span class="ml-2 text-base-content/70">→ {{ entry.get_to_status_display }}</span>
-          {% if entry.note %}<span class="ml-2 text-base-content/70">（{{ entry.note }}）</span>{% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-  </section>
+      <section aria-labelledby="reg-log">
+        {% include "components/section_head.html" with title="状态历史" en="LOG" heading_id="reg-log" %}
+        <ol class="border-t border-rule">
+          {% for entry in logs %}
+            <li class="grid gap-1 border-b border-rule py-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
+              <time datetime="{{ entry.created_at|date:'c' }}" class="font-numeric text-fg-3">{{ entry.created_at|ow_date }} {{ entry.created_at|ow_time }}</time>
+              <span><span class="font-semibold">{{ entry.get_action_display }}</span> <span class="text-fg-2">→ {{ entry.get_to_status_display }}</span>{% if entry.note %}<span class="text-fg-2">（{{ entry.note }}）</span>{% endif %}</span>
+            </li>
+          {% endfor %}
+        </ol>
+      </section>
+    </div>
+  </div>
 {% endblock %}
