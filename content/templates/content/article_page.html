@@ -1,36 +1,65 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags wagtailimages_tags %}
+{% load ow wagtailcore_tags wagtailimages_tags %}
 
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  <div class="side-layout">
-    <div class="order-last lg:order-first">
-      {% include "content/_news_side.html" with index_url=page.get_parent.url active=page.category.slug %}
-    </div>
-
-    <article class="min-w-0">
-      <p class="crumbs">
-        当前位置：<a href="/">首页</a> › <a href="{{ page.get_parent.url }}">资讯</a> › <a href="{{ page.get_parent.url }}?category={{ page.category.slug }}">{{ page.category.name }}</a>
-      </p>
-      {# Like news.sjtu.edu.cn: title, date, a rule; the summary is for lists only (design 5.2). #}
-      <header class="article-head mt-6">
-        <h1>{{ page.title }}</h1>
-        <p class="article-head__meta font-numeric">{{ page.first_published_at|date:"Y年m月d日" }}</p>
-      </header>
-      {% if page.cover %}
-        <figure class="mt-6">
-          {% image page.cover fill-1200x630 class="w-full" %}
-        </figure>
-      {% endif %}
-      <div class="article-body mt-6">
-        {% include_block page.body %}
+  {# 刊物正文 (design 13.2.8); the summary is for lists and sharing only (5.2). #}
+  <article>
+    <header class="c-pagehead">
+      <div class="l-container">
+        <nav class="c-crumbs" aria-label="位置">
+          <a href="/">首页</a><span class="c-crumbs__sep">/</span>
+          <a href="{{ page.get_parent.url }}">资讯</a><span class="c-crumbs__sep">/</span>
+          <a href="{{ page.get_parent.url }}?category={{ page.category.slug }}">{{ page.category.name }}</a>
+        </nav>
+        <div class="max-w-[52rem]">
+          <p class="flex flex-wrap items-center gap-3"><span class="c-tag c-tag--strong">{{ page.category.name }}</span></p>
+          <h1 class="leading-snug">{{ page.title }}</h1>
+          <p class="c-pagehead__meta">
+            <time class="font-numeric" datetime="{{ page.first_published_at|date:'c' }}">{{ page.first_published_at|ow_date }}</time>
+            <span>{{ page.author.nickname }}</span>
+          </p>
+        </div>
       </div>
-      <dl class="article-credit">
-        <dt>作者：</dt><dd>{{ page.author.nickname }}</dd>
-        <dt>栏目：</dt><dd>{{ page.category.name }}</dd>
-      </dl>
-      {% include "comments/section.html" %}
-    </article>
-  </div>
+    </header>
+
+    <div class="l-container pt-8 pb-16 lg:pt-12 lg:pb-24">
+      <div class="grid gap-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-16">
+        <div class="min-w-0 max-w-[44rem]">
+          {% if page.cover %}
+            <figure class="mb-8">{% image page.cover fill-1200x675 class="w-full bg-sunken" alt="" %}</figure>
+          {% endif %}
+          <div class="c-prose">
+            {% include_block page.body %}
+          </div>
+          <dl class="c-facts mt-12">
+            <dt>作者</dt><dd>{{ page.author.nickname }}</dd>
+            <dt>栏目</dt><dd><a href="{{ page.get_parent.url }}?category={{ page.category.slug }}" class="hover:text-fg-red">{{ page.category.name }}</a></dd>
+            <dt>发布</dt><dd class="font-numeric">{{ page.first_published_at|ow_date }}</dd>
+          </dl>
+          {% if page.tournament and page.tournament.is_public %}
+            <section class="mt-10" aria-labelledby="article-tournament">
+              <h2 id="article-tournament" class="mb-4 text-lg">关联赛事</h2>
+              {% include "components/tournament_ticket.html" with tournament=page.tournament %}
+            </section>
+          {% endif %}
+          {% include "comments/section.html" %}
+        </div>
+        {% if related %}
+          <aside aria-labelledby="article-related" class="lg:border-t-0">
+            <h2 id="article-related" class="border-b-2 border-fg pb-3 text-base">{{ page.category.name }} · 最新</h2>
+            <ol>
+              {% for item in related %}
+                <li class="relative border-b border-rule py-4">
+                  <time class="font-numeric text-xs text-fg-3" datetime="{{ item.first_published_at|date:'c' }}">{{ item.first_published_at|ow_date }}</time>
+                  <a href="{{ item.url }}" class="c-stretch mt-1 block font-semibold leading-6 hover:text-fg-red">{{ item.title }}</a>
+                </li>
+              {% endfor %}
+            </ol>
+          </aside>
+        {% endif %}
+      </div>
+    </div>
+  </article>
 {% endblock %}

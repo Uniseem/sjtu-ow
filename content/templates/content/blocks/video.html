@@ -1,7 +1,6 @@
-<div class="aspect-video w-full overflow-hidden rounded-box bg-base-300">
+<figure class="border border-rule bg-sunken">
   {% if embed_src %}
     <iframe
-      class="h-full w-full"
       src="{{ embed_src }}"
       title="嵌入视频"
       allowfullscreen
@@ -9,8 +8,6 @@
       referrerpolicy="strict-origin-when-cross-origin"
     ></iframe>
   {% elif value.url %}
-    <p class="p-4">
-      <a class="link" href="{{ value.url }}">观看视频</a>
-    </p>
+    <p class="p-4"><a href="{{ value.url }}">观看视频</a></p>
   {% endif %}
-</div>
+</figure>

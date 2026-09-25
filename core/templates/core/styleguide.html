@@ -277,6 +277,58 @@
     </div>
   </section>
 
+  <div class="l-container l-section flex flex-col gap-16">
+    <section aria-labelledby="sg-feature">
+      {% include "components/section_head.html" with index="15" title="焦点图" en="FEATURE" heading_id="sg-feature" %}
+      <div class="c-feature max-w-3xl">
+        <div class="c-feature__stage"><figure class="c-feature__slide is-active c-hatch"></figure></div>
+        <div class="c-feature__caption is-active">
+          <p class="c-eyebrow"><span class="c-eyebrow__index">01</span>/ 03 · 焦点</p>
+          <h2 class="mt-3 text-[1.625rem] leading-snug">2026 秋季校内赛报名开始</h2>
+        </div>
+        <ol class="c-feature__index">
+          <li><button type="button" aria-current="true"><span class="num">01</span><span class="title">2026 秋季校内赛报名开始</span></button></li>
+          <li><button type="button"><span class="num">02</span><span class="title">暑期内战回顾</span></button></li>
+          <li><button type="button"><span class="num">03</span><span class="title">社团网站开始测试</span></button></li>
+        </ol>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-comments">
+      {% include "components/section_head.html" with index="16" title="评论" en="COMMENTS" heading_id="sg-comments" %}
+      <div class="max-w-3xl">
+        <ol class="c-comments__list">
+          <li class="c-comment is-pinned">
+            <span class="c-avatar" aria-hidden="true">小</span>
+            <div class="min-w-0">
+              <p class="c-comment__meta"><span class="c-comment__name">小满</span><time class="font-numeric">{{ sample_past|ow_date }} {{ sample_past|ow_time }}</time><span class="c-tag c-tag--accent">置顶</span></p>
+              <p class="c-comment__body">第一次参加内战，体验很好，谢谢组织的同学！</p>
+              <div class="c-comment__actions">
+                <button type="button" class="c-act" aria-pressed="true">{% include "components/icon.html" with name="heart" %}已赞 <span class="font-numeric">27</span></button>
+                <span class="c-act">{% include "components/icon.html" with name="reply" %}回复</span>
+                <span class="c-act">{% include "components/icon.html" with name="pin" %}取消置顶</span>
+              </div>
+            </div>
+            <details class="c-comment__thread" open>
+              <summary>1 条回复{% include "components/icon.html" with name="chevron-down" %}</summary>
+              <ol>
+                <li class="c-comment c-comment--reply">
+                  <span class="c-avatar c-avatar--sm" aria-hidden="true">白</span>
+                  <div class="min-w-0">
+                    <p class="c-comment__meta"><span class="c-comment__name">白露</span><time class="font-numeric">{{ sample_past|ow_date }}</time><span>已编辑</span></p>
+                    <p class="c-comment__body"><span class="c-comment__at">@小满</span> 下次还来</p>
+                    <div class="c-comment__actions"><span class="c-act">{% include "components/icon.html" with name="heart" %}赞 <span class="font-numeric">2</span></span></div>
+                  </div>
+                </li>
+              </ol>
+            </details>
+          </li>
+          <li class="c-comment"><p class="c-comment__placeholder">评论已删除。</p></li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
   <div class="l-container l-section">
     {% include "components/section_head.html" with index="14" title="浅色票根" en="TICKET" %}
     <div class="grid gap-4 lg:grid-cols-3">

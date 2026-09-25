@@ -65,9 +65,15 @@ def test_the_homepage_lists_tournaments_open_for_registration(client, homepage):
     _tournament("取消的赛事", opens=-day, closes=day, status=TournamentStatus.CANCELLED)
 
     html = client.get("/").content.decode("utf-8")
+    # Round 075 (design 5.2 v2.0): 近期 is only what is open now; the arena
+    # block also shows what opens soon.
+    start = html.index('aria-labelledby="home-next"')
+    next_up = html[start : html.index("</aside>", start)]
 
-    assert "报名中的赛事" in html
-    for hidden in ("还没开始报名的赛事", "已经截止的赛事", "草稿赛事", "取消的赛事"):
+    assert "报名中的赛事" in next_up
+    assert "还没开始报名的赛事" not in next_up
+    assert "还没开始报名的赛事" in html
+    for hidden in ("已经截止的赛事", "草稿赛事", "取消的赛事"):
         assert hidden not in html, hidden
     assert "后续里程碑" not in html
 

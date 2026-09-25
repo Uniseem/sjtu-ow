@@ -3,48 +3,52 @@ The comment section (design 5.6, 13.13.3). Rendered twice: read-only into
 the prerendered article (interactive=False: no forms, no CSRF, no cookie), and
 interactive for a signed-in visitor (from the state fragment or a live render).
 {% endcomment %}
-<section id="slot-article-comments" data-slot="article-comments:{{ page.pk }}" class="article-comments mt-10"{% if oob %} hx-swap-oob="true"{% endif %}{% if interactive %} hx-include="#comment-sort"{% endif %}>
+<section id="slot-article-comments" data-slot="article-comments:{{ page.pk }}" class="c-comments"{% if oob %} hx-swap-oob="true"{% endif %}{% if interactive %} hx-include="#comment-sort"{% endif %}>
   {% if interactive %}<input type="hidden" id="comment-sort" name="sort" value="{{ sort }}">{% endif %}
-  <h2 id="comments">评论 <span class="font-numeric text-base text-base-content/60">{{ thread.total }}</span></h2>
-  {% if thread.total > 1 %}
-    <nav class="mt-2 flex gap-3 text-sm" aria-label="评论排序">
-      <a href="{{ page.url }}?sort=new#comments" class="link link-hover{% if sort == "new" %} font-medium text-primary{% endif %}"{% if sort == "new" %} aria-current="true"{% endif %}>最新</a>
-      <a href="{{ page.url }}?sort=top#comments" class="link link-hover{% if sort == "top" %} font-medium text-primary{% endif %}"{% if sort == "top" %} aria-current="true"{% endif %}>最热</a>
-    </nav>
-  {% endif %}
+  <div class="c-comments__head">
+    <h2 id="comments">评论 <span class="c-comments__count">{{ thread.total }}</span></h2>
+    {% if thread.total > 1 %}
+      <nav class="c-comments__sort" aria-label="评论排序">
+        <a href="{{ page.url }}?sort=new#comments"{% if sort == "new" %} aria-current="true"{% endif %}>最新</a>
+        <a href="{{ page.url }}?sort=top#comments"{% if sort == "top" %} aria-current="true"{% endif %}>最热</a>
+      </nav>
+    {% endif %}
+  </div>
 
   {% if not page.comments_enabled %}
-    <p class="mt-3 text-sm text-base-content/70">这篇文章关闭了评论。</p>
+    <p class="mt-4 text-sm text-fg-2">这篇文章关闭了评论。</p>
   {% elif interactive %}
     {% if post_problems %}
-      <ul class="mt-3 list-inside list-disc text-sm text-base-content/70">
-        {% for problem in post_problems %}
-          <li>{% if problem == "请先登录" %}<a href="{% url 'account_login' %}?next={{ page.url }}" class="link link-primary">登录后评论</a>{% else %}{{ problem }}{% endif %}</li>
-        {% endfor %}
-      </ul>
+      <div class="c-notice c-notice--info mt-4">{% include "components/icon.html" with name="info" %}
+        <ul class="c-notice__body">
+          {% for problem in post_problems %}
+            <li>{% if problem == "请先登录" %}<a href="{% url 'account_login' %}?next={{ page.url }}">登录后评论</a>{% else %}{{ problem }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
     {% endif %}
     {% if can_post %}
       {% include "comments/_composer.html" with action_url=page.pk|stringformat:"s" parent=None %}
     {% endif %}
   {% else %}
-    <p class="mt-3 text-sm text-base-content/70"><a href="{% url 'account_login' %}?next={{ page.url }}" class="link link-primary">登录后评论</a></p>
+    <p class="mt-4 text-sm text-fg-2"><a href="{% url 'account_login' %}?next={{ page.url }}" class="font-semibold text-fg underline underline-offset-4 hover:text-fg-red">登录后评论</a></p>
   {% endif %}
 
-  <ol id="comment-list" class="mt-6 flex flex-col gap-4">
+  <ol id="comment-list" class="c-comments__list">
     {% for item in thread.items %}
       {% include "comments/_item.html" with item=item %}
     {% empty %}
-      <li class="text-sm text-base-content/60">还没有评论。</li>
+      <li class="py-6 text-sm text-fg-3">还没有评论。</li>
     {% endfor %}
   </ol>
 
-  <div id="comments-more" class="mt-4">
+  <div id="comments-more" class="mt-6">
     {% if thread.has_next %}
       {% if interactive %}
-        <a href="{{ page.url }}?comments={{ thread.next_number }}&amp;sort={{ sort }}#comments" class="btn btn-ghost btn-sm min-h-11 font-button"
+        <a href="{{ page.url }}?comments={{ thread.next_number }}&amp;sort={{ sort }}#comments" class="c-btn c-btn--secondary c-btn--sm"
            hx-get="{% url 'comment_more' page.pk %}?page={{ thread.next_number }}&amp;sort={{ sort }}" hx-target="#comment-list" hx-swap="beforeend">加载更多</a>
       {% else %}
-        <a href="{{ page.url }}?comments={{ thread.next_number }}&amp;sort={{ sort }}#comments" class="btn btn-ghost btn-sm min-h-11 font-button">加载更多</a>
+        <a href="{{ page.url }}?comments={{ thread.next_number }}&amp;sort={{ sort }}#comments" class="c-btn c-btn--secondary c-btn--sm">加载更多</a>
       {% endif %}
     {% endif %}
   </div>

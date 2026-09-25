@@ -16,7 +16,7 @@ from content.seo import build_seo
 ARTICLES_PER_PAGE = 12
 MAX_PINNED_ARTICLES = 3
 MAX_CAROUSEL_SLIDES = 6
-HOME_ARTICLE_COUNT = 3
+RELATED_ARTICLE_COUNT = 4
 
 # Slugs that would collide with Django routes registered before wagtail_urls
 # (design 13.4). Enforced on HomePage children only.
@@ -243,33 +243,31 @@ class HomePage(SeoPageMixin, Page):
             )
             if rel.article.live
         ][:MAX_PINNED_ARTICLES]
-        if pinned:
-            context["home_articles"] = pinned
-        else:
-            context["home_articles"] = list(
-                ArticlePage.objects.live()
-                .public()
-                .select_related("category", "author")
-                .order_by("-first_published_at", "-last_published_at")[
-                    :HOME_ARTICLE_COUNT
-                ]
-            )
+        from content import home
         from scrims.services import upcoming_scrims
         from tournaments.services import open_tournaments
 
         context["open_tournaments"] = open_tournaments()
         context["upcoming_scrims"] = upcoming_scrims()
-
-        from content import home
-
         context["carousel"] = home.carousel_slides(self)
-        context["picture_news"] = home.picture_news()
-        context["news_list"] = home.news_list(pinned)
-        context["calendar"] = home.scrim_calendar()
-        context["event_cards"] = home.event_cards(
+        context["next_up"] = home.next_up(
             context["open_tournaments"], context["upcoming_scrims"]
         )
+        context["news_list"] = home.news_list(pinned)
+        context["pinned_ids"] = {article.pk for article in pinned}
+        context["categories"] = ArticleCategory.objects.all()
+        days = home.day_strip()
+        context["days"] = days
+        context["strip_scrims"] = home.strip_scrims(days)
+        context["arena_tournaments"] = home.arena_tournaments()
+        context["approved_counts"] = home.approved_counts(
+            [item for _phase, item in context["arena_tournaments"]]
+        )
+        context["signup_counts"] = home.signup_counts(
+            context["strip_scrims"] + context["upcoming_scrims"]
+        )
         context["home_teams"] = home.teams()
+        context["member_count"] = home.member_count()
         return context
 
     class Meta:
@@ -366,8 +364,16 @@ class ArticlePage(SeoPageMixin, Page):
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
-        # The news sidebar lists every category (round 065).
-        context["categories"] = ArticleCategory.objects.all()
+        # Design 5.2: the latest in the same category beside the article.
+        context["related"] = list(
+            ArticlePage.objects.live()
+            .public()
+            .filter(category_id=self.category_id)
+            .exclude(pk=self.pk)
+            .order_by("-first_published_at", "-last_published_at")[
+                :RELATED_ARTICLE_COUNT
+            ]
+        )
         # Design 5.6: the comment section, read-only for visitors; a signed-in
         # live render gets the interactive one (13.13.3).
         from comments.rendering import section_context

@@ -1,15 +1,15 @@
 {% comment %}Only ever rendered for a signed-in visitor (design 13.13.3: no CSRF in static pages).{% endcomment %}
 <form method="post" action="{% if parent %}{% url 'comment_reply' parent.pk %}{% else %}{% url 'comment_create' page.pk %}{% endif %}"
-      class="comment-composer flex flex-col gap-2"
+      class="c-composer"
       hx-post="{% if parent %}{% url 'comment_reply' parent.pk %}{% else %}{% url 'comment_create' page.pk %}{% endif %}"
       hx-target="#slot-article-comments" hx-swap="outerHTML">
   {% csrf_token %}
-  <label class="form-control">
-    <span class="label-text sr-only">{% if parent %}回复 {{ parent.author.nickname }}{% else %}写评论{% endif %}</span>
-    <textarea name="body" rows="3" maxlength="500" required class="textarea textarea-bordered w-full" placeholder="{% if parent %}回复 {{ parent.author.nickname }}…{% else %}说点什么…（最多 500 字）{% endif %}"></textarea>
+  <label>
+    <span class="sr-only">{% if parent %}回复 {{ parent.author.nickname }}{% else %}写评论{% endif %}</span>
+    <textarea name="body" rows="3" maxlength="500" required class="c-input" placeholder="{% if parent %}回复 {{ parent.author.nickname }}…{% else %}说点什么…（最多 500 字）{% endif %}"></textarea>
   </label>
-  <div class="flex items-center gap-2">
-    <button type="submit" class="btn btn-primary btn-sm min-h-11 font-button">{% if parent %}回复{% else %}发表评论{% endif %}</button>
-    <span class="text-xs text-base-content/60">发出即显示；违规内容会被内容编辑隐藏。</span>
+  <div class="c-composer__bar">
+    <button type="submit" class="c-btn c-btn--primary c-btn--sm">{% if parent %}回复{% else %}发表评论{% endif %}</button>
+    <span>发出即显示；违规内容会被内容编辑隐藏。</span>
   </div>
 </form>

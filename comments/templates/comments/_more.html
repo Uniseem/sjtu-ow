@@ -2,9 +2,9 @@
 {% for item in thread.items %}
   {% include "comments/_item.html" with item=item %}
 {% endfor %}
-<div id="comments-more" class="mt-4" hx-swap-oob="true">
+<div id="comments-more" class="mt-6" hx-swap-oob="true">
   {% if thread.has_next %}
-    <a href="{{ page.url }}?comments={{ thread.next_number }}&amp;sort={{ sort }}#comments" class="btn btn-ghost btn-sm min-h-11 font-button"
+    <a href="{{ page.url }}?comments={{ thread.next_number }}&amp;sort={{ sort }}#comments" class="c-btn c-btn--secondary c-btn--sm"
        hx-get="{% url 'comment_more' page.pk %}?page={{ thread.next_number }}&amp;sort={{ sort }}" hx-target="#comment-list" hx-swap="beforeend">加载更多</a>
   {% endif %}
 </div>

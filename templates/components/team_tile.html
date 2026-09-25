@@ -1,0 +1,12 @@
+{% load ow wagtailimages_tags %}
+{# A team in the tile wall (design 13.2.7 c-tiles). #}
+<li class="c-tile">
+  <span class="c-tile__art{% if not team.logo %} c-hatch{% endif %}">
+    {% if team.logo %}{% image team.logo fill-320x320 alt="" %}{% else %}<span class="c-tile__initial">{{ team.name|initial }}</span>{% endif %}
+  </span>
+  <a href="{{ team.get_absolute_url }}" class="c-tile__name c-stretch">{{ team.name }}</a>
+  <span class="c-tile__meta">
+    {% if team.member_count %}<span class="font-numeric">{{ team.member_count }} 人</span>{% endif %}
+    {% if team.is_recruiting %}{% include "components/status_badge.html" with kind="live" label="招募中" %}{% endif %}
+  </span>
+</li>

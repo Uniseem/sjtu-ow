@@ -4,40 +4,42 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  <div class="side-layout">
-    {% include "content/_news_side.html" with index_url=page.url active=active_category %}
-
-    <section class="min-w-0">
-      <h1 class="page-title">{{ page.title }}</h1>
-      {% if page.intro %}
-        <div class="article-body mt-4 text-base-content/80">
-          {{ page.intro|richtext }}
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>{{ page.title }}</span></nav>
+      <div class="c-pagehead__row">
+        <div>
+          <p class="c-eyebrow">NEWS</p>
+          <h1>{{ page.title }}</h1>
+          {% if page.intro %}<div class="c-pagehead__lede">{{ page.intro|richtext }}</div>{% endif %}
         </div>
-      {% endif %}
+        <div class="c-pagehead__actions">
+          <a href="{% url 'submit' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="pen" %}我要投稿</a>
+        </div>
+      </div>
+    </div>
+  </header>
 
+  <div class="l-container pt-6 pb-16 lg:pb-24">
+    {# Category filter: links, so the list stays a plain GET page (13.7). #}
+    <nav class="c-tabs" aria-label="文章分类">
+      <a href="{{ page.url }}"{% if not active_category %} aria-current="page"{% endif %}>全部</a>
+      {% for category in categories %}
+        <a href="{{ page.url }}?category={{ category.slug }}"{% if active_category == category.slug %} aria-current="page"{% endif %}>{{ category.name }}</a>
+      {% endfor %}
+    </nav>
+
+    <div class="mt-8">
       {% if articles %}
-        <ul class="date-list mt-4">
+        <ol class="c-rowlist">
           {% for article in articles %}
-            <li>
-              <div class="date-block">
-                <span class="date-block__day">{{ article.first_published_at|date:"d" }}</span>
-                <span class="date-block__month">{{ article.first_published_at|date:"Y.m" }}</span>
-              </div>
-              <div class="min-w-0">
-                <a href="{{ article.url }}" class="date-list__title text-lg">{{ article.title }}</a>
-                <p class="date-list__meta">
-                  {{ article.category.name }} · {{ article.author.nickname }}{% if article.summary %} · {{ article.summary }}{% endif %}
-                </p>
-              </div>
-            </li>
+            {% include "components/article_row.html" with show_author=True %}
           {% endfor %}
-        </ul>
+        </ol>
         {% include "components/pagination.html" %}
       {% else %}
-        <div class="mt-8">
-          {% include "components/empty_state.html" with title="暂无文章" message="这个分类还没有已发布的文章。" %}
-        </div>
+        {% include "components/empty_state.html" with title="暂无文章" message="这个分类还没有已发布的文章。" %}
       {% endif %}
-    </section>
+    </div>
   </div>
 {% endblock %}

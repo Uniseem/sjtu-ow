@@ -1,7 +1,8 @@
-"""Homepage and article pages after www.sjtu.edu.cn (round 065, design 5.2)."""
+"""Homepage and article pages (design 5.2). Round 065 built them after
+www.sjtu.edu.cn; round 075 rebuilt them on the v2.0 design system (13.2)."""
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -14,6 +15,7 @@ from core.models import PrerenderedPage
 from scrims.models import ScrimStatus
 from scrims.tests.test_scrims import make_scrim
 from teams import services as team_services
+from tournaments.models import Tournament, TournamentStatus
 from tournaments.tests.test_state_table import player
 
 
@@ -88,26 +90,26 @@ def test_the_homepage_shows_the_carousel_and_loads_its_script(client, site):
 
 @pytest.mark.django_db
 def test_no_pictures_means_no_carousel(client, site):
-    assert "data-carousel" not in client.get("/").content.decode("utf-8")
+    html = client.get("/").content.decode("utf-8")
+    assert "data-carousel" not in html
+    assert "carousel" not in html[html.index("</main>") :]  # nor its script
+
+
+@pytest.mark.django_db
+def test_the_carousel_has_a_numbered_index_and_one_caption_per_slide(client, site):
+    home, *_ = site
+    for index in range(3):
+        HomePageCarouselItem.objects.create(
+            page=home, image=_image(f"s{index}"), title=f"第{index}张", sort_order=index
+        )
+    html = client.get("/").content.decode("utf-8")
+    assert html.count("data-caption") == 3
+    assert html.count("data-dot") == 3
+    assert '<span class="num">03</span>' in html
+    assert html.count('aria-current="true"') == 1
 
 
 # --- lists -------------------------------------------------------------------------
-
-
-def test_picture_news_only_shows_articles_with_a_cover(site):
-    _, news, author, category = site
-    _article(news, category, author, title="没有封面", slug="plain")
-    for index in range(5):
-        _article(
-            news,
-            category,
-            author,
-            title=f"图{index}",
-            slug=f"pic{index}",
-            cover=_image(f"p{index}"),
-        )
-    titles = [article.title for article in home_data.picture_news()]
-    assert titles == ["图4", "图3", "图2", "图1"]
 
 
 def test_pinned_articles_lead_the_news_list_without_repeats(site):
@@ -122,35 +124,117 @@ def test_pinned_articles_lead_the_news_list_without_repeats(site):
     assert len({article.pk for article in items}) == len(items)
 
 
-def test_event_cards_put_tournaments_first_and_fill_one_row():
-    cards = home_data.event_cards(["赛事甲", "赛事乙"], ["内战甲", "内战乙"])
-    assert cards == [
-        ("tournament", "赛事甲"),
-        ("tournament", "赛事乙"),
-        ("scrim", "内战甲"),
+def _tournament(title, **kwargs):
+    now = timezone.now()
+    options = {
+        "title": title,
+        "registration_opens_at": now - timedelta(days=1),
+        "registration_closes_at": now + timedelta(days=5),
+        "status": TournamentStatus.PUBLISHED,
+        "published_at": now,
+    }
+    options.update(kwargs)
+    return Tournament.objects.create(**options)
+
+
+def test_next_up_merges_by_date_and_keeps_four():
+    now = timezone.now()
+
+    class Item:
+        def __init__(self, name, **dates):
+            self.name = name
+            self.__dict__.update(dates)
+
+    tournaments = [
+        Item("赛事5", registration_closes_at=now + timedelta(days=5)),
+        Item("赛事2", registration_closes_at=now + timedelta(days=2)),
+        Item("赛事9", registration_closes_at=now + timedelta(days=9)),
     ]
-
-
-# --- calendar ------------------------------------------------------------------------
+    scrims = [
+        Item("内战1", starts_at=now + timedelta(days=1)),
+        Item("内战3", starts_at=now + timedelta(days=3)),
+    ]
+    entries = home_data.next_up(tournaments, scrims)
+    assert [entry.item.name for entry in entries] == [
+        "内战1",
+        "赛事2",
+        "内战3",
+        "赛事5",
+    ]
+    assert [entry.label for entry in entries] == ["开始", "截止", "开始", "截止"]
 
 
 @pytest.mark.django_db
-def test_the_calendar_marks_days_with_public_scrims():
-    def at(month, day):
-        return timezone.make_aware(datetime(2030, month, day, 19, 0))
+def test_the_day_strip_counts_public_scrims_and_tournament_starts():
+    def at(day):
+        return timezone.make_aware(datetime(2030, 5, day, 19, 0))
 
-    make_scrim(starts_at=at(5, 10))
-    make_scrim(starts_at=at(5, 12), status=ScrimStatus.DRAFT)
-    make_scrim(starts_at=at(5, 14), status=ScrimStatus.CANCELLED)
-    make_scrim(starts_at=at(5, 20), status=ScrimStatus.FINISHED)
-    make_scrim(starts_at=at(6, 1))
+    make_scrim(starts_at=at(15))
+    make_scrim(starts_at=at(15), status=ScrimStatus.FINISHED)
+    make_scrim(starts_at=at(16), status=ScrimStatus.DRAFT)
+    make_scrim(starts_at=at(17), status=ScrimStatus.CANCELLED)
+    make_scrim(starts_at=at(14))  # yesterday
+    make_scrim(starts_at=at(29))  # the 15th day, outside
+    make_scrim(starts_at=at(28))  # the 14th day, inside
+    _tournament("开赛", starts_at=at(20))
+    _tournament("草稿赛", starts_at=at(21), status=TournamentStatus.DRAFT)
+    _tournament("取消赛", starts_at=at(22), status=TournamentStatus.CANCELLED)
 
-    calendar = home_data.scrim_calendar(date(2030, 5, 15))
-    days = [day for week in calendar["weeks"] for day in week]
-    assert {day.day for day in days if day.has_event} == {10, 20}
-    assert [day.day for day in days if day.is_today] == [15]
-    # 2030-05-01 is a Wednesday; weeks start on Monday.
-    assert [day.in_month for day in calendar["weeks"][0][:3]] == [False, False, True]
+    cells = home_data.day_strip(date(2030, 5, 15))
+    assert len(cells) == home_data.STRIP_DAYS == 14
+    assert cells[0].date == date(2030, 5, 15) and cells[-1].date == date(2030, 5, 28)
+    assert [cell.is_today for cell in cells].count(True) == 1 and cells[0].is_today
+    counts = {cell.date.day: cell.count for cell in cells if cell.count}
+    assert counts == {15: 2, 20: 1, 28: 1}
+    assert cells[5].first_url == f"/tournaments/{cells[5].tournaments[0].pk}/"
+
+
+@pytest.mark.django_db
+def test_the_scrim_list_beside_the_strip_leaves_out_finished_ones():
+    today = timezone.localdate()
+    coming = make_scrim(title="要来的", starts_at=timezone.now() + timedelta(days=2))
+    make_scrim(
+        title="结束的",
+        starts_at=timezone.now() + timedelta(days=2),
+        status=ScrimStatus.FINISHED,
+    )
+    cells = home_data.day_strip(today)
+    assert home_data.strip_scrims(cells) == [coming]
+
+
+@pytest.mark.django_db
+def test_arena_tournaments_put_open_ones_first_then_opening_soon():
+    now = timezone.now()
+    later = _tournament("晚截止", registration_closes_at=now + timedelta(days=9))
+    sooner = _tournament("早截止", registration_closes_at=now + timedelta(days=2))
+    opening = _tournament(
+        "即将开放",
+        registration_opens_at=now + timedelta(days=3),
+        registration_closes_at=now + timedelta(days=10),
+    )
+    _tournament(
+        "已截止",
+        registration_opens_at=now - timedelta(days=9),
+        registration_closes_at=now - timedelta(days=1),
+    )
+    _tournament("已结束", status=TournamentStatus.FINISHED)
+    items = home_data.arena_tournaments()
+    assert items == [("open", sooner), ("open", later), ("upcoming", opening)]
+    _tournament("第四个", registration_closes_at=now + timedelta(days=4))
+    assert len(home_data.arena_tournaments()) == home_data.ARENA_TOURNAMENT_COUNT
+
+
+@pytest.mark.django_db
+def test_the_homepage_shows_next_up_and_the_arena(client, site):
+    _tournament("正在报名的赛事")
+    make_scrim(title="三天后的内战", starts_at=timezone.now() + timedelta(days=3))
+    html = client.get("/").content.decode("utf-8")
+    assert html.count('data-next-up="tournament"') == 1
+    assert html.count('data-next-up="scrim"') == 1
+    arena = html[html.index('class="on-night l-section"') :]
+    assert "正在报名的赛事" in arena and "三天后的内战" in arena
+    assert "支队伍已通过" in arena
+    assert 'class="c-daystrip"' in arena
 
 
 # --- teams ---------------------------------------------------------------------------
@@ -166,6 +250,14 @@ def prerender_on(settings, tmp_path):
 def test_a_new_team_refreshes_the_homepage(prerender_on):
     team_services.create_team(user=player("cap@example.com", "队长"), name="新战队")
     assert "/" in set(PrerenderedPage.objects.values_list("path", flat=True))
+
+
+@pytest.mark.django_db
+def test_team_tiles_carry_the_member_count(client, site):
+    team_services.create_team(user=player("cap@example.com", "队长"), name="图块队")
+    html = client.get("/").content.decode("utf-8")
+    tile = html[html.index("图块队") - 600 : html.index("图块队") + 400]
+    assert "1 人" in tile
 
 
 @pytest.mark.django_db
@@ -189,6 +281,67 @@ def test_article_pages_leave_the_summary_to_lists(client, site):
     # The summary stays in <meta name="description">; the page body leaves it out.
     assert "列表用的摘要" not in _main(client.get(article.url))
     assert "列表用的摘要" in _main(client.get(news.url))
+
+
+@pytest.mark.django_db
+def test_article_body_is_set_as_prose_with_its_cover(client, site):
+    _, news, author, category = site
+    article = _article(
+        news, category, author, title="有图", slug="with-cover", cover=_image("cv")
+    )
+    main = _main(client.get(article.url))
+    assert '<div class="c-prose">' in main
+    assert re.search(r"<figure[^>]*>\s*<img[^>]+cv", main)
+
+
+@pytest.mark.django_db
+def test_the_same_category_latest_leaves_out_this_article_and_others(client, site):
+    _, news, author, category = site
+    other = ArticleCategory.objects.get(slug="notice")
+    for index in range(6):
+        _article(news, category, author, title=f"同栏{index}", slug=f"same{index}")
+    _article(news, other, author, title="别的栏目", slug="elsewhere")
+    this = _article(news, category, author, title="本篇", slug="this")
+    main = _main(client.get(this.url))
+    aside = main[main.index('id="article-related"') :]
+    assert "别的栏目" not in aside and "本篇" not in aside
+    assert [f"同栏{i}" in aside for i in range(6)] == [
+        False,
+        False,
+        True,
+        True,
+        True,
+        True,
+    ]
+    assert aside.index("同栏5") < aside.index("同栏2")
+
+
+@pytest.mark.django_db
+def test_an_article_shows_its_public_tournament_as_a_ticket(client, site):
+    _, news, author, category = site
+    public = _tournament("关联的赛事")
+    article = _article(
+        news, category, author, title="带赛事", slug="t", tournament=public
+    )
+    main = _main(client.get(article.url))
+    assert "c-ticket" in main and public.get_absolute_url() in main
+    public.status = TournamentStatus.DRAFT
+    public.save()
+    article.save_revision().publish()
+    assert "关联的赛事" not in _main(client.get(article.url))
+
+
+@pytest.mark.django_db
+def test_the_news_filter_marks_the_current_category(client, site):
+    _, news, *_ = site
+    html = client.get(news.url + "?category=guide").content.decode("utf-8")
+    tabs = html[
+        html.index('class="c-tabs"') : html.index(
+            "</nav>", html.index('class="c-tabs"')
+        )
+    ]
+    assert '?category=guide" aria-current="page">攻略</a>' in tabs
+    assert tabs.count('aria-current="page"') == 1
 
 
 @pytest.mark.django_db

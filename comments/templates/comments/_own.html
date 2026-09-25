@@ -1,12 +1,12 @@
 {% if interactive and comment.author_id == request.user.id and not comment.is_hidden %}
-  <details class="comment-edit">
-    <summary class="btn btn-ghost btn-xs font-button">编辑</summary>
-    <form method="post" action="{% url 'comment_edit' comment.pk %}" class="mt-2 flex flex-col gap-2"
+  <details>
+    <summary class="c-act">{% include "components/icon.html" with name="edit" %}编辑</summary>
+    <form method="post" action="{% url 'comment_edit' comment.pk %}" class="c-composer mt-2"
           hx-post="{% url 'comment_edit' comment.pk %}" hx-target="#slot-article-comments" hx-swap="outerHTML">
       {% csrf_token %}
-      <textarea name="body" rows="3" maxlength="500" required class="textarea textarea-bordered w-full">{{ comment.body }}</textarea>
-      <div><button type="submit" class="btn btn-primary btn-sm min-h-11 font-button">保存修改</button></div>
+      <textarea name="body" rows="3" maxlength="500" required class="c-input" aria-label="修改评论">{{ comment.body }}</textarea>
+      <div class="c-composer__bar"><button type="submit" class="c-btn c-btn--primary c-btn--sm">保存修改</button></div>
     </form>
   </details>
-  <button type="button" class="btn btn-ghost btn-xs font-button" hx-post="{% url 'comment_delete' comment.pk %}" hx-target="#slot-article-comments" hx-swap="outerHTML" hx-confirm="删除这条评论？删除后不能恢复。">删除</button>
+  <button type="button" class="c-act c-act--danger" hx-post="{% url 'comment_delete' comment.pk %}" hx-target="#slot-article-comments" hx-swap="outerHTML" hx-confirm="删除这条评论？删除后不能恢复。">{% include "components/icon.html" with name="trash" %}删除</button>
 {% endif %}

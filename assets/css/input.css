@@ -599,6 +599,11 @@
       width 200ms var(--ease-ow);
   }
 
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   .c-search input::placeholder {
     color: var(--tone-fg-3);
   }
@@ -1849,6 +1854,11 @@
     color: var(--tone-fg-2);
   }
 
+  .c-day__month {
+    font-size: 0.6875rem;
+    color: var(--tone-fg-3);
+  }
+
   .c-day__n {
     margin-top: auto;
     font-size: 0.75rem;
@@ -2804,6 +2814,242 @@
     aspect-ratio: 16 / 9;
     height: auto;
     border: 0;
+  }
+
+  /* ---- Comments (design 5.6) ------------------------------------------------------- */
+
+  .c-comments {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--tone-fg);
+    scroll-margin-top: 1rem;
+  }
+
+  .c-comments__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+  }
+
+  .c-comments__head h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.625rem;
+  }
+
+  .c-comments__count {
+    font-family: var(--font-figure);
+    font-stretch: 85%;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--tone-fg-2);
+  }
+
+  .c-comments__sort {
+    display: flex;
+    gap: 1.25rem;
+  }
+
+  .c-comments__sort a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 0.875rem;
+    color: var(--tone-fg-2);
+  }
+
+  .c-comments__sort a:hover {
+    color: var(--tone-fg);
+  }
+
+  .c-comments__sort a[aria-current="true"] {
+    color: var(--tone-fg);
+    font-weight: 600;
+  }
+
+  .c-comments__sort a[aria-current="true"]::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background-color: var(--color-red);
+  }
+
+  .c-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+
+  .c-composer textarea {
+    min-height: 5.5rem;
+  }
+
+  .c-composer__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    color: var(--tone-fg-3);
+    font-size: 0.8125rem;
+  }
+
+  .c-comments__list {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--tone-line);
+  }
+
+  .c-comment {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0 0.875rem;
+    padding-block: 1.25rem;
+    border-bottom: 1px solid var(--tone-line);
+    scroll-margin-top: 1rem;
+  }
+
+  .c-comment--reply {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    gap: 0 0.75rem;
+    padding-block: 0.875rem;
+    border-bottom: 0;
+  }
+
+  /* Pinned: a heavier ink rule; red stays for "you are here" (13.2.6). */
+  .c-comment.is-pinned {
+    border-top: 2px solid var(--tone-fg);
+    margin-top: -1px;
+  }
+
+  .c-comment__placeholder {
+    grid-column: 1 / -1;
+    color: var(--tone-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-comment__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--tone-fg-3);
+  }
+
+  .c-comment__name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--tone-fg);
+  }
+
+  .c-comment__body {
+    margin-top: 0.375rem;
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  .c-comment__at {
+    color: var(--tone-accent);
+  }
+
+  .c-comment__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 1rem;
+    margin-block: -0.25rem -0.625rem;
+  }
+
+  .c-comment__actions details[open] {
+    flex-basis: 100%;
+    order: 10;
+  }
+
+  /* Small text actions: 赞、回复、编辑、删除、置顶、隐藏. */
+  /* 44px tall like every other target (13.2.2), without looking it. */
+  .c-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    min-height: 44px;
+    font-size: 0.8125rem;
+    color: var(--tone-fg-2);
+    cursor: pointer;
+    list-style: none;
+    transition: color 120ms var(--ease-ow);
+  }
+
+  .c-act::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-act svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  button.c-act:hover,
+  summary.c-act:hover,
+  a.c-act:hover {
+    color: var(--tone-fg);
+  }
+
+  .c-act[aria-pressed="true"] {
+    color: var(--tone-accent);
+    font-weight: 600;
+  }
+
+  .c-act[aria-pressed="true"] svg {
+    fill: currentColor;
+  }
+
+  .c-act--danger:hover {
+    color: var(--tone-accent) !important;
+  }
+
+  .c-comment__thread {
+    grid-column: 2;
+    margin-top: 0.5rem;
+  }
+
+  .c-comment__thread > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 44px;
+    color: var(--tone-accent);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .c-comment__thread > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-comment__thread > summary svg {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 200ms var(--ease-ow);
+  }
+
+  .c-comment__thread[open] > summary svg {
+    transform: rotate(180deg);
+  }
+
+  .c-comment__thread > ol {
+    margin-top: 0.25rem;
+    padding-left: 0.875rem;
+    border-left: 1px solid var(--tone-line-strong);
   }
 
   /* ---- Style guide page ------------------------------------------------------------ */

@@ -3,18 +3,32 @@
 {% block title %}投稿 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <section class="mx-auto w-full max-w-3xl px-4 py-8">
-    <h1 class="mb-4">投稿</h1>
-    <p class="mb-6 text-base-content/70">目前还不能投稿，原因如下：</p>
-    <ul class="mb-8 list-disc space-y-2 pl-6">
-      {% for reason in reasons %}
-        <li>{{ reason }}</li>
-      {% endfor %}
-    </ul>
-    {% if login_url %}
-      <a href="{{ login_url }}" class="btn btn-primary min-h-11 font-button">去登录</a>
-    {% else %}
-      <a href="{% url 'me_profile' %}" class="btn btn-ghost min-h-11 font-button">返回个人中心</a>
-    {% endif %}
-  </section>
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/news/">资讯</a><span class="c-crumbs__sep">/</span><span>投稿</span></nav>
+      <p class="c-eyebrow">SUBMIT</p>
+      <h1>投稿</h1>
+      <p class="c-pagehead__lede">攻略、战报、心得都可以投。稿件在后台写，内容编辑审核后发布在资讯里。</p>
+    </div>
+  </header>
+  <div class="l-container pt-8 pb-16 lg:pb-24">
+    <div class="c-notice c-notice--warn max-w-2xl">
+      {% include "components/icon.html" with name="alert" %}
+      <div class="c-notice__body">
+        <p class="font-semibold">目前还不能投稿，原因如下：</p>
+        <ul class="mt-2 list-[square] pl-5">
+          {% for reason in reasons %}
+            <li>{{ reason }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="mt-6">
+      {% if login_url %}
+        <a href="{{ login_url }}" class="c-btn c-btn--primary">去登录</a>
+      {% else %}
+        <a href="{% url 'me_profile' %}" class="c-btn c-btn--secondary">返回个人中心</a>
+      {% endif %}
+    </div>
+  </div>
 {% endblock %}

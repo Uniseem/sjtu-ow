@@ -111,3 +111,12 @@ def rank_parts(label) -> tuple[str, str]:
     text = str(label or "").strip()
     name, _, number = text.partition(" ")
     return name, number
+
+
+@register.filter
+def lookup(mapping, key):
+    """``{{ counts|lookup:item.pk }}``; missing keys give None."""
+    try:
+        return mapping.get(key)
+    except AttributeError:
+        return None
