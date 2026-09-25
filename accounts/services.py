@@ -358,7 +358,7 @@ def personal_data(user) -> dict:
             {
                 "scrim": signup.scrim.title,
                 "starts_at": when(signup.scrim.starts_at),
-                "battletag": signup.game_account.battletag,
+                "battletag": signup.battletag,
                 "roles": [
                     label
                     for field, label in (

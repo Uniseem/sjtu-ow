@@ -1,7 +1,7 @@
 <li class="split-card" data-card data-signup="{{ signup.pk }}"
     data-ratings="{{ signup.rating_map }}" data-best="{{ signup.best_rating|default:0 }}">
   <span class="split-card-name">{{ signup.user.nickname }}</span>
-  <code class="split-card-tag">{{ signup.game_account.battletag }}</code>
+  <code class="split-card-tag">{{ signup.battletag }}</code>
   <span class="split-card-rank" data-card-rank>{{ signup.rating_used|default:"—" }}</span>
   <span class="split-card-roles">{% for _role, text in signup.rank_pairs %}{{ text }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>
   <span class="split-card-moves">

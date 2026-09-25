@@ -261,6 +261,7 @@ python manage.py remove_stale_contenttypes --include-stale-apps --noinput
 
 ## 内战
 
+- 个人中心「我的内战」（`/me/scrims/`）列出自己报过的内战。删除游戏 ID 时，只有未结束的内战会拦住；已结束或已取消的内战里那条报名保留，游戏 ID 显示为「已删除」。
 后台「社区 → 内战」创建活动，规格四选一：角色限定 5v5 / 6v6、不限位置 5v5 / 6v6。
 
 - 状态 `draft` / `published` / `finished` / `cancelled`。**草稿在前台是 404**（不泄漏存在性），已取消的不在列表里但详情页保留并显示「已取消」。

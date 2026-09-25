@@ -282,12 +282,28 @@ def ensure_content_workflow() -> Workflow:
     return workflow
 
 
+CATEGORY_PERMISSIONS = (
+    "add_articlecategory",
+    "change_articlecategory",
+    "delete_articlecategory",
+    "view_articlecategory",
+)
+
+
 def assign_content_permissions() -> None:
     """Page and collection permissions for 内容编辑 / 认证作者 / 投稿者."""
     groups = {
         name: Group.objects.get_or_create(name=name)[0]
         for name in (GROUP_CONTENT, GROUP_AUTHOR, GROUP_SUBMITTER)
     }
+    # Design 4.1: 内容编辑 manage article categories (a snippet, so plain
+    # model permissions). init_site never granted these until round 068.
+    groups[GROUP_CONTENT].permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="content",
+            codename__in=CATEGORY_PERMISSIONS,
+        )
+    )
     homepage = HomePage.objects.filter(depth=2).first()
     if homepage is not None:
         _grant_page_perms(

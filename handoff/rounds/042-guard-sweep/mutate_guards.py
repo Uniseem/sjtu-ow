@@ -33,12 +33,12 @@ REPO = Path(__file__).resolve().parents[3]
 PYTHON = REPO / ".venv" / "bin" / "python"
 GIT = os.environ.get("GIT", "git")
 
+# 068 轮更正：lfg 在 066 删除、integrations 在 067 删除，members 是 066 新增的。
 APPS = [
     "accounts",
     "content",
     "core",
-    "integrations",
-    "lfg",
+    "members",
     "moderation",
     "scrims",
     "sjtu_ow",

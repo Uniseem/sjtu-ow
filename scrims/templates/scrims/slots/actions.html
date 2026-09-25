@@ -9,7 +9,7 @@
         <div class="flex flex-wrap items-center gap-2">
           <span class="badge badge-success">已报名</span>
           <span class="text-sm text-base-content/80">
-            {{ my_signup.game_account.battletag }} ·
+            {{ my_signup.battletag }} ·
             {% for label in my_signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}
           </span>
         </div>

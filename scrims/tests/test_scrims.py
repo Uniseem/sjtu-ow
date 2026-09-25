@@ -663,3 +663,48 @@ def test_signed_out_visitors_are_sent_to_log_in(client, scrim, method, name):
     response = getattr(client, method)(reverse(name, args=args))
     assert response.status_code == 302
     assert "/accounts/login/" in response["Location"]
+
+
+@pytest.mark.django_db
+def test_a_game_id_used_by_a_finished_scrim_can_really_be_deleted(client, player):
+    """Round 068: the guard said yes but the foreign key said PROTECT."""
+    from django.urls import reverse
+
+    from scrims.models import ScrimSignup
+
+    scrim = make_scrim()
+    account = player.game_accounts.first()
+    signup = services.sign_up(
+        scrim=scrim, user=player, game_account_id=account.pk, roles=[Role.DAMAGE]
+    )
+    Scrim.objects.filter(pk=scrim.pk).update(status=ScrimStatus.FINISHED)
+    client.force_login(player)
+
+    response = client.post(reverse("me_game_account_delete", args=[account.pk]))
+
+    assert response.status_code == 302
+    assert not player.game_accounts.filter(pk=account.pk).exists()
+    signup.refresh_from_db()
+    assert signup.game_account is None
+    assert signup.battletag == ScrimSignup.DELETED_ID_LABEL
+    assert signup.rank_pairs == [("damage", "输出 未填段位")]
+    assert signup.best_rating is None
+
+
+@pytest.mark.django_db
+def test_a_game_id_used_by_a_live_scrim_is_still_refused(client, scrim, player):
+    from django.urls import reverse
+
+    account = player.game_accounts.first()
+    services.sign_up(
+        scrim=scrim, user=player, game_account_id=account.pk, roles=[Role.DAMAGE]
+    )
+    client.force_login(player)
+
+    response = client.post(
+        reverse("me_game_account_delete", args=[account.pk]), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 400
+    assert "内战" in response.content.decode()
+    assert player.game_accounts.filter(pk=account.pk).exists()

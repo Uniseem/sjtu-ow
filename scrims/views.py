@@ -132,7 +132,11 @@ def me_scrims(request):
         .exclude(scrim__status=ScrimStatus.DRAFT)
         .order_by("-scrim__starts_at")
     )
-    return render(request, "scrims/me.html", {"signups": signups})
+    from accounts.views import me_context
+
+    return render(
+        request, "scrims/me.html", me_context(request, "me_scrims", signups=signups)
+    )
 
 
 # Keep the import used by the admin split page in one place.

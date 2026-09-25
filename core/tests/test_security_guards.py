@@ -1,5 +1,6 @@
 """Security checks that had no test until round 059's guard sweep."""
 
+import json
 import os
 import subprocess
 import sys
@@ -79,6 +80,10 @@ def test_something_that_is_not_html_is_never_frozen(monkeypatch):
 
 
 def _import_prod(**overrides):
+    return _run_in_prod_env("import sjtu_ow.settings.prod", **overrides)
+
+
+def _run_in_prod_env(code, **overrides):
     env = {
         **os.environ,
         "DJANGO_SECRET_KEY": "guard-test-secret-key-not-used-anywhere-else",
@@ -91,7 +96,7 @@ def _import_prod(**overrides):
     # A fresh interpreter: a failed reload in this one would leave the module
     # half executed for later tests.
     return subprocess.run(
-        [sys.executable, "-c", "import sjtu_ow.settings.prod"],
+        [sys.executable, "-c", code],
         cwd=django_settings.BASE_DIR,
         env=env,
         capture_output=True,
@@ -118,3 +123,16 @@ def test_the_production_settings_refuse_to_start(overrides, message):
     assert result.returncode != 0
     assert "ImproperlyConfigured" in result.stderr
     assert message in result.stderr
+
+
+def test_the_production_middleware_keeps_everything_base_has():
+    """Round 068: prod.py replaces MIDDLEWARE wholesale and had silently
+    dropped the prerender-miss fallback, so production never regenerated a
+    missing static page on demand."""
+    code = (
+        "import json, sjtu_ow.settings.base as b, sjtu_ow.settings.prod as p; "
+        "print(json.dumps([m for m in b.MIDDLEWARE if m not in p.MIDDLEWARE]))"
+    )
+    result = _run_in_prod_env(code)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout.strip().splitlines()[-1]) == []

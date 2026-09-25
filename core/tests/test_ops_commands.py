@@ -598,3 +598,26 @@ def test_restore_says_nothing_extra_when_the_schema_matches(
 
     assert "切回旧镜像" not in output
     assert "恢复完成" in output
+
+
+@pytest.mark.django_db(transaction=True)
+def test_restore_checks_the_object_storage_secret_too(
+    backups, settings, tmp_path, monkeypatch
+):
+    """Round 068: the R2 secret is Fernet-encrypted as well (core migration
+    0009), but the key check only knew about the SMTP password."""
+    from cryptography.fernet import Fernet
+
+    from core.models import SiteSettings
+
+    site = SiteSettings.load()
+    site.backup_s3_secret_access_key = "r2-secret-for-the-key-check"
+    site.save()
+    archive = make_backup(backups, settings, tmp_path)
+
+    monkeypatch.setattr(
+        settings, "FIELD_ENCRYPTION_KEY", Fernet.generate_key().decode()
+    )
+
+    with pytest.raises(CommandError, match="FIELD_ENCRYPTION_KEY"):
+        run("restore", str(archive), "--yes")

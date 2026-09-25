@@ -18,8 +18,9 @@ from scrims.models import (
     ScrimStatus,
 )
 
-# Appendix A scores used in the fixtures.
-BRONZE_5, GOLD_3, PLATINUM_1, DIAMOND_3, MASTER_5 = 1, 12, 18, 22, 26
+# Appendix A scores used in the fixtures. Round 068 corrected three labels:
+# 1 is 青铜 4 (青铜 5 is 0), 18 is 白金 2, 26 is 大师 4.
+BRONZE_4, GOLD_3, PLATINUM_2, DIAMOND_3, MASTER_4 = 1, 12, 18, 22, 26
 
 
 def make_scrim(fmt=ScrimFormat.RQ_5V5, **kwargs):
@@ -118,7 +119,7 @@ def test_nobody_is_placed_in_a_role_they_cannot_play():
             scrim,
             index,
             [Role.DAMAGE, Role.SUPPORT],
-            {Role.DAMAGE: DIAMOND_3 + index % 3, Role.SUPPORT: PLATINUM_1},
+            {Role.DAMAGE: DIAMOND_3 + index % 3, Role.SUPPORT: PLATINUM_2},
         )
     select_all(scrim)
 
@@ -311,7 +312,7 @@ def test_not_enough_tanks_says_so():
             scrim,
             index,
             [Role.DAMAGE, Role.SUPPORT],
-            {Role.DAMAGE: DIAMOND_3, Role.SUPPORT: PLATINUM_1},
+            {Role.DAMAGE: DIAMOND_3, Role.SUPPORT: PLATINUM_2},
         )
     select_all(scrim)
 
@@ -351,7 +352,7 @@ def test_a_field_with_no_legal_assignment_says_so():
             scrim,
             index,
             [Role.TANK, Role.SUPPORT],
-            {Role.TANK: DIAMOND_3, Role.SUPPORT: PLATINUM_1},
+            {Role.TANK: DIAMOND_3, Role.SUPPORT: PLATINUM_2},
         )
     select_all(scrim)
 
@@ -482,10 +483,10 @@ def test_the_copy_text_matches_the_designs_format():
     )
     people = [
         ("玩家甲", Role.TANK, DIAMOND_3),
-        ("玩家乙", Role.DAMAGE, MASTER_5),
+        ("玩家乙", Role.DAMAGE, MASTER_4),
         ("玩家丙", Role.DAMAGE, DIAMOND_3),
         ("玩家丁", Role.SUPPORT, DIAMOND_3),
-        ("玩家戊", Role.SUPPORT, PLATINUM_1),
+        ("玩家戊", Role.SUPPORT, PLATINUM_2),
     ]
     placements = {}
     for team in ("a", "b"):

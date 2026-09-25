@@ -65,7 +65,7 @@ def players_from(signups, scrim) -> list[Player]:
         ratings = {
             role: signup.rating_for(role)
             for role in signup.roles
-            if signup.rating_for(role)
+            if signup.rating_for(role) is not None
         }
         players.append(
             Player(

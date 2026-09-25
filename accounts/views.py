@@ -34,6 +34,7 @@ ME_NAV = (
     ("me_contacts", "联系方式", True),
     ("me_teams", "我的战队", True),
     ("me_registrations", "我的报名", True),
+    ("me_scrims", "我的内战", True),
     ("me_security", "账号安全", True),
 )
 

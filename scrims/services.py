@@ -119,7 +119,7 @@ def role_problems(*, scrim, account, roles):
         missing = [
             labels[role]
             for role in roles
-            if not getattr(account, RANK_FIELDS[role], None)
+            if getattr(account, RANK_FIELDS[role], None) is None
         ]
         if missing:
             problems.append(
@@ -128,7 +128,7 @@ def role_problems(*, scrim, account, roles):
             )
     else:
         # Open queue only needs one rank anywhere.
-        if not any(getattr(account, field, None) for field in RANK_FIELDS.values()):
+        if all(getattr(account, field, None) is None for field in RANK_FIELDS.values()):
             problems.append("这个游戏 ID 一个位置的段位都没填")
     return problems
 
@@ -566,7 +566,7 @@ def copy_text(scrim) -> str:
                 if not members:
                     continue
                 entries = " / ".join(
-                    f"{row.user.nickname} {row.game_account.battletag} "
+                    f"{row.user.nickname} {row.battletag} "
                     f"{format_rank(row.rating_used)}"
                     for row in members
                 )
@@ -574,7 +574,7 @@ def copy_text(scrim) -> str:
         else:
             for row in side:
                 lines.append(
-                    f"{row.user.nickname} {row.game_account.battletag} "
+                    f"{row.user.nickname} {row.battletag} "
                     f"{format_rank(row.rating_used)}"
                 )
     return "\n".join(lines)

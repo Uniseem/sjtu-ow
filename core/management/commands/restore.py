@@ -25,7 +25,10 @@ from django.db import connection
 from core.dbfile import database_path, wal_siblings
 
 # (table, column) pairs holding Fernet ciphertext.
-ENCRYPTED_COLUMNS = (("core_sitesettings", "smtp_password"),)
+ENCRYPTED_COLUMNS = (
+    ("core_sitesettings", "smtp_password"),
+    ("core_sitesettings", "backup_s3_secret_access_key"),
+)
 
 
 def check_key(snapshot: Path) -> list[str]:

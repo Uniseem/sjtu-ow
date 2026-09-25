@@ -105,9 +105,8 @@ def _placements_from_post(request, scrim):
             role = ""
         elif role not in Role.values:
             role = signup.assigned_role or ""
-        if scrim.role_queue and role:
-            rating = signup.rating_for(role) or signup.best_rating
-        else:
+        rating = signup.rating_for(role) if scrim.role_queue and role else None
+        if rating is None:
             rating = signup.best_rating
         placements[signup.pk] = (team, role, rating)
     return placements

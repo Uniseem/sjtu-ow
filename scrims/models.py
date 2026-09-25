@@ -153,8 +153,11 @@ class ScrimSignup(models.Model):
     game_account = models.ForeignKey(
         "accounts.GameAccount",
         verbose_name="游戏 ID",
-        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="scrim_signups",
+        help_text="设计 3.5.2：只有未结束的内战拦住删除；删了之后这里置空。",
     )
     role_tank = models.BooleanField("坦克", default=False)
     role_damage = models.BooleanField("输出", default=False)
@@ -191,6 +194,15 @@ class ScrimSignup(models.Model):
     def __str__(self):
         return f"{self.user} @ {self.scrim}"
 
+    DELETED_ID_LABEL = "（游戏 ID 已删除）"
+
+    @property
+    def battletag(self) -> str:
+        """The game ID as signed up with, or a marker once it was deleted (3.5.2)."""
+        if self.game_account_id is None:
+            return self.DELETED_ID_LABEL
+        return self.game_account.battletag
+
     @property
     def roles(self) -> list[str]:
         return [role for role, field in ROLE_FIELDS.items() if getattr(self, field)]
@@ -212,7 +224,7 @@ class ScrimSignup(models.Model):
         pairs = []
         for role in self.roles:
             score = self.rating_for(role)
-            text = format_rank(score) if score else "未填段位"
+            text = format_rank(score) if score is not None else "未填段位"
             pairs.append((role, f"{labels[role]} {text}"))
         return pairs
 
@@ -227,5 +239,9 @@ class ScrimSignup(models.Model):
     @property
     def best_rating(self) -> int | None:
         """Design 9.4: open formats use the highest rank they filled in."""
-        scores = [self.rating_for(role) for role in self.roles if self.rating_for(role)]
+        scores = [
+            self.rating_for(role)
+            for role in self.roles
+            if self.rating_for(role) is not None
+        ]
         return max(scores) if scores else None

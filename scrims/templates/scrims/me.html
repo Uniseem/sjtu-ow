@@ -1,10 +1,9 @@
-{% extends "base.html" %}
+{% extends "me/base.html" %}
 
-{% block title %}我的内战 · 上海交通大学守望先锋社区{% endblock %}
+{% block me_title %}我的内战{% endblock %}
+{% block me_heading %}我的内战{% endblock %}
 
-{% block content %}
-  <section class="mx-auto w-full max-w-3xl px-4 py-10">
-    <h1>我的内战</h1>
+{% block me_content %}
     {% if signups %}
       <ul class="mt-6 divide-y divide-base-300 rounded-box bg-base-200">
         {% for signup in signups %}
@@ -23,5 +22,4 @@
     {% else %}
       {% include "components/empty_state.html" with title="还没有报名内战" message="在内战页面报名后会出现在这里。" %}
     {% endif %}
-  </section>
 {% endblock %}
