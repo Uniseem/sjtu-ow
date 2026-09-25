@@ -82,6 +82,7 @@ def robots_txt(request):
             "Disallow: /me/",
             "Disallow: /accounts/",
             "Disallow: /_fragments/",
+            "Disallow: /search/",
             f"Sitemap: {sitemap}",
             "",
         ]

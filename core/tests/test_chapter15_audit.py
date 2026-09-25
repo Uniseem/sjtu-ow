@@ -314,11 +314,18 @@ def test_a_real_page_carries_no_inline_script(client):
 def test_the_rate_limits_match_the_design():
     """Design 15.2 names exact numbers; drift here is silent."""
     from core.views import STATE_RATE_LIMIT
+    from search import services as search_services
+    from search.views import SEARCH_RATE_LIMIT
     from teams.views import APPLY_LIMIT, CREATE_LIMIT, DAY
 
     assert (APPLY_LIMIT, DAY) == (20, 86400)  # 申请入队每人每天 20 次
     assert (CREATE_LIMIT, DAY) == (3, 86400)  # 创建战队每人每天 3 次
     assert STATE_RATE_LIMIT == 120  # 状态片段每 IP 每分钟 120 次
+    assert SEARCH_RATE_LIMIT == 30  # 站内搜索每 IP 每分钟 30 次
+    assert search_services.PER_TYPE_LIMIT == 20  # 每类最多 20 条
+    assert search_services.MAX_QUERY_LENGTH == 50  # 搜索词最长 50 字
+    assert search_services.MAX_TERMS == 5  # 最多 5 个词
+    assert search_services.EXCERPT_RADIUS == 40  # 摘录前后各 40 字
 
 
 # --- 15.2 uploads --------------------------------------------------------------

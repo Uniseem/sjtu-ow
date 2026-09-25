@@ -16,6 +16,7 @@ urlpatterns = [
     path("", include("members.urls")),
     path("", include("tournaments.urls")),
     path("", include("scrims.urls")),
+    path("", include("search.urls")),
     path("", include(wagtail_urls)),
 ]
 

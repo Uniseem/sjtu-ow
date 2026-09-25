@@ -24,6 +24,7 @@
 | `integrations/` | 只剩迁移历史。067 删了开放 API 与 Webhook；`tournaments/0004` 依赖它的迁移，包不能删 |
 | `scrims/` | 内战、分队算法（`teaming.py`）、拖拽分队页 |
 | `moderation/` | AI 内容审核 |
+| `search/` | 站内搜索（四类内容的子串匹配） |
 | `sjtu_ow/settings/` | `base` / `dev` / `prod` |
 | `deploy/` | Docker Compose、Caddy、crontab 示例、维护页 |
 | `handoff/` | 进度、轮次记录、复核指南 |

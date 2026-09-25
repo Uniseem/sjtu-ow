@@ -319,6 +319,10 @@ CRON_TZ=Asia/Shanghai
 30 9 * * * docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py moderate_scan --digest
 ```
 
+## 站内搜索
+
+页头搜索框，或直接访问 `/search/?q=词`。搜文章（标题、摘要、正文）、赛事与内战（标题、说明）、战队（队名、简介）、成员（昵称）；只搜公开内容。多个词用空格隔开，每个词都要命中，中文按字面匹配，不分词。每类最多 20 条，每 IP 每分钟 30 次。结果页实时渲染，`robots.txt` 禁止抓取。
+
 ## 备份与恢复
 
 ```bash

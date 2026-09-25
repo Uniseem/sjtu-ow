@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "tournaments",
     "scrims",
     "moderation",
+    "search",
     "integrations",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",

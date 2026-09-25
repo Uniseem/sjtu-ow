@@ -30,6 +30,10 @@
         <div class="site-topbar">
           <div class="site-container flex h-9 items-center justify-between gap-4">
             <span class="truncate">学生社团自办网站</span>
+            <form action="{% url 'search' %}" method="get" role="search" class="ml-auto flex items-center gap-1">
+              <input type="search" name="q" maxlength="50" placeholder="搜索" aria-label="站内搜索" class="input input-xs input-bordered w-24 text-base-content sm:w-40">
+              <button type="submit" class="btn btn-xs btn-ghost font-nav">搜索</button>
+            </form>
             {% include "slots/account.html" %}
           </div>
         </div>
