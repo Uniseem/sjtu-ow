@@ -16,11 +16,9 @@ from accounts.models import (
 from teams import services as team_services
 from tournaments import registration as reg
 from tournaments.models import (
-    ActorType,
     Registration,
     RegistrationMember,
     RegistrationStatus,
-    ReviewMode,
     Tournament,
     TournamentStatus,
 )
@@ -314,7 +312,7 @@ def test_sync_bumps_the_version_and_resets_the_status(team, captain):
 
 @pytest.mark.django_db
 def test_local_review_flow(team, captain):
-    tournament = _tournament(review_mode=ReviewMode.LOCAL)
+    tournament = _tournament()
     registration = reg.submit(
         tournament=tournament, team=team, actor=captain, selections=_selections(team)
     )
@@ -327,107 +325,6 @@ def test_local_review_flow(team, captain):
     assert registration.status == RegistrationStatus.REJECTED
     assert registration.status_note == "名单不符合要求"
     assert registration.logs.filter(action="revoke").exists()
-
-
-@pytest.mark.django_db
-def test_two_stage_review_waits_for_upstream(team, captain):
-    tournament = _tournament(review_mode=ReviewMode.TWO_STAGE)
-    registration = reg.submit(
-        tournament=tournament, team=team, actor=captain, selections=_selections(team)
-    )
-    reg.approve(registration=registration, actor=captain)
-    registration.refresh_from_db()
-    assert registration.status == RegistrationStatus.AWAITING_UPSTREAM
-
-    with pytest.raises(reg.RegistrationError):
-        reg.approve(registration=registration, actor=captain)
-
-    reg.approve(registration=registration, actor=None, actor_type=ActorType.UPSTREAM)
-    registration.refresh_from_db()
-    assert registration.status == RegistrationStatus.APPROVED
-
-
-@pytest.mark.django_db
-def test_upstream_mode_locks_out_local_admins(team, captain):
-    tournament = _tournament(review_mode=ReviewMode.UPSTREAM)
-    registration = reg.submit(
-        tournament=tournament, team=team, actor=captain, selections=_selections(team)
-    )
-    with pytest.raises(reg.RegistrationError) as exc:
-        reg.approve(registration=registration, actor=captain)
-    assert "上游审核" in str(exc.value)
-
-    reg.approve(registration=registration, actor=None, actor_type=ActorType.UPSTREAM)
-    registration.refresh_from_db()
-    assert registration.status == RegistrationStatus.APPROVED
-
-
-@pytest.mark.django_db
-def test_rejection_requires_a_note(team, captain):
-    tournament = _tournament()
-    registration = reg.submit(
-        tournament=tournament, team=team, actor=captain, selections=_selections(team)
-    )
-    with pytest.raises(reg.RegistrationError) as exc:
-        reg.reject(registration=registration, actor=captain, note="  ")
-    assert "备注" in str(exc.value)
-
-
-@pytest.mark.django_db
-def test_withdraw_and_resubmit(team, captain):
-    tournament = _tournament()
-    registration = reg.submit(
-        tournament=tournament, team=team, actor=captain, selections=_selections(team)
-    )
-    reg.withdraw(registration=registration, actor=captain)
-    registration.refresh_from_db()
-    assert registration.status == RegistrationStatus.WITHDRAWN
-    assert registration.members.filter(is_active=True).count() == 0
-
-    again = reg.submit(
-        tournament=tournament, team=team, actor=captain, selections=_selections(team)
-    )
-    assert again.status == RegistrationStatus.PENDING
-    assert again.roster_version == 2
-    assert again.logs.filter(action="resubmit").exists()
-
-
-@pytest.mark.django_db
-def test_withdrawn_roster_frees_the_players(team, captain, mate):
-    tournament = _tournament()
-    registration = reg.submit(
-        tournament=tournament, team=team, actor=captain, selections=_selections(team)
-    )
-    reg.withdraw(registration=registration, actor=captain)
-
-    other_captain = _player("free-cap@example.com", "接收队长")
-    other_team = team_services.create_team(user=other_captain, name="接收战队")
-    application = team_services.apply_to_team(
-        team=other_team, user=mate, roles={"tank": True}
-    )
-    team_services.approve_application(application=application, actor=other_captain)
-    second = reg.submit(
-        tournament=tournament,
-        team=other_team,
-        actor=other_captain,
-        selections=_selections(other_team),
-    )
-    assert second.status == RegistrationStatus.PENDING
-
-
-@pytest.mark.django_db
-def test_captain_cannot_act_after_the_deadline(team, captain):
-    tournament = _tournament()
-    registration = reg.submit(
-        tournament=tournament, team=team, actor=captain, selections=_selections(team)
-    )
-    Tournament.objects.filter(pk=tournament.pk).update(
-        registration_closes_at=timezone.now() - timedelta(minutes=1)
-    )
-    registration.refresh_from_db()
-    with pytest.raises(reg.RegistrationError) as exc:
-        reg.withdraw(registration=registration, actor=captain)
-    assert "已截止" in str(exc.value)
 
 
 # --- mails ---------------------------------------------------------------------

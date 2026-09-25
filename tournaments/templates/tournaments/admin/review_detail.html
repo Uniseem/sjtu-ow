@@ -4,7 +4,7 @@
 
 {% block main_content %}
   <dl>
-    <dt>赛事</dt><dd>{{ registration.tournament.title }}（{{ registration.tournament.get_review_mode_display }}）</dd>
+    <dt>赛事</dt><dd>{{ registration.tournament.title }}{% if registration.tournament.auto_approve %}（报名自动通过）{% endif %}</dd>
     <dt>战队</dt><dd>{{ registration.team_name }}</dd>
     <dt>状态</dt><dd>{{ registration.get_status_display }}</dd>
     <dt>名单版本</dt><dd>{{ registration.roster_version }}</dd>
@@ -59,7 +59,7 @@
       </p>
     </form>
   {% else %}
-    <p class="help-block">当前审核模式或状态下，本站不能改这条报名的状态。</p>
+    <p class="help-block">当前状态下没有可用的审核操作。</p>
   {% endif %}
 
   <h2>状态日志</h2>

@@ -36,9 +36,6 @@ RESOLVABLE = [
     ("/tournaments/1/", "tournament_detail"),
     ("/tournaments/1/register/", "tournament_register"),
     ("/_fragments/state/", "state_fragment"),
-    ("/api/v1/ping", "api:ping"),
-    ("/api/v1/docs/", "api:docs"),
-    ("/api/v1/schema/", "api:schema"),
 ]
 
 # Wagtail pages created by init_site; these are served by the page tree.
@@ -79,11 +76,6 @@ def test_the_personal_area_sends_anonymous_visitors_to_login(client):
     response = client.get("/me/")
     assert response.status_code == 302
     assert "/accounts/login/" in response["Location"]
-
-
-@pytest.mark.django_db
-def test_the_api_docs_are_closed_to_anonymous_visitors(client):
-    assert client.get("/api/v1/docs/").status_code == 403
 
 
 @pytest.mark.django_db

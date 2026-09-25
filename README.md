@@ -13,7 +13,6 @@ Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)，�
 - 样式由 `django-tailwind-cli` 编译，不安装 Node。源文件在 `assets/css/input.css`（不能放进 `STATICFILES_DIRS`，否则 WhiteNoise 哈希存储会处理 `@import "tailwindcss"` 并失败），编译结果在 `static/css/app.css`。
 - 静态资源：WhiteNoise 存储后端（内容哈希 + 预压缩）；生产由 Caddy 直接提供
 - 异步任务：Django Tasks + `django-tasks-db`；应用层发信走队列，由 worker 按后台 SMTP 发送
-- 开放 API：Django REST Framework + drf-spectacular（只给上游用，前台不调用）
 - 字体：fontTools + brotli 在 worker 里把字体切成带 `unicode-range` 的 WOFF2 分片，全部托管在本站
 - 代码检查：ruff；测试：pytest + pytest-django
 
@@ -242,6 +241,8 @@ CRON_TZ=Asia/Shanghai
 python manage.py remove_stale_contenttypes --include-stale-apps --noinput
 ```
 
+**从有开放 API 的旧版本升级**（067 之前）：迁移会删掉 API 客户端、调用日志、Webhook 投递三张表，并清掉排队中的 Webhook 任务；`integrations` 包只剩迁移历史。之后同样跑一次上面的 `remove_stale_contenttypes`；测试机的 `/etc/cron.d/sjtu-ow-test` 里删掉每 10 分钟扫 Webhook 的那一行。
+
 ## 赛事
 
 - `/tournaments/` 公开列表，按「报名中 / 即将开始报名 / 已截止 / 已结束」分组；草稿和已取消的不在列表里，已取消的详情页保留并显示「已取消」。
@@ -253,9 +254,9 @@ python manage.py remove_stale_contenttypes --include-stale-apps --noinput
 - 队长在 `/tournaments/<id>/register/` 为**整支战队**报名，为每个队员选一个游戏 ID；页面上会先把每个人的问题标出来。
 - 提交时在一个写事务里做 8 项校验（时间、队长身份、人数、资料完整、账号与权限、仅限交大、游戏 ID 归属、同赛事重复报名），**所有问题一次性列出**；数据库还有一条部分唯一约束兜底「同一赛事每人只能在一支战队的有效名单里」。
 - 名单在提交时锁定：之后改昵称、段位、成员都不影响已提交的名单。队长可以在截止前「同步名单」，版本加 1、状态回到待审核。
-- 状态机按设计 8.5：待审核 / 待上游确认 / 已通过 / 已驳回 / 已撤回，三种审核模式各有各的操作方；驳回和撤销通过必须填备注；已驳回和已撤回的名单不占名额。
+- 状态机按设计 8.5：待审核 / 已通过 / 已驳回 / 已撤回。赛事管理员在后台审核；赛事打开「报名自动通过」时由系统在提交时通过（有报名之后这个开关不能再改，后台会拦）。驳回和撤销通过必须填备注；已驳回和已撤回的名单不占名额。
 - 每次变化都写进只增不改的状态日志；队长和名单成员可以在 `/registrations/<id>/` 和 `/me/registrations/` 查看。
-- 后台「社区 → 报名审核」：按赛事和状态筛选、批量通过、导出 CSV；详情页显示名单快照、与战队当前成员的差异、状态日志，操作按钮只在当前审核模式允许本站操作时出现。
+- 后台「社区 → 报名审核」：按赛事和状态筛选、批量通过、导出 CSV；详情页显示名单快照、与战队当前成员的差异、状态日志，操作按钮按报名当前状态显示。
 - **联系方式只对有 `accounts.view_contactmethod` 权限的人显示**，导出带联系方式时会在 Wagtail 操作日志里留痕。
 
 ## 内战
@@ -315,62 +316,6 @@ CRON_TZ=Asia/Shanghai
 30 9 * * * docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py moderate_scan --digest
 ```
 
-## 开放 API
-
-给上游赛事平台用，前台页面不走 API。
-
-- 基础地址 `/api/v1/`，每个上游一个客户端，在后台「设置 → API 客户端」创建，**Secret 只在创建和重新生成时显示一次**。
-- 每个请求要带 `X-Api-Key`、`X-Timestamp`、`X-Nonce`、`X-Signature`，签名是 HMAC-SHA256（算法见设计 11.2.2）。服务端按七步校验：请求头齐全 → Key 有效 → 时间戳 5 分钟内 → Nonce 10 分钟内没用过 → 常数时间比对签名 → 授权范围 → 限流。
-- 每次调用都写一条日志（不含请求体和响应体），在客户端详情页能看到最近 50 条。
-- `GET /api/v1/ping` 用来确认密钥、签名算法和双方时间差。
-- 接口文档在 `/api/v1/docs/`（OpenAPI 3，drf-spectacular 自动生成），**只有登录后台的超级管理员能看**。Swagger UI 的脚本和样式来自本站 `static/`（`drf-spectacular-sidecar`），不走 CDN。
-
-### Webhook
-
-- 在客户端详情页配置接收地址、签名密钥、订阅的事件和请求体模式（`thin` 只带 ID / `full` 带完整报名对象）。
-- 事件：`registration.submitted`、`registration.roster_synced`、`registration.withdrawn`、`registration.status_changed`、`ping`。
-- **两层过滤**：客户端订阅了这个事件，**并且**这个赛事和它相关（审核模式是 `upstream` 或 `two_stage`，或者赛事是它自己推送的）。
-- 请求头 `X-Webhook-Id`（重试时不变，用来去重）、`X-Webhook-Event`、`X-Webhook-Timestamp`、`X-Webhook-Signature`（`sha256=` + HMAC-SHA256(密钥, 时间戳 + `.` + 原始请求体)）。接收方的校验代码见设计 11.8.2。
-- **请求体在事件产生时就固定下来**，重试发的和第一次完全一样。
-- 投递：10 秒超时，2xx 算成功；**不跟随重定向，3xx 算失败**。失败后按 1 分钟、5 分钟、30 分钟、2 小时、6 小时、12 小时、24 小时重试，**加首次一共 8 次**，全部失败后邮件通知超级管理员，可以在后台手动重发（事件 ID 不变）。
-- 接收地址必须是公网 https，不能指向内网或本机。开发环境要指向本地接收端时设 `WEBHOOK_ALLOW_INSECURE_URLS=1`；**生产环境设了会拒绝启动**。
-- **不保证顺序、可能重复**：接收方按 `X-Webhook-Id` 去重，用 `roster_version` 和 `created_at` 判断新旧。
-
-### 定时清理
-
-```bash
-uv run python manage.py cleanup_old_data --dry-run   # 只统计
-uv run python manage.py cleanup_old_data
-```
-
-API 调用日志 90 天、Webhook 投递记录 180 天（待投递的不删）、已完成任务记录 30 天、过期会话，以及**已处理的** AI 审核记录 180 天——`pending`（还没人复核过）的审核记录**一条都不删，不管多久以前**（设计 15.5）。宿主机 cron 的完整示例见 `deploy/crontab.example`。
-
-### 业务接口
-
-| 方法 | 路径 | 授权范围 |
-|---|---|---|
-| GET | `/api/v1/tournaments` | `tournaments:read` |
-| GET | `/api/v1/tournaments/{id}` | `tournaments:read` |
-| PUT | `/api/v1/tournaments/external/{external_id}` | `tournaments:write` |
-| GET | `/api/v1/registrations` | `registrations:read` |
-| GET | `/api/v1/registrations/{id}` | `registrations:read` |
-| GET | `/api/v1/registrations/{id}/logs` | `registrations:read` |
-| POST | `/api/v1/registrations/{id}/review` | `registrations:review` |
-| POST | `/api/v1/registrations/review-batch` | `registrations:review` |
-| GET | `/api/v1/tournaments/{id}/roster` | `registrations:read` |
-| GET | `/api/v1/tournaments/{id}/roster.csv` | `registrations:read` |
-| GET | `/api/v1/tournaments/{id}/stats` | `registrations:read` |
-
-**几条要点**
-
-- **展开**：`include=tournament,team,members,members.ranks,logs`，每一项都要在客户端的「允许的展开项」里，否则 `403 include_not_allowed`。
-- **裁剪字段**：`fields=status,team.name` 支持点号进入展开对象，`id` 永远保留；字段名不存在返回 `400 invalid_field`。
-- **分页**：游标分页，`limit` 默认 50、最大 200，按 `updated_at, id` 排序；配合 `updated_since` 做增量同步。
-- **创建赛事**：`PUT .../external/{external_id}` 按上游自己的 ID 创建或更新，新建返回 201、更新返回 200。`external_id` 只在本客户端范围内唯一，别的客户端看不到它。已经有报名之后改审核模式返回 `409 review_mode_locked`。`description_html` 会按白名单清洗。
-- **审核**：必须带 `roster_version`；队长在此期间同步过名单就返回 `409 roster_version_mismatch`，`details` 里给当前版本。本站审核模式下上游不能改状态（`403 review_not_allowed`）；两级审核模式下上游只能确认「待上游确认」的报名，其他组合返回 `409 invalid_state_transition`。**同一个操作重复调用是幂等的**，不会重复写日志、重复发通知。
-- **批量审核**：一次最多 100 条，每条独立成败，整体返回 200，失败的那条带自己的错误码。
-- **不返回联系方式**：任何接口都不含邮箱、QQ、微信、手机号。状态日志只给操作方类型（`captain` / `admin` / `upstream` / `system`），不给管理员是谁。
-
 ## 备份与恢复
 
 ```bash
@@ -396,10 +341,12 @@ uv run python manage.py restore backups/sjtu-ow-20260916-221549.tar.gz --yes  # 
 ## 定时维护
 
 ```bash
-uv run python manage.py cleanup_old_data   # 日志、投递记录、任务记录、会话
+uv run python manage.py cleanup_old_data   # 任务记录、已处理的 AI 审核记录、会话
 uv run python manage.py cleanup_static     # 不属于当前版本且超过 30 天的静态文件
 uv run python manage.py optimize_db        # PRAGMA optimize + WAL 检查点
 ```
+
+`cleanup_old_data` 删已完成的任务记录（30 天）、过期会话，以及**已处理的** AI 审核记录（180 天）——`pending`（还没人复核过）的审核记录**一条都不删，不管多久以前**（设计 15.5）。加 `--dry-run` 只统计。宿主机 cron 的完整示例见 `deploy/crontab.example`。
 
 `cleanup_static` 按 `staticfiles.json` 判断哪些文件还在用：**读不到清单就什么都不删**。升级后旧文件要留一个月，让还拿着缓存页面的访客能取到它引用的资源（设计 16.8）。
 

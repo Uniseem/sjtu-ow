@@ -17,19 +17,19 @@ from core.prerender import PrerenderError, normalize_path
 # request itself failed.
 
 
-def test_http_is_refused_unless_explicitly_allowed():
+def test_http_is_refused():
     with pytest.raises(UnsafeUrl, match="https"):
         assert_public_https_url("http://93.184.216.34/font.ttf")
 
 
-def test_other_schemes_are_refused_even_when_http_is_allowed():
-    with pytest.raises(UnsafeUrl, match="http 或 https"):
-        assert_public_https_url("ftp://93.184.216.34/font.ttf", allow_insecure=True)
+def test_other_schemes_are_refused():
+    with pytest.raises(UnsafeUrl, match="https"):
+        assert_public_https_url("ftp://93.184.216.34/font.ttf")
 
 
 def test_a_url_without_a_host_is_refused():
     with pytest.raises(UnsafeUrl, match="主机名"):
-        assert_public_https_url("http:///font.ttf", allow_insecure=True)
+        assert_public_https_url("https:///font.ttf")
 
 
 # --- prerender paths and gates ----------------------------------------------------
@@ -86,7 +86,6 @@ def _import_prod(**overrides):
         "DJANGO_ALLOWED_HOSTS": "example.com",
         "DJANGO_CSRF_TRUSTED_ORIGINS": "https://example.com",
         "FIELD_ENCRYPTION_KEY": "guard-test-field-key",
-        "WEBHOOK_ALLOW_INSECURE_URLS": "",
     }
     env.update(overrides)
     # A fresh interpreter: a failed reload in this one would leave the module
@@ -110,10 +109,9 @@ def test_the_production_settings_start_when_complete():
     [
         ({"DJANGO_ALLOWED_HOSTS": ""}, "DJANGO_ALLOWED_HOSTS"),
         ({"DJANGO_CSRF_TRUSTED_ORIGINS": ""}, "DJANGO_CSRF_TRUSTED_ORIGINS"),
-        ({"WEBHOOK_ALLOW_INSECURE_URLS": "1"}, "WEBHOOK_ALLOW_INSECURE_URLS"),
         ({"FIELD_ENCRYPTION_KEY": ""}, "FIELD_ENCRYPTION_KEY"),
     ],
-    ids=["hosts", "csrf_origins", "insecure_webhooks", "field_key"],
+    ids=["hosts", "csrf_origins", "field_key"],
 )
 def test_the_production_settings_refuse_to_start(overrides, message):
     result = _import_prod(**overrides)

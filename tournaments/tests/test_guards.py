@@ -6,10 +6,8 @@ from django.urls import reverse
 from accounts.models import User
 from tournaments import registration as reg
 from tournaments import services
-from tournaments.models import RegistrationStatus, ReviewMode, TournamentStatus
+from tournaments.models import RegistrationStatus, TournamentStatus
 from tournaments.tests.test_state_table import admin_user
-
-AWAITING = RegistrationStatus.AWAITING_UPSTREAM
 
 
 @pytest.mark.django_db
@@ -20,16 +18,6 @@ def test_only_the_captain_can_withdraw(make):
         reg.withdraw(registration=registration, actor=mate)
     registration.refresh_from_db()
     assert registration.status == RegistrationStatus.PENDING
-
-
-@pytest.mark.django_db
-def test_a_local_admin_may_not_reject_what_awaits_the_upstream(make):
-    """Design 8.5, two-stage mode: once passed locally, only the upstream decides."""
-    registration, *_ = make(ReviewMode.TWO_STAGE, AWAITING)
-    with pytest.raises(reg.RegistrationError, match="由上游操作"):
-        reg.reject(registration=registration, actor=admin_user(), note="不行")
-    registration.refresh_from_db()
-    assert registration.status == AWAITING
 
 
 @pytest.mark.django_db

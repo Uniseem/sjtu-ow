@@ -45,7 +45,7 @@
 		file_server
 	}
 
-	@always_django path /admin/* /admin /api/* /api /accounts/* /accounts /me/* /me /_fragments/* /_fragments /healthz /healthz/
+	@always_django path /admin/* /admin /accounts/* /accounts /me/* /me /_fragments/* /_fragments /healthz /healthz/
 	handle @always_django {
 		reverse_proxy web:8000
 	}

@@ -10,7 +10,7 @@ from accounts.models import User
 from core.models import SiteSettings
 from teams import services as team_services
 from tournaments import services
-from tournaments.models import ReviewMode, Tournament, TournamentStatus
+from tournaments.models import Tournament, TournamentStatus
 
 
 def _user(email, nickname, **flags):
@@ -68,27 +68,6 @@ def test_registration_window_is_enforced_by_the_database():
             registration_opens_at=now + timedelta(days=2),
             registration_closes_at=now + timedelta(days=1),
         )
-
-
-@pytest.mark.django_db
-def test_external_id_is_unique_per_client():
-    from django.db.utils import IntegrityError
-
-    from integrations import services as api_services
-
-    client, _secret = api_services.create_client(
-        name="上游甲", scopes=["tournaments:write"], allowed_includes=[]
-    )
-    other, _secret2 = api_services.create_client(
-        name="上游乙", scopes=["tournaments:write"], allowed_includes=[]
-    )
-    _tournament(external_id="up-1", source_client=client)
-    _tournament(title="第二个", external_id="")
-    _tournament(title="第三个", external_id="")  # blanks do not collide
-    # A different upstream may reuse the same id (design 11.6.3).
-    _tournament(title="别的上游", external_id="up-1", source_client=other)
-    with pytest.raises(IntegrityError):
-        _tournament(title="重复", external_id="up-1", source_client=client)
 
 
 @pytest.mark.django_db
@@ -294,9 +273,9 @@ def test_manager_can_cancel_with_a_reason(client, manager):
 
 
 @pytest.mark.django_db
-def test_review_mode_default_and_choices():
+def test_auto_approve_is_off_by_default():
     tournament = _tournament()
-    assert tournament.review_mode == ReviewMode.LOCAL
+    assert tournament.auto_approve is False
     assert services.has_registrations(tournament) is False
 
 

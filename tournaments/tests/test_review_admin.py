@@ -11,12 +11,7 @@ from django.utils import timezone
 from accounts.models import ContactMethod, ContactType, GameAccount, User
 from teams import services as team_services
 from tournaments import registration as reg
-from tournaments.models import (
-    RegistrationStatus,
-    ReviewMode,
-    Tournament,
-    TournamentStatus,
-)
+from tournaments.models import RegistrationStatus, Tournament, TournamentStatus
 
 
 def _player(email, nickname):
@@ -145,16 +140,22 @@ def test_contacts_need_the_permission(client, registration, manager, site):
 
 
 @pytest.mark.django_db
-def test_actions_follow_the_review_mode(client, registration, manager):
+def test_actions_follow_the_status(client, registration, manager):
+    """Design 8.7: the buttons follow the status and nothing else (round 067)."""
     client.force_login(manager)
     url = reverse("registration_review_detail", args=[registration.pk])
-    assert "通过" in client.get(url).content.decode()
-
-    Tournament.objects.filter(pk=registration.tournament_id).update(
-        review_mode=ReviewMode.UPSTREAM
-    )
     html = client.get(url).content.decode()
-    assert "本站不能改这条报名的状态" in html
+    assert 'value="approve"' in html
+    assert 'value="revoke"' not in html
+
+    reg.approve(registration=registration, actor=manager)
+    html = client.get(url).content.decode()
+    assert 'value="revoke"' in html
+    assert 'value="approve"' not in html
+
+    reg.reject(registration=registration, actor=manager, note="不符合")
+    html = client.get(url).content.decode()
+    assert "没有可用的审核操作" in html
 
 
 @pytest.mark.django_db

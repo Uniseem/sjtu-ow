@@ -295,7 +295,7 @@ def test_robots_disallows_private_paths(client):
     response = client.get("/robots.txt")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    for path in ("/admin/", "/api/", "/me/", "/accounts/", "/_fragments/"):
+    for path in ("/admin/", "/me/", "/accounts/", "/_fragments/"):
         assert f"Disallow: {path}" in body
     assert "Sitemap:" in body
 

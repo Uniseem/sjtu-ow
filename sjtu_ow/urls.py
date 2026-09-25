@@ -7,7 +7,6 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 urlpatterns = [
     path("admin/", include(wagtailadmin_urls)),
-    path("api/v1/", include("integrations.urls")),
     path("accounts/", include("allauth.urls")),
     path("documents/", include(wagtaildocs_urls)),
     path("", include("accounts.urls")),

@@ -79,7 +79,6 @@ def robots_txt(request):
         [
             "User-agent: *",
             "Disallow: /admin/",
-            "Disallow: /api/",
             "Disallow: /me/",
             "Disallow: /accounts/",
             "Disallow: /_fragments/",

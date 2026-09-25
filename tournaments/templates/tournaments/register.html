@@ -33,7 +33,7 @@
     {% if existing %}
       <p class="mt-6 text-sm text-base-content/70">
         这支战队已经报名过（状态：{{ existing.get_status_display }}，名单版本 {{ existing.roster_version }}）。
-        再次提交会同步为当前名单并重新审核。
+        再次提交会同步为当前名单{% if tournament.auto_approve %}并自动通过{% else %}并重新审核{% endif %}。
         <a href="{{ existing.get_absolute_url }}" class="link link-primary">查看报名</a>
       </p>
     {% endif %}

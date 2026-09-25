@@ -11,7 +11,6 @@ from tournaments import registration as reg
 from tournaments.models import (
     Registration,
     RegistrationStatus,
-    ReviewMode,
     Tournament,
     TournamentStatus,
 )
@@ -23,12 +22,11 @@ from tournaments.tests.test_state_table import _force, admin_user
     "status",
     [
         RegistrationStatus.PENDING,
-        RegistrationStatus.AWAITING_UPSTREAM,
         RegistrationStatus.APPROVED,
     ],
 )
 def test_a_live_registration_stops_the_captain(make, status):
-    registration, captain, team, _ = make(ReviewMode.TWO_STAGE, status)
+    registration, captain, team, _ = make(status)
     with pytest.raises(team_services.TeamError, match=registration.tournament.title):
         team_services.disband_team(team=team, actor=captain)
     team.refresh_from_db()

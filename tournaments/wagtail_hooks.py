@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from wagtail import hooks
+from wagtail.admin.forms import WagtailAdminModelForm
 from wagtail.admin.menu import MenuItem
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.admin.ui.menus import MenuItem as ListingMenuItem
@@ -17,6 +18,27 @@ ACTIONS = {
     "publish": ("发布赛事", services.publish),
     "finish": ("标记为已结束", services.finish),
 }
+
+
+class TournamentAdminForm(WagtailAdminModelForm):
+    """Design 8.1: 「报名自动通过」 is locked once anyone has registered.
+
+    Round 067: the old 「审核模式」 lock lived only in the API; the admin form
+    never checked it. This form is the only place the switch can change.
+    """
+
+    def clean(self):
+        cleaned = super().clean()
+        if (
+            self.instance.pk
+            and "auto_approve" in self.changed_data
+            and services.has_registrations(self.instance)
+        ):
+            self.add_error("auto_approve", "已经有报名了，不能再改「报名自动通过」。")
+        return cleaned
+
+
+Tournament.base_form_class = TournamentAdminForm
 
 
 class TournamentIndexView(generic.IndexView):
@@ -90,7 +112,7 @@ class TournamentViewSet(ModelViewSet):
         "registration_opens_at",
         "registration_closes_at",
     ]
-    list_filter = ["status", "review_mode", "sjtu_only"]
+    list_filter = ["status", "auto_approve", "sjtu_only"]
     search_fields = ["title", "summary"]
     panels = [
         MultiFieldPanel(
@@ -115,7 +137,7 @@ class TournamentViewSet(ModelViewSet):
                 FieldPanel("roster_min"),
                 FieldPanel("roster_max"),
                 FieldPanel("sjtu_only"),
-                FieldPanel("review_mode"),
+                FieldPanel("auto_approve"),
             ],
             heading="报名规则",
         ),

@@ -1,8 +1,8 @@
-"""Outbound URL safety, shared by the font downloader and webhook delivery.
+"""Outbound URL safety for the font downloader.
 
-Everything the server fetches or posts to on someone else's instruction goes
-through here first: https only, and never an address inside our own network
-(design 11.8.3 for webhooks, 附录 C for fonts).
+Everything the server fetches on someone else's instruction goes through here
+first: https only, and never an address inside our own network (附录 C for
+fonts). Until round 067 webhook delivery shared this check.
 """
 
 import ipaddress
@@ -30,26 +30,16 @@ def is_internal(address) -> bool:
     )
 
 
-def assert_public_https_url(url: str, *, allow_insecure: bool = False) -> None:
-    """Raise :class:`UnsafeUrl` unless this is a public https address.
-
-    ``allow_insecure`` exists only so the development environment can point a
-    webhook at a local receiver. It must never be on in production; the
-    production settings module refuses to start with it enabled.
-    """
+def assert_public_https_url(url: str) -> None:
+    """Raise :class:`UnsafeUrl` unless this is a public https address."""
     parts = urllib.parse.urlsplit(url)
-    if parts.scheme != "https" and not allow_insecure:
+    if parts.scheme != "https":
         raise UnsafeUrl("地址必须是 https。")
-    if parts.scheme not in ("https", "http"):
-        raise UnsafeUrl("地址必须是 http 或 https。")
     host = parts.hostname
     if not host:
         raise UnsafeUrl("地址里没有主机名。")
-    if allow_insecure:
-        return
-    default_port = 443 if parts.scheme == "https" else 80
     try:
-        addresses = resolved_addresses(host, parts.port or default_port)
+        addresses = resolved_addresses(host, parts.port or 443)
     except OSError as exc:
         raise UnsafeUrl(f"无法解析主机名：{exc}") from exc
     for address in addresses:

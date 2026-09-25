@@ -25,11 +25,7 @@ from django.db import connection
 from core.dbfile import database_path, wal_siblings
 
 # (table, column) pairs holding Fernet ciphertext.
-ENCRYPTED_COLUMNS = (
-    ("core_sitesettings", "smtp_password"),
-    ("integrations_apiclient", "secret"),
-    ("integrations_apiclient", "webhook_secret"),
-)
+ENCRYPTED_COLUMNS = (("core_sitesettings", "smtp_password"),)
 
 
 def check_key(snapshot: Path) -> list[str]:

@@ -16,7 +16,7 @@ DC=docker compose -p sjtu-ow -f /srv/sjtu-ow/deploy/docker-compose.yml --env-fil
 0 3 * * * $DC exec -T web python manage.py backup
 
 # 每天 04:00 清理过期数据：
-#   API 调用日志 90 天、Webhook 投递记录 180 天、已完成任务记录 30 天、过期会话
+#   已完成任务记录 30 天、已处理的 AI 审核记录 180 天、过期会话
 0 4 * * * $DC exec -T web python manage.py cleanup_old_data
 
 # 每天 04:15 全量重新生成预渲染页面
@@ -27,9 +27,6 @@ DC=docker compose -p sjtu-ow -f /srv/sjtu-ow/deploy/docker-compose.yml --env-fil
 
 # 每周日 04:30 SQLite PRAGMA optimize
 30 4 * * 0 $DC exec -T web python manage.py optimize_db
-
-# 每 10 分钟扫一次到期但没被执行的 Webhook 投递（019 的兜底，防止延时任务丢了）
-*/10 * * * * $DC exec -T web python manage.py shell -c "from integrations.tasks import deliver_due_webhooks; deliver_due_webhooks.enqueue()"
 
 # 每天 09:30 AI 审核的每日汇总邮件
 30 9 * * * $DC exec -T web python manage.py moderate_scan --digest

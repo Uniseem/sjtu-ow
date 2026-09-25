@@ -67,7 +67,10 @@ def register(request, pk):
         except registration_service.RegistrationError as exc:
             problems = exc.problems
         else:
-            messages.success(request, "报名已提交，等待审核。")
+            if registration.status == RegistrationStatus.APPROVED:
+                messages.success(request, "报名已提交并自动通过。")
+            else:
+                messages.success(request, "报名已提交，等待审核。")
             return redirect("registration_detail", pk=registration.pk)
 
     rows = []

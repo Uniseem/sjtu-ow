@@ -52,9 +52,6 @@ INSTALLED_APPS = [
     "django_htmx",
     "django_tailwind_cli",
     "django_tasks_db",
-    "rest_framework",
-    "drf_spectacular",
-    "drf_spectacular_sidecar",
 ]
 
 MIDDLEWARE = [
@@ -71,7 +68,6 @@ MIDDLEWARE = [
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "core.middleware.WagtailAdminCSPMiddleware",
     "core.middleware.RequestIDMiddleware",
-    "integrations.middleware.ApiRequestLogMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
 ]
@@ -295,36 +291,6 @@ TAILWIND_CLI_SRC_CSS = BASE_DIR / "assets" / "css" / "input.css"
 TAILWIND_CLI_DIST_CSS = "css/app.css"
 # tailwind-cli-extra v2.9.0 = Tailwind CSS 4.3.2 + daisyUI 5.6.10
 TAILWIND_CLI_VERSION = "2.9.0"
-
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
-    "DEFAULT_PERMISSION_CLASSES": [],
-    "UNAUTHENTICATED_USER": None,
-    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
-    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "integrations.api.exception_handler",
-}
-SPECTACULAR_SETTINGS = {
-    "TITLE": "上海交通大学守望先锋社区 开放 API",
-    "VERSION": "v1",
-    "SERVE_INCLUDE_SCHEMA": False,
-    # Only the upstream-facing API; Wagtail's admin API is not a contract.
-    "PREPROCESSING_HOOKS": ["integrations.schema.only_public_api"],
-    # Serve Swagger UI from our own static files. The site's CSP forbids CDN
-    # scripts (README「自托管前端脚本」), and the default CDN build renders blank.
-    "SWAGGER_UI_DIST": "SIDECAR",
-    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
-    "REDOC_DIST": "SIDECAR",
-}
-# API signing (design 11.2)
-API_TIMESTAMP_TOLERANCE = 300  # seconds
-API_NONCE_TTL = 600  # seconds
-
-# Design 11.8.3 requires webhook URLs to be public https addresses. This flag
-# lifts that check so development can point a webhook at a local receiver; it
-# is refused in production (see settings/prod.py).
-WEBHOOK_ALLOW_INSECURE_URLS = env_bool("WEBHOOK_ALLOW_INSECURE_URLS", False)
 
 PRERENDER_ENABLED = env_bool("PRERENDER_ENABLED", False)
 PRERENDER_ROOT = Path(env("PRERENDER_ROOT", str(BASE_DIR / "prerendered")))

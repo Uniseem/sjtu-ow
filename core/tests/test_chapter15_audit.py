@@ -426,8 +426,6 @@ def test_moderation_sends_content_only_never_identities():
 def test_retention_windows_match_the_design():
     from core.management.commands import cleanup_old_data as cleanup
 
-    assert cleanup.API_LOG_DAYS == 90  # API 调用日志
-    assert cleanup.WEBHOOK_DAYS == 180  # Webhook 投递记录
     assert cleanup.TASK_DAYS == 30  # 已完成的任务记录
 
 
@@ -545,8 +543,6 @@ def test_settings_match_appendix_c():
     from django.conf import settings
 
     expected = {
-        "API_TIMESTAMP_TOLERANCE": 300,  # 5 分钟
-        "API_NONCE_TTL": 600,  # 10 分钟
         "SESSION_COOKIE_AGE": 14 * 86400,  # 14 天
         "WAGTAILIMAGES_MAX_UPLOAD_SIZE": 5 * 1024 * 1024,  # 5MB
         "BACKUP_KEEP_DAYS": 14,
@@ -560,34 +556,16 @@ def test_code_constants_match_appendix_c():
     from core.fonts.processing import MAX_FONT_BYTES
     from core.fonts.services import SLICE_RETIRE_DELAY, STALE_PROCESSING_AFTER
     from core.fonts.slicing import COMMON_SLICE_SIZE, OTHER_SLICE_SIZE
-    from core.management.commands.cleanup_old_data import (
-        API_LOG_DAYS,
-        MODERATION_DAYS,
-        TASK_DAYS,
-        WEBHOOK_DAYS,
-    )
+    from core.management.commands.cleanup_old_data import MODERATION_DAYS, TASK_DAYS
     from core.views import STATE_RATE_LIMIT
-    from integrations import webhooks
-    from integrations.api_views import BATCH_LIMIT
-    from integrations.pagination import DEFAULT_LIMIT, MAX_LIMIT
     from scrims.models import FINISHED_VISIBLE_DAYS
 
-    assert BATCH_LIMIT == 100  # 批量审核每次最多 100 条
-    assert (DEFAULT_LIMIT, MAX_LIMIT) == (50, 200)  # API 列表每页
-    assert webhooks.TIMEOUT == 10  # Webhook 超时 10 秒
-    assert webhooks.MAX_ATTEMPTS == 8  # 共尝试 8 次
-    assert list(webhooks.RETRY_DELAYS) == [60, 300, 1800, 7200, 21600, 43200, 86400]
     assert MAX_FONT_BYTES == 30 * 1024 * 1024  # 单个字体 30MB
     assert COMMON_SLICE_SIZE == 200  # 常用汉字每片 200 字
     assert OTHER_SLICE_SIZE == 600  # 其余字符每片 600 字
     assert STALE_PROCESSING_AFTER.total_seconds() == 1800  # 30 分钟无进度视为中断
     assert SLICE_RETIRE_DELAY.days == 1  # 旧字体样式表保留 1 天
-    assert (API_LOG_DAYS, WEBHOOK_DAYS, TASK_DAYS, MODERATION_DAYS) == (
-        90,
-        180,
-        30,
-        180,
-    )
+    assert (TASK_DAYS, MODERATION_DAYS) == (30, 180)
     assert FINISHED_VISIBLE_DAYS == 30  # 内战列表保留最近 30 天内已结束的
     assert STATE_RATE_LIMIT == 120
 
@@ -635,34 +613,26 @@ def test_site_settings_defaults_match_appendix_c():
 
 
 def test_enum_values_match_appendix_b():
-    """附录 B lists every stored enum value. They are in URLs, API responses
-    and webhook payloads, so a rename is a breaking change for upstreams —
-    worth pinning rather than trusting to review."""
+    """附录 B lists every stored enum value. They are in URLs and in the
+    database, so a rename is a silent breaking change — worth pinning rather
+    than trusting to review."""
     from accounts.models import Feature
     from core.models import PrerenderedPage, TypographyRule
-    from integrations.models import DeliveryStatus, WebhookEvent, WebhookPayloadMode
     from moderation.models import ModerationItem, Risk, TargetType
     from scrims.models import Role as ScrimRole
     from scrims.models import ScrimFormat, ScrimStatus, Team
     from teams.models import ApplicationStatus, TeamRole
-    from tournaments.models import (
-        ActorType,
-        RegistrationStatus,
-        ReviewMode,
-        TournamentStatus,
-    )
+    from tournaments.models import ActorType, RegistrationStatus, TournamentStatus
 
     documented = {
         RegistrationStatus: [
             "pending",
-            "awaiting_upstream",
             "approved",
             "rejected",
             "withdrawn",
         ],
-        ReviewMode: ["local", "upstream", "two_stage"],
         TournamentStatus: ["draft", "published", "finished", "cancelled"],
-        ActorType: ["captain", "admin", "upstream", "system"],
+        ActorType: ["captain", "admin", "system"],
         ScrimStatus: ["draft", "published", "finished", "cancelled"],
         ScrimFormat: ["rq_5v5", "rq_6v6", "open_5v5", "open_6v6"],
         ScrimRole: ["tank", "damage", "support"],
@@ -691,15 +661,6 @@ def test_enum_values_match_appendix_b():
         TypographyRule.Mode: ["system", "inherit", "custom"],
         Risk: ["none", "low", "medium", "high", "unknown"],
         ModerationItem.Status: ["pending", "ok", "handled", "ignored"],
-        WebhookPayloadMode: ["thin", "full"],
-        DeliveryStatus: ["pending", "succeeded", "failed"],
-        WebhookEvent: [
-            "registration.submitted",
-            "registration.roster_synced",
-            "registration.withdrawn",
-            "registration.status_changed",
-            "ping",
-        ],
     }
     for enum, expected in documented.items():
         actual = [value for value, _label in enum.choices]

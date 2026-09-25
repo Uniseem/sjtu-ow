@@ -6,12 +6,6 @@ from django.utils import timezone
 from wagtail.fields import RichTextField
 
 
-class ReviewMode(models.TextChoices):
-    LOCAL = "local", "本站审核"
-    UPSTREAM = "upstream", "上游审核"
-    TWO_STAGE = "two_stage", "两级审核"
-
-
 class TournamentStatus(models.TextChoices):
     DRAFT = "draft", "草稿"
     PUBLISHED = "published", "已发布"
@@ -41,11 +35,10 @@ class Tournament(models.Model):
     roster_min = models.PositiveSmallIntegerField("参赛人数下限", default=5)
     roster_max = models.PositiveSmallIntegerField("参赛人数上限", default=6)
     sjtu_only = models.BooleanField("仅限交大", default=False)
-    review_mode = models.CharField(
-        "审核模式",
-        max_length=16,
-        choices=ReviewMode.choices,
-        default=ReviewMode.LOCAL,
+    auto_approve = models.BooleanField(
+        "报名自动通过",
+        default=False,
+        help_text="打开后，报名通过全部校验即由系统自动通过，不需要管理员审核。已经有报名之后不能再改。",
     )
     status = models.CharField(
         "状态",
@@ -53,16 +46,6 @@ class Tournament(models.Model):
         choices=TournamentStatus.choices,
         default=TournamentStatus.DRAFT,
     )
-    source_client = models.ForeignKey(
-        "integrations.ApiClient",
-        verbose_name="推送来源",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="tournaments",
-        help_text="为空表示本站创建。",
-    )
-    external_id = models.CharField("上游赛事 ID", max_length=64, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="创建人",
@@ -91,11 +74,6 @@ class Tournament(models.Model):
                     registration_opens_at__lt=models.F("registration_closes_at")
                 ),
                 name="tournament_registration_window",
-            ),
-            models.UniqueConstraint(
-                fields=["source_client", "external_id"],
-                condition=~models.Q(external_id=""),
-                name="tournament_external_id_unique",
             ),
         ]
 
@@ -137,7 +115,6 @@ class Tournament(models.Model):
 
 class RegistrationStatus(models.TextChoices):
     PENDING = "pending", "待审核"
-    AWAITING_UPSTREAM = "awaiting_upstream", "待上游确认"
     APPROVED = "approved", "已通过"
     REJECTED = "rejected", "已驳回"
     WITHDRAWN = "withdrawn", "已撤回"
@@ -146,7 +123,6 @@ class RegistrationStatus(models.TextChoices):
 # Statuses whose roster takes up a place in the tournament (design 8.5).
 ACTIVE_STATUSES = (
     RegistrationStatus.PENDING,
-    RegistrationStatus.AWAITING_UPSTREAM,
     RegistrationStatus.APPROVED,
 )
 
@@ -164,7 +140,6 @@ class RegistrationAction(models.TextChoices):
 class ActorType(models.TextChoices):
     CAPTAIN = "captain", "队长"
     ADMIN = "admin", "本站管理员"
-    UPSTREAM = "upstream", "上游"
     SYSTEM = "system", "系统"
 
 
@@ -309,14 +284,6 @@ class RegistrationStatusLog(models.Model):
     actor_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="操作人",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="+",
-    )
-    actor_client = models.ForeignKey(
-        "integrations.ApiClient",
-        verbose_name="操作的上游",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

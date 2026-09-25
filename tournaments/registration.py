@@ -1,6 +1,8 @@
 """Registration: the eight checks, the roster snapshot and the state machine.
 
-Design 8.3 (submit), 8.4 (lock and sync) and 8.5 (status flow).
+Design 8.3 (submit), 8.4 (lock and sync) and 8.5 (status flow). Round 067
+removed the upstream review modes: this site's admins review, or the
+tournament's ``auto_approve`` switch lets the system approve on submit.
 """
 
 from __future__ import annotations
@@ -18,27 +20,21 @@ from tournaments.models import (
     RegistrationMember,
     RegistrationStatus,
     RegistrationStatusLog,
-    ReviewMode,
     TournamentStatus,
 )
 
 logger = logging.getLogger(__name__)
 
+AUTO_APPROVE_NOTE = "自动通过"
+
 
 class RegistrationError(Exception):
-    """One or more problems to show the captain; ``problems`` lists them all.
+    """One or more problems to show the captain; ``problems`` lists them all."""
 
-    ``code`` lets the API map a failure onto the right HTTP status (design
-    11.6.7): ``review_not_allowed`` means the actor may never act in this
-    review mode, ``invalid_state`` means the transition is wrong right now,
-    ``validation_error`` means the request itself was incomplete.
-    """
-
-    def __init__(self, problems, *, code="invalid_state"):
+    def __init__(self, problems):
         if isinstance(problems, str):
             problems = [problems]
         self.problems = list(problems)
-        self.code = code
         super().__init__("；".join(self.problems))
 
 
@@ -255,16 +251,19 @@ def submit(*, tournament, team, actor, selections) -> Registration:
         actor_user=actor,
         snapshot=True,
     )
+    if tournament.auto_approve:
+        # Design 8.3: the switch lets the system approve inside the same
+        # transaction. The status-changed mail is skipped for a system actor;
+        # the "submitted" mail below already says the registration is approved.
+        _set_status(
+            registration,
+            action=RegistrationAction.APPROVE,
+            to_status=RegistrationStatus.APPROVED,
+            actor_type=ActorType.SYSTEM,
+            note=AUTO_APPROVE_NOTE,
+        )
     transaction.on_commit(lambda: _after_submit(registration, action))
     return registration
-
-
-# Design 11.8.1: which event each captain action produces.
-SUBMIT_EVENTS = {
-    RegistrationAction.SUBMIT: "registration.submitted",
-    RegistrationAction.RESUBMIT: "registration.submitted",
-    RegistrationAction.SYNC_ROSTER: "registration.roster_synced",
-}
 
 
 def _refresh_public_pages(registration, from_status, to_status) -> None:
@@ -283,9 +282,6 @@ def _after_submit(registration, action):
     from tournaments import notifications
 
     notifications.registration_submitted(registration, action)
-    event = SUBMIT_EVENTS.get(action)
-    if event:
-        _send_event(registration, event, actor_type=ActorType.CAPTAIN)
 
 
 def captain_can_change(registration, now=None) -> bool:
@@ -321,39 +317,22 @@ def _set_status(
         note=note,
         snapshot=snapshot,
     )
-    transaction.on_commit(
-        lambda: _after_status_change(
-            registration, note, action, actor_type, from_status
-        )
-    )
+    transaction.on_commit(lambda: _after_status_change(registration, note, actor_type))
     return registration
 
 
-def _after_status_change(registration, note, action, actor_type, from_status):
+def _after_status_change(registration, note, actor_type):
+    """Design 10.2: the captain hears about every change an admin makes.
+
+    A system approval right after submit is not announced separately: the
+    submit mail already carries the final status, and two mails for one
+    action would only confuse (design 8.3).
+    """
+    if actor_type == ActorType.SYSTEM:
+        return
     from tournaments import notifications
 
     notifications.registration_status_changed(registration, note)
-    event = (
-        "registration.withdrawn"
-        if action == RegistrationAction.WITHDRAW
-        else "registration.status_changed"
-    )
-    _send_event(registration, event, actor_type=actor_type, previous_status=from_status)
-
-
-def _send_event(registration, event_type, *, actor_type, previous_status=None):
-    """Hand the event to the webhook layer. Never break the request over it."""
-    from integrations import webhooks
-
-    try:
-        webhooks.queue_registration_event(
-            registration,
-            event_type,
-            actor_type=actor_type,
-            previous_status=previous_status or None,
-        )
-    except Exception:  # noqa: BLE001 — a webhook must not fail the action
-        logger.warning("Webhook 事件 %s 排队失败", event_type, exc_info=True)
 
 
 @transaction.atomic
@@ -375,88 +354,36 @@ def withdraw(*, registration, actor) -> Registration:
     )
 
 
-def local_review_allowed(tournament) -> bool:
-    """Whether this site's admins may act at all (design 8.5)."""
-    return tournament.review_mode in (ReviewMode.LOCAL, ReviewMode.TWO_STAGE)
-
-
-def upstream_review_allowed(tournament) -> bool:
-    """The mirror of :func:`local_review_allowed` for the upstream (design 8.5).
-
-    In ``local`` mode the upstream must not change any status, even though it
-    holds the ``registrations:review`` scope.
-    """
-    return tournament.review_mode in (ReviewMode.UPSTREAM, ReviewMode.TWO_STAGE)
-
-
-def _guard_actor(tournament, actor_type):
-    if actor_type == ActorType.ADMIN and not local_review_allowed(tournament):
-        raise RegistrationError(
-            "这项赛事由上游审核，本站不能改状态", code="review_not_allowed"
-        )
-    if actor_type == ActorType.UPSTREAM and not upstream_review_allowed(tournament):
-        raise RegistrationError(
-            "这项赛事由本站审核，上游不能改状态", code="review_not_allowed"
-        )
-
-
 @transaction.atomic
-def approve(*, registration, actor, actor_type=ActorType.ADMIN) -> Registration:
-    tournament = registration.tournament
-    _guard_actor(tournament, actor_type)
-    if registration.status == RegistrationStatus.AWAITING_UPSTREAM:
-        if actor_type != ActorType.UPSTREAM:
-            raise RegistrationError("这一步要由上游确认")
-        to_status = RegistrationStatus.APPROVED
-    elif registration.status == RegistrationStatus.PENDING:
-        two_stage = tournament.review_mode == ReviewMode.TWO_STAGE
-        if two_stage and actor_type == ActorType.UPSTREAM:
-            # Two-stage means this site reviews first; the upstream only
-            # confirms what is already "待上游确认" (design 8.5).
-            raise RegistrationError("这一步要先由本站管理员审核")
-        to_status = (
-            RegistrationStatus.AWAITING_UPSTREAM
-            if (two_stage and actor_type == ActorType.ADMIN)
-            else RegistrationStatus.APPROVED
-        )
-    else:
+def approve(*, registration, actor) -> Registration:
+    """Design 8.5 row 1: an admin passes a pending registration."""
+    if registration.status != RegistrationStatus.PENDING:
         raise RegistrationError("当前状态不能通过")
     return _set_status(
         registration,
         action=RegistrationAction.APPROVE,
-        to_status=to_status,
-        actor_type=actor_type,
+        to_status=RegistrationStatus.APPROVED,
+        actor_type=ActorType.ADMIN,
         actor_user=actor,
     )
 
 
 @transaction.atomic
-def reject(*, registration, actor, note, actor_type=ActorType.ADMIN) -> Registration:
+def reject(*, registration, actor, note) -> Registration:
+    """Design 8.5 rows 2 and 3: reject a pending one, or revoke an approval."""
     if not note or not note.strip():
-        raise RegistrationError("驳回必须填写备注", code="validation_error")
-    tournament = registration.tournament
-    _guard_actor(tournament, actor_type)
+        raise RegistrationError("驳回必须填写备注")
     if registration.status == RegistrationStatus.APPROVED:
         action = RegistrationAction.REVOKE
-        if actor_type == ActorType.ADMIN and tournament.review_mode != ReviewMode.LOCAL:
-            raise RegistrationError("这项赛事的撤销通过由上游操作")
-    elif registration.status in (
-        RegistrationStatus.PENDING,
-        RegistrationStatus.AWAITING_UPSTREAM,
-    ):
+    elif registration.status == RegistrationStatus.PENDING:
         action = RegistrationAction.REJECT
-        if (
-            registration.status == RegistrationStatus.AWAITING_UPSTREAM
-            and actor_type != ActorType.UPSTREAM
-        ):
-            raise RegistrationError("这一步要由上游操作")
     else:
         raise RegistrationError("当前状态不能驳回")
     return _set_status(
         registration,
         action=action,
         to_status=RegistrationStatus.REJECTED,
-        actor_type=actor_type,
+        actor_type=ActorType.ADMIN,
         actor_user=actor,
         note=note.strip()[:300],
     )

@@ -18,12 +18,7 @@ from wagtail.log_actions import log as wagtail_log
 
 from tournaments import registration as registration_service
 from tournaments import services
-from tournaments.models import (
-    Registration,
-    RegistrationStatus,
-    ReviewMode,
-    Tournament,
-)
+from tournaments.models import Registration, RegistrationStatus, Tournament
 
 logger = logging.getLogger(__name__)
 
@@ -49,18 +44,13 @@ def can_see_contacts(user) -> bool:
 
 
 def local_actions(registration) -> dict:
-    """Which buttons this site's admins may show (design 8.5, 8.7)."""
-    mode = registration.tournament.review_mode
+    """Which buttons to show for this status (design 8.5, 8.7)."""
     status = registration.status
-    allowed = {"approve": False, "reject": False, "revoke": False}
-    if mode == ReviewMode.UPSTREAM:
-        return allowed
-    if status == RegistrationStatus.PENDING:
-        allowed["approve"] = True
-        allowed["reject"] = True
-    elif status == RegistrationStatus.APPROVED and mode == ReviewMode.LOCAL:
-        allowed["revoke"] = True
-    return allowed
+    return {
+        "approve": status == RegistrationStatus.PENDING,
+        "reject": status == RegistrationStatus.PENDING,
+        "revoke": status == RegistrationStatus.APPROVED,
+    }
 
 
 def _filtered(request):

@@ -324,8 +324,8 @@ def assign_captain(*, team, actor, new_captain) -> None:
 def disband_blockers(team) -> list[str]:
     """Live registrations stop a disband, for captains and superusers (7.5).
 
-    Live: pending, awaiting the upstream, or approved, on a tournament that is
-    still a draft or published. The comment here used to say M4 would add
+    Live: pending or approved, on a tournament that is still a draft or
+    published. The comment here used to say M4 would add
     this; it returned an empty list until round 061.
     """
     from tournaments.models import ACTIVE_STATUSES, TournamentStatus

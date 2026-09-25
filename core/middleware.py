@@ -21,20 +21,6 @@ ADMIN_CSP = {
     "frame-ancestors": [CSP.SELF],
 }
 
-# Swagger UI bootstraps itself from an inline script and styles itself inline.
-# Its assets are served from our own static files (drf-spectacular-sidecar), so
-# no external origin is allowed here. The page is superuser-only (design 11.11).
-API_DOCS_CSP = {
-    "default-src": [CSP.SELF],
-    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE],
-    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
-    "img-src": [CSP.SELF, "data:"],
-    "font-src": [CSP.SELF, "data:"],
-    "connect-src": [CSP.SELF],
-    "frame-ancestors": [CSP.SELF],
-}
-API_DOCS_PATHS = ("/api/v1/docs/", "/api/v1/redoc/")
-
 
 class RequestIDMiddleware:
     """Attach a request ID for the 500 error page. No database access."""
@@ -61,8 +47,6 @@ class WagtailAdminCSPMiddleware:
         prefix = getattr(settings, "ADMIN_URL_PREFIX", "/admin/")
         if request.path.startswith(prefix):
             response._csp_config = ADMIN_CSP
-        elif request.path in API_DOCS_PATHS:
-            response._csp_config = API_DOCS_CSP
         return response
 
 

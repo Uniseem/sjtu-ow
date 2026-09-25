@@ -234,11 +234,11 @@ def test_restore_refuses_a_mismatched_encryption_key(
     """Design 16.7 step 3."""
     from cryptography.fernet import Fernet
 
-    from integrations import services as api_services
+    from core.models import SiteSettings
 
-    api_services.create_client(
-        name="加密客户端", scopes=["tournaments:read"], allowed_includes=[]
-    )
+    site = SiteSettings.load()
+    site.smtp_password = "smtp-secret-for-the-key-check"
+    site.save()
     archive = make_backup(backups, settings, tmp_path)
 
     # Swap in a different key, as a careless restore on a new host would.
@@ -253,11 +253,11 @@ def test_restore_refuses_a_mismatched_encryption_key(
 
 @pytest.mark.django_db(transaction=True)
 def test_restore_accepts_the_matching_key(backups, settings, tmp_path):
-    from integrations import services as api_services
+    from core.models import SiteSettings
 
-    api_services.create_client(
-        name="加密客户端", scopes=["tournaments:read"], allowed_includes=[]
-    )
+    site = SiteSettings.load()
+    site.smtp_password = "smtp-secret-for-the-key-check"
+    site.save()
     archive = make_backup(backups, settings, tmp_path)
 
     output = run("restore", str(archive))

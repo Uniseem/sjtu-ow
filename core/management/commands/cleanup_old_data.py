@@ -1,15 +1,13 @@
 """Delete data past its retention window (design 16.5, 每天 04:00).
 
-Retention comes from design 12.10.2 / 12.10.3 / 16.5:
-API call logs 90 days, webhook deliveries 180 days, finished task records
-30 days, plus expired sessions.
+Retention comes from design 15.5 / 16.5: finished task records 30 days,
+handled moderation records 180 days, plus expired sessions. API call logs and
+webhook deliveries went with the open API in round 067.
 """
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-API_LOG_DAYS = 90
-WEBHOOK_DAYS = 180
 TASK_DAYS = 30
 # Design 15.5: handled moderation records live 180 days. Records nobody has
 # looked at are kept forever, however old they are.
@@ -17,7 +15,7 @@ MODERATION_DAYS = 180
 
 
 class Command(BaseCommand):
-    help = "清理过期的调用日志、Webhook 记录、任务记录和会话（设计 16.5）"
+    help = "清理过期的任务记录、已处理的 AI 审核记录和会话（设计 16.5）"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -45,22 +43,6 @@ class Command(BaseCommand):
         return None
 
     def targets(self, now):
-        from django.utils import timezone as tz
-
-        from integrations.models import ApiRequestLog, DeliveryStatus, WebhookDelivery
-
-        yield (
-            f"API 调用日志（{API_LOG_DAYS} 天前）",
-            ApiRequestLog.objects.filter(
-                created_at__lt=now - tz.timedelta(days=API_LOG_DAYS)
-            ),
-        )
-        yield (
-            f"Webhook 投递记录（{WEBHOOK_DAYS} 天前）",
-            WebhookDelivery.objects.filter(
-                created_at__lt=now - tz.timedelta(days=WEBHOOK_DAYS)
-            ).exclude(status=DeliveryStatus.PENDING),
-        )
         yield (f"已完成的任务记录（{TASK_DAYS} 天前）", self.finished_tasks(now))
         yield (
             f"已处理的 AI 审核记录（{MODERATION_DAYS} 天前）",

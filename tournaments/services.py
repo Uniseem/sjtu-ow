@@ -73,7 +73,7 @@ def grouped_tournaments(now=None):
 
 
 def has_registrations(tournament) -> bool:
-    """Once anyone has registered, the review mode is locked (design 8.1)."""
+    """Once anyone has registered, 「报名自动通过」 is locked (design 8.1)."""
     return tournament.registrations.exists()
 
 
