@@ -30,3 +30,7 @@
 ## 提交前的最后检查
 
 （见 report.md 验收输出；`makemigrations --check` 输出 `No changes detected`，`check --deploy` 输出 `System check identified no issues (0 silenced).`，在提交命令前一次性跑出，记录在提交信息里。）
+
+## 069 轮更正（提交后）
+
+第一个提交（66f1b88）CI 红了：生成迁移 0006 之后又改过 `allow_individual_signup` 的 help_text，迁移和模型不一致。本地跑 `makemigrations --check` 时命令后面接了 `tail -1`，退出码被吞掉，只看到最后一行就当成了绿。修正提交直接改 0006 里的文字（迁移还没在任何库上跑过），不加 0007。**教训：验收命令要单独看退出码，不要只看管道末尾的输出。**

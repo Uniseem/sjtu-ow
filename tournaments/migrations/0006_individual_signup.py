@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             name="allow_individual_signup",
             field=models.BooleanField(
                 default=False,
-                help_text="打开后，没有战队的用户可以个人报名，由赛事管理员编成临时队伍（设计 8.8）。",
+                help_text="打开后，没有战队的用户可以个人报名，由赛事管理员编成临时队伍。",
                 verbose_name="开放个人报名",
             ),
         ),
