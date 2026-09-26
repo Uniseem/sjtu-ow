@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 /*
- * Design system v3.0 (docs/design.md 13.2, round 081): Material Design 3 as
- * the Android developer and AOSP sites use it, 交大红 as the seed colour, a
- * frosted material only for the masthead and the homepage agenda card.
+ * Design system v4.0 (docs/design.md 13.2, round 086): neutral grounds, one
+ * deep red accent, pictures and content first, no decoration. Light and dark
+ * follow the system (prefers-color-scheme).
  *
- *   Tokens      @theme (static palette) + tone variables (page / tonal band)
+ *   Tokens      @theme (light values) + the dark override + v3 aliases
  *   Base        elements, headings, focus, typography variables for 13.12
  *   Layout      l-*
- *   Components  c-*, in the order of the table in 13.2.7
+ *   Components  c-*, in the order of the table in 13.2.6
  *
  * Templates use the semantic colour names and these classes only — never a
  * colour value or a font name.
@@ -25,85 +25,110 @@
   --color-white: #ffffff;
   --color-black: #000000;
 
-  /* Material 3 roles from the 交大红 seed (13.2.3). */
-  --color-primary: #b2141a;
-  --color-primary-deep: #861116;
-  --color-primary-container: #ffdad5;
-  --color-on-primary-container: #410002;
-  --color-tertiary-container: #fbdfa6;
-  --color-on-tertiary-container: #251a00;
+  /* The v4.0 palette, light values (13.2.2). Dark values: the block below. */
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef0f3;
+  --color-line: #e1e4e8;
+  --color-control: #767d88;
+  --color-fg: #111318;
+  --color-fg-2: #4a505b;
+  --color-fg-3: #5f6671;
+  --color-primary: #a4161a;
+  --color-primary-hover: #861116;
+  --color-primary-text: #a4161a;
+  --color-primary-soft: #fce8e8;
+  --color-on-primary-soft: #7a0f13;
+  --color-ok: #1f7a45;
+  --color-ok-soft: #e3f3e8;
+  --color-warn: #8a5a00;
+  --color-warn-soft: #fbf0d9;
+  --color-info: #2b5f96;
+  --color-info-soft: #e5eef8;
+  --color-toast: #1c1f25;
+  /* The hero and picture cards stay dark in both modes (13.2.5). */
+  --color-night: #0e1014;
+  --color-night-2: #20242b;
+  --color-on-toast: #f2f3f5;
 
-  --color-surface: #fff8f7;
-  --color-surface-lowest: #ffffff;
-  --color-surface-low: #fff0ee;
-  --color-surface-mid: #fceae7;
-  --color-surface-high: #f6e4e2;
-  --color-surface-highest: #f1dedc;
-  --color-on-surface: #231918;
-  --color-on-surface-2: #534341;
-  --color-on-surface-3: #6b5a58;
-  --color-outline: #857371;
-  --color-outline-variant: #d8c2bf;
+  /*
+   * v3 names still used by the pages rebuilt in rounds 087–089. They point at
+   * the v4 palette, so those pages already get the new colours in both modes.
+   */
+  --color-primary-deep: var(--color-primary-text);
+  --color-primary-container: var(--color-primary-soft);
+  --color-on-primary-container: var(--color-on-primary-soft);
+  --color-tertiary-container: var(--color-warn-soft);
+  --color-on-tertiary-container: var(--color-warn);
+  --color-surface-lowest: var(--color-surface);
+  --color-surface-low: var(--color-bg);
+  --color-surface-mid: var(--color-surface-2);
+  --color-surface-high: var(--color-surface-2);
+  --color-surface-highest: var(--color-line);
+  --color-on-surface: var(--color-fg);
+  --color-on-surface-2: var(--color-fg-2);
+  --color-on-surface-3: var(--color-fg-3);
+  --color-outline: var(--color-control);
+  --color-outline-variant: var(--color-line);
+  --color-inverse-surface: var(--color-toast);
+  --color-inverse-on-surface: var(--color-on-toast);
+  --color-inverse-primary: var(--color-primary-soft);
+  --color-ok-container: var(--color-ok-soft);
+  --color-warn-container: var(--color-warn-soft);
+  --color-info-container: var(--color-info-soft);
 
-  /* The snackbar (c-toast) sits on the inverse surface. */
-  --color-inverse-surface: #392e2c;
-  --color-inverse-on-surface: #fbeeec;
-  --color-inverse-primary: #ffb4a9;
-
-  /* Status colours; always paired with a shape and a word (13.2.6). */
-  --color-ok: #2f6f45;
-  --color-ok-container: #d7eedd;
-  --color-warn: #7a4f00;
-  --color-warn-container: #fbdfa6;
-  --color-info: #3f6789;
-  --color-info-container: #dcecf9;
-
-  /* Homepage quick-entry tiles (13.2.3): container and icon chip. */
-  --color-tile-rose: #ffe6e1;
-  --color-tile-butter: #fdf1d6;
-  --color-tile-lilac: #f2e7f8;
-  --color-tile-sky: #e3eef8;
-  --color-tile-blush: #fbe6ef;
-  --color-tile-mint: #e4f1e9;
-  --color-chip-butter: #705c2e;
-  --color-chip-lilac: #6e4f86;
-  --color-chip-sky: #3d6a8a;
-  --color-chip-blush: #8e3a62;
-  --color-chip-mint: #3b6b52;
-
-  /* Shape scale (13.2.5). */
   --radius-*: initial;
   --radius-xs: 4px;
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 28px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
   --radius-full: 999px;
 
-  /* Elevation (13.2.5): tinted with on-surface, never pure black. */
+  /* Only floating things cast a shadow (13.2.4). */
   --shadow-*: initial;
-  --shadow-1: 0 1px 2px rgb(35 25 24 / 0.08), 0 1px 3px 1px rgb(35 25 24 / 0.05);
-  --shadow-2: 0 1px 2px rgb(35 25 24 / 0.08), 0 6px 20px -6px rgb(65 0 2 / 0.16);
-  --shadow-bar: 0 6px 20px -14px rgb(35 25 24 / 0.18);
+  --shadow-float: 0 8px 24px -6px color-mix(in oklab, var(--color-black) 22%, transparent);
+  --shadow-1: var(--shadow-float);
+  --shadow-2: var(--shadow-float);
 
-  /* Motion (13.2.5). --ease-ow stays as the standard curve's old name. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.2, 0, 0, 1);
   --ease-ow: cubic-bezier(0.2, 0, 0, 1);
   --container-page: 76rem;
-  --container-prose: 42rem;
+  --container-prose: 44rem;
 }
 
-/*
- * Context-aware colours. Components and templates say "foreground" or "line"
- * and get the right value on the page and inside .on-tonal bands.
- * `inline` so the utilities read the tone variables where they are used.
- */
+/* Dark values (13.2.2): same names, so nothing else needs to know the mode. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-bg: #0e1014;
+    --color-surface: #171a20;
+    --color-surface-2: #20242b;
+    --color-line: #2c313a;
+    --color-control: #6b7380;
+    --color-fg: #eceef1;
+    --color-fg-2: #b4bac3;
+    --color-fg-3: #8f97a3;
+    --color-primary: #c4262d;
+    --color-primary-hover: #d9363d;
+    --color-primary-text: #ff7a7e;
+    --color-primary-soft: #3a1a1d;
+    --color-on-primary-soft: #ffb3b5;
+    --color-ok: #5fd18b;
+    --color-ok-soft: #15291d;
+    --color-warn: #f0b44c;
+    --color-warn-soft: #2e2410;
+    --color-info: #7fb2ee;
+    --color-info-soft: #162435;
+    --color-toast: #eceef1;
+    --color-on-toast: #111318;
+  }
+}
+
+/* Aliases the utilities read (bg-panel, border-rule, text-fg-red). */
 @theme inline {
-  --color-fg: var(--tone-fg);
-  --color-fg-2: var(--tone-fg-2);
-  --color-fg-3: var(--tone-fg-3);
-  --color-bg: var(--tone-bg);
   --color-panel: var(--tone-panel);
   --color-rule: var(--tone-line);
   --color-rule-strong: var(--tone-line-strong);
@@ -113,27 +138,23 @@
 }
 
 :root {
-  --tone-bg: var(--color-surface);
-  --tone-panel: var(--color-surface-lowest);
-  --tone-sunken: var(--color-surface-high);
-  --tone-fg: var(--color-on-surface);
-  --tone-fg-2: var(--color-on-surface-2);
-  --tone-fg-3: var(--color-on-surface-3);
-  --tone-line: var(--color-outline-variant);
-  --tone-line-strong: var(--color-outline-variant);
-  /* Borders that tell you "this is a field" need 3:1 (WCAG 1.4.11, 13.2.3). */
-  --tone-control: var(--color-outline);
-  /* Red for text: the deep one reads better on light grounds. */
-  --tone-accent: var(--color-primary-deep);
+  color-scheme: light;
+  --tone-bg: var(--color-bg);
+  --tone-panel: var(--color-surface);
+  --tone-sunken: var(--color-surface-2);
+  --tone-fg: var(--color-fg);
+  --tone-fg-2: var(--color-fg-2);
+  --tone-fg-3: var(--color-fg-3);
+  --tone-line: var(--color-line);
+  --tone-line-strong: var(--color-line);
+  /* Borders that tell you "this is a field" need 3:1 (WCAG 1.4.11). */
+  --tone-control: var(--color-control);
+  --tone-accent: var(--color-primary-text);
   --tone-focus: var(--color-primary);
-
-  /* The frosted material (13.2.5): masthead and the homepage agenda card. */
-  --glass-bg: color-mix(in oklab, var(--color-surface-lowest) 80%, transparent);
-  --glass-filter: saturate(180%) blur(20px);
-  --glass-line: color-mix(in oklab, var(--color-on-surface) 8%, transparent);
-
-  /* A spring with a little overshoot (13.2.5); cubic fallback below. */
-  --ease-spring: linear(0, 0.25 7%, 0.79 20%, 1.02 31%, 1.07 38%, 1.04 47%, 1 60%, 0.99 74%, 1);
+  /* Kept for the pages not yet rebuilt; v4 draws no glass (13.2.1). */
+  --glass-bg: var(--color-surface);
+  --glass-filter: none;
+  --glass-line: var(--color-line);
 
   /*
    * Typography variables (design 13.12.4). "设置 → 排版设置" overrides them
@@ -157,7 +178,7 @@
   --font-h2: var(--font-body);
   --font-h2-weight: 700;
   --font-h2-size: 1.5rem;
-  --font-h2-line-height: 1.33;
+  --font-h2-line-height: 1.35;
   --font-h2-letter-spacing: normal;
   --font-h3: var(--font-body);
   --font-h3-weight: 600;
@@ -173,48 +194,30 @@
   --font-button: var(--font-body);
   --font-numeric: var(--font-body);
   --font-code: var(--font-mono-fallback);
-  /*
-   * Display figures (13.2.4): the 「数字与数据」 face, bold and tabular. The
-   * generated stylesheet replaces this when that region uses a library font.
-   */
+  /* Display figures (13.2.3): the 「数字与数据」 face, bold and tabular. */
   --font-figure: var(--font-numeric);
   /* Headings shrink to 85% on phones (design 13.12.3). */
   --font-heading-mobile-scale: 0.85;
 }
 
-@supports not (transition-timing-function: linear(0, 1)) {
-  :root {
-    --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root {
-    --glass-bg: color-mix(in oklab, var(--color-surface-lowest) 96%, transparent);
-  }
-}
-
-/* Tonal bands (13.2.3) replace v2.0's night regions: a warmer container, dark text. */
+/* v3 tonal bands: now a plain band on the second surface (rebuilt in 088). */
 .on-tonal {
-  --tone-bg: var(--color-surface-mid);
-  --tone-panel: var(--color-surface-lowest);
-  --tone-sunken: var(--color-surface-high);
-  background-color: var(--color-surface-mid);
-  color: var(--color-on-surface);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-line);
 }
 
 /* ---- Base -------------------------------------------------------------------- */
 
 @layer base {
   html {
-    background-color: var(--color-surface);
+    background-color: var(--color-bg);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
 
   body {
-    background-color: var(--color-surface);
-    color: var(--color-on-surface);
+    background-color: var(--color-bg);
+    color: var(--color-fg);
     font-family: var(--font-body);
     font-weight: var(--font-body-weight);
     font-size: var(--font-body-size);
@@ -279,12 +282,12 @@
   }
 
   ::selection {
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
   }
 
   :focus-visible {
-    outline: 2px solid var(--tone-focus);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 
@@ -303,7 +306,7 @@
   }
 
   hr {
-    border-color: var(--tone-line);
+    border-color: var(--color-line);
   }
 
   progress {
@@ -312,23 +315,23 @@
     width: 100%;
     height: 4px;
     border: 0;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-xs);
     overflow: hidden;
-    background-color: var(--color-surface-highest);
+    background-color: var(--color-surface-2);
     color: var(--color-primary);
   }
 
   progress::-webkit-progress-bar {
-    background-color: var(--color-surface-highest);
+    background-color: var(--color-surface-2);
   }
 
   progress::-webkit-progress-value {
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-xs);
     background-color: currentColor;
   }
 
   progress::-moz-progress-bar {
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-xs);
     background-color: currentColor;
   }
 
@@ -375,14 +378,7 @@
 
 .ow-state-pending [data-slot] {
   border-radius: var(--radius-sm);
-  background-color: color-mix(in oklab, currentColor 9%, transparent);
-  animation: ow-slot-pulse 1.2s var(--ease-standard) infinite;
-}
-
-@keyframes ow-slot-pulse {
-  50% {
-    opacity: 0.5;
-  }
+  background-color: var(--color-surface-2);
 }
 
 .htmx-indicator {
@@ -392,32 +388,6 @@
 .htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator {
   display: inline-flex;
-}
-
-/*
- * Scroll reveal (13.2.5). Hidden only once motion.js has put `js` on <html>,
- * so the page reads fine without scripts; reduced motion shows it at once.
- */
-.js [data-reveal] > * {
-  opacity: 0;
-  transform: translate3d(0, 28px, 0) scale(0.98);
-  transition:
-    opacity 700ms var(--ease-emphasized),
-    transform 1100ms var(--ease-spring);
-  transition-delay: calc(var(--reveal-i, 0) * 60ms);
-}
-
-.js [data-reveal].is-in > * {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .js [data-reveal] > * {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
 }
 
 @layer components {
@@ -475,25 +445,15 @@
 
   /* ---- Utilities that belong to the system ----------------------------------- */
 
-  /* A large rounded frame for images and stages (the old cut corner's slot). */
   .c-cut {
     overflow: hidden;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-sm);
   }
 
-  /* "Nothing here": no cover, no logo (13.2.6 v2 hatching, now a soft wash). */
+  /* No picture: a plain block on the second surface (13.2.5), no pattern. */
   .c-hatch {
-    background-color: var(--color-surface-high);
-    background-image:
-      radial-gradient(60% 80% at 15% 20%, color-mix(in oklab, var(--color-primary-container) 90%, transparent), transparent 70%),
-      radial-gradient(50% 70% at 90% 90%, color-mix(in oklab, var(--color-tertiary-container) 70%, transparent), transparent 70%);
-  }
-
-  /* One wash per article category, with its icon (round 083). */
-  .c-hatch__icon {
-    width: 3rem;
-    height: 3rem;
-    color: color-mix(in oklab, var(--color-primary) 30%, transparent);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-3);
   }
 
   span.c-hatch:has(.c-hatch__icon) {
@@ -501,44 +461,9 @@
     place-items: center;
   }
 
-  .c-hatch--notice {
-    background-image:
-      radial-gradient(70% 90% at 10% 10%, var(--color-primary-container), transparent 70%),
-      radial-gradient(60% 80% at 95% 95%, var(--color-tertiary-container), transparent 70%);
-  }
-
-  .c-hatch--event-notice {
-    background-image:
-      radial-gradient(70% 90% at 10% 10%, var(--color-primary-container), transparent 70%),
-      radial-gradient(60% 80% at 95% 95%, var(--color-tile-lilac), transparent 70%);
-  }
-
-  .c-hatch--guide {
-    background-color: var(--color-tile-sky);
-    background-image:
-      radial-gradient(70% 90% at 10% 10%, var(--color-surface-lowest), transparent 70%),
-      radial-gradient(60% 80% at 95% 95%, var(--color-tile-mint), transparent 70%);
-  }
-
-  .c-hatch--guide .c-hatch__icon {
-    color: color-mix(in oklab, var(--color-chip-sky) 40%, transparent);
-  }
-
-  .c-hatch--match-report {
-    background-image:
-      radial-gradient(70% 90% at 10% 10%, color-mix(in oklab, var(--color-primary) 28%, transparent), transparent 70%),
-      radial-gradient(60% 80% at 95% 95%, var(--color-tertiary-container), transparent 70%);
-  }
-
-  .c-hatch--experience {
-    background-color: var(--color-tile-lilac);
-    background-image:
-      radial-gradient(70% 90% at 10% 10%, var(--color-surface-lowest), transparent 70%),
-      radial-gradient(60% 80% at 95% 95%, var(--color-tile-blush), transparent 70%);
-  }
-
-  .c-hatch--experience .c-hatch__icon {
-    color: color-mix(in oklab, var(--color-chip-lilac) 40%, transparent);
+  .c-hatch__icon {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   /* Make the whole row or card clickable through its title link. */
@@ -549,20 +474,12 @@
     z-index: 1;
   }
 
+  /* A small Chinese heading over a group of links (footer, drawer). */
   .c-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
     font-weight: 600;
-    letter-spacing: 0.08em;
-    line-height: 1.33;
-    text-transform: uppercase;
-    color: var(--tone-fg-2);
-  }
-
-  .c-eyebrow__index {
-    color: var(--tone-accent);
+    line-height: 1.5;
   }
 
   .c-figure {
@@ -577,68 +494,26 @@
   .c-masthead {
     position: sticky;
     top: 0;
-    z-index: 30;
-    width: 100%;
-    max-width: 100%;
-    height: 4rem;
-    margin-inline: auto;
-    background-color: var(--glass-bg);
-    -webkit-backdrop-filter: var(--glass-filter);
-    backdrop-filter: var(--glass-filter);
-    border-bottom: 1px solid var(--glass-line);
-    box-shadow: var(--shadow-bar);
-    transition:
-      max-width 350ms var(--ease-standard),
-      height 350ms var(--ease-standard),
-      top 350ms var(--ease-standard),
-      border-radius 350ms var(--ease-standard),
-      box-shadow 350ms var(--ease-standard),
-      transform 450ms var(--ease-spring);
-  }
-
-  /* Scrolled down: a floating capsule (13.3). */
-  .c-masthead.is-capsule {
-    top: 0.75rem;
-    max-width: min(1100px, calc(100% - 1.5rem));
-    height: 3.25rem;
-    border: 1px solid var(--glass-line);
-    border-radius: var(--radius-full);
-    box-shadow: var(--shadow-2);
-  }
-
-  .c-masthead.is-hidden {
-    transform: translate3d(0, calc(-100% - 1.5rem), 0);
-  }
-
-  .c-masthead.is-capsule .c-masthead__bar {
-    padding-inline: 0.75rem 0.5rem;
-  }
-
-  @media (min-width: 1024px) {
-    .c-masthead.is-capsule .c-masthead__bar {
-      padding-inline: 1.25rem 0.5rem;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .c-masthead {
-      transition: none;
-    }
+    z-index: 40;
+    border-bottom: 1px solid var(--color-line);
+    background-color: var(--color-surface);
   }
 
   .c-masthead__bar {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    height: 100%;
+    gap: 2rem;
+    height: 4rem;
   }
 
   .c-brand {
     display: inline-flex;
     align-items: center;
     gap: 0.625rem;
-    flex-shrink: 0;
-    min-height: 44px;
+    color: var(--color-fg);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    white-space: nowrap;
   }
 
   .c-brand__mark {
@@ -646,24 +521,15 @@
     height: 2rem;
   }
 
-  .c-brand__name {
-    font-family: var(--font-nav);
-    font-size: 1.0625rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    line-height: 1;
-    color: var(--tone-fg);
-  }
-
   .c-nav {
     display: none;
-    align-self: stretch;
-    margin-left: 0.5rem;
   }
 
   @media (min-width: 1024px) {
     .c-nav {
       display: flex;
+      align-self: stretch;
+      gap: 1.75rem;
     }
   }
 
@@ -671,238 +537,133 @@
     position: relative;
     display: flex;
     align-items: center;
-    padding-inline: 0.875rem;
-    font-family: var(--font-nav);
+    color: var(--color-fg-2);
     font-size: 0.9375rem;
     font-weight: 500;
-    color: var(--tone-fg-2);
     transition: color 150ms var(--ease-standard);
   }
 
   .c-nav a:hover {
-    color: var(--tone-fg);
+    color: var(--color-fg);
   }
 
   .c-nav a[aria-current="page"] {
-    color: var(--color-primary);
+    color: var(--color-fg);
     font-weight: 600;
   }
 
-  /* The indicator: "you are here" (13.2.6). */
   .c-nav a[aria-current="page"]::after {
     content: "";
     position: absolute;
-    left: 0.875rem;
-    right: 0.875rem;
-    bottom: 0;
-    height: 3px;
-    border-radius: 3px 3px 0 0;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
     background-color: var(--color-primary);
   }
 
   .c-masthead__end {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
     margin-left: auto;
-  }
-
-  .c-search {
-    display: none;
-    position: relative;
-    align-items: center;
-  }
-
-  @media (min-width: 1024px) {
-    .c-search {
-      display: flex;
-    }
-  }
-
-  .c-search input {
-    width: 13rem;
-    height: 2.5rem;
-    padding: 0 2.5rem 0 2.5rem;
-    border: 1px solid transparent;
-    border-radius: var(--radius-full);
-    background-color: color-mix(in oklab, var(--color-on-surface) 5%, transparent);
-    color: var(--tone-fg);
-    font-size: 0.875rem;
-    transition:
-      background-color 150ms var(--ease-standard),
-      border-color 150ms var(--ease-standard),
-      width 300ms var(--ease-emphasized);
-  }
-
-  input[type="search"]::-webkit-search-cancel-button {
-    -webkit-appearance: none;
-    appearance: none;
-  }
-
-  .c-search input::placeholder {
-    color: var(--tone-fg-3);
-  }
-
-  .c-search input:hover {
-    background-color: color-mix(in oklab, var(--color-on-surface) 8%, transparent);
-  }
-
-  .c-search input:focus {
-    width: 16rem;
-    border-color: var(--color-primary);
-    background-color: var(--color-surface-lowest);
-    outline: none;
-  }
-
-  .c-search button {
-    position: absolute;
-    left: 0.25rem;
-    display: grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: var(--radius-full);
-    color: var(--tone-fg-2);
-  }
-
-  .c-search button:hover {
-    color: var(--tone-fg);
-  }
-
-  /* The "/" hint (13.3): press / anywhere to search. */
-  .c-search kbd {
-    position: absolute;
-    right: 0.625rem;
-    display: grid;
-    place-items: center;
-    min-width: 1.25rem;
-    height: 1.25rem;
-    padding-inline: 0.25rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-xs);
-    background-color: var(--color-surface-lowest);
-    color: var(--tone-fg-3);
-    font-family: var(--font-body);
-    font-size: 0.6875rem;
-    line-height: 1;
-    pointer-events: none;
-  }
-
-  .c-search input:focus ~ kbd {
-    opacity: 0;
   }
 
   .c-iconbtn {
     display: inline-grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-full);
-    color: var(--tone-fg);
-    transition: background-color 150ms var(--ease-standard);
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-2);
+    transition:
+      color 150ms var(--ease-standard),
+      background-color 150ms var(--ease-standard);
   }
 
   .c-iconbtn:hover {
-    background-color: color-mix(in oklab, var(--color-on-surface) 6%, transparent);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+  }
+
+  .c-iconbtn svg {
+    width: 1.375rem;
+    height: 1.375rem;
   }
 
   .c-account {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.875rem;
+    display: contents;
   }
 
   .c-account__link {
     display: inline-flex;
     align-items: center;
-    min-height: 40px;
+    height: 2.75rem;
     padding-inline: 0.75rem;
-    border-radius: var(--radius-full);
-    color: var(--color-primary);
-    font-weight: 500;
-    transition: background-color 150ms var(--ease-standard);
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    font-weight: 600;
   }
 
   .c-account__link:hover {
-    background-color: color-mix(in oklab, var(--color-primary) 8%, transparent);
+    color: var(--color-fg);
   }
 
-  /* Dropdown on <details>: no script (Alpine is the CSP build). */
+  /* Account menu: a <details>, no script. */
   .c-menu {
     position: relative;
   }
 
   .c-menu > summary {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.5rem;
-    min-height: 44px;
-    padding-inline: 0.25rem 0.5rem;
-    border-radius: var(--radius-full);
-    cursor: pointer;
+    height: 2.75rem;
+    padding-inline: 0.5rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    font-weight: 500;
     list-style: none;
-    color: var(--tone-fg);
-    transition: background-color 150ms var(--ease-standard);
-  }
-
-  .c-menu > summary:hover {
-    background-color: color-mix(in oklab, var(--color-on-surface) 6%, transparent);
+    cursor: pointer;
   }
 
   .c-menu > summary::-webkit-details-marker {
     display: none;
   }
 
-  .c-menu > summary svg {
-    transition: transform 300ms var(--ease-emphasized);
-  }
-
-  .c-menu[open] > summary svg:last-child {
-    transform: rotate(180deg);
+  .c-menu > summary:hover {
+    background-color: var(--color-surface-2);
   }
 
   .c-menu__panel {
     position: absolute;
-    right: 0;
     top: calc(100% + 0.5rem);
-    z-index: 40;
+    right: 0;
+    z-index: 50;
+    display: grid;
     min-width: 12rem;
-    padding-block: 0.5rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-md);
-    background-color: var(--color-surface-lowest);
-    box-shadow: var(--shadow-2);
-    animation: c-pop-in 200ms var(--ease-emphasized);
+    padding: 0.375rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-float);
   }
 
-  @keyframes c-pop-in {
-    from {
-      opacity: 0;
-      transform: translateY(-0.375rem) scale(0.98);
-    }
+  .c-menu__panel a {
+    padding: 0.625rem 0.75rem;
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-size: 0.9375rem;
   }
 
-  .c-menu__panel a,
-  .c-menu__panel button {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    min-height: 44px;
-    padding-inline: 1rem;
-    color: var(--tone-fg-2);
-    font-size: 0.875rem;
-    text-align: left;
-  }
-
-  .c-menu__panel a:hover,
-  .c-menu__panel button:hover {
-    background-color: var(--color-surface-high);
-    color: var(--tone-fg);
+  .c-menu__panel a:hover {
+    background-color: var(--color-surface-2);
   }
 
   .c-menu__panel hr {
-    margin-block: 0.5rem;
+    margin: 0.375rem 0;
+    border-top: 1px solid var(--color-line);
   }
 
   /* ---- Drawer (phones) -------------------------------------------------------- */
@@ -916,85 +677,70 @@
     display: none;
   }
 
-  .c-drawer .c-drawer__close,
+  .c-drawer__close,
   .c-drawer[open] .c-drawer__open {
     display: none;
   }
 
   .c-drawer[open] .c-drawer__close {
-    display: block;
+    display: inline;
   }
 
   .c-drawer__panel {
-    position: fixed;
-    inset: 4rem 0 0 0;
-    z-index: 29;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    max-height: calc(100vh - 4rem);
     overflow-y: auto;
-    padding: 1rem 1rem 2.5rem;
+    padding: 0.5rem 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-line);
     background-color: var(--color-surface);
-    border-top: 1px solid var(--tone-line);
-    animation: c-drawer-in 300ms var(--ease-emphasized);
-  }
-
-  @keyframes c-drawer-in {
-    from {
-      opacity: 0;
-      transform: translateY(-0.5rem);
-    }
-  }
-
-  body:has(.c-drawer[open]) {
-    overflow: hidden;
+    box-shadow: var(--shadow-float);
   }
 
   .c-drawer__nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    display: grid;
   }
 
   .c-drawer__nav a {
     display: flex;
     align-items: center;
-    min-height: 3.5rem;
-    padding-inline: 1.25rem;
-    border-radius: var(--radius-full);
-    font-family: var(--font-nav);
+    min-height: 3rem;
+    border-bottom: 1px solid var(--color-line);
+    color: var(--color-fg-2);
     font-size: 1.0625rem;
-    font-weight: 600;
-    color: var(--tone-fg);
+    font-weight: 500;
   }
 
   .c-drawer__nav a[aria-current="page"] {
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+    color: var(--color-primary-text);
+    font-weight: 600;
   }
 
   .c-drawer__search {
     display: flex;
     gap: 0.5rem;
-    margin-top: 1.5rem;
+    margin-top: 1rem;
   }
 
   .c-drawer__search input {
     flex: 1;
     min-width: 0;
-    height: 44px;
-    padding-inline: 1.125rem;
-    border: 1px solid var(--tone-control);
-    border-radius: var(--radius-full);
-    background-color: var(--color-surface-lowest);
-    color: var(--tone-fg);
-    font-size: 1rem;
+    height: 2.75rem;
+    padding-inline: 0.875rem;
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
   }
 
   /* ---- Footer ----------------------------------------------------------------- */
 
   .c-footer {
-    padding-top: 3.5rem;
-    border-top: 1px solid var(--tone-line);
-    background-color: var(--color-surface-low);
-    font-size: 0.875rem;
+    border-top: 1px solid var(--color-line);
+    background-color: var(--color-surface);
+    padding-block: 3rem 2rem;
   }
 
   .c-footer__grid {
@@ -1004,77 +750,78 @@
 
   @media (min-width: 1024px) {
     .c-footer__grid {
-      grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr));
-      gap: 2rem;
+      grid-template-columns: 20rem minmax(0, 1fr);
+      gap: 4rem;
     }
   }
 
   .c-footer__statement {
-    margin-top: 1rem;
     max-width: 22rem;
-    color: var(--tone-fg-2);
-    line-height: 1.8;
+    margin-top: 1rem;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    line-height: 1.7;
   }
 
   .c-footer__links {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2rem 1.5rem;
+    gap: 2rem;
   }
 
-  @media (min-width: 1024px) {
+  @media (min-width: 640px) {
     .c-footer__links {
-      display: contents;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 
-  .c-footer__col h2 {
-    margin-bottom: 0.75rem;
+  .c-footer__col {
+    display: grid;
+    align-content: start;
+    gap: 0.625rem;
   }
 
   .c-footer__col a {
-    display: flex;
-    align-items: center;
-    min-height: 2.25rem;
-    color: var(--tone-fg-2);
-    transition: color 150ms var(--ease-standard);
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
   }
 
   .c-footer__col a:hover {
-    color: var(--tone-accent);
+    color: var(--color-fg);
   }
 
   .c-footer__base {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
-    gap: 0.5rem 2rem;
-    margin-top: 3rem;
-    padding-block: 1.25rem;
-    border-top: 1px solid var(--tone-line);
-    color: var(--tone-fg-3);
-    font-size: 0.8125rem;
+    gap: 0.5rem 1.5rem;
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--color-line);
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
   }
 
   /* ---- Banners above the masthead -------------------------------------------- */
 
   .c-banner {
     padding: 0.5rem 1rem;
-    text-align: center;
     font-size: 0.875rem;
-    line-height: 1.5;
+    text-align: center;
+  }
+
+  .c-banner[hidden] {
+    display: none;
   }
 
   .c-banner--test {
-    background-color: var(--color-warn-container);
+    background-color: var(--color-warn-soft);
     color: var(--color-warn);
-    font-weight: 600;
   }
 
   .c-banner--hint {
-    background-color: var(--color-info-container);
+    background-color: var(--color-info-soft);
     color: var(--color-info);
-    font-weight: 600;
   }
 
   /* ---- Page structure --------------------------------------------------------- */
@@ -1083,60 +830,29 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-    color: var(--tone-fg-2);
-  }
-
-  .c-crumbs a {
-    transition: color 150ms var(--ease-standard);
+    gap: 0.375rem;
+    margin-bottom: 1rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
   }
 
   .c-crumbs a:hover {
-    color: var(--tone-accent);
-  }
-
-  .c-crumbs__sep {
-    color: var(--tone-fg-3);
+    color: var(--color-fg);
   }
 
   .c-pagehead {
-    padding-top: 2rem;
-    padding-bottom: 1.75rem;
+    padding-block: 2.5rem 2rem;
   }
 
   @media (min-width: 1024px) {
     .c-pagehead {
-      padding-top: 3rem;
-      padding-bottom: 2.25rem;
+      padding-block: 3.5rem 2.5rem;
     }
   }
 
-  /* On a tonal band (13.2.8: arena pages). */
   .c-pagehead--tonal {
-    padding-bottom: 2.5rem;
-  }
-
-  @media (min-width: 1024px) {
-    .c-pagehead--tonal {
-      padding-top: 3.5rem;
-      padding-bottom: 3rem;
-    }
-  }
-
-  .c-pagehead .c-crumbs {
-    margin-bottom: 1.25rem;
-  }
-
-  .c-pagehead h1 {
-    margin-top: 0.75rem;
-  }
-
-  .c-pagehead__lede {
-    margin-top: 0.75rem;
-    max-width: 40rem;
-    color: var(--tone-fg-2);
-    font-size: 1.0625rem;
+    border-bottom: 1px solid var(--color-line);
+    background-color: var(--color-surface);
   }
 
   .c-pagehead__row {
@@ -1144,7 +860,24 @@
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 1.25rem 2rem;
+    gap: 1rem 2rem;
+  }
+
+  .c-pagehead__lede {
+    max-width: 40rem;
+    margin-top: 0.75rem;
+    color: var(--color-fg-2);
+    font-size: 1.0625rem;
+  }
+
+  .c-pagehead__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-top: 0.75rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
   }
 
   .c-pagehead__actions {
@@ -1153,63 +886,19 @@
     gap: 0.75rem;
   }
 
-  .c-pagehead__meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem 1.25rem;
-    margin-top: 1rem;
-    color: var(--tone-fg-2);
-    font-size: 0.875rem;
-  }
-
-  /* Key facts under a page head: a card of c-stat separated by rules. */
-  .c-factbar {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-top: 2rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-lg);
-    background-color: var(--tone-panel);
-  }
-
-  @media (min-width: 768px) {
-    .c-factbar {
-      grid-auto-flow: column;
-      grid-auto-columns: minmax(0, 1fr);
-      grid-template-columns: none;
-    }
-  }
-
-  .c-factbar > * {
-    padding: 1rem 1.25rem;
-  }
-
-  @media (min-width: 768px) {
-    .c-factbar > * + * {
-      border-left: 1px solid var(--tone-line);
-    }
-  }
-
   .c-sectionhead {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.875rem;
-    margin-bottom: 1.5rem;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1.25rem;
   }
 
-  /* v3.0 section heads carry no number, Latin label or running rule (13.2.7). */
+  .c-sectionhead__rule,
   .c-sectionhead__index,
   .c-sectionhead__en {
     display: none;
-  }
-
-  .c-sectionhead h2 {
-    flex-shrink: 0;
-  }
-
-  .c-sectionhead__rule {
-    flex: 1;
   }
 
   /* ---- Buttons ------------------------------------------------------------------ */
@@ -1219,10 +908,12 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    min-height: 44px;
-    padding: 0.5rem 1.5rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 1.25rem;
     border: 1px solid transparent;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
     font-family: var(--font-button);
     font-size: 0.9375rem;
     font-weight: 600;
@@ -1230,10 +921,9 @@
     white-space: nowrap;
     cursor: pointer;
     transition:
-      background-color 150ms var(--ease-standard),
-      border-color 150ms var(--ease-standard),
       color 150ms var(--ease-standard),
-      box-shadow 150ms var(--ease-standard);
+      background-color 150ms var(--ease-standard),
+      border-color 150ms var(--ease-standard);
   }
 
   .c-btn svg {
@@ -1247,64 +937,64 @@
   }
 
   .c-btn--primary:hover {
-    background-color: var(--color-primary-deep);
-    box-shadow: var(--shadow-1);
+    background-color: var(--color-primary-hover);
   }
 
-  .c-btn--tonal {
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+  .c-btn--secondary,
+  .c-btn--danger {
+    border-color: var(--color-control);
   }
 
-  .c-btn--tonal:hover {
-    background-color: color-mix(in oklab, var(--color-primary-container) 88%, var(--color-primary));
-  }
-
-  .c-btn--secondary {
-    border-color: var(--tone-control);
-    color: var(--color-primary-deep);
-  }
-
-  .c-btn--secondary:hover {
-    background-color: color-mix(in oklab, var(--color-primary) 6%, transparent);
-  }
-
-  .c-btn--quiet {
-    padding-inline: 0.75rem;
-    margin-inline: -0.75rem;
-    color: var(--color-primary-deep);
-  }
-
-  .c-btn--quiet:hover {
-    background-color: color-mix(in oklab, var(--color-primary) 6%, transparent);
-  }
-
-  .c-btn--quiet svg {
-    transition: transform 300ms var(--ease-spring);
-  }
-
-  .c-btn--quiet:hover svg {
-    transform: translateX(3px);
+  .c-btn--secondary:hover,
+  .c-btn--danger:hover {
+    background-color: var(--color-surface-2);
   }
 
   .c-btn--danger {
-    border-color: var(--color-primary);
-    color: var(--color-primary-deep);
+    color: var(--color-primary-text);
   }
 
-  .c-btn--danger:hover {
-    background-color: var(--color-primary-container);
+  .c-btn--tonal {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+  }
+
+  .c-btn--tonal:hover {
+    background-color: color-mix(in oklab, var(--color-primary-soft) 80%, var(--color-primary));
+  }
+
+  /* Text only, for 「全部 →」 and actions inside rows. */
+  .c-btn--quiet {
+    min-height: 2.75rem;
+    padding-inline: 0;
+    background-color: transparent;
+    color: var(--color-primary-text);
+  }
+
+  .c-btn--quiet:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+
+  /* White outline, only on a picture's scrim (13.2.5). */
+  .c-btn--light {
+    border-color: color-mix(in oklab, var(--color-white) 80%, transparent);
+    background-color: transparent;
+    color: var(--color-white);
+  }
+
+  .c-btn--light:hover {
+    background-color: color-mix(in oklab, var(--color-white) 14%, transparent);
   }
 
   .c-btn--sm {
-    min-height: 36px;
-    padding: 0.25rem 1rem;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.875rem;
     font-size: 0.875rem;
   }
 
   .c-btn--sm.c-btn--quiet {
-    padding-inline: 0.625rem;
-    margin-inline: -0.625rem;
+    padding-inline: 0;
   }
 
   .c-btn--block {
@@ -1314,57 +1004,45 @@
   .c-btn:disabled,
   .c-btn[aria-disabled="true"] {
     cursor: not-allowed;
-    opacity: 0.45;
-    box-shadow: none;
+    opacity: 0.5;
   }
 
   .c-btn--primary:disabled,
   .c-btn--primary[aria-disabled="true"] {
-    background-color: var(--color-surface-highest);
-    color: var(--tone-fg-3);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-3);
     opacity: 1;
   }
 
   /* Inline links in running text and notices. */
   .c-link {
-    color: var(--color-primary-deep);
-    font-weight: 600;
+    color: var(--color-primary-text);
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 0.25em;
-    transition: text-decoration-thickness 150ms var(--ease-standard);
   }
 
   .c-link:hover {
     text-decoration-thickness: 2px;
   }
 
-  /* A group that has to be boxed (a game ID, a sign-up box): an outlined card. */
+  /* A group that has to be boxed (a game ID, a sign-up box); c-card is the
+     same box when the whole of it is a link. */
   .c-panel,
   .c-card {
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-lg);
-    background-color: var(--tone-panel);
     padding: 1.25rem;
-  }
-
-  @media (min-width: 640px) {
-    .c-panel,
-    .c-card {
-      padding: 1.5rem;
-    }
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
   }
 
   .c-card {
     position: relative;
-    transition:
-      box-shadow 300ms var(--ease-standard),
-      transform 500ms var(--ease-spring);
+    transition: border-color 150ms var(--ease-standard);
   }
 
   .c-card:hover {
-    box-shadow: var(--shadow-1);
-    transform: translateY(-2px);
+    border-color: var(--color-control);
   }
 
   .c-panel__head {
@@ -1382,122 +1060,68 @@
     margin-top: 1.25rem;
   }
 
-  /* ---- Tags, status, ranks, roles ----------------------------------------------- */
+  /* ---- Tags and status (13.2.6: a word on a tone, no shape) ------------------ */
 
   .c-tag {
     display: inline-flex;
     align-items: center;
-    height: 1.5rem;
-    padding-inline: 0.5rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-sm);
-    color: var(--tone-fg-2);
-    font-size: 0.75rem;
+    min-height: 1.625rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
     font-weight: 500;
-    line-height: 1;
+    line-height: 1.3;
     white-space: nowrap;
-  }
-
-  .c-tag--strong {
-    border-color: var(--color-surface-highest);
-    background-color: var(--color-surface-highest);
-    color: var(--tone-fg);
   }
 
   .c-tag--accent {
-    border-color: var(--color-primary-container);
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
   }
 
-  /* A tonal chip: shape + word (13.2.6). */
+  .c-tag--strong {
+    background-color: var(--color-fg);
+    color: var(--color-surface);
+  }
+
   .c-status {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    height: 1.5rem;
-    padding-inline: 0.5rem 0.625rem;
-    border-radius: var(--radius-sm);
-    background-color: var(--color-surface-high);
-    color: var(--tone-fg-3);
-    font-size: 0.75rem;
+    min-height: 1.625rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 1;
+    line-height: 1.3;
     white-space: nowrap;
   }
 
-  .c-status::before {
-    content: "";
-    flex-shrink: 0;
-    width: 0.4375rem;
-    height: 0.4375rem;
-  }
-
-  /* 报名中、进行中: solid dot. */
   .c-status--live {
-    background-color: var(--color-primary-container);
-    color: var(--color-primary-deep);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
   }
 
-  .c-status--live::before {
-    border-radius: 999px;
-    background-color: var(--color-primary);
-  }
-
-  /* 已通过、已加入: a tick. */
   .c-status--ok {
-    background-color: var(--color-ok-container);
+    background-color: var(--color-ok-soft);
     color: var(--color-ok);
   }
 
-  .c-status--ok::before {
-    width: 0.3125rem;
-    height: 0.5625rem;
-    margin-inline: 0.0625rem;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    transform: translateY(-0.0625rem) rotate(45deg);
-  }
-
-  /* 待审核、即将截止: hollow dot. */
   .c-status--warn {
-    background-color: var(--color-warn-container);
+    background-color: var(--color-warn-soft);
     color: var(--color-warn);
   }
 
-  .c-status--warn::before {
-    border: 2px solid currentColor;
-    border-radius: 999px;
-  }
-
-  /* 即将开始、未开放: hollow square. */
   .c-status--info {
-    background-color: var(--color-info-container);
+    background-color: var(--color-info-soft);
     color: var(--color-info);
   }
 
-  .c-status--info::before {
-    border: 2px solid currentColor;
-    border-radius: 2px;
-  }
-
-  /* 已截止、已结束: solid square. */
-  .c-status--done::before {
-    border-radius: 2px;
-    background-color: currentColor;
-  }
-
-  /* 已取消、已驳回、已撤回: slash. */
-  .c-status--off::before,
-  .c-status--rejected::before {
-    width: 0.625rem;
-    height: 2px;
-    background-color: currentColor;
-    transform: rotate(-45deg);
-  }
-
   .c-status--rejected {
-    color: var(--color-primary-deep);
+    color: var(--color-primary-text);
   }
 
   .c-rank {
@@ -3199,987 +2823,426 @@
     border-left: 2px solid var(--tone-line);
   }
 
-  /* ---- Homepage (design 5.2, 13.2.6; round 082) ----------------------------------- */
+  /* ---- Homepage and the shared content blocks (design 5.2, 13.2.6; round 086) ---- */
 
-  /* The hero slides up under the frosted masthead so the colour shows through. */
+  /* The picture, with the scrim under the words (13.2.5). */
   .c-hero {
     position: relative;
-    isolation: isolate;
-    overflow: hidden;
     display: flex;
-    flex-direction: column;
-    min-height: 100svh;
-    margin-top: -4rem;
-    padding-top: 4rem;
-    background-color: var(--color-surface);
+    align-items: flex-end;
+    min-height: 440px;
+    overflow: hidden;
+    background-color: var(--color-night);
+    color: var(--color-white);
   }
 
-  .c-hero__bg {
-    position: absolute;
-    inset: -10% -5% 0;
-    z-index: -2;
-    pointer-events: none;
-  }
-
-  .c-hero__bg span {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(64px);
-    opacity: 0.75;
-    animation: c-drift 56s var(--ease-standard) infinite alternate;
-  }
-
-  .c-hero__bg span:nth-child(1) {
-    left: -8vw;
-    top: -8vw;
-    width: 46vw;
-    height: 46vw;
-    background-color: var(--color-primary-container);
-  }
-
-  .c-hero__bg span:nth-child(2) {
-    right: -8vw;
-    top: 28%;
-    width: 38vw;
-    height: 38vw;
-    background-color: var(--color-tertiary-container);
-    animation-duration: 64s;
-    animation-direction: alternate-reverse;
-  }
-
-  .c-hero__bg span:nth-child(3) {
-    left: 38%;
-    top: 50%;
-    width: 30vw;
-    height: 30vw;
-    background-color: var(--color-tile-lilac);
-    animation-duration: 48s;
-  }
-
-  .c-hero__bg span:nth-child(4) {
-    left: 4%;
-    bottom: -12%;
-    width: 34vw;
-    height: 34vw;
-    background-color: var(--color-tile-sky);
-    opacity: 0.6;
-    animation-duration: 60s;
-  }
-
-  /* A dotted grid fading out of the top-right corner. */
-  .c-hero__bg::after {
-    content: "";
-    position: absolute;
-    top: 8%;
-    right: 4%;
-    width: 22rem;
-    height: 16rem;
-    background-image: radial-gradient(
-      color-mix(in oklab, var(--color-primary) 22%, transparent) 1.5px,
-      transparent 1.6px
-    );
-    background-size: 18px 18px;
-    -webkit-mask-image: radial-gradient(closest-side, black, transparent);
-    mask-image: radial-gradient(closest-side, black, transparent);
-  }
-
-  @keyframes c-drift {
-    to {
-      transform: translate3d(3vw, 2vw, 0) scale(1.08);
+  @media (min-width: 768px) {
+    .c-hero {
+      min-height: min(72vh, 640px);
     }
   }
 
-  .c-hero__inner {
-    flex: 1;
-    display: grid;
-    align-items: center;
-    gap: 2.5rem;
-    padding-block: 2.5rem 1.5rem;
-  }
-
-  @media (min-width: 1024px) {
-    .c-hero__inner {
-      grid-template-columns: minmax(0, 1fr) 23rem;
-      gap: 4rem;
-      padding-block: 3rem 2rem;
-    }
-  }
-
-  .c-hero__main {
-    position: relative;
-  }
-
-  /* The emblem (13.2.6): its centre on the text column's right edge. */
-  .c-hero__emblem {
-    position: absolute;
-    z-index: -1;
-    top: 50%;
-    left: min(34rem, 72%);
-    width: min(78vh, 640px);
-    aspect-ratio: 1;
-    transform: translate3d(0, 0, 0);
-    pointer-events: none;
-  }
-
-  .c-hero__emblem img {
+  .c-hero__img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    margin: calc(min(78vh, 640px) / -2) 0 0 calc(min(78vh, 640px) / -2);
+    object-fit: cover;
   }
 
-  .c-hero__emblem-img {
-    opacity: 0.075;
-    -webkit-mask-image:
-      radial-gradient(closest-side, black 70%, transparent),
-      linear-gradient(to right, color-mix(in oklab, black 35%, transparent) 30%, black 58%);
-    -webkit-mask-composite: source-in;
-    mask-image:
-      radial-gradient(closest-side, black 70%, transparent),
-      linear-gradient(to right, color-mix(in oklab, black 35%, transparent) 30%, black 58%);
-    mask-composite: intersect;
-    animation: c-emblem-in 1400ms var(--ease-emphasized) both;
-  }
-
-  /* A slightly deeper band of the same red sweeping across every 11 s. */
-  .c-hero__emblem-sheen {
-    opacity: 0.1;
-    filter: brightness(0.6);
-    -webkit-mask-image: linear-gradient(115deg, transparent 42%, black 50%, transparent 58%);
-    -webkit-mask-size: 300% 100%;
-    -webkit-mask-repeat: no-repeat;
-    mask-image: linear-gradient(115deg, transparent 42%, black 50%, transparent 58%);
-    mask-size: 300% 100%;
-    mask-repeat: no-repeat;
-    animation: c-sheen 11s var(--ease-standard) infinite;
-  }
-
-  @keyframes c-emblem-in {
-    from {
-      opacity: 0;
-      transform: scale(0.94);
-    }
-  }
-
-  @keyframes c-sheen {
-    0% {
-      -webkit-mask-position: 150% 0;
-      mask-position: 150% 0;
-    }
-
-    30%,
-    100% {
-      -webkit-mask-position: -50% 0;
-      mask-position: -50% 0;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .c-hero__emblem-sheen {
-      display: none;
-    }
-  }
-
-  .c-hero__overline {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--color-primary);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-  }
-
-  .c-hero__overline::before {
+  .c-hero::after {
     content: "";
-    width: 1.5rem;
-    height: 2px;
-    border-radius: 2px;
-    background-color: currentColor;
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-black) 0%, transparent) 35%,
+      color-mix(in oklab, var(--color-black) 70%, transparent) 100%
+    );
+  }
+
+  .c-hero--plain::after {
+    content: none;
+  }
+
+  /* No picture yet: the emblem in white on the dark ground (13.2.5). */
+  .c-hero__emblem {
+    position: absolute;
+    top: 50%;
+    right: -4rem;
+    width: min(38rem, 90vw);
+    height: auto;
+    opacity: 0.08;
+    filter: brightness(0) invert(1);
+    transform: translateY(-50%);
+  }
+
+  .c-hero__body {
+    position: relative;
+    z-index: 1;
+    padding-block: 3rem 3.5rem;
   }
 
   .c-hero__title {
-    margin-top: 1rem;
-    font-size: clamp(2rem, 1.25rem + 3.6vw, 3.5625rem);
-    font-weight: 800;
-    line-height: 1.12;
-    letter-spacing: -0.01em;
+    max-width: 16em;
+    font-size: 2rem;
+    line-height: 1.2;
   }
 
-  .c-hero__title em {
-    font-style: normal;
-    color: var(--color-primary);
+  @media (min-width: 768px) {
+    .c-hero__title {
+      font-size: 3rem;
+      line-height: 1.15;
+    }
   }
 
   .c-hero__lede {
-    margin-top: 1.25rem;
-    max-width: 30rem;
-    color: var(--tone-fg-2);
+    max-width: 32rem;
+    margin-top: 0.75rem;
+    color: color-mix(in oklab, var(--color-white) 86%, transparent);
     font-size: 1.0625rem;
-    line-height: 1.8;
   }
 
   .c-hero__actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    margin-top: 2rem;
+    margin-top: 1.75rem;
   }
 
-  .c-hero__cue {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.125rem;
-    margin: 1.5rem auto 1.25rem;
-    color: var(--tone-fg-3);
-    font-size: 0.75rem;
+  /* Figures row under the hero. */
+  .c-stats {
+    border-bottom: 1px solid var(--color-line);
+    background-color: var(--color-surface);
   }
 
-  .c-hero__cue svg {
-    animation: c-cue 2s var(--ease-standard) infinite;
-  }
-
-  @keyframes c-cue {
-    50% {
-      transform: translateY(4px);
-    }
-  }
-
-  /* Key figures (13.2.6). */
-  .c-figures {
-    position: relative;
+  .c-stats__list {
     display: grid;
-    grid-template-columns: repeat(3, auto);
-    justify-content: start;
-    max-width: 34rem;
-    margin-top: 2.5rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--tone-line);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem 2rem;
+    padding-block: 1.5rem;
   }
 
-  .c-figures::before {
-    content: "";
-    position: absolute;
-    top: -1px;
-    left: 0;
-    width: 2rem;
-    height: 2px;
-    background-color: var(--color-primary);
-    animation: c-rule-in 900ms var(--ease-emphasized) 400ms both;
-    transform-origin: left;
-  }
+  @media (min-width: 768px) {
+    .c-stats__list {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 
-  @keyframes c-rule-in {
-    from {
-      transform: scaleX(0);
+    .c-stats__list dd {
+      font-size: 2rem;
     }
   }
 
-  .c-figures > div {
+  .c-stats__list > div {
     display: flex;
     flex-direction: column-reverse;
-    gap: 0.375rem;
-    padding-right: 1.5rem;
+    gap: 0.125rem;
   }
 
-  .c-figures > div + div {
-    padding-left: 1.5rem;
-    border-left: 1px solid var(--tone-line);
+  .c-stats__list dt {
+    color: var(--color-fg-2);
   }
 
-  .c-figures dt {
-    color: var(--tone-fg-2);
-    font-size: 0.8125rem;
-  }
-
-  .c-figures dd {
+  .c-stats__list dd {
     font-family: var(--font-figure);
+    font-size: 1.5rem;
     font-variant-numeric: tabular-nums;
-    font-size: 2.75rem;
     font-weight: 700;
-    line-height: 1;
-    white-space: nowrap;
-    color: var(--tone-fg);
-  }
-
-  .c-figures small {
-    margin: 0 0.375rem 0 0.125rem;
-    color: var(--tone-fg-2);
-    font-family: var(--font-body);
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  .c-figures small:last-child {
-    margin-right: 0;
-  }
-
-  @media (max-width: 639px) {
-    .c-figures {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .c-figures > div {
-      padding-right: 0.75rem;
-    }
-
-    .c-figures > div + div {
-      padding-left: 0.75rem;
-    }
-
-    .c-figures dd {
-      font-size: 1.625rem;
-    }
-
-    .c-figures small {
-      margin-right: 0.125rem;
-      font-size: 0.75rem;
-    }
-  }
-
-  /* 近期安排 (13.2.7): the one frosted card on the page. */
-  .c-agenda {
-    position: relative;
-    z-index: 1;
-    padding: 1.25rem 1.25rem 0.5rem;
-    border: 1px solid color-mix(in oklab, var(--color-outline-variant) 70%, transparent);
-    border-radius: var(--radius-xl);
-    background-color: var(--glass-bg);
-    -webkit-backdrop-filter: var(--glass-filter);
-    backdrop-filter: var(--glass-filter);
-    box-shadow: var(--shadow-2);
-    animation: c-card-in 1100ms var(--ease-spring) 300ms both;
-  }
-
-  @keyframes c-card-in {
-    from {
-      opacity: 0;
-      transform: translate3d(0, 24px, 0) scale(0.98);
-    }
-  }
-
-  .c-agenda__head {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .c-agenda__head h2 {
-    font-size: 1.25rem;
-  }
-
-  .c-agenda__head .c-btn {
-    margin-left: auto;
-  }
-
-  .c-agenda__count {
-    display: inline-grid;
-    place-items: center;
-    min-width: 1.5rem;
-    height: 1.5rem;
-    padding-inline: 0.375rem;
-    border-radius: var(--radius-full);
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
-    font-size: 0.75rem;
-    font-weight: 700;
-  }
-
-  .c-agenda__list {
-    margin-top: 0.5rem;
-  }
-
-  .c-agenda__item {
-    position: relative;
-    display: grid;
-    grid-template-columns: 3.25rem minmax(0, 1fr);
-    gap: 0.875rem;
-    padding-block: 0.875rem;
-  }
-
-  .c-agenda__item + .c-agenda__item {
-    border-top: 1px solid var(--tone-line);
-  }
-
-  .c-agenda__date {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    align-self: start;
-    padding-block: 0.375rem;
-    border-radius: var(--radius-md);
-    background-color: var(--color-surface-low);
-    color: var(--tone-fg);
     line-height: 1.2;
   }
 
-  .c-agenda__date small {
-    color: var(--tone-fg-3);
-    font-size: 0.6875rem;
-  }
-
-  .c-agenda__date b {
-    font-family: var(--font-figure);
-    font-variant-numeric: tabular-nums;
-    font-size: 1.375rem;
-    font-weight: 700;
-  }
-
-  .c-agenda__date.is-deadline {
-    background-color: var(--color-primary);
-    color: var(--color-white);
-  }
-
-  .c-agenda__date.is-deadline small {
-    color: color-mix(in oklab, var(--color-white) 88%, transparent);
-  }
-
-  .c-agenda__meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    color: var(--tone-fg-3);
-    font-size: 0.75rem;
-  }
-
-  .c-agenda__title {
-    margin: 0.25rem 0 0.375rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    line-height: 1.45;
-  }
-
-  .c-agenda__title a {
-    transition: color 150ms var(--ease-standard);
-  }
-
-  .c-agenda__item:hover .c-agenda__title a {
-    color: var(--tone-accent);
-  }
-
-  .c-agenda__progress {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    color: var(--tone-fg-2);
-    font-size: 0.75rem;
-    white-space: nowrap;
-  }
-
-  .c-agenda__progress progress {
-    flex: 1;
-  }
-
-  .c-agenda__progress b {
-    color: var(--tone-fg);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .c-agenda__empty {
-    padding-block: 1rem;
-    color: var(--tone-fg-2);
-    font-size: 0.9375rem;
-    line-height: 1.8;
-  }
-
-  /* Quick-entry tiles (13.2.6). */
-  .c-quick {
+  /* 近期: the open tournament beside this week's scrims. */
+  .c-upcoming {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
-
-  @media (min-width: 640px) {
-    .c-quick {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
+    gap: 1.5rem;
   }
 
   @media (min-width: 1024px) {
-    .c-quick {
-      grid-template-columns: none;
-      grid-auto-flow: column;
-      grid-auto-columns: minmax(0, 1fr);
+    .c-upcoming--two {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      align-items: start;
     }
   }
 
-  .c-quick__tile {
+  /* A picture with the words on its scrim (13.2.6 c-feature). */
+  .c-feature {
     position: relative;
     display: flex;
-    flex-direction: column;
-    min-height: 7.5rem;
-    padding: 1rem 1.125rem;
-    border-radius: var(--radius-lg);
-    color: var(--tone-fg);
-    transition:
-      transform 500ms var(--ease-spring),
-      box-shadow 300ms var(--ease-standard);
-  }
-
-  .c-quick__tile:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-1);
-  }
-
-  .c-quick__tile b {
-    font-size: 0.9375rem;
-    font-weight: 700;
-  }
-
-  .c-quick__tile span {
-    margin-top: 0.125rem;
-    color: var(--tone-fg-2);
-    font-size: 0.75rem;
-  }
-
-  .c-quick__icon {
-    box-sizing: border-box;
-    width: 2.5rem;
-    height: 2.5rem;
-    margin-bottom: 0.75rem;
-    padding: 0.5rem;
-    border-radius: var(--radius-md);
+    align-items: flex-end;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-night-2);
     color: var(--color-white);
-    transition: transform 500ms var(--ease-spring);
   }
 
-  .c-quick__tile:hover .c-quick__icon {
-    transform: scale(1.06) rotate(-4deg);
-  }
-
-  .c-quick__go {
+  .c-feature__img {
     position: absolute;
-    top: 0.875rem;
-    right: 0.875rem;
-    width: 1rem;
-    height: 1rem;
-    color: var(--tone-fg-3);
-    transition: transform 300ms var(--ease-spring);
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 300ms var(--ease-standard);
   }
 
-  .c-quick__tile:hover .c-quick__go {
-    transform: translate(2px, -2px);
+  .c-feature:hover .c-feature__img {
+    transform: scale(1.03);
   }
 
-  .c-quick__tile--rose {
-    background-color: var(--color-tile-rose);
+  .c-feature::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-black) 0%, transparent) 40%,
+      color-mix(in oklab, var(--color-black) 70%, transparent) 100%
+    );
   }
 
-  .c-quick__tile--rose .c-quick__icon {
-    background-color: var(--color-primary);
+  .c-feature__body {
+    position: relative;
+    z-index: 1;
+    padding: 1.25rem;
   }
 
-  .c-quick__tile--butter {
-    background-color: var(--color-tile-butter);
-  }
-
-  .c-quick__tile--butter .c-quick__icon {
-    background-color: var(--color-chip-butter);
-  }
-
-  .c-quick__tile--lilac {
-    background-color: var(--color-tile-lilac);
-  }
-
-  .c-quick__tile--lilac .c-quick__icon {
-    background-color: var(--color-chip-lilac);
-  }
-
-  .c-quick__tile--sky {
-    background-color: var(--color-tile-sky);
-  }
-
-  .c-quick__tile--sky .c-quick__icon {
-    background-color: var(--color-chip-sky);
-  }
-
-  .c-quick__tile--blush {
-    background-color: var(--color-tile-blush);
-  }
-
-  .c-quick__tile--blush .c-quick__icon {
-    background-color: var(--color-chip-blush);
-  }
-
-  .c-quick__tile--mint {
-    background-color: var(--color-tile-mint);
-  }
-
-  .c-quick__tile--mint .c-quick__icon {
-    background-color: var(--color-chip-mint);
-  }
-
-  @media (max-width: 639px) {
-    .c-quick__tile {
-      min-height: 0;
-      padding: 0.875rem;
-    }
-
-    .c-quick__tile span {
-      display: none;
+  @media (min-width: 768px) {
+    .c-feature__body {
+      padding: 1.75rem;
     }
   }
 
-  /* 资讯, 通知公告, 活动统计, 战队 below the hero. */
+  .c-feature__title {
+    margin-top: 0.75rem;
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+
+  .c-feature__facts {
+    margin-top: 0.375rem;
+    color: color-mix(in oklab, var(--color-white) 86%, transparent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* List rows: a date block, the title and one line of facts. */
+  .c-rows {
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+  }
+
+  .c-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .c-row + .c-row {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .c-row__title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 1rem;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    transition: color 150ms var(--ease-standard);
+  }
+
+  .c-row:hover .c-row__title {
+    color: var(--color-primary-text);
+  }
+
+  .c-row__meta {
+    margin-top: 0.125rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .c-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+    line-height: 1.15;
+  }
+
+  .c-date small {
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-date b {
+    font-family: var(--font-figure);
+    font-size: 1.375rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .c-meter {
+    margin-top: 0.5rem;
+    max-width: 16rem;
+  }
+
+  /* 资讯 beside 公告. */
   .c-homegrid {
     display: grid;
-    /* minmax(0, …): the category chips must scroll, not widen the column. */
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
+    gap: 2.5rem;
+    padding-block: 1rem 2.5rem;
   }
 
   @media (min-width: 1024px) {
     .c-homegrid {
       grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: 2.5rem;
+      padding-block: 1rem 4rem;
     }
   }
 
-  .c-news {
-    padding: 1.25rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-xl);
-    background-color: var(--tone-panel);
-  }
-
-  @media (min-width: 640px) {
-    .c-news {
-      padding: 1.75rem 2rem;
-    }
-  }
-
-  .c-news__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .c-news__head h2 {
-    font-size: 1.375rem;
-  }
-
-  .c-news .c-tabs {
-    margin-bottom: 1.25rem;
-  }
-
-  .c-news__lead {
-    position: relative;
+  .c-media-grid {
     display: grid;
-    gap: 1rem;
-    padding-bottom: 1.25rem;
-    border-bottom: 1px solid var(--tone-line);
+    gap: 1.5rem;
   }
 
   @media (min-width: 640px) {
-    .c-news__lead {
-      grid-template-columns: 15rem minmax(0, 1fr);
-      align-items: center;
-      gap: 1.5rem;
+    .c-media-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
-  .c-news__cover {
-    aspect-ratio: 16 / 10;
-    overflow: hidden;
-    border-radius: var(--radius-lg);
+  /* A picture card (13.2.6 c-media): picture, tags and date, title. */
+  .c-media {
+    position: relative;
   }
 
-  .c-news__cover img,
-  .c-news__cover span {
-    display: block;
+  .c-media__pic {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .c-media__pic img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 700ms var(--ease-emphasized);
+    transition: transform 300ms var(--ease-standard);
   }
 
-  .c-news__lead:hover .c-news__cover img,
-  .c-news__lead:hover .c-news__cover span {
+  .c-media:hover .c-media__pic img {
     transform: scale(1.03);
   }
 
-  .c-news__meta {
+  .c-media__none {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: var(--color-fg-3);
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .c-media__meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    color: var(--tone-fg-3);
-    font-size: 0.8125rem;
-  }
-
-  .c-news__title {
-    margin-top: 0.5rem;
-    font-size: 1.25rem;
-    font-weight: 700;
-    line-height: 1.4;
-  }
-
-  .c-news__title a,
-  .c-news__rowtitle a {
-    transition: color 150ms var(--ease-standard);
-  }
-
-  .c-news__lead:hover .c-news__title a,
-  .c-news__row:hover .c-news__rowtitle a {
-    color: var(--tone-accent);
-  }
-
-  .c-news__summary {
-    margin-top: 0.375rem;
-    color: var(--tone-fg-2);
-    font-size: 0.9375rem;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-  }
-
-  .c-news__row {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.25rem 1rem;
-    padding-block: 0.875rem;
-    border-bottom: 1px solid var(--tone-line);
-  }
-
-  .c-news__row:last-child {
-    border-bottom: 0;
-    padding-bottom: 0;
-  }
-
-  .c-news__cat {
-    display: flex;
-    gap: 0.25rem;
-    grid-column: 1 / -1;
-  }
-
-  @media (min-width: 640px) {
-    .c-news__row {
-      grid-template-columns: 6rem minmax(0, 1fr) auto;
-    }
-
-    .c-news__cat {
-      grid-column: auto;
-    }
-  }
-
-  .c-news__rowtitle {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    line-height: 1.5;
-  }
-
-  .c-news__rowsum {
-    overflow: hidden;
-    color: var(--tone-fg-2);
-    font-size: 0.8125rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .c-news__row time {
-    color: var(--tone-fg-3);
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .c-homeside {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .c-notices {
-    flex: 1;
-    padding: 1.5rem;
-    border-radius: var(--radius-xl);
-    background-color: var(--color-surface-low);
-  }
-
-  .c-notices__item {
-    position: relative;
-    display: grid;
-    grid-template-columns: 2.75rem minmax(0, 1fr);
-    gap: 0.875rem;
-    padding-block: 0.75rem;
-  }
-
-  .c-notices__item + .c-notices__item {
-    border-top: 1px solid var(--tone-line);
-  }
-
-  .c-notices__date {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    align-self: start;
-    padding-block: 0.25rem;
-    border-radius: var(--radius-md);
-    background-color: var(--color-surface-lowest);
-    line-height: 1.2;
-  }
-
-  .c-notices__date small {
-    color: var(--tone-fg-3);
-    font-size: 0.625rem;
-  }
-
-  .c-notices__date b {
-    font-family: var(--font-figure);
-    font-variant-numeric: tabular-nums;
-    font-size: 1.125rem;
-    font-weight: 700;
-  }
-
-  .c-notices__item h3 {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    line-height: 1.45;
-  }
-
-  .c-notices__item h3 a {
-    transition: color 150ms var(--ease-standard);
-  }
-
-  .c-notices__item:hover h3 a {
-    color: var(--tone-accent);
-  }
-
-  .c-notices__item p {
-    margin-top: 0.125rem;
-    color: var(--tone-fg-2);
-    font-size: 0.8125rem;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-    overflow: hidden;
-  }
-
-  .c-stats {
-    padding: 1.5rem;
-    border-radius: var(--radius-xl);
-    background-color: var(--color-tile-butter);
-  }
-
-  .c-stats h2 {
-    font-size: 1.375rem;
-  }
-
-  .c-stats dl {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
-  }
-
-  .c-stats dl > div {
-    display: flex;
-    flex-direction: column-reverse;
-    gap: 0.25rem;
-    padding: 0.875rem 1rem;
-    border-radius: var(--radius-lg);
-    background-color: color-mix(in oklab, var(--color-surface-lowest) 65%, transparent);
-  }
-
-  .c-stats dt {
-    color: var(--tone-fg-2);
-    font-size: 0.8125rem;
-  }
-
-  .c-stats dd {
-    font-family: var(--font-figure);
-    font-variant-numeric: tabular-nums;
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.1;
-  }
-
-  .c-stats small {
-    margin-left: 0.125rem;
-    color: var(--color-primary);
-    font-family: var(--font-body);
+    margin-top: 0.875rem;
+    color: var(--color-fg-3);
     font-size: 0.875rem;
-    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 
-  .c-teamstrip {
+  .c-media__title {
+    display: -webkit-box;
+    margin-top: 0.375rem;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    transition: color 150ms var(--ease-standard);
+  }
+
+  .c-media:hover .c-media__title {
+    color: var(--color-primary-text);
+  }
+
+  /* Teams: logo, name, size, recruiting. */
+  .c-teams {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
+    gap: 1rem;
   }
 
-  @media (min-width: 640px) {
-    .c-teamstrip {
+  @media (min-width: 768px) {
+    .c-teams {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
   @media (min-width: 1024px) {
-    .c-teamstrip {
+    .c-teams {
       grid-template-columns: repeat(6, minmax(0, 1fr));
     }
   }
 
-  .c-teamstrip__item {
+  .c-teams__item {
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.625rem;
-    padding: 1rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-lg);
-    background-color: var(--tone-panel);
-    transition:
-      transform 500ms var(--ease-spring),
-      box-shadow 300ms var(--ease-standard);
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1.25rem 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    text-align: center;
+    transition: border-color 150ms var(--ease-standard);
   }
 
-  .c-teamstrip__item:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-1);
+  .c-teams__item:hover {
+    border-color: var(--color-control);
   }
 
-  .c-teamstrip__logo {
+  .c-teams__logo {
     display: grid;
     place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 0.5rem;
     overflow: hidden;
-    border-radius: var(--radius-md);
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
-    font-size: 1.125rem;
+    border-radius: 50%;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    font-size: 1.5rem;
     font-weight: 700;
   }
 
-  .c-teamstrip__logo img {
+  .c-teams__logo img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  .c-teamstrip__name {
-    display: block;
-    font-size: 0.9375rem;
+  .c-teams__name {
     font-weight: 600;
-    transition: color 150ms var(--ease-standard);
   }
 
-  .c-teamstrip__item:hover .c-teamstrip__name {
-    color: var(--tone-accent);
+  .c-teams__meta {
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
   }
 
-  .c-teamstrip__meta {
-    display: block;
-    color: var(--tone-fg-2);
-    font-size: 0.75rem;
+  .c-teams__item .c-status {
+    margin-top: 0.375rem;
   }
 
   /* ---- Editorial pages (design 13.2.8 刊物; round 083) ------------------------------ */

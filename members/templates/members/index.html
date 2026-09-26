@@ -56,7 +56,7 @@
           <span class="text-sm text-fg-3">按加入先后</span>
         </div>
         {% if members %}
-          <ol class="c-roster" data-reveal>
+          <ol class="c-roster">
             {% for member in members %}
               <li class="c-roster__item" data-member>
                 <span class="c-avatar" aria-hidden="true">{{ member.user.nickname|initial }}</span>

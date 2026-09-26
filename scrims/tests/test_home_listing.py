@@ -41,10 +41,10 @@ def test_the_homepage_lists_the_next_seven_days(client, homepage):
     _in(2, title="取消的内战", status=ScrimStatus.CANCELLED)
 
     html = client.get("/").content.decode("utf-8")
-    # 近期安排 keeps the 7-day window (design 5.2); since round 082 nothing
-    # else on the homepage lists scrims further out.
-    start = html.index('aria-labelledby="agenda-title"')
-    next_up = html[start : html.index("</aside>", start)]
+    # 近期 keeps the 7-day window (design 5.2); nothing else on the homepage
+    # lists scrims further out.
+    start = html.index('aria-labelledby="home-upcoming"')
+    next_up = html[start : html.index("</section>", start)]
 
     assert "后天的内战" in next_up
     assert "快满七天的内战" in next_up

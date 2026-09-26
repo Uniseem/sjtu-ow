@@ -55,15 +55,15 @@
       {% include "components/section_head.html" with index="03" title="标志性元素" en="SIGNATURES" heading_id="sg-sign" %}
       <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <p class="mb-3 text-sm text-fg-2">筛选标签：当前一项是主色容器底</p>
+          <p class="mb-3 text-sm text-fg-2">筛选：当前一项</p>
           <nav class="c-tabs" aria-label="示例"><a href="#sg-sign" aria-current="page">全部</a><a href="#sg-sign">公告</a><a href="#sg-sign">战报</a></nav>
         </div>
         <div>
-          <p class="mb-3 text-sm text-fg-2">圆角：大图和容器（16px）</p>
-          <span class="block h-20 bg-primary-container c-cut"></span>
+          <p class="mb-3 text-sm text-fg-2">圆角：卡片和图片（8px）</p>
+          <span class="block h-20 bg-surface-2 c-cut"></span>
         </div>
         <div>
-          <p class="mb-3 text-sm text-fg-2">色彩渐变：没有图片时的占位</p>
+          <p class="mb-3 text-sm text-fg-2">没有图片时的占位：灰底</p>
           <span class="block h-20 rounded-md border border-rule c-hatch"></span>
         </div>
         <div>
@@ -287,20 +287,53 @@
     </section>
 
     <section aria-labelledby="sg-home">
-      {% include "components/section_head.html" with title="首页：关键数字、快捷入口" heading_id="sg-home" %}
-      <dl class="c-figures">
-        <div><dt>注册成员</dt><dd><span>312</span><small>人</small></dd></div>
-        <div><dt>战队</dt><dd><span>18</span><small>支</small></dd></div>
-        <div><dt>社区已成立</dt><dd><span>3</span><small>年</small><span>126</span><small>天</small></dd></div>
-      </dl>
-      <nav class="c-quick mt-8" aria-label="示例">
-        <a href="#sg-home" class="c-quick__tile c-quick__tile--rose">{% include "components/icon.html" with name="trophy" class="c-quick__icon" %}<b>赛事报名</b><span>战队或个人报名</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-        <a href="#sg-home" class="c-quick__tile c-quick__tile--butter">{% include "components/icon.html" with name="calendar" class="c-quick__icon" %}<b>内战报名</b><span>填好游戏 ID 就能报</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-        <a href="#sg-home" class="c-quick__tile c-quick__tile--lilac">{% include "components/icon.html" with name="shield" class="c-quick__icon" %}<b>找战队</b><span>浏览战队</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-        <a href="#sg-home" class="c-quick__tile c-quick__tile--sky">{% include "components/icon.html" with name="users" class="c-quick__icon" %}<b>成员展示</b><span>看看都有谁</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-        <a href="#sg-home" class="c-quick__tile c-quick__tile--blush">{% include "components/icon.html" with name="pen" class="c-quick__icon" %}<b>投稿</b><span>攻略、战报、心得</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-        <a href="#sg-home" class="c-quick__tile c-quick__tile--mint">{% include "components/icon.html" with name="chat" class="c-quick__icon" %}<b>加入 QQ 群</b><span>开车、组队、答疑</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-      </nav>
+      {% include "components/section_head.html" with title="首页：数字条、大图卡、列表行、图片卡、战队" heading_id="sg-home" %}
+      <div class="c-stats"><dl class="c-stats__list">
+        <div><dt>注册成员</dt><dd>312</dd></div>
+        <div><dt>战队</dt><dd>18</dd></div>
+        <div><dt>累计内战</dt><dd>46</dd></div>
+        <div><dt>社区已成立</dt><dd>3 年 126 天</dd></div>
+      </dl></div>
+      <div class="c-upcoming c-upcoming--two mt-8">
+        <article class="c-feature">
+          <div class="c-feature__body">
+            <span class="c-status c-status--live">报名中</span>
+            <h3 class="c-feature__title"><a href="#sg-home" class="c-stretch">2026 秋季交大守望先锋杯</a></h3>
+            <p class="c-feature__facts">报名截止 10.12 14:00 · 已通过 9 队</p>
+          </div>
+        </article>
+        <ol class="c-rows">
+          <li class="c-row">
+            <span class="c-date"><small>10月</small><b>02</b></span>
+            <div class="c-row__main">
+              <h3 class="c-row__title"><a href="#sg-home" class="c-stretch">周五晚 5v5 内战</a></h3>
+              <p class="c-row__meta">周五 19:30 · 已报 8 / 10</p>
+              <progress class="c-meter" value="8" max="10" aria-label="已报 8 人，一场需要 10 人"></progress>
+            </div>
+            <span class="c-status c-status--live">报名中</span>
+          </li>
+          <li class="c-row">
+            <span class="c-date"><small>10月</small><b>04</b></span>
+            <div class="c-row__main">
+              <h3 class="c-row__title"><a href="#sg-home" class="c-stretch">周日 6v6 娱乐内战</a></h3>
+              <p class="c-row__meta">周日 14:00 · 已报 12 / 12</p>
+              <progress class="c-meter" value="12" max="12" aria-label="已报 12 人，一场需要 12 人"></progress>
+            </div>
+            <span class="c-status">报名已截止</span>
+          </li>
+        </ol>
+      </div>
+      <div class="c-media-grid mt-8 lg:grid-cols-3">
+        <article class="c-media">
+          <div class="c-media__pic"><span class="c-media__none">战报</span></div>
+          <p class="c-media__meta"><span class="c-tag">战报</span><span class="c-tag c-tag--accent">置顶</span><time>09.28</time></p>
+          <h3 class="c-media__title"><a href="#sg-home" class="c-stretch">没有封面的文章：灰底写分类名</a></h3>
+        </article>
+      </div>
+      <ul class="c-teams mt-8">
+        <li class="c-teams__item"><span class="c-teams__logo">夜</span><a href="#sg-home" class="c-stretch c-teams__name">夜航</a><span class="c-teams__meta">6 人</span><span class="c-status c-status--live">招募中</span></li>
+        <li class="c-teams__item"><span class="c-teams__logo">思</span><a href="#sg-home" class="c-stretch c-teams__name">思源</a><span class="c-teams__meta">7 人</span></li>
+      </ul>
     </section>
 
     <section aria-labelledby="sg-comments">

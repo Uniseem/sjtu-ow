@@ -3,17 +3,6 @@
 (function () {
   "use strict";
   var d = document;
-  // Scroll reveals hide their content only under .js (design 13.2.5), so a page
-  // without scripts still shows everything. Set here, in <head>, to avoid a flash.
-  d.documentElement.className += " js";
-  // If motion.js never arrives (blocked, 404), take .js back off so nothing
-  // stays hidden.
-  window.setTimeout(function () {
-    var root = d.documentElement;
-    if (root.className.indexOf("motion-ready") === -1) {
-      root.className = root.className.replace(" js", "");
-    }
-  }, 3000);
   function has(name) {
     return d.cookie.indexOf(name + "=1") !== -1;
   }

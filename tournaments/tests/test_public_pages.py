@@ -65,10 +65,10 @@ def test_the_homepage_lists_tournaments_open_for_registration(client, homepage):
     _tournament("取消的赛事", opens=-day, closes=day, status=TournamentStatus.CANCELLED)
 
     html = client.get("/").content.decode("utf-8")
-    # Round 082 (design 5.2 v3.0): 近期安排 is only what is open now, and the
-    # homepage no longer has an arena block for what opens soon.
-    start = html.index('aria-labelledby="agenda-title"')
-    next_up = html[start : html.index("</aside>", start)]
+    # 近期 (design 5.2) shows only what is open now; the homepage has no
+    # block for what opens soon.
+    start = html.index('aria-labelledby="home-upcoming"')
+    next_up = html[start : html.index("</section>", start)]
 
     assert "报名中的赛事" in next_up
     assert "还没开始报名的赛事" not in next_up

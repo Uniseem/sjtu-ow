@@ -5,7 +5,7 @@ from django.dispatch import receiver
 
 from core.models import SiteSettings
 
-HOMEPAGE_FIELDS = ("founded_on", "qq_group_url")
+HOMEPAGE_FIELDS = ("founded_on", "qq_group_url", "hero_image_id")
 
 
 @receiver(pre_save, sender=SiteSettings)
@@ -20,7 +20,7 @@ def remember_homepage_fields(sender, instance, raw=False, **kwargs):
 
 @receiver(post_save, sender=SiteSettings)
 def homepage_fields_changed(sender, instance, created, raw=False, **kwargs):
-    """社区成立日期 and QQ 群链接 appear on the prerendered homepage (5.2)."""
+    """社区成立日期, QQ 群链接 and 首屏图片 appear on the prerendered homepage (5.2)."""
     if raw:
         return
     before = getattr(instance, "_homepage_before", None)

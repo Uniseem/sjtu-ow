@@ -4,7 +4,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#fff8f7">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#171a20" media="(prefers-color-scheme: dark)">
     <title>{% block title %}{{ seo.document_title }}{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}{{ seo.description }}{% endblock %}">
     <link rel="canonical" href="{% block canonical %}{{ seo.canonical }}{% endblock %}">
@@ -28,20 +29,15 @@
     {# Pages are prerendered, so only the browser knows it is WeChat (design 16.9). #}
     <div id="wechat-hint" class="c-banner c-banner--hint" role="note" hidden>点右上角菜单，在浏览器中打开</div>
 
-    <header class="c-masthead" data-masthead>
+    <header class="c-masthead">
       <div class="l-container c-masthead__bar">
         {% include "components/brand.html" with compact=True %}
         <nav class="c-nav font-nav" aria-label="主导航">
           {% include "components/main_nav.html" %}
         </nav>
         <div class="c-masthead__end">
-          <form action="{% url 'search' %}" method="get" role="search" class="c-search" data-search>
-            <input type="search" name="q" maxlength="50" placeholder="搜索文章、赛事、战队、成员" aria-label="站内搜索">
-            <button type="submit" aria-label="搜索">{% include "components/icon.html" with name="search" class="size-[1.125rem]" %}</button>
-            <kbd aria-hidden="true">/</kbd>
-          </form>
+          <a href="{% url 'search' %}" class="c-iconbtn" aria-label="搜索">{% include "components/icon.html" with name="search" %}</a>
           {% include "slots/account.html" %}
-          <a href="{% url 'search' %}" class="c-iconbtn lg:hidden" aria-label="搜索">{% include "components/icon.html" with name="search" %}</a>
           <details class="c-drawer lg:hidden">
             <summary class="c-iconbtn -mr-2.5" aria-label="导航菜单">
               <span class="c-drawer__open">{% include "components/icon.html" with name="menu" class="size-6" %}</span>
@@ -110,14 +106,13 @@
         </div>
         <div class="c-footer__base">
           <span>© {% now "Y" %} 上海交通大学守望先锋社区 · 学生社团自办网站</span>
-          <span>不是上海交通大学官方网站 · 与游戏开发商、运营商无关</span>
+          <span>不是上海交通大学官方网站 · 与游戏开发商、运营商无关 · 游戏图片版权归暴雪娱乐所有</span>
         </div>
       </div>
     </footer>
     <script src="{% static 'vendor/htmx.min.js' %}"></script>
     <script src="{% static 'vendor/alpine.csp.min.js' %}" defer></script>
     <script src="{% static 'js/app.js' %}"></script>
-    <script src="{% static 'js/motion.js' %}" defer></script>
     {% block extra_js %}{% endblock %}
   </body>
 </html>

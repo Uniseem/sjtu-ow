@@ -1,5 +1,5 @@
-"""Design system (design 13.2): v2.0 in round 074, v3.0 (Material 3) in round 081:
-tokens, chrome, motion, style guide."""
+"""Design system (design 13.2): v2.0 in round 074, v3.0 in round 081, v4.0 in
+round 086: tokens in two modes, chrome, style guide."""
 
 import re
 from datetime import datetime
@@ -108,7 +108,7 @@ def test_rank_badge_template_sets_the_division_as_a_figure():
     assert "c-rank--none" in unranked
 
 
-# --- tokens (13.2.3) ------------------------------------------------------------
+# --- tokens (13.2.2) ------------------------------------------------------------
 
 
 def test_only_our_palette_exists():
@@ -117,23 +117,52 @@ def test_only_our_palette_exists():
     assert "--color-*: initial;" in css
     compiled = APP_CSS.read_text(encoding="utf-8")
     assert "--color-orange-500" not in compiled
-    assert "--color-primary:#b2141a" in compiled.replace(" ", "")
+    assert "--color-primary:#a4161a" in compiled.replace(" ", "")
+
+
+HEX = r"--color-([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})"
+DARK_HEAD = "@media (prefers-color-scheme: dark) {"
+
+
+def _light(css):
+    """The @theme block: the light values (13.2.2)."""
+    block = re.search(r"@theme \{(.*?)\n\}", css, flags=re.S).group(1)
+    return dict(re.findall(HEX, block))
+
+
+def _dark_block(css):
+    block = css[css.index(DARK_HEAD) :]
+    return block[: block.index("\n}\n")]
+
+
+def _dark(css):
+    """Light values overridden by the prefers-color-scheme: dark block."""
+    return {**_light(css), **dict(re.findall(HEX, _dark_block(css)))}
 
 
 def _tokens(css):
-    return dict(re.findall(r"--color-([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})", css))
+    return _light(css)
 
 
 def test_error_css_uses_the_same_token_values():
     """error.css is hand-written (13.15); its colours must match input.css."""
     site = _tokens(INPUT_CSS.read_text(encoding="utf-8"))
-    errors = _tokens(ERROR_CSS.read_text(encoding="utf-8"))
+    errors = dict(re.findall(HEX, ERROR_CSS.read_text(encoding="utf-8")))
     assert errors, "error.css defines no colour tokens"
     for name, value in errors.items():
         assert site.get(name, "").lower() == value.lower(), name
 
 
-# --- contrast (13.2.3, WCAG 2.1 AA) ----------------------------------------------
+def test_dark_mode_gives_every_palette_colour_a_dark_value():
+    """13.2.1: both modes follow the system; a colour left out of the dark block
+    would stay light on a dark page."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    fixed = {"white", "black", "night", "night-2"}  # the same in both modes
+    dark = set(dict(re.findall(HEX, _dark_block(css))))
+    assert set(_light(css)) - fixed - dark == set()
+
+
+# --- contrast (13.2.2, WCAG 2.1 AA) ----------------------------------------------
 
 
 def _luminance(value):
@@ -149,48 +178,18 @@ def _contrast(a, b):
     return (light + 0.05) / (dark + 0.05)
 
 
-# The table in design 13.2.3: text needs 4.5:1, field borders 3:1.
-SURFACES = ("surface", "surface-lowest", "surface-low", "surface-mid", "surface-high")
-ICON_CHIPS = (
-    "primary",
-    "chip-butter",
-    "chip-lilac",
-    "chip-sky",
-    "chip-blush",
-    "chip-mint",
-)
-TILES = (
-    "tile-rose",
-    "tile-butter",
-    "tile-lilac",
-    "tile-sky",
-    "tile-blush",
-    "tile-mint",
-)
+# The pairs in design 13.2.2: text needs 4.5:1, field borders 3:1.
+GROUNDS = ("bg", "surface", "surface-2")
 CONTRAST_PAIRS = [
-    (
-        (
-            "on-surface",
-            "on-surface-2",
-            "on-surface-3",
-            "primary",
-            "primary-deep",
-            "ok",
-            "warn",
-            "info",
-        ),
-        SURFACES,
-        4.5,
-    ),
-    (("on-primary-container", "primary-deep"), ("primary-container",), 4.5),
-    (("on-tertiary-container",), ("tertiary-container",), 4.5),
-    (("ok",), ("ok-container",), 4.5),
-    (("warn",), ("warn-container",), 4.5),
-    (("info",), ("info-container",), 4.5),
-    (("inverse-on-surface", "inverse-primary"), ("inverse-surface",), 4.5),
-    (("white",), ("primary-deep",) + ICON_CHIPS, 4.5),
-    (("on-surface-2",), TILES, 4.5),
-    (("outline",), SURFACES, 3),
+    (("fg", "fg-2", "fg-3", "primary-text", "ok", "warn", "info"), GROUNDS, 4.5),
+    (("white",), ("primary",), 4.5),
+    (("on-primary-soft",), ("primary-soft",), 4.5),
+    (("ok",), ("ok-soft",), 4.5),
+    (("warn",), ("warn-soft",), 4.5),
+    (("info",), ("info-soft",), 4.5),
+    (("on-toast",), ("toast",), 4.5),
+    (("white",), ("night", "night-2"), 4.5),
+    (("control",), ("bg", "surface"), 3),
 ]
 
 
@@ -199,9 +198,12 @@ def test_the_contrast_helper_matches_known_values():
     assert round(_contrast("#767676", "#ffffff"), 2) == 4.54
 
 
-def test_text_and_field_colours_meet_wcag_aa():
-    """Round 079: ink-3 was 3.75:1 on the page and field borders about 2:1."""
-    tokens = _tokens(INPUT_CSS.read_text(encoding="utf-8"))
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_text_and_field_colours_meet_wcag_aa(mode):
+    """Round 079: ink-3 was 3.75:1 on the page and field borders about 2:1.
+    Round 086: both modes are checked."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    tokens = _light(css) if mode == "light" else _dark(css)
     failures = []
     for foregrounds, backgrounds, minimum in CONTRAST_PAIRS:
         for fg in foregrounds:
@@ -228,25 +230,35 @@ def _block(css, head):
     return css[start : css.index("}", start)]
 
 
-def test_tonal_bands_change_the_ground_but_keep_dark_text():
-    """v3.0 replaces the night regions with light tonal bands (13.2.3)."""
+def test_v3_names_point_at_the_v4_palette():
+    """Pages rebuilt in 087–089 still say surface-high or primary-deep; those
+    names must follow the v4 values in both modes, not keep their own."""
     css = INPUT_CSS.read_text(encoding="utf-8")
-    page = _block(css, "\n:root {")
-    tonal = _block(css, "\n.on-tonal {")
-    assert "--tone-bg: var(--color-surface);" in page
-    assert "--tone-fg-3: var(--color-on-surface-3);" in page
-    assert "--tone-control: var(--color-outline);" in page
-    assert "--tone-bg: var(--color-surface-mid);" in tonal
-    # Text colours are not flipped: the band is light too.
-    assert "--tone-fg" not in tonal
-    assert "--color-night" not in css
+    theme = re.search(r"@theme \{(.*?)\n\}", css, flags=re.S).group(1)
+    for name in ("primary-deep", "primary-container", "surface-lowest", "outline"):
+        assert re.search(rf"--color-{name}: var\(--color-[a-z0-9-]+\);", theme), name
     assert ".on-night" not in css
 
 
+def test_v4_draws_no_glass_and_no_washes():
+    """13.2.1: no frosted panes, no gradient blobs; the only gradients are the
+    scrims under words on a picture (13.2.5)."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    assert "--glass-filter: none;" in css
+    assert re.findall(r"backdrop-filter:\s*(?!var\(--glass-filter\))", css) == []
+    # The one radial gradient is the dot inside a checked radio button.
+    radials = [m.start() for m in re.finditer("radial-gradient", css)]
+    assert len(radials) == 1
+    assert 'input[type="radio"]:checked {' in css[radials[0] - 200 : radials[0]]
+    gradients = re.findall(r"linear-gradient\(", css)
+    assert len(gradients) == 2  # c-hero::after and c-feature::after
+
+
 def test_colours_are_only_defined_as_tokens():
-    """13.2.3: a colour written outside @theme escapes the contrast check."""
+    """13.2.2: a colour written outside the token blocks escapes the contrast check."""
     css = INPUT_CSS.read_text(encoding="utf-8")
     outside = re.sub(r"@theme \{.*?\n\}", "", css, flags=re.S)
+    outside = outside.replace(_dark_block(css), "")
     assert re.findall(r"#[0-9a-fA-F]{3,8}\b", outside) == []
     # Round 081: translucent colours too — mix a token instead of rgb().
     assert re.findall(r"\b(?:rgba?|hsla?)\(", outside) == []
@@ -263,10 +275,9 @@ def test_colours_are_only_defined_as_tokens():
 )
 def test_form_fields_have_a_border_you_can_see(head):
     """WCAG 1.4.11: the edge that says "type here" needs 3:1, which the
-    decorative outline-variant does not have. The masthead search is a filled
-    Material search bar, told apart by its icon and placeholder (13.2.3)."""
+    decorative line colour does not have (13.2.2)."""
     rule = _block(INPUT_CSS.read_text(encoding="utf-8"), head)
-    assert "var(--tone-control)" in rule
+    assert "var(--tone-control)" in rule or "var(--color-control)" in rule
 
 
 # --- --font-figure (13.2.4, 13.12.4) --------------------------------------------
@@ -353,52 +364,35 @@ def test_every_page_carries_the_site_icon(client, home):
         ), path
 
 
-def test_the_masthead_is_frosted_and_driven_by_motion_js(client, home):
-    """13.3: one frosted material for the bar and the capsule; motion.js
-    (external, CSP) switches between bar, capsule, hidden."""
+def test_the_masthead_is_a_plain_bar_that_stays_put(client, home):
+    """13.3 (v4.0): a solid bar, sticky, no glass, no capsule, no script."""
     html = client.get("/").content.decode("utf-8")
-    assert '<header class="c-masthead" data-masthead>' in html
-    assert 'src="/static/js/motion.js"' in html
-    assert "on-night" not in html
+    assert '<header class="c-masthead">' in html
+    assert "motion.js" not in html
+    assert not (STATIC / "js" / "motion.js").exists()
     css = INPUT_CSS.read_text(encoding="utf-8")
     bar = _block(css, "\n  .c-masthead {")
-    assert "background-color: var(--glass-bg);" in bar
-    assert "backdrop-filter: var(--glass-filter);" in bar
     assert "position: sticky;" in bar
-    capsule = _block(css, "\n  .c-masthead.is-capsule {")
-    assert "border-radius: var(--radius-full);" in capsule
-    assert "max-width: min(1100px" in capsule
-    hidden = _block(css, "\n  .c-masthead.is-hidden {")
-    assert "translate3d(0, calc(-100%" in hidden
-    script = (STATIC / "js" / "motion.js").read_text(encoding="utf-8")
-    for needle in (
-        '"is-capsule"',
-        '"is-hidden"',
-        "TOP = 80",
-        "NUDGE = 6",
-        "bar.contains(d.activeElement)",
-    ):
-        assert needle in script, needle
+    assert "background-color: var(--color-surface);" in bar
+    assert "backdrop-filter" not in bar
+    assert "is-capsule" not in css and "is-hidden" not in css
 
 
-def test_reveals_hide_content_only_once_scripts_run():
-    """13.2.5: without scripts everything stays visible; the js class is set in
-    <head> before state.js can return early for visitors without cookies."""
+def test_nothing_waits_for_a_script_to_appear(client, home):
+    """13.2.4: no scroll reveals, count-ups or parallax; content is there as
+    soon as the HTML is."""
     css = INPUT_CSS.read_text(encoding="utf-8")
-    assert re.search(r"\n\.js \[data-reveal\] > \* \{\s*opacity: 0;", css)
-    assert not re.search(r"\n\[data-reveal\][^{]*\{\s*opacity: 0", css)
+    assert "data-reveal" not in css
     state = (STATIC / "js" / "state.js").read_text(encoding="utf-8")
-    assert state.index('className += " js"') < state.index("return;")
-    # If motion.js never runs, state.js takes .js back off after 3 s.
-    assert 'root.className.replace(" js", "")' in state
-    assert 'root.classList.add("motion-ready")' in (
-        STATIC / "js" / "motion.js"
-    ).read_text(encoding="utf-8")
+    assert 'className += " js"' not in state
+    html = client.get("/").content.decode("utf-8")
+    for marker in ("data-reveal", "data-count-to", "data-parallax"):
+        assert marker not in html, marker
 
 
 def test_reduced_motion_also_drops_delays():
-    """Round 082: 近期安排 waits 300 ms to slide in; under 「减少动态效果」 the
-    duration went to zero but the delay stayed, so the card was missing."""
+    """Round 082: under 「减少动态效果」 the duration went to zero but a delay
+    stayed; the global rule clears both."""
     css = INPUT_CSS.read_text(encoding="utf-8")
     base = css[css.index("@layer base {") :]
     reduced = base[base.index("@media (prefers-reduced-motion: reduce)") :]
@@ -408,13 +402,22 @@ def test_reduced_motion_also_drops_delays():
 
 
 def test_homepage_columns_cannot_be_widened_by_their_content():
-    """Round 082: the chip row widened the 资讯 column past a phone's width."""
-    grid = _block(INPUT_CSS.read_text(encoding="utf-8"), "\n  .c-homegrid {")
-    assert "grid-template-columns: minmax(0, 1fr);" in grid
+    """Round 082: a chip row widened the 资讯 column past a phone's width. Every
+    homepage grid track is minmax(0, …)."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    section = css[
+        css.index("---- Homepage and the shared content blocks") : css.index(
+            "---- Editorial pages"
+        )
+    ]
+    tracks = re.findall(r"grid-template-columns:\s*([^;]+);", section)
+    assert tracks
+    for value in tracks:
+        assert "minmax(0," in value, value
 
 
 def test_the_emblem_file_is_clean_and_cropped():
-    """13.2.9: the user-chosen emblem, cropped to a square, graphics only."""
+    """13.2.8: the user-chosen emblem, cropped to a square, graphics only."""
     svg = (STATIC / "img" / "sjtu-emblem.svg").read_text(encoding="utf-8")
     box = re.search(r'viewBox="([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+)"', svg)
     assert box, "no viewBox"
@@ -436,6 +439,7 @@ def test_footer_says_this_is_not_the_university_site(client, home):
     footer = html[html.index('<footer class="c-footer') :]
     assert "不是上海交通大学官方网站" in footer
     assert "与游戏开发商、运营商无关" in footer
+    assert "游戏图片版权归暴雪娱乐所有" in footer
 
 
 def test_signed_in_account_menu_needs_no_script(client, home):
@@ -476,8 +480,11 @@ def test_style_guide_opens_for_an_admin_who_is_not_a_superuser(client, home):
         "c-ticket",
         "c-slots",
         "c-status--live",
-        "c-quick__tile",
-        "c-figures",
+        "c-feature",
+        "c-media",
+        "c-date",
+        "c-stats__list",
+        "c-teams",
         "c-field",
         "c-prose",
     ):

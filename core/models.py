@@ -28,7 +28,7 @@ class HealthProbe(models.Model):
 class SiteSettings(BaseGenericSetting):
     """Singleton site settings. SMTP is used now; other fields wait for later."""
 
-    select_related = ["default_share_image"]
+    select_related = ["default_share_image", "hero_image"]
 
     class SmtpSecurity(models.TextChoices):
         NONE = "none", "无"
@@ -78,18 +78,28 @@ class SiteSettings(BaseGenericSetting):
         related_name="+",
         help_text="没有封面的页面使用这张图作为分享预览。",
     )
+    hero_image = models.ForeignKey(
+        "wagtailimages.Image",
+        verbose_name="首屏图片",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="首页最上面的大图，建议 2400×1000 以上；空着时显示深色底和校徽。",
+    )
     founded_on = models.DateField(
         "社区成立日期",
         null=True,
         blank=True,
-        help_text="首页「社区已成立 N 年 M 天」按它算；空着首页不显示这一项。",
+        help_text="首页数字条「社区已成立 N 年 M 天」按它算；空着不显示这一项。",
     )
     qq_group_url = models.URLField(
         "QQ 群链接",
         blank=True,
         validators=[https_only],
         help_text=(
-            "QQ 群的分享链接，https:// 开头。首页「加入 QQ 群」链接到这里；空着不显示。"
+            "QQ 群的分享链接，https:// 开头。"
+            "首页首屏的「加入 QQ 群」按钮链接到这里；空着不显示。"
         ),
     )
     team_max_members = models.PositiveIntegerField(
@@ -203,6 +213,7 @@ class SiteSettings(BaseGenericSetting):
             [
                 FieldPanel("site_description"),
                 FieldPanel("default_share_image"),
+                FieldPanel("hero_image"),
                 FieldPanel("founded_on"),
                 FieldPanel("qq_group_url"),
             ],

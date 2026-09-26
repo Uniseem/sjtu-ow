@@ -4,27 +4,26 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#fff8f7">
+    <meta name="theme-color" content="#ffffff">
     <title>维护中 · 上海交通大学守望先锋社区</title>
     
       <style>
 /*
  * Error and maintenance pages (design 13.15). Hand-written and independent of
  * the site stylesheet; the values copy the tokens in assets/css/input.css
- * (design 13.2.3) and a test checks they still match.
+ * (design 13.2.2) and a test checks they still match.
  */
 :root {
-  --color-primary: #b2141a;
-  --color-primary-deep: #861116;
-  --color-primary-container: #ffdad5;
-  --color-tertiary-container: #fbdfa6;
-  --color-surface: #fff8f7;
-  --color-surface-lowest: #ffffff;
-  --color-outline: #857371;
-  --color-outline-variant: #d8c2bf;
-  --color-on-surface: #231918;
-  --color-on-surface-2: #534341;
-  --color-on-surface-3: #6b5a58;
+  --color-primary: #a4161a;
+  --color-primary-text: #a4161a;
+  --color-primary-soft: #fce8e8;
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-control: #767d88;
+  --color-line: #e1e4e8;
+  --color-fg: #111318;
+  --color-fg-2: #4a505b;
+  --color-fg-3: #5f6671;
   --font-fallback:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC",
     "MiSans", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC",
@@ -50,11 +49,8 @@ body {
   min-height: 100vh;
   font-family: var(--font-body);
   line-height: 1.7;
-  color: var(--color-on-surface);
-  background:
-    radial-gradient(50% 45% at 8% 10%, color-mix(in oklab, var(--color-primary-container) 80%, transparent), transparent 70%),
-    radial-gradient(45% 40% at 95% 90%, color-mix(in oklab, var(--color-tertiary-container) 60%, transparent), transparent 70%),
-    var(--color-surface);
+  color: var(--color-fg);
+  background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -63,8 +59,8 @@ header {
   align-items: center;
   height: 4rem;
   padding: 0 1rem;
-  background: color-mix(in oklab, var(--color-surface-lowest) 80%, transparent);
-  border-bottom: 1px solid var(--color-outline-variant);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-line);
 }
 
 header .brand {
@@ -75,7 +71,7 @@ header .brand {
   font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--color-on-surface);
+  color: var(--color-fg);
   text-decoration: none;
 }
 
@@ -107,7 +103,7 @@ main {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: var(--color-primary-deep);
+  color: var(--color-primary-text);
 }
 
 h1 {
@@ -120,7 +116,7 @@ h1 {
 
 p {
   margin: 0 0 0.5rem;
-  color: var(--color-on-surface-2);
+  color: var(--color-fg-2);
 }
 
 .actions {
@@ -142,18 +138,18 @@ p {
   font-size: 0.9375rem;
   font-weight: 600;
   text-decoration: none;
-  color: var(--color-surface-lowest);
+  color: var(--color-surface);
   background: var(--color-primary);
 }
 
 .actions a:hover {
-  background: var(--color-primary-deep);
+  background: var(--color-primary-text);
 }
 
 .actions a.secondary {
-  color: var(--color-primary-deep);
+  color: var(--color-primary-text);
   background: transparent;
-  border-color: var(--color-outline);
+  border-color: var(--color-control);
 }
 
 .actions a.secondary:hover {
@@ -163,14 +159,14 @@ p {
 .request-id {
   font-family: var(--font-code);
   font-size: 0.875rem;
-  color: var(--color-on-surface);
+  color: var(--color-fg);
 }
 
 footer {
   padding: 1.25rem 1rem;
-  border-top: 1px solid var(--color-outline-variant);
+  border-top: 1px solid var(--color-line);
   font-size: 0.8125rem;
-  color: var(--color-on-surface-3);
+  color: var(--color-fg-3);
 }
 
 @media (min-width: 640px) {
@@ -191,7 +187,7 @@ footer {
   </head>
   <body>
     <header>
-      <a href="/" class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#b2141a"/><path d="M8 21.5l8-8 8 8" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.4" fill="#fbdfa6"/></svg>交大守望先锋</a>
+      <a href="/" class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#a4161a"/><path d="M8 21.5l8-8 8 8" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>交大守望先锋</a>
     </header>
     <main>
       <p class="code" aria-hidden="true">503</p>

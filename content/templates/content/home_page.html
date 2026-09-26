@@ -4,175 +4,126 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  {# Hero (design 5.2, 13.2.6): colour wash, emblem watermark, key figures, 近期安排, quick entries. #}
-  <section class="c-hero" aria-labelledby="hero-title">
-    <div class="c-hero__bg" aria-hidden="true" data-parallax="0.35"><span></span><span></span><span></span><span></span></div>
-    <div class="l-container c-hero__inner">
-      <div class="c-hero__main">
-        <div class="c-hero__emblem" aria-hidden="true" data-parallax="0.4">
-          <img class="c-hero__emblem-img" src="{% static 'img/sjtu-emblem.svg' %}" alt="" width="560" height="560">
-          <img class="c-hero__emblem-sheen" src="{% static 'img/sjtu-emblem.svg' %}" alt="" width="560" height="560">
-        </div>
-        <p class="c-hero__overline">SJTU OVERWATCH COMMUNITY</p>
-        <h1 id="hero-title" class="c-hero__title">上海交通大学<br><em>守望先锋社区</em></h1>
-        <p class="c-hero__lede">交大玩家自己的守望先锋社区。每周内战、每学期一届校内赛事，战队和队友都在这里。</p>
-        <div class="c-hero__actions">
-          <a href="{% url 'account_signup' %}" class="c-btn c-btn--primary">加入社区{% include "components/icon.html" with name="arrow-right" %}</a>
-          <a href="/about/" class="c-btn c-btn--secondary">了解我们</a>
-        </div>
-        <dl class="c-figures">
-          <div>
-            <dt>注册成员</dt>
-            <dd><span data-count-to="{{ member_count }}" data-count-delay="600">{{ member_count }}</span><small>人</small></dd>
-          </div>
-          <div>
-            <dt>战队</dt>
-            <dd><span data-count-to="{{ team_count }}" data-count-delay="700">{{ team_count }}</span><small>支</small></dd>
-          </div>
-          {% if age %}
-            <div data-figure="age">
-              <dt>社区已成立</dt>
-              <dd>{% if age.years %}<span data-count-to="{{ age.years }}" data-count-delay="800">{{ age.years }}</span><small>年</small>{% endif %}<span data-count-to="{{ age.days }}" data-count-delay="800">{{ age.days }}</span><small>天</small></dd>
-            </div>
-          {% endif %}
-        </dl>
+  {# Hero (design 5.2, 13.2.5): the picture from 全站设置, or the dark ground with the emblem. #}
+  <section class="c-hero{% if not hero_image %} c-hero--plain{% endif %}" aria-labelledby="hero-title">
+    {% if hero_image %}
+      {% image hero_image fill-2400x1000-c50 class="c-hero__img" alt="" %}
+    {% else %}
+      <img class="c-hero__emblem" src="{% static 'img/sjtu-emblem.svg' %}" alt="" width="560" height="560">
+    {% endif %}
+    <div class="l-container c-hero__body">
+      <h1 id="hero-title" class="c-hero__title">上海交通大学守望先锋社区</h1>
+      <p class="c-hero__lede">交大玩家自己的守望先锋社区。每周内战，每学期一届校内赛事。</p>
+      <div class="c-hero__actions">
+        <a href="{% url 'account_signup' %}" class="c-btn c-btn--primary">加入社区</a>
+        {% if qq_group_url %}<a href="{{ qq_group_url }}" class="c-btn c-btn--light" rel="noopener" data-quick="qq">加入 QQ 群</a>{% endif %}
       </div>
-
-      <aside class="c-agenda" aria-labelledby="agenda-title">
-        <div class="c-agenda__head">
-          <h2 id="agenda-title">近期安排</h2>
-          {% if agenda %}<span class="c-agenda__count">{{ agenda|length }}</span>{% endif %}
-          <a href="/scrims/" class="c-btn c-btn--quiet c-btn--sm">全部日程{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
-        </div>
-        {% if agenda %}
-          <ol class="c-agenda__list">
-            {% for entry in agenda %}
-              <li class="c-agenda__item" data-next-up="{{ entry.kind }}">
-                <span class="c-agenda__date{% if entry.kind == 'tournament' %} is-deadline{% endif %}">
-                  <small>{{ entry.moment|date:"n" }}月</small>
-                  <b>{{ entry.moment|date:"d" }}</b>
-                  <small>{% if entry.kind == "tournament" %}截止{% else %}{{ entry.moment|ow_weekday }}{% endif %}</small>
-                </span>
-                <div class="c-agenda__body">
-                  {% if entry.kind == "tournament" %}
-                    <p class="c-agenda__meta"><span>赛事 · 报名截止 {{ entry.moment|ow_time }}</span>{% include "components/status_badge.html" with kind="live" label="报名中" %}</p>
-                    <h3 class="c-agenda__title"><a href="{{ entry.item.get_absolute_url }}" class="c-stretch">{{ entry.item.title }}</a></h3>
-                    <p class="c-agenda__progress"><span>已通过 <b>{{ entry.count }}</b> 队</span></p>
-                  {% else %}
-                    <p class="c-agenda__meta"><span>内战 · {{ entry.moment|ow_time }}</span>{% if entry.item.signup_open %}{% include "components/status_badge.html" with kind="live" label="报名中" %}{% else %}{% include "components/status_badge.html" with kind="done" label="报名已截止" %}{% endif %}</p>
-                    <h3 class="c-agenda__title"><a href="{% url 'scrim_detail' entry.item.pk %}" class="c-stretch">{{ entry.item.title }}</a></h3>
-                    <p class="c-agenda__progress"><progress value="{% if entry.count > entry.capacity %}{{ entry.capacity }}{% else %}{{ entry.count }}{% endif %}" max="{{ entry.capacity }}" aria-label="已报 {{ entry.count }} 人，一场需要 {{ entry.capacity }} 人"></progress><span>已报 <b>{{ entry.count }}</b> / {{ entry.capacity }}</span></p>
-                  {% endif %}
-                </div>
-              </li>
-            {% endfor %}
-          </ol>
-        {% else %}
-          <p class="c-agenda__empty">最近没有安排。去<a href="/tournaments/" class="c-link">赛事</a>或<a href="/scrims/" class="c-link">内战</a>看看以前的活动。</p>
-        {% endif %}
-      </aside>
     </div>
-
-    <nav class="l-container c-quick" aria-label="快捷入口" data-reveal>
-      <a href="/tournaments/" class="c-quick__tile c-quick__tile--rose">{% include "components/icon.html" with name="trophy" class="c-quick__icon" %}<b>赛事报名</b><span>战队或个人报名</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-      <a href="/scrims/" class="c-quick__tile c-quick__tile--butter">{% include "components/icon.html" with name="calendar" class="c-quick__icon" %}<b>内战报名</b><span>填好游戏 ID 就能报</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-      <a href="/teams/" class="c-quick__tile c-quick__tile--lilac">{% include "components/icon.html" with name="shield" class="c-quick__icon" %}<b>找战队</b><span>浏览 {{ team_count }} 支战队</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-      <a href="{% url 'members' %}" class="c-quick__tile c-quick__tile--sky">{% include "components/icon.html" with name="users" class="c-quick__icon" %}<b>成员展示</b><span>看看都有谁</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-      <a href="{% url 'submit' %}" class="c-quick__tile c-quick__tile--blush">{% include "components/icon.html" with name="pen" class="c-quick__icon" %}<b>投稿</b><span>攻略、战报、心得</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-      {% if qq_group_url %}
-        <a href="{{ qq_group_url }}" class="c-quick__tile c-quick__tile--mint" rel="noopener" data-quick="qq">{% include "components/icon.html" with name="chat" class="c-quick__icon" %}<b>加入 QQ 群</b><span>开车、组队、答疑</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
-      {% endif %}
-    </nav>
-
-    <a href="#home-news" class="c-hero__cue">向下{% include "components/icon.html" with name="chevron-down" class="size-4" %}</a>
   </section>
 
-  {# 资讯 with 通知公告 and 活动统计 (design 5.2). #}
-  <section class="l-container l-section c-homegrid" aria-label="资讯与通知" data-reveal>
-    <div class="c-news">
-      <div class="c-news__head">
-        <h2 id="home-news">资讯</h2>
-        <a href="/news/" class="c-btn c-btn--quiet c-btn--sm">全部资讯{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
-      </div>
-      <nav class="c-tabs" aria-label="文章分类">
-        <a href="/news/">全部</a>
-        {% for category in categories %}<a href="/news/?category={{ category.slug }}">{{ category.name }}</a>{% endfor %}
-      </nav>
-      {% if news_lead %}
-        <article class="c-news__lead">
-          <div class="c-news__cover">{% if news_lead.cover %}{% image news_lead.cover fill-640x400 alt="" %}{% else %}{% include "components/category_wash.html" with category=news_lead.category %}{% endif %}</div>
-          <div class="min-w-0">
-            <p class="c-news__meta">{% if news_lead.category %}<span class="c-tag">{{ news_lead.category.name }}</span>{% endif %}{% if news_lead.pk in pinned_ids %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}<time datetime="{{ news_lead.first_published_at|date:'c' }}">{{ news_lead.first_published_at|ow_md }}</time></p>
-            <h3 class="c-news__title"><a href="{{ news_lead.url }}" class="c-stretch">{{ news_lead.title }}</a></h3>
-            {% if news_lead.summary %}<p class="c-news__summary">{{ news_lead.summary }}</p>{% endif %}
-          </div>
-        </article>
-        {% if news_rest %}
-          <ol class="c-news__list">
-            {% for article in news_rest %}
-              <li class="c-news__row">
-                <span class="c-news__cat">{% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}{% if article.pk in pinned_ids %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}</span>
-                <div class="min-w-0">
-                  <h3 class="c-news__rowtitle"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
-                  {% if article.summary %}<p class="c-news__rowsum">{{ article.summary }}</p>{% endif %}
+  <section class="c-stats" aria-label="社区数字">
+    <dl class="l-container c-stats__list">
+      <div><dt>注册成员</dt><dd>{{ member_count }}</dd></div>
+      <div><dt>战队</dt><dd>{{ team_count }}</dd></div>
+      <div><dt>累计内战</dt><dd>{{ scrims_held }}</dd></div>
+      {% if age %}<div data-figure="age"><dt>社区已成立</dt><dd>{% if age.years %}{{ age.years }} 年 {% endif %}{{ age.days }} 天</dd></div>{% endif %}
+    </dl>
+  </section>
+
+  <section class="l-container l-section" aria-labelledby="home-upcoming">
+    <div class="c-sectionhead">
+      <h2 id="home-upcoming">近期</h2>
+      <a href="/scrims/" class="c-btn c-btn--quiet">全部内战{% include "components/icon.html" with name="arrow-right" %}</a>
+    </div>
+    {% if feature or scrim_rows %}
+      <div class="c-upcoming{% if feature and scrim_rows %} c-upcoming--two{% endif %}">
+        {% if feature %}
+          <article class="c-feature" data-next-up="tournament">
+            {% if feature.tournament.cover %}{% image feature.tournament.cover fill-1280x720-c50 class="c-feature__img" alt="" %}{% endif %}
+            <div class="c-feature__body">
+              <span class="c-status c-status--live">报名中</span>
+              <h3 class="c-feature__title"><a href="{{ feature.tournament.get_absolute_url }}" class="c-stretch">{{ feature.tournament.title }}</a></h3>
+              <p class="c-feature__facts">报名截止 {{ feature.tournament.registration_closes_at|ow_md }} {{ feature.tournament.registration_closes_at|ow_time }} · 已通过 {{ feature.approved }} 队</p>
+            </div>
+          </article>
+        {% endif %}
+        {% if scrim_rows %}
+          <ol class="c-rows">
+            {% for row in scrim_rows %}
+              <li class="c-row" data-next-up="scrim">
+                <span class="c-date"><small>{{ row.scrim.starts_at|date:"n" }}月</small><b>{{ row.scrim.starts_at|date:"d" }}</b></span>
+                <div class="c-row__main">
+                  <h3 class="c-row__title"><a href="{% url 'scrim_detail' row.scrim.pk %}" class="c-stretch">{{ row.scrim.title }}</a></h3>
+                  <p class="c-row__meta">{{ row.scrim.starts_at|ow_weekday }} {{ row.scrim.starts_at|ow_time }} · 已报 {{ row.count }} / {{ row.capacity }}</p>
+                  <progress class="c-meter" value="{% if row.count > row.capacity %}{{ row.capacity }}{% else %}{{ row.count }}{% endif %}" max="{{ row.capacity }}" aria-label="已报 {{ row.count }} 人，一场需要 {{ row.capacity }} 人"></progress>
                 </div>
-                <time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_md }}</time>
+                {% if row.scrim.signup_open %}<span class="c-status c-status--live">报名中</span>{% else %}<span class="c-status">报名已截止</span>{% endif %}
               </li>
             {% endfor %}
           </ol>
         {% endif %}
+      </div>
+    {% else %}
+      <p class="c-empty">最近没有安排。去<a href="/tournaments/" class="c-link">赛事</a>或<a href="/scrims/" class="c-link">内战</a>看看以前的活动。</p>
+    {% endif %}
+  </section>
+
+  <section class="l-container c-homegrid" aria-label="资讯与公告">
+    <div class="min-w-0">
+      <div class="c-sectionhead">
+        <h2 id="home-news">资讯</h2>
+        <a href="/news/" class="c-btn c-btn--quiet">全部资讯{% include "components/icon.html" with name="arrow-right" %}</a>
+      </div>
+      {% if news %}
+        <div class="c-media-grid">
+          {% for article in news %}
+            <article class="c-media">
+              <div class="c-media__pic">{% if article.cover %}{% image article.cover fill-640x360-c50 alt="" loading="lazy" %}{% else %}<span class="c-media__none">{{ article.category.name|default:"资讯" }}</span>{% endif %}</div>
+              <p class="c-media__meta">{% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}{% if article.pk in pinned_ids %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}<time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_md }}</time></p>
+              <h3 class="c-media__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+            </article>
+          {% endfor %}
+        </div>
       {% else %}
-        {% include "components/empty_state.html" with title="还没有文章" message="发布后会显示在这里。" %}
+        <p class="c-empty">还没有文章。</p>
       {% endif %}
     </div>
 
-    <div class="c-homeside">
-      <section class="c-notices" aria-labelledby="home-notices">
-        <div class="c-news__head">
-          <h2 id="home-notices">通知公告</h2>
-          <a href="/news/?category=notice" class="c-btn c-btn--quiet c-btn--sm">更多{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
-        </div>
-        {% if notices %}
-          <ol class="c-notices__list">
-            {% for article in notices %}
-              <li class="c-notices__item">
-                <time class="c-notices__date" datetime="{{ article.first_published_at|date:'c' }}"><small>{{ article.first_published_at|date:"n" }}月</small><b>{{ article.first_published_at|date:"d" }}</b></time>
-                <div class="min-w-0">
-                  <h3><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
-                  {% if article.summary %}<p>{{ article.summary }}</p>{% endif %}
-                </div>
-              </li>
-            {% endfor %}
-          </ol>
-        {% else %}
-          <p class="text-sm text-fg-2">还没有公告。</p>
-        {% endif %}
-      </section>
-      <section class="c-stats" aria-labelledby="home-stats">
-        <h2 id="home-stats">活动统计</h2>
-        <dl>
-          <div><dt>累计内战</dt><dd><span data-count-to="{{ stats.scrims }}">{{ stats.scrims }}</span><small>场</small></dd></div>
-          <div><dt>举办赛事</dt><dd><span data-count-to="{{ stats.tournaments }}">{{ stats.tournaments }}</span><small>届</small></dd></div>
-        </dl>
-      </section>
-    </div>
+    <aside class="min-w-0" aria-labelledby="home-notices">
+      <div class="c-sectionhead">
+        <h2 id="home-notices">公告</h2>
+        <a href="/news/?category=notice" class="c-btn c-btn--quiet">全部公告{% include "components/icon.html" with name="arrow-right" %}</a>
+      </div>
+      {% if notices %}
+        <ol class="c-rows">
+          {% for article in notices %}
+            <li class="c-row">
+              <time class="c-date" datetime="{{ article.first_published_at|date:'c' }}"><small>{{ article.first_published_at|date:"n" }}月</small><b>{{ article.first_published_at|date:"d" }}</b></time>
+              <div class="c-row__main">
+                <h3 class="c-row__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="c-empty">还没有公告。</p>
+      {% endif %}
+    </aside>
   </section>
 
   {% if home_teams %}
-    <section class="l-container pb-16 lg:pb-24" aria-labelledby="home-teams">
-      <div class="c-news__head">
+    <section class="l-container l-section" aria-labelledby="home-teams">
+      <div class="c-sectionhead">
         <h2 id="home-teams">战队</h2>
-        <a href="/teams/" class="c-btn c-btn--quiet c-btn--sm">全部 {{ team_count }} 支战队{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
+        <a href="/teams/" class="c-btn c-btn--quiet">全部 {{ team_count }} 支战队{% include "components/icon.html" with name="arrow-right" %}</a>
       </div>
-      <ul class="c-teamstrip" data-reveal>
+      <ul class="c-teams">
         {% for team in home_teams %}
-          <li class="c-teamstrip__item">
-            <span class="c-teamstrip__logo">{% if team.logo %}{% image team.logo fill-96x96 alt="" %}{% else %}{{ team.name|initial }}{% endif %}</span>
-            <div class="min-w-0">
-              <a href="{{ team.get_absolute_url }}" class="c-stretch c-teamstrip__name">{{ team.name }}</a>
-              <span class="c-teamstrip__meta">{{ team.member_count }} 名成员</span>
-            </div>
-            {% if team.is_recruiting %}{% include "components/status_badge.html" with kind="live" label="招募中" %}{% endif %}
+          <li class="c-teams__item">
+            <span class="c-teams__logo">{% if team.logo %}{% image team.logo fill-160x160 alt="" loading="lazy" %}{% else %}{{ team.name|initial }}{% endif %}</span>
+            <a href="{{ team.get_absolute_url }}" class="c-stretch c-teams__name">{{ team.name }}</a>
+            <span class="c-teams__meta">{{ team.member_count }} 人</span>
+            {% if team.is_recruiting %}<span class="c-status c-status--live">招募中</span>{% endif %}
           </li>
         {% endfor %}
       </ul>

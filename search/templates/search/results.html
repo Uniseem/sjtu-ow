@@ -23,7 +23,7 @@
       {% include "components/empty_state.html" with title="没有找到" message="没有找到和「"|add:query|add:"」有关的内容。换个词试试。" %}
     {% else %}
       <p class="mb-8 text-sm text-fg-2">「{{ query }}」共 <span class="font-numeric font-semibold text-fg">{{ total }}</span> 条结果</p>
-      <div class="flex flex-col gap-6" data-reveal>
+      <div class="flex flex-col gap-6">
         {% for group in groups %}
           {% if group.hits %}
             <section class="c-news" aria-labelledby="search-{{ forloop.counter }}">

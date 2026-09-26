@@ -1,7 +1,7 @@
-"""Data for the homepage (design 5.2, v3.0 in round 082).
+"""Data for the homepage (design 5.2, v4.0 in round 086).
 
-Top to bottom: the full-screen hero (key figures, 近期安排, quick entries),
-资讯 with 通知公告 and 活动统计 beside it, then 战队.
+Top to bottom: the hero picture, the figures row, 近期 (the open tournament
+and this week's scrims), 资讯 with 公告 beside it, then 战队.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ from datetime import date
 
 from django.utils import timezone
 
-LATEST_ARTICLE_COUNT = 6
-NEXT_UP_COUNT = 4
+LATEST_ARTICLE_COUNT = 4
+SCRIM_ROW_COUNT = 4
 NOTICE_COUNT = 5
 NOTICE_CATEGORIES = ("notice", "event-notice")
 HOME_TEAM_COUNT = 6
@@ -48,43 +48,41 @@ def notices(limit: int = NOTICE_COUNT):
 
 
 @dataclass
-class Agenda:
-    """One entry of 近期安排: what it is, the date on its block, and progress."""
+class Feature:
+    """The open tournament that closes soonest, with its approved teams."""
 
-    kind: str  # "tournament" | "scrim"
-    item: object
-    moment: object
-    label: str
-    count: int = 0
-    capacity: int = 0  # scrims only; tournaments have no team cap (5.2)
+    tournament: object
+    approved: int = 0
 
 
-def next_up(tournaments, scrims, limit: int = NEXT_UP_COUNT) -> list[Agenda]:
-    """Open tournaments by deadline and this week's scrims by start, merged by date."""
-    entries = [
-        Agenda("tournament", item, item.registration_closes_at, "截止")
-        for item in tournaments
-    ]
-    entries += [Agenda("scrim", item, item.starts_at, "开始") for item in scrims]
-    entries.sort(key=lambda entry: entry.moment)
-    return entries[:limit]
-
-
-def agenda(tournaments, scrims, limit: int = NEXT_UP_COUNT) -> list[Agenda]:
-    """next_up with the numbers the card shows: approved teams, sign-ups / needed."""
-    from scrims.services import signup_totals
+def feature_tournament(tournaments) -> Feature | None:
+    """近期's big card (design 5.2): only the one closing soonest, or nothing."""
     from tournaments.services import approved_counts
 
-    entries = next_up(tournaments, scrims, limit)
-    approved = approved_counts([e.item for e in entries if e.kind == "tournament"])
-    signups = signup_totals([e.item for e in entries if e.kind == "scrim"])
-    for entry in entries:
-        if entry.kind == "tournament":
-            entry.count = approved.get(entry.item.pk, 0)
-        else:
-            entry.count = signups.get(entry.item.pk, 0)
-            entry.capacity = entry.item.players_needed
-    return entries
+    if not tournaments:
+        return None
+    first = min(tournaments, key=lambda item: item.registration_closes_at)
+    return Feature(first, approved_counts([first]).get(first.pk, 0))
+
+
+@dataclass
+class ScrimRow:
+    """One scrim in 近期: sign-ups against the players one game needs."""
+
+    scrim: object
+    count: int = 0
+    capacity: int = 0
+
+
+def scrim_rows(scrims, limit: int = SCRIM_ROW_COUNT) -> list[ScrimRow]:
+    """This week's scrims, earliest first, with sign-ups / needed (design 5.2)."""
+    from scrims.services import signup_totals
+
+    chosen = sorted(scrims, key=lambda item: item.starts_at)[:limit]
+    totals = signup_totals(chosen)
+    return [
+        ScrimRow(item, totals.get(item.pk, 0), item.players_needed) for item in chosen
+    ]
 
 
 @dataclass
@@ -118,17 +116,11 @@ def community_age(founded: date | None, today: date | None = None) -> Age | None
     return Age(years=years, days=(today - last).days)
 
 
-def activity_stats() -> dict:
-    """活动统计 (design 5.2): scrims held and tournaments run, both finished."""
+def scrims_held() -> int:
+    """累计内战 on the figures row (design 5.2): finished scrims."""
     from scrims.models import Scrim, ScrimStatus
-    from tournaments.models import Tournament, TournamentStatus
 
-    return {
-        "scrims": Scrim.objects.filter(status=ScrimStatus.FINISHED).count(),
-        "tournaments": Tournament.objects.filter(
-            status=TournamentStatus.FINISHED
-        ).count(),
-    }
+    return Scrim.objects.filter(status=ScrimStatus.FINISHED).count()
 
 
 def teams(limit: int = HOME_TEAM_COUNT):
@@ -158,24 +150,22 @@ def member_count() -> int:
 
 def homepage(pinned) -> dict:
     """Everything home_page.html needs, in one place."""
-    from content.models import ArticleCategory
     from core.models import SiteSettings
     from scrims.services import upcoming_scrims
     from tournaments.services import open_tournaments
 
     site = SiteSettings.load()
-    news = news_list(pinned)
     return {
+        "hero_image": site.hero_image,
+        "qq_group_url": site.qq_group_url,
         "member_count": member_count(),
         "team_count": team_count(),
+        "scrims_held": scrims_held(),
         "age": community_age(site.founded_on),
-        "agenda": agenda(open_tournaments(), upcoming_scrims()),
-        "news_lead": news[0] if news else None,
-        "news_rest": news[1:],
+        "feature": feature_tournament(open_tournaments()),
+        "scrim_rows": scrim_rows(upcoming_scrims()),
+        "news": news_list(pinned),
         "pinned_ids": {article.pk for article in pinned},
-        "categories": ArticleCategory.objects.all(),
         "notices": notices(),
-        "stats": activity_stats(),
         "home_teams": teams(),
-        "qq_group_url": site.qq_group_url,
     }
