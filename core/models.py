@@ -1,10 +1,17 @@
 """Site-wide models: health probe and Wagtail generic settings (design 12.4.1)."""
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.contrib.settings.models import BaseGenericSetting, register_setting
 
 from core.fields import EncryptedTextField
+
+
+def https_only(value: str) -> None:
+    """Links we publish on the homepage must not be http:// or a script (5.2)."""
+    if value and not value.lower().startswith("https://"):
+        raise ValidationError("只能填 https:// 开头的链接。")
 
 
 class HealthProbe(models.Model):
@@ -70,6 +77,20 @@ class SiteSettings(BaseGenericSetting):
         on_delete=models.SET_NULL,
         related_name="+",
         help_text="没有封面的页面使用这张图作为分享预览。",
+    )
+    founded_on = models.DateField(
+        "社区成立日期",
+        null=True,
+        blank=True,
+        help_text="首页「社区已成立 N 年 M 天」按它算；空着首页不显示这一项。",
+    )
+    qq_group_url = models.URLField(
+        "QQ 群链接",
+        blank=True,
+        validators=[https_only],
+        help_text=(
+            "QQ 群的分享链接，https:// 开头。首页「加入 QQ 群」链接到这里；空着不显示。"
+        ),
     )
     team_max_members = models.PositiveIntegerField(
         "战队人数上限",
@@ -182,6 +203,8 @@ class SiteSettings(BaseGenericSetting):
             [
                 FieldPanel("site_description"),
                 FieldPanel("default_share_image"),
+                FieldPanel("founded_on"),
+                FieldPanel("qq_group_url"),
             ],
             heading="站点信息",
         ),

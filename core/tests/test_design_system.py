@@ -396,6 +396,23 @@ def test_reveals_hide_content_only_once_scripts_run():
     ).read_text(encoding="utf-8")
 
 
+def test_reduced_motion_also_drops_delays():
+    """Round 082: 近期安排 waits 300 ms to slide in; under 「减少动态效果」 the
+    duration went to zero but the delay stayed, so the card was missing."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    base = css[css.index("@layer base {") :]
+    reduced = base[base.index("@media (prefers-reduced-motion: reduce)") :]
+    reduced = reduced[: reduced.index("}\n  }")]
+    assert "animation-delay: 0s !important;" in reduced
+    assert "transition-delay: 0s !important;" in reduced
+
+
+def test_homepage_columns_cannot_be_widened_by_their_content():
+    """Round 082: the chip row widened the 资讯 column past a phone's width."""
+    grid = _block(INPUT_CSS.read_text(encoding="utf-8"), "\n  .c-homegrid {")
+    assert "grid-template-columns: minmax(0, 1fr);" in grid
+
+
 def test_the_emblem_file_is_clean_and_cropped():
     """13.2.9: the user-chosen emblem, cropped to a square, graphics only."""
     svg = (STATIC / "img" / "sjtu-emblem.svg").read_text(encoding="utf-8")
@@ -459,7 +476,8 @@ def test_style_guide_opens_for_an_admin_who_is_not_a_superuser(client, home):
         "c-ticket",
         "c-slots",
         "c-status--live",
-        "c-daystrip",
+        "c-quick__tile",
+        "c-figures",
         "c-field",
         "c-prose",
     ):

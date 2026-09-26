@@ -1,55 +1,21 @@
-"""Data for the homepage blocks (design 5.2, v2.0 redesign in round 075).
+"""Data for the homepage (design 5.2, v3.0 in round 082).
 
-Top to bottom: the lead (焦点图 + 近期), 01 资讯, 02 赛事与内战 (a 14-day
-strip, tournaments, scrims), 03 战队, 04 参与.
+Top to bottom: the full-screen hero (key figures, 近期安排, quick entries),
+资讯 with 通知公告 and 活动统计 beside it, then 战队.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import date, timedelta
+from dataclasses import dataclass
+from datetime import date
 
 from django.utils import timezone
 
-CAROUSEL_FALLBACK = 5
 LATEST_ARTICLE_COUNT = 6
 NEXT_UP_COUNT = 4
-STRIP_DAYS = 14
-ARENA_TOURNAMENT_COUNT = 3
+NOTICE_COUNT = 5
+NOTICE_CATEGORIES = ("notice", "event-notice")
 HOME_TEAM_COUNT = 6
-
-
-@dataclass
-class Slide:
-    image: object
-    title: str
-    url: str
-
-
-def _articles_with_cover():
-    from content.models import ArticlePage
-
-    return (
-        ArticlePage.objects.live()
-        .public()
-        .filter(cover__isnull=False)
-        .select_related("cover", "category")
-        .order_by("-first_published_at", "-last_published_at")
-    )
-
-
-def carousel_slides(home) -> list[Slide]:
-    """The admin's 焦点图; without any, the latest articles that have a cover."""
-    items = [
-        Slide(item.image, item.title, item.url)
-        for item in home.carousel_items.select_related("image", "link_page")
-    ]
-    if items:
-        return items
-    return [
-        Slide(article.cover, article.title, article.url)
-        for article in _articles_with_cover()[:CAROUSEL_FALLBACK]
-    ]
 
 
 def news_list(pinned=(), limit: int = LATEST_ARTICLE_COUNT):
@@ -68,14 +34,29 @@ def news_list(pinned=(), limit: int = LATEST_ARTICLE_COUNT):
     return items[:limit]
 
 
+def notices(limit: int = NOTICE_COUNT):
+    """The latest 公告 and 赛事通知 (design 5.2 通知公告)."""
+    from content.models import ArticlePage
+
+    return list(
+        ArticlePage.objects.live()
+        .public()
+        .filter(category__slug__in=NOTICE_CATEGORIES)
+        .select_related("category")
+        .order_by("-first_published_at", "-last_published_at")[:limit]
+    )
+
+
 @dataclass
 class Agenda:
-    """One entry of 近期: what it is, the date on its stub, and the stub label."""
+    """One entry of 近期安排: what it is, the date on its block, and progress."""
 
     kind: str  # "tournament" | "scrim"
     item: object
     moment: object
     label: str
+    count: int = 0
+    capacity: int = 0  # scrims only; tournaments have no team cap (5.2)
 
 
 def next_up(tournaments, scrims, limit: int = NEXT_UP_COUNT) -> list[Agenda]:
@@ -89,88 +70,65 @@ def next_up(tournaments, scrims, limit: int = NEXT_UP_COUNT) -> list[Agenda]:
     return entries[:limit]
 
 
+def agenda(tournaments, scrims, limit: int = NEXT_UP_COUNT) -> list[Agenda]:
+    """next_up with the numbers the card shows: approved teams, sign-ups / needed."""
+    from scrims.services import signup_totals
+    from tournaments.services import approved_counts
+
+    entries = next_up(tournaments, scrims, limit)
+    approved = approved_counts([e.item for e in entries if e.kind == "tournament"])
+    signups = signup_totals([e.item for e in entries if e.kind == "scrim"])
+    for entry in entries:
+        if entry.kind == "tournament":
+            entry.count = approved.get(entry.item.pk, 0)
+        else:
+            entry.count = signups.get(entry.item.pk, 0)
+            entry.capacity = entry.item.players_needed
+    return entries
+
+
 @dataclass
-class Day:
-    date: date
-    is_today: bool
-    scrims: list = field(default_factory=list)
-    tournaments: list = field(default_factory=list)
-
-    @property
-    def count(self) -> int:
-        return len(self.scrims) + len(self.tournaments)
-
-    @property
-    def first_url(self) -> str:
-        if self.scrims:
-            return f"/scrims/{self.scrims[0].pk}/"
-        if self.tournaments:
-            return self.tournaments[0].get_absolute_url()
-        return ""
+class Age:
+    years: int
+    days: int
 
 
-def day_strip(today: date | None = None, days: int = STRIP_DAYS) -> list[Day]:
-    """From today, one cell a day: public or finished scrims, tournaments that start.
+def _anniversary(founded: date, year: int) -> date:
+    try:
+        return founded.replace(year=year)
+    except ValueError:  # 29 February in a common year
+        return founded.replace(year=year, day=28)
 
-    The homepage is prerendered and rebuilt every night, so 「今天」 stays right.
+
+def community_age(founded: date | None, today: date | None = None) -> Age | None:
+    """「社区已成立 N 年 M 天」 from the founding date (design 5.2).
+
+    None when the date is not set or lies in the future: the hero then leaves
+    the figure out rather than print something wrong.
     """
+    if founded is None:
+        return None
+    today = today or timezone.localdate()
+    if founded > today:
+        return None
+    years = today.year - founded.year
+    if _anniversary(founded, today.year) > today:
+        years -= 1
+    last = _anniversary(founded, founded.year + years)
+    return Age(years=years, days=(today - last).days)
+
+
+def activity_stats() -> dict:
+    """活动统计 (design 5.2): scrims held and tournaments run, both finished."""
     from scrims.models import Scrim, ScrimStatus
     from tournaments.models import Tournament, TournamentStatus
 
-    today = today or timezone.localdate()
-    last = today + timedelta(days=days - 1)
-    cells = [Day(today + timedelta(days=offset), offset == 0) for offset in range(days)]
-    by_date = {cell.date: cell for cell in cells}
-    scrims = Scrim.objects.filter(
-        status__in=[ScrimStatus.PUBLISHED, ScrimStatus.FINISHED],
-        starts_at__date__gte=today,
-        starts_at__date__lte=last,
-    ).order_by("starts_at")
-    for scrim in scrims:
-        by_date[timezone.localdate(scrim.starts_at)].scrims.append(scrim)
-    tournaments = Tournament.objects.filter(
-        status__in=[TournamentStatus.PUBLISHED, TournamentStatus.FINISHED],
-        starts_at__date__gte=today,
-        starts_at__date__lte=last,
-    ).order_by("starts_at")
-    for tournament in tournaments:
-        by_date[timezone.localdate(tournament.starts_at)].tournaments.append(tournament)
-    return cells
-
-
-def strip_scrims(cells) -> list:
-    """The scrims in the strip that have not started yet, for the list beside it."""
-    from scrims.models import ScrimStatus
-
-    now = timezone.now()
-    return [
-        scrim
-        for cell in cells
-        for scrim in cell.scrims
-        if scrim.status == ScrimStatus.PUBLISHED and scrim.starts_at >= now
-    ]
-
-
-def arena_tournaments(limit: int = ARENA_TOURNAMENT_COUNT) -> list[tuple[str, object]]:
-    """Taking registrations first (by deadline), then opening soon (by opening)."""
-    from tournaments.services import grouped_tournaments
-
-    groups = {phase: items for phase, _label, items in grouped_tournaments()}
-    items = [("open", item) for item in groups["open"]]
-    items += [("upcoming", item) for item in groups["upcoming"]]
-    return items[:limit]
-
-
-def approved_counts(tournaments) -> dict:
-    from tournaments.services import approved_counts
-
-    return approved_counts(tournaments)
-
-
-def signup_counts(scrims) -> dict:
-    from scrims.services import signup_totals
-
-    return signup_totals(scrims)
+    return {
+        "scrims": Scrim.objects.filter(status=ScrimStatus.FINISHED).count(),
+        "tournaments": Tournament.objects.filter(
+            status=TournamentStatus.FINISHED
+        ).count(),
+    }
 
 
 def teams(limit: int = HOME_TEAM_COUNT):
@@ -186,7 +144,38 @@ def teams(limit: int = HOME_TEAM_COUNT):
     )
 
 
+def team_count() -> int:
+    from teams import services
+
+    return services.active_teams().count()
+
+
 def member_count() -> int:
     from members.services import joined_users
 
     return joined_users().count()
+
+
+def homepage(pinned) -> dict:
+    """Everything home_page.html needs, in one place."""
+    from content.models import ArticleCategory
+    from core.models import SiteSettings
+    from scrims.services import upcoming_scrims
+    from tournaments.services import open_tournaments
+
+    site = SiteSettings.load()
+    news = news_list(pinned)
+    return {
+        "member_count": member_count(),
+        "team_count": team_count(),
+        "age": community_age(site.founded_on),
+        "agenda": agenda(open_tournaments(), upcoming_scrims()),
+        "news_lead": news[0] if news else None,
+        "news_rest": news[1:],
+        "pinned_ids": {article.pk for article in pinned},
+        "categories": ArticleCategory.objects.all(),
+        "notices": notices(),
+        "stats": activity_stats(),
+        "home_teams": teams(),
+        "qq_group_url": site.qq_group_url,
+    }

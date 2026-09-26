@@ -41,16 +41,14 @@ def test_the_homepage_lists_the_next_seven_days(client, homepage):
     _in(2, title="取消的内战", status=ScrimStatus.CANCELLED)
 
     html = client.get("/").content.decode("utf-8")
-    # Round 075 (design 5.2 v2.0): 近期 keeps the 7-day window; the arena's
-    # 14-day strip also lists the one just past 7 days.
-    start = html.index('aria-labelledby="home-next"')
+    # 近期安排 keeps the 7-day window (design 5.2); since round 082 nothing
+    # else on the homepage lists scrims further out.
+    start = html.index('aria-labelledby="agenda-title"')
     next_up = html[start : html.index("</aside>", start)]
 
     assert "后天的内战" in next_up
     assert "快满七天的内战" in next_up
-    assert "超过七天的内战" not in next_up
-    assert "超过七天的内战" in html
-    for hidden in ("已经开始的内战", "草稿内战", "取消的内战"):
+    for hidden in ("超过七天的内战", "已经开始的内战", "草稿内战", "取消的内战"):
         assert hidden not in html, hidden
     assert "后续里程碑" not in html
 
@@ -64,7 +62,7 @@ def test_upcoming_scrims_start_soonest_first(db):
 
 @pytest.mark.django_db
 def test_the_homepage_says_so_when_there_are_none(client, homepage):
-    assert "未来 7 天没有内战" in client.get("/").content.decode("utf-8")
+    assert "最近没有安排" in client.get("/").content.decode("utf-8")
 
 
 @pytest.mark.django_db

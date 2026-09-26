@@ -268,7 +268,8 @@ def submit(*, tournament, team, actor, selections) -> Registration:
 
 
 def _refresh_public_pages(registration, from_status, to_status) -> None:
-    """Approval shows on the tournament page and the team's record (13.13.4)."""
+    """Approval shows on the tournament page, the team's record and the count
+    in the homepage's 近期安排 (13.13.4)."""
     if RegistrationStatus.APPROVED not in (from_status, to_status):
         return
     from core import prerender
@@ -276,6 +277,7 @@ def _refresh_public_pages(registration, from_status, to_status) -> None:
     prerender.request_page(
         registration.tournament.get_absolute_url(), kind="tournament"
     )
+    prerender.request_page("/", kind="home")
     if registration.team_id:  # an ad-hoc team has no team page (8.8.2)
         prerender.request_page(registration.team.get_absolute_url(), kind="team")
 

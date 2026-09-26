@@ -9,6 +9,14 @@ from members.models import MemberGroup, MemberGroupMembership
 from members.services import refresh_page
 
 
+def refresh_member_count() -> None:
+    """Joining and leaving also move the homepage's 注册成员 figure (13.13.4)."""
+    from core import prerender
+
+    refresh_page()
+    prerender.request_page("/", kind="home")
+
+
 @receiver(post_save, sender=MemberGroup)
 @receiver(post_delete, sender=MemberGroup)
 @receiver(post_save, sender=MemberGroupMembership)
@@ -23,7 +31,7 @@ def group_changed(sender, instance, raw=False, **kwargs):
 def email_changed(sender, instance, raw=False, **kwargs):
     """A verified address is what makes someone 「已加入」 (design 6.1)."""
     if not raw:
-        refresh_page()
+        refresh_member_count()
 
 
 @receiver(pre_save, sender=User)
@@ -47,4 +55,4 @@ def active_changed(sender, instance, created, raw, **kwargs):
     before = getattr(instance, "_active_before", None)
     if raw or created or before is None or before == instance.is_active:
         return
-    refresh_page()
+    refresh_member_count()

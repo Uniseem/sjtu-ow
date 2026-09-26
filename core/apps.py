@@ -13,5 +13,7 @@ class CoreConfig(AppConfig):
 
         SiteSettings.base_form_class = SiteSettingsAdminForm
 
+        import core.signals  # noqa: F401
+
         register("account", template_slot("slots/account.html"))
         register("messages", template_slot("slots/messages.html"))

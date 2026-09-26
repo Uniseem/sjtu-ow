@@ -74,6 +74,7 @@ ICONS = [
     "reply", "pin", "edit", "trash", "eye", "eye-off", "logout", "download",
     "external", "copy", "settings", "flag", "map", "role-tank", "role-damage",
     "role-support",
+    "chat",
 ]  # fmt: skip
 
 
@@ -88,14 +89,6 @@ def sample_context():
         "sample_close": base + timedelta(days=12),
         "sample_past": base - timedelta(days=40),
         "sample_year": datetime(base.year, 1, 1, tzinfo=base.tzinfo),
-        "days": [
-            {
-                "date": (now + timedelta(days=offset)).date(),
-                "count": {2: 1, 5: 2, 9: 1}.get(offset, 0),
-                "today": offset == 0,
-            }
-            for offset in range(14)
-        ],
         "rows": [
             (
                 "暑期内战回顾：48 人、8 支队伍、一个晚上",

@@ -4,179 +4,178 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  <h1 class="sr-only">上海交通大学守望先锋社区</h1>
-
-  {# Lead (design 5.2): 焦点图 on the left, 近期 on the right. #}
-  <section class="l-container pt-6 pb-12 lg:pt-10 lg:pb-16" aria-label="头条">
-    <div class="grid gap-10 {% if carousel %}lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-12{% endif %}">
-      {% if carousel %}
-        <div class="c-feature" data-carousel role="region" aria-roledescription="轮播" aria-label="焦点图">
-          <div class="c-feature__stage">
-            {% for slide in carousel %}
-              <figure class="c-feature__slide{% if forloop.first %} is-active{% endif %}" data-slide aria-roledescription="幻灯片" aria-label="第 {{ forloop.counter }} 张，共 {{ carousel|length }} 张">
-                {% if slide.url %}<a href="{{ slide.url }}" tabindex="-1" aria-hidden="true">{% image slide.image fill-1600x900 alt="" %}</a>{% else %}{% image slide.image fill-1600x900 alt="" %}{% endif %}
-              </figure>
-            {% endfor %}
+  {# Hero (design 5.2, 13.2.6): colour wash, emblem watermark, key figures, 近期安排, quick entries. #}
+  <section class="c-hero" aria-labelledby="hero-title">
+    <div class="c-hero__bg" aria-hidden="true" data-parallax="0.35"><span></span><span></span><span></span><span></span></div>
+    <div class="l-container c-hero__inner">
+      <div class="c-hero__main">
+        <div class="c-hero__emblem" aria-hidden="true" data-parallax="0.4">
+          <img class="c-hero__emblem-img" src="{% static 'img/sjtu-emblem.svg' %}" alt="" width="560" height="560">
+          <img class="c-hero__emblem-sheen" src="{% static 'img/sjtu-emblem.svg' %}" alt="" width="560" height="560">
+        </div>
+        <p class="c-hero__overline">SJTU OVERWATCH COMMUNITY</p>
+        <h1 id="hero-title" class="c-hero__title">上海交通大学<br><em>守望先锋社区</em></h1>
+        <p class="c-hero__lede">交大玩家自己的守望先锋社区。每周内战、每学期一届校内赛事，战队和队友都在这里。</p>
+        <div class="c-hero__actions">
+          <a href="{% url 'account_signup' %}" class="c-btn c-btn--primary">加入社区{% include "components/icon.html" with name="arrow-right" %}</a>
+          <a href="/about/" class="c-btn c-btn--secondary">了解我们</a>
+        </div>
+        <dl class="c-figures">
+          <div>
+            <dt>注册成员</dt>
+            <dd><span data-count-to="{{ member_count }}" data-count-delay="600">{{ member_count }}</span><small>人</small></dd>
           </div>
-          {% for slide in carousel %}
-            <div class="c-feature__caption{% if forloop.first %} is-active{% endif %}" data-caption>
-              <p class="c-eyebrow"><span class="c-eyebrow__index">{{ forloop.counter|ow_index }}</span>/ {{ carousel|length|ow_index }} · 焦点</p>
-              <h2 class="mt-3 text-[1.625rem] leading-snug lg:text-[2rem]">{% if slide.url %}<a href="{{ slide.url }}">{{ slide.title }}</a>{% else %}{{ slide.title }}{% endif %}</h2>
+          <div>
+            <dt>战队</dt>
+            <dd><span data-count-to="{{ team_count }}" data-count-delay="700">{{ team_count }}</span><small>支</small></dd>
+          </div>
+          {% if age %}
+            <div data-figure="age">
+              <dt>社区已成立</dt>
+              <dd>{% if age.years %}<span data-count-to="{{ age.years }}" data-count-delay="800">{{ age.years }}</span><small>年</small>{% endif %}<span data-count-to="{{ age.days }}" data-count-delay="800">{{ age.days }}</span><small>天</small></dd>
             </div>
-          {% endfor %}
-          {% if carousel|length > 1 %}
-            <ol class="c-feature__index" aria-label="切换焦点图">
-              {% for slide in carousel %}
-                <li><button type="button" data-dot aria-label="第 {{ forloop.counter }} 张：{{ slide.title }}"{% if forloop.first %} aria-current="true"{% endif %}><span class="num">{{ forloop.counter|ow_index }}</span><span class="title">{{ slide.title }}</span></button></li>
-              {% endfor %}
-            </ol>
           {% endif %}
-        </div>
-      {% endif %}
+        </dl>
+      </div>
 
-      <aside aria-labelledby="home-next">
-        <div class="flex items-baseline justify-between border-b-2 border-fg pb-3">
-          <h2 id="home-next" class="text-lg">近期</h2>
-          <span class="c-eyebrow">NEXT UP</span>
+      <aside class="c-agenda" aria-labelledby="agenda-title">
+        <div class="c-agenda__head">
+          <h2 id="agenda-title">近期安排</h2>
+          {% if agenda %}<span class="c-agenda__count">{{ agenda|length }}</span>{% endif %}
+          <a href="/scrims/" class="c-btn c-btn--quiet c-btn--sm">全部日程{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
         </div>
-        {% if next_up %}
-          <ol class="mt-4 flex flex-col gap-3 {% if not carousel %}sm:grid sm:grid-cols-2 lg:grid-cols-4{% endif %}">
-            {% for entry in next_up %}
-              <li data-next-up="{{ entry.kind }}">
-                {% if entry.kind == "tournament" %}
-                  {% include "components/tournament_ticket.html" with tournament=entry.item compact=True %}
-                {% else %}
-                  {% include "components/scrim_ticket.html" with scrim=entry.item compact=True %}
-                {% endif %}
+        {% if agenda %}
+          <ol class="c-agenda__list">
+            {% for entry in agenda %}
+              <li class="c-agenda__item" data-next-up="{{ entry.kind }}">
+                <span class="c-agenda__date{% if entry.kind == 'tournament' %} is-deadline{% endif %}">
+                  <small>{{ entry.moment|date:"n" }}月</small>
+                  <b>{{ entry.moment|date:"d" }}</b>
+                  <small>{% if entry.kind == "tournament" %}截止{% else %}{{ entry.moment|ow_weekday }}{% endif %}</small>
+                </span>
+                <div class="c-agenda__body">
+                  {% if entry.kind == "tournament" %}
+                    <p class="c-agenda__meta"><span>赛事 · 报名截止 {{ entry.moment|ow_time }}</span>{% include "components/status_badge.html" with kind="live" label="报名中" %}</p>
+                    <h3 class="c-agenda__title"><a href="{{ entry.item.get_absolute_url }}" class="c-stretch">{{ entry.item.title }}</a></h3>
+                    <p class="c-agenda__progress"><span>已通过 <b>{{ entry.count }}</b> 队</span></p>
+                  {% else %}
+                    <p class="c-agenda__meta"><span>内战 · {{ entry.moment|ow_time }}</span>{% if entry.item.signup_open %}{% include "components/status_badge.html" with kind="live" label="报名中" %}{% else %}{% include "components/status_badge.html" with kind="done" label="报名已截止" %}{% endif %}</p>
+                    <h3 class="c-agenda__title"><a href="{% url 'scrim_detail' entry.item.pk %}" class="c-stretch">{{ entry.item.title }}</a></h3>
+                    <p class="c-agenda__progress"><progress value="{% if entry.count > entry.capacity %}{{ entry.capacity }}{% else %}{{ entry.count }}{% endif %}" max="{{ entry.capacity }}" aria-label="已报 {{ entry.count }} 人，一场需要 {{ entry.capacity }} 人"></progress><span>已报 <b>{{ entry.count }}</b> / {{ entry.capacity }}</span></p>
+                  {% endif %}
+                </div>
               </li>
             {% endfor %}
           </ol>
         {% else %}
-          <p class="mt-4 text-sm leading-7 text-fg-2">现在没有正在报名的赛事。未来 7 天没有内战。</p>
+          <p class="c-agenda__empty">最近没有安排。去<a href="/tournaments/" class="c-link">赛事</a>或<a href="/scrims/" class="c-link">内战</a>看看以前的活动。</p>
         {% endif %}
-        <div class="mt-4 flex flex-wrap gap-x-6">
-          <a href="/tournaments/" class="c-btn c-btn--quiet text-sm">全部赛事{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
-          <a href="/scrims/" class="c-btn c-btn--quiet text-sm">全部内战{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
-        </div>
       </aside>
     </div>
+
+    <nav class="l-container c-quick" aria-label="快捷入口" data-reveal>
+      <a href="/tournaments/" class="c-quick__tile c-quick__tile--rose">{% include "components/icon.html" with name="trophy" class="c-quick__icon" %}<b>赛事报名</b><span>战队或个人报名</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+      <a href="/scrims/" class="c-quick__tile c-quick__tile--butter">{% include "components/icon.html" with name="calendar" class="c-quick__icon" %}<b>内战报名</b><span>填好游戏 ID 就能报</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+      <a href="/teams/" class="c-quick__tile c-quick__tile--lilac">{% include "components/icon.html" with name="shield" class="c-quick__icon" %}<b>找战队</b><span>浏览 {{ team_count }} 支战队</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+      <a href="{% url 'members' %}" class="c-quick__tile c-quick__tile--sky">{% include "components/icon.html" with name="users" class="c-quick__icon" %}<b>成员展示</b><span>看看都有谁</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+      <a href="{% url 'submit' %}" class="c-quick__tile c-quick__tile--blush">{% include "components/icon.html" with name="pen" class="c-quick__icon" %}<b>投稿</b><span>攻略、战报、心得</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+      {% if qq_group_url %}
+        <a href="{{ qq_group_url }}" class="c-quick__tile c-quick__tile--mint" rel="noopener" data-quick="qq">{% include "components/icon.html" with name="chat" class="c-quick__icon" %}<b>加入 QQ 群</b><span>开车、组队、答疑</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+      {% endif %}
+    </nav>
+
+    <a href="#home-news" class="c-hero__cue">向下{% include "components/icon.html" with name="chevron-down" class="size-4" %}</a>
   </section>
 
-  <section class="l-container pb-14 lg:pb-20" aria-labelledby="home-news">
-    {% include "components/section_head.html" with index="01" title="资讯" en="NEWS" more_url="/news/" more_label="全部资讯" heading_id="home-news" %}
-    <div class="l-split">
-      {% if news_list %}
-        <ol class="c-rowlist">
-          {% for article in news_list %}
-            {% if article.pk in pinned_ids %}{% include "components/article_row.html" with pinned=True %}{% else %}{% include "components/article_row.html" %}{% endif %}
-          {% endfor %}
-        </ol>
+  {# 资讯 with 通知公告 and 活动统计 (design 5.2). #}
+  <section class="l-container l-section c-homegrid" aria-label="资讯与通知" data-reveal>
+    <div class="c-news">
+      <div class="c-news__head">
+        <h2 id="home-news">资讯</h2>
+        <a href="/news/" class="c-btn c-btn--quiet c-btn--sm">全部资讯{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
+      </div>
+      <nav class="c-tabs" aria-label="文章分类">
+        <a href="/news/">全部</a>
+        {% for category in categories %}<a href="/news/?category={{ category.slug }}">{{ category.name }}</a>{% endfor %}
+      </nav>
+      {% if news_lead %}
+        <article class="c-news__lead">
+          <div class="c-news__cover">{% if news_lead.cover %}{% image news_lead.cover fill-640x400 alt="" %}{% else %}<span class="c-hatch" aria-hidden="true"></span>{% endif %}</div>
+          <div class="min-w-0">
+            <p class="c-news__meta">{% if news_lead.category %}<span class="c-tag">{{ news_lead.category.name }}</span>{% endif %}{% if news_lead.pk in pinned_ids %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}<time datetime="{{ news_lead.first_published_at|date:'c' }}">{{ news_lead.first_published_at|ow_md }}</time></p>
+            <h3 class="c-news__title"><a href="{{ news_lead.url }}" class="c-stretch">{{ news_lead.title }}</a></h3>
+            {% if news_lead.summary %}<p class="c-news__summary">{{ news_lead.summary }}</p>{% endif %}
+          </div>
+        </article>
+        {% if news_rest %}
+          <ol class="c-news__list">
+            {% for article in news_rest %}
+              <li class="c-news__row">
+                <span class="c-news__cat">{% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}{% if article.pk in pinned_ids %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}</span>
+                <div class="min-w-0">
+                  <h3 class="c-news__rowtitle"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+                  {% if article.summary %}<p class="c-news__rowsum">{{ article.summary }}</p>{% endif %}
+                </div>
+                <time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_md }}</time>
+              </li>
+            {% endfor %}
+          </ol>
+        {% endif %}
       {% else %}
         {% include "components/empty_state.html" with title="还没有文章" message="发布后会显示在这里。" %}
       {% endif %}
-      <aside class="flex flex-col gap-10">
-        <nav class="c-sidenav font-nav" aria-label="文章分类">
-          <p class="c-eyebrow c-sidenav__title">分类</p>
-          <ul>
-            {% for category in categories %}
-              <li><a href="/news/?category={{ category.slug }}">{{ category.name }}</a></li>
-            {% endfor %}
-          </ul>
-        </nav>
-        <div class="border border-rule bg-panel p-5">
-          <p class="font-semibold">有想分享的攻略、战报、心得？</p>
-          <p class="mt-2 text-sm leading-6 text-fg-2">登录后投稿，内容编辑审核后发布在这里。</p>
-          <a href="{% url 'submit' %}" class="c-btn c-btn--secondary c-btn--sm mt-4">{% include "components/icon.html" with name="pen" %}我要投稿</a>
-        </div>
-      </aside>
     </div>
-  </section>
 
-  <section class="on-tonal l-section" aria-labelledby="home-arena">
-    <div class="l-container">
-      {% include "components/section_head.html" with index="02" title="赛事与内战" en="COMPETE" heading_id="home-arena" %}
-      <ol class="c-daystrip" aria-label="未来 {{ days|length }} 天">
-        {% for day in days %}
-          <li class="c-day{% if day.count %} has-event{% endif %}{% if day.is_today %} is-today{% endif %}"{% if day.is_today %} aria-current="date"{% endif %}>
-            <span class="c-day__wk">{% if day.is_today %}今天{% else %}{{ day.date|ow_weekday }}{% endif %}</span>
-            <span class="c-day__d">{{ day.date|date:"j" }}</span>
-            {% if day.date.day == 1 or forloop.first %}<span class="c-day__month">{{ day.date|date:"n" }}月</span>{% endif %}
-            {% if day.count %}<a class="c-day__n" href="{{ day.first_url }}">{{ day.count }} 场<span class="sr-only">：{{ day.date|ow_md }}</span></a>{% endif %}
-          </li>
-        {% endfor %}
-      </ol>
-      <div class="mt-10 grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-12">
-        <div>
-          <div class="flex items-baseline justify-between"><h3>赛事</h3><a href="/tournaments/" class="c-btn c-btn--quiet text-sm">全部赛事{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a></div>
-          {% if arena_tournaments %}
-            <ol class="mt-4 flex flex-col gap-4">
-              {% for phase, tournament in arena_tournaments %}
-                <li>{% include "components/tournament_ticket.html" with tournament=tournament show_count=True approved=approved_counts|lookup:tournament.pk %}</li>
-              {% endfor %}
-            </ol>
-          {% else %}
-            <p class="mt-4 text-sm text-fg-2">现在没有正在报名或即将开放报名的赛事。</p>
-          {% endif %}
+    <div class="c-homeside">
+      <section class="c-notices" aria-labelledby="home-notices">
+        <div class="c-news__head">
+          <h2 id="home-notices">通知公告</h2>
+          <a href="/news/?category=notice" class="c-btn c-btn--quiet c-btn--sm">更多{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
         </div>
-        <div>
-          <div class="flex items-baseline justify-between"><h3>内战</h3><a href="/scrims/" class="c-btn c-btn--quiet text-sm">全部内战{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a></div>
-          {% if strip_scrims %}
-            <ol class="mt-4 flex flex-col gap-3">
-              {% for scrim in strip_scrims %}
-                <li>{% include "components/scrim_ticket.html" with scrim=scrim compact=True show_slots=True signups=signup_counts|lookup:scrim.pk %}</li>
-              {% endfor %}
-            </ol>
-          {% else %}
-            <p class="mt-4 text-sm text-fg-2">未来 {{ days|length }} 天还没有安排内战。</p>
-          {% endif %}
-        </div>
-      </div>
+        {% if notices %}
+          <ol class="c-notices__list">
+            {% for article in notices %}
+              <li class="c-notices__item">
+                <time class="c-notices__date" datetime="{{ article.first_published_at|date:'c' }}"><small>{{ article.first_published_at|date:"n" }}月</small><b>{{ article.first_published_at|date:"d" }}</b></time>
+                <div class="min-w-0">
+                  <h3><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+                  {% if article.summary %}<p>{{ article.summary }}</p>{% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <p class="text-sm text-fg-2">还没有公告。</p>
+        {% endif %}
+      </section>
+      <section class="c-stats" aria-labelledby="home-stats">
+        <h2 id="home-stats">活动统计</h2>
+        <dl>
+          <div><dt>累计内战</dt><dd><span data-count-to="{{ stats.scrims }}">{{ stats.scrims }}</span><small>场</small></dd></div>
+          <div><dt>举办赛事</dt><dd><span data-count-to="{{ stats.tournaments }}">{{ stats.tournaments }}</span><small>届</small></dd></div>
+        </dl>
+      </section>
     </div>
   </section>
 
   {% if home_teams %}
-    <section class="l-container l-section" aria-labelledby="home-teams">
-      {% include "components/section_head.html" with index="03" title="战队" en="TEAMS" more_url="/teams/" more_label="全部战队" heading_id="home-teams" %}
-      <ul class="c-tiles">
+    <section class="l-container pb-16 lg:pb-24" aria-labelledby="home-teams">
+      <div class="c-news__head">
+        <h2 id="home-teams">战队</h2>
+        <a href="/teams/" class="c-btn c-btn--quiet c-btn--sm">全部 {{ team_count }} 支战队{% include "components/icon.html" with name="arrow-right" class="size-4" %}</a>
+      </div>
+      <ul class="c-teamstrip" data-reveal>
         {% for team in home_teams %}
-          {% include "components/team_tile.html" with members=team.member_count %}
+          <li class="c-teamstrip__item">
+            <span class="c-teamstrip__logo">{% if team.logo %}{% image team.logo fill-96x96 alt="" %}{% else %}{{ team.name|initial }}{% endif %}</span>
+            <div class="min-w-0">
+              <a href="{{ team.get_absolute_url }}" class="c-stretch c-teamstrip__name">{{ team.name }}</a>
+              <span class="c-teamstrip__meta">{{ team.member_count }} 名成员</span>
+            </div>
+            {% if team.is_recruiting %}{% include "components/status_badge.html" with kind="live" label="招募中" %}{% endif %}
+          </li>
         {% endfor %}
       </ul>
     </section>
   {% endif %}
-
-  <section class="l-container pb-16 lg:pb-24{% if not home_teams %} pt-10 lg:pt-16{% endif %}" aria-labelledby="home-join">
-    {% include "components/section_head.html" with index="04" title="参与" en="JOIN" heading_id="home-join" %}
-    <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
-      <ul class="grid border-t border-rule sm:grid-cols-2 lg:grid-cols-4">
-        <li class="relative border-b border-rule py-5 sm:pr-6 lg:border-b-0 lg:border-r lg:px-6 lg:first:pl-0">
-          <a href="/tournaments/" class="c-stretch font-semibold">报名赛事</a>
-          <p class="mt-2 text-sm leading-6 text-fg-2">队长为战队报名；赛事开放时也可以个人报名，由赛事组编队。</p>
-        </li>
-        <li class="relative border-b border-rule py-5 sm:pl-6 lg:border-b-0 lg:border-r lg:px-6">
-          <a href="/scrims/" class="c-stretch font-semibold">报名内战</a>
-          <p class="mt-2 text-sm leading-6 text-fg-2">填好游戏 ID 和段位，选能打的位置；管理员用系统自动分队，结果发到群里。</p>
-        </li>
-        <li class="relative border-b border-rule py-5 sm:pr-6 sm:border-b-0 lg:border-r lg:px-6">
-          <a href="/teams/" class="c-stretch font-semibold">组建或加入战队</a>
-          <p class="mt-2 text-sm leading-6 text-fg-2">找一支招募中的队伍申请加入，或者自己建一支。</p>
-        </li>
-        <li class="relative py-5 sm:pl-6 lg:px-6 lg:pr-0">
-          <a href="{% url 'submit' %}" class="c-stretch font-semibold">我要投稿</a>
-          <p class="mt-2 text-sm leading-6 text-fg-2">攻略、战报、心得，审核后发在资讯里。</p>
-        </li>
-      </ul>
-      <a href="{% url 'members' %}" class="group flex flex-col justify-between gap-6 border-t-2 border-fg pt-5">
-        <span class="c-stat">
-          <span class="c-stat__label">已加入的成员</span>
-          <span class="c-stat__value text-[2.75rem]">{{ member_count }}<small>人</small></span>
-        </span>
-        <span class="inline-flex items-center gap-2 text-sm font-semibold group-hover:text-fg-red">看看都有谁{% include "components/icon.html" with name="arrow-right" class="size-4" %}</span>
-      </a>
-    </div>
-  </section>
-{% endblock %}
-
-{% block extra_js %}
-  {% if carousel %}<script src="{% static 'js/carousel.js' %}" defer></script>{% endif %}
 {% endblock %}

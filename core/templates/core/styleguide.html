@@ -242,16 +242,7 @@
   <section class="on-tonal l-section" aria-labelledby="sg-night">
     <div class="l-container">
       {% include "components/section_head.html" with index="13" title="赛场：色调区块" en="ARENA" heading_id="sg-night" %}
-      <ol class="c-daystrip" aria-label="未来 14 天">
-        {% for day in days %}
-          <li class="c-day{% if day.count %} has-event{% endif %}{% if day.today %} is-today{% endif %}">
-            <span class="c-day__wk">{% if day.today %}今天{% else %}{{ day.date|ow_weekday }}{% endif %}</span>
-            <span class="c-day__d">{{ day.date|date:"j" }}</span>
-            {% if day.count %}<span class="c-day__n">{{ day.count }} 场</span>{% endif %}
-          </li>
-        {% endfor %}
-      </ol>
-      <div class="mt-8 grid gap-4 lg:grid-cols-2">
+      <div class="grid gap-4 lg:grid-cols-2">
         <article class="c-ticket">
           <div class="c-ticket__stub"><span class="c-ticket__label">截止</span><span class="c-ticket__md">{{ sample_close|ow_md }}</span><span class="c-ticket__when">{{ sample_close|ow_weekday }} {{ sample_close|ow_time }}</span></div>
           <div class="c-ticket__body">
@@ -295,20 +286,21 @@
       </div>
     </section>
 
-    <section aria-labelledby="sg-feature">
-      {% include "components/section_head.html" with index="15" title="焦点图" en="FEATURE" heading_id="sg-feature" %}
-      <div class="c-feature max-w-3xl">
-        <div class="c-feature__stage"><figure class="c-feature__slide is-active c-hatch"></figure></div>
-        <div class="c-feature__caption is-active">
-          <p class="c-eyebrow"><span class="c-eyebrow__index">01</span>/ 03 · 焦点</p>
-          <h2 class="mt-3 text-[1.625rem] leading-snug">2026 秋季校内赛报名开始</h2>
-        </div>
-        <ol class="c-feature__index">
-          <li><button type="button" aria-current="true"><span class="num">01</span><span class="title">2026 秋季校内赛报名开始</span></button></li>
-          <li><button type="button"><span class="num">02</span><span class="title">暑期内战回顾</span></button></li>
-          <li><button type="button"><span class="num">03</span><span class="title">社团网站开始测试</span></button></li>
-        </ol>
-      </div>
+    <section aria-labelledby="sg-home">
+      {% include "components/section_head.html" with title="首页：关键数字、快捷入口" heading_id="sg-home" %}
+      <dl class="c-figures">
+        <div><dt>注册成员</dt><dd><span>312</span><small>人</small></dd></div>
+        <div><dt>战队</dt><dd><span>18</span><small>支</small></dd></div>
+        <div><dt>社区已成立</dt><dd><span>3</span><small>年</small><span>126</span><small>天</small></dd></div>
+      </dl>
+      <nav class="c-quick mt-8" aria-label="示例">
+        <a href="#sg-home" class="c-quick__tile c-quick__tile--rose">{% include "components/icon.html" with name="trophy" class="c-quick__icon" %}<b>赛事报名</b><span>战队或个人报名</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+        <a href="#sg-home" class="c-quick__tile c-quick__tile--butter">{% include "components/icon.html" with name="calendar" class="c-quick__icon" %}<b>内战报名</b><span>填好游戏 ID 就能报</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+        <a href="#sg-home" class="c-quick__tile c-quick__tile--lilac">{% include "components/icon.html" with name="shield" class="c-quick__icon" %}<b>找战队</b><span>浏览战队</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+        <a href="#sg-home" class="c-quick__tile c-quick__tile--sky">{% include "components/icon.html" with name="users" class="c-quick__icon" %}<b>成员展示</b><span>看看都有谁</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+        <a href="#sg-home" class="c-quick__tile c-quick__tile--blush">{% include "components/icon.html" with name="pen" class="c-quick__icon" %}<b>投稿</b><span>攻略、战报、心得</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+        <a href="#sg-home" class="c-quick__tile c-quick__tile--mint">{% include "components/icon.html" with name="chat" class="c-quick__icon" %}<b>加入 QQ 群</b><span>开车、组队、答疑</span>{% include "components/icon.html" with name="arrow-up-right" class="c-quick__go" %}</a>
+      </nav>
     </section>
 
     <section aria-labelledby="sg-comments">

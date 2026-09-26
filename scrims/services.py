@@ -325,15 +325,17 @@ def remove_signups_of(user) -> None:
 
 
 def _refresh_detail(scrim) -> None:
-    """Signups change the counts and the name list on the detail page (13.13.4).
+    """Signups change the counts and the name list on the detail page, and the
+    progress on the homepage's 近期安排 (13.13.4, v3.0).
 
     Requests for one page are merged 30 seconds apart, so a signup rush
-    regenerates it once.
+    regenerates each once.
     """
     from core import prerender
 
     if scrim.is_public:
         prerender.request_page(f"/scrims/{scrim.pk}/", kind="scrim")
+        prerender.request_page("/", kind="home")
 
 
 def _status_changed(scrim) -> None:

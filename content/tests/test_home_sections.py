@@ -1,22 +1,30 @@
 """Homepage and article pages (design 5.2). Round 065 built them after
-www.sjtu.edu.cn; round 075 rebuilt them on the v2.0 design system (13.2)."""
+www.sjtu.edu.cn; round 075 rebuilt them on the v2.0 design system; round 082
+on v3.0 (the M mockup): hero, key figures, 近期安排, quick entries, 资讯,
+通知公告, 活动统计, 战队."""
 
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 import pytest
+from allauth.account.models import EmailAddress
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
+import content.models
 from content import home as home_data
-from content.models import ArticleCategory, HomePageCarouselItem
+from content.models import ArticleCategory
 from content.tests.test_content import _article, _image, _tree, _user
-from core.models import PrerenderedPage
+from core.models import PrerenderedPage, SiteSettings
+from scrims import services as scrim_services
 from scrims.models import ScrimStatus
 from scrims.tests.test_scrims import make_scrim
 from teams import services as team_services
 from tournaments.models import Tournament, TournamentStatus
 from tournaments.tests.test_state_table import player
+
+# SiteSettings.clean_fields would try to decrypt the empty secret fields.
+SECRET_FIELDS = ["smtp_password", "backup_s3_secret_access_key"]
 
 
 def _main(response):
@@ -30,98 +38,14 @@ def site(db):
     return home, news, _user(), ArticleCategory.objects.get(slug="guide")
 
 
-# --- carousel --------------------------------------------------------------------
+@pytest.fixture
+def prerender_on(settings, tmp_path):
+    settings.PRERENDER_ENABLED = True
+    settings.PRERENDER_ROOT = tmp_path
 
 
-def test_the_admins_slides_come_in_their_order(site):
-    home, news, author, category = site
-    page = _article(news, category, author, title="赛事公告", slug="notice")
-    HomePageCarouselItem.objects.create(
-        page=home, image=_image("b"), title="第二张", sort_order=1
-    )
-    HomePageCarouselItem.objects.create(
-        page=home, image=_image("a"), title="第一张", link_page=page, sort_order=0
-    )
-    slides = home_data.carousel_slides(home)
-    assert [slide.title for slide in slides] == ["第一张", "第二张"]
-    assert slides[0].url == page.url
-
-
-def test_without_slides_the_latest_articles_with_a_cover_are_used(site):
-    home, news, author, category = site
-    _article(news, category, author, title="没有封面", slug="plain")
-    _article(news, category, author, title="有封面", slug="covered", cover=_image("c"))
-    assert [slide.title for slide in home_data.carousel_slides(home)] == ["有封面"]
-
-
-def test_a_slide_to_an_unpublished_page_falls_back_to_its_address(site):
-    home, news, author, category = site
-    hidden = _article(news, category, author, title="草稿", slug="draft", live=False)
-    item = HomePageCarouselItem(
-        page=home, title="x", link_page=hidden, link_url="/tournaments/"
-    )
-    assert item.url == "/tournaments/"
-
-
-@pytest.mark.parametrize(
-    "url", ["javascript:alert(1)", "//evil.example/", "http://example.com/"]
-)
-def test_slide_links_must_be_site_paths_or_https(url):
-    with pytest.raises(ValidationError, match="站内地址以 / 开头"):
-        HomePageCarouselItem(title="x", link_url=url).clean()
-
-
-@pytest.mark.parametrize("url", ["/tournaments/3/", "https://example.com/", ""])
-def test_site_paths_and_https_links_are_accepted(url):
-    HomePageCarouselItem(title="x", link_url=url).clean()
-
-
-@pytest.mark.django_db
-def test_the_homepage_shows_the_carousel_and_loads_its_script(client, site):
-    home, *_ = site
-    HomePageCarouselItem.objects.create(
-        page=home, image=_image("a"), title="秋季赛开始报名"
-    )
-    html = client.get("/").content.decode("utf-8")
-    assert "data-carousel" in html
-    assert "秋季赛开始报名" in html
-    assert re.search(r'<script src="/static/js/carousel[^"]*\.js"', html)
-
-
-@pytest.mark.django_db
-def test_no_pictures_means_no_carousel(client, site):
-    html = client.get("/").content.decode("utf-8")
-    assert "data-carousel" not in html
-    assert "carousel" not in html[html.index("</main>") :]  # nor its script
-
-
-@pytest.mark.django_db
-def test_the_carousel_has_a_numbered_index_and_one_caption_per_slide(client, site):
-    home, *_ = site
-    for index in range(3):
-        HomePageCarouselItem.objects.create(
-            page=home, image=_image(f"s{index}"), title=f"第{index}张", sort_order=index
-        )
-    html = client.get("/").content.decode("utf-8")
-    assert html.count("data-caption") == 3
-    assert html.count("data-dot") == 3
-    assert '<span class="num">03</span>' in html
-    assert html.count('aria-current="true"') == 1
-
-
-# --- lists -------------------------------------------------------------------------
-
-
-def test_pinned_articles_lead_the_news_list_without_repeats(site):
-    _, news, author, category = site
-    for index in range(8):
-        _article(news, category, author, title=f"新{index}", slug=f"new{index}")
-    # Pin the newest, so it is also in the latest list and could repeat.
-    pinned = _article(news, category, author, title="置顶", slug="pinned")
-    items = home_data.news_list([pinned])
-    assert items[0] == pinned
-    assert len(items) == home_data.LATEST_ARTICLE_COUNT
-    assert len({article.pk for article in items}) == len(items)
+def _requested():
+    return set(PrerenderedPage.objects.values_list("path", flat=True))
 
 
 def _tournament(title, **kwargs):
@@ -135,6 +59,149 @@ def _tournament(title, **kwargs):
     }
     options.update(kwargs)
     return Tournament.objects.create(**options)
+
+
+def _settings(**fields):
+    site = SiteSettings.load()
+    for name, value in fields.items():
+        setattr(site, name, value)
+    site.save()
+
+
+def _sign_up(scrim, user):
+    scrim_services.sign_up(
+        scrim=scrim,
+        user=user,
+        game_account_id=user.game_accounts.first().pk,
+        roles=["damage"],
+    )
+
+
+# --- 焦点图 is gone (v3.0) ---
+
+
+def test_the_carousel_model_is_gone():
+    assert not hasattr(content.models, "HomePageCarouselItem")
+
+
+@pytest.mark.django_db
+def test_the_homepage_loads_no_carousel(client, site):
+    html = client.get("/").content.decode("utf-8")
+    assert "carousel" not in html
+    assert "c-feature" not in html and "c-daystrip" not in html
+
+
+# --- hero: key figures (5.2, 13.2.6) ---
+
+
+@pytest.mark.parametrize(
+    ("founded", "today", "expected"),
+    [
+        (date(2023, 5, 24), date(2026, 9, 26), (3, 125)),
+        (date(2024, 10, 1), date(2026, 9, 26), (1, 360)),  # before this year's
+        (date(2026, 9, 26), date(2026, 9, 26), (0, 0)),  # founded today
+        (date(2024, 2, 29), date(2025, 2, 27), (0, 364)),
+        (date(2024, 2, 29), date(2025, 2, 28), (1, 0)),  # 29 Feb falls on the 28th
+        (date(2024, 2, 29), date(2025, 3, 1), (1, 1)),
+    ],
+)
+def test_community_age_counts_whole_years_then_days(founded, today, expected):
+    age = home_data.community_age(founded, today)
+    assert (age.years, age.days) == expected
+
+
+def test_no_date_or_a_future_date_gives_no_age():
+    assert home_data.community_age(None, date(2026, 9, 26)) is None
+    assert home_data.community_age(date(2026, 9, 27), date(2026, 9, 26)) is None
+
+
+def _figure(html, label):
+    figures = html[html.index('class="c-figures"') : html.index("</dl>")]
+    cell = figures[figures.index(f"<dt>{label}</dt>") :]
+    return cell[: cell.index("</div>")]
+
+
+@pytest.mark.django_db
+def test_the_hero_counts_joined_members_and_live_teams(client, site):
+    joined = player("joined@example.com", "已加入")
+    EmailAddress.objects.create(user=joined, email=joined.email, verified=True)
+    player("unverified@example.com", "没验证")
+    gone = team_services.create_team(user=joined, name="解散的队")
+    team_services.disband_team(team=gone, actor=joined)
+    team_services.create_team(user=joined, name="一支队")
+    html = _main(client.get("/"))
+    members = home_data.member_count()
+    assert members == 1 + 0  # the editor from the fixture has no verified email
+    assert f'data-count-to="{members}"' in _figure(html, "注册成员")
+    assert home_data.team_count() == 1
+    assert 'data-count-to="1"' in _figure(html, "战队")
+
+
+@pytest.mark.django_db
+def test_the_age_figure_only_shows_once_a_founding_date_is_set(client, site):
+    assert 'data-figure="age"' not in _main(client.get("/"))
+    _settings(founded_on=timezone.localdate() - timedelta(days=400))
+    cell = _figure(_main(client.get("/")), "社区已成立")
+    assert "<small>年</small>" in cell and "<small>天</small>" in cell
+
+
+@pytest.mark.django_db
+def test_the_hero_carries_the_emblem_as_a_watermark(client, site):
+    html = _main(client.get("/"))
+    hero = html[html.index('class="c-hero"') : html.index('class="l-container c-quick')]
+    assert re.search(
+        r'<img class="c-hero__emblem-img" '
+        r'src="/static/img/sjtu-emblem[^"]*\.svg" alt=""',
+        hero,
+    )
+    assert '<div class="c-hero__emblem" aria-hidden="true" data-parallax' in hero
+    assert "<h1" in hero and "守望先锋社区" in hero
+
+
+# --- quick entries ---
+
+
+def _quick(html):
+    start = html.index('class="l-container c-quick"')
+    return html[start : html.index("</nav>", start)]
+
+
+@pytest.mark.django_db
+def test_quick_entries_link_where_they_say(client, site):
+    quick = _quick(_main(client.get("/")))
+    for href, label in (
+        ("/tournaments/", "赛事报名"),
+        ("/scrims/", "内战报名"),
+        ("/teams/", "找战队"),
+        ("/members/", "成员展示"),
+        ("/submit/", "投稿"),
+    ):
+        assert f'<a href="{href}" class="c-quick__tile' in quick, href
+        assert f"<b>{label}</b>" in quick
+    assert "QQ" not in quick
+
+
+def test_the_qq_link_must_be_https():
+    for bad in ("http://qm.qq.com/q/abc", "javascript:alert(1)"):
+        with pytest.raises(ValidationError):
+            SiteSettings(qq_group_url=bad).clean_fields(exclude=SECRET_FIELDS)
+    SiteSettings(qq_group_url="https://qm.qq.com/q/abc").clean_fields(
+        exclude=SECRET_FIELDS
+    )
+
+
+@pytest.mark.django_db
+def test_the_qq_tile_appears_once_a_link_is_set(client, site):
+    _settings(qq_group_url="https://qm.qq.com/q/abc")
+    quick = _quick(_main(client.get("/")))
+    assert (
+        '<a href="https://qm.qq.com/q/abc" class="c-quick__tile c-quick__tile--mint"'
+        in quick
+    )
+    assert "<b>加入 QQ 群</b>" in quick
+
+
+# --- 近期安排 ---
 
 
 def test_next_up_merges_by_date_and_keeps_four():
@@ -165,85 +232,131 @@ def test_next_up_merges_by_date_and_keeps_four():
 
 
 @pytest.mark.django_db
-def test_the_day_strip_counts_public_scrims_and_tournament_starts():
-    def at(day):
-        return timezone.make_aware(datetime(2030, 5, day, 19, 0))
-
-    make_scrim(starts_at=at(15))
-    make_scrim(starts_at=at(15), status=ScrimStatus.FINISHED)
-    make_scrim(starts_at=at(16), status=ScrimStatus.DRAFT)
-    make_scrim(starts_at=at(17), status=ScrimStatus.CANCELLED)
-    make_scrim(starts_at=at(14))  # yesterday
-    make_scrim(starts_at=at(29))  # the 15th day, outside
-    make_scrim(starts_at=at(28))  # the 14th day, inside
-    _tournament("开赛", starts_at=at(20))
-    _tournament("草稿赛", starts_at=at(21), status=TournamentStatus.DRAFT)
-    _tournament("取消赛", starts_at=at(22), status=TournamentStatus.CANCELLED)
-
-    cells = home_data.day_strip(date(2030, 5, 15))
-    assert len(cells) == home_data.STRIP_DAYS == 14
-    assert cells[0].date == date(2030, 5, 15) and cells[-1].date == date(2030, 5, 28)
-    assert [cell.is_today for cell in cells].count(True) == 1 and cells[0].is_today
-    counts = {cell.date.day: cell.count for cell in cells if cell.count}
-    assert counts == {15: 2, 20: 1, 28: 1}
-    assert cells[5].first_url == f"/tournaments/{cells[5].tournaments[0].pk}/"
-
-
-@pytest.mark.django_db
-def test_the_scrim_list_beside_the_strip_leaves_out_finished_ones():
-    today = timezone.localdate()
-    coming = make_scrim(title="要来的", starts_at=timezone.now() + timedelta(days=2))
-    make_scrim(
-        title="结束的",
-        starts_at=timezone.now() + timedelta(days=2),
-        status=ScrimStatus.FINISHED,
-    )
-    cells = home_data.day_strip(today)
-    assert home_data.strip_scrims(cells) == [coming]
-
-
-@pytest.mark.django_db
-def test_arena_tournaments_put_open_ones_first_then_opening_soon():
-    now = timezone.now()
-    later = _tournament("晚截止", registration_closes_at=now + timedelta(days=9))
-    sooner = _tournament("早截止", registration_closes_at=now + timedelta(days=2))
-    opening = _tournament(
-        "即将开放",
-        registration_opens_at=now + timedelta(days=3),
-        registration_closes_at=now + timedelta(days=10),
-    )
-    _tournament(
-        "已截止",
-        registration_opens_at=now - timedelta(days=9),
-        registration_closes_at=now - timedelta(days=1),
-    )
-    _tournament("已结束", status=TournamentStatus.FINISHED)
-    items = home_data.arena_tournaments()
-    assert items == [("open", sooner), ("open", later), ("upcoming", opening)]
-    _tournament("第四个", registration_closes_at=now + timedelta(days=4))
-    assert len(home_data.arena_tournaments()) == home_data.ARENA_TOURNAMENT_COUNT
-
-
-@pytest.mark.django_db
-def test_the_homepage_shows_next_up_and_the_arena(client, site):
+def test_the_agenda_card_shows_signups_against_what_a_match_needs(client, site):
     _tournament("正在报名的赛事")
-    make_scrim(title="三天后的内战", starts_at=timezone.now() + timedelta(days=3))
-    html = client.get("/").content.decode("utf-8")
-    assert html.count('data-next-up="tournament"') == 1
-    assert html.count('data-next-up="scrim"') == 1
-    arena = html[html.index('class="on-tonal l-section"') :]
-    assert "正在报名的赛事" in arena and "三天后的内战" in arena
-    assert "支队伍已通过" in arena
-    assert 'class="c-daystrip"' in arena
+    scrim = make_scrim(
+        title="三天后的内战", starts_at=timezone.now() + timedelta(days=3)
+    )
+    _sign_up(scrim, player("signer@example.com", "报名的人"))
+    html = _main(client.get("/"))
+    agenda = html[html.index('class="c-agenda"') : html.index("</aside>")]
+    assert agenda.count('data-next-up="tournament"') == 1
+    assert agenda.count('data-next-up="scrim"') == 1
+    needed = scrim.players_needed
+    assert f'<progress value="1" max="{needed}"' in agenda
+    assert f"已报 <b>1</b> / {needed}" in agenda
+    assert "已通过 <b>0</b> 队" in agenda
+    # Tournaments have no team cap, so no progress bar for them (5.2).
+    assert agenda.count("<progress") == 1
 
 
-# --- teams ---------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_an_empty_agenda_says_so(client, site):
+    assert "最近没有安排" in _main(client.get("/"))
 
 
-@pytest.fixture
-def prerender_on(settings, tmp_path):
-    settings.PRERENDER_ENABLED = True
-    settings.PRERENDER_ROOT = tmp_path
+# --- 资讯, 通知公告, 活动统计 ---
+
+
+def test_pinned_articles_lead_the_news_list_without_repeats(site):
+    _, news, author, category = site
+    for index in range(8):
+        _article(news, category, author, title=f"新{index}", slug=f"new{index}")
+    # Pin the newest, so it is also in the latest list and could repeat.
+    pinned = _article(news, category, author, title="置顶", slug="pinned")
+    items = home_data.news_list([pinned])
+    assert items[0] == pinned
+    assert len(items) == home_data.LATEST_ARTICLE_COUNT
+    assert len({article.pk for article in items}) == len(items)
+
+
+@pytest.mark.django_db
+def test_the_news_card_leads_with_one_and_lists_five(client, site):
+    _, news, author, category = site
+    for index in range(7):
+        _article(news, category, author, title=f"文章{index}", slug=f"a{index}")
+    html = _main(client.get("/"))
+    card = html[html.index('class="c-news"') : html.index('class="c-homeside"')]
+    assert card.count('class="c-news__lead"') == 1
+    assert card.count('class="c-news__row"') == home_data.LATEST_ARTICLE_COUNT - 1
+    assert "文章6" in card[card.index("c-news__lead") : card.index("c-news__list")]
+
+
+@pytest.mark.django_db
+def test_notices_take_only_the_two_official_categories(site):
+    _, news, author, guide = site
+    notice = ArticleCategory.objects.get(slug="notice")
+    event = ArticleCategory.objects.get(slug="event-notice")
+    for index in range(4):
+        _article(news, notice, author, title=f"公告{index}", slug=f"n{index}")
+    for index in range(3):
+        _article(news, event, author, title=f"赛事通知{index}", slug=f"e{index}")
+    # The newest article of all is a guide; it must still stay out.
+    _article(news, guide, author, title="攻略文", slug="g")
+    items = home_data.notices()
+    assert len(items) == home_data.NOTICE_COUNT == 5
+    assert {item.category.slug for item in items} <= {"notice", "event-notice"}
+    assert items[0].title == "赛事通知2"  # newest first
+
+
+@pytest.mark.django_db
+def test_activity_stats_count_what_is_finished(client, site):
+    now = timezone.now()
+    make_scrim(status=ScrimStatus.FINISHED, starts_at=now - timedelta(days=3))
+    make_scrim(status=ScrimStatus.FINISHED, starts_at=now - timedelta(days=9))
+    make_scrim()  # published, not yet held
+    _tournament("办完的", status=TournamentStatus.FINISHED)
+    _tournament("报名中的")
+    assert home_data.activity_stats() == {"scrims": 2, "tournaments": 1}
+    html = _main(client.get("/"))
+    stats = html[html.index('class="c-stats"') :]
+    assert '<dt>累计内战</dt><dd><span data-count-to="2">2</span>' in stats
+    assert '<dt>举办赛事</dt><dd><span data-count-to="1">1</span>' in stats
+
+
+# --- the homepage is regenerated when what it prints changes (13.13.4) ---
+
+
+@pytest.mark.django_db
+def test_a_scrim_signup_refreshes_the_homepage(prerender_on):
+    scrim = make_scrim()
+    signer = player("signer@example.com", "报名的人")
+    PrerenderedPage.objects.all().delete()
+    _sign_up(scrim, signer)
+    assert "/" in _requested()
+
+
+@pytest.mark.django_db
+def test_a_verified_email_refreshes_the_homepage(prerender_on):
+    user = player("new@example.com", "新人")
+    PrerenderedPage.objects.all().delete()
+    EmailAddress.objects.create(user=user, email=user.email, verified=True)
+    assert "/" in _requested()
+
+
+@pytest.mark.django_db
+def test_deactivating_an_account_refreshes_the_homepage(prerender_on):
+    user = player("leaving@example.com", "要走的")
+    PrerenderedPage.objects.all().delete()
+    user.is_active = False
+    user.save()
+    assert "/" in _requested()
+
+
+@pytest.mark.django_db
+def test_the_two_homepage_settings_refresh_it_and_the_others_do_not(prerender_on):
+    SiteSettings.load()
+    PrerenderedPage.objects.all().delete()
+    _settings(scrim_reminder_hours=3)
+    assert "/" not in _requested()
+    _settings(founded_on=date(2023, 5, 24))
+    assert "/" in _requested()
+    PrerenderedPage.objects.all().delete()
+    _settings(qq_group_url="https://qm.qq.com/q/abc")
+    assert "/" in _requested()
+
+
+# --- teams ---
 
 
 @pytest.mark.django_db
@@ -257,7 +370,7 @@ def test_team_tiles_carry_the_member_count(client, site):
     team_services.create_team(user=player("cap@example.com", "队长"), name="图块队")
     html = client.get("/").content.decode("utf-8")
     tile = html[html.index("图块队") - 600 : html.index("图块队") + 400]
-    assert "1 人" in tile
+    assert "1 名成员" in tile
 
 
 @pytest.mark.django_db
@@ -269,7 +382,7 @@ def test_disbanded_teams_leave_the_homepage():
     assert home_data.teams() == [kept]
 
 
-# --- article pages ------------------------------------------------------------------
+# --- article pages ---
 
 
 @pytest.mark.django_db

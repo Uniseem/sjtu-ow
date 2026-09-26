@@ -218,9 +218,9 @@ def test_home_uses_pinned_articles_when_present(client):
     html = response.content.decode("utf-8")
     # Round 065 (design 5.2): the older pinned article leads, the latest follows.
     assert html.index("置顶一篇") < html.index("最新一篇")
-    # Round 056: the tournament and scrim blocks used to say "即将开放".
-    assert "现在没有正在报名的赛事" in html
-    assert "未来 7 天没有内战" in html
+    # Round 056: the tournament and scrim blocks used to say "即将开放";
+    # v3.0 (round 082) has one 近期安排 card that says when it is empty.
+    assert "最近没有安排" in html
     assert latest.title == "最新一篇"
 
 

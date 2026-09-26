@@ -65,15 +65,14 @@ def test_the_homepage_lists_tournaments_open_for_registration(client, homepage):
     _tournament("取消的赛事", opens=-day, closes=day, status=TournamentStatus.CANCELLED)
 
     html = client.get("/").content.decode("utf-8")
-    # Round 075 (design 5.2 v2.0): 近期 is only what is open now; the arena
-    # block also shows what opens soon.
-    start = html.index('aria-labelledby="home-next"')
+    # Round 082 (design 5.2 v3.0): 近期安排 is only what is open now, and the
+    # homepage no longer has an arena block for what opens soon.
+    start = html.index('aria-labelledby="agenda-title"')
     next_up = html[start : html.index("</aside>", start)]
 
     assert "报名中的赛事" in next_up
     assert "还没开始报名的赛事" not in next_up
-    assert "还没开始报名的赛事" in html
-    for hidden in ("已经截止的赛事", "草稿赛事", "取消的赛事"):
+    for hidden in ("还没开始报名的赛事", "已经截止的赛事", "草稿赛事", "取消的赛事"):
         assert hidden not in html, hidden
     assert "后续里程碑" not in html
 
@@ -89,7 +88,7 @@ def test_open_tournaments_close_soonest_first():
 @pytest.mark.django_db
 def test_the_homepage_says_so_when_nothing_is_open(client, homepage):
     html = client.get("/").content.decode("utf-8")
-    assert "现在没有正在报名的赛事" in html
+    assert "最近没有安排" in html
 
 
 # --- team page -----------------------------------------------------------------
@@ -161,9 +160,12 @@ def test_approving_refreshes_the_tournament_and_team_pages(prerender_on, make):
 
     reg.approve(registration=registration, actor=admin_user())
 
-    assert {registration.tournament.get_absolute_url(), team.get_absolute_url()} <= (
-        _requested()
-    )
+    # v3.0: the homepage's 近期安排 shows the approved count too (13.13.4).
+    assert {
+        registration.tournament.get_absolute_url(),
+        team.get_absolute_url(),
+        "/",
+    } <= _requested()
 
 
 @pytest.mark.django_db
