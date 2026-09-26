@@ -13,7 +13,7 @@
         <tbody>
           {% for registration in registrations %}
             <tr>
-              <td data-label="赛事"><a href="{{ registration.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ registration.tournament.title }}</a></td>
+              <td data-label="赛事"><a href="{{ registration.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ registration.tournament.title }}</a></td>
               <td data-label="队伍">{{ registration.team_name }}{% if not registration.team_id %} <span class="c-tag ml-1">临时队伍</span>{% endif %}</td>
               <td data-label="状态">{% include "components/registration_status.html" %}</td>
               <td data-label="提交" class="is-num font-numeric">{{ registration.submitted_at|ow_date }}</td>
@@ -34,7 +34,7 @@
         <tbody>
           {% for signup in individual_signups %}
             <tr>
-              <td data-label="赛事"><a href="{{ signup.tournament.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ signup.tournament.title }}</a></td>
+              <td data-label="赛事"><a href="{{ signup.tournament.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ signup.tournament.title }}</a></td>
               <td data-label="位置">{% include "components/role_icons.html" with role_tank=signup.role_tank role_damage=signup.role_damage role_support=signup.role_support %}</td>
               <td data-label="状态">
                 {% if signup.is_placed %}

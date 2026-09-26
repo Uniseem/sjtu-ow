@@ -4,7 +4,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#171a20" media="(prefers-color-scheme: dark)">
     <title>维护中 · 上海交通大学守望先锋社区</title>
     
       <style>
@@ -36,6 +37,23 @@
   --font-button: var(--font-body);
   --font-figure: var(--font-body);
   --font-code: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Dark values (13.2.2), the same as the site's. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-primary: #c4262d;
+    --color-primary-text: #ff7a7e;
+    --color-primary-soft: #3a1a1d;
+    --color-bg: #0e1014;
+    --color-surface: #171a20;
+    --color-control: #6b7380;
+    --color-line: #2c313a;
+    --color-fg: #eceef1;
+    --color-fg-2: #b4bac3;
+    --color-fg-3: #8f97a3;
+  }
 }
 
 * {
@@ -98,14 +116,6 @@ main {
   color: var(--color-primary);
 }
 
-.eyebrow {
-  margin: 1rem 0 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--color-primary-text);
-}
-
 h1 {
   margin: 1rem 0 0.75rem;
   font-family: var(--font-h1);
@@ -165,7 +175,7 @@ p {
 footer {
   padding: 1.25rem 1rem;
   border-top: 1px solid var(--color-line);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: var(--color-fg-3);
 }
 
@@ -191,7 +201,6 @@ footer {
     </header>
     <main>
       <p class="code" aria-hidden="true">503</p>
-      <p class="eyebrow">MAINTENANCE</p>
       
   <h1>网站维护中</h1>
   <p>

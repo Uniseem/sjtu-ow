@@ -34,7 +34,7 @@
         <form method="post" class="c-form">
           {% csrf_token %}
           <div class="c-step">
-            <div class="c-step__head"><span class="c-step__index">01</span><h2 class="text-lg">选择游戏 ID</h2></div>
+            <div class="c-step__head"><h2 class="text-lg">选择游戏 ID</h2></div>
             <div class="c-field">
               <label class="c-field__label" for="signup-account">游戏 ID<span class="c-field__req" aria-hidden="true">*</span></label>
               <select id="signup-account" name="game_account" required>
@@ -46,7 +46,7 @@
             </div>
           </div>
           <div class="c-step">
-            <div class="c-step__head"><span class="c-step__index">02</span><h2 class="text-lg">能打的位置（至少一个）</h2></div>
+            <div class="c-step__head"><h2 class="text-lg">能打的位置（至少一个）</h2></div>
             <fieldset class="c-choices">
               <legend class="sr-only">能打的位置</legend>
               {% for value, label in role_choices %}

@@ -14,7 +14,7 @@
         <tbody>
           {% for membership in teams %}
             <tr>
-              <td data-label="战队"><a href="{{ membership.team.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ membership.team.name }}</a></td>
+              <td data-label="战队"><a href="{{ membership.team.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ membership.team.name }}</a></td>
               <td data-label="身份">{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% else %}队员{% endif %}</td>
               <td data-label="操作" class="is-num">
                 {% if membership.is_captain %}
@@ -43,7 +43,7 @@
         <tbody>
           {% for application in applications %}
             <tr>
-              <td data-label="战队"><a href="{{ application.team.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ application.team.name }}</a></td>
+              <td data-label="战队"><a href="{{ application.team.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ application.team.name }}</a></td>
               <td data-label="状态">
                 {% if application.status == "approved" %}{% include "components/status_badge.html" with kind="ok" label=application.get_status_display %}
                 {% elif application.status == "pending" %}{% include "components/status_badge.html" with kind="warn" label=application.get_status_display %}

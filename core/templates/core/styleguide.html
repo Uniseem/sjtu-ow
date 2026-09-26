@@ -20,7 +20,7 @@
           <li class="c-swatch">
             <span class="c-swatch__chip {{ cls }}"></span>
             <span class="font-semibold">{{ label }}</span>
-            <span class="font-code text-xs text-fg-2">{{ token }} {{ hex }}</span>
+            <span class="font-code text-sm text-fg-2">{{ token }} {{ hex }}</span>
           </li>
         {% endfor %}
       </ul>
@@ -64,7 +64,7 @@
         </div>
         <div>
           <p class="mb-3 text-sm text-fg-2">没有图片时的占位：灰底</p>
-          <span class="block h-20 rounded-md border border-rule c-hatch"></span>
+          <span class="block h-20 rounded-sm border border-line c-hatch"></span>
         </div>
         <div>
           <p class="mb-3 text-sm text-fg-2">进度条：已报 8 / 10</p>
@@ -107,7 +107,7 @@
         {% for name in icons %}
           <li class="flex flex-col items-center gap-2 text-center">
             {% include "components/icon.html" with name=name class="size-6" %}
-            <span class="font-code text-[0.6875rem] text-fg-2">{{ name }}</span>
+            <span class="font-code text-sm text-fg-2">{{ name }}</span>
           </li>
         {% endfor %}
       </ul>
@@ -172,7 +172,7 @@
       {% include "components/section_head.html" with index="10" title="表单" en="FORMS" heading_id="sg-form" %}
       <form class="c-form max-w-xl" action="#sg-form">
         <div class="c-step">
-          <div class="c-step__head"><span class="c-step__index">01</span><h3>选择游戏 ID</h3></div>
+          <div class="c-step__head"><h3>选择游戏 ID</h3></div>
           <div class="c-field">
             <label class="c-field__label" for="sg-account">游戏 ID<span class="c-field__req" aria-hidden="true">*</span></label>
             <select id="sg-account"><option>Genji#51234 · 钻石 3</option><option>Player#88123</option></select>
@@ -180,7 +180,7 @@
           </div>
         </div>
         <div class="c-step">
-          <div class="c-step__head"><span class="c-step__index">02</span><h3>能打的位置</h3></div>
+          <div class="c-step__head"><h3>能打的位置</h3></div>
           <div class="c-choices">
             <label class="c-choice"><input type="checkbox" checked>{% include "components/icon.html" with name="role-tank" class="size-4" %}坦克</label>
             <label class="c-choice"><input type="checkbox">{% include "components/icon.html" with name="role-damage" class="size-4" %}输出</label>

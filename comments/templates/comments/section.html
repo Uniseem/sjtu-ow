@@ -6,7 +6,7 @@ interactive for a signed-in visitor (from the state fragment or a live render).
 <section id="slot-article-comments" data-slot="article-comments:{{ page.pk }}" class="c-comments"{% if oob %} hx-swap-oob="true"{% endif %}{% if interactive %} hx-include="#comment-sort"{% endif %}>
   {% if interactive %}<input type="hidden" id="comment-sort" name="sort" value="{{ sort }}">{% endif %}
   <div class="c-comments__head">
-    <h2 id="comments">评论 <span class="c-count">{{ thread.total }}</span></h2>
+    <h2 id="comments">{% if thread.total %}{{ thread.total }} 条评论{% else %}评论{% endif %}</h2>
     {% if thread.total > 1 %}
       <nav class="c-comments__sort" aria-label="评论排序">
         <a href="{{ page.url }}?sort=new#comments"{% if sort == "new" %} aria-current="true"{% endif %}>最新</a>
@@ -31,7 +31,7 @@ interactive for a signed-in visitor (from the state fragment or a live render).
       {% include "comments/_composer.html" with action_url=page.pk|stringformat:"s" parent=None %}
     {% endif %}
   {% else %}
-    <p class="mt-4 text-sm text-fg-2"><a href="{% url 'account_login' %}?next={{ page.url }}" class="font-semibold text-fg underline underline-offset-4 hover:text-fg-red">登录后评论</a></p>
+    <p class="mt-4 text-sm text-fg-2"><a href="{% url 'account_login' %}?next={{ page.url }}" class="font-semibold text-fg underline underline-offset-4 hover:text-primary-text">登录后评论</a></p>
   {% endif %}
 
   <ol id="comment-list" class="c-comments__list">

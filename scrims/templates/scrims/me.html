@@ -11,7 +11,7 @@
       <tbody>
         {% for signup in signups %}
           <tr>
-            <td data-label="内战"><a href="{% url 'scrim_detail' signup.scrim.pk %}" class="font-semibold hover:text-fg-red">{{ signup.scrim.title }}</a></td>
+            <td data-label="内战"><a href="{% url 'scrim_detail' signup.scrim.pk %}" class="font-semibold hover:text-primary-text">{{ signup.scrim.title }}</a></td>
             <td data-label="开始" class="font-numeric">{{ signup.scrim.starts_at|ow_date }} {{ signup.scrim.starts_at|ow_time }}</td>
             <td data-label="位置">{% include "components/role_icons.html" with role_tank=signup.role_tank role_damage=signup.role_damage role_support=signup.role_support %}</td>
             <td data-label="状态" class="is-num">

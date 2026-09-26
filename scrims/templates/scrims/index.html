@@ -33,7 +33,7 @@
             <tbody>
               {% for scrim in finished %}
                 <tr>
-                  <td data-label="内战"><a href="{% url 'scrim_detail' scrim.pk %}" class="font-semibold hover:text-fg-red">{{ scrim.title }}</a></td>
+                  <td data-label="内战"><a href="{% url 'scrim_detail' scrim.pk %}" class="font-semibold hover:text-primary-text">{{ scrim.title }}</a></td>
                   <td data-label="时间" class="font-numeric">{{ scrim.starts_at|ow_date }} {{ scrim.starts_at|ow_time }}</td>
                   <td data-label="规格">{{ scrim.get_format_display }}</td>
                   <td data-label="报名" class="is-num font-numeric">{{ signup_totals|lookup:scrim.pk|default:0 }} 人</td>

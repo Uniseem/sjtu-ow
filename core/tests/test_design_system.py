@@ -123,10 +123,18 @@ def _tokens(css):
 def test_error_css_uses_the_same_token_values():
     """error.css is hand-written (13.15); its colours must match input.css."""
     site = _tokens(INPUT_CSS.read_text(encoding="utf-8"))
-    errors = dict(re.findall(HEX, ERROR_CSS.read_text(encoding="utf-8")))
+    text = ERROR_CSS.read_text(encoding="utf-8")
+    light_part = text[: text.index(DARK_HEAD)]
+    errors = dict(re.findall(HEX, light_part))
     assert errors, "error.css defines no colour tokens"
     for name, value in errors.items():
         assert site.get(name, "").lower() == value.lower(), name
+    # 089: the error pages follow the system too, with the site's dark values.
+    site_dark = _dark(INPUT_CSS.read_text(encoding="utf-8"))
+    dark = dict(re.findall(HEX, text[text.index(DARK_HEAD) :]))
+    assert set(dark) == set(errors)
+    for name, value in dark.items():
+        assert site_dark[name].lower() == value.lower(), f"dark {name}"
 
 
 def test_dark_mode_gives_every_palette_colour_a_dark_value():
@@ -206,28 +214,77 @@ def _block(css, head):
     return css[start : css.index("}", start)]
 
 
-def test_v3_names_point_at_the_v4_palette():
-    """Pages rebuilt in 087–089 still say surface-high or primary-deep; those
-    names must follow the v4 values in both modes, not keep their own."""
+V3_NAMES = (
+    "primary-deep",
+    "primary-container",
+    "tertiary-container",
+    "surface-lowest",
+    "surface-low",
+    "surface-mid",
+    "surface-high",
+    "on-surface",
+    "outline",
+    "inverse-surface",
+    "ok-container",
+)
+
+
+def test_the_v3_names_are_gone():
+    """Round 089 finished M10: no v3 colour name, tone variable or glass
+    variable is left in the stylesheet or the templates, so nothing can keep
+    an old value in one of the two modes."""
     css = INPUT_CSS.read_text(encoding="utf-8")
-    theme = re.search(r"@theme \{(.*?)\n\}", css, flags=re.S).group(1)
-    for name in ("primary-deep", "primary-container", "surface-lowest", "outline"):
-        assert re.search(rf"--color-{name}: var\(--color-[a-z0-9-]+\);", theme), name
-    assert ".on-night" not in css
+    for name in V3_NAMES:
+        assert f"--color-{name}" not in css, name
+    assert "--tone-" not in css and "--glass-" not in css
+    assert ".on-night" not in css and ".on-tonal" not in css
+    names = "|".join(V3_NAMES) + "|panel|rule|fg-red"
+    pattern = re.compile(rf"\b(?:bg|text|border|fill|stroke)-(?:{names})\b")
+    offenders = [
+        relative for relative, text in _front_templates() if pattern.search(text)
+    ]
+    assert offenders == []
 
 
 def test_v4_draws_no_glass_and_no_washes():
     """13.2.1: no frosted panes, no gradient blobs; the only gradients are the
     scrims under words on a picture (13.2.5)."""
     css = INPUT_CSS.read_text(encoding="utf-8")
-    assert "--glass-filter: none;" in css
-    assert re.findall(r"backdrop-filter:\s*(?!var\(--glass-filter\))", css) == []
+    assert "backdrop-filter" not in css
     # The one radial gradient is the dot inside a checked radio button.
     radials = [m.start() for m in re.finditer("radial-gradient", css)]
     assert len(radials) == 1
     assert 'input[type="radio"]:checked {' in css[radials[0] - 200 : radials[0]]
     gradients = re.findall(r"linear-gradient\(", css)
     assert len(gradients) == 3  # the scrims of c-hero, c-feature and c-stage
+
+
+def test_no_text_is_smaller_than_14px():
+    """13.2.3: the smallest size is 0.875rem (the user: 不要画蛇添足的说明小字)."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    sizes = re.findall(r"font-size:\s*([0-9.]+)(rem|px)", css)
+    small = [
+        f"{value}{unit}"
+        for value, unit in sizes
+        if float(value) < (0.875 if unit == "rem" else 14)
+    ]
+    assert small == []
+    tiny = re.compile(r"\btext-(?:xs|\[(?:0\.[0-7]|0\.8[0-6]|1[0-3]px)[^\]]*\])")
+    assert [rel for rel, text in _front_templates() if tiny.search(text)] == []
+
+
+def test_error_pages_carry_no_latin_label_or_small_print():
+    """089: the error pages follow 13.2.1 too: no FORBIDDEN / MAINTENANCE line
+    over the Chinese title, and no text under 14px in error.css."""
+    base = Path(settings.BASE_DIR) / "templates" / "errors"
+    for path in base.glob("*.html"):
+        text = path.read_text(encoding="utf-8")
+        assert "eyebrow" not in text, path.name
+        for word in ("FORBIDDEN", "NOT FOUND", "MAINTENANCE", "SERVER ERROR"):
+            assert word not in text, (path.name, word)
+    css = ERROR_CSS.read_text(encoding="utf-8")
+    sizes = [float(v) for v in re.findall(r"font-size:\s*([0-9.]+)rem", css)]
+    assert min(sizes) >= 0.875
 
 
 def test_colours_are_only_defined_as_tokens():
@@ -580,8 +637,8 @@ def test_sign_in_is_a_card_beside_what_an_account_is_for(client, home):
     assert why.count('class="c-why__icon') == 3
     assert "border-fg" not in main
     card = _block(INPUT_CSS.read_text(encoding="utf-8"), "  .c-auth {")
-    assert "border: 1px solid var(--tone-line);" in card
-    assert "border-radius: var(--radius-xl);" in card
+    assert "border: 1px solid var(--color-line);" in card
+    assert "border-radius: var(--radius-sm);" in card
 
 
 @pytest.mark.parametrize(

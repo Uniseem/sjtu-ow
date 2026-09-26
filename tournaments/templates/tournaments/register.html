@@ -56,11 +56,11 @@
         <input type="hidden" name="team" value="{{ team.pk }}">
         <input type="hidden" name="action" value="submit">
         <div class="c-step">
-          <div class="c-step__head"><span class="c-step__index">01</span><h2 class="text-lg">「{{ team.name }}」的名单</h2></div>
+          <div class="c-step__head"><h2 class="text-lg">「{{ team.name }}」的名单</h2></div>
           <p class="text-sm text-fg-2">整支战队报名，不能只挑部分成员。为每个队员选一个游戏 ID（会写进名单快照）。</p>
-          <ol class="border-t border-rule">
+          <ol class="border-t border-line">
             {% for row in rows %}
-              <li class="grid gap-3 border-b border-rule py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] sm:items-center" data-roster-row>
+              <li class="grid gap-3 border-b border-line py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] sm:items-center" data-roster-row>
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="font-numeric w-7 text-sm text-fg-3">{{ forloop.counter|ow_index }}</span>
                   <span class="font-semibold">{{ row.user.nickname }}</span>

@@ -75,7 +75,7 @@
               <tbody>
                 {% for entry in entries %}
                   <tr data-team-entry>
-                    <td><a href="{{ entry.tournament.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ entry.tournament.title }}</a></td>
+                    <td><a href="{{ entry.tournament.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ entry.tournament.title }}</a></td>
                     <td class="is-num">{% if entry.tournament.status == "cancelled" %}<span class="c-status">已取消</span>{% elif entry.tournament.status == "finished" %}<span class="c-status">已结束</span>{% else %}<span class="c-status c-status--ok">已通过</span>{% endif %}</td>
                   </tr>
                 {% endfor %}

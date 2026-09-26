@@ -32,7 +32,7 @@
                 <tbody>
                   {% for tournament in tournaments %}
                     <tr class="relative">
-                      <td data-label="赛事"><a href="{{ tournament.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ tournament.title }}</a></td>
+                      <td data-label="赛事"><a href="{{ tournament.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ tournament.title }}</a></td>
                       <td data-label="比赛时间" class="font-numeric">{% if tournament.starts_at %}{{ tournament.starts_at|ow_date }}{% else %}待定{% endif %}</td>
                       <td data-label="人数" class="font-numeric">{{ tournament.roster_min }}–{{ tournament.roster_max }} 人</td>
                       <td data-label="已通过" class="is-num font-numeric">{{ approved_counts|lookup:tournament.pk|default:0 }} 队</td>

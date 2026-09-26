@@ -45,16 +45,16 @@
             <h2 class="font-code text-lg">{{ account.battletag }}</h2>
             <p class="text-sm text-fg-3">段位更新于 {{ account.ranks_updated_at|timesince }}前</p>
           </div>
-          <dl class="mt-4 grid grid-cols-3 border-y border-rule">
+          <dl class="mt-4 grid grid-cols-3 border-y border-line">
             <div class="py-3 pr-3">
               <dt class="inline-flex items-center gap-1.5 text-sm text-fg-2">{% include "components/icon.html" with name="role-tank" class="size-4" %}坦克</dt>
               <dd class="mt-1">{% include "components/rank_badge.html" with label=account.tank_label %}</dd>
             </div>
-            <div class="border-l border-rule py-3 pl-3">
+            <div class="border-l border-line py-3 pl-3">
               <dt class="inline-flex items-center gap-1.5 text-sm text-fg-2">{% include "components/icon.html" with name="role-damage" class="size-4" %}输出</dt>
               <dd class="mt-1">{% include "components/rank_badge.html" with label=account.damage_label %}</dd>
             </div>
-            <div class="border-l border-rule py-3 pl-3">
+            <div class="border-l border-line py-3 pl-3">
               <dt class="inline-flex items-center gap-1.5 text-sm text-fg-2">{% include "components/icon.html" with name="role-support" class="size-4" %}支援</dt>
               <dd class="mt-1">{% include "components/rank_badge.html" with label=account.support_label %}</dd>
             </div>

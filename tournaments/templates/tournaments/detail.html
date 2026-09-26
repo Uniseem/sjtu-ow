@@ -58,7 +58,7 @@
                       {% if entry.is_adhoc %}
                         <span class="font-semibold">{{ entry.team_name }}</span> <span class="c-tag ml-2">临时队伍</span>
                       {% else %}
-                        <a href="{{ entry.team.get_absolute_url }}" class="font-semibold hover:text-fg-red">{{ entry.team_name }}</a>
+                        <a href="{{ entry.team.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ entry.team_name }}</a>
                       {% endif %}
                     </td>
                     <td class="is-num font-numeric">{{ entry.member_count }} 人</td>

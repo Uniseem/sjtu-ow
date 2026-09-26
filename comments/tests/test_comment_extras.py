@@ -348,8 +348,8 @@ def test_the_static_page_shows_counts_placeholders_and_sort_links(
     html = client.get(article.get_url()).content.decode()
 
     assert "data-like-count>1<" in html
-    # v3.0 (round 085): the heading count is the shared count pill.
-    assert re.search(r'<h2 id="comments">评论 <span class="c-count">\d+</span>', html)
+    # v4.0 (round 089): the count is part of the heading, not a badge.
+    assert re.search(r'<h2 id="comments">\d+ 条评论</h2>', html)
     assert "评论已删除" in html and "还在的回复" in html
     assert "?sort=top#comments" in html
     assert "hx-post" not in html and "csrfmiddlewaretoken" not in html

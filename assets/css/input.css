@@ -51,38 +51,9 @@
   --color-night-2: #20242b;
   --color-on-toast: #f2f3f5;
 
-  /*
-   * v3 names still used by the pages rebuilt in rounds 087–089. They point at
-   * the v4 palette, so those pages already get the new colours in both modes.
-   */
-  --color-primary-deep: var(--color-primary-text);
-  --color-primary-container: var(--color-primary-soft);
-  --color-on-primary-container: var(--color-on-primary-soft);
-  --color-tertiary-container: var(--color-warn-soft);
-  --color-on-tertiary-container: var(--color-warn);
-  --color-surface-lowest: var(--color-surface);
-  --color-surface-low: var(--color-bg);
-  --color-surface-mid: var(--color-surface-2);
-  --color-surface-high: var(--color-surface-2);
-  --color-surface-highest: var(--color-line);
-  --color-on-surface: var(--color-fg);
-  --color-on-surface-2: var(--color-fg-2);
-  --color-on-surface-3: var(--color-fg-3);
-  --color-outline: var(--color-control);
-  --color-outline-variant: var(--color-line);
-  --color-inverse-surface: var(--color-toast);
-  --color-inverse-on-surface: var(--color-on-toast);
-  --color-inverse-primary: var(--color-primary-soft);
-  --color-ok-container: var(--color-ok-soft);
-  --color-warn-container: var(--color-warn-soft);
-  --color-info-container: var(--color-info-soft);
-
   --radius-*: initial;
   --radius-xs: 4px;
   --radius-sm: 8px;
-  --radius-md: 8px;
-  --radius-lg: 8px;
-  --radius-xl: 8px;
   --radius-full: 999px;
 
   /* Only floating things cast a shadow (13.2.4). */
@@ -127,34 +98,14 @@
   }
 }
 
-/* Aliases the utilities read (bg-panel, border-rule, text-fg-red). */
+/* The fonts the utilities read (13.12). */
 @theme inline {
-  --color-panel: var(--tone-panel);
-  --color-rule: var(--tone-line);
-  --color-rule-strong: var(--tone-line-strong);
-  --color-fg-red: var(--tone-accent);
   --font-sans: var(--font-body);
   --font-mono: var(--font-code);
 }
 
 :root {
   color-scheme: light;
-  --tone-bg: var(--color-bg);
-  --tone-panel: var(--color-surface);
-  --tone-sunken: var(--color-surface-2);
-  --tone-fg: var(--color-fg);
-  --tone-fg-2: var(--color-fg-2);
-  --tone-fg-3: var(--color-fg-3);
-  --tone-line: var(--color-line);
-  --tone-line-strong: var(--color-line);
-  /* Borders that tell you "this is a field" need 3:1 (WCAG 1.4.11). */
-  --tone-control: var(--color-control);
-  --tone-accent: var(--color-primary-text);
-  --tone-focus: var(--color-primary);
-  /* Kept for the pages not yet rebuilt; v4 draws no glass (13.2.1). */
-  --glass-bg: var(--color-surface);
-  --glass-filter: none;
-  --glass-line: var(--color-line);
 
   /*
    * Typography variables (design 13.12.4). "设置 → 排版设置" overrides them
@@ -448,16 +399,6 @@
   .c-hatch {
     background-color: var(--color-surface-2);
     color: var(--color-fg-3);
-  }
-
-  span.c-hatch:has(.c-hatch__icon) {
-    display: grid;
-    place-items: center;
-  }
-
-  .c-hatch__icon {
-    width: 2.5rem;
-    height: 2.5rem;
   }
 
   /* Make the whole row or card clickable through its title link. */
@@ -884,12 +825,6 @@
     margin-bottom: 1.25rem;
   }
 
-  .c-sectionhead__rule,
-  .c-sectionhead__index,
-  .c-sectionhead__en {
-    display: none;
-  }
-
   /* ---- Buttons ------------------------------------------------------------------ */
 
   .c-btn {
@@ -1117,8 +1052,8 @@
     display: inline-flex;
     align-items: baseline;
     gap: 0.25rem;
-    font-size: 0.8125rem;
-    color: var(--tone-fg);
+    font-size: 0.875rem;
+    color: var(--color-fg);
     white-space: nowrap;
   }
 
@@ -1131,7 +1066,7 @@
   }
 
   .c-rank--none {
-    color: var(--tone-fg-3);
+    color: var(--color-fg-3);
   }
 
   .c-roles {
@@ -1147,9 +1082,9 @@
     height: 1.5rem;
     padding-inline: 0.375rem 0.5rem;
     border-radius: var(--radius-sm);
-    background-color: var(--color-surface-high);
-    color: var(--tone-fg);
-    font-size: 0.75rem;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+    font-size: 0.875rem;
     white-space: nowrap;
   }
 
@@ -1216,9 +1151,9 @@
     border-collapse: separate;
     border-spacing: 0;
     overflow: hidden;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-lg);
-    background-color: var(--tone-panel);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
     font-size: 0.9375rem;
     /* As a grid or flex item a table would stretch and pad out its rows. */
     align-self: start;
@@ -1226,9 +1161,9 @@
 
   .c-table th {
     padding: 0.75rem 1rem;
-    background-color: var(--color-surface-high);
-    color: var(--tone-fg-2);
-    font-size: 0.8125rem;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
     font-weight: 600;
     text-align: left;
     white-space: nowrap;
@@ -1236,7 +1171,7 @@
 
   .c-table td {
     padding: 0.875rem 1rem;
-    border-top: 1px solid var(--tone-line);
+    border-top: 1px solid var(--color-line);
     vertical-align: middle;
   }
 
@@ -1250,7 +1185,7 @@
   }
 
   .c-table tbody tr:hover {
-    background-color: var(--color-surface-low);
+    background-color: var(--color-bg);
   }
 
   /* Phones: every row becomes a block of label / value lines. */
@@ -1271,7 +1206,7 @@
     }
 
     .c-table--stack tr + tr {
-      border-top: 1px solid var(--tone-line);
+      border-top: 1px solid var(--color-line);
     }
 
     .c-table--stack td {
@@ -1285,7 +1220,7 @@
 
     .c-table--stack td::before {
       content: attr(data-label);
-      color: var(--tone-fg-2);
+      color: var(--color-fg-2);
       text-align: left;
     }
 
@@ -1325,18 +1260,6 @@
     width: 1.75rem;
     height: 1.75rem;
     font-size: 0.875rem;
-  }
-
-  .c-avatar--lg {
-    width: 4.5rem;
-    height: 4.5rem;
-    font-size: 1.75rem;
-  }
-
-  .c-avatar--xl {
-    width: 7.5rem;
-    height: 7.5rem;
-    font-size: 3rem;
   }
 
   .c-people {
@@ -1404,18 +1327,18 @@
   .c-field__label {
     font-size: 0.9375rem;
     font-weight: 600;
-    color: var(--tone-fg);
+    color: var(--color-fg);
   }
 
   .c-field__req {
     margin-left: 0.25rem;
-    color: var(--tone-accent);
+    color: var(--color-primary-text);
     font-weight: 400;
   }
 
   .c-field__help {
-    color: var(--tone-fg-2);
-    font-size: 0.8125rem;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
     line-height: 1.6;
   }
 
@@ -1429,7 +1352,7 @@
     display: flex;
     align-items: flex-start;
     gap: 0.375rem;
-    color: var(--tone-accent);
+    color: var(--color-primary-text);
     font-size: 0.875rem;
     line-height: 1.5;
   }
@@ -1455,10 +1378,10 @@
     width: 100%;
     min-height: 44px;
     padding: 0.5rem 0.875rem;
-    border: 1px solid var(--tone-control);
-    border-radius: var(--radius-md);
-    background-color: var(--tone-panel);
-    color: var(--tone-fg);
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
     font-size: 1rem;
     line-height: 1.5;
     transition:
@@ -1470,7 +1393,7 @@
   .c-field select:hover,
   .c-field textarea:hover,
   .c-input:hover {
-    border-color: var(--tone-fg);
+    border-color: var(--color-fg);
   }
 
   /* Material's focused field: a 2px primary border (drawn inside, no layout shift). */
@@ -1486,7 +1409,7 @@
   .c-field input::placeholder,
   .c-field textarea::placeholder,
   .c-input::placeholder {
-    color: var(--tone-fg-3);
+    color: var(--color-fg-3);
   }
 
   .c-field textarea {
@@ -1508,7 +1431,7 @@
   .c-field.is-invalid select,
   .c-field.is-invalid textarea {
     border-color: var(--color-primary);
-    background-color: color-mix(in oklab, var(--color-primary-container) 35%, var(--color-surface-lowest));
+    background-color: color-mix(in oklab, var(--color-primary-soft) 35%, var(--color-surface));
   }
 
   .c-field ul {
@@ -1526,9 +1449,9 @@
     width: 1.25rem;
     height: 1.25rem;
     margin: 0;
-    border: 2px solid var(--tone-control);
+    border: 2px solid var(--color-control);
     border-radius: var(--radius-xs);
-    background-color: var(--tone-panel);
+    background-color: var(--color-surface);
     background-position: center;
     background-repeat: no-repeat;
     cursor: pointer;
@@ -1582,9 +1505,9 @@
     gap: 0.5rem;
     min-height: 44px;
     padding-inline: 1rem;
-    border: 1px solid var(--tone-control);
+    border: 1px solid var(--color-control);
     border-radius: var(--radius-sm);
-    background-color: var(--tone-panel);
+    background-color: var(--color-surface);
     cursor: pointer;
     font-size: 0.9375rem;
     transition:
@@ -1600,18 +1523,18 @@
   }
 
   .c-choice:hover {
-    background-color: var(--color-surface-low);
+    background-color: var(--color-bg);
   }
 
   .c-choice:has(input:checked) {
-    border-color: var(--color-primary-container);
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+    border-color: var(--color-primary-soft);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
     font-weight: 600;
   }
 
   .c-choice:has(input:focus-visible) {
-    outline: 2px solid var(--tone-focus);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 
@@ -1626,9 +1549,9 @@
     flex-direction: column;
     gap: 1.25rem;
     padding: 1.25rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-lg);
-    background-color: var(--tone-panel);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
   }
 
   @media (min-width: 640px) {
@@ -1643,26 +1566,13 @@
     gap: 0.75rem;
   }
 
-  .c-step__index {
-    display: inline-grid;
-    place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: var(--radius-full);
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
-    font-family: var(--font-figure);
-    font-size: 0.8125rem;
-    font-weight: 700;
-  }
-
   .c-formbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem 1.25rem;
     padding-top: 1.5rem;
-    border-top: 1px solid var(--tone-line);
+    border-top: 1px solid var(--color-line);
   }
 
   /* Sign-in, sign-up and the other account pages (allauth): a card (round 085). */
@@ -1670,9 +1580,9 @@
     width: 100%;
     max-width: 28rem;
     padding: 1.5rem 1.25rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-xl);
-    background-color: var(--tone-panel);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
   }
 
   @media (min-width: 640px) {
@@ -1684,8 +1594,8 @@
   /* 注册以后可以, beside the sign-in and sign-up cards. */
   .c-why {
     padding: 1.5rem 1.75rem;
-    border-radius: var(--radius-xl);
-    background-color: var(--color-surface-low);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg);
   }
 
   .c-why__title {
@@ -1711,8 +1621,8 @@
     flex-shrink: 0;
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: var(--radius-md);
-    color: var(--tone-fg);
+    border-radius: var(--radius-sm);
+    color: var(--color-fg);
   }
 
   .c-auth > h1 {
@@ -1721,7 +1631,7 @@
 
   .c-auth > p {
     margin-top: 0.75rem;
-    color: var(--tone-fg-2);
+    color: var(--color-fg-2);
     line-height: 1.75;
   }
 
@@ -1744,8 +1654,8 @@
   .c-auth__foot {
     margin-top: 2rem;
     padding-top: 1.25rem;
-    border-top: 1px solid var(--tone-line);
-    color: var(--tone-fg-2);
+    border-top: 1px solid var(--color-line);
+    color: var(--color-fg-2);
     font-size: 0.9375rem;
   }
 
@@ -1756,9 +1666,9 @@
     align-items: flex-start;
     gap: 0.75rem;
     padding: 0.875rem 1rem;
-    border-radius: var(--radius-md);
-    background-color: var(--color-surface-high);
-    color: var(--tone-fg);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
     font-size: 0.9375rem;
     line-height: 1.6;
   }
@@ -1767,7 +1677,7 @@
     width: 1.25rem;
     height: 1.25rem;
     margin-top: 0.0625rem;
-    color: var(--tone-fg-2);
+    color: var(--color-fg-2);
   }
 
   .c-notice__body {
@@ -1781,7 +1691,7 @@
   }
 
   .c-notice--info {
-    background-color: var(--color-info-container);
+    background-color: var(--color-info-soft);
   }
 
   .c-notice--info > svg {
@@ -1789,7 +1699,7 @@
   }
 
   .c-notice--ok {
-    background-color: var(--color-ok-container);
+    background-color: var(--color-ok-soft);
   }
 
   .c-notice--ok > svg {
@@ -1797,7 +1707,7 @@
   }
 
   .c-notice--warn {
-    background-color: var(--color-warn-container);
+    background-color: var(--color-warn-soft);
   }
 
   .c-notice--warn > svg {
@@ -1805,8 +1715,8 @@
   }
 
   .c-notice--error {
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
   }
 
   .c-notice--error > svg {
@@ -1834,9 +1744,9 @@
     width: 100%;
     max-width: 24rem;
     padding: 0.875rem 1.125rem;
-    border-radius: var(--radius-md);
-    background-color: var(--color-inverse-surface);
-    color: var(--color-inverse-on-surface);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-toast);
+    color: var(--color-on-toast);
     box-shadow: var(--shadow-2);
     font-size: 0.9375rem;
     line-height: 1.5;
@@ -1850,11 +1760,11 @@
     width: 1.125rem;
     height: 1.125rem;
     margin-top: 0.125rem;
-    color: var(--color-inverse-on-surface);
+    color: var(--color-on-toast);
   }
 
   .c-toast--error svg {
-    color: var(--color-inverse-primary);
+    color: var(--color-primary-soft);
   }
 
   @keyframes c-toast-in {
@@ -1976,7 +1886,7 @@
     min-height: 44px;
     padding: 0.5rem 1rem;
     border-radius: var(--radius-full);
-    color: var(--tone-fg-2);
+    color: var(--color-fg-2);
     font-family: var(--font-nav);
     font-size: 0.9375rem;
     font-weight: 500;
@@ -1986,41 +1896,23 @@
   }
 
   .c-sidenav a:hover {
-    background-color: var(--color-surface-high);
-    color: var(--tone-fg);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
   }
 
   .c-sidenav a[aria-current="page"],
   .c-sidenav a[aria-current="true"] {
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
     font-weight: 600;
   }
 
   .c-sidenav__icon {
-    color: var(--tone-fg-2);
+    color: var(--color-fg-2);
   }
 
   .c-sidenav a[aria-current] .c-sidenav__icon {
-    color: var(--color-on-primary-container);
-  }
-
-  .c-sidenav__index {
-    font-family: var(--font-figure);
-    font-size: 0.8125rem;
-    color: var(--tone-fg-3);
-  }
-
-  .c-sidenav a[aria-current] .c-sidenav__index {
-    color: var(--color-on-primary-container);
-  }
-
-  .c-sidenav__title {
-    margin-bottom: 0.5rem;
-    padding-inline: 1rem;
-    color: var(--tone-fg-3);
-    font-size: 0.75rem;
-    font-weight: 600;
+    color: var(--color-on-primary-soft);
   }
 
   /* ---- Prose (rich text, 13.2.6 c-prose) ------------------------------------------ */
@@ -2157,13 +2049,6 @@
     gap: 0.625rem;
   }
 
-  .c-comments__count {
-    font-family: var(--font-figure);
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--tone-fg-2);
-  }
-
   .c-comments__sort {
     display: flex;
     gap: 0.5rem;
@@ -2174,22 +2059,22 @@
     align-items: center;
     min-height: 2.25rem;
     padding-inline: 0.875rem;
-    border: 1px solid var(--tone-line);
+    border: 1px solid var(--color-line);
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
-    color: var(--tone-fg-2);
+    color: var(--color-fg-2);
     transition: background-color 150ms var(--ease-standard);
   }
 
   .c-comments__sort a:hover {
-    background-color: var(--color-surface-low);
-    color: var(--tone-fg);
+    background-color: var(--color-bg);
+    color: var(--color-fg);
   }
 
   .c-comments__sort a[aria-current="true"] {
-    border-color: var(--color-primary-container);
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+    border-color: var(--color-primary-soft);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
     font-weight: 600;
   }
 
@@ -2209,8 +2094,8 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem 1rem;
-    color: var(--tone-fg-3);
-    font-size: 0.8125rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
   }
 
   .c-comments__list {
@@ -2222,7 +2107,7 @@
     grid-template-columns: 2.75rem minmax(0, 1fr);
     gap: 0 0.875rem;
     padding-block: 1.25rem;
-    border-bottom: 1px solid var(--tone-line);
+    border-bottom: 1px solid var(--color-line);
     scroll-margin-top: 5rem;
   }
 
@@ -2237,14 +2122,14 @@
   .c-comment.is-pinned {
     margin-inline: -0.75rem;
     padding-inline: 0.75rem;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-sm);
     border-bottom-color: transparent;
-    background-color: var(--color-surface-low);
+    background-color: var(--color-bg);
   }
 
   .c-comment__placeholder {
     grid-column: 1 / -1;
-    color: var(--tone-fg-3);
+    color: var(--color-fg-3);
     font-size: 0.875rem;
   }
 
@@ -2253,14 +2138,14 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.25rem 0.75rem;
-    font-size: 0.8125rem;
-    color: var(--tone-fg-3);
+    font-size: 0.875rem;
+    color: var(--color-fg-3);
   }
 
   .c-comment__name {
     font-size: 0.9375rem;
     font-weight: 600;
-    color: var(--tone-fg);
+    color: var(--color-fg);
   }
 
   .c-comment__body {
@@ -2272,7 +2157,7 @@
   }
 
   .c-comment__at {
-    color: var(--tone-accent);
+    color: var(--color-primary-text);
   }
 
   .c-comment__actions {
@@ -2297,8 +2182,8 @@
     min-height: 44px;
     padding-inline: 0.625rem;
     border-radius: var(--radius-full);
-    font-size: 0.8125rem;
-    color: var(--tone-fg-2);
+    font-size: 0.875rem;
+    color: var(--color-fg-2);
     cursor: pointer;
     list-style: none;
     transition:
@@ -2318,8 +2203,8 @@
   button.c-act:hover,
   summary.c-act:hover,
   a.c-act:hover {
-    background-color: var(--color-surface-high);
-    color: var(--tone-fg);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
   }
 
   .c-act[aria-pressed="true"] {
@@ -2332,7 +2217,7 @@
   }
 
   .c-act--danger:hover {
-    color: var(--tone-accent) !important;
+    color: var(--color-primary-text) !important;
   }
 
   .c-comment__thread {
@@ -2348,7 +2233,7 @@
     margin-left: -0.75rem;
     padding-inline: 0.75rem;
     border-radius: var(--radius-full);
-    color: var(--color-primary-deep);
+    color: var(--color-primary-text);
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
@@ -2377,7 +2262,7 @@
   .c-comment__thread > ol {
     margin-top: 0.25rem;
     padding-left: 0.875rem;
-    border-left: 2px solid var(--tone-line);
+    border-left: 2px solid var(--color-line);
   }
 
   /* ---- Homepage and the shared content blocks (design 5.2, 13.2.6; round 086) ---- */
@@ -2956,21 +2841,6 @@
     outline: none;
   }
 
-  /* The comment count keeps this until the comments are rebuilt (089). */
-  .c-count {
-    display: inline-flex;
-    align-items: center;
-    min-width: 1.625rem;
-    height: 1.625rem;
-    padding-inline: 0.375rem;
-    justify-content: center;
-    border-radius: var(--radius-xs);
-    background-color: var(--color-surface-2);
-    color: var(--color-fg-2);
-    font-size: 0.875rem;
-    font-variant-numeric: tabular-nums;
-  }
-
   /* ---- Arena and roster pages (design 13.2.7 赛场 / 名册; round 088) --------------- */
 
   /* The banner on a detail page (13.2.6 c-stage): the cover with the scrim
@@ -3197,12 +3067,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
 
   .c-swatch__chip {
     height: 4rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-md);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
   }
 }
