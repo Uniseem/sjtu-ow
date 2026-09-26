@@ -273,7 +273,7 @@ def test_the_page_lists_nicknames_and_roles_only(client, solo):
     assert "坦克" in html and "支援" in html
     assert account.battletag not in html
     assert "青铜" not in html
-    assert '共 <span class="font-numeric">1</span> 人' in html
+    assert "共 1 人：坦克 1、输出 0、支援 1" in html
 
 
 @pytest.mark.django_db

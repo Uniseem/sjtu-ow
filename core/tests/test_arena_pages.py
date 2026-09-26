@@ -1,6 +1,6 @@
-"""Tournament, scrim, team and member pages on the v2.0 design system (round 076).
+"""Tournament, scrim, team and member pages: v2.0 in round 076, v4.0 in round 088.
 
-The page skeletons of design 13.2.8: 赛场列表, 赛场详情 and 名册.
+The page skeletons of design 13.2.7: 赛场列表, 赛场详情 and 名册.
 """
 
 from datetime import timedelta
@@ -45,7 +45,7 @@ def _approve(tournament, team):
 
 
 @pytest.mark.django_db
-def test_open_and_upcoming_are_tickets_closed_and_finished_are_rows(client):
+def test_open_and_upcoming_are_picture_cards_closed_and_finished_are_rows(client):
     _tournament("报名中的", opens=-DAY, closes=DAY)
     _tournament("快开始的", opens=DAY, closes=2 * DAY)
     _tournament("截止了的", opens=-2 * DAY, closes=-DAY)
@@ -55,20 +55,24 @@ def test_open_and_upcoming_are_tickets_closed_and_finished_are_rows(client):
     html = _html(client, "/tournaments/")
     for phase, title in (("open", "报名中的"), ("upcoming", "快开始的")):
         block = _section(html, f'data-phase="{phase}"')
-        assert "c-ticket" in block and title in block, phase
+        assert "data-tournament-card" in block and title in block, phase
     for phase, title in (("closed", "截止了的"), ("finished", "结束了的")):
         block = _section(html, f'data-phase="{phase}"')
-        assert "c-ticket" not in block and "<table" in block and title in block
+        assert "data-tournament-card" not in block
+        assert "<table" in block and title in block
 
 
 @pytest.mark.django_db
-def test_the_list_head_counts_each_phase(client):
+def test_the_lists_carry_no_counters_in_the_head(client):
+    """v4.0 (13.2.1): the head is the title and one line; no stat bar of
+    phase counts, no count badges beside section titles."""
     _tournament("甲", opens=-DAY, closes=DAY)
-    _tournament("乙", opens=-DAY, closes=2 * DAY)
-    _tournament("丙", opens=DAY, closes=2 * DAY)
-    head = _section(_html(client, "/tournaments/"), "data-phase-counts", "</header>")
-    values = [chunk.split("</span>")[0] for chunk in head.split('c-stat__value">')[1:]]
-    assert values == ["2", "1", "0", "0"]
+    make_scrim(title="周五")
+    for path in ("/tournaments/", "/scrims/", "/teams/", "/members/"):
+        html = _html(client, path)
+        head = _section(html, '<header class="c-pagehead', "</header>")
+        assert "c-factbar" not in head and "c-stat" not in head, path
+        assert "c-count" not in html, path
 
 
 @pytest.mark.django_db
@@ -87,7 +91,7 @@ def test_tickets_count_only_approved_teams(client):
     )
     assert tournament_services.approved_counts([tournament]) == {tournament.pk: 1}
     block = _section(_html(client, "/tournaments/"), 'data-phase="open"')
-    assert '<span class="c-meter__count">1</span>' in block
+    assert "已通过 1 队" in block
 
 
 @pytest.mark.django_db
@@ -101,7 +105,7 @@ def test_the_detail_head_lists_the_key_facts(client):
     )
     for label in ("报名截止", "比赛时间", "每队人数", "已通过", "个人报名"):
         assert label in head, label
-    assert '已通过</span><span class="c-stat__value">1<small>队</small>' in head
+    assert "<dt>已通过</dt><dd>1 队</dd>" in head
 
 
 # --- scrims ---------------------------------------------------------------------
@@ -131,8 +135,8 @@ def test_upcoming_scrims_show_signups_against_what_a_match_needs(client):
     assert scrim_services.signup_totals([scrim]) == {scrim.pk: 3}
     html = _html(client, "/scrims/")
     upcoming = _section(html, 'aria-labelledby="scrims-upcoming"')
-    assert "3<span> / 10</span>" in upcoming
-    assert upcoming.count('<i class="is-on">') == 3
+    assert "已报 3 / 10" in upcoming
+    assert '<progress class="c-meter" value="3" max="10"' in upcoming
     assert "结束的" not in upcoming
     finished_block = _section(html, 'aria-labelledby="scrims-finished"')
     assert "结束的" in finished_block and "<table" in finished_block
@@ -155,7 +159,7 @@ def test_team_tiles_say_members_against_the_limit(client):
 def test_the_team_page_names_its_captain_and_founding_date(client):
     captain = person("创始人")
     team = team_services.create_team(user=captain, name="老队")
-    head = _section(_html(client, team.get_absolute_url()), "c-pagehead", "</header>")
+    head = _section(_html(client, team.get_absolute_url()), "c-stage", "</header>")
     assert "创始人" in head
     assert timezone.localtime(team.created_at).strftime("%Y.%m.%d") in head
 

@@ -61,21 +61,6 @@ def test_numbering_is_two_digits():
     assert ow.ow_index("x") == ""
 
 
-def test_slot_cells_fill_then_empty_then_overflow():
-    assert ow.slot_cells(3, 5) == ["on", "on", "on", "off", "off"]
-    assert ow.slot_cells(6, 5) == ["on"] * 5 + ["over"]
-    assert ow.slot_cells(0, 2) == ["off", "off"]
-
-
-def test_slot_cells_give_way_to_a_bar_past_24():
-    assert ow.slot_cells(10, 24) != []
-    assert ow.slot_cells(10, 25) == []
-    assert ow.slot_cells(25, 20) == []
-    assert ow.percent_of(31, 48) == 65
-    assert ow.percent_of(60, 48) == 100
-    assert ow.percent_of(3, 0) == 0
-
-
 def test_rank_labels_split_into_name_and_division():
     assert ow.rank_parts("钻石 3") == ("钻石", "3")
     assert ow.rank_parts("前 500") == ("前", "500")
@@ -86,15 +71,6 @@ def test_initial_is_the_first_character():
     assert ow.initial("夜航") == "夜"
     assert ow.initial("kairo") == "K"
     assert ow.initial("") == "?"
-
-
-def test_slot_meter_template_draws_cells_and_says_the_count():
-    html = Template(
-        '{% include "components/slots.html" with taken=2 capacity=3 unit="人" %}'
-    ).render(Context({}))
-    assert html.count('<i class="is-on">') == 2
-    assert html.count("<i></i>") == 1
-    assert "已报 </span>2<span> / 3</span>" in html
 
 
 def test_rank_badge_template_sets_the_division_as_a_figure():
@@ -251,7 +227,7 @@ def test_v4_draws_no_glass_and_no_washes():
     assert len(radials) == 1
     assert 'input[type="radio"]:checked {' in css[radials[0] - 200 : radials[0]]
     gradients = re.findall(r"linear-gradient\(", css)
-    assert len(gradients) == 2  # c-hero::after and c-feature::after
+    assert len(gradients) == 3  # the scrims of c-hero, c-feature and c-stage
 
 
 def test_colours_are_only_defined_as_tokens():
@@ -477,8 +453,8 @@ def test_style_guide_opens_for_an_admin_who_is_not_a_superuser(client, home):
     html = response.content.decode("utf-8")
     for component in (
         "c-btn--primary",
-        "c-ticket",
-        "c-slots",
+        "c-stage",
+        "c-meter",
         "c-status--live",
         "c-feature",
         "c-media",

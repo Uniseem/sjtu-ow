@@ -3,42 +3,33 @@
 {% block title %}战队 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <header class="c-pagehead c-pagehead--tonal on-tonal">
+  <header class="c-pagehead">
     <div class="l-container">
-      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>战队</span></nav>
       <div class="c-pagehead__row">
         <div>
           <h1>战队</h1>
-          <p class="c-pagehead__lede">社团里的固定队伍。找一支招募中的申请加入，或者自己建一支。</p>
+          <p class="c-pagehead__lede">社团里的固定队伍，每队最多 {{ max_members }} 人。找一支招募中的申请加入，或者自己建一支。</p>
         </div>
         <div class="c-pagehead__actions">
           <a href="{% url 'team_create' %}" class="c-btn c-btn--primary">{% include "components/icon.html" with name="plus" %}创建战队</a>
         </div>
       </div>
-      <div class="c-factbar">
-        <div class="c-stat"><span class="c-stat__label">战队</span><span class="c-stat__value">{{ team_total }}<small>支</small></span></div>
-        <div class="c-stat"><span class="c-stat__label">招募中</span><span class="c-stat__value">{{ recruiting_total }}<small>支</small></span></div>
-        <div class="c-stat"><span class="c-stat__label">每队上限</span><span class="c-stat__value">{{ max_members }}<small>人</small></span></div>
-      </div>
+      <nav class="c-tabs mt-8" aria-label="筛选">
+        <a href="{% url 'team_index' %}"{% if not recruiting_only %} aria-current="page"{% endif %}>全部<span class="c-tabs__count">{{ team_total }}</span></a>
+        <a href="{% url 'team_index' %}?recruiting=1"{% if recruiting_only %} aria-current="page"{% endif %}>只看招募中<span class="c-tabs__count">{{ recruiting_total }}</span></a>
+      </nav>
     </div>
   </header>
 
-  <div class="l-container pt-6 pb-16 lg:pb-24">
-    <nav class="c-tabs" aria-label="筛选">
-      <a href="{% url 'team_index' %}"{% if not recruiting_only %} aria-current="page"{% endif %}>全部<span class="c-tabs__count">{{ team_total }}</span></a>
-      <a href="{% url 'team_index' %}?recruiting=1"{% if recruiting_only %} aria-current="page"{% endif %}>只看招募中<span class="c-tabs__count">{{ recruiting_total }}</span></a>
-    </nav>
-
-    <div class="mt-10">
-      {% if teams %}
-        <ul class="c-tiles">
-          {% for team in teams %}
-            {% include "components/team_tile.html" with members=team.members_total capacity=max_members show_closed=True %}
-          {% endfor %}
-        </ul>
-      {% else %}
-        {% include "components/empty_state.html" with title="还没有战队" message="第一支战队可以由你来建。" action_url="/teams/new/" action_label="创建战队" %}
-      {% endif %}
-    </div>
+  <div class="l-container pt-8 pb-16 lg:pb-24">
+    {% if teams %}
+      <ul class="c-teams">
+        {% for team in teams %}
+          {% include "components/team_tile.html" with members=team.members_total capacity=max_members show_closed=True %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with title="还没有战队" message="第一支战队可以由你来建。" action_url="/teams/new/" action_label="创建战队" %}
+    {% endif %}
   </div>
 {% endblock %}

@@ -1,10 +1,10 @@
-<div id="slot-scrim-actions" data-slot="scrim-actions:{{ scrim.pk }}" class="mt-8"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="slot-scrim-actions" data-slot="scrim-actions:{{ scrim.pk }}"{% if oob %} hx-swap-oob="true"{% endif %}>
   {% if cancelled %}
     <p class="text-sm text-fg-2">这场内战已取消，不再接受报名。</p>
   {% elif not request.user.is_authenticated %}
     <a href="{% url 'account_login' %}?next={% url 'scrim_detail' scrim.pk %}" class="c-btn c-btn--primary">登录后报名</a>
   {% elif my_signup %}
-    <div class="max-w-2xl border border-rule bg-panel p-5">
+    <div class="max-w-2xl">
       <p class="flex flex-wrap items-center gap-3">
         {% include "components/status_badge.html" with kind="ok" label="已报名" %}
         <span class="font-code text-sm">{{ my_signup.battletag }}</span>
@@ -42,7 +42,7 @@
       <div class="c-notice__body">需要先绑定游戏 ID，<a href="{% url 'me_game_accounts' %}">去添加</a>。</div>
     </div>
   {% else %}
-    <div class="max-w-2xl border border-rule bg-panel p-5">
+    <div class="max-w-2xl">
       <h2 class="text-lg">报名</h2>
       <div class="mt-4">{% include "scrims/slots/_form.html" %}</div>
     </div>

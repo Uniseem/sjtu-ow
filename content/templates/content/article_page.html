@@ -29,7 +29,7 @@
     {% if page.tournament and page.tournament.is_public %}
       <section class="c-article__part" aria-labelledby="article-tournament">
         <h2 id="article-tournament" class="c-article__parthead">关联赛事</h2>
-        {% include "components/tournament_ticket.html" with tournament=page.tournament %}
+        <div class="c-media-grid">{% include "components/tournament_card.html" with tournament=page.tournament %}</div>
       </section>
     {% endif %}
     {% include "comments/section.html" %}

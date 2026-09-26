@@ -4,30 +4,27 @@
 {% block title %}{{ tournament.title }} · 赛事 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  {# 赛场详情 (design 13.2.8). #}
-  <header class="c-pagehead c-pagehead--tonal on-tonal">
-    <div class="l-container">
+  {# 赛场详情 (design 13.2.7): the banner, then sign-up, rules and teams beside the facts. #}
+  <header class="c-stage{% if not tournament.cover %} c-stage--plain{% endif %}">
+    {% if tournament.cover %}{% image tournament.cover fill-2400x900-c50 class="c-stage__img" alt="" %}{% endif %}
+    <div class="l-container c-stage__body">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/tournaments/">赛事</a><span class="c-crumbs__sep">/</span><span>{{ tournament.title }}</span></nav>
-      <p class="flex flex-wrap items-center gap-3">
-        {% if phase == "open" %}{% include "components/status_badge.html" with kind="live" label=phase_label %}
-        {% elif phase == "upcoming" %}{% include "components/status_badge.html" with kind="info" label=phase_label %}
-        {% elif phase == "cancelled" %}{% include "components/status_badge.html" with kind="off" label=phase_label %}
-        {% else %}{% include "components/status_badge.html" with kind="done" label=phase_label %}{% endif %}
+      <p class="c-stage__tags">
+        {% if phase == "open" %}<span class="c-status c-status--live">{{ phase_label }}</span>
+        {% elif phase == "upcoming" %}<span class="c-status c-status--info">{{ phase_label }}</span>
+        {% else %}<span class="c-status">{{ phase_label }}</span>{% endif %}
         {% if tournament.sjtu_only %}<span class="c-tag">仅限交大</span>{% endif %}
         {% if tournament.allow_individual_signup %}<span class="c-tag">支持个人报名</span>{% endif %}
       </p>
-      <h1>{{ tournament.title }}</h1>
-      {% if tournament.summary %}<p class="c-pagehead__lede">{{ tournament.summary }}</p>{% endif %}
-      <div class="c-factbar" data-key-facts>
-        <div class="c-stat"><span class="c-stat__label">报名截止</span><span class="c-stat__value">{{ tournament.registration_closes_at|ow_md }}<small>{{ tournament.registration_closes_at|ow_weekday }} {{ tournament.registration_closes_at|ow_time }}</small></span></div>
-        <div class="c-stat"><span class="c-stat__label">比赛时间</span><span class="c-stat__value">{% if tournament.starts_at %}{{ tournament.starts_at|ow_md }}<small>{{ tournament.starts_at|ow_weekday }} {{ tournament.starts_at|ow_time }}</small>{% else %}<span class="c-stat__value--text">待定</span>{% endif %}</span></div>
-        <div class="c-stat"><span class="c-stat__label">每队人数</span><span class="c-stat__value">{{ tournament.roster_min }}–{{ tournament.roster_max }}<small>人</small></span></div>
-        <div class="c-stat"><span class="c-stat__label">已通过</span><span class="c-stat__value">{{ approved_teams|length }}<small>队</small></span></div>
-        {% if tournament.allow_individual_signup %}
-          <div class="c-stat"><span class="c-stat__label">个人报名</span><span class="c-stat__value">{{ pool_counts.total }}<small>人</small></span></div>
-        {% endif %}
-      </div>
-      {% include "tournaments/slots/actions.html" %}
+      <h1 class="c-stage__title">{{ tournament.title }}</h1>
+      {% if tournament.summary %}<p class="c-stage__lede">{{ tournament.summary }}</p>{% endif %}
+      <dl class="c-stage__facts" data-key-facts>
+        <div><dt>报名截止</dt><dd>{{ tournament.registration_closes_at|ow_md }} {{ tournament.registration_closes_at|ow_weekday }} {{ tournament.registration_closes_at|ow_time }}</dd></div>
+        <div><dt>比赛时间</dt><dd>{% if tournament.starts_at %}{{ tournament.starts_at|ow_md }} {{ tournament.starts_at|ow_weekday }} {{ tournament.starts_at|ow_time }}{% else %}待定{% endif %}</dd></div>
+        <div><dt>每队人数</dt><dd>{{ tournament.roster_min }}–{{ tournament.roster_max }} 人</dd></div>
+        <div><dt>已通过</dt><dd>{{ approved_teams|length }} 队</dd></div>
+        {% if tournament.allow_individual_signup %}<div><dt>个人报名</dt><dd>{{ pool_counts.total }} 人</dd></div>{% endif %}
+      </dl>
     </div>
   </header>
 
@@ -36,20 +33,20 @@
       <div class="c-notice c-notice--warn mb-10" role="status">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">这项赛事已取消。</div></div>
     {% endif %}
     <div class="l-split">
-      <div class="flex min-w-0 flex-col gap-14">
-        {% if tournament.cover %}
-          <figure class="c-cut">{% image tournament.cover width-1200 class="w-full" alt=tournament.title %}</figure>
-        {% endif %}
+      <div class="flex min-w-0 flex-col gap-12">
+        <section class="c-panel" aria-label="报名">
+          {% include "tournaments/slots/actions.html" %}
+        </section>
 
         {% if tournament.description %}
           <section aria-labelledby="t-rules">
-            {% include "components/section_head.html" with title="赛事说明" en="RULES" heading_id="t-rules" %}
+            {% include "components/section_head.html" with title="赛事说明" heading_id="t-rules" %}
             <div class="c-prose l-prose">{{ tournament.description|richtext }}</div>
           </section>
         {% endif %}
 
         <section aria-labelledby="t-teams">
-          {% include "components/section_head.html" with title="已通过的队伍" en="TEAMS" heading_id="t-teams" %}
+          {% include "components/section_head.html" with title="已通过的队伍" heading_id="t-teams" %}
           {% if approved_teams %}
             <table class="c-table">
               <thead><tr><th scope="col" class="w-12">序号</th><th scope="col">队伍</th><th scope="col" class="is-num">人数</th></tr></thead>
@@ -76,13 +73,8 @@
 
         {% if tournament.allow_individual_signup %}
           <section aria-labelledby="t-pool">
-            {% include "components/section_head.html" with title="个人报名" en="FREE AGENTS" heading_id="t-pool" %}
-            <p class="text-sm text-fg-2">
-              共 <span class="font-numeric">{{ pool_counts.total }}</span> 人 ·
-              坦克 <span class="font-numeric">{{ pool_counts.tank }}</span> ·
-              输出 <span class="font-numeric">{{ pool_counts.damage }}</span> ·
-              支援 <span class="font-numeric">{{ pool_counts.support }}</span>
-            </p>
+            {% include "components/section_head.html" with title="个人报名" heading_id="t-pool" %}
+            <p class="text-fg-2">共 {{ pool_counts.total }} 人：坦克 {{ pool_counts.tank }}、输出 {{ pool_counts.damage }}、支援 {{ pool_counts.support }}</p>
             {% if pool %}
               <ul class="c-people mt-4">
                 {% for entry in pool %}
@@ -95,16 +87,15 @@
                   </li>
                 {% endfor %}
               </ul>
-              <p class="mt-3 text-xs text-fg-3">名单只显示昵称和能打的位置，由赛事管理员编成临时队伍。</p>
             {% else %}
-              <p class="mt-4 text-sm text-fg-2">还没有人个人报名。</p>
+              <p class="mt-4 text-fg-2">还没有人个人报名。</p>
             {% endif %}
           </section>
         {% endif %}
       </div>
 
       <aside class="flex flex-col gap-10">
-        <dl class="c-facts c-facts--card">
+        <dl class="c-facts c-panel">
           <dt>报名开放</dt><dd class="font-numeric">{{ tournament.registration_opens_at|ow_date }} {{ tournament.registration_opens_at|ow_time }}</dd>
           <dt>报名截止</dt><dd class="font-numeric">{{ tournament.registration_closes_at|ow_date }} {{ tournament.registration_closes_at|ow_time }}</dd>
           <dt>比赛时间</dt><dd class="font-numeric">{% if tournament.starts_at %}{{ tournament.starts_at|ow_date }} {{ tournament.starts_at|ow_time }}{% else %}待定{% endif %}</dd>
@@ -112,13 +103,15 @@
           <dt>参赛条件</dt><dd>{% if tournament.sjtu_only %}仅限交大{% else %}不限学校{% endif %}{% if tournament.allow_individual_signup %} · 支持个人报名{% endif %}</dd>
         </dl>
         {% if articles %}
-          <section aria-labelledby="t-articles" class="c-related">
-            <h2 id="t-articles">相关文章</h2>
-            <ol>
+          <section aria-labelledby="t-articles">
+            <div class="c-sectionhead"><h2 id="t-articles">相关文章</h2></div>
+            <ol class="c-rows">
               {% for article in articles %}
-                <li>
-                  <time class="font-numeric" datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_date }}</time>
-                  <a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a>
+                <li class="c-row c-row--plain">
+                  <div class="c-row__main">
+                    <h3 class="c-row__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+                    <p class="c-row__meta"><time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_date }}</time></p>
+                  </div>
                 </li>
               {% endfor %}
             </ol>

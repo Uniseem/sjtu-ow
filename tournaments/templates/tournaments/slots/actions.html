@@ -1,4 +1,4 @@
-<div id="slot-tournament-actions" data-slot="tournament-actions:{{ tournament.pk }}" class="mt-8 flex flex-wrap items-center gap-3"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="slot-tournament-actions" data-slot="tournament-actions:{{ tournament.pk }}" class="flex flex-wrap items-center gap-3"{% if oob %} hx-swap-oob="true"{% endif %}>
   {% if tournament.status == "cancelled" %}
     <span class="text-sm text-fg-2">赛事已取消，不再接受报名。</span>
   {% elif not request.user.is_authenticated %}

@@ -1,0 +1,18 @@
+{% load ow %}
+{% comment %}
+  A scrim as a list row (design 13.2.6 c-row): the date block; title; time,
+  format and sign-ups against the players one game needs, with the bar;
+  the status in words.
+{% endcomment %}
+<li class="c-row" id="scrim-{{ scrim.pk }}" data-scrim-row>
+  <span class="c-date"><small>{{ scrim.starts_at|date:"n" }}月</small><b>{{ scrim.starts_at|date:"d" }}</b></span>
+  <div class="c-row__main">
+    <h3 class="c-row__title"><a href="{% url 'scrim_detail' scrim.pk %}" class="c-stretch">{{ scrim.title }}</a></h3>
+    <p class="c-row__meta">{{ scrim.starts_at|ow_weekday }} {{ scrim.starts_at|ow_time }} · {{ scrim.get_format_display }} · 已报 {{ signups|default:0 }} / {{ scrim.players_needed }}</p>
+    <progress class="c-meter" value="{% if signups > scrim.players_needed %}{{ scrim.players_needed }}{% else %}{{ signups|default:0 }}{% endif %}" max="{{ scrim.players_needed }}" aria-label="已报 {{ signups|default:0 }} 人，一场需要 {{ scrim.players_needed }} 人"></progress>
+  </div>
+  {% if scrim.status == "cancelled" %}<span class="c-status">已取消</span>
+  {% elif scrim.status == "finished" %}<span class="c-status">已结束</span>
+  {% elif scrim.signup_open %}<span class="c-status c-status--live">报名中</span>
+  {% else %}<span class="c-status">报名已截止</span>{% endif %}
+</li>

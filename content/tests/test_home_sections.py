@@ -406,14 +406,14 @@ def test_the_same_category_latest_leaves_out_this_article_and_others(client, sit
 
 
 @pytest.mark.django_db
-def test_an_article_shows_its_public_tournament_as_a_ticket(client, site):
+def test_an_article_shows_its_public_tournament_as_a_card(client, site):
     _, news, author, category = site
     public = _tournament("关联的赛事")
     article = _article(
         news, category, author, title="带赛事", slug="t", tournament=public
     )
     main = _main(client.get(article.url))
-    assert "c-ticket" in main and public.get_absolute_url() in main
+    assert "data-tournament-card" in main and public.get_absolute_url() in main
     public.status = TournamentStatus.DRAFT
     public.save()
     article.save_revision().publish()

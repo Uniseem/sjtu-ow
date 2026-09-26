@@ -1895,6 +1895,7 @@ DATABASES = {
 | 正文 | `c-prose` | 文章、协议、赛事说明的富文本：段间空一行；图片 8px 圆角；引用左侧 3px `line` 竖线、正文色 `fg-2` |
 | 评论 | `c-comments` | 首字头像；回复串缩进；置顶的一条带「置顶」标签 |
 | 首屏 | `c-hero` | 首页首屏（5.2） |
+| 横幅 | `c-stage` | 赛场详情的头：有封面时全宽图（高 360px）压 `scrim`，白字写面包屑、状态、标题、一行事实；没有封面时（内战、战队、没传封面的赛事）是 `surface` 底的一条，字用正文色。报名、申请加入这类操作不放在横幅里，放在下面的 `c-panel` |
 | 搜索栏 | `c-searchbar` | 搜索页：1px `control` 描边、8px 圆角，里面是放大镜、输入框和主要按钮 |
 | 文章头 | `c-article` | 刊物正文的栏：44rem 居中；标题一级标题；作者行是首字头像、作者、日期；头图 16:9、8px 圆角 |
 
@@ -2006,7 +2007,10 @@ templates/
 │   ├── rank_badge.html    段位 c-rank
 │   ├── role_icons.html    位置 c-roles
 │   ├── status_badge.html  状态 c-status
-│   ├── slots.html         名额格 c-slots
+│   ├── post_card.html     文章图片卡 c-media
+│   ├── tournament_card.html 赛事图片卡 c-media
+│   ├── scrim_row.html     内战列表行 c-row
+│   ├── team_tile.html     战队 c-teams
 │   ├── section_head.html  区块头 c-sectionhead
 │   ├── pagination.html    分页 c-pager
 │   └── empty_state.html   空状态 c-empty

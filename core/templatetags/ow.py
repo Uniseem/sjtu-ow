@@ -14,7 +14,6 @@ from django.utils import timezone
 register = template.Library()
 
 WEEKDAYS = "一二三四五六日"
-SLOT_CELL_LIMIT = 24
 
 
 def _local(value):
@@ -71,38 +70,6 @@ def initial(value) -> str:
     """The first character of a name, for square avatars."""
     text = str(value or "").strip()
     return text[:1].upper() if text else "?"
-
-
-@register.filter
-def slot_cells(taken, capacity) -> list[str]:
-    """Cells for the slot meter (13.2.6): ``on``, ``off``, then ``over``.
-
-    Returns an empty list past SLOT_CELL_LIMIT; templates then draw the bar.
-    """
-    try:
-        taken = max(int(taken), 0)
-        capacity = max(int(capacity), 0)
-    except (TypeError, ValueError):
-        return []
-    if max(taken, capacity) > SLOT_CELL_LIMIT:
-        return []
-    cells = ["on"] * min(taken, capacity)
-    cells += ["off"] * max(capacity - taken, 0)
-    cells += ["over"] * max(taken - capacity, 0)
-    return cells
-
-
-@register.filter
-def percent_of(taken, capacity) -> int:
-    """Whole percent for the slot bar, capped at 100."""
-    try:
-        taken = int(taken)
-        capacity = int(capacity)
-    except (TypeError, ValueError):
-        return 0
-    if capacity <= 0:
-        return 0
-    return max(0, min(100, round(taken * 100 / capacity)))
 
 
 @register.filter

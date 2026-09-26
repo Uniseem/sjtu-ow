@@ -67,16 +67,8 @@
           <span class="block h-20 rounded-md border border-rule c-hatch"></span>
         </div>
         <div>
-          <p class="mb-3 text-sm text-fg-2">名额格：8 / 10</p>
-          {% include "components/slots.html" with taken=8 capacity=10 unit="人" %}
-        </div>
-        <div>
-          <p class="mb-3 text-sm text-fg-2">名额格：超出上限（替补）</p>
-          {% include "components/slots.html" with taken=12 capacity=10 unit="人" %}
-        </div>
-        <div>
-          <p class="mb-3 text-sm text-fg-2">名额格：超过 24 格改成条</p>
-          {% include "components/slots.html" with taken=31 capacity=48 unit="人" %}
+          <p class="mb-3 text-sm text-fg-2">进度条：已报 8 / 10</p>
+          <progress class="c-meter" value="8" max="10" aria-label="已报 8 人，一场需要 10 人"></progress>
         </div>
       </div>
     </section>
@@ -165,9 +157,9 @@
 
     <section aria-labelledby="sg-people">
       {% include "components/section_head.html" with index="09" title="图块与名片" en="TEAMS · PEOPLE" heading_id="sg-people" %}
-      <ul class="c-tiles">
-        <li class="c-tile"><span class="c-tile__art"><span class="c-tile__initial">思</span></span><a href="#sg-people" class="c-tile__name c-stretch">思源</a><span class="c-tile__meta"><span class="font-numeric">6 人</span>{% include "components/status_badge.html" with kind="live" label="招募中" %}</span></li>
-        <li class="c-tile"><span class="c-tile__art c-hatch"><span class="c-tile__initial">C</span></span><a href="#sg-people" class="c-tile__name c-stretch">Cyan Tide</a><span class="c-tile__meta"><span class="font-numeric">5 人</span></span></li>
+      <ul class="c-teams">
+        <li class="c-teams__item"><span class="c-teams__logo">思</span><a href="#sg-people" class="c-stretch c-teams__name">思源</a><span class="c-teams__meta">6 / 10 人</span><span class="c-status c-status--live">招募中</span></li>
+        <li class="c-teams__item"><span class="c-teams__logo">C</span><a href="#sg-people" class="c-stretch c-teams__name">Cyan Tide</a><span class="c-teams__meta">5 / 10 人</span><span class="c-status">暂不招募</span></li>
       </ul>
       <ul class="c-people mt-10">
         {% for name, title, team in people %}
@@ -237,32 +229,33 @@
     </section>
   </div>
 
-  <section class="on-tonal l-section" aria-labelledby="sg-night">
-    <div class="l-container">
-      {% include "components/section_head.html" with index="13" title="赛场：色调区块" en="ARENA" heading_id="sg-night" %}
-      <div class="grid gap-4 lg:grid-cols-2">
-        <article class="c-ticket">
-          <div class="c-ticket__stub"><span class="c-ticket__label">截止</span><span class="c-ticket__md">{{ sample_close|ow_md }}</span><span class="c-ticket__when">{{ sample_close|ow_weekday }} {{ sample_close|ow_time }}</span></div>
-          <div class="c-ticket__body">
-            <p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="live" label="报名中" %}<span class="c-tag">赛事</span></p>
-            <h3 class="c-ticket__title"><a href="#sg-night" class="c-stretch">2026 秋季校内赛</a></h3>
-            <p class="c-ticket__meta"><span>5–7 人一队</span><span>仅限交大</span><span>支持个人报名</span></p>
-            <div class="c-ticket__foot"><span class="c-meter"><span class="c-meter__count">4</span><span class="text-sm text-fg-2">支队伍已报名</span></span></div>
-          </div>
-        </article>
-        <article class="c-ticket">
-          <div class="c-ticket__stub"><span class="c-ticket__label">开始</span><span class="c-ticket__md">{{ sample_day|ow_md }}</span><span class="c-ticket__when">{{ sample_day|ow_weekday }} {{ sample_day|ow_time }}</span></div>
-          <div class="c-ticket__body">
-            <p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="live" label="报名中" %}<span class="c-tag">角色限定 5v5</span></p>
-            <h3 class="c-ticket__title"><a href="#sg-night" class="c-stretch">周五夜间内战</a></h3>
-            <div class="c-ticket__foot">{% include "components/slots.html" with taken=8 capacity=10 unit="人" %}</div>
-          </div>
-        </article>
+  <section aria-labelledby="sg-night">
+    <header class="c-stage c-stage--plain">
+      <div class="l-container c-stage__body">
+        <p class="c-stage__tags"><span class="c-status c-status--live">报名中</span><span class="c-tag">仅限交大</span></p>
+        <h2 id="sg-night" class="c-stage__title">赛场横幅：没有封面时</h2>
+        <dl class="c-stage__facts"><div><dt>报名截止</dt><dd>{{ sample_close|ow_md }} {{ sample_close|ow_weekday }} {{ sample_close|ow_time }}</dd></div><div><dt>每队人数</dt><dd>5–7 人</dd></div><div><dt>已通过</dt><dd>4 队</dd></div></dl>
       </div>
-      <div class="mt-8 flex flex-wrap gap-4">
-        <a href="#sg-night" class="c-btn c-btn--primary">报名</a>
-        <a href="#sg-night" class="c-btn c-btn--secondary">查看名单</a>
-        <a href="#sg-night" class="c-btn c-btn--quiet">全部内战{% include "components/icon.html" with name="arrow-right" %}</a>
+    </header>
+    <div class="l-container l-section">
+      <div class="c-upcoming c-upcoming--two">
+        <article class="c-media">
+          <div class="c-media__pic"><span class="c-media__none">2026 秋季校内赛</span></div>
+          <p class="c-media__meta"><span class="c-status c-status--live">报名中</span><span>{{ sample_close|ow_md }} {{ sample_close|ow_time }} 截止</span></p>
+          <h3 class="c-media__title"><a href="#sg-night" class="c-stretch">2026 秋季校内赛</a></h3>
+          <p class="c-media__facts">5–7 人一队 · 已通过 4 队 · 仅限交大</p>
+        </article>
+        <ol class="c-rows">
+          <li class="c-row">
+            <span class="c-date"><small>{{ sample_day|date:"n" }}月</small><b>{{ sample_day|date:"d" }}</b></span>
+            <div class="c-row__main">
+              <h3 class="c-row__title"><a href="#sg-night" class="c-stretch">周五夜间内战</a></h3>
+              <p class="c-row__meta">{{ sample_day|ow_weekday }} {{ sample_day|ow_time }} · 角色限定 5v5 · 已报 8 / 10</p>
+              <progress class="c-meter" value="8" max="10" aria-label="已报 8 人，一场需要 10 人"></progress>
+            </div>
+            <span class="c-status c-status--live">报名中</span>
+          </li>
+        </ol>
       </div>
     </div>
   </section>
@@ -369,21 +362,4 @@
     </section>
   </div>
 
-  <div class="l-container l-section">
-    {% include "components/section_head.html" with index="14" title="浅色票根" en="TICKET" %}
-    <div class="grid gap-4 lg:grid-cols-3">
-      <article class="c-ticket c-ticket--compact">
-        <div class="c-ticket__stub"><span class="c-ticket__label">开始</span><span class="c-ticket__md">{{ sample_day|ow_md }}</span><span class="c-ticket__when">{{ sample_day|ow_time }}</span></div>
-        <div class="c-ticket__body"><p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="live" label="报名中" %}</p><h3 class="c-ticket__title"><a href="#" class="c-stretch">周五夜间内战</a></h3></div>
-      </article>
-      <article class="c-ticket c-ticket--compact">
-        <div class="c-ticket__stub"><span class="c-ticket__label">开放</span><span class="c-ticket__md">{{ sample_close|ow_md }}</span><span class="c-ticket__when">{{ sample_close|ow_time }}</span></div>
-        <div class="c-ticket__body"><p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="info" label="即将开始报名" %}</p><h3 class="c-ticket__title"><a href="#" class="c-stretch">新生杯</a></h3></div>
-      </article>
-      <article class="c-ticket c-ticket--compact">
-        <div class="c-ticket__stub"><span class="c-ticket__label">结束</span><span class="c-ticket__md">{{ sample_past|ow_md }}</span><span class="c-ticket__when">{{ sample_past|ow_time }}</span></div>
-        <div class="c-ticket__body"><p class="c-ticket__kicker">{% include "components/status_badge.html" with kind="done" label="已结束" %}</p><h3 class="c-ticket__title"><a href="#" class="c-stretch">暑期大内战</a></h3></div>
-      </article>
-    </div>
-  </div>
 {% endblock %}

@@ -1,15 +1,11 @@
 {% load ow wagtailimages_tags %}
 {% comment %}
-  A team in the tile wall (design 13.2.7 c-tiles). members: head count;
-  capacity: the site's team size limit, when the page shows 「人数 / 上限」.
+  A team in the grid (design 13.2.6 c-teams): logo or initial, name, head
+  count (against the site's limit when capacity is given), recruiting.
 {% endcomment %}
-<li class="c-tile">
-  <span class="c-tile__art{% if not team.logo %} c-hatch{% endif %}">
-    {% if team.logo %}{% image team.logo fill-320x320 alt="" %}{% else %}<span class="c-tile__initial">{{ team.name|initial }}</span>{% endif %}
-  </span>
-  <a href="{{ team.get_absolute_url }}" class="c-tile__name c-stretch">{{ team.name }}</a>
-  <span class="c-tile__meta">
-    {% if members %}<span class="font-numeric">{{ members }}{% if capacity %} / {{ capacity }}{% endif %} 人</span>{% endif %}
-    {% if team.is_recruiting %}{% include "components/status_badge.html" with kind="live" label="招募中" %}{% elif show_closed %}<span>暂不招募</span>{% endif %}
-  </span>
+<li class="c-teams__item">
+  <span class="c-teams__logo">{% if team.logo %}{% image team.logo fill-160x160 alt="" loading="lazy" %}{% else %}{{ team.name|initial }}{% endif %}</span>
+  <a href="{{ team.get_absolute_url }}" class="c-stretch c-teams__name">{{ team.name }}</a>
+  <span class="c-teams__meta">{% if members %}{{ members }}{% else %}{{ team.member_count }}{% endif %}{% if capacity %} / {{ capacity }}{% endif %} 人</span>
+  {% if team.is_recruiting %}<span class="c-status c-status--live">招募中</span>{% elif show_closed %}<span class="c-status">暂不招募</span>{% endif %}
 </li>

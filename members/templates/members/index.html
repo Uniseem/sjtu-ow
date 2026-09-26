@@ -4,11 +4,10 @@
 {% block title %}成员 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  {# 名册 (design 6.3, 13.2.8). #}
+  {# 名册 (design 6.3, 13.2.7). #}
   <header class="c-pagehead">
     <div class="l-container">
-      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>成员</span></nav>
-      <h1>成员展示</h1>
+            <h1>成员展示</h1>
       <p class="c-pagehead__meta"><span>共 <span class="font-numeric">{{ members|length }}</span> 位成员</span></p>
     </div>
   </header>
@@ -24,7 +23,7 @@
     <div class="mt-12 flex flex-col gap-16">
       {% for section in sections %}
         <section id="group-{{ section.group.pk }}" class="scroll-mt-6" data-member-group aria-labelledby="group-title-{{ section.group.pk }}">
-          {% include "components/section_head.html" with index=forloop.counter|ow_index title=section.group.name heading_id="group-title-"|add:section.group.pk|stringformat:"s" %}
+          {% include "components/section_head.html" with title=section.group.name heading_id="group-title-"|add:section.group.pk|stringformat:"s" %}
           {% if section.group.description %}
             <p class="-mt-2 mb-6 max-w-2xl text-fg-2">{{ section.group.description }}</p>
           {% endif %}
@@ -52,8 +51,6 @@
       <section id="all-members" class="scroll-mt-6" aria-labelledby="all-members-title">
         <div class="c-sectionhead">
           <h2 id="all-members-title">全部成员</h2>
-          <span class="c-count">{{ members|length }}</span>
-          <span class="text-sm text-fg-3">按加入先后</span>
         </div>
         {% if members %}
           <ol class="c-roster">

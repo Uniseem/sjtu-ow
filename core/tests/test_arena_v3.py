@@ -1,6 +1,7 @@
-"""The arena and roster pages on v3.0 (design 13.2.8, round 084): no Latin
-eyebrows, fact lists in cards, the scrim's role counts as cards, related
-articles as a card, and the member roster as numbered cards."""
+"""The arena and roster pages: v3.0 in round 084, v4.0 in round 088 (design
+13.2.7): no Latin eyebrows, the banner with the sign-up panel under it, fact
+lists in a panel, the scrim's role counts, related articles as rows, and the
+member roster as numbered cards."""
 
 from datetime import timedelta
 
@@ -60,33 +61,41 @@ def world(db):
 def test_lists_carry_no_latin_eyebrow(client, world, path, word):
     html = _main(client.get(path))
     assert word not in html
-    assert "c-comments__count" not in html  # section counts use c-count
+    assert "c-count" not in html  # v4.0: no count badges beside titles
 
 
-def test_detail_pages_set_their_facts_in_a_card(client, world):
+def test_detail_pages_open_with_a_banner_and_act_in_a_panel_below(client, world):
+    """13.2.6 c-stage: sign-up and join sit in a panel under the banner, never on
+    the picture, so their words stay readable in both modes."""
     tournament, scrim, team = world
-    for path in (
-        tournament.get_absolute_url(),
-        f"/scrims/{scrim.pk}/",
-        team.get_absolute_url(),
+    for path, slot in (
+        (tournament.get_absolute_url(), "slot-tournament-actions"),
+        (f"/scrims/{scrim.pk}/", "slot-scrim-actions"),
+        (team.get_absolute_url(), "slot-team-join"),
     ):
-        assert '<dl class="c-facts c-facts--card">' in _main(client.get(path)), path
+        html = _main(client.get(path))
+        banner = html[html.index('<header class="c-stage') : html.index("</header>")]
+        assert slot not in banner, path
+        panel = html[html.index('<section class="c-panel"') :]
+        assert f'id="{slot}"' in panel[: panel.index("</section>")], path
+        assert '<dl class="c-facts c-panel">' in html, path
 
 
 def test_a_tournaments_articles_sit_in_a_card(client, world):
     tournament, _scrim, _team = world
     html = _main(client.get(tournament.get_absolute_url()))
-    related = html[html.index('class="c-related"') :]
-    assert "秋季杯战报" in related[: related.index("</section>")]
+    related = html[html.index('aria-labelledby="t-articles"') :]
+    related = related[: related.index("</section>")]
+    assert "秋季杯战报" in related and 'class="c-row c-row--plain"' in related
     assert "border-fg" not in html
 
 
 def test_a_scrims_role_counts_are_three_cards(client, world):
     _tournament, scrim, _team = world
     html = _main(client.get(f"/scrims/{scrim.pk}/"))
-    counts = html[html.index('<div class="c-rolestats">') :]
-    counts = counts[: counts.index("</div>\n          <p")]
-    assert counts.count('<div class="c-stat">') == 3
+    counts = html[html.index('<dl class="c-rolestats">') :]
+    counts = counts[: counts.index("</dl>")]
+    assert counts.count("<div><dt>") == 3
     assert "border-y" not in html
 
 

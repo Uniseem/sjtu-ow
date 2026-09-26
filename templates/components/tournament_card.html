@@ -1,0 +1,20 @@
+{% load ow wagtailimages_tags %}
+{% comment %}
+  A tournament as a picture card (design 13.2.6 c-media): cover, or its title
+  on the second surface; the phase and the date that matters in it; title;
+  team size and approved teams. approved: the public count of approved teams.
+{% endcomment %}
+{% with phase=tournament.phase %}
+<article class="c-media" data-tournament-card>
+  <div class="c-media__pic">{% if tournament.cover %}{% image tournament.cover fill-640x360-c50 alt="" loading="lazy" %}{% else %}<span class="c-media__none">{{ tournament.title }}</span>{% endif %}</div>
+  <p class="c-media__meta">
+    {% if phase == "open" %}<span class="c-status c-status--live">报名中</span><span>{{ tournament.registration_closes_at|ow_md }} {{ tournament.registration_closes_at|ow_time }} 截止</span>
+    {% elif phase == "upcoming" %}<span class="c-status c-status--info">即将开始报名</span><span>{{ tournament.registration_opens_at|ow_md }} {{ tournament.registration_opens_at|ow_time }} 开放</span>
+    {% elif phase == "cancelled" %}<span class="c-status">已取消</span>
+    {% elif phase == "finished" %}<span class="c-status">已结束</span>{% if tournament.starts_at %}<span>{{ tournament.starts_at|ow_date }}</span>{% endif %}
+    {% else %}<span class="c-status">报名已截止</span>{% if tournament.starts_at %}<span>{{ tournament.starts_at|ow_md }} 比赛</span>{% endif %}{% endif %}
+  </p>
+  <h3 class="c-media__title"><a href="{{ tournament.get_absolute_url }}" class="c-stretch">{{ tournament.title }}</a></h3>
+  <p class="c-media__facts">{{ tournament.roster_min }}–{{ tournament.roster_max }} 人一队{% if approved is not None %} · 已通过 {{ approved|default:0 }} 队{% endif %}{% if tournament.sjtu_only %} · 仅限交大{% endif %}</p>
+</article>
+{% endwith %}

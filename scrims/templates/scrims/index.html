@@ -4,51 +4,49 @@
 {% block title %}内战 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <header class="c-pagehead c-pagehead--tonal on-tonal">
+  {# 赛场列表 (design 13.2.7): scrims have no pictures, so upcoming ones are rows. #}
+  <header class="c-pagehead">
     <div class="l-container">
-      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>内战</span></nav>
       <h1>内战</h1>
       <p class="c-pagehead__lede">社团成员之间的对局。报名后管理员会统一分队，分队结果发到群里。</p>
-      <div class="c-factbar">
-        <div class="c-stat"><span class="c-stat__label">即将开始</span><span class="c-stat__value">{{ upcoming|length }}</span></div>
-        <div class="c-stat"><span class="c-stat__label">最近结束</span><span class="c-stat__value">{{ finished|length }}</span></div>
-      </div>
     </div>
   </header>
 
-  <div class="l-container l-section flex flex-col gap-14">
-    {% if upcoming %}
-      <section aria-labelledby="scrims-upcoming">
-        <div class="c-sectionhead"><h2 id="scrims-upcoming">即将开始</h2><span class="c-count">{{ upcoming|length }}</span></div>
-        <ol class="grid gap-4 lg:grid-cols-2">
-          {% for scrim in upcoming %}
-            <li>{% include "components/scrim_ticket.html" with show_slots=True signups=signup_totals|lookup:scrim.pk %}</li>
-          {% endfor %}
-        </ol>
-      </section>
-    {% endif %}
-
-    {% if finished %}
-      <section aria-labelledby="scrims-finished">
-        <div class="c-sectionhead"><h2 id="scrims-finished">最近结束</h2><span class="c-count">{{ finished|length }}</span></div>
-        <table class="c-table c-table--stack">
-          <thead><tr><th scope="col">内战</th><th scope="col">时间</th><th scope="col">规格</th><th scope="col" class="is-num">报名</th></tr></thead>
-          <tbody>
-            {% for scrim in finished %}
-              <tr>
-                <td data-label="内战"><a href="{% url 'scrim_detail' scrim.pk %}" class="font-semibold hover:text-fg-red">{{ scrim.title }}</a></td>
-                <td data-label="时间" class="font-numeric">{{ scrim.starts_at|ow_date }} {{ scrim.starts_at|ow_time }}</td>
-                <td data-label="规格">{{ scrim.get_format_display }}</td>
-                <td data-label="报名" class="is-num font-numeric">{{ signup_totals|lookup:scrim.pk|default:0 }} 人</td>
-              </tr>
+  <div class="l-container pb-16 lg:pb-24">
+    <div class="grid gap-14">
+      {% if upcoming %}
+        <section aria-labelledby="scrims-upcoming">
+          <div class="c-sectionhead"><h2 id="scrims-upcoming">即将开始</h2></div>
+          <ol class="c-rows">
+            {% for scrim in upcoming %}
+              {% include "components/scrim_row.html" with signups=signup_totals|lookup:scrim.pk %}
             {% endfor %}
-          </tbody>
-        </table>
-      </section>
-    {% endif %}
+          </ol>
+        </section>
+      {% endif %}
 
-    {% if not scrims %}
-      {% include "components/empty_state.html" with title="暂无内战" message="内战发布后会出现在这里。" %}
-    {% endif %}
+      {% if finished %}
+        <section aria-labelledby="scrims-finished">
+          <div class="c-sectionhead"><h2 id="scrims-finished">最近结束</h2></div>
+          <table class="c-table c-table--stack">
+            <thead><tr><th scope="col">内战</th><th scope="col">时间</th><th scope="col">规格</th><th scope="col" class="is-num">报名</th></tr></thead>
+            <tbody>
+              {% for scrim in finished %}
+                <tr>
+                  <td data-label="内战"><a href="{% url 'scrim_detail' scrim.pk %}" class="font-semibold hover:text-fg-red">{{ scrim.title }}</a></td>
+                  <td data-label="时间" class="font-numeric">{{ scrim.starts_at|ow_date }} {{ scrim.starts_at|ow_time }}</td>
+                  <td data-label="规格">{{ scrim.get_format_display }}</td>
+                  <td data-label="报名" class="is-num font-numeric">{{ signup_totals|lookup:scrim.pk|default:0 }} 人</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      {% endif %}
+
+      {% if not scrims %}
+        {% include "components/empty_state.html" with title="暂无内战" message="内战发布后会出现在这里。" %}
+      {% endif %}
+    </div>
   </div>
 {% endblock %}

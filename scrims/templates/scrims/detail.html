@@ -4,28 +4,25 @@
 {% block title %}{{ scrim.title }} · 内战 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <header class="c-pagehead c-pagehead--tonal on-tonal">
-    <div class="l-container">
+  {# 赛场详情 (design 13.2.7): a scrim has no picture, so the banner is plain. #}
+  <header class="c-stage c-stage--plain">
+    <div class="l-container c-stage__body">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/scrims/">内战</a><span class="c-crumbs__sep">/</span><span>{{ scrim.title }}</span></nav>
-      <p class="flex flex-wrap items-center gap-3">
-        {% if cancelled %}{% include "components/status_badge.html" with kind="off" label="已取消" %}
-        {% elif scrim.status == "finished" %}{% include "components/status_badge.html" with kind="done" label="已结束" %}
-        {% elif signup_open %}{% include "components/status_badge.html" with kind="live" label="报名中" %}
-        {% else %}{% include "components/status_badge.html" with kind="done" label="报名已截止" %}{% endif %}
+      <p class="c-stage__tags">
+        {% if cancelled %}<span class="c-status">已取消</span>
+        {% elif scrim.status == "finished" %}<span class="c-status">已结束</span>
+        {% elif signup_open %}<span class="c-status c-status--live">报名中</span>
+        {% else %}<span class="c-status">报名已截止</span>{% endif %}
         <span class="c-tag">{{ scrim.get_format_display }}</span>
         {% if scrim.sjtu_only %}<span class="c-tag">仅限交大</span>{% endif %}
       </p>
-      <h1>{{ scrim.title }}</h1>
-      <p class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <time class="c-figure text-[2.5rem] lg:text-[3.5rem]" datetime="{{ scrim.starts_at|date:'c' }}">{{ scrim.starts_at|ow_md }}</time>
-        <span class="c-figure text-xl text-fg-2 lg:text-2xl">{{ scrim.starts_at|ow_weekday }} {{ scrim.starts_at|ow_time }}</span>
-      </p>
-      <div class="c-factbar">
-        <div class="c-stat"><span class="c-stat__label">报名截止</span><span class="c-stat__value">{{ scrim.signup_deadline|ow_md }}<small>{{ scrim.signup_deadline|ow_time }}</small></span></div>
-        <div class="c-stat"><span class="c-stat__label">一场需要</span><span class="c-stat__value">{{ scrim.players_needed }}<small>人</small></span></div>
-        <div class="c-stat"><span class="c-stat__label">已报名</span><span class="c-stat__value">{{ counts.total }}<small>人</small></span>{% include "components/slots.html" with taken=counts.total capacity=scrim.players_needed hide_count=True %}</div>
-      </div>
-      {% include "scrims/slots/actions.html" %}
+      <h1 class="c-stage__title">{{ scrim.title }}</h1>
+      <dl class="c-stage__facts">
+        <div><dt>开始</dt><dd><time datetime="{{ scrim.starts_at|date:'c' }}">{{ scrim.starts_at|ow_md }} {{ scrim.starts_at|ow_weekday }} {{ scrim.starts_at|ow_time }}</time></dd></div>
+        <div><dt>报名截止</dt><dd>{{ scrim.signup_deadline|ow_md }} {{ scrim.signup_deadline|ow_time }}</dd></div>
+        <div><dt>已报名</dt><dd>{{ counts.total }} / {{ scrim.players_needed }} 人</dd></div>
+      </dl>
+      <progress class="c-meter c-stage__meter" value="{% if counts.total > scrim.players_needed %}{{ scrim.players_needed }}{% else %}{{ counts.total }}{% endif %}" max="{{ scrim.players_needed }}" aria-label="已报 {{ counts.total }} 人，一场需要 {{ scrim.players_needed }} 人"></progress>
     </div>
   </header>
 
@@ -34,22 +31,26 @@
       <div class="c-notice c-notice--warn mb-10" role="status">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">这场内战已取消。</div></div>
     {% endif %}
     <div class="l-split">
-      <div class="flex min-w-0 flex-col gap-14">
+      <div class="flex min-w-0 flex-col gap-12">
+        <section class="c-panel" aria-label="报名">
+          {% include "scrims/slots/actions.html" %}
+        </section>
+
         {% if scrim.description %}
           <section aria-labelledby="s-about">
-            {% include "components/section_head.html" with title="说明" en="BRIEFING" heading_id="s-about" %}
+            {% include "components/section_head.html" with title="说明" heading_id="s-about" %}
             <div class="l-prose whitespace-pre-line leading-8">{{ scrim.description }}</div>
           </section>
         {% endif %}
 
         <section aria-labelledby="s-signups">
-          {% include "components/section_head.html" with title="报名情况" en="ROSTER" heading_id="s-signups" %}
-          <div class="c-rolestats">
-            <div class="c-stat"><span class="c-stat__label inline-flex items-center gap-1.5">{% include "components/icon.html" with name="role-tank" class="size-4" %}坦克</span><span class="c-stat__value">{{ counts.tank }}</span></div>
-            <div class="c-stat"><span class="c-stat__label inline-flex items-center gap-1.5">{% include "components/icon.html" with name="role-damage" class="size-4" %}输出</span><span class="c-stat__value">{{ counts.damage }}</span></div>
-            <div class="c-stat"><span class="c-stat__label inline-flex items-center gap-1.5">{% include "components/icon.html" with name="role-support" class="size-4" %}支援</span><span class="c-stat__value">{{ counts.support }}</span></div>
-          </div>
-          <p class="mt-3 text-sm text-fg-2">共 <span class="font-numeric">{{ counts.total }}</span> 人 · 坦克 <span class="font-numeric">{{ counts.tank }}</span> · 输出 <span class="font-numeric">{{ counts.damage }}</span> · 支援 <span class="font-numeric">{{ counts.support }}</span>（一个人可以报多个位置）</p>
+          {% include "components/section_head.html" with title="报名情况" heading_id="s-signups" %}
+          <dl class="c-rolestats">
+            <div><dt>{% include "components/icon.html" with name="role-tank" class="size-5" %}坦克</dt><dd>{{ counts.tank }}</dd></div>
+            <div><dt>{% include "components/icon.html" with name="role-damage" class="size-5" %}输出</dt><dd>{{ counts.damage }}</dd></div>
+            <div><dt>{% include "components/icon.html" with name="role-support" class="size-5" %}支援</dt><dd>{{ counts.support }}</dd></div>
+          </dl>
+          <p class="mt-3 text-fg-2">共 {{ counts.total }} 人，一个人可以报多个位置。</p>
           {% if signups %}
             <table class="c-table mt-6">
               <thead><tr><th scope="col" class="w-12">序号</th><th scope="col">昵称</th><th scope="col">能打的位置</th></tr></thead>
@@ -63,14 +64,13 @@
                 {% endfor %}
               </tbody>
             </table>
-            <p class="mt-3 text-xs text-fg-3">名单只显示昵称和能打的位置。</p>
           {% else %}
-            <p class="mt-6 text-sm text-fg-2">还没有人报名。</p>
+            <p class="mt-6 text-fg-2">还没有人报名。</p>
           {% endif %}
         </section>
       </div>
       <aside>
-        <dl class="c-facts c-facts--card">
+        <dl class="c-facts c-panel">
           <dt>开始</dt><dd class="font-numeric">{{ scrim.starts_at|ow_date }} {{ scrim.starts_at|ow_weekday }} {{ scrim.starts_at|ow_time }}</dd>
           <dt>报名截止</dt><dd class="font-numeric">{{ scrim.signup_deadline|ow_date }} {{ scrim.signup_deadline|ow_time }}</dd>
           <dt>规格</dt><dd>{{ scrim.get_format_display }}</dd>
