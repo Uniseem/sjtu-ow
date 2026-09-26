@@ -1,0 +1,17 @@
+{% load ow wagtailimages_tags %}
+{% comment %}
+  An article as a card (design 13.2.7 c-post): cover or a colour wash,
+  category and date, title, summary, author.
+{% endcomment %}
+<li class="c-post">
+  <div class="c-post__cover">{% if article.cover %}{% image article.cover fill-640x400 alt="" %}{% else %}{% include "components/category_wash.html" with category=article.category %}{% endif %}</div>
+  <div class="c-post__body">
+    <p class="c-post__meta">
+      {% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}
+      <time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_date }}</time>
+    </p>
+    <h3 class="c-post__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+    {% if article.summary %}<p class="c-post__summary">{{ article.summary }}</p>{% endif %}
+    {% if article.author %}<p class="c-post__author"><span class="c-avatar c-avatar--sm" aria-hidden="true">{{ article.author.nickname|initial }}</span>{{ article.author.nickname }}</p>{% endif %}
+  </div>
+</li>

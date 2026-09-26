@@ -14,11 +14,13 @@
           <a href="{{ page.get_parent.url }}?category={{ page.category.slug }}">{{ page.category.name }}</a>
         </nav>
         <div class="max-w-[52rem]">
-          <p class="flex flex-wrap items-center gap-3"><span class="c-tag c-tag--strong">{{ page.category.name }}</span></p>
-          <h1 class="leading-snug">{{ page.title }}</h1>
-          <p class="c-pagehead__meta">
+          <p><a href="{{ page.get_parent.url }}?category={{ page.category.slug }}" class="c-tag c-tag--accent">{{ page.category.name }}</a></p>
+          <h1 class="c-article__title">{{ page.title }}</h1>
+          <p class="c-article__meta">
+            <span class="c-avatar c-avatar--sm" aria-hidden="true">{{ page.author.nickname|initial }}</span>
+            <span class="font-semibold text-fg">{{ page.author.nickname }}</span>
+            <span aria-hidden="true">·</span>
             <time class="font-numeric" datetime="{{ page.first_published_at|date:'c' }}">{{ page.first_published_at|ow_date }}</time>
-            <span>{{ page.author.nickname }}</span>
           </p>
         </div>
       </div>
@@ -28,16 +30,19 @@
       <div class="grid gap-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-16">
         <div class="min-w-0 max-w-[44rem]">
           {% if page.cover %}
-            <figure class="mb-8">{% image page.cover fill-1200x675 class="w-full rounded-lg bg-surface-high" alt="" %}</figure>
+            <figure class="c-article__cover">{% image page.cover fill-1200x675 alt="" %}</figure>
           {% endif %}
           <div class="c-prose">
             {% include_block page.body %}
           </div>
-          <dl class="c-facts mt-12">
-            <dt>作者</dt><dd>{{ page.author.nickname }}</dd>
-            <dt>栏目</dt><dd><a href="{{ page.get_parent.url }}?category={{ page.category.slug }}" class="hover:text-fg-red">{{ page.category.name }}</a></dd>
-            <dt>发布</dt><dd class="font-numeric">{{ page.first_published_at|ow_date }}</dd>
-          </dl>
+          <aside class="c-byline" aria-label="文章信息">
+            <span class="c-avatar c-avatar--lg" aria-hidden="true">{{ page.author.nickname|initial }}</span>
+            <dl class="c-byline__facts">
+              <div><dt>作者</dt><dd>{{ page.author.nickname }}</dd></div>
+              <div><dt>栏目</dt><dd><a href="{{ page.get_parent.url }}?category={{ page.category.slug }}" class="c-link">{{ page.category.name }}</a></dd></div>
+              <div><dt>发布</dt><dd class="font-numeric">{{ page.first_published_at|ow_date }}</dd></div>
+            </dl>
+          </aside>
           {% if page.tournament and page.tournament.is_public %}
             <section class="mt-10" aria-labelledby="article-tournament">
               <h2 id="article-tournament" class="mb-4 text-lg">关联赛事</h2>
@@ -47,13 +52,13 @@
           {% include "comments/section.html" %}
         </div>
         {% if related %}
-          <aside aria-labelledby="article-related" class="lg:border-t-0">
-            <h2 id="article-related" class="border-b-2 border-fg pb-3 text-base">{{ page.category.name }} · 最新</h2>
+          <aside aria-labelledby="article-related" class="c-related">
+            <h2 id="article-related">{{ page.category.name }} · 最新</h2>
             <ol>
               {% for item in related %}
-                <li class="relative border-b border-rule py-4">
-                  <time class="font-numeric text-xs text-fg-3" datetime="{{ item.first_published_at|date:'c' }}">{{ item.first_published_at|ow_date }}</time>
-                  <a href="{{ item.url }}" class="c-stretch mt-1 block font-semibold leading-6 hover:text-fg-red">{{ item.title }}</a>
+                <li>
+                  <time class="font-numeric" datetime="{{ item.first_published_at|date:'c' }}">{{ item.first_published_at|ow_date }}</time>
+                  <a href="{{ item.url }}" class="c-stretch">{{ item.title }}</a>
                 </li>
               {% endfor %}
             </ol>

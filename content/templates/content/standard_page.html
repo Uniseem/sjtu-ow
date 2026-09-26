@@ -8,7 +8,7 @@
     <div class="l-container">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>{{ page.title }}</span></nav>
       <h1>{{ page.title }}</h1>
-      {% if page.last_published_at %}<p class="c-pagehead__meta">最后更新 <time class="font-numeric" datetime="{{ page.last_published_at|date:'c' }}">{{ page.last_published_at|date:"Y.m.d" }}</time></p>{% endif %}
+      {% if page.last_published_at %}<p class="c-pagehead__meta"><span>最后更新 <time class="font-numeric" datetime="{{ page.last_published_at|date:'c' }}">{{ page.last_published_at|date:"Y.m.d" }}</time></span></p>{% endif %}
     </div>
   </header>
   <div class="l-container pt-8 pb-16 lg:pt-12 lg:pb-24">

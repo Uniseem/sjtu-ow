@@ -100,7 +100,7 @@
       </nav>
       {% if news_lead %}
         <article class="c-news__lead">
-          <div class="c-news__cover">{% if news_lead.cover %}{% image news_lead.cover fill-640x400 alt="" %}{% else %}<span class="c-hatch" aria-hidden="true"></span>{% endif %}</div>
+          <div class="c-news__cover">{% if news_lead.cover %}{% image news_lead.cover fill-640x400 alt="" %}{% else %}{% include "components/category_wash.html" with category=news_lead.category %}{% endif %}</div>
           <div class="min-w-0">
             <p class="c-news__meta">{% if news_lead.category %}<span class="c-tag">{{ news_lead.category.name }}</span>{% endif %}{% if news_lead.pk in pinned_ids %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}<time datetime="{{ news_lead.first_published_at|date:'c' }}">{{ news_lead.first_published_at|ow_md }}</time></p>
             <h3 class="c-news__title"><a href="{{ news_lead.url }}" class="c-stretch">{{ news_lead.title }}</a></h3>

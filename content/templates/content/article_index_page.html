@@ -9,12 +9,11 @@
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>{{ page.title }}</span></nav>
       <div class="c-pagehead__row">
         <div>
-          <p class="c-eyebrow">NEWS</p>
           <h1>{{ page.title }}</h1>
           {% if page.intro %}<div class="c-pagehead__lede">{{ page.intro|richtext }}</div>{% endif %}
         </div>
         <div class="c-pagehead__actions">
-          <a href="{% url 'submit' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="pen" %}我要投稿</a>
+          <a href="{% url 'submit' %}" class="c-btn c-btn--tonal">{% include "components/icon.html" with name="pen" %}我要投稿</a>
         </div>
       </div>
     </div>
@@ -31,9 +30,9 @@
 
     <div class="mt-8">
       {% if articles %}
-        <ol class="c-rowlist">
+        <ol class="c-posts" data-reveal>
           {% for article in articles %}
-            {% include "components/article_row.html" with show_author=True %}
+            {% include "components/post_card.html" %}
           {% endfor %}
         </ol>
         {% include "components/pagination.html" %}
