@@ -1,11 +1,8 @@
 {% comment %}
-  Site mark (design 13.2.9): a red square with the system's cut corner, the
-  name, and one line of Latin. Not the university emblem or wordmark.
+  Site mark (design 13.2.9): a 交大红 rounded square with a white chevron and a
+  gold dot, then the name. The university emblem is only a homepage watermark.
 {% endcomment %}
 <a href="{% url 'home' %}" class="c-brand" aria-label="交大守望先锋 首页">
-  <span class="c-brand__mark" aria-hidden="true"></span>
-  <span class="c-brand__text">
-    <span class="c-brand__name">交大守望先锋</span>
-    <span class="c-brand__sub{% if compact %} hidden sm:block{% endif %}">SJTU OVERWATCH COMMUNITY</span>
-  </span>
+  <svg class="c-brand__mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="9" class="fill-primary"/><path d="M8 21.5l8-8 8 8" fill="none" class="stroke-white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.4" class="fill-tertiary-container"/></svg>
+  <span class="c-brand__name">交大守望先锋</span>
 </a>

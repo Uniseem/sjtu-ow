@@ -28,7 +28,7 @@
       <div class="grid gap-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-16">
         <div class="min-w-0 max-w-[44rem]">
           {% if page.cover %}
-            <figure class="mb-8">{% image page.cover fill-1200x675 class="w-full bg-sunken" alt="" %}</figure>
+            <figure class="mb-8">{% image page.cover fill-1200x675 class="w-full rounded-lg bg-surface-high" alt="" %}</figure>
           {% endif %}
           <div class="c-prose">
             {% include_block page.body %}

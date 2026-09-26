@@ -1,9 +1,9 @@
 {% comment %}
-  Icons drawn for this site (design 13.2.9): 24×24, 1.75 stroke, square caps
-  and mitred joins to match the square-cornered system. No icon library.
+  Icons drawn for this site (design 13.2.9): 24×24, 1.75 stroke, round caps
+  and joins to match the Material 3 system. No icon library.
   Usage: {% include "components/icon.html" with name="users" class="size-5" %}
 {% endcomment %}
-<svg class="{{ class|default:'size-5' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{ stroke|default:'1.75' }}" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" focusable="false">
+<svg class="{{ class|default:'size-5' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{ stroke|default:'1.75' }}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
   {% if name == "search" %}<path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5L20 20"/>
   {% elif name == "menu" %}<path d="M4 7h16M4 12h16M4 17h16"/>
   {% elif name == "close" %}<path d="M6 6l12 12M18 6L6 18"/>

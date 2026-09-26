@@ -231,7 +231,7 @@ def test_the_homepage_shows_next_up_and_the_arena(client, site):
     html = client.get("/").content.decode("utf-8")
     assert html.count('data-next-up="tournament"') == 1
     assert html.count('data-next-up="scrim"') == 1
-    arena = html[html.index('class="on-night l-section"') :]
+    arena = html[html.index('class="on-tonal l-section"') :]
     assert "正在报名的赛事" in arena and "三天后的内战" in arena
     assert "支队伍已通过" in arena
     assert 'class="c-daystrip"' in arena
@@ -365,12 +365,13 @@ def test_body_text_rules_match_what_wagtail_renders(settings):
     """Wagtail does not wrap rich text in .rich-text, so rules keyed on it never
     applied: paragraphs, lists and links in articles had no styling (round 065).
     Round 074 moved body text to the design system's c-prose (design 13.2.7):
-    paragraphs spaced, not indented; quotes between two rules."""
+    paragraphs spaced, not indented. v3.0 (round 081) sets quotes on a tonal
+    block instead of between two rules."""
     css = (settings.BASE_DIR / "static" / "css" / "app.css").read_text()
     assert ".rich-text" not in css
     assert re.search(r"\.c-prose p\{[^}]*margin", css)
     assert not re.search(r"\.c-prose p\{[^}]*text-indent", css)
-    assert re.search(r"\.c-prose blockquote\{[^}]*border-top", css)
+    assert re.search(r"\.c-prose blockquote\{[^}]*background-color", css)
 
 
 @pytest.mark.django_db

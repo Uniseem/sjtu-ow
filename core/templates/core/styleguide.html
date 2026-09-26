@@ -55,16 +55,16 @@
       {% include "components/section_head.html" with index="03" title="标志性元素" en="SIGNATURES" heading_id="sg-sign" %}
       <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <p class="mb-3 text-sm text-fg-2">红线：当前位置</p>
+          <p class="mb-3 text-sm text-fg-2">筛选标签：当前一项是主色容器底</p>
           <nav class="c-tabs" aria-label="示例"><a href="#sg-sign" aria-current="page">全部</a><a href="#sg-sign">公告</a><a href="#sg-sign">战报</a></nav>
         </div>
         <div>
-          <p class="mb-3 text-sm text-fg-2">切角：主要操作、票根、大图</p>
-          <span class="block h-20 bg-ink c-cut"></span>
+          <p class="mb-3 text-sm text-fg-2">圆角：大图和容器（16px）</p>
+          <span class="block h-20 bg-primary-container c-cut"></span>
         </div>
         <div>
-          <p class="mb-3 text-sm text-fg-2">斜纹：「没有」</p>
-          <span class="block h-20 border border-line c-hatch"></span>
+          <p class="mb-3 text-sm text-fg-2">色彩渐变：没有图片时的占位</p>
+          <span class="block h-20 rounded-md border border-rule c-hatch"></span>
         </div>
         <div>
           <p class="mb-3 text-sm text-fg-2">名额格：8 / 10</p>
@@ -85,6 +85,7 @@
       {% include "components/section_head.html" with index="04" title="按钮" en="ACTIONS" heading_id="sg-actions" %}
       <div class="flex flex-wrap items-center gap-4">
         <a href="#sg-actions" class="c-btn c-btn--primary">为战队报名</a>
+        <a href="#sg-actions" class="c-btn c-btn--tonal">加入战队</a>
         <a href="#sg-actions" class="c-btn c-btn--secondary">个人报名</a>
         <a href="#sg-actions" class="c-btn c-btn--quiet">查看全部{% include "components/icon.html" with name="arrow-right" %}</a>
         <button type="button" class="c-btn c-btn--danger">取消报名</button>
@@ -238,9 +239,9 @@
     </section>
   </div>
 
-  <section class="on-night l-section" aria-labelledby="sg-night">
+  <section class="on-tonal l-section" aria-labelledby="sg-night">
     <div class="l-container">
-      {% include "components/section_head.html" with index="13" title="赛场：深色区块" en="ARENA" heading_id="sg-night" %}
+      {% include "components/section_head.html" with index="13" title="赛场：色调区块" en="ARENA" heading_id="sg-night" %}
       <ol class="c-daystrip" aria-label="未来 14 天">
         {% for day in days %}
           <li class="c-day{% if day.count %} has-event{% endif %}{% if day.today %} is-today{% endif %}">

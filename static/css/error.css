@@ -4,17 +4,17 @@
  * (design 13.2.3) and a test checks they still match.
  */
 :root {
-  --color-red: #b2141a;
-  --color-red-deep: #861116;
-  --color-canvas: #f6f5f4;
-  --color-line: #ddd9d7;
-  --color-ink: #1d1716;
-  --color-ink-2: #5c5452;
-  --color-ink-3: #726a68;
-  --color-night: #141010;
-  --color-night-line: #3a3231;
-  --color-night-ink: #f5f2f1;
-  --color-night-ink-2: #ada5a3;
+  --color-primary: #b2141a;
+  --color-primary-deep: #861116;
+  --color-primary-container: #ffdad5;
+  --color-tertiary-container: #fbdfa6;
+  --color-surface: #fff8f7;
+  --color-surface-lowest: #ffffff;
+  --color-outline: #857371;
+  --color-outline-variant: #d8c2bf;
+  --color-on-surface: #231918;
+  --color-on-surface-2: #534341;
+  --color-on-surface-3: #6b5a58;
   --font-fallback:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC",
     "MiSans", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC",
@@ -25,9 +25,8 @@
   --font-h1-size: 2rem;
   --font-nav: var(--font-body);
   --font-button: var(--font-body);
-  --font-figure: "DIN Condensed", "Bahnschrift", "DIN Alternate", var(--font-body);
+  --font-figure: var(--font-body);
   --font-code: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-  --cut: 8px;
 }
 
 * {
@@ -41,8 +40,11 @@ body {
   min-height: 100vh;
   font-family: var(--font-body);
   line-height: 1.7;
-  color: var(--color-ink);
-  background: var(--color-canvas);
+  color: var(--color-on-surface);
+  background:
+    radial-gradient(50% 45% at 8% 10%, color-mix(in oklab, var(--color-primary-container) 80%, transparent), transparent 70%),
+    radial-gradient(45% 40% at 95% 90%, color-mix(in oklab, var(--color-tertiary-container) 60%, transparent), transparent 70%),
+    var(--color-surface);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -51,27 +53,25 @@ header {
   align-items: center;
   height: 4rem;
   padding: 0 1rem;
-  background: var(--color-night);
-  border-bottom: 1px solid var(--color-night-line);
+  background: color-mix(in oklab, var(--color-surface-lowest) 80%, transparent);
+  border-bottom: 1px solid var(--color-outline-variant);
 }
 
 header .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
   font-family: var(--font-nav);
   font-size: 1.0625rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--color-night-ink);
+  letter-spacing: 0.04em;
+  color: var(--color-on-surface);
   text-decoration: none;
 }
 
 header .mark {
-  width: 1.75rem;
-  height: 1.75rem;
-  background: var(--color-red);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%);
+  width: 2rem;
+  height: 2rem;
 }
 
 main {
@@ -85,36 +85,32 @@ main {
 .code {
   margin: 0;
   font-family: var(--font-figure);
-  font-stretch: 85%;
+  font-variant-numeric: tabular-nums;
   font-size: 6rem;
-  font-weight: 600;
-  line-height: 0.9;
-  color: var(--color-ink);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-primary);
 }
 
 .eyebrow {
-  margin: 1.25rem 0 0;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid var(--color-ink);
-  font-family: var(--font-figure);
-  font-stretch: 85%;
-  font-size: 0.8125rem;
+  margin: 1rem 0 0;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  color: var(--color-red-deep);
+  letter-spacing: 0.08em;
+  color: var(--color-primary-deep);
 }
 
 h1 {
-  margin: 1.5rem 0 0.75rem;
+  margin: 1rem 0 0.75rem;
   font-family: var(--font-h1);
   font-weight: var(--font-h1-weight);
   font-size: var(--font-h1-size);
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 p {
   margin: 0 0 0.5rem;
-  color: var(--color-ink-2);
+  color: var(--color-on-surface-2);
 }
 
 .actions {
@@ -129,44 +125,42 @@ p {
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: 0.5rem 1.5rem 0.5rem 1.25rem;
+  padding: 0.5rem 1.5rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
   font-family: var(--font-button);
   font-size: 0.9375rem;
   font-weight: 600;
   text-decoration: none;
-  color: #fff;
-  background: var(--color-red);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%);
+  color: var(--color-surface-lowest);
+  background: var(--color-primary);
 }
 
 .actions a:hover {
-  background: var(--color-red-deep);
+  background: var(--color-primary-deep);
 }
 
 .actions a.secondary {
-  padding-right: 1.25rem;
-  color: var(--color-ink);
+  color: var(--color-primary-deep);
   background: transparent;
-  border: 1px solid var(--color-ink);
-  clip-path: none;
+  border-color: var(--color-outline);
 }
 
 .actions a.secondary:hover {
-  color: var(--color-canvas);
-  background: var(--color-ink);
+  background: color-mix(in oklab, var(--color-primary) 6%, transparent);
 }
 
 .request-id {
   font-family: var(--font-code);
   font-size: 0.875rem;
-  color: var(--color-ink);
+  color: var(--color-on-surface);
 }
 
 footer {
   padding: 1.25rem 1rem;
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--color-outline-variant);
   font-size: 0.8125rem;
-  color: var(--color-ink-3);
+  color: var(--color-on-surface-3);
 }
 
 @media (min-width: 640px) {
