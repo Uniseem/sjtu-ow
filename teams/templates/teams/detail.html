@@ -87,7 +87,7 @@
         </section>
       </div>
       <aside>
-        <dl class="c-facts">
+        <dl class="c-facts c-facts--card">
           <dt>队长</dt><dd>{% if captain %}{{ captain.nickname }}{% else %}—{% endif %}</dd>
           <dt>成立</dt><dd class="font-numeric">{{ team.created_at|ow_date }}</dd>
           <dt>人数</dt><dd class="font-numeric">{{ memberships|length }} / {{ max_members }}</dd>

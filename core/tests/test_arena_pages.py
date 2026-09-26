@@ -169,12 +169,12 @@ def test_the_roster_numbers_people_by_when_they_joined(client):
     person("第一个", joined_days_ago=9)
     person("第二个", joined_days_ago=5)
     roster = _section(_html(client, "/members/"), 'id="all-members"')
-    numbers = [
-        (
-            roster[roster.index(name) - 200 : roster.index(name)]
-            .rsplit("data-member-number>", 1)[1]
-            .split("<")[0]
-        )
-        for name in ("第一个", "第二个", "第三个")
-    ]
+    # Round 084: one card per member, the number in its corner.
+    cards = roster.split('<li class="c-roster__item"')[1:]
+
+    def number_of(name):
+        card = next(card for card in cards if f">{name}<" in card)
+        return card.split("data-member-number>", 1)[1].split("<")[0]
+
+    numbers = [number_of(name) for name in ("第一个", "第二个", "第三个")]
     assert numbers == ["001", "002", "003"]

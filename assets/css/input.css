@@ -4403,6 +4403,80 @@
     padding-bottom: 0.25rem;
   }
 
+  /* ---- Arena and roster pages (design 13.2.8 赛场 / 名册; round 084) --------------- */
+
+  /* The sidebar fact list on detail pages, set in a card. */
+  .c-facts--card {
+    padding: 0.5rem 1.5rem;
+    border: 1px solid var(--tone-line);
+    border-radius: var(--radius-xl);
+    background-color: var(--tone-panel);
+  }
+
+  /* Tank / damage / support counts on a scrim. */
+  .c-rolestats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .c-rolestats > .c-stat {
+    padding: 1rem 1.125rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-low);
+  }
+
+  /* 全部成员: one small card each, numbered by joining order (6.3). */
+  .c-roster {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.625rem;
+  }
+
+  @media (min-width: 640px) {
+    .c-roster {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-roster {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .c-roster__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--tone-line);
+    border-radius: var(--radius-lg);
+    background-color: var(--tone-panel);
+  }
+
+  .c-roster__name {
+    display: block;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-roster__groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .c-roster__no {
+    margin-left: auto;
+    align-self: start;
+    color: var(--tone-fg-3);
+    font-size: 0.75rem;
+  }
+
   /* ---- Style guide page ------------------------------------------------------------ */
 
   .c-swatch {

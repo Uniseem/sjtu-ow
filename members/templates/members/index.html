@@ -8,9 +8,8 @@
   <header class="c-pagehead">
     <div class="l-container">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>成员</span></nav>
-      <p class="c-eyebrow">MEMBERS</p>
       <h1>成员展示</h1>
-      <p class="c-pagehead__meta">共 <span class="font-numeric">{{ members|length }}</span> 位成员</p>
+      <p class="c-pagehead__meta"><span>共 <span class="font-numeric">{{ members|length }}</span> 位成员</span></p>
     </div>
   </header>
 
@@ -53,16 +52,19 @@
       <section id="all-members" class="scroll-mt-6" aria-labelledby="all-members-title">
         <div class="c-sectionhead">
           <h2 id="all-members-title">全部成员</h2>
-          <span class="c-sectionhead__en">按加入先后</span>
-          <span class="c-sectionhead__rule" aria-hidden="true"></span>
+          <span class="c-count">{{ members|length }}</span>
+          <span class="text-sm text-fg-3">按加入先后</span>
         </div>
         {% if members %}
-          <ol class="grid border-t border-rule sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4">
+          <ol class="c-roster" data-reveal>
             {% for member in members %}
-              <li class="flex min-h-11 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-rule py-2.5" data-member>
-                <span class="font-numeric w-9 text-sm text-fg-3" data-member-number>{{ forloop.counter|stringformat:"03d" }}</span>
-                <span class="font-semibold">{{ member.user.nickname }}</span>
-                {% for group_name in member.groups %}<span class="c-tag">{{ group_name }}</span>{% endfor %}
+              <li class="c-roster__item" data-member>
+                <span class="c-avatar" aria-hidden="true">{{ member.user.nickname|initial }}</span>
+                <span class="min-w-0">
+                  <span class="c-roster__name">{{ member.user.nickname }}</span>
+                  {% if member.groups %}<span class="c-roster__groups">{% for group_name in member.groups %}<span class="c-tag">{{ group_name }}</span>{% endfor %}</span>{% endif %}
+                </span>
+                <span class="c-roster__no font-numeric" data-member-number>{{ forloop.counter|stringformat:"03d" }}</span>
               </li>
             {% endfor %}
           </ol>

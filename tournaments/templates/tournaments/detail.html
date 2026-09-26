@@ -104,7 +104,7 @@
       </div>
 
       <aside class="flex flex-col gap-10">
-        <dl class="c-facts">
+        <dl class="c-facts c-facts--card">
           <dt>报名开放</dt><dd class="font-numeric">{{ tournament.registration_opens_at|ow_date }} {{ tournament.registration_opens_at|ow_time }}</dd>
           <dt>报名截止</dt><dd class="font-numeric">{{ tournament.registration_closes_at|ow_date }} {{ tournament.registration_closes_at|ow_time }}</dd>
           <dt>比赛时间</dt><dd class="font-numeric">{% if tournament.starts_at %}{{ tournament.starts_at|ow_date }} {{ tournament.starts_at|ow_time }}{% else %}待定{% endif %}</dd>
@@ -112,13 +112,13 @@
           <dt>参赛条件</dt><dd>{% if tournament.sjtu_only %}仅限交大{% else %}不限学校{% endif %}{% if tournament.allow_individual_signup %} · 支持个人报名{% endif %}</dd>
         </dl>
         {% if articles %}
-          <section aria-labelledby="t-articles">
-            <h2 id="t-articles" class="border-b-2 border-fg pb-3 text-base">相关文章</h2>
+          <section aria-labelledby="t-articles" class="c-related">
+            <h2 id="t-articles">相关文章</h2>
             <ol>
               {% for article in articles %}
-                <li class="relative border-b border-rule py-4">
-                  <time class="font-numeric text-xs text-fg-3" datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_date }}</time>
-                  <a href="{{ article.url }}" class="c-stretch mt-1 block font-semibold leading-6 hover:text-fg-red">{{ article.title }}</a>
+                <li>
+                  <time class="font-numeric" datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_date }}</time>
+                  <a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a>
                 </li>
               {% endfor %}
             </ol>
