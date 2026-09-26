@@ -183,7 +183,7 @@ def test_the_page_without_a_query_shows_the_form_only(client):
     _tree()
     html = client.get(reverse("search")).content.decode()
     assert 'name="q"' in html
-    assert "输入搜索词" in html
+    assert "只搜公开内容" in html
 
 
 @pytest.mark.django_db

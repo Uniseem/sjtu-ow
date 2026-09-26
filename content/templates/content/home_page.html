@@ -77,11 +77,7 @@
       {% if news %}
         <div class="c-media-grid">
           {% for article in news %}
-            <article class="c-media">
-              <div class="c-media__pic">{% if article.cover %}{% image article.cover fill-640x360-c50 alt="" loading="lazy" %}{% else %}<span class="c-media__none">{{ article.category.name|default:"资讯" }}</span>{% endif %}</div>
-              <p class="c-media__meta">{% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}{% if article.pk in pinned_ids %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}<time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_md }}</time></p>
-              <h3 class="c-media__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
-            </article>
+            {% if article.pk in pinned_ids %}{% include "components/post_card.html" with pinned=True %}{% else %}{% include "components/post_card.html" %}{% endif %}
           {% endfor %}
         </div>
       {% else %}

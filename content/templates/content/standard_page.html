@@ -4,21 +4,19 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  <header class="c-pagehead">
-    <div class="l-container">
-      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>{{ page.title }}</span></nav>
-      <h1>{{ page.title }}</h1>
-      {% if page.last_published_at %}<p class="c-pagehead__meta"><span>最后更新 <time class="font-numeric" datetime="{{ page.last_published_at|date:'c' }}">{{ page.last_published_at|date:"Y.m.d" }}</time></span></p>{% endif %}
+  {# 刊物正文 (design 13.2.7): the three about pages switch with one row of links. #}
+  <article class="c-article">
+    <header class="c-article__head">
+      <nav class="c-tabs" aria-label="关于本站">
+        <a href="/about/"{% if request.path == "/about/" %} aria-current="page"{% endif %}>关于我们</a>
+        <a href="/terms/"{% if request.path == "/terms/" %} aria-current="page"{% endif %}>用户协议</a>
+        <a href="/privacy/"{% if request.path == "/privacy/" %} aria-current="page"{% endif %}>隐私政策</a>
+      </nav>
+      <h1 class="c-article__title">{{ page.title }}</h1>
+      {% if page.last_published_at %}<p class="c-article__meta">最后更新 <time class="font-numeric" datetime="{{ page.last_published_at|date:'c' }}">{{ page.last_published_at|date:"Y.m.d" }}</time></p>{% endif %}
+    </header>
+    <div class="c-prose">
+      {% include_block page.body %}
     </div>
-  </header>
-  <div class="l-container pt-8 pb-16 lg:pt-12 lg:pb-24">
-    <div class="grid gap-12 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-16">
-      <div class="order-last lg:order-first">
-        {% include "components/about_side.html" %}
-      </div>
-      <article class="c-prose min-w-0 max-w-[44rem]">
-        {% include_block page.body %}
-      </article>
-    </div>
-  </div>
+  </article>
 {% endblock %}

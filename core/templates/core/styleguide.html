@@ -123,16 +123,14 @@
 
     <section aria-labelledby="sg-lists">
       {% include "components/section_head.html" with index="07" title="列表行" en="ROWS" more_url="#sg-lists" more_label="全部资讯" heading_id="sg-lists" %}
-      <ol class="c-rowlist">
+      <ol class="c-rows">
         {% for title, cat, summary in rows %}
-          <li class="c-row{% if forloop.first %} c-row--thumb{% endif %}">
-            <time class="c-row__date" datetime="{{ sample_past|date:'c' }}"><span class="c-row__md">{{ sample_past|ow_md }}</span><span class="c-row__sub">{{ sample_past|date:"Y" }}</span></time>
-            <div>
-              <p class="c-row__kicker"><span class="c-tag">{{ cat }}</span>{% if forloop.first %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}</p>
+          <li class="c-row c-row--plain">
+            <div class="c-row__main">
               <h3 class="c-row__title"><a href="#sg-lists" class="c-stretch">{{ title }}</a></h3>
-              <p class="c-row__summary">{{ summary }}</p>
+              <p class="c-row__text">{{ summary }}</p>
             </div>
-            {% if forloop.first %}<span class="c-row__thumb c-hatch"></span>{% endif %}
+            <span class="c-tag">{{ cat }}</span>
           </li>
         {% endfor %}
       </ol>

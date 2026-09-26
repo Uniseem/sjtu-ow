@@ -1,7 +1,0 @@
-{% comment %}
-  Stands in for a missing cover (design 13.2.6): a wash in the category's
-  tones with its icon, so a page of cards without covers is not all alike.
-{% endcomment %}
-{% with slug=category.slug %}
-<span class="c-hatch c-hatch--{{ slug }}" aria-hidden="true">{% if slug == "event-notice" %}{% include "components/icon.html" with name="trophy" class="c-hatch__icon" %}{% elif slug == "guide" %}{% include "components/icon.html" with name="map" class="c-hatch__icon" %}{% elif slug == "match-report" %}{% include "components/icon.html" with name="flag" class="c-hatch__icon" %}{% elif slug == "experience" %}{% include "components/icon.html" with name="pen" class="c-hatch__icon" %}{% else %}{% include "components/icon.html" with name="news" class="c-hatch__icon" %}{% endif %}</span>
-{% endwith %}

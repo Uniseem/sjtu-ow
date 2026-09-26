@@ -1381,126 +1381,6 @@
     }
   }
 
-  /* ---- Row list (news, schedule, search results) -------------------------------- */
-
-  .c-rowlist {
-    border-top: 1px solid var(--tone-line);
-  }
-
-  .c-row {
-    position: relative;
-    display: grid;
-    grid-template-columns: 3.75rem minmax(0, 1fr);
-    gap: 0 1rem;
-    padding-block: 1.25rem;
-    border-bottom: 1px solid var(--tone-line);
-  }
-
-  @media (min-width: 640px) {
-    .c-row {
-      grid-template-columns: 5rem minmax(0, 1fr);
-      gap: 0 1.5rem;
-    }
-
-    .c-row--thumb {
-      grid-template-columns: 5rem minmax(0, 1fr) 8.5rem;
-    }
-  }
-
-  .c-row--nodate {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  @media (min-width: 640px) {
-    .c-row--nodate.c-row--thumb {
-      grid-template-columns: minmax(0, 1fr) 8.5rem;
-    }
-  }
-
-  .c-row__date {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-    padding-top: 0.125rem;
-  }
-
-  .c-row__md {
-    font-family: var(--font-figure);
-    font-variant-numeric: tabular-nums;
-    font-size: 1.25rem;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--tone-fg);
-  }
-
-  .c-row__sub {
-    font-size: 0.75rem;
-    line-height: 1;
-    color: var(--tone-fg-3);
-  }
-
-  .c-row__kicker {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem 0.75rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.8125rem;
-    color: var(--tone-fg-2);
-  }
-
-  .c-row__title {
-    font-size: 1.0625rem;
-    font-weight: 600;
-    line-height: 1.5;
-    color: var(--tone-fg);
-    transition: color 150ms var(--ease-standard);
-  }
-
-  @media (min-width: 640px) {
-    .c-row__title {
-      font-size: 1.125rem;
-    }
-  }
-
-  .c-row:hover .c-row__title {
-    color: var(--tone-accent);
-  }
-
-  .c-row__summary {
-    margin-top: 0.375rem;
-    color: var(--tone-fg-2);
-    font-size: 0.9375rem;
-    line-height: 1.65;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-  }
-
-  .c-row__thumb {
-    display: none;
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    object-fit: cover;
-    border-radius: var(--radius-md);
-    background-color: var(--tone-sunken);
-  }
-
-  @media (min-width: 640px) {
-    .c-row__thumb {
-      display: block;
-    }
-  }
-
-  .c-row__aside {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem 1rem;
-    margin-top: 0.625rem;
-  }
-
   /* ---- Ticket (event card) ---------------------------------------------------------- */
 
   .c-ticket {
@@ -2281,22 +2161,21 @@
   }
 
   .c-empty {
-    padding: 2.5rem 1.5rem;
-    border: 1px dashed var(--tone-line);
-    border-radius: var(--radius-lg);
-    background-color: var(--color-surface-low);
+    padding: 2rem 1.5rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
     text-align: center;
   }
 
   .c-empty__title {
+    color: var(--color-fg);
     font-weight: 600;
-    color: var(--tone-fg);
   }
 
   .c-empty__text {
     margin-top: 0.375rem;
-    color: var(--tone-fg-2);
-    font-size: 0.9375rem;
+    color: var(--color-fg-2);
   }
 
   .c-empty .c-btn {
@@ -2308,27 +2187,25 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-top: 2rem;
+    margin-top: 2.5rem;
   }
 
   .c-pager__pos {
-    font-family: var(--font-figure);
+    color: var(--color-fg-2);
     font-variant-numeric: tabular-nums;
-    font-size: 0.9375rem;
-    font-weight: 700;
-    color: var(--tone-fg-2);
   }
 
   .c-pager__pos strong {
-    color: var(--tone-fg);
+    color: var(--color-fg);
   }
 
-  /* Filter chips (13.2.7): links, not a script switcher. */
+  /* Filter (13.2.6): a row of links; the current one is underlined in red.
+     Links, not a script switcher; scrolls sideways on phones. */
   .c-tabs {
     display: flex;
-    gap: 0.5rem;
+    gap: 1.5rem;
     overflow-x: auto;
-    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-line);
     scrollbar-width: none;
   }
 
@@ -2338,52 +2215,39 @@
     align-items: center;
     gap: 0.375rem;
     flex-shrink: 0;
-    min-height: 2.5rem;
-    padding-inline: 1rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-sm);
-    background-color: var(--tone-panel);
+    min-height: 2.75rem;
+    color: var(--color-fg-2);
     font-family: var(--font-nav);
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     font-weight: 500;
-    color: var(--tone-fg-2);
     white-space: nowrap;
-    transition:
-      background-color 150ms var(--ease-standard),
-      border-color 150ms var(--ease-standard),
-      color 150ms var(--ease-standard);
+    transition: color 150ms var(--ease-standard);
   }
 
   .c-tabs a:hover {
-    background-color: var(--color-surface-low);
-    color: var(--tone-fg);
+    color: var(--color-fg);
   }
 
   .c-tabs a[aria-current="page"],
   .c-tabs a[aria-current="true"] {
-    border-color: var(--color-primary-container);
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
+    color: var(--color-fg);
     font-weight: 600;
   }
 
-  .c-tabs a[aria-current]::before {
+  .c-tabs a[aria-current="page"]::after,
+  .c-tabs a[aria-current="true"]::after {
     content: "";
-    width: 1rem;
-    height: 1rem;
-    background-color: currentColor;
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background-color: var(--color-primary);
   }
 
   .c-tabs__count {
-    font-family: var(--font-figure);
-    font-size: 0.8125rem;
-    color: var(--tone-fg-3);
-  }
-
-  .c-tabs a[aria-current] .c-tabs__count {
-    color: var(--color-on-primary-container);
+    color: var(--color-fg-3);
+    font-variant-numeric: tabular-nums;
   }
 
   /* Side menu (about pages, member groups, account centre): Material nav items. */
@@ -2448,12 +2312,12 @@
     font-weight: 600;
   }
 
-  /* ---- Prose (rich text) ------------------------------------------------------------ */
+  /* ---- Prose (rich text, 13.2.6 c-prose) ------------------------------------------ */
 
   .c-prose {
+    color: var(--color-fg);
     font-size: 1.0625rem;
     line-height: 1.85;
-    color: var(--tone-fg);
     overflow-wrap: break-word;
   }
 
@@ -2466,7 +2330,7 @@
   }
 
   .c-prose h2 {
-    margin: 2.25em 0 0.75em;
+    margin: 2em 0 0.75em;
     font-size: 1.375rem;
   }
 
@@ -2494,12 +2358,8 @@
     padding-left: 0.25em;
   }
 
-  .c-prose li::marker {
-    color: var(--color-primary);
-  }
-
   .c-prose a {
-    color: var(--tone-accent);
+    color: var(--color-primary-text);
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 0.25em;
@@ -2516,6 +2376,7 @@
 
   .c-prose hr {
     margin-block: 2.5em;
+    border-top: 1px solid var(--color-line);
   }
 
   .c-prose figure {
@@ -2525,36 +2386,23 @@
   .c-prose figure img {
     width: 100%;
     height: auto;
-    border-radius: var(--radius-lg);
-    background-color: var(--tone-sunken);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
   }
 
   .c-prose figcaption {
     margin-top: 0.625rem;
-    color: var(--tone-fg-2);
+    color: var(--color-fg-3);
     font-size: 0.875rem;
     line-height: 1.6;
   }
 
-  /* Pull quote: a tonal block (5.2). */
+  /* Quote: a rule down the left, no fill (13.2.6). */
   .c-prose blockquote {
     margin-block: 2em;
-    padding: 1.25em 1.5em;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-surface-low);
-    font-size: 1.125rem;
-    font-weight: 500;
-    line-height: 1.7;
-  }
-
-  .c-prose blockquote::before {
-    content: "“";
-    display: block;
-    height: 0.6em;
-    color: var(--color-primary);
-    font-size: 2.5em;
-    font-weight: 700;
-    line-height: 1;
+    padding-left: 1.25em;
+    border-left: 3px solid var(--color-line);
+    color: var(--color-fg-2);
   }
 
   .c-prose blockquote p {
@@ -2562,11 +2410,9 @@
   }
 
   .c-prose blockquote footer {
-    margin-top: 0.75em;
-    color: var(--tone-fg-2);
+    margin-top: 0.5em;
+    color: var(--color-fg-3);
     font-size: 0.875rem;
-    font-weight: 400;
-    text-align: right;
   }
 
   .c-prose iframe {
@@ -2574,15 +2420,15 @@
     aspect-ratio: 16 / 9;
     height: auto;
     border: 0;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-sm);
   }
 
   /* ---- Comments (design 5.6) ------------------------------------------------------- */
 
   .c-comments {
-    margin-top: 4rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--tone-line);
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-line);
     scroll-margin-top: 5rem;
   }
 
@@ -3175,6 +3021,16 @@
     color: var(--color-primary-text);
   }
 
+  .c-media__summary {
+    display: -webkit-box;
+    margin-top: 0.375rem;
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
   /* Teams: logo, name, size, recruiting. */
   .c-teams {
     display: grid;
@@ -3245,154 +3101,74 @@
     margin-top: 0.375rem;
   }
 
-  /* ---- Editorial pages (design 13.2.8 刊物; round 083) ------------------------------ */
+  /* ---- Editorial pages (design 13.2.7 刊物; round 087) ------------------------------ */
 
-  /* A count badge beside a heading. */
-  .c-count {
-    display: inline-grid;
-    place-items: center;
-    min-width: 1.5rem;
-    height: 1.5rem;
-    padding-inline: 0.375rem;
-    border-radius: var(--radius-full);
-    background-color: var(--color-primary-container);
-    color: var(--color-on-primary-container);
-    font-size: 0.75rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Article cards (c-post). */
-  .c-posts {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-  }
-
-  @media (min-width: 640px) {
-    .c-posts {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+  @media (min-width: 1024px) {
+    .c-media-grid--3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+  }
+
+  /* One reading column, centred (13.2.6 c-article). */
+  .c-article {
+    width: 100%;
+    max-width: calc(var(--container-prose) + 2rem);
+    margin-inline: auto;
+    padding: 2.5rem 1rem 3rem;
   }
 
   @media (min-width: 1024px) {
-    .c-posts {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1.5rem;
+    .c-article {
+      padding-block: 3.5rem 4rem;
     }
   }
 
-  .c-post {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-lg);
-    background-color: var(--tone-panel);
-    transition:
-      transform 500ms var(--ease-spring),
-      box-shadow 300ms var(--ease-standard);
+  .c-article__head {
+    display: grid;
+    justify-items: start;
+    gap: 0.75rem;
   }
 
-  .c-post:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-1);
+  .c-article__head .c-crumbs {
+    margin-bottom: 0.25rem;
   }
 
-  .c-post__cover {
-    aspect-ratio: 16 / 10;
-    overflow: hidden;
+  .c-article__head .c-tabs {
+    justify-self: stretch;
+    margin-bottom: 1.5rem;
   }
 
-  .c-post__cover img,
-  .c-post__cover span {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 700ms var(--ease-emphasized);
-  }
-
-  .c-post:hover .c-post__cover img,
-  .c-post:hover .c-post__cover span {
-    transform: scale(1.03);
-  }
-
-  .c-post__body {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1rem 1.25rem 1.25rem;
-  }
-
-  .c-post__meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--tone-fg-3);
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .c-post__title {
-    font-size: 1.0625rem;
-    font-weight: 700;
-    line-height: 1.45;
-  }
-
-  .c-post__title a {
-    transition: color 150ms var(--ease-standard);
-  }
-
-  .c-post:hover .c-post__title a {
-    color: var(--tone-accent);
-  }
-
-  .c-post__summary {
-    color: var(--tone-fg-2);
-    font-size: 0.875rem;
-    line-height: 1.65;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-  }
-
-  .c-post__author {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: auto;
-    padding-top: 0.5rem;
-    color: var(--tone-fg-2);
-    font-size: 0.8125rem;
-  }
-
-  /* Article page. */
   .c-article__title {
-    margin-top: 0.875rem;
-    font-size: clamp(1.75rem, 1.25rem + 1.8vw, 2.5rem);
+    font-size: 1.75rem;
     line-height: 1.3;
+  }
+
+  @media (min-width: 768px) {
+    .c-article__title {
+      font-size: 2.25rem;
+      line-height: 1.25;
+    }
   }
 
   .c-article__meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
-    margin-top: 1.25rem;
-    color: var(--tone-fg-2);
+    gap: 0.5rem 0.75rem;
+    color: var(--color-fg-3);
     font-size: 0.875rem;
   }
 
+  .c-article__author {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
   .c-article__cover {
-    margin-bottom: 2rem;
+    margin-top: 2rem;
     overflow: hidden;
-    border-radius: var(--radius-xl);
-    background-color: var(--color-surface-high);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
   }
 
   .c-article__cover img {
@@ -3400,122 +3176,116 @@
     height: auto;
   }
 
-  .c-byline {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
+  .c-article .c-prose {
+    margin-top: 2rem;
+  }
+
+  .c-article__part {
     margin-top: 3rem;
-    padding: 1.25rem 1.5rem;
-    border-radius: var(--radius-xl);
-    background-color: var(--color-surface-low);
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-line);
   }
 
-  .c-byline__facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 2rem;
+  .c-article__parthead {
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
   }
 
-  .c-byline__facts dt {
-    color: var(--tone-fg-3);
-    font-size: 0.75rem;
+  .c-article__more {
+    padding-bottom: 4rem;
   }
 
-  .c-byline__facts dd {
-    font-weight: 600;
+  /* Rows without a date block: search results, account security. */
+  .c-row--plain {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .c-related {
-    align-self: start;
-    padding: 1.25rem 1.5rem;
-    border: 1px solid var(--tone-line);
-    border-radius: var(--radius-xl);
-    background-color: var(--tone-panel);
-  }
-
-  @media (min-width: 1024px) {
-    .c-related {
-      position: sticky;
-      top: 5rem;
-    }
-  }
-
-  .c-related h2 {
-    font-size: 1rem;
-  }
-
-  .c-related li {
-    position: relative;
-    padding-block: 0.875rem;
-  }
-
-  .c-related li + li {
-    border-top: 1px solid var(--tone-line);
-  }
-
-  .c-related time {
-    display: block;
-    color: var(--tone-fg-3);
-    font-size: 0.75rem;
-  }
-
-  .c-related a {
-    display: block;
+  .c-row__text {
+    display: -webkit-box;
     margin-top: 0.25rem;
-    font-weight: 600;
-    line-height: 1.5;
-    transition: color 150ms var(--ease-standard);
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
-  .c-related li:hover a {
-    color: var(--tone-accent);
-  }
-
-  /* The search page's search bar: Material's filled search bar (13.2.3). */
+  /* Search page (13.2.6 c-searchbar). */
   .c-searchbar {
     display: flex;
     align-items: center;
-    gap: 0.625rem;
-    max-width: 40rem;
+    gap: 0.75rem;
+    max-width: 44rem;
     margin-top: 1.5rem;
-    padding: 0.375rem 0.375rem 0.375rem 1.25rem;
-    border: 1px solid transparent;
-    border-radius: var(--radius-full);
-    background-color: var(--color-surface-high);
-    transition:
-      background-color 150ms var(--ease-standard),
-      border-color 150ms var(--ease-standard),
-      box-shadow 150ms var(--ease-standard);
+    padding: 0.375rem 0.375rem 0.375rem 1rem;
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-fg-3);
   }
 
   .c-searchbar:focus-within {
-    border-color: var(--color-primary);
-    background-color: var(--color-surface-lowest);
-    box-shadow: var(--shadow-1);
+    outline: 2px solid var(--color-primary);
+    outline-offset: -1px;
+  }
+
+  .c-searchbar svg {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 
   .c-searchbar input {
     flex: 1;
     min-width: 0;
-    min-height: 44px;
+    height: 2.75rem;
     border: 0;
-    background: transparent;
-    color: var(--tone-fg);
-    font-size: 1.0625rem;
+    background: none;
+    color: var(--color-fg);
+    font-size: 1rem;
     outline: none;
   }
 
-  .c-searchbar input::placeholder {
-    color: var(--tone-fg-3);
+  /* v3 blocks still used by the arena pages until round 088. */
+  .c-related {
+    align-self: start;
+    padding: 1.25rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
   }
 
-  .c-news .c-rowlist {
-    border-top: 0;
+  .c-related li {
+    position: relative;
+    padding-block: 0.75rem;
   }
 
-  .c-news .c-row:last-child {
-    border-bottom: 0;
-    padding-bottom: 0.25rem;
+  .c-related li + li {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .c-related time {
+    display: block;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-related a {
+    display: block;
+    font-weight: 600;
+  }
+
+  .c-count {
+    display: inline-flex;
+    align-items: center;
+    min-width: 1.625rem;
+    height: 1.625rem;
+    padding-inline: 0.375rem;
+    justify-content: center;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---- Arena and roster pages (design 13.2.8 赛场 / 名册; round 084) --------------- */

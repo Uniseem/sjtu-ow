@@ -397,12 +397,12 @@ def test_the_same_category_latest_leaves_out_this_article_and_others(client, sit
     assert [f"同栏{i}" in aside for i in range(6)] == [
         False,
         False,
-        True,
+        False,
         True,
         True,
         True,
     ]
-    assert aside.index("同栏5") < aside.index("同栏2")
+    assert aside.index("同栏5") < aside.index("同栏3")
 
 
 @pytest.mark.django_db
@@ -425,9 +425,7 @@ def test_the_news_filter_marks_the_current_category(client, site):
     _, news, *_ = site
     html = client.get(news.url + "?category=guide").content.decode("utf-8")
     tabs = html[
-        html.index('class="c-tabs"') : html.index(
-            "</nav>", html.index('class="c-tabs"')
-        )
+        html.index('class="c-tabs') : html.index("</nav>", html.index('class="c-tabs'))
     ]
     assert '?category=guide" aria-current="page">攻略</a>' in tabs
     assert tabs.count('aria-current="page"') == 1
@@ -453,14 +451,14 @@ def test_a_quote_names_its_source(client, site):
 def test_body_text_rules_match_what_wagtail_renders(settings):
     """Wagtail does not wrap rich text in .rich-text, so rules keyed on it never
     applied: paragraphs, lists and links in articles had no styling (round 065).
-    Round 074 moved body text to the design system's c-prose (design 13.2.7):
-    paragraphs spaced, not indented. v3.0 (round 081) sets quotes on a tonal
-    block instead of between two rules."""
+    Round 074 moved body text to the design system's c-prose: paragraphs
+    spaced, not indented. v4.0 (round 087) sets quotes off with a rule down
+    the left (design 13.2.6)."""
     css = (settings.BASE_DIR / "static" / "css" / "app.css").read_text()
     assert ".rich-text" not in css
     assert re.search(r"\.c-prose p\{[^}]*margin", css)
     assert not re.search(r"\.c-prose p\{[^}]*text-indent", css)
-    assert re.search(r"\.c-prose blockquote\{[^}]*background-color", css)
+    assert re.search(r"\.c-prose blockquote\{[^}]*border-left", css)
 
 
 @pytest.mark.django_db

@@ -4,67 +4,48 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  {# 刊物正文 (design 13.2.8); the summary is for lists and sharing only (5.2). #}
-  <article>
-    <header class="c-pagehead">
-      <div class="l-container">
-        <nav class="c-crumbs" aria-label="位置">
-          <a href="/">首页</a><span class="c-crumbs__sep">/</span>
-          <a href="{{ page.get_parent.url }}">资讯</a><span class="c-crumbs__sep">/</span>
-          <a href="{{ page.get_parent.url }}?category={{ page.category.slug }}">{{ page.category.name }}</a>
-        </nav>
-        <div class="max-w-[52rem]">
-          <p><a href="{{ page.get_parent.url }}?category={{ page.category.slug }}" class="c-tag c-tag--accent">{{ page.category.name }}</a></p>
-          <h1 class="c-article__title">{{ page.title }}</h1>
-          <p class="c-article__meta">
-            <span class="c-avatar c-avatar--sm" aria-hidden="true">{{ page.author.nickname|initial }}</span>
-            <span class="font-semibold text-fg">{{ page.author.nickname }}</span>
-            <span aria-hidden="true">·</span>
-            <time class="font-numeric" datetime="{{ page.first_published_at|date:'c' }}">{{ page.first_published_at|ow_date }}</time>
-          </p>
-        </div>
-      </div>
+  {# 刊物正文 (design 13.2.7): one 44rem column, centred; the summary is for lists and sharing only (5.2). #}
+  <article class="c-article">
+    <header class="c-article__head">
+      <nav class="c-crumbs" aria-label="位置">
+        <a href="/">首页</a><span class="c-crumbs__sep">/</span>
+        <a href="{{ page.get_parent.url }}">资讯</a><span class="c-crumbs__sep">/</span>
+        <a href="{{ page.get_parent.url }}?category={{ page.category.slug }}">{{ page.category.name }}</a>
+      </nav>
+      <p><a href="{{ page.get_parent.url }}?category={{ page.category.slug }}" class="c-tag c-tag--accent">{{ page.category.name }}</a></p>
+      <h1 class="c-article__title">{{ page.title }}</h1>
+      <p class="c-article__meta">
+        <span class="c-avatar c-avatar--sm" aria-hidden="true">{{ page.author.nickname|initial }}</span>
+        <span class="c-article__author">{{ page.author.nickname }}</span>
+        <time class="font-numeric" datetime="{{ page.first_published_at|date:'c' }}">{{ page.first_published_at|ow_date }}</time>
+      </p>
     </header>
-
-    <div class="l-container pt-8 pb-16 lg:pt-12 lg:pb-24">
-      <div class="grid gap-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-16">
-        <div class="min-w-0 max-w-[44rem]">
-          {% if page.cover %}
-            <figure class="c-article__cover">{% image page.cover fill-1200x675 alt="" %}</figure>
-          {% endif %}
-          <div class="c-prose">
-            {% include_block page.body %}
-          </div>
-          <aside class="c-byline" aria-label="文章信息">
-            <span class="c-avatar c-avatar--lg" aria-hidden="true">{{ page.author.nickname|initial }}</span>
-            <dl class="c-byline__facts">
-              <div><dt>作者</dt><dd>{{ page.author.nickname }}</dd></div>
-              <div><dt>栏目</dt><dd><a href="{{ page.get_parent.url }}?category={{ page.category.slug }}" class="c-link">{{ page.category.name }}</a></dd></div>
-              <div><dt>发布</dt><dd class="font-numeric">{{ page.first_published_at|ow_date }}</dd></div>
-            </dl>
-          </aside>
-          {% if page.tournament and page.tournament.is_public %}
-            <section class="mt-10" aria-labelledby="article-tournament">
-              <h2 id="article-tournament" class="mb-4 text-lg">关联赛事</h2>
-              {% include "components/tournament_ticket.html" with tournament=page.tournament %}
-            </section>
-          {% endif %}
-          {% include "comments/section.html" %}
-        </div>
-        {% if related %}
-          <aside aria-labelledby="article-related" class="c-related">
-            <h2 id="article-related">{{ page.category.name }} · 最新</h2>
-            <ol>
-              {% for item in related %}
-                <li>
-                  <time class="font-numeric" datetime="{{ item.first_published_at|date:'c' }}">{{ item.first_published_at|ow_date }}</time>
-                  <a href="{{ item.url }}" class="c-stretch">{{ item.title }}</a>
-                </li>
-              {% endfor %}
-            </ol>
-          </aside>
-        {% endif %}
-      </div>
+    {% if page.cover %}
+      <figure class="c-article__cover">{% image page.cover fill-1408x792-c50 alt="" %}</figure>
+    {% endif %}
+    <div class="c-prose">
+      {% include_block page.body %}
     </div>
+    {% if page.tournament and page.tournament.is_public %}
+      <section class="c-article__part" aria-labelledby="article-tournament">
+        <h2 id="article-tournament" class="c-article__parthead">关联赛事</h2>
+        {% include "components/tournament_ticket.html" with tournament=page.tournament %}
+      </section>
+    {% endif %}
+    {% include "comments/section.html" %}
   </article>
+
+  {% if related %}
+    <section class="l-container c-article__more" aria-labelledby="article-related">
+      <div class="c-sectionhead">
+        <h2 id="article-related">{{ page.category.name }}的更多文章</h2>
+        <a href="{{ page.get_parent.url }}?category={{ page.category.slug }}" class="c-btn c-btn--quiet">全部{% include "components/icon.html" with name="arrow-right" %}</a>
+      </div>
+      <div class="c-media-grid c-media-grid--3">
+        {% for article in related %}
+          {% include "components/post_card.html" %}
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 {% endblock %}

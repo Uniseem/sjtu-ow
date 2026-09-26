@@ -1,17 +1,12 @@
 {% load ow wagtailimages_tags %}
 {% comment %}
-  An article as a card (design 13.2.7 c-post): cover or a colour wash,
-  category and date, title, summary, author.
+  An article as a picture card (design 13.2.6 c-media): cover, or the category
+  name on the second surface when there is none; tags and date; title; on the
+  news list (summary=True) two lines of the summary (design 5.2).
 {% endcomment %}
-<li class="c-post">
-  <div class="c-post__cover">{% if article.cover %}{% image article.cover fill-640x400 alt="" %}{% else %}{% include "components/category_wash.html" with category=article.category %}{% endif %}</div>
-  <div class="c-post__body">
-    <p class="c-post__meta">
-      {% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}
-      <time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_date }}</time>
-    </p>
-    <h3 class="c-post__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
-    {% if article.summary %}<p class="c-post__summary">{{ article.summary }}</p>{% endif %}
-    {% if article.author %}<p class="c-post__author"><span class="c-avatar c-avatar--sm" aria-hidden="true">{{ article.author.nickname|initial }}</span>{{ article.author.nickname }}</p>{% endif %}
-  </div>
-</li>
+<article class="c-media">
+  <div class="c-media__pic">{% if article.cover %}{% image article.cover fill-640x360-c50 alt="" loading="lazy" %}{% else %}<span class="c-media__none">{{ article.category.name|default:"资讯" }}</span>{% endif %}</div>
+  <p class="c-media__meta">{% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}{% if pinned %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}<time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_md }}</time></p>
+  <h3 class="c-media__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+  {% if summary and article.summary %}<p class="c-media__summary">{{ article.summary }}</p>{% endif %}
+</article>

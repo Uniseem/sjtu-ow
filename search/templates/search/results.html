@@ -7,43 +7,41 @@
     <div class="l-container">
       <h1>站内搜索</h1>
       <form action="{% url 'search' %}" method="get" role="search" class="c-searchbar">
-        {% include "components/icon.html" with name="search" class="size-5 text-fg-2" %}
+        {% include "components/icon.html" with name="search" %}
         <label class="sr-only" for="search-q">搜索词</label>
         <input id="search-q" type="search" name="q" value="{{ query }}" maxlength="50" placeholder="文章、赛事、内战、战队、成员" autofocus>
         <button type="submit" class="c-btn c-btn--primary">搜索</button>
       </form>
-      <p class="c-pagehead__meta">多个词用空格隔开，每个词都要命中；中文按字面匹配。</p>
     </div>
   </header>
 
-  <div class="l-container pt-8 pb-16 lg:pb-24">
+  <div class="l-container pb-16 lg:pb-24">
     {% if not terms %}
-      <p class="max-w-2xl leading-7 text-fg-2">输入搜索词后回车。只搜公开内容：已发布的文章、赛事和内战、未解散的战队、成员展示页上的成员。</p>
+      <p class="max-w-2xl text-fg-2">只搜公开内容：已发布的文章、赛事和内战、未解散的战队、成员展示页上的成员。多个词用空格隔开，每个词都要命中。</p>
     {% elif total == 0 %}
       {% include "components/empty_state.html" with title="没有找到" message="没有找到和「"|add:query|add:"」有关的内容。换个词试试。" %}
     {% else %}
-      <p class="mb-8 text-sm text-fg-2">「{{ query }}」共 <span class="font-numeric font-semibold text-fg">{{ total }}</span> 条结果</p>
-      <div class="flex flex-col gap-6">
+      <p class="mb-8 text-fg-2">「{{ query }}」共 {{ total }} 条结果</p>
+      <div class="grid gap-10">
         {% for group in groups %}
           {% if group.hits %}
-            <section class="c-news" aria-labelledby="search-{{ forloop.counter }}">
-              <div class="c-news__head justify-start">
+            <section aria-labelledby="search-{{ forloop.counter }}">
+              <div class="c-sectionhead">
                 <h2 id="search-{{ forloop.counter }}">{{ group.label }}</h2>
-                <span class="c-count">{{ group.hits|length }}</span>
               </div>
-              <ol class="c-rowlist">
+              <ol class="c-rows">
                 {% for hit in group.hits %}
-                  <li class="c-row c-row--nodate">
-                    <div class="min-w-0">
-                      {% if hit.meta %}<p class="c-row__kicker"><span class="c-tag">{{ hit.meta }}</span></p>{% endif %}
+                  <li class="c-row c-row--plain">
+                    <div class="c-row__main">
                       <h3 class="c-row__title"><a href="{{ hit.url }}" class="c-stretch">{{ hit.title }}</a></h3>
-                      {% if hit.excerpt %}<p class="c-row__summary">{{ hit.excerpt }}</p>{% endif %}
+                      {% if hit.excerpt %}<p class="c-row__text">{{ hit.excerpt }}</p>{% endif %}
                     </div>
+                    {% if hit.meta %}<span class="c-tag">{{ hit.meta }}</span>{% endif %}
                   </li>
                 {% endfor %}
               </ol>
               {% if group.truncated %}
-                <p class="mt-3 text-sm text-fg-3">只显示前 20 条，换个更具体的词。</p>
+                <p class="mt-3 text-fg-3">只显示前 20 条，换个更具体的词。</p>
               {% endif %}
             </section>
           {% endif %}

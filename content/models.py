@@ -15,7 +15,7 @@ from content.seo import build_seo
 
 ARTICLES_PER_PAGE = 12
 MAX_PINNED_ARTICLES = 3
-RELATED_ARTICLE_COUNT = 4
+RELATED_ARTICLE_COUNT = 3
 
 # Slugs that would collide with Django routes registered before wagtail_urls
 # (design 13.4), or with the paths Caddy serves itself (/static/, /media/).

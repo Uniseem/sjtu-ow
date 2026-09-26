@@ -1,6 +1,6 @@
-"""The 刊物 pages on v3.0 (design 13.2.8, round 083): the news list as cards,
-the article page's meta line, byline and related card, search, and pages
-without the v2.0 Latin eyebrows."""
+"""The 刊物 pages (design 13.2.7): v3.0 in round 083, v4.0 in round 087. The
+news list as picture cards, the article page as one centred column with more
+from its category after it, the about pages, search."""
 
 import re
 
@@ -22,48 +22,40 @@ def site(db):
     return news, _user(nickname="写稿的"), ArticleCategory.objects.get(slug="guide")
 
 
-def test_the_news_list_is_a_grid_of_cards(client, site):
+def test_the_news_list_is_a_grid_of_picture_cards(client, site):
     news, author, guide = site
     _article(news, guide, author, title="有封面", slug="c", cover=_image("c"))
-    _article(news, guide, author, title="没封面", slug="p")
+    _article(news, guide, author, title="没封面", slug="p", summary="两行摘要")
     notice = ArticleCategory.objects.get(slug="notice")
     _article(news, notice, author, title="公告没封面", slug="n")
     html = _main(client.get("/news/"))
-    grid = html[html.index('<ol class="c-posts"') : html.index("</ol>")]
-    assert grid.count('<li class="c-post">') == 3
-    cards = grid.split('<li class="c-post">')[1:]
+    grid = html[html.index('class="c-media-grid c-media-grid--3"') :]
+    cards = grid.split('<article class="c-media">')[1:]
+    assert len(cards) == 3
     covered = next(card for card in cards if ">有封面<" in card)
-    assert "<img" in covered and "c-hatch" not in covered
+    assert "<img" in covered and "c-media__none" not in covered
+    # No cover: the category's name on the second surface (13.2.5), no pattern.
     plain = next(card for card in cards if ">没封面<" in card)
-    # No cover: the category's wash with its icon, not an empty box.
-    assert 'class="c-hatch c-hatch--guide"' in plain
-    assert 'class="c-hatch__icon"' in plain
-    # Each category has its own tones and icon, the default (公告) included.
+    assert '<span class="c-media__none">攻略</span>' in plain
     other = next(card for card in cards if ">公告没封面<" in card)
-    assert 'class="c-hatch c-hatch--notice"' in other
-    assert 'class="c-hatch__icon"' in other
-
-    def icon(card):
-        return re.search(
-            r'class="c-hatch__icon"[^>]*>\s*(<path d="[^"]+")', card
-        ).group(1)
-
-    assert icon(plain) != icon(other)
-    assert (
-        '<span class="c-avatar c-avatar--sm" aria-hidden="true">写</span>写稿的' in grid
-    )
+    assert '<span class="c-media__none">公告</span>' in other
+    # The list shows the summary (5.2); the homepage cards do not.
+    assert '<p class="c-media__summary">两行摘要</p>' in plain
+    assert "c-hatch" not in grid
 
 
-def test_the_current_filter_chip_carries_a_tick(client, site):
+def test_the_current_filter_is_underlined_in_red(client, site):
     html = _main(client.get("/news/?category=guide"))
     assert '<a href="/news/?category=guide" aria-current="page">攻略</a>' in html
-    chip = _block(
-        INPUT_CSS.read_text(encoding="utf-8"), "\n  .c-tabs a[aria-current]::before {"
+    rule = _block(
+        INPUT_CSS.read_text(encoding="utf-8"),
+        '\n  .c-tabs a[aria-current="page"]::after,',
     )
-    assert "mask:" in chip and "M5 12.5l4.5 4.5L19 7.5" in chip
+    assert "height: 2px;" in rule
+    assert "background-color: var(--color-primary);" in rule
 
 
-def test_an_article_opens_with_its_author_and_ends_with_a_byline(client, site):
+def test_an_article_is_one_centred_column_with_more_after_it(client, site):
     news, author, guide = site
     _article(news, guide, author, title="正文页", slug="body")
     _article(news, guide, author, title="同栏目的另一篇", slug="other")
@@ -72,16 +64,27 @@ def test_an_article_opens_with_its_author_and_ends_with_a_byline(client, site):
     assert (
         '<span class="c-avatar c-avatar--sm" aria-hidden="true">写</span>' in meta[:400]
     )
-    byline = html[html.index('class="c-byline"') :]
-    assert "<dt>作者</dt><dd>写稿的</dd>" in byline
-    related = html[html.index('class="c-related"') :]
-    assert "同栏目的另一篇" in related
-    # v2.0's heavy ink rules are gone from the page.
-    assert "border-fg" not in html
-    assert "c-facts" not in html
+    article = html[html.index('<article class="c-article">') : html.index("</article>")]
+    assert "同栏目的另一篇" not in article
+    more = html[html.index('aria-labelledby="article-related"') :]
+    assert "同栏目的另一篇" in more and '<article class="c-media">' in more
+    column = _block(INPUT_CSS.read_text(encoding="utf-8"), "\n  .c-article {")
+    assert "max-width: calc(var(--container-prose) + 2rem);" in column
+    assert "margin-inline: auto;" in column
+    assert "c-byline" not in html and "c-related" not in html
 
 
-def test_search_is_a_filled_bar_and_groups_are_cards(client, site):
+def test_the_about_pages_switch_with_one_row_of_links(client, site):
+    html = _main(client.get("/privacy/"))
+    tabs = html[html.index('<nav class="c-tabs"') : html.index("</nav>")]
+    for path in ("/about/", "/terms/", "/privacy/"):
+        assert f'<a href="{path}"' in tabs
+    assert '<a href="/privacy/" aria-current="page">隐私政策</a>' in tabs
+    assert tabs.count('aria-current="page"') == 1
+    assert "c-sidenav" not in html
+
+
+def test_search_groups_are_plain_rows_without_small_print(client, site):
     news, author, guide = site
     _article(news, guide, author, title="内战心得", slug="s")
     html = _main(client.get("/search/?q=内战"))
@@ -89,9 +92,15 @@ def test_search_is_a_filled_bar_and_groups_are_cards(client, site):
         '<form action="/search/" method="get" role="search" class="c-searchbar">'
         in html
     )
-    assert "border-fg" not in html
-    group = html[html.index('<section class="c-news"') :]
-    assert re.search(r'<span class="c-count">\d+</span>', group)
+    assert re.search(r'<li class="c-row c-row--plain">', html)
+    assert "c-count" not in html
+    assert "c-pagehead__meta" not in html
+
+
+def test_quotes_are_a_rule_not_a_filled_block():
+    rule = _block(INPUT_CSS.read_text(encoding="utf-8"), "\n  .c-prose blockquote {")
+    assert "border-left: 3px solid var(--color-line);" in rule
+    assert "background" not in rule
 
 
 @pytest.mark.parametrize("path", ["/news/", "/search/?q=x", "/submit/", "/privacy/"])

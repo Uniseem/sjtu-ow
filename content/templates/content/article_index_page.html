@@ -4,41 +4,38 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
+  {# 刊物列表 (design 13.2.7): head, filter, picture cards, pager. #}
   <header class="c-pagehead">
     <div class="l-container">
-      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>{{ page.title }}</span></nav>
       <div class="c-pagehead__row">
         <div>
           <h1>{{ page.title }}</h1>
           {% if page.intro %}<div class="c-pagehead__lede">{{ page.intro|richtext }}</div>{% endif %}
         </div>
         <div class="c-pagehead__actions">
-          <a href="{% url 'submit' %}" class="c-btn c-btn--tonal">{% include "components/icon.html" with name="pen" %}我要投稿</a>
+          <a href="{% url 'submit' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="pen" %}我要投稿</a>
         </div>
       </div>
+      {# Category filter: links, so the list stays a plain GET page (13.7). #}
+      <nav class="c-tabs mt-8" aria-label="文章分类">
+        <a href="{{ page.url }}"{% if not active_category %} aria-current="page"{% endif %}>全部</a>
+        {% for category in categories %}
+          <a href="{{ page.url }}?category={{ category.slug }}"{% if active_category == category.slug %} aria-current="page"{% endif %}>{{ category.name }}</a>
+        {% endfor %}
+      </nav>
     </div>
   </header>
 
-  <div class="l-container pt-6 pb-16 lg:pb-24">
-    {# Category filter: links, so the list stays a plain GET page (13.7). #}
-    <nav class="c-tabs" aria-label="文章分类">
-      <a href="{{ page.url }}"{% if not active_category %} aria-current="page"{% endif %}>全部</a>
-      {% for category in categories %}
-        <a href="{{ page.url }}?category={{ category.slug }}"{% if active_category == category.slug %} aria-current="page"{% endif %}>{{ category.name }}</a>
-      {% endfor %}
-    </nav>
-
-    <div class="mt-8">
-      {% if articles %}
-        <ol class="c-posts">
-          {% for article in articles %}
-            {% include "components/post_card.html" %}
-          {% endfor %}
-        </ol>
-        {% include "components/pagination.html" %}
-      {% else %}
-        {% include "components/empty_state.html" with title="暂无文章" message="这个分类还没有已发布的文章。" %}
-      {% endif %}
-    </div>
+  <div class="l-container pt-8 pb-16 lg:pb-24">
+    {% if articles %}
+      <div class="c-media-grid c-media-grid--3">
+        {% for article in articles %}
+          {% include "components/post_card.html" with summary=True %}
+        {% endfor %}
+      </div>
+      {% include "components/pagination.html" %}
+    {% else %}
+      {% include "components/empty_state.html" with title="暂无文章" message="这个分类还没有已发布的文章。" %}
+    {% endif %}
   </div>
 {% endblock %}

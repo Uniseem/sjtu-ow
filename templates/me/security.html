@@ -6,36 +6,28 @@
 {% block me_content %}
   <section aria-labelledby="me-login">
     {% include "components/section_head.html" with title="登录" heading_id="me-login" %}
-    <ul class="c-rowlist max-w-3xl">
-      <li class="c-row c-row--nodate">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div><h3 class="c-row__title">密码</h3><p class="c-row__summary">登录时用的密码。</p></div>
-          <a href="{{ password_url }}" class="c-btn c-btn--secondary">修改密码</a>
-        </div>
+    <ul class="c-rows max-w-3xl">
+      <li class="c-row c-row--plain">
+        <div class="c-row__main"><h3 class="c-row__title">密码</h3><p class="c-row__text">登录时用的密码。</p></div>
+        <a href="{{ password_url }}" class="c-btn c-btn--secondary">修改密码</a>
       </li>
-      <li class="c-row c-row--nodate">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div><h3 class="c-row__title">邮箱</h3><p class="c-row__summary">用于登录和接收验证码，只有你自己和超级管理员能看到。</p></div>
-          <a href="{{ email_url }}" class="c-btn c-btn--secondary">修改邮箱</a>
-        </div>
+      <li class="c-row c-row--plain">
+        <div class="c-row__main"><h3 class="c-row__title">邮箱</h3><p class="c-row__text">用于登录和接收验证码，只有你自己和超级管理员能看到。</p></div>
+        <a href="{{ email_url }}" class="c-btn c-btn--secondary">修改邮箱</a>
       </li>
     </ul>
   </section>
 
   <section aria-labelledby="me-data">
     {% include "components/section_head.html" with title="个人信息" heading_id="me-data" %}
-    <ul class="c-rowlist max-w-3xl">
-      <li class="c-row c-row--nodate">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div><h3 class="c-row__title">导出</h3><p class="c-row__summary">下载本站保存的你的全部个人信息（JSON 文件）。</p></div>
-          <a href="{% url 'me_export' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="download" %}导出我的个人信息</a>
-        </div>
+    <ul class="c-rows max-w-3xl">
+      <li class="c-row c-row--plain">
+        <div class="c-row__main"><h3 class="c-row__title">导出</h3><p class="c-row__text">下载本站保存的你的全部个人信息（JSON 文件）。</p></div>
+        <a href="{% url 'me_export' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="download" %}导出我的个人信息</a>
       </li>
-      <li class="c-row c-row--nodate">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div><h3 class="c-row__title">注销账号</h3><p class="c-row__summary">删除邮箱、游戏 ID 和联系方式，昵称改为「已注销用户」。不能恢复。</p></div>
-          <a href="{% url 'me_delete' %}" class="c-btn c-btn--danger">注销账号</a>
-        </div>
+      <li class="c-row c-row--plain">
+        <div class="c-row__main"><h3 class="c-row__title">注销账号</h3><p class="c-row__text">删除邮箱、游戏 ID 和联系方式，昵称改为「已注销用户」。不能恢复。</p></div>
+        <a href="{% url 'me_delete' %}" class="c-btn c-btn--danger">注销账号</a>
       </li>
     </ul>
   </section>
