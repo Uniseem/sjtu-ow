@@ -9,7 +9,6 @@
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'team_index' %}">战队</a><span class="c-crumbs__sep">/</span><a href="{{ team.get_absolute_url }}">{{ team.name }}</a><span class="c-crumbs__sep">/</span><span>管理</span></nav>
       <div class="c-pagehead__row">
         <div>
-          <p class="c-eyebrow">MANAGE</p>
           <h1>管理「{{ team.name }}」</h1>
           <p class="c-pagehead__meta"><span>成员 <span class="font-numeric">{{ memberships|length }} / {{ max_members }}</span></span><span>待审批 <span class="font-numeric">{{ applications|length }}</span></span></p>
         </div>

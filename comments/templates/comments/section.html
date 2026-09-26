@@ -6,7 +6,7 @@ interactive for a signed-in visitor (from the state fragment or a live render).
 <section id="slot-article-comments" data-slot="article-comments:{{ page.pk }}" class="c-comments"{% if oob %} hx-swap-oob="true"{% endif %}{% if interactive %} hx-include="#comment-sort"{% endif %}>
   {% if interactive %}<input type="hidden" id="comment-sort" name="sort" value="{{ sort }}">{% endif %}
   <div class="c-comments__head">
-    <h2 id="comments">评论 <span class="c-comments__count">{{ thread.total }}</span></h2>
+    <h2 id="comments">评论 <span class="c-count">{{ thread.total }}</span></h2>
     {% if thread.total > 1 %}
       <nav class="c-comments__sort" aria-label="评论排序">
         <a href="{{ page.url }}?sort=new#comments"{% if sort == "new" %} aria-current="true"{% endif %}>最新</a>

@@ -10,8 +10,8 @@
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>个人中心</span></nav>
       <div class="c-pagehead__row">
         <div>
-          <p class="c-eyebrow">ACCOUNT · {{ request.user.nickname }}</p>
           <h1>{% block me_heading %}个人中心{% endblock %}</h1>
+          <p class="c-pagehead__meta gap-2"><span class="c-avatar c-avatar--sm" aria-hidden="true">{{ request.user.nickname|initial }}</span><span class="font-semibold text-fg">{{ request.user.nickname }}</span></p>
         </div>
         <div class="c-pagehead__actions">{% block me_actions %}{% endblock %}</div>
       </div>

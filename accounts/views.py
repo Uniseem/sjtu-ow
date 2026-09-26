@@ -28,14 +28,15 @@ from accounts.services import (
 )
 from core.ratelimit import over_limit
 
+# (url name, label, available, icon). v3.0 marks items with icons, not numbers.
 ME_NAV = (
-    ("me_profile", "基本资料", True),
-    ("me_game_accounts", "游戏 ID 与段位", True),
-    ("me_contacts", "联系方式", True),
-    ("me_teams", "我的战队", True),
-    ("me_registrations", "我的报名", True),
-    ("me_scrims", "我的内战", True),
-    ("me_security", "账号安全", True),
+    ("me_profile", "基本资料", True, "user"),
+    ("me_game_accounts", "游戏 ID 与段位", True, "id"),
+    ("me_contacts", "联系方式", True, "phone"),
+    ("me_teams", "我的战队", True, "shield"),
+    ("me_registrations", "我的报名", True, "trophy"),
+    ("me_scrims", "我的内战", True, "calendar"),
+    ("me_security", "账号安全", True, "lock"),
 )
 
 

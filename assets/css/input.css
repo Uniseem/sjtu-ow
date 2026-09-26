@@ -2450,10 +2450,54 @@
     border-top: 1px solid var(--tone-line);
   }
 
-  /* Sign-in, sign-up and the other account pages (allauth). */
+  /* Sign-in, sign-up and the other account pages (allauth): a card (round 085). */
   .c-auth {
     width: 100%;
     max-width: 28rem;
+    padding: 1.5rem 1.25rem;
+    border: 1px solid var(--tone-line);
+    border-radius: var(--radius-xl);
+    background-color: var(--tone-panel);
+  }
+
+  @media (min-width: 640px) {
+    .c-auth {
+      padding: 2rem 2.25rem;
+    }
+  }
+
+  /* 注册以后可以, beside the sign-in and sign-up cards. */
+  .c-why {
+    padding: 1.5rem 1.75rem;
+    border-radius: var(--radius-xl);
+    background-color: var(--color-surface-low);
+  }
+
+  .c-why__title {
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  .c-why ul {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .c-why li {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .c-why__icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-md);
+    color: var(--tone-fg);
   }
 
   .c-auth > h1 {
@@ -2752,6 +2796,14 @@
     background-color: var(--color-primary-container);
     color: var(--color-on-primary-container);
     font-weight: 600;
+  }
+
+  .c-sidenav__icon {
+    color: var(--tone-fg-2);
+  }
+
+  .c-sidenav a[aria-current] .c-sidenav__icon {
+    color: var(--color-on-primary-container);
   }
 
   .c-sidenav__index {

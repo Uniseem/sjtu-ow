@@ -7,7 +7,6 @@
   <header class="c-pagehead">
     <div class="l-container">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'me_registrations' %}">我的报名</a><span class="c-crumbs__sep">/</span><span>报名详情</span></nav>
-      <p class="c-eyebrow">REGISTRATION</p>
       <h1>
         {% if is_adhoc %}{{ registration.team_name }}{% else %}<a href="{{ registration.team.get_absolute_url }}" class="hover:text-fg-red">{{ registration.team_name }}</a>{% endif %}
       </h1>

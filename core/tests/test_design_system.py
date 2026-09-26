@@ -554,7 +554,10 @@ def test_the_account_centre_is_not_marked_as_a_section(client, home):
 # --- account centre (13.5, round 077) ---------------------------------------------
 
 
-def test_the_account_menu_is_numbered_and_marks_the_current_page(client, home):
+def test_the_account_menu_has_icons_and_marks_the_current_page(client, home):
+    """v3.0 (round 085): each item carries an icon; the 01–07 numbers are gone."""
+    from accounts.views import ME_NAV
+
     client.force_login(_person("menu-me@example.com"))
     html = client.get("/me/game-accounts/").content.decode("utf-8")
     menu = html[
@@ -562,12 +565,68 @@ def test_the_account_menu_is_numbered_and_marks_the_current_page(client, home):
             "</ul>", html.index('<ul class="c-sidenav')
         )
     ]
-    assert menu.count('class="c-sidenav__index"') == 7
-    assert (
-        '<a href="/me/game-accounts/" aria-current="page">'
-        '<span class="c-sidenav__index">02</span>游戏 ID 与段位</a>'
-    ) in menu
+    assert menu.count('class="size-5 c-sidenav__icon"') == len(ME_NAV) == 7
+    assert "c-sidenav__index" not in menu
+    assert len({icon for *_rest, icon in ME_NAV}) == 7  # one icon each
+    current = menu[menu.index('aria-current="page"') :]
+    assert "游戏 ID 与段位</a>" in current[: current.index("</li>")]
     assert menu.count('aria-current="page"') == 1
+
+
+def test_the_account_centre_head_shows_who_you_are(client, home):
+    client.force_login(_person("whoami@example.com"))
+    html = client.get("/me/").content.decode("utf-8")
+    head = html[
+        html.index('<header class="c-pagehead">') : html.index(
+            "</header>", html.index('<header class="c-pagehead">')
+        )
+    ]
+    assert "ACCOUNT" not in head
+    assert re.search(
+        r'<span class="c-avatar c-avatar--sm" aria-hidden="true">[wW]</span>', head
+    )
+    assert "whoami</span>" in head
+
+
+def test_sign_in_is_a_card_beside_what_an_account_is_for(client, home):
+    html = client.get("/accounts/login/").content.decode("utf-8")
+    main = html[html.index("<main") : html.index("</main>")]
+    assert '<section class="c-auth">' in main
+    assert "ACCOUNT" not in main
+    why = main[main.index('<aside class="c-why') : main.index("</aside>")]
+    assert why.count('class="c-why__icon') == 3
+    assert "border-fg" not in main
+    card = _block(INPUT_CSS.read_text(encoding="utf-8"), "  .c-auth {")
+    assert "border: 1px solid var(--tone-line);" in card
+    assert "border-radius: var(--radius-xl);" in card
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "templates/account/layout.html",
+        "templates/me/base.html",
+        "teams/templates/teams/apply.html",
+        "teams/templates/teams/create.html",
+        "teams/templates/teams/manage.html",
+        "tournaments/templates/tournaments/individual_signup.html",
+        "tournaments/templates/tournaments/register.html",
+        "tournaments/templates/tournaments/registration_detail.html",
+    ],
+)
+def test_form_pages_carry_no_latin_eyebrow(path):
+    text = (Path(settings.BASE_DIR) / path).read_text(encoding="utf-8")
+    assert "c-eyebrow" not in text
+
+
+def test_no_front_template_draws_v2_heavy_rules():
+    """v2.0 separated things with 2px ink rules; v3.0 uses cards (round 085)."""
+    offenders = []
+    for relative, text in _front_templates():
+        for token in ("border-fg", "border-t-2", "border-b-2", "border-y-2"):
+            if token in text:
+                offenders.append(f"{relative}: {token}")
+    assert offenders == []
 
 
 def test_the_phone_tab_strip_opens_on_the_current_page(client, home):

@@ -7,7 +7,6 @@
   <header class="c-pagehead">
     <div class="l-container">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/tournaments/">赛事</a><span class="c-crumbs__sep">/</span><a href="{{ tournament.get_absolute_url }}">{{ tournament.title }}</a><span class="c-crumbs__sep">/</span><span>为战队报名</span></nav>
-      <p class="c-eyebrow">REGISTER</p>
       <h1>为战队报名</h1>
       <p class="c-pagehead__meta"><span>{{ tournament.title }}</span><span>每队 <span class="font-numeric">{{ tournament.roster_min }}–{{ tournament.roster_max }}</span> 人</span><span>报名截止 <span class="font-numeric">{{ tournament.registration_closes_at|ow_date }} {{ tournament.registration_closes_at|ow_time }}</span></span></p>
     </div>

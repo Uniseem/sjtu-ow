@@ -6,7 +6,6 @@
   <header class="c-pagehead">
     <div class="l-container">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'team_index' %}">战队</a><span class="c-crumbs__sep">/</span><a href="{{ team.get_absolute_url }}">{{ team.name }}</a><span class="c-crumbs__sep">/</span><span>申请加入</span></nav>
-      <p class="c-eyebrow">APPLY</p>
       <h1>申请加入「{{ team.name }}」</h1>
       <p class="c-pagehead__lede">队长会看到你的昵称、意向位置、留言和游戏 ID，通过后你就是队员了。</p>
     </div>

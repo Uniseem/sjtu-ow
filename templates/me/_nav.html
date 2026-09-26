@@ -1,10 +1,10 @@
 {% load ow %}
 <nav aria-label="个人中心" class="font-nav min-w-0">
   <ul class="c-sidenav hidden self-start lg:block">
-    {% for name, label, available in me_nav %}
+    {% for name, label, available, icon in me_nav %}
       <li>
         {% if available %}
-          <a href="{% url name %}"{% if current_me == name %} aria-current="page"{% endif %}><span class="c-sidenav__index">{{ forloop.counter|ow_index }}</span>{{ label }}</a>
+          <a href="{% url name %}"{% if current_me == name %} aria-current="page"{% endif %}>{% include "components/icon.html" with name=icon class="size-5 c-sidenav__icon" %}{{ label }}</a>
         {% else %}
           <span class="flex min-h-11 items-center pl-4 text-fg-3">{{ label }}</span>
         {% endif %}
@@ -12,7 +12,7 @@
     {% endfor %}
   </ul>
   <div class="c-tabs lg:hidden">
-    {% for name, label, available in me_nav %}
+    {% for name, label, available, icon in me_nav %}
       {% if available %}
         <a href="{% url name %}"{% if current_me == name %} aria-current="page"{% endif %}>{{ label }}</a>
       {% endif %}
