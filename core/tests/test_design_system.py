@@ -407,7 +407,7 @@ def _front_templates():
     base = Path(settings.BASE_DIR)
     for root in [base / "templates", *sorted(base.glob("*/templates"))]:
         for path in root.rglob("*.html"):
-            relative = str(path.relative_to(base))
+            relative = path.relative_to(base).as_posix()
             if not any(part in relative for part in ADMIN_TEMPLATE_PARTS):
                 yield relative, path.read_text(encoding="utf-8")
 
