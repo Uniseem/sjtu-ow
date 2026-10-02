@@ -2584,15 +2584,6 @@
     transform: scale(1.03);
   }
 
-  .c-media__none {
-    display: grid;
-    place-items: center;
-    height: 100%;
-    color: var(--color-fg-3);
-    font-size: 1.125rem;
-    font-weight: 600;
-  }
-
   .c-media__meta {
     display: flex;
     flex-wrap: wrap;

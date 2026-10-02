@@ -65,12 +65,15 @@ ICONS = [
 
 
 def sample_context():
+    from core import placeholders
+
     now = timezone.localtime()
     base = now.replace(hour=19, minute=30, second=0, microsecond=0)
     return {
         "colours": COLOURS,
         "statuses": STATUSES,
         "icons": ICONS,
+        "placeholders": placeholders.catalogue(),
         "sample_day": base + timedelta(days=3),
         "sample_close": base + timedelta(days=12),
         "sample_past": base - timedelta(days=40),

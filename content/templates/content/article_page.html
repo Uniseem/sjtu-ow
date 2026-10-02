@@ -20,9 +20,7 @@
         <time class="font-numeric" datetime="{{ page.first_published_at|date:'c' }}">{{ page.first_published_at|ow_date }}</time>
       </p>
     </header>
-    {% if page.cover %}
-      <figure class="c-article__cover">{% image page.cover fill-1408x792-c50 alt="" %}</figure>
-    {% endif %}
+    <figure class="c-article__cover">{% if page.cover %}{% image page.cover fill-1408x792-c50 alt="" %}{% else %}<img src="{{ page|cover_placeholder }}" width="1408" height="792" alt="">{% endif %}</figure>
     <div class="c-prose">
       {% include_block page.body %}
     </div>

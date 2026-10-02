@@ -55,7 +55,7 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
   uv run python manage.py check --deploy
 ```
 
-改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。
+改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。改了 `core/placeholders.py`（封面占位图的画法）后跑 `uv run python manage.py render_placeholders` 并提交 `static/img/placeholders/`。
 
 ## 测试机与部署
 

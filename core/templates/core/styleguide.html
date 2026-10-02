@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load ow %}
+{% load static ow %}
 {% block title %}设计体系样张 · 交大守望先锋{% endblock %}
 {% block content %}
   <header class="c-pagehead">
@@ -233,14 +233,14 @@
     <header class="c-stage c-stage--plain">
       <div class="l-container c-stage__body">
         <p class="c-stage__tags"><span class="c-status c-status--live">报名中</span><span class="c-tag">仅限交大</span></p>
-        <h2 id="sg-night" class="c-stage__title">赛场横幅：没有封面时</h2>
+        <h2 id="sg-night" class="c-stage__title">赛场横幅：内战、战队（没有封面）</h2>
         <dl class="c-stage__facts"><div><dt>报名截止</dt><dd>{{ sample_close|ow_md }} {{ sample_close|ow_weekday }} {{ sample_close|ow_time }}</dd></div><div><dt>每队人数</dt><dd>5–7 人</dd></div><div><dt>已通过</dt><dd>4 队</dd></div></dl>
       </div>
     </header>
     <div class="l-container l-section">
       <div class="c-upcoming c-upcoming--two">
         <article class="c-media">
-          <div class="c-media__pic"><span class="c-media__none">2026 秋季校内赛</span></div>
+          <div class="c-media__pic"><img src="{% static 'img/placeholders/cover-07.svg' %}" width="640" height="360" alt="" loading="lazy"></div>
           <p class="c-media__meta"><span class="c-status c-status--live">报名中</span><span>{{ sample_close|ow_md }} {{ sample_close|ow_time }} 截止</span></p>
           <h3 class="c-media__title"><a href="#sg-night" class="c-stretch">2026 秋季校内赛</a></h3>
           <p class="c-media__facts">5–7 人一队 · 已通过 4 队 · 仅限交大</p>
@@ -316,11 +316,17 @@
       </div>
       <div class="c-media-grid mt-8 lg:grid-cols-3">
         <article class="c-media">
-          <div class="c-media__pic"><span class="c-media__none">战报</span></div>
+          <div class="c-media__pic"><img src="{% static 'img/placeholders/cover-05.svg' %}" width="640" height="360" alt="" loading="lazy"></div>
           <p class="c-media__meta"><span class="c-tag">战报</span><span class="c-tag c-tag--accent">置顶</span><time>09.28</time></p>
-          <h3 class="c-media__title"><a href="#sg-home" class="c-stretch">没有封面的文章：灰底写分类名</a></h3>
+          <h3 class="c-media__title"><a href="#sg-home" class="c-stretch">没有封面的文章：用它的占位图</a></h3>
         </article>
       </div>
+      <h3 id="sg-placeholders" class="mt-8 text-lg font-semibold">占位图（文章、赛事没有封面时，设计 13.2.5）</h3>
+      <ul class="c-media-grid mt-4 lg:grid-cols-4">
+        {% for path, style in placeholders %}
+          <li class="c-media"><div class="c-media__pic"><img src="{% static path %}" width="640" height="360" alt="" loading="lazy"></div><p class="c-media__meta"><span class="c-tag">{{ style }}</span><span>{{ forloop.counter|ow_index }}</span></p></li>
+        {% endfor %}
+      </ul>
       <ul class="c-teams mt-8">
         <li class="c-teams__item"><span class="c-teams__logo">夜</span><a href="#sg-home" class="c-stretch c-teams__name">夜航</a><span class="c-teams__meta">6 人</span><span class="c-status c-status--live">招募中</span></li>
         <li class="c-teams__item"><span class="c-teams__logo">思</span><a href="#sg-home" class="c-stretch c-teams__name">思源</a><span class="c-teams__meta">7 人</span></li>

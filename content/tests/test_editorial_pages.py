@@ -33,12 +33,17 @@ def test_the_news_list_is_a_grid_of_picture_cards(client, site):
     cards = grid.split('<article class="c-media">')[1:]
     assert len(cards) == 3
     covered = next(card for card in cards if ">有封面<" in card)
-    assert "<img" in covered and "c-media__none" not in covered
-    # No cover: the category's name on the second surface (13.2.5), no pattern.
+    assert "<img" in covered and "img/placeholders/" not in covered
+    # No cover: the article's own placeholder picture (13.2.5, round 090),
+    # a different one for each article.
     plain = next(card for card in cards if ">没封面<" in card)
-    assert '<span class="c-media__none">攻略</span>' in plain
     other = next(card for card in cards if ">公告没封面<" in card)
-    assert '<span class="c-media__none">公告</span>' in other
+    pictures = [
+        re.search(r'<img src="([^"]*img/placeholders/cover-\d\d\.svg)"', card)
+        for card in (plain, other)
+    ]
+    assert all(pictures)
+    assert pictures[0].group(1) != pictures[1].group(1)
     # The list shows the summary (5.2); the homepage cards do not.
     assert '<p class="c-media__summary">两行摘要</p>' in plain
     assert "c-hatch" not in grid

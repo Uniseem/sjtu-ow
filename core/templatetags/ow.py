@@ -87,3 +87,16 @@ def lookup(mapping, key):
         return mapping.get(key)
     except AttributeError:
         return None
+
+
+@register.filter
+def cover_placeholder(obj) -> str:
+    """The picture an article or tournament shows without a cover (13.2.5).
+
+    Always the same one for the same object, so its card and its page agree.
+    """
+    from django.templatetags.static import static
+
+    from core import placeholders
+
+    return static(placeholders.static_path(obj))
