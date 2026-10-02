@@ -97,7 +97,10 @@ def test_only_our_palette_exists():
 
 
 HEX = r"--color-([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})"
-DARK_HEAD = "@media (prefers-color-scheme: dark) {"
+# v5.1: the dark values sit under the dark variant (chosen, or the system's).
+DARK_HEAD = ":root {\n  @variant dark {"
+# error.css is hand-written and still follows the system only (13.15).
+ERROR_DARK_HEAD = "@media (prefers-color-scheme: dark) {"
 
 
 def _light(css):
@@ -124,26 +127,54 @@ def test_error_css_uses_the_same_token_values():
     """error.css is hand-written (13.15); its colours must match input.css."""
     site = _tokens(INPUT_CSS.read_text(encoding="utf-8"))
     text = ERROR_CSS.read_text(encoding="utf-8")
-    light_part = text[: text.index(DARK_HEAD)]
+    light_part = text[: text.index(ERROR_DARK_HEAD)]
     errors = dict(re.findall(HEX, light_part))
     assert errors, "error.css defines no colour tokens"
     for name, value in errors.items():
         assert site.get(name, "").lower() == value.lower(), name
     # 089: the error pages follow the system too, with the site's dark values.
     site_dark = _dark(INPUT_CSS.read_text(encoding="utf-8"))
-    dark = dict(re.findall(HEX, text[text.index(DARK_HEAD) :]))
+    dark = dict(re.findall(HEX, text[text.index(ERROR_DARK_HEAD) :]))
     assert set(dark) == set(errors)
     for name, value in dark.items():
         assert site_dark[name].lower() == value.lower(), f"dark {name}"
 
 
 def test_dark_mode_gives_every_palette_colour_a_dark_value():
-    """13.2.1: both modes follow the system; a colour left out of the dark block
-    would stay light on a dark page."""
+    """13.2.1: a colour left out of the dark block would stay light on a dark
+    page. The night-* values are the same in both modes (13.2.6 深色条)."""
     css = INPUT_CSS.read_text(encoding="utf-8")
-    fixed = {"white", "black", "night", "night-2"}  # the same in both modes
+    light = _light(css)
+    fixed = {"white", "black"} | {name for name in light if name.startswith("night")}
     dark = set(dict(re.findall(HEX, _dark_block(css))))
-    assert set(_light(css)) - fixed - dark == set()
+    assert set(light) - fixed - dark == set()
+    # The night values are the dark mode's own, so a night band looks like
+    # the same thing in dark mode.
+    dark_values = _dark(css)
+    for name in fixed - {"white", "black", "night-2", "night-accent"}:
+        plain = name.removeprefix("night-") if name != "night" else "bg"
+        assert light[name] == dark_values[plain], name
+
+
+def test_the_dark_values_apply_when_chosen_or_when_the_system_is_dark():
+    """v5.1 (13.2.1 #5): 深色 from the masthead, or 跟随系统 on a dark system;
+    浅色 wins over a dark system. One source block, two compiled rules."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    # Only the variant reads the system; a rule written with the media query
+    # directly would ignore what the visitor picked.
+    assert css.count("prefers-color-scheme") == 1
+    assert css.index("@custom-variant dark {") < css.index("prefers-color-scheme")
+    # `tailwind build` flattens the nesting (:root:not(…)); the watcher of
+    # `tailwind runserver` keeps it (&:not(…)). Either way, two rules.
+    compiled = re.sub(r'[\s"]', "", APP_CSS.read_text(encoding="utf-8"))
+    start = r"(?::root|&)"
+    dark_bg = r"\{color-scheme:dark;--color-bg:#0e1014;"
+    system = start + r":not\(\[data-theme=light\],\[data-theme=light\]\*\)"
+    chosen = start + r":is\(\[data-theme=dark\],\[data-theme=dark\]\*\)"
+    assert re.search(
+        r"@media\(prefers-color-scheme:dark\)\{" + system + dark_bg, compiled
+    )
+    assert re.search(chosen + dark_bg, compiled)
 
 
 # --- contrast (13.2.2, WCAG 2.1 AA) ----------------------------------------------
@@ -165,7 +196,14 @@ def _contrast(a, b):
 # The pairs in design 13.2.2: text needs 4.5:1, field borders 3:1.
 GROUNDS = ("bg", "surface", "surface-2")
 CONTRAST_PAIRS = [
-    (("fg", "fg-2", "fg-3", "primary-text", "ok", "warn", "info"), GROUNDS, 4.5),
+    (
+        ("fg", "fg-2", "fg-3", "primary-text", "accent-text", "ok", "warn", "info"),
+        GROUNDS,
+        4.5,
+    ),
+    # Display-size orange (v5.1): large text needs 3:1.
+    (("accent-display",), GROUNDS, 3),
+    (("on-accent-soft",), ("accent-soft",), 4.5),
     (("white",), ("primary",), 4.5),
     (("on-primary-soft",), ("primary-soft",), 4.5),
     (("ok",), ("ok-soft",), 4.5),
@@ -255,8 +293,19 @@ def test_v4_draws_no_glass_and_no_washes():
     radials = [m.start() for m in re.finditer("radial-gradient", css)]
     assert len(radials) == 1
     assert 'input[type="radio"]:checked {' in css[radials[0] - 200 : radials[0]]
-    gradients = re.findall(r"linear-gradient\(", css)
-    assert len(gradients) == 3  # the scrims of c-hero, c-feature and c-stage
+    # Every linear gradient is a veil under words on a picture (13.2.5):
+    # the hero's and the section heads' in the page's ground, the covers' in
+    # black.
+    veils = set()
+    for match in re.finditer(r"linear-gradient\(", css):
+        brace = css.rfind("{", 0, match.start())
+        veils.add(css[css.rfind("\n", 0, brace) + 1 : brace].strip())
+    assert veils == {
+        ".c-hero::after",
+        ".c-pagehead--picture::after",
+        ".c-feature::after",
+        ".c-stage:not(.c-stage--plain)::after",
+    }
 
 
 def test_no_text_is_smaller_than_14px():

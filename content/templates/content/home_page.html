@@ -4,30 +4,35 @@
 {% block title %}{{ seo.document_title }}{% endblock %}
 
 {% block content %}
-  {# Hero (design 5.2, 13.2.5): the picture from 全站设置, or the dark ground with the emblem. #}
-  <section class="c-hero{% if not hero_image %} c-hero--plain{% endif %}" aria-labelledby="hero-title">
-    {% if hero_image %}
-      {% image hero_image fill-2400x1000-c50 class="c-hero__img" alt="" %}
-    {% else %}
-      <img class="c-hero__emblem" src="{% static 'img/sjtu-emblem.svg' %}" alt="" width="560" height="560">
-    {% endif %}
+  {% comment %}
+    Hero (design 5.2, 13.2.5; v5.1): full screen, like the section heads: a picture
+    behind (首屏图片, else the moving placeholder scene, by day or at night with the
+    mode), veiled in the page's ground most on the left. Two columns in the page
+    width: the two-line title on the left, the SJTU emblem on the right, see-through,
+    its gear ring turning slowly (CSS only; still under 「减少动态效果」). The
+    community's figures close the screen along its bottom edge.
+  {% endcomment %}
+  <section class="c-hero" aria-labelledby="hero-title">
+    {% section_picture "home" "c-hero__img" %}
     <div class="l-container c-hero__body">
-      <h1 id="hero-title" class="c-hero__title">上海交通大学守望先锋社区</h1>
-      <p class="c-hero__lede">交大玩家自己的守望先锋社区。每周内战，每学期一届校内赛事。</p>
-      <div class="c-hero__actions">
-        <a href="{% url 'account_signup' %}" class="c-btn c-btn--primary">加入社区</a>
-        {% if qq_group_url %}<a href="{{ qq_group_url }}" class="c-btn c-btn--light" rel="noopener" data-quick="qq">加入 QQ 群</a>{% endif %}
+      <div class="c-hero__copy">
+        <h1 id="hero-title" class="c-hero__title"><span>上海交通大学</span><span>守望先锋社区</span></h1>
+        <p class="c-hero__lede">交大玩家自己的守望先锋社区。每周内战，每学期一届校内赛事。</p>
+        <div class="c-hero__actions">
+          <a href="{% url 'account_signup' %}" class="c-btn c-btn--primary">加入社区</a>
+          {% if qq_group_url %}<a href="{{ qq_group_url }}" class="c-btn c-btn--secondary" rel="noopener" data-quick="qq">加入 QQ 群</a>{% endif %}
+        </div>
       </div>
+      <div class="c-hero__emblem" aria-hidden="true"><span class="c-hero__emblem-body"></span><span class="c-hero__emblem-gear"></span></div>
     </div>
-  </section>
-
-  <section class="c-stats" aria-label="社区数字">
-    <dl class="l-container c-stats__list">
-      <div><dt>注册成员</dt><dd>{{ member_count }}</dd></div>
-      <div><dt>战队</dt><dd>{{ team_count }}</dd></div>
-      <div><dt>累计内战</dt><dd>{{ scrims_held }}</dd></div>
-      {% if age %}<div data-figure="age"><dt>社区已成立</dt><dd>{% if age.years %}{{ age.years }} 年 {% endif %}{{ age.days }} 天</dd></div>{% endif %}
-    </dl>
+    <div class="l-container c-hero__foot">
+      <dl class="c-stats" aria-label="社区数字">
+        <div><dt>注册成员</dt><dd>{{ member_count }}</dd></div>
+        <div><dt>战队</dt><dd>{{ team_count }}</dd></div>
+        <div><dt>累计内战</dt><dd>{{ scrims_held }}</dd></div>
+        {% if age %}<div data-figure="age"><dt>社区已成立</dt><dd>{% if age.years %}{{ age.years }} 年 {% endif %}{{ age.days }} 天</dd></div>{% endif %}
+      </dl>
+    </div>
   </section>
 
   <section class="l-container l-section" aria-labelledby="home-upcoming">

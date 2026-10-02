@@ -1,0 +1,8 @@
+{% load ow %}
+{% comment %}
+  The picture behind a section's page head (design 13.2.5, v5.1): the 栏目横幅
+  from 全站设置, else the section's own moving scene, by day in the light mode
+  and at night in the dark one. Veiled by c-pagehead--picture so the title
+  reads. section: news, tournaments, scrims, teams or members.
+{% endcomment %}
+{% section_picture section "c-pagehead__img" %}

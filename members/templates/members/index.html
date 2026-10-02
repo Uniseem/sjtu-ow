@@ -5,14 +5,15 @@
 
 {% block content %}
   {# 名册 (design 6.3, 13.2.7). #}
-  <header class="c-pagehead">
+  <header class="c-pagehead c-pagehead--picture">
+    {% include "components/pagehead_picture.html" with section="members" %}
     <div class="l-container">
             <h1>成员展示</h1>
       <p class="c-pagehead__meta"><span>共 <span class="font-numeric">{{ members|length }}</span> 位成员</span></p>
     </div>
   </header>
 
-  <div class="l-container pt-6 pb-16 lg:pb-24">
+  <div class="l-container pt-10 pb-16 lg:pt-14 lg:pb-24">
     <nav class="c-tabs" aria-label="成员分组">
       {% for section in sections %}
         <a href="#group-{{ section.group.pk }}">{{ section.group.name }}<span class="c-tabs__count">{{ section.entries|length }}</span></a>

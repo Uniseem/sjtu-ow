@@ -9,12 +9,14 @@ from datetime import date, timedelta
 import pytest
 from allauth.account.models import EmailAddress
 from django.core.exceptions import ValidationError
+from django.templatetags.static import static
 from django.utils import timezone
 
 import content.models
 from content import home as home_data
 from content.models import ArticleCategory
 from content.tests.test_content import _article, _image, _tree, _user
+from core import placeholders
 from core.models import PrerenderedPage, SiteSettings
 from scrims import services as scrim_services
 from scrims.models import ScrimStatus
@@ -115,7 +117,7 @@ def test_no_date_or_a_future_date_gives_no_age():
 
 
 def _figure(html, label):
-    start = html.index('class="l-container c-stats__list"')
+    start = html.index('<dl class="c-stats"')
     figures = html[start : html.index("</dl>", start)]
     cell = figures[figures.index(f"<dt>{label}</dt>") :]
     return cell[: cell.index("</div>")]
@@ -163,15 +165,38 @@ def _hero(html):
 
 
 @pytest.mark.django_db
-def test_the_hero_shows_the_uploaded_picture_or_else_the_emblem(client, site):
+def test_the_hero_shows_the_uploaded_picture_or_else_its_scene_by_day_and_night(
+    client, site
+):
+    """v5.1 (13.2.5): no 首屏图片, the home scene twice, the stylesheet shows
+    the one for the mode; with one, that picture in both modes. The emblem is
+    there either way."""
     hero = _hero(_main(client.get("/")))
-    assert '<section class="c-hero c-hero--plain"' in hero
-    assert re.search(r'<img class="c-hero__emblem" src="/static/img/sjtu-emblem', hero)
+    paths = placeholders.section_paths("home")
+    for mode in ("light", "dark"):
+        assert (
+            f'<img class="c-hero__img c-scene c-scene--{mode}" '
+            f'src="{static(paths[mode])}"'
+        ) in hero
+    assert '<div class="c-hero__emblem" aria-hidden="true">' in hero
     assert "<h1" in hero and "守望先锋社区" in hero
     _settings(hero_image=_image("hero"))
     hero = _hero(_main(client.get("/")))
-    assert "c-hero--plain" not in hero and "c-hero__emblem" not in hero
-    assert 'class="c-hero__img"' in hero
+    assert "c-scene" not in hero and placeholders.DIRECTORY not in hero
+    assert hero.count('<img class="c-hero__img" src="/media/') == 1
+    assert '<div class="c-hero__emblem" aria-hidden="true">' in hero
+
+
+@pytest.mark.django_db
+def test_the_figures_close_the_hero(client, site):
+    """v5.1: the figures row moved into the first screen, along its bottom."""
+    hero = _hero(_main(client.get("/")))
+    foot = hero[hero.index('<div class="l-container c-hero__foot">') :]
+    assert foot.startswith(
+        '<div class="l-container c-hero__foot">\n      <dl class="c-stats"'
+    )
+    assert "<dt>注册成员</dt>" in foot
+    assert 'class="c-stats"' not in hero[: hero.index("c-hero__foot")]
 
 
 @pytest.mark.django_db
@@ -182,7 +207,8 @@ def test_the_hero_has_one_primary_action_and_the_qq_button_once_set(client, site
     assert "QQ" not in hero
     _settings(qq_group_url="https://qm.qq.com/q/abc")
     hero = _hero(_main(client.get("/")))
-    assert '<a href="https://qm.qq.com/q/abc" class="c-btn c-btn--light"' in hero
+    # Outlined in the text colour, so it reads in both modes (v5.1).
+    assert '<a href="https://qm.qq.com/q/abc" class="c-btn c-btn--secondary"' in hero
 
 
 def test_the_qq_link_must_be_https():

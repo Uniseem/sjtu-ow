@@ -3,7 +3,8 @@
 {% block title %}战队 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block content %}
-  <header class="c-pagehead">
+  <header class="c-pagehead c-pagehead--picture">
+    {% include "components/pagehead_picture.html" with section="teams" %}
     <div class="l-container">
       <div class="c-pagehead__row">
         <div>
@@ -21,7 +22,7 @@
     </div>
   </header>
 
-  <div class="l-container pt-8 pb-16 lg:pb-24">
+  <div class="l-container pt-10 pb-16 lg:pt-14 lg:pb-24">
     {% if teams %}
       <ul class="c-teams">
         {% for team in teams %}

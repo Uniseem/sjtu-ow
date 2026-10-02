@@ -16,6 +16,7 @@
       <meta property="og:image" content="{{ seo.og_image }}">
     {% endif %}
     <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+    <script src="{% static 'js/theme.js' %}"></script>
     {% tailwind_css %}
     {% if font_css_url %}<link rel="stylesheet" href="{{ font_css_url }}">{% endif %}
     <script src="{% static 'js/state.js' %}"></script>
@@ -37,6 +38,21 @@
         </nav>
         <div class="c-masthead__end">
           <a href="{% url 'search' %}" class="c-iconbtn" aria-label="搜索">{% include "components/icon.html" with name="search" %}</a>
+          {% comment %}
+            Colour mode (design 13.2.1): hidden until js/theme.js runs; without the
+            script the system decides. Phones have it in the drawer instead.
+          {% endcomment %}
+          <details class="c-theme max-sm:hidden" data-theme-menu hidden>
+            <summary class="c-iconbtn" aria-label="颜色模式" title="颜色模式">
+              <span class="c-theme__light">{% include "components/icon.html" with name="sun" %}</span>
+              <span class="c-theme__dark">{% include "components/icon.html" with name="moon" %}</span>
+            </summary>
+            <div class="c-menu__panel" role="group" aria-label="颜色模式">
+              <button type="button" data-theme-choice="system" aria-pressed="false">{% include "components/icon.html" with name="monitor" %}跟随系统</button>
+              <button type="button" data-theme-choice="light" aria-pressed="false">{% include "components/icon.html" with name="sun" %}浅色</button>
+              <button type="button" data-theme-choice="dark" aria-pressed="false">{% include "components/icon.html" with name="moon" %}深色</button>
+            </div>
+          </details>
           {% include "slots/account.html" %}
           <details class="c-drawer lg:hidden">
             <summary class="c-iconbtn -mr-2.5" aria-label="导航菜单">
@@ -51,6 +67,14 @@
                 <input type="search" name="q" maxlength="50" placeholder="搜索" aria-label="站内搜索">
                 <button type="submit" class="c-btn c-btn--secondary">搜索</button>
               </form>
+              <div class="sm:hidden" data-theme-menu hidden>
+                <p class="c-eyebrow mt-8">颜色模式</p>
+                <div class="c-drawer__theme" role="group" aria-label="颜色模式">
+                  <button type="button" data-theme-choice="system" aria-pressed="false">{% include "components/icon.html" with name="monitor" %}跟随系统</button>
+                  <button type="button" data-theme-choice="light" aria-pressed="false">{% include "components/icon.html" with name="sun" %}浅色</button>
+                  <button type="button" data-theme-choice="dark" aria-pressed="false">{% include "components/icon.html" with name="moon" %}深色</button>
+                </div>
+              </div>
               <p class="c-eyebrow mt-8">更多</p>
               <nav class="mt-3 grid grid-cols-2 gap-x-6 font-nav" aria-label="更多">
                 <a href="{% url 'submit' %}" class="flex min-h-11 items-center text-fg-2">我要投稿</a>

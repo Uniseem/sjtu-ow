@@ -10,7 +10,7 @@
 
 通过 `uv` 安装的 Python 依赖不在仓库里，许可证见各自的发行包。
 
-**上海交通大学校徽**（`static/img/sjtu-emblem.svg`）不是开源文件，也不按本仓库的许可证授权：校徽的一切权利属于上海交通大学。文件取自 [weijianwen/SJTU-logo-banner](https://github.com/weijianwen/SJTU-logo-banner) 的 `SJTU_LOGO/SVG/sjtulogored.svg`（该仓库没有许可证文件），本站只把画布从整页 A4 裁到校徽本身（`viewBox`），图形没有改动。只用在首页首屏的水印（设计 13.2.9），用户 2026-09-26 决定使用。复制本仓库时不要连同这个文件一起使用。
+**上海交通大学校徽**（`static/img/sjtu-emblem.svg`）不是开源文件，也不按本仓库的许可证授权：校徽的一切权利属于上海交通大学。文件取自 [weijianwen/SJTU-logo-banner](https://github.com/weijianwen/SJTU-logo-banner) 的 `SJTU_LOGO/SVG/sjtulogored.svg`（该仓库没有许可证文件），本站只把画布从整页 A4 裁到校徽本身（`viewBox`），图形没有改动。`static/img/sjtu-emblem-body.svg` 和 `static/img/sjtu-emblem-gear.svg` 是从它拆出来的两层（齿轮那一圈和其余部分，`manage.py render_emblem_layers` 生成，图形同样没有改动），权利状况和原文件一样。只用在首页首屏：半透明地印在首屏图上，齿轮那一圈慢慢转（设计 13.2.5）。用户 2026-09-26 决定使用。复制本仓库时不要连同这三个文件一起使用。
 
 ---
 

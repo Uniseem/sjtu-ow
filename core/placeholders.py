@@ -52,15 +52,95 @@ def _points(points) -> str:
     return " ".join(f"{_n(x)},{_n(y)}" for x, y in points)
 
 
+# The motion (v5.1): CSS keyframes inside the picture, so an <img> plays them
+# with no script. Only transform and opacity change. Each picture carries the
+# frames it uses and stands still under 「减少动态效果」.
+KEYFRAMES = {
+    # A light that slowly swells and fades.
+    "breathe": (
+        "from{opacity:.7;transform:scale(.96)}to{opacity:1;transform:scale(1.04)}"
+    ),
+    # Windows going dark for a while and lighting up again.
+    "flick": "0%,46%{opacity:1}52%,88%{opacity:.12}94%,100%{opacity:1}",
+    "twinkle": "0%,100%{opacity:1}50%{opacity:.25}",
+    # A warning light on a roof.
+    "blink": "0%,60%,100%{opacity:0}68%,84%{opacity:1}",
+    # Layers moving by --d, near ones further: a slow camera pan.
+    "pan": (
+        "from{transform:translateX(calc(var(--d)*-1))}"
+        "to{transform:translateX(var(--d))}"
+    ),
+    "swell": (
+        "from{transform:translate(calc(var(--d)*-1),0)}"
+        "to{transform:translate(var(--d),calc(var(--d)*.3))}"
+    ),
+    "sway": (
+        "from{opacity:.7;transform:translateX(calc(var(--d)*-1)) skewX(-4deg)}"
+        "to{opacity:1;transform:translateX(var(--d)) skewX(4deg)}"
+    ),
+    # Clouds, haze and mist crossing from the left edge to the right.
+    "cross": (
+        f"from{{transform:translateX(0)}}to{{transform:translateX({WIDTH + 900}px)}}"
+    ),
+    "spin": "to{transform:rotate(1turn)}",
+    "float": "from{transform:translate(-26px,-14px)}to{transform:translate(26px,14px)}",
+    "sweep": "from{transform:rotate(-11deg)}to{transform:rotate(11deg)}",
+    "bob": "from{transform:translateY(0)}to{transform:translateY(5px)}",
+}
+STILL = "@media (prefers-reduced-motion:reduce){*{animation:none!important}}"
+# How far past the edges a moving layer is drawn, so it never shows a gap.
+PAD = 80
+
+
 class _Svg:
-    def __init__(self):
+    def __init__(self, motion: random.Random | None = None):
         self.defs: list[str] = []
         self.body: list[str] = []
+        self.rules: list[str] = []
+        self.frames: set[str] = set()
         self._count = 0
+        # Timings come from their own generator, so adding motion did not
+        # move a single tower, ridge or star of the pictures drawn in 090.
+        self.motion = motion or random.Random(0)
 
     def _id(self, prefix: str) -> str:
         self._count += 1
         return f"{prefix}{self._count}"
+
+    def animate(
+        self,
+        frames: str,
+        seconds: float,
+        *,
+        alternate=True,
+        ease="ease-in-out",
+        delay: float | None = None,
+        origin="center",
+        box="fill-box",
+        reverse=False,
+        **props,
+    ) -> str:
+        """A class running one of KEYFRAMES; returns the class name.
+
+        Starts at a random point of its cycle unless ``delay`` is given, so
+        neighbours do not move in step. ``props`` set custom properties
+        (``d="12px"`` becomes ``--d:12px``)."""
+        cid = self._id("m")
+        if delay is None:
+            delay = -self.motion.uniform(0, seconds)
+        direction = (
+            "alternate-reverse" if alternate and reverse
+            else "alternate" if alternate
+            else "reverse" if reverse
+            else "normal"
+        )  # fmt: skip
+        self.frames.add(frames)
+        extra = "".join(f";--{k}:{v}" for k, v in props.items())
+        self.rules.append(
+            f".{cid}{{animation:{frames} {_n(seconds)}s {ease} {_n(delay)}s infinite "
+            f"{direction};transform-box:{box};transform-origin:{origin}{extra}}}"
+        )
+        return cid
 
     def linear(self, stops, x1=0, y1=0, x2=0, y2=1) -> str:
         """``stops``: (offset, colour, opacity). Returns ``url(#id)``."""
@@ -77,8 +157,9 @@ class _Svg:
         )
         return f"url(#{gid})"
 
-    def glow(self, cx, cy, r, color, strength=0.85):
-        """A soft light: a circle whose radial gradient fades to nothing."""
+    def glow(self, cx, cy, r, color, strength=0.85, breathe=True):
+        """A soft light: a circle whose radial gradient fades to nothing,
+        slowly swelling and fading."""
         gid = self._id("g")
         stops = "".join(
             f'<stop offset="{o}" stop-color="{color}" '
@@ -86,8 +167,11 @@ class _Svg:
             for o, a in ((0, 1), (0.25, 0.62), (0.5, 0.28), (0.75, 0.08), (1, 0))
         )
         self.defs.append(f'<radialGradient id="{gid}">{stops}</radialGradient>')
+        cls = (
+            _cls(self.animate("breathe", self.motion.uniform(7, 11))) if breathe else ""
+        )
         self.add(
-            f'<circle cx="{_n(cx)}" cy="{_n(cy)}" r="{_n(r)}" fill="url(#{gid})"/>'
+            f'<circle cx="{_n(cx)}" cy="{_n(cy)}" r="{_n(r)}" fill="url(#{gid})"{cls}/>'
         )
 
     def sky(self, top, bottom):
@@ -96,23 +180,81 @@ class _Svg:
             f'fill="{self.linear([(0, top, 1), (1, bottom, 1)])}"/>'
         )
 
-    def polygon(self, points, fill, opacity=1.0):
+    def polygon(self, points, fill, opacity=1.0, cls=""):
         extra = f' fill-opacity="{round(opacity, 3)}"' if opacity != 1 else ""
-        self.add(f'<polygon points="{_points(points)}" fill="{fill}"{extra}/>')
+        self.add(
+            f'<polygon points="{_points(points)}" fill="{fill}"{extra}{_cls(cls)}/>'
+        )
 
-    def path(self, d, fill, opacity=1.0):
+    def path(self, d, fill, opacity=1.0, cls=""):
         extra = f' fill-opacity="{round(opacity, 3)}"' if opacity != 1 else ""
-        self.add(f'<path d="{d}" fill="{fill}"{extra}/>')
+        self.add(f'<path d="{d}" fill="{fill}"{extra}{_cls(cls)}/>')
 
     def add(self, element: str):
         self.body.append(element)
 
     def render(self) -> str:
+        style = ""
+        if self.rules:
+            frames = "".join(
+                f"@keyframes {name}{{{KEYFRAMES[name]}}}"
+                for name in sorted(self.frames)
+            )
+            style = f"<style>{''.join(self.rules)}{frames}{STILL}</style>"
         return (
             '<svg xmlns="http://www.w3.org/2000/svg" '
             f'viewBox="0 0 {WIDTH} {HEIGHT}" width="{WIDTH}" height="{HEIGHT}" '
             'preserveAspectRatio="xMidYMid slice">'
-            f"<defs>{''.join(self.defs)}</defs>{''.join(self.body)}</svg>\n"
+            f"<defs>{style}{''.join(self.defs)}</defs>{''.join(self.body)}</svg>\n"
+        )
+
+
+def _cls(name: str) -> str:
+    return f' class="{name}"' if name else ""
+
+
+def _wide(line, depth=HEIGHT):
+    """A ridge or wave line as a filled shape reaching PAD past both edges and
+    the bottom, so it can move without opening a gap."""
+    return [(-PAD, line[0][1]), *line, (WIDTH + PAD, line[-1][1])] + [
+        (WIDTH + PAD, depth + PAD),
+        (-PAD, depth + PAD),
+    ]
+
+
+def _drifting(svg, color, count, top, bottom, opacity, flat=False):
+    """Clouds (or haze, or mist when ``flat``) crossing the picture slowly,
+    left to right; spread along the way by their start delays."""
+    m = svg.motion
+    for _ in range(count):
+        y = m.uniform(top, bottom)
+        w = m.uniform(260, 460)
+        h = w * (m.uniform(0.04, 0.08) if flat else m.uniform(0.16, 0.24))
+        seconds = m.uniform(90, 150)
+        cls = svg.animate(
+            "cross",
+            seconds,
+            alternate=False,
+            ease="linear",
+            delay=-m.uniform(0, seconds),
+        )
+        x = -w - 300
+        puffs = (
+            [(x, y, w / 2, h / 2)]
+            if flat
+            else [
+                (x, y, w / 2, h / 2),
+                (x - w * 0.22, y + h * 0.12, w * 0.3, h * 0.42),
+                (x + w * 0.18, y - h * 0.22, w * 0.28, h * 0.5),
+            ]
+        )
+        svg.add(
+            f'<g fill="{color}" fill-opacity="{_n(opacity)}"{_cls(cls)}>'
+            + "".join(
+                f'<ellipse cx="{_n(cx)}" cy="{_n(cy)}" rx="{_n(rx)}" ry="{_n(ry)}"/>'
+                for cx, cy, rx, ry in puffs
+            )
+            + "</g>"
         )
 
 
@@ -145,21 +287,30 @@ def _smooth(points) -> str:
 
 
 def _stars(svg, rng, count, bottom, color="#ffffff"):
+    """Stars; about half of them twinkle, in three rhythms."""
+    m = svg.motion
+    rhythms = [
+        svg.animate("twinkle", m.uniform(2.5, 6), alternate=False) for _ in range(3)
+    ]
     for _ in range(count):
         x, y = rng.uniform(0, WIDTH), rng.uniform(0, bottom) ** 1.15 / bottom**0.15
         r = rng.choice((1.2, 1.5, 1.8, 2.4))
+        cls = m.choice(rhythms) if m.random() < 0.5 else ""
         svg.add(
             f'<circle cx="{_n(x)}" cy="{_n(y)}" r="{r}" fill="{color}" '
-            f'fill-opacity="{round(rng.uniform(0.35, 0.95), 2)}"/>'
+            f'fill-opacity="{round(rng.uniform(0.35, 0.95), 2)}"{_cls(cls)}/>'
         )
 
 
 # --- the scenes ---------------------------------------------------------------
 
 
-def landscape(rng, p):
-    """Layered mountains under a low sun (the first style the user liked)."""
-    svg = _Svg()
+def landscape(rng, p, motion=None):
+    """Layered mountains under a low sun (the first style the user liked).
+    Moving: the sun's light swells, haze crosses the sky, and the ridges pan
+    slowly, the near ones further, like a camera drifting."""
+    svg = _Svg(motion)
+    m = svg.motion
     svg.sky(p["top"], p["bottom"])
     svg.glow(
         WIDTH * rng.uniform(0.25, 0.75),
@@ -167,27 +318,39 @@ def landscape(rng, p):
         HEIGHT * 0.5,
         p["sun"],
     )
+    _drifting(svg, p.get("clouds", p["sun"]), 3, HEIGHT * 0.08, HEIGHT * 0.4,
+              0.5 if "clouds" in p else 0.14, flat="clouds" not in p)  # fmt: skip
     layers = p.get("layers", 5)
+    pan, start = m.uniform(18, 26), -m.uniform(0, 20)
     for i in range(layers):
         t = (i + 1) / layers
         line = _ridge(rng, HEIGHT * (0.45 + 0.11 * i), HEIGHT * (0.16 - 0.02 * i))
-        svg.polygon(
-            line + [(WIDTH, HEIGHT), (0, HEIGHT)], _mix(p["bottom"], p["near"], t**0.8)
-        )
+        cls = svg.animate("pan", pan, delay=start, d=f"{_n(4 + 30 * t**1.5)}px")
+        svg.polygon(_wide(line), _mix(p["bottom"], p["near"], t**0.8), cls=cls)
     return svg
 
 
-def skyline(rng, p):
-    """A city at night: three rows of towers, some windows lit."""
-    svg = _Svg()
+def skyline(rng, p, motion=None):
+    """A city at night: three rows of towers, some windows lit. Moving: windows
+    go dark and light up again in their own rhythms, warning lights blink on
+    the tallest roofs, the glow swells (by day: clouds pass)."""
+    svg = _Svg(motion)
+    m = svg.motion
     svg.sky(p["top"], p["bottom"])
     svg.glow(
         WIDTH * rng.uniform(0.35, 0.65), HEIGHT * 0.78, HEIGHT * 0.7, p["glow"], 0.7
     )
-    windows: dict[str, list[str]] = {c: [] for c in p["windows"]}
+    if "clouds" in p:
+        _drifting(svg, p["clouds"], 4, HEIGHT * 0.06, HEIGHT * 0.32, 0.55)
+    rhythms = [
+        svg.animate("flick", m.uniform(7, 16), alternate=False, ease="linear")
+        for _ in range(5)
+    ]
+    windows: dict[tuple[str, str], list[str]] = {}
+    roofs = []
     win = 6
     for layer in range(3):
-        shade = _mix(p["bottom"], "#080a12", 0.55 + 0.2 * layer)
+        shade = _mix(p["bottom"], p.get("towers", "#080a12"), 0.55 + 0.2 * layer)
         towers = []
         x = -rng.randint(0, 50)
         while x < WIDTH:
@@ -195,23 +358,39 @@ def skyline(rng, p):
             low, high = 0.18 + 0.05 * (2 - layer), 0.42 + 0.12 * (2 - layer)
             top = HEIGHT - rng.randint(int(HEIGHT * low), int(HEIGHT * high))
             towers.append(f"M{x},{top}h{bw}V{HEIGHT}h{-bw}z")
+            roofs.append((top, x + bw / 2, layer))
             if layer == 2 or rng.random() < 0.5:
                 for wy in range(top + win * 3, HEIGHT - win * 2, win * 3):
                     for wx in range(x + win * 2, x + bw - win * 2, win * 3):
                         if rng.random() < 0.2:
                             color = rng.choice(p["windows"])
-                            windows[color].append(f"M{wx},{wy}h{win}v{win}h{-win}z")
+                            # Most windows stay lit; the rest keep their rhythm.
+                            key = (
+                                color,
+                                m.choice(rhythms) if m.random() < 0.45 else "",
+                            )
+                            windows.setdefault(key, []).append(
+                                f"M{wx},{wy}h{win}v{win}h{-win}z"
+                            )
             x += bw + rng.randint(0, int(WIDTH * 0.01))
         svg.path("".join(towers), shade)
-    for color, rects in windows.items():
-        if rects:
-            svg.path("".join(rects), color)
+    for (color, cls), rects in sorted(windows.items()):
+        svg.path("".join(rects), color, cls=cls)
+    # Red warning lights on the three tallest roofs of the back row.
+    for top, cx, _layer in sorted(r for r in roofs if r[2] == 0)[:3]:
+        cls = svg.animate("blink", m.uniform(2.2, 3.4), alternate=False, ease="linear")
+        beacon = p.get("beacon", "#ff4d4d")
+        svg.add(
+            f'<circle cx="{_n(cx)}" cy="{top - 5}" r="3.5" fill="{beacon}"{_cls(cls)}/>'
+        )
     return svg
 
 
-def geometric(rng, p):
-    """Large see-through triangles and circles."""
-    svg = _Svg()
+def geometric(rng, p, motion=None):
+    """Large see-through triangles and circles. Moving: the triangles turn
+    slowly, the circles float."""
+    svg = _Svg(motion)
+    m = svg.motion
     svg.sky(p["top"], p["bottom"])
     for _ in range(14):
         color = rng.choice(p["shapes"])
@@ -220,6 +399,10 @@ def geometric(rng, p):
         size = rng.uniform(0.15, 0.55) * HEIGHT
         if rng.random() < 0.5:
             angle = rng.uniform(0, math.tau)
+            cls = svg.animate(
+                "spin", m.uniform(70, 150), alternate=False, ease="linear",
+                reverse=m.random() < 0.5,
+            )  # fmt: skip
             svg.polygon(
                 [
                     (
@@ -230,18 +413,22 @@ def geometric(rng, p):
                 ],
                 color,
                 opacity,
+                cls=cls,
             )
         else:
+            cls = svg.animate("float", m.uniform(12, 22))
             svg.add(
                 f'<circle cx="{_n(cx)}" cy="{_n(cy)}" r="{_n(size)}" fill="{color}" '
-                f'fill-opacity="{round(opacity, 3)}"/>'
+                f'fill-opacity="{round(opacity, 3)}"{_cls(cls)}/>'
             )
     return svg
 
 
-def waves(rng, p):
-    """The sea at sunset: bands of swell and the sun's path on the water."""
-    svg = _Svg()
+def waves(rng, p, motion=None):
+    """The sea at sunset: bands of swell and the sun's path on the water.
+    Moving: each band swells on its own beat, the sun's path glitters."""
+    svg = _Svg(motion)
+    m = svg.motion
     horizon = HEIGHT * rng.uniform(0.5, 0.58)
     svg.sky(p["top"], p["bottom"])
     sun_x = WIDTH * rng.uniform(0.3, 0.7)
@@ -264,9 +451,13 @@ def waves(rng, p):
                 + amp * math.sin(x * freq + phase)
                 + amp * 0.4 * math.sin(x * freq * 2.7),
             )
-            for x in range(0, WIDTH + 1, 40)
+            for x in range(-PAD, WIDTH + PAD + 1, 40)
         ]
-        svg.polygon(pts + [(WIDTH, HEIGHT), (0, HEIGHT)], _mix(p["far"], p["near"], t))
+        cls = svg.animate("swell", m.uniform(5, 9), d=f"{_n(4 + 26 * t)}px")
+        svg.polygon(_wide(pts), _mix(p["far"], p["near"], t), cls=cls)
+    glitter = [
+        svg.animate("twinkle", m.uniform(1.6, 3.2), alternate=False) for _ in range(3)
+    ]
     for _ in range(26):
         y = rng.uniform(horizon + 8, HEIGHT * 0.95)
         spread = (y - horizon) / (HEIGHT - horizon)
@@ -276,14 +467,16 @@ def waves(rng, p):
         svg.add(
             f'<rect x="{_n(x)}" y="{_n(y)}" width="{_n(w)}" '
             f'height="{_n(2 + 3 * spread)}" rx="2" fill="{p["sun"]}" '
-            f'fill-opacity="{opacity}"/>'
+            f'fill-opacity="{opacity}"{_cls(m.choice(glitter))}/>'
         )
     return svg
 
 
-def dunes(rng, p):
-    """Smooth sand dunes, each with a lit face and a shadowed one."""
-    svg = _Svg()
+def dunes(rng, p, motion=None):
+    """Smooth sand dunes, each with a lit face and a shadowed one. Moving: the
+    sun swells, heat haze drifts, the dunes pan slowly."""
+    svg = _Svg(motion)
+    m = svg.motion
     svg.sky(p["top"], p["bottom"])
     svg.glow(
         WIDTH * rng.uniform(0.2, 0.8),
@@ -291,7 +484,9 @@ def dunes(rng, p):
         HEIGHT * 0.45,
         p["sun"],
     )
+    _drifting(svg, p["sun"], 3, HEIGHT * 0.12, HEIGHT * 0.45, 0.16, flat=True)
     layers = 5
+    pan, start = m.uniform(20, 28), -m.uniform(0, 20)
     for i in range(layers):
         t = (i + 1) / layers
         base = HEIGHT * (0.5 + 0.1 * i)
@@ -303,20 +498,29 @@ def dunes(rng, p):
             )
             for k in range(count + 1)
         ]
-        pts[0] = (-20, pts[0][1])
-        pts[-1] = (WIDTH + 20, pts[-1][1])
+        pts[0] = (-PAD, pts[0][1])
+        pts[-1] = (WIDTH + PAD, pts[-1][1])
         lit = _mix(p["sand"], p["near"], t * 0.85)
         shade = _mix(lit, p["shadow"], 0.35)
         fill = svg.linear([(0, lit, 1), (1, shade, 1)], x1=0, y1=0, x2=1, y2=0.3)
-        svg.path(_smooth(pts) + f"L{WIDTH + 20},{HEIGHT}L-20,{HEIGHT}z", fill)
+        cls = svg.animate("pan", pan, delay=start, d=f"{_n(3 + 22 * t**1.5)}px")
+        svg.path(
+            _smooth(pts) + f"L{WIDTH + PAD},{HEIGHT + PAD}L{-PAD},{HEIGHT + PAD}z",
+            fill,
+            cls=cls,
+        )
     return svg
 
 
-def aurora(rng, p):
-    """Northern lights over a dark ridge, with stars."""
-    svg = _Svg()
+def aurora(rng, p, motion=None):
+    """Northern lights over a dark ridge, with stars. Moving: the curtains of
+    light sway and brighten, stars twinkle."""
+    svg = _Svg(motion)
+    m = svg.motion
     svg.sky(p["top"], p["bottom"])
     _stars(svg, rng, 90, HEIGHT * 0.6)
+    if "clouds" in p:
+        _drifting(svg, p["clouds"], 3, HEIGHT * 0.05, HEIGHT * 0.25, 0.45)
     for color in p["lights"]:
         base = HEIGHT * rng.uniform(0.28, 0.45)
         height = HEIGHT * rng.uniform(0.18, 0.3)
@@ -329,22 +533,26 @@ def aurora(rng, p):
                 + 60 * math.sin(x * freq + phase)
                 + 25 * math.sin(x * freq * 2.3 + phase),
             )
-            for x in range(-40, WIDTH + 41, 40)
+            for x in range(-PAD, WIDTH + PAD + 1, 40)
         ]
         upper = [
             (x, y - height - 30 * math.sin(x * freq * 1.7)) for x, y in reversed(lower)
         ]
         fill = svg.linear([(0, color, 0), (0.7, color, 0.35), (1, color, 0.75)])
-        svg.polygon(lower + upper, fill)
+        cls = svg.animate("sway", m.uniform(9, 15), d=f"{_n(m.uniform(14, 24))}px")
+        svg.polygon(lower + upper, fill, cls=cls)
     for i, shade in enumerate((p["far"], p["near"])):
         line = _ridge(rng, HEIGHT * (0.68 + 0.12 * i), HEIGHT * (0.12 - 0.04 * i))
         svg.polygon(line + [(WIDTH, HEIGHT), (0, HEIGHT)], shade)
     return svg
 
 
-def arena(rng, p):
-    """An esports stage: spotlight beams from the roof over a crowd."""
-    svg = _Svg()
+def arena(rng, p, motion=None):
+    """An esports stage: spotlight beams from the roof over a crowd. Moving:
+    the beams sweep from where they hang, the stage light swells, the crowd
+    rows bounce."""
+    svg = _Svg(motion)
+    m = svg.motion
     svg.sky(p["top"], p["bottom"])
     stage_y = HEIGHT * 0.72
     svg.glow(WIDTH / 2, stage_y, HEIGHT * 0.65, p["stage"], 0.75)
@@ -355,6 +563,10 @@ def arena(rng, p):
         spread = rng.uniform(60, 130)
         color = rng.choice(p["beams"])
         fill = svg.linear([(0, color, 0.55), (1, color, 0)])
+        cls = svg.animate(
+            "sweep", m.uniform(5, 9), origin=f"{_n(src)}px -10px", box="view-box",
+            reverse=m.random() < 0.5,
+        )  # fmt: skip
         svg.polygon(
             [
                 (src - 8, -10),
@@ -363,6 +575,7 @@ def arena(rng, p):
                 (hit - spread, stage_y),
             ],
             fill,
+            cls=cls,
         )
     svg.add(
         f'<rect x="{_n(WIDTH * 0.22)}" y="{_n(stage_y - 6)}" '
@@ -383,17 +596,20 @@ def arena(rng, p):
             )
             x += r * rng.uniform(1.9, 2.6)
         shade = _mix(p["crowd"], "#000000", 0.25 * row)
-        svg.path("".join(heads), shade)
+        cls = svg.animate("bob", m.uniform(1.8, 2.8))
         svg.add(
+            f'<g fill="{shade}"{_cls(cls)}><path d="{"".join(heads)}"/>'
             f'<rect y="{_n(y_base + r)}" width="{WIDTH}" '
-            f'height="{_n(HEIGHT - y_base)}" fill="{shade}"/>'
+            f'height="{_n(HEIGHT - y_base)}"/></g>'
         )
     return svg
 
 
-def planet(rng, p):
-    """A ringed planet half out of frame, a moon and stars."""
-    svg = _Svg()
+def planet(rng, p, motion=None):
+    """A ringed planet half out of frame, a moon and stars. Moving: stars
+    twinkle, the planet's light swells, it rises and settles, the moon floats."""
+    svg = _Svg(motion)
+    m = svg.motion
     svg.sky(p["top"], p["bottom"])
     _stars(svg, rng, 120, HEIGHT)
     cx = WIDTH * rng.choice((0.22, 0.3, 0.7, 0.78))
@@ -406,6 +622,7 @@ def planet(rng, p):
         f'fill="none" stroke="{p["ring"]}" stroke-width="{_n(r * 0.07)}" '
         f'stroke-opacity="0.7" transform="rotate({_n(tilt)} {_n(cx)} {_n(cy)})"/>'
     )
+    svg.add(f"<g{_cls(svg.animate('bob', m.uniform(7, 10)))}>")
     svg.add(ring)
     lit_x = 0.3 if cx > WIDTH / 2 else 0.7
     body = svg.linear(
@@ -430,19 +647,21 @@ def planet(rng, p):
         f'stroke-width="{_n(r * 0.07)}" stroke-opacity="0.85" '
         f'transform="rotate({_n(tilt)} {_n(cx)} {_n(cy)})"/>'
     )
+    svg.add("</g>")
     mx = WIDTH - cx + rng.uniform(-120, 120)
     my = HEIGHT * rng.uniform(0.18, 0.32)
     mr = r * 0.12
     svg.add(
         f'<circle cx="{_n(mx)}" cy="{_n(my)}" r="{_n(mr)}" fill="{p["light"]}" '
-        'fill-opacity="0.85"/>'
+        f'fill-opacity="0.85"{_cls(svg.animate("float", m.uniform(14, 20)))}/>'
     )
     return svg
 
 
-def forest(rng, p):
-    """Pine woods fading into morning mist."""
-    svg = _Svg()
+def forest(rng, p, motion=None):
+    """Pine woods fading into morning mist. Moving: the light swells and mist
+    drifts between the rows of trees."""
+    svg = _Svg(motion)
     svg.sky(p["top"], p["bottom"])
     svg.glow(
         WIDTH * rng.uniform(0.3, 0.7),
@@ -475,6 +694,9 @@ def forest(rng, p):
         color = _mix(p["mist"], p["near"], t**0.9)
         svg.path("".join(trees), color)
         svg.polygon(ground + [(WIDTH, HEIGHT), (0, HEIGHT)], color)
+        if i < layers - 1:
+            low = HEIGHT * (0.6 + 0.1 * i)
+            _drifting(svg, p["mist"], 2, low, low + HEIGHT * 0.08, 0.4, flat=True)
     return svg
 
 
@@ -793,11 +1015,15 @@ STYLE_LABELS = {
 CATALOGUE = [(style, variant) for variant in range(4) for style in STYLES]
 
 
+def _draw(style: str, variant: int, palette: dict) -> str:
+    draw, _palettes = STYLES[style]
+    seed = 1000 * (list(STYLES).index(style) + 1) + variant
+    return draw(random.Random(seed), palette, random.Random(-seed)).render()
+
+
 def render(index: int) -> str:
     style, variant = CATALOGUE[index]
-    draw, palettes = STYLES[style]
-    seed = 1000 * (list(STYLES).index(style) + 1) + variant
-    return draw(random.Random(seed), palettes[variant]).render()
+    return _draw(style, variant, STYLES[style][1][variant])
 
 
 def filename(index: int) -> str:
@@ -812,6 +1038,73 @@ def pick(obj) -> int:
 
 def static_path(obj) -> str:
     return f"{DIRECTORY}/{filename(pick(obj))}"
+
+
+# The picture behind the hero and each section's page head when nothing is
+# uploaded in 全站设置 (v5.1): one scene per place, at night for the dark mode
+# and the same scene by day for the light mode. Same seed, so the same towers,
+# ridges and shapes; the day palette keeps the night one's list lengths, so
+# every random draw lands where it did.
+SECTION_SCENES = {
+    # A city under an orange glow; by day under a warm haze with clouds.
+    "home": ("skyline", 0, {
+        "top": "#8cb8e2", "bottom": "#f3ebe1", "glow": "#ffd08a",
+        "towers": "#4f6278", "clouds": "#ffffff",
+        "windows": ["#e3ebf3", "#f4e4cc", "#d3dfeb", "#eef3f8"],
+    }),
+    # A blue city.
+    "news": ("skyline", 2, {
+        "top": "#a9cdea", "bottom": "#eef4f9", "glow": "#bfe2ff",
+        "towers": "#46607b", "clouds": "#ffffff",
+        "windows": ["#dfe9f3", "#cfe0ef", "#f3e8cf"],
+    }),
+    # A stage under orange lights; by day an open-air stage.
+    "tournaments": ("arena", 0, {
+        "top": "#f6efe7", "bottom": "#f3dcc4", "stage": "#f99e1a",
+        "beams": ["#ffb35c", "#ff8f8f"], "crowd": "#a8998b",
+    }),
+    # Orange and blue shapes; by day on paper, with SJTU red.
+    "scrims": ("geometric", 2, {
+        "top": "#f8f5f0", "bottom": "#e8edf4",
+        "shapes": ["#f99e1a", "#218ffe", "#c4262d"],
+    }),
+    # Mountains at dusk; by day under a blue sky with clouds.
+    "teams": ("landscape", 0, {
+        "top": "#7fb3e0", "bottom": "#f7e6cf", "sun": "#fff3d1",
+        "near": "#3e5b74", "clouds": "#ffffff",
+    }),
+    # Northern lights; by day pale ribbons over blue hills.
+    "members": ("aurora", 3, {
+        "top": "#bcd4ef", "bottom": "#f3eef6", "lights": ["#60a5fa", "#34d399"],
+        "far": "#9fb4cb", "near": "#71869f", "clouds": "#ffffff",
+    }),
+}  # fmt: skip
+
+
+def daylight_filename(section: str) -> str:
+    return f"section-{section}-light.svg"
+
+
+def render_daylight(section: str) -> str:
+    style, variant, day = SECTION_SCENES[section]
+    return _draw(style, variant, day)
+
+
+def section_paths(section: str) -> dict[str, str]:
+    """The static paths of a place's picture: {"light": …, "dark": …}. The
+    dark one is the catalogue picture the scene comes from."""
+    style, variant, _day = SECTION_SCENES[section]
+    return {
+        "light": f"{DIRECTORY}/{daylight_filename(section)}",
+        "dark": f"{DIRECTORY}/{filename(CATALOGUE.index((style, variant)))}",
+    }
+
+
+def every_file() -> dict[str, str]:
+    """Every picture under static/img/placeholders/: file name → SVG."""
+    files = {filename(i): render(i) for i in range(len(CATALOGUE))}
+    files.update({daylight_filename(s): render_daylight(s) for s in SECTION_SCENES})
+    return files
 
 
 def catalogue() -> list[tuple[str, str]]:

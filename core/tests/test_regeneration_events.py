@@ -161,3 +161,29 @@ def test_no_setting_is_still_labelled_for_a_later_milestone():
     ]
     headings = [str(getattr(panel, "heading", "")) for panel in SiteSettings.panels]
     assert not [text for text in labels + headings if "后续里程碑" in text]
+
+
+# --- 栏目横幅 → that section's list page (v5.0) ---
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "field,path",
+    [("banner_tournaments", "/tournaments/"), ("banner_scrims", "/scrims/"),
+     ("banner_teams", "/teams/"), ("banner_members", "/members/"),
+     ("banner_news", "/news/")],
+)  # fmt: skip
+def test_a_section_banner_refreshes_its_section_page(prerender_on, field, path):
+    from content.tests.test_content import _image, _tree
+
+    _tree()
+    site = SiteSettings.load()
+    site.save()
+    _forget_requests()
+    setattr(site, field, _image("横幅"))
+    site.save()
+    assert _requested() == {path}
+    # Saving again without a change asks for nothing.
+    _forget_requests()
+    SiteSettings.load().save()
+    assert _requested() == set()

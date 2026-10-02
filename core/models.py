@@ -24,11 +24,25 @@ class HealthProbe(models.Model):
         verbose_name_plural = "健康检查探针"
 
 
+BANNER_HELP = (
+    "栏目页顶部标题区背后的图（设计 13.2.5），按浅色或深色模式压一层白色或深色。"
+    "建议 2400×640 以上，可以用守望先锋官方图。空着用本站的占位插画。"
+)
+
+
 @register_setting(icon="mail")
 class SiteSettings(BaseGenericSetting):
     """Singleton site settings. SMTP is used now; other fields wait for later."""
 
-    select_related = ["default_share_image", "hero_image"]
+    select_related = [
+        "default_share_image",
+        "hero_image",
+        "banner_news",
+        "banner_tournaments",
+        "banner_scrims",
+        "banner_teams",
+        "banner_members",
+    ]
 
     class SmtpSecurity(models.TextChoices):
         NONE = "none", "无"
@@ -85,7 +99,55 @@ class SiteSettings(BaseGenericSetting):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
-        help_text="首页最上面的大图，建议 2400×1000 以上；空着时显示深色底和校徽。",
+        help_text=(
+            "首页首屏背后的图（按浅色或深色模式压一层白色或深色，右半边是交大校徽），"
+            "建议 2400×1350 以上，可以用守望先锋官方图。空着用本站的占位插画。"
+        ),
+    )
+    banner_news = models.ForeignKey(
+        "wagtailimages.Image",
+        verbose_name="「资讯」栏目横幅",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=BANNER_HELP,
+    )
+    banner_tournaments = models.ForeignKey(
+        "wagtailimages.Image",
+        verbose_name="「赛事」栏目横幅",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=BANNER_HELP,
+    )
+    banner_scrims = models.ForeignKey(
+        "wagtailimages.Image",
+        verbose_name="「内战」栏目横幅",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=BANNER_HELP,
+    )
+    banner_teams = models.ForeignKey(
+        "wagtailimages.Image",
+        verbose_name="「战队」栏目横幅",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=BANNER_HELP,
+    )
+    banner_members = models.ForeignKey(
+        "wagtailimages.Image",
+        verbose_name="「成员」栏目横幅",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=BANNER_HELP,
     )
     founded_on = models.DateField(
         "社区成立日期",
@@ -218,6 +280,16 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("qq_group_url"),
             ],
             heading="站点信息",
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("banner_news"),
+                FieldPanel("banner_tournaments"),
+                FieldPanel("banner_scrims"),
+                FieldPanel("banner_teams"),
+                FieldPanel("banner_members"),
+            ],
+            heading="栏目横幅",
         ),
         MultiFieldPanel(
             [

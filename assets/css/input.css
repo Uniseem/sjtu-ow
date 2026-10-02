@@ -1,9 +1,12 @@
 @import "tailwindcss";
 
 /*
- * Design system v4.0 (docs/design.md 13.2, round 086): neutral grounds, one
- * deep red accent, pictures and content first, no decoration. Light and dark
- * follow the system (prefers-color-scheme).
+ * Design system v5.1 (docs/design.md 13.2, round 091): cool neutral grounds,
+ * two accents (SJTU deep red for the brand and the main actions, Overwatch
+ * orange for what is live, current or counted). Pictures and content first.
+ * Light and dark: the system's by default, or the visitor's pick in the
+ * masthead (the dark variant below); everything follows the mode except the
+ * night bands (footer, banners with a cover).
  *
  *   Tokens      @theme (light values) + the dark override + v3 aliases
  *   Base        elements, headings, focus, typography variables for 13.12
@@ -41,14 +44,36 @@
   --color-on-primary-soft: #7a0f13;
   --color-ok: #1f7a45;
   --color-ok-soft: #e3f3e8;
-  --color-warn: #8a5a00;
-  --color-warn-soft: #fbf0d9;
+  /* Overwatch orange (v5.0): fills as is; words on the light grounds a
+     deeper orange so they read (4.5:1). */
+  --color-accent: #f99e1a;
+  --color-accent-text: #a85200;
+  /* Display-size orange (v5.1): the hero's second line and the figures. At
+     that size 3:1 is enough, so brighter than accent-text. */
+  --color-accent-display: #cc6f00;
+  --color-accent-soft: #fdecd3;
+  --color-on-accent-soft: #7a3d00;
+  --color-warn: #736000;
+  --color-warn-soft: #f6f0c6;
   --color-info: #2b5f96;
   --color-info-soft: #e5eef8;
   --color-toast: #1c1f25;
-  /* The hero and picture cards stay dark in both modes (13.2.5). */
+  /* The night bands stay dark in both modes (v5.0): these are the values the
+     semantic tokens take inside them (the dark mode's own values). */
   --color-night: #0e1014;
   --color-night-2: #20242b;
+  --color-night-accent: #c4262d;
+  --color-night-surface: #171a20;
+  --color-night-line: #2c313a;
+  --color-night-control: #6b7380;
+  --color-night-fg: #eceef1;
+  --color-night-fg-2: #b4bac3;
+  --color-night-fg-3: #8f97a3;
+  --color-night-primary-text: #ff7a7e;
+  --color-night-primary-soft: #3a1a1d;
+  --color-night-on-primary-soft: #ffb3b5;
+  --color-night-accent-soft: #33230e;
+  --color-night-on-accent-soft: #ffc98a;
   --color-on-toast: #f2f3f5;
 
   --radius-*: initial;
@@ -70,9 +95,25 @@
   --container-prose: 44rem;
 }
 
+/* Dark (13.2.1): the visitor picked 深色 in the masthead, or left it on
+   跟随系统 and the system is dark. js/theme.js sets data-theme on <html>
+   before the page paints; without it the system decides. dark:* utilities
+   and @variant dark below both mean this. */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:not([data-theme="light"], [data-theme="light"] *) {
+      @slot;
+    }
+  }
+
+  &:is([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+}
+
 /* Dark values (13.2.2): same names, so nothing else needs to know the mode. */
-@media (prefers-color-scheme: dark) {
-  :root {
+:root {
+  @variant dark {
     color-scheme: dark;
     --color-bg: #0e1014;
     --color-surface: #171a20;
@@ -89,8 +130,13 @@
     --color-on-primary-soft: #ffb3b5;
     --color-ok: #5fd18b;
     --color-ok-soft: #15291d;
-    --color-warn: #f0b44c;
-    --color-warn-soft: #2e2410;
+    --color-accent: #f99e1a;
+    --color-accent-text: #f99e1a;
+    --color-accent-display: #f99e1a;
+    --color-accent-soft: #33230e;
+    --color-on-accent-soft: #ffc98a;
+    --color-warn: #e8cf4a;
+    --color-warn-soft: #29250b;
     --color-info: #7fb2ee;
     --color-info-soft: #162435;
     --color-toast: #eceef1;
@@ -263,7 +309,7 @@
     border-radius: var(--radius-xs);
     overflow: hidden;
     background-color: var(--color-surface-2);
-    color: var(--color-primary);
+    color: var(--color-accent);
   }
 
   progress::-webkit-progress-bar {
@@ -336,6 +382,33 @@
 }
 
 @layer components {
+  /* ---- Night bands (v5.1) ------------------------------------------------------ */
+
+  /* Everything else follows the mode (light or dark, 13.2.1). Night in both:
+     the footer, and a detail page's banner with a cover, since a cover can be
+     any picture and words only read on it darkened. Inside them the semantic
+     tokens take their night values, so links, tags and rules follow. */
+  .c-stage:not(.c-stage--plain),
+  .c-footer {
+    --color-bg: var(--color-night);
+    --color-surface: var(--color-night-surface);
+    --color-surface-2: var(--color-night-2);
+    --color-line: var(--color-night-line);
+    --color-control: var(--color-night-control);
+    --color-fg: var(--color-night-fg);
+    --color-fg-2: var(--color-night-fg-2);
+    --color-fg-3: var(--color-night-fg-3);
+    --color-primary: var(--color-night-accent);
+    --color-primary-text: var(--color-night-primary-text);
+    --color-primary-soft: var(--color-night-primary-soft);
+    --color-on-primary-soft: var(--color-night-on-primary-soft);
+    --color-accent-text: var(--color-accent);
+    --color-accent-soft: var(--color-night-accent-soft);
+    --color-on-accent-soft: var(--color-night-on-accent-soft);
+    background-color: var(--color-night);
+    color: var(--color-fg);
+  }
+
   /* ---- Layout ---------------------------------------------------------------- */
 
   .l-container {
@@ -487,6 +560,7 @@
     font-weight: 600;
   }
 
+  /* Where you are is orange (v5.0); the brand and the main action are red. */
   .c-nav a[aria-current="page"]::after {
     content: "";
     position: absolute;
@@ -494,7 +568,7 @@
     bottom: -1px;
     left: 0;
     height: 2px;
-    background-color: var(--color-primary);
+    background-color: var(--color-accent);
   }
 
   .c-masthead__end {
@@ -601,6 +675,90 @@
     border-top: 1px solid var(--color-line);
   }
 
+  /* Colour mode (13.2.1, v5.1): 跟随系统, 浅色 or 深色, from a <details> menu
+     that js/theme.js reveals and drives; without the script the menu stays
+     hidden and the system decides. The button shows the mode in use. */
+  .c-theme {
+    position: relative;
+  }
+
+  .c-theme > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .c-theme > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-theme__light {
+    display: contents;
+
+    @variant dark {
+      display: none;
+    }
+  }
+
+  .c-theme__dark {
+    display: none;
+
+    @variant dark {
+      display: contents;
+    }
+  }
+
+  .c-theme .c-menu__panel {
+    min-width: 10rem;
+  }
+
+  .c-theme button {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .c-theme button:hover {
+    background-color: var(--color-surface-2);
+  }
+
+  .c-theme button svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--color-fg-2);
+  }
+
+  .c-theme button[aria-pressed="true"] {
+    color: var(--color-primary-text);
+    font-weight: 600;
+  }
+
+  .c-theme button[aria-pressed="true"] svg {
+    color: currentColor;
+  }
+
+  /* A place's own moving scene comes twice (13.2.5, v5.1), by day and at
+     night; only the current mode's is shown. */
+  .c-scene--light {
+    @variant dark {
+      display: none;
+    }
+  }
+
+  .c-scene--dark {
+    display: none;
+
+    @variant dark {
+      display: block;
+    }
+  }
+
   /* ---- Drawer (phones) -------------------------------------------------------- */
 
   .c-drawer > summary {
@@ -670,12 +828,47 @@
     color: var(--color-fg);
   }
 
+  /* 颜色模式 on phones (13.2.1, v5.1): no room in the bar, so three buttons
+     in a row in the drawer; the one in use is raised. */
+  .c-drawer__theme {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .c-drawer__theme button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    cursor: pointer;
+  }
+
+  .c-drawer__theme button svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .c-drawer__theme button[aria-pressed="true"] {
+    border-color: var(--color-line);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
   /* ---- Footer ----------------------------------------------------------------- */
 
   .c-footer {
-    border-top: 1px solid var(--color-line);
-    background-color: var(--color-surface);
-    padding-block: 3rem 2rem;
+    padding-block: 3.5rem 2rem;
   }
 
   .c-footer__grid {
@@ -775,14 +968,56 @@
     color: var(--color-fg);
   }
 
+  /* A band under the masthead with the page's title (v5.1). */
   .c-pagehead {
-    padding-block: 2.5rem 2rem;
+    padding-block: 2.5rem 2.25rem;
+    border-bottom: 1px solid var(--color-line);
+    background-color: var(--color-surface);
   }
 
   @media (min-width: 1024px) {
     .c-pagehead {
-      padding-block: 3.5rem 2.5rem;
+      padding-block: 3.5rem 3rem;
     }
+  }
+
+  /* Section pages (资讯, 赛事, 内战, 战队, 成员): a picture behind the head,
+     veiled in the page's own ground most on the left where the words are, so
+     it is light on a light page and dark on a dark one (v5.1, 13.2.5). */
+  .c-pagehead--picture {
+    position: relative;
+    overflow: hidden;
+  }
+
+  @media (min-width: 1024px) {
+    .c-pagehead--picture {
+      padding-block: 5.5rem 3rem;
+    }
+  }
+
+  .c-pagehead__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .c-pagehead--picture::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      to right,
+      color-mix(in oklab, var(--color-bg) 90%, transparent) 0%,
+      color-mix(in oklab, var(--color-bg) 60%, transparent) 55%,
+      color-mix(in oklab, var(--color-bg) 25%, transparent) 100%
+    );
+  }
+
+  .c-pagehead--picture > :not(.c-pagehead__img) {
+    position: relative;
+    z-index: 1;
   }
 
   .c-pagehead__row {
@@ -1024,9 +1259,10 @@
     white-space: nowrap;
   }
 
+  /* Live (报名中, 招募中) is orange (v5.0). */
   .c-status--live {
-    background-color: var(--color-primary-soft);
-    color: var(--color-on-primary-soft);
+    background-color: var(--color-accent-soft);
+    color: var(--color-on-accent-soft);
   }
 
   .c-status--ok {
@@ -1863,7 +2099,7 @@
     bottom: -1px;
     left: 0;
     height: 2px;
-    background-color: var(--color-primary);
+    background-color: var(--color-accent);
   }
 
   .c-tabs__count {
@@ -2267,21 +2503,20 @@
 
   /* ---- Homepage and the shared content blocks (design 5.2, 13.2.6; round 086) ---- */
 
-  /* The picture, with the scrim under the words (13.2.5). */
+  /* Full screen under the 64px masthead (svh, so a phone's address bar does
+     not crop it), built like the section heads (v5.1; 5.2, 13.2.5): a
+     picture behind, veiled in the page's own ground most on the left, so it
+     is light on a light page and dark on a dark one; in the page width the
+     two-line title on the left and the SJTU emblem on the right; the
+     community's figures along the bottom edge. Phones: the emblem above, the
+     words below. */
   .c-hero {
     position: relative;
     display: flex;
-    align-items: flex-end;
-    min-height: 440px;
+    flex-direction: column;
+    min-height: calc(100vh - 4rem);
+    min-height: calc(100svh - 4rem);
     overflow: hidden;
-    background-color: var(--color-night);
-    color: var(--color-white);
-  }
-
-  @media (min-width: 768px) {
-    .c-hero {
-      min-height: min(72vh, 640px);
-    }
   }
 
   .c-hero__img {
@@ -2292,56 +2527,127 @@
     object-fit: cover;
   }
 
+  /* Strongest behind the words, so they read on any picture; a second veil
+     along the bottom under the figures. */
   .c-hero::after {
     content: "";
     position: absolute;
     inset: 0;
-    background-image: linear-gradient(
-      to bottom,
-      color-mix(in oklab, var(--color-black) 0%, transparent) 35%,
-      color-mix(in oklab, var(--color-black) 70%, transparent) 100%
-    );
+    background-image:
+      linear-gradient(
+        to top,
+        color-mix(in oklab, var(--color-bg) 82%, transparent) 0%,
+        color-mix(in oklab, var(--color-bg) 0%, transparent) 10rem
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-bg) 55%, transparent) 0%,
+        color-mix(in oklab, var(--color-bg) 86%, transparent) 100%
+      );
   }
 
-  .c-hero--plain::after {
-    content: none;
-  }
-
-  /* No picture yet: the emblem in white on the dark ground (13.2.5). */
-  .c-hero__emblem {
-    position: absolute;
-    top: 50%;
-    right: -4rem;
-    width: min(38rem, 90vw);
-    height: auto;
-    opacity: 0.08;
-    filter: brightness(0) invert(1);
-    transform: translateY(-50%);
+  @media (min-width: 1024px) {
+    .c-hero::after {
+      background-image:
+        linear-gradient(
+          to top,
+          color-mix(in oklab, var(--color-bg) 82%, transparent) 0%,
+          color-mix(in oklab, var(--color-bg) 0%, transparent) 10rem
+        ),
+        linear-gradient(
+          to right,
+          color-mix(in oklab, var(--color-bg) 90%, transparent) 0%,
+          color-mix(in oklab, var(--color-bg) 62%, transparent) 50%,
+          color-mix(in oklab, var(--color-bg) 40%, transparent) 100%
+        );
+    }
   }
 
   .c-hero__body {
     position: relative;
     z-index: 1;
-    padding-block: 3rem 3.5rem;
+    display: grid;
+    flex: 1;
+    align-content: center;
+    align-items: center;
+    gap: 2.5rem;
+    padding-block: 3rem;
   }
 
+  @media (min-width: 1024px) {
+    .c-hero__body {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  /* The emblem: large and see-through, so it reads as part of the picture
+     rather than a badge on it; in the text colour, its gear ring SJTU red and
+     turning slowly, both drawn as masks of the two layer files
+     (core/emblem.py), so the colours are tokens. 「减少动态效果」 stops the turn
+     (the reduced-motion rule above). */
+  .c-hero__emblem {
+    position: relative;
+    order: -1;
+    justify-self: center;
+    width: min(19rem, 72vw);
+    aspect-ratio: 1;
+  }
+
+  @media (min-width: 1024px) {
+    .c-hero__emblem {
+      order: 0;
+      width: min(40rem, 46vw, calc(100svh - 16rem));
+    }
+  }
+
+  .c-hero__emblem > span {
+    position: absolute;
+    inset: 0;
+    -webkit-mask: url("../img/sjtu-emblem-body.svg") center / contain no-repeat;
+    mask: url("../img/sjtu-emblem-body.svg") center / contain no-repeat;
+    background-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
+  }
+
+  .c-hero__emblem > .c-hero__emblem-gear {
+    -webkit-mask-image: url("../img/sjtu-emblem-gear.svg");
+    mask-image: url("../img/sjtu-emblem-gear.svg");
+    background-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+    animation: c-hero-gear 90s linear infinite;
+  }
+
+  @keyframes c-hero-gear {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* Two lines, 上海交通大学 over 守望先锋社区. */
   .c-hero__title {
-    max-width: 16em;
-    font-size: 2rem;
-    line-height: 1.2;
+    font-size: 2.5rem;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
   }
 
-  @media (min-width: 768px) {
+  .c-hero__title span {
+    display: block;
+  }
+
+  /* 守望先锋社区 in Overwatch orange (v5.0). */
+  .c-hero__title span + span {
+    color: var(--color-accent-display);
+  }
+
+  @media (min-width: 1024px) {
     .c-hero__title {
-      font-size: 3rem;
-      line-height: 1.15;
+      font-size: 4.25rem;
+      line-height: 1.12;
     }
   }
 
   .c-hero__lede {
-    max-width: 32rem;
-    margin-top: 0.75rem;
-    color: color-mix(in oklab, var(--color-white) 86%, transparent);
+    max-width: 26rem;
+    margin-top: 1.25rem;
+    color: var(--color-fg-2);
     font-size: 1.0625rem;
   }
 
@@ -2349,43 +2655,46 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    margin-top: 1.75rem;
+    margin-top: 2rem;
   }
 
-  /* Figures row under the hero. */
+  /* The figures close the first screen (v5.1): on the same veil, over a
+     hairline, in orange like the second line of the title. */
+  .c-hero__foot {
+    position: relative;
+    z-index: 1;
+  }
+
   .c-stats {
-    border-bottom: 1px solid var(--color-line);
-    background-color: var(--color-surface);
-  }
-
-  .c-stats__list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.25rem 2rem;
-    padding-block: 1.5rem;
+    gap: 1rem 2rem;
+    padding-block: 1.25rem 1.75rem;
+    border-top: 1px solid var(--color-line);
   }
 
   @media (min-width: 768px) {
-    .c-stats__list {
+    .c-stats {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    .c-stats__list dd {
+    .c-stats dd {
       font-size: 2rem;
     }
   }
 
-  .c-stats__list > div {
+  .c-stats > div {
     display: flex;
     flex-direction: column-reverse;
     gap: 0.125rem;
   }
 
-  .c-stats__list dt {
+  .c-stats dt {
     color: var(--color-fg-2);
   }
 
-  .c-stats__list dd {
+  .c-stats dd {
+    color: var(--color-accent-display);
     font-family: var(--font-figure);
     font-size: 1.5rem;
     font-variant-numeric: tabular-nums;
@@ -2520,8 +2829,9 @@
   }
 
   .c-date small {
-    color: var(--color-fg-3);
+    color: var(--color-accent-text);
     font-size: 0.875rem;
+    font-weight: 600;
   }
 
   .c-date b {
@@ -2834,16 +3144,18 @@
 
   /* ---- Arena and roster pages (design 13.2.7 赛场 / 名册; round 088) --------------- */
 
-  /* The banner on a detail page (13.2.6 c-stage): the cover with the scrim
-     under the words, or a plain band when there is no picture. */
+  /* The banner on a detail page (13.2.6 c-stage, v5.1): the cover darkened
+     under the words (a night band, above), or without a cover a plain band
+     in the mode's colours. */
   .c-stage {
     position: relative;
     display: flex;
     align-items: flex-end;
     min-height: 360px;
     overflow: hidden;
-    background-color: var(--color-night);
-    color: var(--color-white);
+    border-bottom: 1px solid var(--color-line);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
   }
 
   .c-stage__img {
@@ -2860,16 +3172,15 @@
     inset: 0;
     background-image: linear-gradient(
       to bottom,
-      color-mix(in oklab, var(--color-black) 10%, transparent) 20%,
-      color-mix(in oklab, var(--color-black) 75%, transparent) 100%
+      color-mix(in oklab, var(--color-black) 30%, transparent) 0%,
+      color-mix(in oklab, var(--color-black) 45%, transparent) 40%,
+      color-mix(in oklab, var(--color-black) 80%, transparent) 100%
     );
   }
 
+  /* No picture: a shorter band, no scrim. */
   .c-stage--plain {
     min-height: 0;
-    border-bottom: 1px solid var(--color-line);
-    background-color: var(--color-surface);
-    color: var(--color-fg);
   }
 
   .c-stage__body {
@@ -2878,9 +3189,9 @@
     padding-block: 2rem 2.5rem;
   }
 
-  .c-stage:not(.c-stage--plain) .c-crumbs,
-  .c-stage:not(.c-stage--plain) .c-stage__facts dt {
-    color: color-mix(in oklab, var(--color-white) 78%, transparent);
+  .c-stage .c-crumbs,
+  .c-stage .c-stage__facts dt {
+    color: var(--color-fg-2);
   }
 
   .c-stage__tags {
@@ -2909,11 +3220,7 @@
     font-size: 1.0625rem;
   }
 
-  .c-stage:not(.c-stage--plain) .c-stage__lede {
-    color: color-mix(in oklab, var(--color-white) 86%, transparent);
-  }
-
-  .c-stage--plain .c-stage__lede {
+  .c-stage__lede {
     color: var(--color-fg-2);
   }
 

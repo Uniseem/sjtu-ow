@@ -10,6 +10,7 @@ from datetime import date, datetime
 
 from django import template
 from django.utils import timezone
+from django.utils.html import format_html, format_html_join
 
 register = template.Library()
 
@@ -87,6 +88,39 @@ def lookup(mapping, key):
         return mapping.get(key)
     except AttributeError:
         return None
+
+
+@register.simple_tag(takes_context=True)
+def section_picture(context, section, css_class) -> str:
+    """The picture behind the hero or a section's page head (13.2.5, v5.1):
+    the 首屏图片 or 栏目横幅 uploaded in 全站设置, else the place's own moving
+    scene twice, by day and at night; the stylesheet shows the one for the
+    current mode (c-scene--light / c-scene--dark)."""
+    from django.templatetags.static import static
+
+    from core import placeholders
+    from core.models import SiteSettings
+
+    # The request already holds the settings (context processors): no query.
+    site = SiteSettings.load(request_or_site=context.get("request"))
+    if section == "home":
+        image, spec, size = site.hero_image, "fill-2400x1350-c50", (2400, 1350)
+    else:
+        image, spec, size = (
+            getattr(site, f"banner_{section}"), "fill-2400x640-c50", (2400, 640)
+        )  # fmt: skip
+    tag = '<img class="{}" src="{}" alt="" width="{}" height="{}">'
+    if image is not None:
+        return format_html(tag, css_class, image.get_rendition(spec).url, *size)
+    paths = placeholders.section_paths(section)
+    return format_html_join(
+        "",
+        tag,
+        (
+            (f"{css_class} c-scene c-scene--{mode}", static(paths[mode]), *size)
+            for mode in ("light", "dark")
+        ),
+    )
 
 
 @register.filter

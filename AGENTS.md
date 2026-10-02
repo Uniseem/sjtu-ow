@@ -55,7 +55,7 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
   uv run python manage.py check --deploy
 ```
 
-改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。改了 `core/placeholders.py`（封面占位图的画法）后跑 `uv run python manage.py render_placeholders` 并提交 `static/img/placeholders/`。
+改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。改了 `core/placeholders.py`（占位图的画法和动画）后跑 `uv run python manage.py render_placeholders` 并提交 `static/img/placeholders/`。换了校徽文件 `static/img/sjtu-emblem.svg` 后跑 `uv run python manage.py render_emblem_layers` 并提交两张图层。
 
 ## 测试机与部署
 
@@ -113,8 +113,12 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 - **表格放在网格或弹性布局里会被拉高**（074）：行高被撑开到和旁边一栏一样。`c-table` 已经设了 `align-self: start`，自己写的表格也要注意
 - **变异测试前先确认测试本身是绿的**：变异脚本只看「改坏后红不红」，基线已经红的话，每处变异都会显示「被抓到」。083 就这样出过一轮假结果。084 起的 `mutate.py` 先跑一遍基线，红了直接停（083）
 - **内置浏览器面板在后台时不渲染动画帧**：`requestAnimationFrame` 不回调、CSS 过渡停在起点，动效看起来像坏了（081，当时的 `motion.js` 在 086 删了）。截图和量尺寸更可靠的办法是用无头 Edge 的调试端口：`Emulation.setEmulatedMedia` 切深浅色、`Emulation.setDeviceMetricsOverride` 切手机宽度、`Page.captureScreenshot` 带 `captureBeyondViewport` 截整页（086）；站点禁止被 iframe 嵌入
-- **深浅两套颜色**（086 起）：深色值写在 `input.css` 的 `@media (prefers-color-scheme: dark)` 里，覆盖 `@theme` 的同名变量。加新颜色要两处都写，漏写深色的测试会红；模板里别写只在浅色下成立的东西（白底图、黑色文字）
+- **深浅两套颜色**（086 起，091 可以手动切换）：深色值写在 `input.css` 的 `:root { @variant dark { … } }` 里，覆盖 `@theme` 的同名变量。加新颜色要两处都写，漏写深色的测试会红；模板里别写只在浅色下成立的东西（白底图、黑色文字）。**组件里区分模式只用 `@variant dark`**，直接写 `@media (prefers-color-scheme: dark)` 的话，访客在页头选了浅色或深色时不生效（有测试数这个词只出现一次）。截图测模式时，无头浏览器的 `Emulation.setEmulatedMedia` 只模拟系统设置；要测手动选择，在页面里设 `localStorage['ow-theme']` 或 `<html data-theme>`
 - **Django 的 `default` 过滤器会先算参数**：`{{ members|default:team.member_count }}` 即使 `members` 有值也会求 `team.member_count`，列表里每一项多查一次数据库（088）。参数有代价时用 `{% if %}`
+- **前端脚本里别用 `DOMParser` 解析带 `style=""` 的 SVG**（091）：解析出的文档沿用页面的内容安全策略，每个 `style` 属性都报一次违规（校徽有 50 条）。要拆 SVG 就用字符串处理（现在校徽在服务端由 `core/emblem.py` 拆）
+- **Django 的 `{# #}` 注释只能写一行**（091）：跨行的 `{# … #}` 会原样显示在页面上，多行用 `{% comment %}`
+- **Windows 上改了 Python 文件后 `tailwind runserver` 可能卡死**（090、091 各两三次）：进程还在、端口不再响应，或者干脆退出。重启开发服务器就好；变异测试这类连续改文件的脚本跑完先确认服务器还活着
+- **`tailwind runserver` 会改写 `static/css/app.css`**（091）：它的监视进程在你改任何被扫描的文件（包括 `.py`）后重新编译出**不压缩、保留 CSS 嵌套**的版本，覆盖掉 `tailwind build` 的压缩版。读 `app.css` 的测试要两种写法都认；要确定性地跑全量测试，先 `tailwind build --force`，跑完之前别改文件
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
 ## 改了什么，就更新哪份文档

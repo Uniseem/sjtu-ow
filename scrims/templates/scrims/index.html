@@ -5,14 +5,15 @@
 
 {% block content %}
   {# 赛场列表 (design 13.2.7): scrims have no pictures, so upcoming ones are rows. #}
-  <header class="c-pagehead">
+  <header class="c-pagehead c-pagehead--picture">
+    {% include "components/pagehead_picture.html" with section="scrims" %}
     <div class="l-container">
       <h1>内战</h1>
       <p class="c-pagehead__lede">社团成员之间的对局。报名后管理员会统一分队，分队结果发到群里。</p>
     </div>
   </header>
 
-  <div class="l-container pb-16 lg:pb-24">
+  <div class="l-container pt-10 pb-16 lg:pt-14 lg:pb-24">
     <div class="grid gap-14">
       {% if upcoming %}
         <section aria-labelledby="scrims-upcoming">

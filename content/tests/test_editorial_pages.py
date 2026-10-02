@@ -49,7 +49,8 @@ def test_the_news_list_is_a_grid_of_picture_cards(client, site):
     assert "c-hatch" not in grid
 
 
-def test_the_current_filter_is_underlined_in_red(client, site):
+def test_the_current_filter_is_underlined_in_orange(client, site):
+    """v5.0: where you are is Overwatch orange (13.2.1 #2)."""
     html = _main(client.get("/news/?category=guide"))
     assert '<a href="/news/?category=guide" aria-current="page">攻略</a>' in html
     rule = _block(
@@ -57,7 +58,7 @@ def test_the_current_filter_is_underlined_in_red(client, site):
         '\n  .c-tabs a[aria-current="page"]::after,',
     )
     assert "height: 2px;" in rule
-    assert "background-color: var(--color-primary);" in rule
+    assert "background-color: var(--color-accent);" in rule
 
 
 def test_an_article_is_one_centred_column_with_more_after_it(client, site):

@@ -1,6 +1,7 @@
 """Cover placeholders (design 13.2.5, round 090): an article or a tournament
 without a cover shows one of the site's own abstract pictures, and always the
-same one, so its card, its page and the prerendered copy agree."""
+same one, so its card, its page and the prerendered copy agree. Since v5.1 the
+pictures move, and the hero and the section heads have a daylight version."""
 
 import re
 from datetime import timedelta
@@ -42,13 +43,15 @@ def _src(obj):
 # --- the files -----------------------------------------------------------------
 
 
+FILES = placeholders.every_file()
+
+
 def test_the_committed_pictures_are_what_the_code_draws():
     """Change core/placeholders.py, then run render_placeholders and commit."""
-    expected = sorted(placeholders.filename(i) for i in range(COUNT))
-    assert sorted(p.name for p in FOLDER.glob("*.svg")) == expected
-    for index in range(COUNT):
-        name = placeholders.filename(index)
-        assert _committed(name) == placeholders.render(index), name
+    assert len(FILES) == COUNT + len(placeholders.SECTION_SCENES) == 42
+    assert sorted(p.name for p in FOLDER.glob("*.svg")) == sorted(FILES)
+    for name, svg in FILES.items():
+        assert _committed(name) == svg, name
 
 
 def test_the_command_writes_every_picture_and_drops_stale_ones(tmp_path, settings):
@@ -56,10 +59,11 @@ def test_the_command_writes_every_picture_and_drops_stale_ones(tmp_path, setting
     target = tmp_path / "static" / placeholders.DIRECTORY
     target.mkdir(parents=True)
     (target / "cover-99.svg").write_text("<svg/>", encoding="utf-8")
+    (target / "section-gone-light.svg").write_text("<svg/>", encoding="utf-8")
     (target / "keep.txt").write_text("not ours", encoding="utf-8")
     call_command("render_placeholders", stdout=open(tmp_path / "out.txt", "w"))
     names = sorted(p.name for p in target.glob("*.svg"))
-    assert names == sorted(placeholders.filename(i) for i in range(COUNT))
+    assert names == sorted(FILES)
     assert (target / "keep.txt").exists()
     for name in names:
         assert _committed(name, target) == _committed(name), name
@@ -67,10 +71,9 @@ def test_the_command_writes_every_picture_and_drops_stale_ones(tmp_path, setting
 
 def test_the_pictures_are_plain_graphics():
     """Same rules as the emblem (13.2.8): nothing that runs, nothing fetched,
-    no words. Served from our origin, an SVG with a script would run there."""
-    for index in range(COUNT):
-        name = placeholders.filename(index)
-        svg = _committed(name)
+    no words. Served from our origin, an SVG with a script would run there.
+    The one <style> holds the motion and nothing else (v5.1)."""
+    for name, svg in FILES.items():
         assert svg.startswith(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" '
             'width="1600" height="900" preserveAspectRatio="xMidYMid slice">'
@@ -78,11 +81,57 @@ def test_the_pictures_are_plain_graphics():
         lowered = svg.lower()
         for bad in (
             "<script", "javascript:", "<foreignobject", "<image", "href=",
-            "<text", "<style", "@import", " on",
+            "<text", "@import", " on", "expression(", "behavior:",
         ):  # fmt: skip
             assert bad not in lowered, (name, bad)
         assert re.findall(r"url\((?!#)", svg) == [], name
+        assert lowered.count("<style") == 1, name
+        style = svg[svg.index("<style>") + 7 : svg.index("</style>")]
+        # Only class rules (.m12{…}), the keyframes they name and the still rule.
+        rest = re.sub(r"\.m\d+\{[^{}]*\}", "", style)
+        rest = re.sub(r"@keyframes [a-z]+\{(?:[^{}]*\{[^{}]*\})+\}", "", rest)
+        assert rest == placeholders.STILL, name
         assert len(svg.encode("utf-8")) < 40_000, name
+
+
+def test_every_picture_moves_and_stands_still_under_reduced_motion():
+    """v5.1: 「现在的这些图片都变成动图」, and 「减少动态效果」 stops them
+    (13.2.4)."""
+    assert placeholders.STILL == (
+        "@media (prefers-reduced-motion:reduce){*{animation:none!important}}"
+    )
+    for name, svg in FILES.items():
+        named = set(re.findall(r"animation:([a-z]+) ", svg))
+        assert named, name
+        assert named <= set(placeholders.KEYFRAMES), name
+        for frames in named:
+            assert f"@keyframes {frames}{{" in svg, (name, frames)
+        # Every rule is used by something drawn.
+        for cid in re.findall(r"\.(m\d+)\{", svg):
+            assert f'class="{cid}"' in svg, (name, cid)
+        assert svg.count(placeholders.STILL) == 1, name
+
+
+def _shapes(svg):
+    """Where things are, without their colours: every sub-path, polygon and
+    circle."""
+    found = set()
+    for d in re.findall(r' d="([^"]+)"', svg):
+        found.update("M" + part for part in d.split("M") if part)
+    found.update(re.findall(r' points="([^"]+)"', svg))
+    found.update(re.findall(r'<circle cx="([^"]+)" cy="([^"]+)" r="([^"]+)"', svg))
+    return found
+
+
+@pytest.mark.parametrize("section", sorted(placeholders.SECTION_SCENES))
+def test_a_place_by_day_is_the_same_scene_as_at_night(section):
+    """v5.1: the light mode's version keeps every tower, ridge and shape of
+    the night one; only the colours change (and clouds pass)."""
+    paths = placeholders.section_paths(section)
+    night = _committed(Path(paths["dark"]).name)
+    day = _committed(Path(paths["light"]).name)
+    assert night != day
+    assert _shapes(day) == _shapes(night)
 
 
 def test_there_are_nine_scenes_and_neighbours_never_share_one():
@@ -187,5 +236,7 @@ def test_a_tournament_with_a_cover_keeps_it(client, db):
     covered.save()
     for path in ("/tournaments/", covered.get_absolute_url(), "/"):
         html = _main(client, path)
+        # The hero and the section head have their own scenes (v5.0).
+        html = re.sub(r'<img class="c-(?:hero|pagehead)__img[^>]*>', "", html)
         assert placeholders.DIRECTORY not in html, path
         assert "tc" in html, path
