@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
+from django.utils.csp import CSP
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_GET
 
 ADMIN_PERMISSION = "wagtailadmin.access_admin"
@@ -116,9 +118,49 @@ def sample_context():
     }
 
 
-@require_GET
-def styleguide(request):
+def _admins_only(request):
     user = request.user
     if not (user.is_authenticated and user.has_perm(ADMIN_PERMISSION)):
         raise Http404
+
+
+@require_GET
+def styleguide(request):
+    _admins_only(request)
     return render(request, "core/styleguide.html", sample_context())
+
+
+# Email HTML is inline styles throughout (design 10.3), which the site's policy
+# forbids; one email on its own may use them, and only this site may frame it.
+EMAIL_CSP = {
+    "default-src": [CSP.NONE],
+    "style-src": [CSP.UNSAFE_INLINE],
+    "img-src": [CSP.SELF, "data:"],
+    "frame-ancestors": [CSP.SELF],
+    "base-uri": [CSP.NONE],
+    "form-action": [CSP.NONE],
+}
+
+
+@require_GET
+def styleguide_emails(request):
+    """Every email the site sends, with sample data (design 10.3)."""
+    from core.email_samples import samples
+
+    _admins_only(request)
+    return render(request, "core/styleguide_emails.html", {"samples": samples()})
+
+
+@require_GET
+@xframe_options_sameorigin
+def styleguide_email(request, key):
+    """One email's HTML exactly as it is sent, for the frames on that page."""
+    from core.email_samples import sample
+
+    _admins_only(request)
+    found = sample(key)
+    if found is None:
+        raise Http404
+    response = HttpResponse(found.html)
+    response._csp_config = EMAIL_CSP
+    return response

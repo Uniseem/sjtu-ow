@@ -1,0 +1,345 @@
+"""Every email the site sends, rendered with made-up data (design 10.3).
+
+For the specimen page /_styleguide/emails/. Nothing here reads or writes the
+database apart from looking up nobody's name: the builders get stand-ins for
+teams, tournaments and scrims, so the page shows exactly what a real letter
+looks like without anyone receiving one.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from types import SimpleNamespace
+
+from django.template.loader import render_to_string
+from django.utils import timezone
+
+from core import letters
+
+
+@dataclass
+class Sample:
+    key: str
+    group: str
+    title: str  # what the email is, as design 10.2 names it
+    to: str  # who gets it
+    subject: str
+    text: str
+    html: str
+
+
+def _team():
+    return SimpleNamespace(pk=1, name="交大龙骑", get_absolute_url=lambda: "/teams/1/")
+
+
+def _tournament():
+    return SimpleNamespace(
+        pk=1, title="2026 秋季校内杯", get_absolute_url=lambda: "/tournaments/1/"
+    )
+
+
+def _registration(status="pending", label="待审核", *, adhoc=False):
+    return SimpleNamespace(
+        pk=1,
+        tournament=_tournament(),
+        tournament_id=1,
+        team_id=None if adhoc else 1,
+        team_name="新生一队" if adhoc else "交大龙骑",
+        roster_version=1,
+        status=status,
+        get_status_display=lambda: label,
+        get_absolute_url=lambda: "/registrations/1/",
+        submitted_by=SimpleNamespace(nickname="七月流火"),
+    )
+
+
+def _application(status):
+    return SimpleNamespace(
+        team=_team(),
+        applicant=SimpleNamespace(nickname="小天使"),
+        role_labels=lambda: ["坦克", "支援"],
+        message="周末晚上都有空，主玩坦克。",
+        status=status,
+        decision_note="这个赛季名额满了，下个赛季欢迎再来。",
+    )
+
+
+def _scrim():
+    starts = timezone.make_aware(datetime(2026, 10, 5, 19, 30))
+    return SimpleNamespace(
+        pk=2,
+        title="国庆特别场 · 6v6 怀旧",
+        starts_at=starts,
+        get_format_display=lambda: "不限位置 6v6",
+    )
+
+
+def _flagged(pk, risk, kind, excerpt):
+    return SimpleNamespace(
+        pk=pk,
+        get_target_type_display=lambda: kind,
+        get_risk_display=lambda: risk,
+        category_labels=lambda: ["辱骂"],
+        reason="评论里有针对其他用户的辱骂。",
+        quote="",
+        excerpt=excerpt,
+    )
+
+
+def _letter(key, group, title, to, letter, name) -> Sample:
+    text, html = letters.render(letter, name)
+    return Sample(key, group, title, to, letter.subject, text, html)
+
+
+def _account(key, title, to, prefix, **context) -> Sample:
+    """An allauth email, through the same frame the adapter gives it."""
+    from django.conf import settings
+
+    name = getattr(context.get("user"), "nickname", "") or ""
+    base = {
+        "verify_minutes": settings.ACCOUNT_EMAIL_VERIFICATION_BY_CODE_TIMEOUT // 60,
+        "reset_minutes": settings.ACCOUNT_PASSWORD_RESET_BY_CODE_TIMEOUT // 60,
+        **context,
+    }
+    subject = render_to_string(f"account/email/{prefix}_subject.txt", base).strip()
+    base = {**letters.frame(name, subject=subject), **base}
+    text = render_to_string(f"account/email/{prefix}_message.txt", base).strip()
+    html = render_to_string(f"account/email/{prefix}_message.html", base)
+    return Sample(key, "账号", title, to, subject, text, html)
+
+
+def _wagtail() -> Sample:
+    """Wagtail's own text in our greeting and closing; the HTML is the frame
+    core.mail puts around any text-only message."""
+    context = {
+        "page": SimpleNamespace(
+            get_admin_display_title=lambda: "新生杯将于 10 月 10 日开放报名",
+            full_url=letters.site_url("/news/freshman-cup/"),
+        ),
+        "workflow": SimpleNamespace(name="内容审核"),
+        "user": SimpleNamespace(nickname="投稿人甲", get_username=lambda: "author"),
+    }
+    prefix = "wagtailadmin/notifications/workflow_state_approved"
+    subject = " ".join(render_to_string(f"{prefix}_subject.txt", context).split())
+    text = render_to_string(f"{prefix}.txt", context).strip()
+    return Sample(
+        "wagtail-approved",
+        "投稿",
+        "投稿审核结果（Wagtail 自带）",
+        "投稿人",
+        subject,
+        text,
+        letters.wrap_text(text, subject),
+    )
+
+
+def samples() -> list[Sample]:
+    from core.mail import test_letter
+    from moderation import notifications as moderation
+    from scrims import notifications as scrims
+    from teams import notifications as teams
+    from tournaments import notifications as tournaments
+    from tournaments import notifications_registration as registration
+
+    approved = _registration("approved", "已通过")
+    rejected = _registration("rejected", "已驳回")
+    adhoc = _registration("approved", "已通过", adhoc=True)
+    row = SimpleNamespace(battletag="小天使#5123")
+    leaver = SimpleNamespace(nickname="西瓜")
+    flagged = [
+        _flagged(42, "高", "评论", "你这种水平也配打天梯？"),
+        _flagged(43, "中", "文章", "比赛录像里出现了未经同意的真实姓名。"),
+        _flagged(44, "低", "个人宣言", "加群领福利，私聊。"),
+    ]
+    return [
+        _account(
+            "verify",
+            "注册 / 修改邮箱验证码",
+            "注册人",
+            "email_confirmation",
+            code="482915",
+            user=SimpleNamespace(nickname="小天使"),
+        ),
+        _account(
+            "reset",
+            "找回密码验证码",
+            "本人",
+            "password_reset_code",
+            code="730264",
+            user=SimpleNamespace(nickname="小天使"),
+        ),
+        _account(
+            "unknown",
+            "没有注册的邮箱",
+            "填写的邮箱",
+            "unknown_account",
+            signup_url=letters.site_url("/accounts/signup/"),
+        ),
+        _account(
+            "exists",
+            "已经注册过的邮箱",
+            "填写的邮箱",
+            "account_already_exists",
+            email="xiaotianshi@example.com",
+            password_reset_url=letters.site_url("/accounts/password/reset/"),
+        ),
+        _letter(
+            "smtp", "后台", "SMTP 测试邮件", "操作的管理员", test_letter(), "管理员"
+        ),
+        _letter(
+            "apply",
+            "战队",
+            "收到入队申请",
+            "队长",
+            teams.application_submitted_letter(_application("pending")),
+            "七月流火",
+        ),
+        _letter(
+            "apply-ok",
+            "战队",
+            "入队申请通过",
+            "申请人",
+            teams.application_decided_letter(_application("approved")),
+            "小天使",
+        ),
+        _letter(
+            "apply-no",
+            "战队",
+            "入队申请未通过",
+            "申请人",
+            teams.application_decided_letter(_application("rejected")),
+            "小天使",
+        ),
+        _letter(
+            "removed",
+            "战队",
+            "被移出战队",
+            "被移除的人",
+            teams.member_removed_letter(_team()),
+            "小天使",
+        ),
+        _letter(
+            "captain",
+            "战队",
+            "成为队长",
+            "新队长",
+            teams.captain_changed_letter(_team()),
+            "小天使",
+        ),
+        _letter(
+            "disbanded",
+            "战队",
+            "战队解散",
+            "全体成员",
+            teams.team_disbanded_letter(_team()),
+            "小天使",
+        ),
+        _letter(
+            "submitted",
+            "赛事",
+            "报名已提交",
+            "队长",
+            registration.registration_submitted_letter(_registration(), "submit"),
+            "七月流火",
+        ),
+        _letter(
+            "entered",
+            "赛事",
+            "你已被报名参加",
+            "名单里的队员",
+            registration.team_member_entered_letter(_registration(), row),
+            "小天使",
+        ),
+        _letter(
+            "approved",
+            "赛事",
+            "报名通过",
+            "队长",
+            registration.registration_status_changed_letter(approved),
+            "七月流火",
+        ),
+        _letter(
+            "rejected",
+            "赛事",
+            "报名驳回",
+            "队长",
+            registration.registration_status_changed_letter(
+                rejected, "名单里有两位队员没有填联系方式。"
+            ),
+            "七月流火",
+        ),
+        _letter(
+            "cancelled",
+            "赛事",
+            "赛事取消",
+            "队长、临时队伍成员",
+            tournaments.tournament_cancelled_letter(
+                _tournament(), "场地临时不能用，改期另行通知。"
+            ),
+            "七月流火",
+        ),
+        _letter(
+            "formed",
+            "赛事",
+            "已编入临时队伍",
+            "被编入的成员",
+            registration.adhoc_team_formed_letter(adhoc),
+            "西瓜",
+        ),
+        _letter(
+            "returned",
+            "赛事",
+            "移出临时队伍 / 队伍解散",
+            "受影响的成员",
+            registration.adhoc_members_returned_letter(
+                _tournament(), "新生一队", dissolved=True
+            ),
+            "西瓜",
+        ),
+        _letter(
+            "left",
+            "赛事",
+            "临时队伍成员退出",
+            "赛事管理员",
+            registration.adhoc_member_left_letter(adhoc, leaver),
+            "赛事管理员",
+        ),
+        _letter(
+            "reminder",
+            "内战",
+            "内战开始提醒",
+            "全部报名者",
+            scrims.scrim_reminder_letter(_scrim()),
+            "小天使",
+        ),
+        _letter(
+            "scrim-cancelled",
+            "内战",
+            "内战取消",
+            "全部报名者",
+            scrims.scrim_cancelled_letter(_scrim()),
+            "小天使",
+        ),
+        _letter(
+            "high-risk",
+            "审核",
+            "AI 审核发现高风险内容",
+            "内容编辑、超级管理员",
+            moderation.high_risk_letter(flagged[0]),
+            "编辑甲",
+        ),
+        _letter(
+            "digest",
+            "审核",
+            "AI 审核每日汇总",
+            "内容编辑、超级管理员",
+            moderation.digest_letter(flagged),
+            "编辑甲",
+        ),
+        _wagtail(),
+    ]
+
+
+def sample(key: str) -> Sample | None:
+    return next((item for item in samples() if item.key == key), None)

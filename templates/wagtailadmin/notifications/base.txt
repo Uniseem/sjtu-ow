@@ -1,0 +1,15 @@
+{% load wagtailadmin_tags i18n %}{% base_url_setting default="" as base_url %}{% comment %}
+  Wagtail's moderation notifications in the site's letter frame (design 10.3):
+  our greeting, then Wagtail's own content, then 「祝好！」 and the signature.
+{% endcomment %}
+{% block greeting %}{{ user.nickname|default:user.get_username }}，你好：{% endblock %}
+{% block content %}
+{% endblock %}
+祝好！
+
+上海交通大学守望先锋社区
+{% now "Y 年 n 月 j 日" %}
+
+——
+{% block preferences %}你收到这封邮件，是因为你在后台参与了内容审核。通知设置：{{ base_url }}{% url 'wagtailadmin_account' %}#tab-notifications{% endblock %}
+这封邮件由系统自动发送，请不要直接回复。

@@ -1,0 +1,12 @@
+{% extends "email/layout.html" %}
+{% comment %}
+  A message written only as plain text (Wagtail's notifications): its own
+  paragraphs in the frame. The text already greets and closes, so the frame's
+  greeting and closing are left out; what the text puts after its 「——」 is the
+  footer (design 10.3).
+{% endcomment %}
+{% block greeting %}{% endblock %}
+{% block body %}{% for block in blocks %}<p style="margin:0 0 16px;">{{ block }}</p>
+{% endfor %}{% endblock %}
+{% block closing %}{% endblock %}
+{% block foot %}{% if foot %}{{ foot }}<br>{% else %}{{ no_reply }}<br>{% endif %}{% endblock %}

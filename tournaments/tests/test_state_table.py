@@ -340,9 +340,11 @@ def test_auto_approve_sends_one_mail_saying_approved(
     about_registration = [
         m for m in mail.outbox if "报名" in m.subject and captain in m.recipients()
     ]
-    assert [m.subject for m in about_registration] == ["报名已提交"]
+    assert [m.subject for m in about_registration] == [
+        f"报名已提交：{registration.tournament.title}"
+    ]
     assert "已通过" in about_registration[0].body
-    entered = [m for m in mail.outbox if m.subject == "你已被报名参加赛事"]
+    entered = [m for m in mail.outbox if m.subject.startswith("你已被报名参加：")]
     assert entered and all("当前状态：已通过" in m.body for m in entered)
 
 
@@ -355,7 +357,9 @@ def test_an_admin_approval_still_sends_the_status_mail(
     with django_capture_on_commit_callbacks(execute=True):
         reg.approve(registration=registration, actor=admin_user())
 
-    assert [message.subject for message in mail.outbox] == ["报名状态有更新"]
+    assert [message.subject for message in mail.outbox] == [
+        f"报名已通过：{registration.tournament.title}"
+    ]
 
 
 @pytest.mark.django_db

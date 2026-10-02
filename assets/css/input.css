@@ -1479,6 +1479,29 @@
     line-height: 1.2;
   }
 
+  /* The email specimen page (design 10.3): each email framed at its own
+     address, and its plain text under it. */
+  .c-mailframe {
+    display: block;
+    width: 100%;
+    height: 56rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+  }
+
+  .c-mailtext {
+    margin-top: 0.75rem;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
   /* Key on the left, value on the right, a line between rows (13.2.6). */
   .c-facts {
     display: grid;

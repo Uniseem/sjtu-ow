@@ -1,5 +1,9 @@
 {% extends "account/email/base_message.txt" %}
 
-{% block content %}有人使用这个邮箱请求了上海交通大学守望先锋社区的账号操作，但本站没有对应账号。
+{% block content %}有人用这个邮箱在上海交通大学守望先锋社区申请了账号操作（比如找回密码），但这个邮箱还没有注册过。
 
-如果你没有进行过这个操作，可以忽略这封邮件。若要注册，请打开：{{ signup_url }}{% endblock %}
+如果不是你本人的操作，请忽略这封邮件。想加入的话，可以用这个邮箱注册：
+
+注册：{{ signup_url }}{% endblock %}
+
+{% block reason %}你收到这封邮件，是因为有人在本站填写了这个邮箱。{% endblock %}

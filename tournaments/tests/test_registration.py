@@ -344,8 +344,8 @@ def test_mails(team, captain, mate, django_capture_on_commit_callbacks):
         )
     # The captain hears it was submitted; the member hears they were entered.
     assert {m.recipients()[0]: m.subject for m in mail.outbox} == {
-        captain.email: "报名已提交",
-        mate.email: "你已被报名参加赛事",
+        captain.email: "报名已提交：春季赛",
+        mate.email: "你已被报名参加：春季赛",
     }
 
     mail.outbox.clear()

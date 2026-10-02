@@ -3,3 +3,5 @@
 {% block content %}你的登录邮箱已从 {{ from_email }} 改为 {{ to_email }}。
 
 如果这不是你本人的操作，请立即联系管理员。{% endblock %}
+
+{% block reason %}你收到这封邮件，是因为这个邮箱是你在本站的登录邮箱。{% endblock %}

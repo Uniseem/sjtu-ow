@@ -147,7 +147,7 @@ def test_forming_a_team_registers_it_as_approved(django_capture_on_commit_callba
     assert log.roster_snapshot and len(log.roster_snapshot) == 2
     # Design 10.2: one mail per member, nothing else.
     assert sorted(m.to[0] for m in mail.outbox) == sorted(e.user.email for e in entries)
-    assert all(m.subject == "已编入临时队伍" for m in mail.outbox)
+    assert all(m.subject == "已编入临时队伍：新生杯" for m in mail.outbox)
 
 
 @pytest.mark.django_db
@@ -365,8 +365,8 @@ def test_moving_a_member_between_teams(django_capture_on_commit_callbacks):
     assert moved.registration == two
     subjects = sorted((m.to[0], m.subject) for m in mail.outbox)
     assert subjects == [
-        (entries[1].user.email, "临时队伍有变化"),
-        (entries[1].user.email, "已编入临时队伍"),
+        (entries[1].user.email, "临时队伍有变化：新生杯"),
+        (entries[1].user.email, "已编入临时队伍：新生杯"),
     ]
 
 
@@ -438,7 +438,7 @@ def test_emptying_a_team_on_the_board_dissolves_it(django_capture_on_commit_call
     assert (
         registration.logs.order_by("-id").first().action == RegistrationAction.DISSOLVE
     )
-    assert {m.subject for m in mail.outbox} == {"临时队伍有变化"}
+    assert {m.subject for m in mail.outbox} == {"临时队伍有变化：新生杯"}
 
 
 @pytest.mark.django_db
@@ -531,7 +531,7 @@ def test_a_member_leaves_before_the_deadline(
         leaver.user,
     )
     # Design 10.2: the tournament admins hear, the member does not get a copy.
-    assert [m.subject for m in mail.outbox] == ["临时队伍成员退出"]
+    assert [m.subject for m in mail.outbox] == ["临时队伍成员退出：新生杯"]
     assert mail.outbox[0].to == [admin.email]
     assert leaver.user.nickname in mail.outbox[0].body
 
@@ -812,9 +812,9 @@ def test_cancelling_the_tournament_mails_adhoc_members(
     with django_capture_on_commit_callbacks(execute=True):
         services.cancel(tournament=tournament, actor=admin, reason="场地没了")
 
-    assert sorted(m.to[0] for m in mail.outbox if m.subject == "赛事已取消") == sorted(
-        e.user.email for e in entries
-    )
+    assert sorted(
+        m.to[0] for m in mail.outbox if m.subject == "赛事已取消：新生杯"
+    ) == sorted(e.user.email for e in entries)
 
 
 @pytest.mark.django_db

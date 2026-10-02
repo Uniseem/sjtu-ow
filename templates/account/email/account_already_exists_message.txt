@@ -1,0 +1,11 @@
+{% extends "account/email/base_message.txt" %}
+
+{% block content %}有人用这个邮箱（{{ email }}）在上海交通大学守望先锋社区注册，但它已经注册过了，所以没有新建账号。
+
+如果是你本人，只是忘了注册过，可以直接找回密码：
+
+找回密码：{{ password_reset_url }}
+
+如果不是你本人的操作，请忽略这封邮件，你的账号不受影响。{% endblock %}
+
+{% block reason %}你收到这封邮件，是因为有人在本站填写了这个邮箱。{% endblock %}

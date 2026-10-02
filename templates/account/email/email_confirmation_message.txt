@@ -1,7 +1,9 @@
 {% extends "account/email/base_message.txt" %}
 
-{% block content %}你正在上海交通大学守望先锋社区注册或验证邮箱。
+{% block content %}你正在注册上海交通大学守望先锋社区，或者给账号换一个邮箱。请在页面上输入下面的验证码：
 
 验证码：{{ code }}
 
-如果这不是你本人的操作，请忽略这封邮件。{% endblock %}
+验证码 {{ verify_minutes }} 分钟内有效。如果这不是你本人的操作，请忽略这封邮件，不会有任何变化。{% endblock %}
+
+{% block reason %}你收到这封邮件，是因为有人在本站填写了这个邮箱。{% endblock %}

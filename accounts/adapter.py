@@ -43,6 +43,32 @@ class AccountAdapter(DefaultAccountAdapter):
     def get_from_email(self) -> str:
         return get_from_email()
 
+    def render_mail(self, template_prefix, email, context, headers=None):
+        """allauth's mails are letters too (design 10.3): the same greeting,
+        closing, signature and date as every other email the site sends."""
+        from django.conf import settings
+        from django.template.loader import render_to_string
+
+        from accounts.models import User
+        from core.letters import frame
+
+        user = context.get("user")
+        if user is None and isinstance(email, str):
+            # The reset code comes without a user; the letter only ever goes to
+            # this address, so greeting its owner by name tells nobody else.
+            user = User.objects.filter(email__iexact=email).first()
+        name = getattr(user, "nickname", "") or ""
+        subject = " ".join(
+            render_to_string(f"{template_prefix}_subject.txt", context).splitlines()
+        ).strip()
+        context = {
+            **frame(name, subject=subject),
+            "verify_minutes": settings.ACCOUNT_EMAIL_VERIFICATION_BY_CODE_TIMEOUT // 60,
+            "reset_minutes": settings.ACCOUNT_PASSWORD_RESET_BY_CODE_TIMEOUT // 60,
+            **context,
+        }
+        return super().render_mail(template_prefix, email, context, headers)
+
     def save_user(self, request, user, form, commit=True):
         user = super().save_user(request, user, form, commit=False)
         data = form.cleaned_data

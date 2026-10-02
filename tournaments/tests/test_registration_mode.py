@@ -18,11 +18,13 @@ from tournaments.models import RegistrationMode, Tournament, TournamentStatus
 from tournaments.tests.test_adhoc_teams import _admin
 from tournaments.tests.test_state_table import _force, player
 
+TITLE = "报名方式赛"
+
 
 def _tournament(**kwargs):
     now = timezone.now()
     options = {
-        "title": "报名方式赛",
+        "title": TITLE,
         "registration_opens_at": now - timedelta(days=1),
         "registration_closes_at": now + timedelta(days=7),
         "roster_min": 1,
@@ -270,7 +272,7 @@ def _entered_mail():
     return {
         m.recipients()[0]: m.body
         for m in mail.outbox
-        if m.subject == "你已被报名参加赛事"
+        if m.subject == f"你已被报名参加：{TITLE}"
     }
 
 

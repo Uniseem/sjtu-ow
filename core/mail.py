@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from email.utils import formataddr
-from html import escape
 
 from django.conf import settings
 from django.core.mail import EmailMessage, EmailMultiAlternatives, get_connection
@@ -63,11 +62,12 @@ def apply_subject_prefix(subject: str, prefix: str | None = None) -> str:
     return f"{prefix} {subject}".strip()
 
 
-def _html_from_text(text: str) -> str:
-    paragraphs = [
-        f"<p>{escape(part)}</p>" for part in (text or "").split("\n\n") if part.strip()
-    ]
-    return "\n".join(paragraphs) or "<p></p>"
+def _html_from_text(text: str, subject: str = "") -> str:
+    """A text-only message gets the letters' frame around its own paragraphs
+    (design 10.3), so Wagtail's notifications look like the rest."""
+    from core.letters import wrap_text
+
+    return wrap_text(text or "", subject)
 
 
 def ensure_text_and_html(message: EmailMessage) -> EmailMultiAlternatives:
@@ -77,7 +77,9 @@ def ensure_text_and_html(message: EmailMessage) -> EmailMultiAlternatives:
     text_body = message.body or ""
     if not text_body and html_parts:
         text_body = strip_tags(html_parts[0])
-    html_body = html_parts[0] if html_parts else _html_from_text(text_body)
+    html_body = (
+        html_parts[0] if html_parts else _html_from_text(text_body, message.subject)
+    )
     multipart = EmailMultiAlternatives(
         subject=message.subject,
         body=text_body,
@@ -219,23 +221,28 @@ def deliver_email_payload(payload: dict) -> int:
     return connection.send_messages([message])
 
 
+def test_letter():
+    """The admin's SMTP test (design 3.6, 10.3)."""
+    from core.letters import Letter, site_url
+
+    return Letter(
+        subject="SMTP 测试邮件",
+        lead="这是一封来自网站后台的测试邮件。你能读到它，说明 SMTP 配置可用。",
+        paragraphs=["正式的通知邮件也是这个样子：先说结论，再列要点，最后落款。"],
+        action=("打开网站后台", site_url("/admin/")),
+        reason="你收到这封邮件，是因为你在后台点了「发送测试邮件」。",
+    )
+
+
 def send_test_email(to_email: str) -> None:
     """Synchronous SMTP test for the admin button (does not use the queue)."""
     site = _load_site_settings()
     connection = build_smtp_backend(site)
-    prefix = get_subject_prefix()
-    subject = apply_subject_prefix("SMTP 测试邮件", prefix)
-    text = (
-        "这是一封来自上海交通大学守望先锋社区后台的测试邮件。"
-        "如果你能读到它，说明 SMTP 配置可用。"
-    )
-    message = EmailMultiAlternatives(
-        subject=subject,
-        body=text,
-        from_email=get_from_email(),
-        to=[to_email],
-    )
-    message.attach_alternative(_html_from_text(text), "text/html")
+    from core import letters
+
+    message = letters.message(test_letter(), to_email)
+    message.subject = apply_subject_prefix(message.subject, get_subject_prefix())
+    message.from_email = get_from_email()
     sent = connection.send_messages([message])
     if not sent:
         raise RuntimeError("SMTP 服务器没有接受这封测试邮件。")

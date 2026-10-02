@@ -1,31 +1,27 @@
-"""Tournament emails (design 8.1). One message per recipient."""
+"""Tournament emails (design 8.1), written as letters (10.3). One per person.
+
+``*_letter`` builds what an email says; the function without the suffix
+sends it (see teams.notifications).
+"""
 
 from __future__ import annotations
 
-from django.conf import settings
-from django.core.mail import send_mail
+from core.letters import Letter, send, site_url
 
 
-def site_url(path: str) -> str:
-    base = getattr(settings, "SITE_URL", "") or ""
-    return base.rstrip("/") + path
+def tournament_cancelled_letter(tournament, reason="") -> Letter:
+    return Letter(
+        subject=f"赛事已取消：{tournament.title}",
+        lead=f"「{tournament.title}」已经取消，你的报名不再有效。",
+        facts=[("说明", reason)] if reason else [],
+        paragraphs=["给你带来不便，抱歉。之后有新的赛事会在网站上公布。"],
+        action=("查看赛事页面", site_url(tournament.get_absolute_url())),
+        reason=f"你收到这封邮件，是因为你报名了「{tournament.title}」。",
+    )
 
 
 def tournament_cancelled(tournament, captain, reason="") -> None:
-    if not getattr(captain, "email", ""):
-        return
-    body = (
-        f"赛事「{tournament.title}」已取消。\n\n"
-        f"{('说明：' + reason) if reason else ''}\n"
-        f"赛事页面：{site_url(tournament.get_absolute_url())}"
-    )
-    send_mail(
-        subject="赛事已取消",
-        message=body,
-        from_email=None,
-        recipient_list=[captain.email],
-        fail_silently=False,
-    )
+    send(tournament_cancelled_letter(tournament, reason), [captain])
 
 
 def registration_submitted(registration, action) -> None:

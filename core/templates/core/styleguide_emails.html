@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}邮件样张 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  {% comment %}
+    Every email the site sends, with made-up data (design 10.3). Each one is
+    framed from its own address, so the email's inline styles never meet this
+    page's content security policy; the plain text sits under it.
+  {% endcomment %}
+  <header class="c-pagehead">
+    <div class="l-container l-container--narrow">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'styleguide' %}">样张</a><span class="c-crumbs__sep">/</span><span>邮件</span></nav>
+      <h1>邮件样张</h1>
+      <p class="c-pagehead__lede">网站发出的每一种邮件，用假数据渲染。主题前面实际还会加上后台设置的前缀。</p>
+    </div>
+  </header>
+
+  <div class="l-container l-container--narrow pt-10 pb-16 lg:pb-24">
+    {% regroup samples by group as groups %}
+    <nav class="mb-12 flex flex-wrap gap-x-6 gap-y-2" aria-label="邮件分类">
+      {% for group in groups %}<a href="#mail-{{ forloop.counter }}" class="text-primary-text">{{ group.grouper }}（{{ group.list|length }}）</a>{% endfor %}
+    </nav>
+    <div class="flex flex-col gap-16">
+      {% for group in groups %}
+        <section aria-labelledby="mail-{{ forloop.counter }}" class="flex flex-col gap-12">
+          <div class="c-sectionhead"><h2 id="mail-{{ forloop.counter }}">{{ group.grouper }}</h2></div>
+          {% for item in group.list %}
+            <article class="flex flex-col gap-3" data-mail-sample="{{ item.key }}">
+              <h3 class="text-lg font-semibold">{{ item.title }}</h3>
+              <dl class="c-facts c-panel">
+                <dt>收件人</dt><dd>{{ item.to }}</dd>
+                <dt>主题</dt><dd>{{ item.subject }}</dd>
+              </dl>
+              <iframe class="c-mailframe" src="{% url 'styleguide_email' item.key %}" title="{{ item.title }}的 HTML 版" loading="lazy"></iframe>
+              <details>
+                <summary class="cursor-pointer text-fg-2">纯文本版</summary>
+                <pre class="c-mailtext">{{ item.text }}</pre>
+              </details>
+            </article>
+          {% endfor %}
+        </section>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}
