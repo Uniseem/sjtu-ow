@@ -51,8 +51,14 @@ STILL_FILES = placeholders.still_files()
 def test_the_committed_pictures_are_what_the_code_draws():
     """Change core/placeholders.py, then run render_placeholders and commit."""
     assert len(MOVING) == COUNT + len(placeholders.SECTION_SCENES) == 42
-    # v5.2: the five base pictures and the footer ridge (design-details 1.9).
-    assert sorted(STILL_FILES) == [*(f"hue-{n}.svg" for n in range(1, 6)), "ridge.svg"]
+    # v5.2: the five base pictures and the footer ridge (design-details 1.9);
+    # v6.0 draft: the horizon and the peaks, both masks.
+    assert sorted(STILL_FILES) == [
+        "horizon.svg",
+        *(f"hue-{n}.svg" for n in range(1, 6)),
+        "peaks.svg",
+        "ridge.svg",
+    ]
     assert FILES == {**MOVING, **STILL_FILES}
     assert sorted(p.name for p in FOLDER.glob("*.svg")) == sorted(FILES)
     for name, svg in FILES.items():
@@ -74,13 +80,17 @@ def test_the_command_writes_every_picture_and_drops_stale_ones(tmp_path, setting
         assert _committed(name, target) == _committed(name), name
 
 
+# Drawn to a page's width or as a mark, not as a 16:9 scene.
+EDGES = (placeholders.RIDGE_FILE, placeholders.HORIZON_FILE, placeholders.PEAKS_FILE)
+
+
 def test_the_pictures_are_plain_graphics():
     """Same rules as the emblem (13.2.8): nothing that runs, nothing fetched,
     no words. Served from our origin, an SVG with a script would run there.
     The one <style> holds the motion and nothing else (v5.1); the still
     pictures have none (v5.2)."""
     for name, svg in FILES.items():
-        if name != placeholders.RIDGE_FILE:
+        if name not in EDGES:
             assert svg.startswith(
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" '
                 'width="1600" height="900" preserveAspectRatio="xMidYMid slice">'

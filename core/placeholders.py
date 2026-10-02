@@ -1112,26 +1112,28 @@ def section_paths(section: str) -> dict[str, str]:
 
 # The five 底图 behind faces and team logos without a picture
 # (design-details 1.5, 2.2; v5.2): red, orange, blue, green, gold, in the
-# order of the label tints. Still: a page can show dozens of them.
+# order of the label tints. Still: a page can show dozens of them. v6.0 draft:
+# the same scenes at dusk and muted (brick rose, sand, slate, sage, ochre), so
+# a wall of faces sits quietly on the paper-coloured page.
 HUE_SCENES = {
     1: ("landscape", 1, {
-        "top": "#2a0a12", "bottom": "#c0393f", "sun": "#ffcf9e", "near": "#16050a",
+        "top": "#3a2228", "bottom": "#b0706a", "sun": "#f2d3b8", "near": "#24151a",
     }),
     2: ("dunes", 1, {
-        "top": "#6e2c0c", "bottom": "#f4a64e", "sun": "#ffe6b8", "sand": "#dd8a32",
-        "shadow": "#6b2e0e", "near": "#4a1d08",
+        "top": "#6a4a36", "bottom": "#e3b98a", "sun": "#f6e6cc", "sand": "#c99a6a",
+        "shadow": "#6e4c35", "near": "#4a3226",
     }),
     3: ("skyline", 0, {
-        "top": "#06101f", "bottom": "#1b4b80", "glow": "#4aa3ff",
-        "windows": ["#ffd28a", "#9ad1ff", "#ffffff", "#6fb6ff"],
+        "top": "#141c2b", "bottom": "#3d5672", "glow": "#8fb0d6",
+        "windows": ["#e8d2a8", "#b8cde3", "#f1eee8", "#9db8d6"],
     }),
     4: ("forest", 2, {
-        "top": "#103024", "bottom": "#6aa57a", "sun": "#eaffea", "mist": "#4c8a66",
-        "near": "#07150e",
+        "top": "#24332d", "bottom": "#8fa896", "sun": "#eef3ea", "mist": "#6f8a78",
+        "near": "#16211c",
     }),
     5: ("waves", 3, {
-        "top": "#2b2006", "bottom": "#d4aa2c", "sun": "#fff2bf", "far": "#94721a",
-        "near": "#191203",
+        "top": "#3a3220", "bottom": "#c2a66a", "sun": "#f6ead0", "far": "#8f7a4c",
+        "near": "#221d12",
     }),
 }  # fmt: skip
 
@@ -1150,7 +1152,7 @@ def render_hue(hue: int) -> str:
 # out of a clear sky. Stretched to the page width, so no aspect ratio.
 RIDGE_FILE = "ridge.svg"
 RIDGE_HEIGHT = 160
-RIDGE_SHADES = ("#20242b", "#171a20", "#0e1014")
+RIDGE_SHADES = ("#222a37", "#1a2130", "#141a24")
 
 
 def render_ridge() -> str:
@@ -1169,6 +1171,51 @@ def render_ridge() -> str:
     )
 
 
+# The horizon under a picture head (v6.0 draft): a mask, not a picture. CSS
+# fills it with the page's own colour, so the scene sinks into the page under
+# two ridges; the far one is half see-through, the way the art fades what is
+# far away. Stretched to the page width like the footer's ridge.
+HORIZON_FILE = "horizon.svg"
+HORIZON_HEIGHT = 120
+
+
+def render_horizon() -> str:
+    rng = random.Random(2026)
+    shapes = []
+    # The far ridge is mist: clear at its crest, thicker towards the near one,
+    # so over a dark picture it reads as haze, not a grey band.
+    for i, fill in enumerate(("url(#mist)", "#000")):
+        line = _ridge(
+            rng, HORIZON_HEIGHT * (0.30 + 0.32 * i), HORIZON_HEIGHT * (0.24 - 0.08 * i)
+        )
+        points = line + [(WIDTH, HORIZON_HEIGHT), (0, HORIZON_HEIGHT)]
+        shapes.append(f'<polygon points="{_points(points)}" fill="{fill}"/>')
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'viewBox="0 0 {WIDTH} {HORIZON_HEIGHT}" width="{WIDTH}" '
+        f'height="{HORIZON_HEIGHT}" preserveAspectRatio="none">'
+        '<defs><linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0.1" stop-color="#000" stop-opacity="0"/>'
+        '<stop offset="0.75" stop-color="#000" stop-opacity="0.6"/>'
+        "</linearGradient></defs>" + "".join(shapes) + "</svg>\n"
+    )
+
+
+# The mark before a section's title (v6.0 draft): a far peak behind a near
+# one, also a mask, painted in the accent.
+PEAKS_FILE = "peaks.svg"
+
+
+def render_peaks() -> str:
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16" '
+        'width="24" height="16">'
+        '<polygon points="8,4 16,16 0,16" fill="#000" fill-opacity="0.5"/>'
+        '<polygon points="15,1 24,16 6,16" fill="#000"/>'
+        "</svg>\n"
+    )
+
+
 def moving_files() -> dict[str, str]:
     """The pictures that move (design-details 1.9): covers, section scenes."""
     files = {filename(i): render(i) for i in range(len(CATALOGUE))}
@@ -1179,6 +1226,8 @@ def moving_files() -> dict[str, str]:
 def still_files() -> dict[str, str]:
     files = {hue_filename(h): render_hue(h) for h in HUE_SCENES}
     files[RIDGE_FILE] = render_ridge()
+    files[HORIZON_FILE] = render_horizon()
+    files[PEAKS_FILE] = render_peaks()
     return files
 
 

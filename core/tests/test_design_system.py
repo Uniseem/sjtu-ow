@@ -93,7 +93,7 @@ def test_only_our_palette_exists():
     assert "--color-*: initial;" in css
     compiled = APP_CSS.read_text(encoding="utf-8")
     assert "--color-orange-500" not in compiled
-    assert "--color-primary:#a4161a" in compiled.replace(" ", "")
+    assert "--color-primary:#9b3a33" in compiled.replace(" ", "")
 
 
 HEX = r"--color-([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})"
@@ -168,7 +168,7 @@ def test_the_dark_values_apply_when_chosen_or_when_the_system_is_dark():
     # `tailwind runserver` keeps it (&:not(…)). Either way, two rules.
     compiled = re.sub(r'[\s"]', "", APP_CSS.read_text(encoding="utf-8"))
     start = r"(?::root|&)"
-    dark_bg = r"\{color-scheme:dark;--color-bg:#0e1014;"
+    dark_bg = r"\{color-scheme:dark;--color-bg:#141a24;"
     system = start + r":not\(\[data-theme=light\],\[data-theme=light\]\*\)"
     chosen = start + r":is\(\[data-theme=dark\],\[data-theme=dark\]\*\)"
     assert re.search(
