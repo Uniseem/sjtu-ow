@@ -49,7 +49,7 @@
       <aside class="c-author" aria-label="作者">
         <span class="c-avatar c-avatar--md c-hue-{{ page.author|hue }}" aria-hidden="true">{{ page.author.nickname|initial }}</span>
         <div class="min-w-0">
-          <p class="c-author__name">{{ page.author.nickname }}</p>
+          <p class="c-author__name">{% with url=page.author|member_url %}{% if url %}<a href="{{ url }}">{{ page.author.nickname }}</a>{% else %}{{ page.author.nickname }}{% endif %}{% endwith %}</p>
           {% if page.author.motto %}<p class="c-author__motto">“{{ page.author.motto }}”</p>{% endif %}
           <p class="c-author__meta">在本站发表了 <span class="font-numeric">{{ author_articles }}</span> 篇文章</p>
         </div>

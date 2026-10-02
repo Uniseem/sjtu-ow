@@ -126,7 +126,7 @@ def test_the_team_page_lists_the_roster_and_the_alumni_with_their_months(
     alumni = main[main.index("data-team-alumni") :]
     record = TeamAlumnus.objects.get(user=alum)
     months = f"{record.joined_at:%Y.%m}"
-    assert re.search(rf"退役的</span>.*{re.escape(months)}", alumni, re.S)
+    assert re.search(rf"退役的</a>.*{re.escape(months)}", alumni, re.S)
     # How someone left is not on the public page (5.3).
     assert "退出" not in alumni and "移除" not in alumni
 

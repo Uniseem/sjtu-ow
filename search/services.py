@@ -161,12 +161,15 @@ def search_teams(terms) -> Group:
 
 
 def search_members(terms) -> Group:
-    from members.services import joined_users
+    from members.services import joined_users, member_url
 
     users = joined_users().order_by("nickname", "pk")
 
     def hit_of(user, _text):
-        return Hit(title=user.nickname, url="/members/", excerpt="", meta="成员")
+        # Each member has a page now (design 6.4); the motto says who they are.
+        return Hit(
+            title=user.nickname, url=member_url(user), excerpt=user.motto, meta="成员"
+        )
 
     hits, truncated = _gather(users, terms, lambda user: user.nickname, hit_of)
     return Group("members", "成员", hits, truncated)
