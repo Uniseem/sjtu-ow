@@ -90,6 +90,9 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 | `.env` 要点 | `DJANGO_ALLOWED_HOSTS=169.58.217.180,localhost`、`SITE_URL` 和 `DJANGO_CSRF_TRUSTED_ORIGINS` 是 `http://169.58.217.180:22887`（**用户给了域名后要加上域名并改成 https**，然后 `up -d`）；`DJANGO_SECURE_SSL_REDIRECT=false`（跳转由用户的反向代理做）；`TEST_ENVIRONMENT=1`（横幅、禁止抓取，用户说是正式站再关） |
 | 定时任务 | `/etc/cron.d/sjtu-ow`（不碰 root 的 crontab）。服务器时区是 **Europe/Berlin**，cron 不支持 `CRON_TZ`，模板的北京时间按夏令时减 6 小时写 |
 | 登录后台 | 生产设置的 Cookie 只走 HTTPS，**直接用 `http://IP:22887` 登录不了**，要等反向代理配好 HTTPS。管理员账号由用户自己建：`… exec web python manage.py createsuperuser` |
+| 对外演示站（102 起） | 用户要的是「已经填入了测试数据的版本，作为对外的演示站」：库是本机演示库恢复过去的（40 个演示用户、7 支战队、21 篇文章、70 条评论，邮箱都是 `demo.example.com`，SMTP 没配），之后的补充都用脚本在服务器上直接跑（`handoff/rounds/102-demo-site/`），**不要再用备份整库覆盖**：会冲掉用户在服务器上建的管理员和改动。头像是 nekos.best 的动漫插画（用户选的，版权归画师，画师和出处记在图片说明里） |
+
+在服务器上跑一段脚本：`$C exec -T web python manage.py shell < /root/脚本.py`（`$C` 是上面那条 Compose 命令；Linux 上 Django 会把整段输入当脚本执行）。
 
 这台机器上还跑着 WordPress、HedgeDoc、FileCodeBox、相册和几个监控进程，规矩和测试机一样：只动 `/srv/sjtu-ow` 和 `sjtu-ow` 这个 Compose 项目，不做全局清理。升级照 README「生产 / 测试环境启动」，命令换成上面那条，升级后全量 `prerender`。
 
@@ -135,6 +138,9 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 - **Django 的 `{# #}` 注释只能写一行**（091）：跨行的 `{# … #}` 会原样显示在页面上，多行用 `{% comment %}`
 - **Windows 上改了 Python 文件后 `tailwind runserver` 可能卡死**（090、091 各两三次）：进程还在、端口不再响应，或者干脆退出。重启开发服务器就好；变异测试这类连续改文件的脚本跑完先确认服务器还活着
 - **`tailwind runserver` 会改写 `static/css/app.css`**（091）：它的监视进程在你改任何被扫描的文件（包括 `.py`）后重新编译出**不压缩、保留 CSS 嵌套**的版本，覆盖掉 `tailwind build` 的压缩版。读 `app.css` 的测试要两种写法都认；要确定性地跑全量测试，先 `tailwind build --force`，跑完之前别改文件。**最稳的是跑全量前停掉开发服务器**：096–098 里开发服务器卡死重启后，它的监视进程好几次在测试中途重写 `app.css`，`test_body_text_rules_match_what_wagtail_renders` 就红了
+- **`manage.py restore` 在 Compose 部署里恢复不了 media**（102 发现，还没修）：`/app/media` 是挂载的数据卷，命令先删光里面的文件，再删目录本身时报 `Device or resource busy`，后面的复制和清空 `prerendered` 都没做。数据库已经换好了，上传文件却没了。修好之前，恢复后手工补：`$C run --rm --no-deps -v <备份>:/import/b.tar.gz:ro web sh -c "mkdir -p /tmp/r && cd /tmp/r && tar -xzf /import/b.tar.gz media && cp -a media/. /app/media/"`，再 `prerender --clear` 和 `prerender`
+- **Windows 上别用 `manage.py shell < 文件`**（102）：Windows 的管道不支持 `select`，Django 退回交互式控制台逐行执行，函数和循环中间的空行会把语句截断，脚本只跑了一半还不报错退出。本机用 `manage.py shell -c "exec(open(r'路径', encoding='utf-8').read())"`；服务器（Linux）上 `<` 没问题
+- **本机推送 403**（101）：本机 `gh` 登录了两个 GitHub 账号，当前激活的不是 `Uniseem` 时，`git push` 会被拒（Permission denied）。不要切换全局账号，只给这一次推送指定凭据：`git -c credential.helper= -c 'credential.helper=!f() { test "$1" = get && echo username=Uniseem && echo "password=$(gh auth token -h github.com -u Uniseem)"; }; f' push origin main`
 - **Git Bash 的 heredoc 会吃掉一层反斜杠**（092）：在 Bash 工具里用 `python - << 'EOF'` 跑内联脚本时，脚本源码里写的两个反斜杠加 n 到 Python 那里只剩一个，替换进文件的就成了真换行；正则里的反斜杠也会少一层。091、092 几次把测试文件写坏（字符串字面量被拆成两行）。改文件用编辑工具，或者先把脚本写成 `.py` 文件再运行
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
