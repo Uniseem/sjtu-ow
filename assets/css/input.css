@@ -1817,6 +1817,26 @@
   /* A member in a group (design-details 4.2): picture first, a square of the
      person's base picture with the initial large, then name, posts, motto,
      positions and teams. */
+  /* Member cards open the member's page (design 6.4, v5.5): the name is the
+     link and stretches over the card; a card's team links stay clickable on
+     top of it. */
+  .c-person,
+  .c-roster__item,
+  .c-squad__item {
+    position: relative;
+  }
+
+  .c-person__meta a {
+    position: relative;
+    z-index: 2;
+  }
+
+  .c-person:hover .c-person__name,
+  .c-roster__item:hover .c-roster__name,
+  .c-squad__item:hover .c-squad__name a {
+    color: var(--color-primary-text);
+  }
+
   .c-person {
     display: flex;
     flex-direction: column;

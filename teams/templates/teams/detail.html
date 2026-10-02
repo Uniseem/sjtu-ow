@@ -59,7 +59,7 @@
                   <li class="c-squad__item" data-roster-member>
                     <span class="c-avatar c-avatar--md c-hue-{{ person|hue }}" aria-hidden="true">{{ person.nickname|initial }}</span>
                     <div class="c-squad__main">
-                      <p class="c-squad__name"><span class="truncate" title="{{ person.nickname }}">{{ person.nickname }}</span>{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}</p>
+                      <p class="c-squad__name">{% with url=person|member_url %}{% if url %}<a href="{{ url }}" class="truncate c-stretch" title="{{ person.nickname }}">{{ person.nickname }}</a>{% else %}<span class="truncate" title="{{ person.nickname }}">{{ person.nickname }}</span>{% endif %}{% endwith %}{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}</p>
                       {% if person.motto %}<p class="c-squad__motto" title="{{ person.motto }}">“{{ person.motto }}”</p>{% endif %}
                       {% include "components/play_style.html" with profile=person|public_profile %}
                       <p class="c-squad__meta"><time class="font-numeric" datetime="{{ membership.joined_at|date:'c' }}">{{ membership.joined_at|date:"Y.m" }}</time> 入队</p>

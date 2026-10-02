@@ -2,6 +2,6 @@
 {# One 退役 member (design-details 5.3): face, name, the months on the team. #}
 <li class="c-alumni__item" data-alumnus>
   <span class="c-avatar c-avatar--sm c-hue-{{ alumnus.user|hue }}" aria-hidden="true">{{ alumnus.user.nickname|initial }}</span>
-  <span class="c-alumni__name" title="{{ alumnus.user.nickname }}">{{ alumnus.user.nickname }}</span>
+  {% with url=alumnus.user|member_url %}{% if url %}<a href="{{ url }}" class="c-alumni__name" title="{{ alumnus.user.nickname }}">{{ alumnus.user.nickname }}</a>{% else %}<span class="c-alumni__name" title="{{ alumnus.user.nickname }}">{{ alumnus.user.nickname }}</span>{% endif %}{% endwith %}
   <span class="c-alumni__when font-numeric"><time datetime="{{ alumnus.joined_at|date:'c' }}">{{ alumnus.joined_at|date:"Y.m" }}</time> – <time datetime="{{ alumnus.left_at|date:'c' }}">{{ alumnus.left_at|date:"Y.m" }}</time></span>
 </li>

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load ow %}
+
+{% block title %}{{ page.user.nickname }} · 成员 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block extra_head %}
+  {# Kept out of search engines until the page's design is settled (design 6.4). #}
+  <meta name="robots" content="noindex">
+{% endblock %}
+
+{% block content %}
+  {% comment %}
+    A member's own page, basic version (design 6.4): only what design-details
+    1.8 calls public, laid out with the components there are. The design of
+    this page is still to be discussed.
+  {% endcomment %}
+  <header class="c-pagehead">
+    <div class="l-container l-container--narrow">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/members/">成员</a><span class="c-crumbs__sep">/</span><span>{{ page.user.nickname }}</span></nav>
+      <div class="mt-6 flex flex-wrap items-center gap-6" data-member-head>
+        <span class="c-avatar c-avatar--lg c-hue-{{ page.user|hue }}" aria-hidden="true">{{ page.user.nickname|initial }}</span>
+        <div class="flex min-w-0 flex-col gap-2">
+          <h1>{{ page.user.nickname }}</h1>
+          {% if page.user.motto %}<p class="c-pagehead__lede" data-motto>“{{ page.user.motto }}”</p>{% endif %}
+          {% include "components/play_style.html" with profile=page.profile %}
+        </div>
+      </div>
+      {% if page.groups %}
+        <dl class="mt-6 flex flex-wrap gap-x-8 gap-y-3" data-member-groups>
+          {% for group, titles in page.groups %}
+            <div class="flex flex-wrap items-center gap-2">
+              <dt class="text-fg-2">{{ group.name }}</dt>
+              {% for title in titles %}<dd class="c-tag">{{ title }}</dd>{% endfor %}
+            </div>
+          {% endfor %}
+        </dl>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="l-container l-container--narrow pt-10 pb-16 lg:pt-14 lg:pb-24">
+    <div class="flex flex-col gap-14">
+      <section aria-labelledby="member-teams" data-member-teams>
+        {% include "components/section_head.html" with title="所在战队" heading_id="member-teams" %}
+        {% if page.teams %}
+          <ul class="c-teams c-teams--list">
+            {% for team in page.teams %}
+              {% include "components/team_tile.html" with members=team.members_total %}
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-fg-2">现在没有加入战队。</p>
+        {% endif %}
+      </section>
+
+      {% if page.alumni %}
+        <section aria-labelledby="member-alumni" data-member-alumni>
+          {% include "components/section_head.html" with title="待过的战队" heading_id="member-alumni" %}
+          <ol class="c-rows">
+            {% for record in page.alumni %}
+              <li class="c-row">
+                <span class="c-avatar c-avatar--md c-hue-{{ record.team|hue }}" aria-hidden="true">{{ record.team.name|initial }}</span>
+                <div class="c-row__main">
+                  <h3 class="c-row__title"><a href="{{ record.team.get_absolute_url }}" class="c-stretch">{{ record.team.name }}</a></h3>
+                  <p class="c-row__meta"><time datetime="{{ record.joined_at|date:'c' }}">{{ record.joined_at|date:"Y.m" }}</time> – <time datetime="{{ record.left_at|date:'c' }}">{{ record.left_at|date:"Y.m" }}</time></p>
+                </div>
+              </li>
+            {% endfor %}
+          </ol>
+        </section>
+      {% endif %}
+
+      {% if page.articles %}
+        <section aria-labelledby="member-articles" data-member-articles>
+          <div class="c-sectionhead">
+            <h2 id="member-articles">发表的文章</h2>
+            <span class="text-fg-3">共 <span class="font-numeric">{{ page.article_count }}</span> 篇</span>
+          </div>
+          <ol class="c-rows">
+            {% for article in page.articles %}
+              <li class="c-row">
+                <time class="c-date" datetime="{{ article.first_published_at|date:'c' }}"><small>{{ article.first_published_at|date:"n" }}月</small><b>{{ article.first_published_at|date:"d" }}</b></time>
+                <div class="c-row__main">
+                  <h3 class="c-row__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+                  <p class="c-row__meta font-numeric">{{ article.first_published_at|ow_date }}</p>
+                </div>
+              </li>
+            {% endfor %}
+          </ol>
+        </section>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

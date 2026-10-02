@@ -161,7 +161,8 @@ def test_members_are_the_people_on_the_members_page():
     hits = services.search_members(["守望"]).hits
 
     assert [hit.title for hit in hits] == [shown.nickname]
-    assert hits[0].url == "/members/"
+    # Each member has a page of their own (design 6.4, round 097).
+    assert hits[0].url == f"/members/{shown.pk}/"
 
 
 @pytest.mark.django_db

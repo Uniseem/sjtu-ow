@@ -86,6 +86,73 @@ def showcase() -> dict:
     return {"sections": sections, "members": [members[user.pk] for user in users]}
 
 
+def member_url(user) -> str:
+    """A member's own page (design 6.4, v5.5)."""
+    return f"{MEMBERS_PATH}{user.pk}/"
+
+
+ARTICLES_ON_PAGE = 10
+
+
+@dataclass
+class MemberPage:
+    """What a member's page shows (design 6.4): only what 1.8 calls public."""
+
+    user: object
+    profile: object  # accounts.roles.PublicProfile
+    groups: list  # (group, titles in it)
+    teams: list  # current teams, each with members_total
+    alumni: list  # TeamAlumnus rows: teams this person has left
+    articles: list
+    article_count: int
+
+
+def member_page(user) -> MemberPage:
+    from django.db.models import Count
+
+    from accounts.roles import public_profile
+    from content.models import ArticlePage
+    from members.models import MemberGroupMembership
+    from teams.models import Team, TeamAlumnus
+
+    groups = [
+        (membership.group, split_titles(membership.title))
+        for membership in MemberGroupMembership.objects.filter(
+            user=user, group__is_visible=True
+        )
+        .select_related("group")
+        .order_by("group__sort_order", "group__name")
+    ]
+    teams = list(
+        Team.objects.filter(
+            disbanded_at__isnull=True,
+            pk__in=user.team_memberships.values("team_id"),
+        )
+        .annotate(members_total=Count("memberships"))
+        .order_by("name")
+    )
+    alumni = list(
+        TeamAlumnus.objects.filter(user=user, team__disbanded_at__isnull=True)
+        .select_related("team")
+        .order_by("-left_at")
+    )
+    published = (
+        ArticlePage.objects.live()
+        .public()
+        .filter(author=user)
+        .order_by("-first_published_at")
+    )
+    return MemberPage(
+        user=user,
+        profile=public_profile(user),
+        groups=groups,
+        teams=teams,
+        alumni=alumni,
+        articles=list(published[:ARTICLES_ON_PAGE]),
+        article_count=published.count(),
+    )
+
+
 def refresh_page() -> None:
     from core import prerender
 

@@ -89,6 +89,17 @@ def hue(obj) -> int:
 
 
 @register.filter
+def member_url(user) -> str:
+    """The person's own page (design 6.4), or "" for someone who no longer
+    has one (deactivated), so a template can leave the name unlinked."""
+    from members.services import member_url as url
+
+    if user is None or not getattr(user, "is_active", False):
+        return ""
+    return url(user)
+
+
+@register.filter
 def hue_scene(obj) -> str:
     """The static address of an object's base picture (design-details 2.2)."""
     from django.templatetags.static import static
