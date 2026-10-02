@@ -22,7 +22,7 @@
       <h1 class="c-cover__title">{{ page.title }}</h1>
       {% if page.summary %}<p class="c-cover__summary">{{ page.summary }}</p>{% endif %}
       <ul class="c-cover__facts c-article__meta" aria-label="文章信息">
-        <li><span class="c-avatar c-avatar--xs c-hue-{{ page.author|hue }}" aria-hidden="true">{{ page.author.nickname|initial }}</span><span class="c-article__author">{{ page.author.nickname }}</span></li>
+        <li>{% include "components/avatar.html" with person=page.author size="xs" %}<span class="c-article__author">{{ page.author.nickname }}</span></li>
         <li>{% include "components/icon.html" with name="calendar" %}<time class="font-numeric" datetime="{{ page.first_published_at|date:'c' }}">{{ page.first_published_at|ow_date }}</time></li>
         {% if updated %}<li>{% include "components/icon.html" with name="edit" %}更新于 <time class="font-numeric" datetime="{{ page.last_published_at|date:'c' }}">{{ page.last_published_at|ow_md }}</time></li>{% endif %}
         <li>{% include "components/icon.html" with name="clock" %}约 <span class="font-numeric">{{ facts.minutes }}</span> 分钟</li>
@@ -47,7 +47,7 @@
       <div class="c-prose">{{ body_html }}</div>
 
       <aside class="c-author" aria-label="作者">
-        <span class="c-avatar c-avatar--md c-hue-{{ page.author|hue }}" aria-hidden="true">{{ page.author.nickname|initial }}</span>
+        {% include "components/avatar.html" with person=page.author size="md" %}
         <div class="min-w-0">
           <p class="c-author__name">{% with url=page.author|member_url %}{% if url %}<a href="{{ url }}">{{ page.author.nickname }}</a>{% else %}{{ page.author.nickname }}{% endif %}{% endwith %}</p>
           {% if page.author.motto %}<p class="c-author__motto">“{{ page.author.motto }}”</p>{% endif %}

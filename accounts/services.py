@@ -215,6 +215,15 @@ def sync_all_submitter_memberships() -> int:
     return changed
 
 
+def with_avatars(queryset, path: str = ""):
+    """Load each person's picture and its thumbnails with the rows
+    (design-details 2.3). `path` leads from the rows to the user, such as
+    "author__"; without this a list of faces costs queries per face."""
+    return queryset.select_related(f"{path}avatar").prefetch_related(
+        f"{path}avatar__renditions"
+    )
+
+
 def refresh_nickname_pages(user) -> None:
     """Regenerate the public pages that print this user's nickname (13.13.4)."""
     from content.models import ArticlePage
@@ -223,6 +232,10 @@ def refresh_nickname_pages(user) -> None:
     for membership in user.team_memberships.select_related("team"):
         if not membership.team.is_disbanded:
             prerender.request_page(membership.team.get_absolute_url(), kind="team")
+    # Former members are listed too (design-details 5.3), face and all.
+    for alumnus in user.team_alumni.select_related("team"):
+        if not alumnus.team.is_disbanded:
+            prerender.request_page(alumnus.team.get_absolute_url(), kind="team")
     for signup in user.scrim_signups.select_related("scrim"):
         if signup.scrim.is_public:
             prerender.request_page(f"/scrims/{signup.scrim_id}/", kind="scrim")
@@ -310,6 +323,7 @@ def delete_account(user) -> None:
         FeatureUserRule.objects.filter(user=user).delete()
         user.email = f"deleted-{user.pk}@deleted.invalid"
         user.nickname = DELETED_NICKNAME
+        user.avatar = None  # design-details 2.3
         user.is_sjtu = False
         user.sjtu_verified_via = None
         user.sjtu_verified_at = None

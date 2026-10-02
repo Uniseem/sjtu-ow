@@ -151,7 +151,11 @@ def thread(page, *, viewer=None, page_number=1, sort="new") -> dict:
     """
     sort = sort if sort in SORTS else "new"
     moderator = can_moderate(viewer)
-    base = page.comments.select_related("author", "reply_to_user")
+    from accounts.services import with_avatars
+
+    base = with_avatars(
+        page.comments.select_related("author", "reply_to_user"), "author__"
+    )
     surviving = Comment.objects.filter(parent=OuterRef("pk"), is_deleted=False)
     if not moderator:
         surviving = surviving.filter(is_hidden=False)

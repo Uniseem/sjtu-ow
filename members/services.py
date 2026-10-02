@@ -51,11 +51,14 @@ class Section:
 def showcase() -> dict:
     """Visible groups in order, then everyone who has joined, oldest first."""
     from accounts.roles import public_profile
+    from accounts.services import with_avatars
     from members.models import MemberGroup
     from teams.models import TeamMembership
 
     users = list(
-        joined_users().order_by("date_joined", "pk").prefetch_related("game_accounts")
+        with_avatars(joined_users())
+        .order_by("date_joined", "pk")
+        .prefetch_related("game_accounts")
     )
     members = {user.pk: Member(user, profile=public_profile(user)) for user in users}
     for membership in (

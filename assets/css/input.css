@@ -1897,6 +1897,13 @@
     line-height: 1;
   }
 
+  /* The person's own picture fills the square (design-details 2.3, v6.1). */
+  .c-person__pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
   @media (max-width: 639px) {
     .c-person__pic {
       font-size: 2.25rem;

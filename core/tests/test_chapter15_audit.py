@@ -9,14 +9,39 @@ keep it true.
 import gzip
 import re
 from datetime import timedelta
+from io import BytesIO
 from pathlib import Path
 
 import pytest
+from django.core.files.base import ContentFile
 from django.utils import timezone
+from PIL import Image as PILImage
 
 from accounts.models import ContactMethod, ContactType, GameAccount, User
 
 # --- helpers -------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _media(settings, tmp_path):
+    """Avatars are real image files; keep them out of the project's media/."""
+    settings.MEDIA_ROOT = tmp_path
+
+
+def make_avatar(index):
+    from wagtail.images.models import Image
+    from wagtail.models import Collection
+
+    collection = Collection.get_first_root_node() or Collection.add_root(name="Root")
+    buffer = BytesIO()
+    PILImage.new("RGB", (64, 64), color=(index % 255, 90, 140)).save(buffer, "PNG")
+    return Image.objects.create(
+        title=f"头像{index}",
+        width=64,
+        height=64,
+        collection=collection,
+        file=ContentFile(buffer.getvalue(), name=f"avatar{index}.png"),
+    )
 
 
 def make_user(index, *, sjtu=True):
@@ -28,6 +53,9 @@ def make_user(index, *, sjtu=True):
         is_sjtu=sjtu,
         agreed_terms_at=now,
         agreed_cross_border_at=now,
+        # Every face is a picture, so a per-row picture lookup shows up as
+        # N+1 (design-details 2.3, round 101).
+        avatar=make_avatar(index),
     )
     GameAccount.objects.create(
         user=user, battletag=f"Audit{index}#{1000 + index}", rank_damage=20
@@ -39,9 +67,15 @@ def make_user(index, *, sjtu=True):
 
 
 def count_queries(client, url, django_assert_num_queries=None):
+    from django.core.cache import caches
     from django.db import connection
     from django.test.utils import CaptureQueriesContext
 
+    # A picture's thumbnail is made the first time it is shown, once ever;
+    # what has to stay flat is every view after that (round 101). Measured
+    # with the in-memory thumbnail cache empty, as the worker usually finds it.
+    client.get(url)
+    caches["renditions"].clear()
     with CaptureQueriesContext(connection) as captured:
         response = client.get(url)
     assert response.status_code == 200, f"{url} 返回 {response.status_code}"

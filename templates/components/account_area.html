@@ -2,7 +2,7 @@
 {% if user.is_authenticated %}
   <details class="c-menu">
     <summary aria-label="账号菜单：{{ user.nickname }}">
-      <span class="c-avatar c-avatar--sm">{{ user.nickname|initial }}</span>
+      {% include "components/avatar.html" with person=user size="sm" plain=True %}
       <span class="hidden max-w-[8rem] truncate sm:inline">{{ user.nickname }}</span>
       {% include "components/icon.html" with name="chevron-down" class="size-4 text-fg-2" %}
     </summary>

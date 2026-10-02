@@ -1,14 +1,16 @@
 # 当前状态
 
 ```yaml
-milestone: M10 前台视觉 v6.0（已合并到 main），M7 上线准备暂停
-round: 100-deploy-vps
-next: user
+milestone: M10 前台视觉 v6.1（头像能显示图片），M7 上线准备暂停
+round: 101-avatars
+next: claude（102 演示站内容补全）
 updated: 2026-10-03
 blocked_on: 169.58.217.180 要你配反向代理、告诉我域名（我改 .env）、自己建管理员；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定；测试机升级要你的 SSH 密钥（先弄清主机密钥为什么变了）
 ```
 
 ## 现在该谁动手
+
+**101（2026-10-03）**：**头像能显示图片**（设计 v6.1）。你要演示站有头像，可用户表里原来没有头像字段，所以先加了字段和显示：全站画头像的地方（作者行、作者卡、评论、成员名片和小卡、战队成员和退役列表、等待编队、账号菜单、个人中心、个人主页）有图就显示图，没图照旧底图加首字。**还没有设置入口**：前台不能上传，后台的用户编辑页也没有这一项，演示站的头像是用脚本写进去的；上传以后再做（细节 2.3）。换头像会重新生成显示它的页面，注销清空头像，人再多列表的查询数也不涨（有测试）。
 
 **100（2026-10-03）**：v6.0（`a95a696`）**部署到 169.58.217.180**，按你说的端口 22887、不配反向代理。`http://169.58.217.180:22887` 已经能打开，`/healthz` 四项都是 ok，全量预渲染 9 页成功，定时任务装在 `/etc/cron.d/sjtu-ow`。机器上原有的 WordPress、HedgeDoc 等没动，本项目不占 80/443。细节（命令、本机专用的两个文件、`.env` 要点）在 `AGENTS.md`「第二台」。**你要做的**：① 反向代理指到 `22887`，带上 `X-Forwarded-Proto: https`；② 把域名告诉我，我把它加进 `DJANGO_ALLOWED_HOSTS`、`SITE_URL`、`DJANGO_CSRF_TRUSTED_ORIGINS`（不加的话用域名访问是 400）；③ HTTPS 好了以后自己建管理员：`docker compose -p sjtu-ow -f deploy/docker-compose.yml -f deploy/docker-compose.vps.yml --env-file .env exec web python manage.py createsuperuser`（在 `/srv/sjtu-ow` 里跑）；④ 现在开着「测试环境」横幅、禁止搜索引擎抓取，是正式站的话说一声关掉。
 
@@ -383,6 +385,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 098-seats-and-status | **分支 `claude/flat-muted-ui`，099 合并**。首页「近期」内战行不拉伸、大图卡跟列表走；进度条换成名额格 `c-seats`（一格一个名额）；状态标签 `c-status` 去掉底色块，改成山形记号加字 | **Claude 实现**，自查通过。`test_flat_muted.py` 加 3 条；7 处变异全部被抓到。属性标签 `c-tag` 待用户定 |
 | 099-merge-v6 | 用户「合并到主分支，我现在非常满意」：试验分支快进合并到 `main`；文档从「v6.0 草案」改成 v6.0（设计文档版本、附录 D、13.2.2，细节文档版本，README 视觉风格，代码注释，STATUS） | **Claude**，只改文档和注释；整组检查重跑 |
 | 100-deploy-vps | v6.0 部署到 169.58.217.180：`/srv/sjtu-ow`、项目名 `sjtu-ow`，Caddy 只在 22887 听 HTTP（本机专用 `docker-compose.vps.yml`、`Caddyfile.vps`，信任私有地址的反向代理头），`.env` 在服务器上生成，`TEST_ENVIRONMENT=1`，`/etc/cron.d/sjtu-ow` 按柏林时区换算；迁移、`init_site`、全量预渲染 9 页成功，外部访问首页、成员、赛事 200，`/healthz` 全 ok | **Claude 部署**。反向代理、域名、管理员账号待用户 |
+| 101-avatars | 设计 v6.1：`User.avatar`（`accounts/0006`，没有设置入口）；`components/avatar.html` 统一画头像，有图显示图（88/176/400px 缩略图）；换头像刷新相关页面（含离开过的战队主页）；注销清空；`with_avatars` 让列表一次取头像和缩略图；缩略图缓存改放进程内存；文章卡片链接改 `{% pageurl %}`（原有的 N+1） | **Claude 实现**，自查通过。新测试 `test_avatar.py`（15 条），第 15 章审计的用户都带头像；17 处变异全部被抓到（第一次漏 1 处，修了测试后重跑抓到） |
 
 ## 当前待定问题
 

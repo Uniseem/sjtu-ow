@@ -120,7 +120,17 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "django_cache",
-    }
+    },
+    # Wagtail notes every thumbnail it hands out in this cache. In the
+    # database cache that was a write per picture, so a page of faces cost
+    # queries per person (design 12.13, round 101). Lookups only: losing it
+    # costs a query, never a wrong picture.
+    "renditions": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "renditions",
+        "TIMEOUT": 600,
+        "OPTIONS": {"MAX_ENTRIES": 2000},
+    },
 }
 
 TASKS = {

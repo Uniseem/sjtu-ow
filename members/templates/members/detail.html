@@ -18,7 +18,7 @@
     <div class="l-container l-container--narrow">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/members/">成员</a><span class="c-crumbs__sep">/</span><span>{{ page.user.nickname }}</span></nav>
       <div class="mt-6 flex flex-wrap items-center gap-6" data-member-head>
-        <span class="c-avatar c-avatar--lg c-hue-{{ page.user|hue }}" aria-hidden="true">{{ page.user.nickname|initial }}</span>
+        {% include "components/avatar.html" with person=page.user size="lg" %}
         <div class="flex min-w-0 flex-col gap-2">
           <h1>{{ page.user.nickname }}</h1>
           {% if page.user.motto %}<p class="c-pagehead__lede" data-motto>“{{ page.user.motto }}”</p>{% endif %}

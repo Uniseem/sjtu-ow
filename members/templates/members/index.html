@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load ow %}
+{% load ow wagtailimages_tags %}
 
 {% block title %}成员 · 上海交通大学守望先锋社区{% endblock %}
 
@@ -34,7 +34,7 @@
                 {# A profile card (design-details 4.2): this group's posts only (4.3). #}
                 <li class="c-person">
                   {# Picture first (design-details 1.9, 4.2). #}
-                  <span class="c-person__pic c-hue-{{ member.user|hue }}" aria-hidden="true">{{ member.user.nickname|initial }}</span>
+                  <span class="c-person__pic c-hue-{{ member.user|hue }}" aria-hidden="true">{% if member.user.avatar_id %}{% image member.user.avatar fill-400x400 alt="" loading="lazy" %}{% else %}{{ member.user.nickname|initial }}{% endif %}</span>
                   <span class="c-person__body">
                   <a href="{{ member.user|member_url }}" class="c-person__name c-stretch" title="{{ member.user.nickname }}">{{ member.user.nickname }}</a>
                   {% if titles %}
@@ -66,7 +66,7 @@
           <ol class="c-roster">
             {% for member in members %}
               <li class="c-roster__item" data-member>
-                <span class="c-avatar c-avatar--md c-hue-{{ member.user|hue }}" aria-hidden="true">{{ member.user.nickname|initial }}</span>
+                {% include "components/avatar.html" with person=member.user size="md" %}
                 <span class="min-w-0">
                   <a href="{{ member.user|member_url }}" class="c-roster__name c-stretch" title="{{ member.user.nickname }}">{{ member.user.nickname }}</a>
                   {% include "components/play_style.html" with profile=member.profile compact=True %}

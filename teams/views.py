@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from accounts.models import User
+from accounts.services import with_avatars
 from content.seo import absolute_uri, build_seo
 from core.ratelimit import over_limit
 from teams import services
@@ -43,11 +44,15 @@ def team_detail(request, pk):
     team = get_object_or_404(Team.objects.select_related("logo"), pk=pk)
     # Ranks come from every game ID (design-details 3.3): one query for all.
     memberships = (
-        team.memberships.select_related("user")
+        with_avatars(team.memberships.select_related("user"), "user__")
         .prefetch_related("user__game_accounts")
         .order_by("role", "joined_at")
     )
-    alumni = team.alumni.select_related("user") if not team.is_disbanded else []
+    alumni = (
+        with_avatars(team.alumni.select_related("user"), "user__")
+        if not team.is_disbanded
+        else []
+    )
     can_apply, apply_reason = services.can_apply(team, request.user)
     return render(
         request,

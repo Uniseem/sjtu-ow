@@ -5,7 +5,7 @@
   {% elif reply.is_hidden and not can_moderate %}
     <p class="c-comment__placeholder">该回复已隐藏。</p>
   {% else %}
-    <span class="c-avatar c-avatar--sm" aria-hidden="true">{{ reply.author.nickname|initial }}</span>
+    {% include "components/avatar.html" with person=reply.author size="sm" plain=True %}
     <div class="min-w-0">
       <p class="c-comment__meta">
         <span class="c-comment__name">{{ reply.author.nickname }}</span>

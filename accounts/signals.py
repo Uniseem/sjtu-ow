@@ -18,8 +18,17 @@ from accounts.services import (
 )
 
 # Everything the public pages print about a person (13.13.4; motto, roles
-# and the rank switch from v5.2, design-details 3).
-PUBLIC_FIELDS = ("nickname", "motto", "main_role", "flex_roles", "show_rank")
+# and the rank switch from v5.2, design-details 3; the picture from v6.1, 2.3).
+PUBLIC_FIELDS = (
+    "nickname",
+    "motto",
+    "main_role",
+    "flex_roles",
+    "show_rank",
+    "avatar_id",
+)
+# save(update_fields=...) may name the picture either way.
+_PUBLIC_UPDATE_FIELDS = {*PUBLIC_FIELDS, "avatar"}
 
 
 @receiver(pre_save, sender=User)
@@ -29,7 +38,7 @@ def remember_nickname(sender, instance, raw, update_fields=None, **kwargs):
     instance._public_before = None
     if raw or instance.pk is None:
         return
-    if update_fields is not None and not set(PUBLIC_FIELDS) & set(update_fields):
+    if update_fields is not None and not _PUBLIC_UPDATE_FIELDS & set(update_fields):
         return  # a login only saves last_login
     instance._public_before = (
         User.objects.filter(pk=instance.pk).values(*PUBLIC_FIELDS).first()

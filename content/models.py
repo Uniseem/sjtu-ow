@@ -175,13 +175,14 @@ class HomePage(SeoPageMixin, Page):
             raise ValidationError({"pinned_articles": "置顶文章最多 3 篇。"})
 
     def get_context(self, request, *args, **kwargs):
+        from accounts.services import with_avatars
+
         context = super().get_context(request, *args, **kwargs)
         pinned = [
             rel.article
-            for rel in self.pinned_articles.select_related(
-                "article__category",
-                "article__author",
-            )
+            for rel in with_avatars(
+                self.pinned_articles.all(), "article__author__"
+            ).select_related("article__category", "article__author")
             if rel.article.live
         ][:MAX_PINNED_ARTICLES]
         from content import home
@@ -208,10 +209,11 @@ class ArticleIndexPage(SeoPageMixin, ReservedSlugMixin, Page):
     ]
 
     def get_context(self, request, *args, **kwargs):
+        from accounts.services import with_avatars
+
         context = super().get_context(request, *args, **kwargs)
         articles = (
-            ArticlePage.objects.live()
-            .public()
+            with_avatars(ArticlePage.objects.live().public(), "author__")
             .descendant_of(self)
             .select_related("category", "author", "cover")
             .order_by("-first_published_at", "-last_published_at")
@@ -282,11 +284,12 @@ class ArticlePage(SeoPageMixin, Page):
     subpage_types = []
 
     def get_context(self, request, *args, **kwargs):
+        from accounts.services import with_avatars
+
         context = super().get_context(request, *args, **kwargs)
         # Design 5.2: the latest in the same category beside the article.
         context["related"] = list(
-            ArticlePage.objects.live()
-            .public()
+            with_avatars(ArticlePage.objects.live().public(), "author__")
             .filter(category_id=self.category_id)
             .exclude(pk=self.pk)
             .select_related("category", "cover", "author")

@@ -27,7 +27,7 @@
               <li class="c-panel">
                 <div class="c-panel__head">
                   <p class="flex flex-wrap items-center gap-3">
-                    <span class="c-avatar c-avatar--sm" aria-hidden="true">{{ application.applicant.nickname|initial }}</span>
+                    {% include "components/avatar.html" with person=application.applicant size="sm" plain=True %}
                     <strong>{{ application.applicant.nickname }}</strong>
                     {% include "components/role_icons.html" with role_tank=application.role_tank role_damage=application.role_damage role_support=application.role_support %}
                   </p>

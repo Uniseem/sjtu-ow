@@ -415,10 +415,13 @@ def my_applications(user):
 
 
 def pending_applications(team):
-    return (
+    from accounts.services import with_avatars
+
+    return with_avatars(
         TeamApplication.objects.filter(team=team, status=ApplicationStatus.PENDING)
         .select_related("applicant")
-        .order_by("created_at")
+        .order_by("created_at"),
+        "applicant__",
     )
 
 

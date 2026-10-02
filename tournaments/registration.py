@@ -476,8 +476,13 @@ def individual_problems(*, tournament, user, now=None) -> list[str]:
 def individual_pool(tournament) -> list[IndividualSignup]:
     """People still waiting for a team (design 8.8.1); placed ones are listed
     with their team instead."""
+    from accounts.services import with_avatars
+
     return list(
-        tournament.individual_signups.filter(registration__isnull=True)
+        with_avatars(
+            tournament.individual_signups.filter(registration__isnull=True),
+            "user__",
+        )
         .select_related("user")
         .order_by("created_at", "id")
     )

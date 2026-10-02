@@ -79,7 +79,7 @@
               <ul class="c-roster mt-4" data-pool>
                 {% for entry in pool %}
                   <li class="c-roster__item">
-                    <span class="c-avatar c-avatar--md c-hue-{{ entry.user|hue }}" aria-hidden="true">{{ entry.user.nickname|initial }}</span>
+                    {% include "components/avatar.html" with person=entry.user size="md" %}
                     <span class="min-w-0">
                       <span class="c-roster__name" title="{{ entry.user.nickname }}">{{ entry.user.nickname }}</span>
                       <span class="mt-1.5 block">{% include "components/role_icons.html" with role_tank=entry.role_tank role_damage=entry.role_damage role_support=entry.role_support %}</span>

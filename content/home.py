@@ -24,9 +24,10 @@ def news_list(pinned=(), limit: int = LATEST_ARTICLE_COUNT):
 
     items = list(pinned)[:limit]
     seen = {article.pk for article in items}
+    from accounts.services import with_avatars
+
     latest = (
-        ArticlePage.objects.live()
-        .public()
+        with_avatars(ArticlePage.objects.live().public(), "author__")
         .select_related("category", "cover", "author")
         .order_by("-first_published_at", "-last_published_at")[: limit + len(seen)]
     )

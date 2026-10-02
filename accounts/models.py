@@ -82,6 +82,16 @@ class User(AbstractUser):
         default=True,
         help_text="在成员展示和战队主页显示各位置的最高段位。",
     )
+    # Shown wherever the face is (design-details 2.3, v6.1). Nothing sets it
+    # yet (no upload, not in the admin); empty means the 底图 and the initial.
+    avatar = models.ForeignKey(
+        "wagtailimages.Image",
+        verbose_name="头像",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
 
     objects = UserManager()
 

@@ -1,0 +1,8 @@
+{% load ow wagtailimages_tags %}
+{% comment %}
+  A face (design-details 2): the person's picture when they have one (2.3,
+  v6.1), otherwise their 底图 with the initial (2.2). person; size is xs, sm,
+  md or lg (empty for the default); plain leaves out the 底图 (the account
+  menu, comments). Always decoration: the name is printed beside it.
+{% endcomment %}
+<span class="c-avatar{% if size %} c-avatar--{{ size }}{% endif %}{% if not plain %} c-hue-{{ person|hue }}{% endif %}" aria-hidden="true">{% if person.avatar_id %}{% if size == "md" or size == "lg" %}{% image person.avatar fill-176x176 alt="" loading="lazy" %}{% else %}{% image person.avatar fill-88x88 alt="" loading="lazy" %}{% endif %}{% else %}{{ person.nickname|initial }}{% endif %}</span>
