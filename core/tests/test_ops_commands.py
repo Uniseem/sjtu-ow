@@ -427,6 +427,66 @@ def test_restore_replaces_the_database_and_clears_prerendered(
 
 
 @pytest.mark.django_db(transaction=True)
+def test_restore_brings_the_uploads_back_and_drops_the_rest(
+    backups, settings, tmp_path
+):
+    """Media ends up exactly as it was in the backup."""
+    media = tmp_path / "media"
+    (media / "original_images").mkdir(parents=True)
+    (media / "original_images" / "logo.png").write_bytes(b"in the backup")
+    archive = make_backup(backups, settings, tmp_path)
+
+    (media / "original_images" / "logo.png").unlink()
+    (media / "original_images" / "later.png").write_bytes(b"uploaded after")
+    (media / "stray.txt").write_text("not in the backup")
+    settings.PRERENDER_ROOT = tmp_path / "prerendered"
+
+    run("restore", str(archive), "--yes")
+
+    files = sorted(p.relative_to(media).as_posix() for p in media.rglob("*.*"))
+    assert files == ["original_images/logo.png"]
+    assert (media / "original_images" / "logo.png").read_bytes() == b"in the backup"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_restore_works_when_media_is_a_mounted_volume(
+    backups, settings, tmp_path, monkeypatch
+):
+    """Round 103: under Compose /app/media is a mount point. Removing it
+    raised EBUSY after its files were gone, so the database came back and
+    the uploads did not, and the static pages were never cleared."""
+    import errno
+    import os
+
+    media = tmp_path / "media"
+    media.mkdir()
+    (media / "kept.png").write_bytes(b"in the backup")
+    archive = make_backup(backups, settings, tmp_path)
+    (media / "kept.png").unlink()
+
+    prerendered = tmp_path / "prerendered"
+    (prerendered / "news").mkdir(parents=True)
+    (prerendered / "news" / "index.html").write_text("page from before the restore")
+    settings.PRERENDER_ROOT = prerendered
+
+    real_rmdir = os.rmdir
+    mounts = {media.resolve(), prerendered.resolve()}
+
+    def mount_point_rmdir(path, *args, **kwargs):
+        if kwargs.get("dir_fd") is None and Path(path).resolve() in mounts:
+            raise OSError(errno.EBUSY, "Device or resource busy", str(path))
+        return real_rmdir(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "rmdir", mount_point_rmdir)
+
+    output = run("restore", str(archive), "--yes")
+
+    assert "恢复完成" in output
+    assert (media / "kept.png").read_bytes() == b"in the backup"
+    assert list(prerendered.iterdir()) == []
+
+
+@pytest.mark.django_db(transaction=True)
 def test_restore_clears_the_wal_before_writing_the_new_database(
     backups, settings, tmp_path, monkeypatch
 ):

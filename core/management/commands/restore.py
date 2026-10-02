@@ -58,6 +58,21 @@ def check_key(snapshot: Path) -> list[str]:
     return broken
 
 
+def empty_folder(folder: Path) -> None:
+    """Delete everything inside `folder` but keep the folder itself.
+
+    In the Compose deployment ``media`` and ``prerendered`` are mounted
+    volumes: the folder can be emptied, never removed (round 103).
+    """
+    if not folder.exists():
+        return
+    for child in folder.iterdir():
+        if child.is_dir() and not child.is_symlink():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+
+
 class Command(BaseCommand):
     help = "从备份恢复数据库和上传文件（设计 16.7）"
 
@@ -180,18 +195,15 @@ class Command(BaseCommand):
                     path.unlink()
             shutil.copy2(snapshot, database)
 
+            # Empty the folders, never remove them: under Compose both are
+            # mounted volumes, and removing a mount point fails halfway --
+            # files gone, nothing copied back (round 103).
             staged_media = staging / "media"
             if staged_media.exists():
-                if media.exists():
-                    shutil.rmtree(media)
-                shutil.copytree(staged_media, media)
+                empty_folder(media)
+                shutil.copytree(staged_media, media, dirs_exist_ok=True)
 
-            if prerendered.exists():
-                for child in prerendered.iterdir():
-                    if child.is_dir():
-                        shutil.rmtree(child)
-                    else:
-                        child.unlink()
+            empty_folder(prerendered)
 
         from core.models import PrerenderedPage
 
