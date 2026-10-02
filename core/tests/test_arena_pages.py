@@ -145,7 +145,13 @@ def test_upcoming_scrims_show_signups_against_what_a_match_needs(client):
     html = _html(client, "/scrims/")
     upcoming = _section(html, 'aria-labelledby="scrims-upcoming"')
     assert "已报 3 / 10" in upcoming
-    assert '<progress class="c-meter" value="3" max="10"' in upcoming
+    # v6.0 draft: one cell per place, the taken ones filled.
+    seats = upcoming[
+        upcoming.index("data-seats>") : upcoming.index(
+            "</span>", upcoming.index("data-seats>")
+        )
+    ]
+    assert seats.count("<i") == 10 and seats.count('class="is-taken"') == 3
     assert "结束的" not in upcoming
     finished_block = _section(html, 'aria-labelledby="scrims-finished"')
     assert "结束的" in finished_block and "<table" in finished_block

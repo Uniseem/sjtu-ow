@@ -1415,13 +1415,16 @@
     color: var(--color-surface);
   }
 
+  /* Status (v6.0 draft): a word after the site's small peaks, both in the
+     status's colour; no pill. The user, 10-03, of the tinted chips: 「ai 味道
+     也很重，而且和站点的风格相违背了」. --status is the mark's colour, which
+     stays when a picture band turns the word light. */
   .c-status {
+    --status: var(--color-fg-3);
     display: inline-flex;
     align-items: center;
+    gap: 0.375rem;
     min-height: 1.625rem;
-    padding: 0.125rem 0.5rem;
-    border-radius: var(--radius-xs);
-    background-color: var(--color-surface-2);
     color: var(--color-fg-2);
     font-size: 0.875rem;
     font-weight: 600;
@@ -1429,29 +1432,68 @@
     white-space: nowrap;
   }
 
-  /* Live (报名中, 招募中) is orange (v5.0). */
+  .c-status::before {
+    content: "";
+    flex: none;
+    width: 0.875rem;
+    height: 0.625rem;
+    background-color: var(--status);
+    -webkit-mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
+    mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
+  }
+
+  /* Live (报名中, 招募中) is the sand accent. */
   .c-status--live {
-    background-color: var(--color-accent-soft);
-    color: var(--color-on-accent-soft);
+    --status: var(--color-accent);
+    color: var(--color-accent-text);
   }
 
   .c-status--ok {
-    background-color: var(--color-ok-soft);
+    --status: var(--color-ok);
     color: var(--color-ok);
   }
 
   .c-status--warn {
-    background-color: var(--color-warn-soft);
+    --status: var(--color-warn);
     color: var(--color-warn);
   }
 
   .c-status--info {
-    background-color: var(--color-info-soft);
+    --status: var(--color-info);
     color: var(--color-info);
   }
 
   .c-status--rejected {
+    --status: var(--color-primary);
     color: var(--color-primary-text);
+  }
+
+  /* On a picture (a banner, a feature card) the word is light; the mark keeps
+     the colour. */
+  .c-stage:not(.c-stage--plain) .c-status,
+  .c-feature .c-status {
+    color: var(--color-night-fg);
+  }
+
+  /* Seats (v6.0 draft): one cell per place, taken ones in the accent — the
+     grouped list's cut tiles, small. Replaces the rounded progress bar the
+     user found 「AI 味道很重」. */
+  .c-seats {
+    display: flex;
+    gap: 3px;
+    max-width: 16rem;
+    margin-top: 0.625rem;
+  }
+
+  .c-seats > i {
+    flex: 1;
+    height: 0.375rem;
+    border-radius: 2px;
+    background-color: var(--color-surface-2);
+  }
+
+  .c-seats > i.is-taken {
+    background-color: var(--color-accent);
   }
 
   .c-rank {
@@ -3129,14 +3171,12 @@
       grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     }
 
-    /* The scrims share the picture's height, no gap under them (v5.2). */
-    .c-upcoming--two > .c-rows {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .c-upcoming--two > .c-rows > .c-row {
-      flex: 1;
+    /* v6.0 draft: the scrims keep their own height (stretched to the
+       picture's, each row was mostly empty: 「空白太多了」); the picture follows
+       the list instead, with a floor so it stays a picture. */
+    .c-upcoming--two > .c-feature {
+      aspect-ratio: auto;
+      min-height: 18rem;
     }
   }
 
@@ -3286,11 +3326,6 @@
     font-size: 2rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-  }
-
-  .c-meter {
-    margin-top: 0.5rem;
-    max-width: 16rem;
   }
 
   /* 资讯 beside 公告. */

@@ -23,7 +23,7 @@
         <div><dt>报名截止</dt><dd>{{ scrim.signup_deadline|ow_md }} {{ scrim.signup_deadline|ow_time }}</dd></div>
         <div><dt>已报名</dt><dd>{{ counts.total }} / {{ scrim.players_needed }} 人</dd></div>
       </dl>
-      <progress class="c-meter c-stage__meter" value="{% if counts.total > scrim.players_needed %}{{ scrim.players_needed }}{% else %}{{ counts.total }}{% endif %}" max="{{ scrim.players_needed }}" aria-label="已报 {{ counts.total }} 人，一场需要 {{ scrim.players_needed }} 人"></progress>
+      {% include "components/seats.html" with taken=counts.total total=scrim.players_needed extra="c-stage__meter" %}
     </div>
   </header>
 

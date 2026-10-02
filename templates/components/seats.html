@@ -1,0 +1,8 @@
+{% load ow %}
+{% comment %}
+  Places taken out of the places there are (v6.0 draft c-seats): one cell per
+  place, taken in the accent. taken, total; extra adds a class. The words
+  beside it say the exact numbers, more than the cells when over-subscribed.
+{% endcomment %}
+{% seats taken total as cells %}
+<span class="c-seats{% if extra %} {{ extra }}{% endif %}" role="img" aria-label="已报 {{ taken|default:0 }} 人，一场需要 {{ total }} 人" data-seats>{% for is_taken in cells %}<i{% if is_taken %} class="is-taken"{% endif %}></i>{% endfor %}</span>

@@ -176,6 +176,56 @@ def test_a_row_leads_with_its_date_as_type_not_a_box():
     assert "font-size: 2rem;" in day and "font-family: var(--font-figure);" in day
 
 
+def test_a_status_is_a_mark_and_a_word_not_a_pill():
+    """The user, 10-03, of the tinted status chips: 「ai 味道也很重，而且和站点的
+    风格相违背了」. The peaks and a word, in the status's colour, no fill."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    for opening in (
+        "\n  .c-status {",
+        "\n  .c-status--live {",
+        "\n  .c-status--ok {",
+        "\n  .c-status--warn {",
+        "\n  .c-status--info {",
+    ):
+        rule = _block(css, opening)
+        assert "background" not in rule and "padding" not in rule, opening
+    mark = _block(css, "\n  .c-status::before {")
+    assert '\n    mask: url("../img/placeholders/peaks.svg")' in mark
+    assert "background-color: var(--status);" in mark
+    assert "--status: var(--color-accent);" in _block(css, "\n  .c-status--live {")
+
+
+def test_places_are_counted_in_cells_not_a_bar():
+    """「这个进度条 AI 味道很重」: one cell per place, the taken ones filled."""
+    from core.templatetags.ow import MOST_SEATS, seats
+
+    assert seats(9, 12) == [True] * 9 + [False] * 3
+    assert seats(14, 10) == [True] * 10  # over-subscribed: all taken
+    assert seats(0, 0) == []
+    assert len(seats(30, 60)) == MOST_SEATS and seats(30, 60).count(True) == 12
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    assert "background-color: var(--color-accent);" in _block(
+        css, "\n  .c-seats > i.is-taken {"
+    )
+    templates = Path(settings.BASE_DIR)
+    for name in (
+        "content/templates/content/home_page.html",
+        "templates/components/scrim_row.html",
+        "scrims/templates/scrims/detail.html",
+    ):
+        html = (templates / name).read_text(encoding="utf-8")
+        assert "<progress" not in html and "components/seats.html" in html, name
+
+
+def test_the_upcoming_scrims_keep_their_own_height():
+    """「空白太多了」: the rows are not stretched to the picture; the picture
+    follows the list, with a floor."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    assert ".c-upcoming--two > .c-rows > .c-row" not in css
+    feature = _block(css, ".c-upcoming--two > .c-feature {")
+    assert "aspect-ratio: auto;" in feature and "min-height: 18rem;" in feature
+
+
 def test_section_titles_carry_the_peaks():
     css = INPUT_CSS.read_text(encoding="utf-8")
     rule = _block(css, ".c-sectionhead > h2::before {")

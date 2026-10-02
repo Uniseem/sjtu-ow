@@ -258,11 +258,13 @@ def test_upcoming_shows_the_open_tournament_and_scrim_signups(client, site):
     assert upcoming.count('data-next-up="tournament"') == 1
     assert upcoming.count('data-next-up="scrim"') == 1
     needed = scrim.players_needed
-    assert f'<progress class="c-meter" value="1" max="{needed}"' in upcoming
+    at = upcoming.index("data-seats>")
+    seats = upcoming[at : upcoming.index("</span>", at)]
+    assert seats.count("<i") == needed and seats.count('class="is-taken"') == 1
     assert f"已报 1 / {needed}" in upcoming
     assert "已通过 0 队" in upcoming
     # Tournaments have no team cap, so no progress bar for them (5.2).
-    assert upcoming.count("<progress") == 1
+    assert upcoming.count("data-seats>") == 1
 
 
 @pytest.mark.django_db

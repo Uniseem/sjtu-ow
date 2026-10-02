@@ -60,7 +60,7 @@
                 <div class="c-row__main">
                   <h3 class="c-row__title"><a href="{% url 'scrim_detail' row.scrim.pk %}" class="c-stretch">{{ row.scrim.title }}</a></h3>
                   <p class="c-row__meta">{{ row.scrim.starts_at|ow_weekday }} {{ row.scrim.starts_at|ow_time }} · 已报 {{ row.count }} / {{ row.capacity }}</p>
-                  <progress class="c-meter" value="{% if row.count > row.capacity %}{{ row.capacity }}{% else %}{{ row.count }}{% endif %}" max="{{ row.capacity }}" aria-label="已报 {{ row.count }} 人，一场需要 {{ row.capacity }} 人"></progress>
+                  {% include "components/seats.html" with taken=row.count total=row.capacity %}
                 </div>
                 {% if row.scrim.signup_open %}<span class="c-status c-status--live">报名中</span>{% else %}<span class="c-status">报名已截止</span>{% endif %}
               </li>

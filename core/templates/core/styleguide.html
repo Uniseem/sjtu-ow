@@ -68,7 +68,7 @@
         </div>
         <div>
           <p class="mb-3 text-sm text-fg-2">进度条：已报 8 / 10</p>
-          <progress class="c-meter" value="8" max="10" aria-label="已报 8 人，一场需要 10 人"></progress>
+          {% include "components/seats.html" with taken=8 total=10 %}
         </div>
       </div>
     </section>
@@ -251,7 +251,7 @@
             <div class="c-row__main">
               <h3 class="c-row__title"><a href="#sg-night" class="c-stretch">周五夜间内战</a></h3>
               <p class="c-row__meta">{{ sample_day|ow_weekday }} {{ sample_day|ow_time }} · 角色限定 5v5 · 已报 8 / 10</p>
-              <progress class="c-meter" value="8" max="10" aria-label="已报 8 人，一场需要 10 人"></progress>
+              {% include "components/seats.html" with taken=8 total=10 %}
             </div>
             <span class="c-status c-status--live">报名中</span>
           </li>
@@ -299,7 +299,7 @@
             <div class="c-row__main">
               <h3 class="c-row__title"><a href="#sg-home" class="c-stretch">周五晚 5v5 内战</a></h3>
               <p class="c-row__meta">周五 19:30 · 已报 8 / 10</p>
-              <progress class="c-meter" value="8" max="10" aria-label="已报 8 人，一场需要 10 人"></progress>
+              {% include "components/seats.html" with taken=8 total=10 %}
             </div>
             <span class="c-status c-status--live">报名中</span>
           </li>
@@ -308,7 +308,7 @@
             <div class="c-row__main">
               <h3 class="c-row__title"><a href="#sg-home" class="c-stretch">周日 6v6 娱乐内战</a></h3>
               <p class="c-row__meta">周日 14:00 · 已报 12 / 12</p>
-              <progress class="c-meter" value="12" max="12" aria-label="已报 12 人，一场需要 12 人"></progress>
+              {% include "components/seats.html" with taken=12 total=12 %}
             </div>
             <span class="c-status">报名已截止</span>
           </li>

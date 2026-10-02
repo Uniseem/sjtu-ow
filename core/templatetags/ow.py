@@ -88,6 +88,25 @@ def hue(obj) -> int:
     return (getattr(obj, "pk", None) or 0) % AVATAR_HUES + 1
 
 
+MOST_SEATS = 24
+
+
+@register.simple_tag
+def seats(taken, total) -> list[bool]:
+    """One cell per place, taken first (v6.0 draft c-seats). A game rarely
+    needs more than 12; past MOST_SEATS each cell stands for a share, so the
+    row never runs to dozens of slivers."""
+    try:
+        taken, total = max(int(taken or 0), 0), max(int(total or 0), 0)
+    except (TypeError, ValueError):
+        return []
+    if total == 0:
+        return []
+    cells = min(total, MOST_SEATS)
+    filled = min(cells, round(taken * cells / total))
+    return [index < filled for index in range(cells)]
+
+
 @register.filter
 def member_url(user) -> str:
     """The person's own page (design 6.4), or "" for someone who no longer

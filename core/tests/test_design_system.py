@@ -570,7 +570,7 @@ def test_style_guide_opens_for_an_admin_who_is_not_a_superuser(client, home):
     for component in (
         "c-btn--primary",
         "c-stage",
-        "c-meter",
+        "c-seats",
         "c-status--live",
         "c-feature",
         "c-media",
