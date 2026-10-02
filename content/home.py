@@ -27,7 +27,7 @@ def news_list(pinned=(), limit: int = LATEST_ARTICLE_COUNT):
     latest = (
         ArticlePage.objects.live()
         .public()
-        .select_related("category", "cover")
+        .select_related("category", "cover", "author")
         .order_by("-first_published_at", "-last_published_at")[: limit + len(seen)]
     )
     items += [article for article in latest if article.pk not in seen]

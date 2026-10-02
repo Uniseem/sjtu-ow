@@ -78,7 +78,12 @@ class MemberGroupMembership(Orderable):
         limit_choices_to={"is_active": True},
     )
     title = models.CharField(
-        "职务", max_length=20, blank=True, help_text="可选，比如「社长」。"
+        "职务",
+        max_length=20,
+        blank=True,
+        help_text=(
+            "可选，比如「社长」。多个职务用顿号分开（「社长、主播」），每个最多 10 字。"
+        ),
     )
 
     panels = [FieldPanel("user"), FieldPanel("title")]
@@ -103,3 +108,7 @@ class MemberGroupMembership(Orderable):
             raise ValidationError(
                 {"user": "只能选已加入的用户：账号没有停用，并且验证过邮箱。"}
             )
+        from members.services import split_titles
+
+        if any(len(title) > 10 for title in split_titles(self.title)):
+            raise ValidationError({"title": "每个职务最多 10 字，多个职务用顿号分开。"})

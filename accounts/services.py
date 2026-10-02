@@ -332,6 +332,7 @@ def personal_data(user) -> dict:
 
     Only the user's own data: no teammates' contacts, no admin records.
     """
+    from accounts.roles import ROLE_LABELS, parse_roles
     from content.models import ArticlePage
     from members.models import MemberGroupMembership
     from scrims.models import ScrimSignup
@@ -349,6 +350,11 @@ def personal_data(user) -> dict:
             "date_joined": when(user.date_joined),
             "agreed_terms_at": when(user.agreed_terms_at),
             "agreed_cross_border_at": when(user.agreed_cross_border_at),
+            # design-details 3 (v5.2)
+            "motto": user.motto,
+            "main_role": ROLE_LABELS.get(user.main_role, ""),
+            "flex_roles": [ROLE_LABELS[role] for role in parse_roles(user.flex_roles)],
+            "show_rank": user.show_rank,
         },
         "game_accounts": [
             {
@@ -373,6 +379,15 @@ def personal_data(user) -> dict:
             for membership in TeamMembership.objects.filter(user=user).select_related(
                 "team"
             )
+        ],
+        "team_alumni": [
+            {
+                "team": alumnus.team.name,
+                "joined_at": when(alumnus.joined_at),
+                "left_at": when(alumnus.left_at),
+                "reason": alumnus.get_reason_display(),
+            }
+            for alumnus in user.team_alumni.select_related("team")
         ],
         "team_applications": [
             {

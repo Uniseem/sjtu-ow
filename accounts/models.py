@@ -7,6 +7,7 @@ from django.db.models.functions import Lower
 from django.utils import timezone
 
 from accounts.ranks import decode_rank, format_rank
+from accounts.roles import ROLE_CHOICES
 
 
 class UserManager(BaseUserManager):
@@ -68,6 +69,19 @@ class User(AbstractUser):
     agreed_terms_at = models.DateTimeField("同意用户协议时间")
     agreed_cross_border_at = models.DateTimeField("同意跨境存储时间")
     deactivation_note = models.CharField("停用原因", max_length=200, blank=True)
+    # Shown on the member page and team pages (design-details 3, v5.2).
+    motto = models.CharField("个人宣言", max_length=30, blank=True)
+    main_role = models.CharField(
+        "主位置", max_length=8, blank=True, choices=ROLE_CHOICES
+    )
+    flex_roles = models.CharField(
+        "也能打", max_length=32, blank=True, help_text="位置代码，逗号分隔。"
+    )
+    show_rank = models.BooleanField(
+        "公开段位",
+        default=True,
+        help_text="在成员展示和战队主页显示各位置的最高段位。",
+    )
 
     objects = UserManager()
 

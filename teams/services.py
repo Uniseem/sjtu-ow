@@ -10,7 +10,9 @@ from django.utils import timezone
 
 from teams.models import (
     ApplicationStatus,
+    LeaveReason,
     Team,
+    TeamAlumnus,
     TeamApplication,
     TeamMembership,
     TeamRole,
@@ -74,7 +76,9 @@ def is_full(team) -> bool:
     return team.memberships.count() >= max_members()
 
 
-def create_team(*, user, name, description="", logo=None, is_recruiting=True) -> Team:
+def create_team(
+    *, user, name, description="", logo=None, is_recruiting=True, recruiting_roles=""
+) -> Team:
     """Create a team; the creator becomes its captain (design 7.1)."""
     from accounts.permissions import can_use, feature_denied_message
 
@@ -92,6 +96,7 @@ def create_team(*, user, name, description="", logo=None, is_recruiting=True) ->
                 description=description,
                 logo=logo,
                 is_recruiting=is_recruiting,
+                recruiting_roles=recruiting_roles,
             )
             TeamMembership.objects.create(team=team, user=user, role=TeamRole.CAPTAIN)
     except IntegrityError as exc:
@@ -101,7 +106,9 @@ def create_team(*, user, name, description="", logo=None, is_recruiting=True) ->
     return team
 
 
-def update_team(*, team, user, name, description, logo, is_recruiting) -> Team:
+def update_team(
+    *, team, user, name, description, logo, is_recruiting, recruiting_roles=None
+) -> Team:
     if not is_captain(team, user) and not user.is_superuser:
         raise TeamError("只有队长可以修改战队资料。")
     if team.is_disbanded:
@@ -112,6 +119,8 @@ def update_team(*, team, user, name, description, logo, is_recruiting) -> Team:
     team.description = description
     team.logo = logo
     team.is_recruiting = is_recruiting
+    if recruiting_roles is not None:
+        team.recruiting_roles = recruiting_roles
     try:
         team.save()
     except IntegrityError as exc:
@@ -201,6 +210,7 @@ def approve_application(*, application, actor) -> TeamApplication:
             TeamMembership.objects.create(
                 team=team, user=application.applicant, role=TeamRole.MEMBER
             )
+            _unretire(team, application.applicant)
             application.status = ApplicationStatus.APPROVED
             application.decided_by = actor
             application.decided_at = timezone.now()
@@ -251,6 +261,7 @@ def leave_team(*, team, user) -> None:
         raise TeamError("你不是这支战队的成员。")
     if membership.is_captain:
         raise TeamError("队长不能直接退出，请先转让队长或解散战队。")
+    _retire(membership, LeaveReason.LEFT)
     membership.delete()
     on_team_changed(team, author=user)
 
@@ -264,6 +275,10 @@ def leave_all_teams(user) -> None:
         team = membership.team
         membership.delete()
         on_team_changed(team)
+    # Deleting an account takes its 退役 records too (design-details 5.4).
+    for alumnus in list(user.team_alumni.select_related("team")):
+        alumnus.delete()
+        on_team_changed(alumnus.team)
     user.team_applications.filter(status=ApplicationStatus.PENDING).update(
         status=ApplicationStatus.CANCELLED, decided_at=timezone.now()
     )
@@ -277,6 +292,7 @@ def remove_member(*, team, actor, member_user) -> None:
     membership = TeamMembership.objects.filter(team=team, user=member_user).first()
     if membership is None:
         raise TeamError("这个人不是战队成员。")
+    _retire(membership, LeaveReason.REMOVED)
     membership.delete()
     from teams import notifications
 
@@ -318,6 +334,7 @@ def assign_captain(*, team, actor, new_captain) -> None:
         raise TeamError("只有超级管理员可以指定队长。")
     if not is_member(team, new_captain):
         TeamMembership.objects.create(team=team, user=new_captain, role=TeamRole.MEMBER)
+        _unretire(team, new_captain)
     transfer_captain(team=team, actor=actor, new_captain=new_captain)
 
 
@@ -479,3 +496,44 @@ def _submit_moderation(*, target_type, target_id, field, text, url, author):
         )
     except Exception:  # noqa: BLE001 — moderation must never block the action
         logger.warning("送审失败 %s #%s", target_type, target_id, exc_info=True)
+
+
+# --- 退役成员 (design-details 5.4, v5.2) ------------------------------------------
+
+
+def _retire(membership, reason) -> None:
+    """Keep a leaving member on the team page as 退役."""
+    TeamAlumnus.objects.update_or_create(
+        team_id=membership.team_id,
+        user_id=membership.user_id,
+        defaults={
+            "role": membership.role,
+            "joined_at": membership.joined_at,
+            "left_at": timezone.now(),
+            "reason": reason,
+        },
+    )
+
+
+def _unretire(team, user) -> None:
+    """Back on the roster: one person is not both 现役 and 退役."""
+    TeamAlumnus.objects.filter(team=team, user=user).delete()
+
+
+def can_remove_alumnus(alumnus, actor) -> bool:
+    if not actor.is_authenticated:
+        return False
+    return (
+        actor.pk == alumnus.user_id
+        or actor.is_superuser
+        or is_captain(alumnus.team, actor)
+    )
+
+
+def remove_alumnus(*, alumnus, actor) -> None:
+    """The person or the captain takes a record off the list (5.4)."""
+    if not can_remove_alumnus(alumnus, actor):
+        raise TeamError("只有本人或队长可以去掉这条记录。")
+    team = alumnus.team
+    alumnus.delete()
+    on_team_changed(team, author=actor)

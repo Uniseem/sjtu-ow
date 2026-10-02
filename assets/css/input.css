@@ -91,7 +91,7 @@
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --ease-spring: cubic-bezier(0.2, 0, 0, 1);
   --ease-ow: cubic-bezier(0.2, 0, 0, 1);
-  --container-page: 76rem;
+  --container-page: 120rem;
   --container-prose: 44rem;
 }
 
@@ -426,8 +426,16 @@
 
   @media (min-width: 1024px) {
     .l-container {
-      padding-inline: 2rem;
+      padding-inline: 2.5rem;
     }
+  }
+
+  /* Pages to read and act on (details, forms, the account centre, search,
+     the scrim list): one centred block at most 80rem wide, so a wide window
+     leaves no gap between the words and the sidebar (design-details 1.1).
+     Card grids keep the full width. */
+  .l-container--narrow {
+    max-width: 80rem;
   }
 
   .l-section {
@@ -457,8 +465,24 @@
     }
   }
 
+  @media (min-width: 1536px) {
+    .l-split {
+      grid-template-columns: minmax(0, 1fr) 24rem;
+      gap: 4rem;
+    }
+
+    .l-split--wide-aside {
+      grid-template-columns: minmax(0, 1fr) 28rem;
+    }
+  }
+
   .l-prose {
     max-width: var(--container-prose);
+  }
+
+  /* Beside a sidebar the column is already narrow enough to read (v5.2). */
+  .l-split .l-prose {
+    max-width: none;
   }
 
   /* ---- Utilities that belong to the system ----------------------------------- */
@@ -576,6 +600,60 @@
     align-items: center;
     gap: 0.25rem;
     margin-left: auto;
+  }
+
+  /* From 1280px the bar is wide enough for a search box in its middle
+     (v5.2, YouTube-like); below that the magnifier icon goes to /search/. */
+  .c-masthead__search {
+    display: none;
+  }
+
+  @media (min-width: 1280px) {
+    .c-masthead__search {
+      display: flex;
+      flex: 0 1 36rem;
+      margin-inline: auto;
+    }
+
+    .c-masthead__search + .c-masthead__end {
+      margin-left: 0;
+    }
+
+    .c-masthead__end > .c-masthead__find {
+      display: none;
+    }
+  }
+
+  .c-masthead__search input {
+    flex: 1;
+    min-width: 0;
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border: 1px solid var(--color-control);
+    border-right: 0;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+  }
+
+  .c-masthead__search input:focus {
+    outline-offset: -2px;
+  }
+
+  .c-masthead__search button {
+    display: grid;
+    place-items: center;
+    width: 3.5rem;
+    border: 1px solid var(--color-control);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    cursor: pointer;
+  }
+
+  .c-masthead__search button:hover {
+    color: var(--color-fg);
   }
 
   .c-iconbtn {
@@ -868,7 +946,28 @@
   /* ---- Footer ----------------------------------------------------------------- */
 
   .c-footer {
+    position: relative;
+    margin-top: 2rem;
     padding-block: 3.5rem 2rem;
+  }
+
+  /* Three ridges in the night colours rise out of the page into the footer
+     (design-details 1.9); the front one is the footer's own ground. */
+  .c-footer::before {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: calc(100% - 1px);
+    left: 0;
+    height: 3rem;
+    background: url("../img/placeholders/ridge.svg") bottom / 100% 100% no-repeat;
+    pointer-events: none;
+  }
+
+  @media (min-width: 1024px) {
+    .c-footer::before {
+      height: 5.5rem;
+    }
   }
 
   .c-footer__grid {
@@ -1329,6 +1428,37 @@
     height: 0.875rem;
   }
 
+  /* A person's positions and rank on public pages (design-details 3.2, 3.3):
+     the main position filled, the others outlined, then the main rank. */
+  .c-play {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .c-play .c-role {
+    border: 1px solid var(--color-line);
+    background-color: transparent;
+    color: var(--color-fg-2);
+  }
+
+  .c-play .c-role--main {
+    border-color: transparent;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .c-play__rank {
+    display: inline-flex;
+    margin-left: 0.125rem;
+  }
+
+  .c-play__rank.is-stale .c-rank {
+    color: var(--color-fg-3);
+  }
+
   /* ---- Stats and facts --------------------------------------------------------- */
 
   .c-stat {
@@ -1471,6 +1601,7 @@
 
   /* ---- People ------------------------------------------------------------------- */
 
+  /* Faces are rounded squares (design-details 2.1, v5.2). */
   .c-avatar {
     display: inline-grid;
     place-items: center;
@@ -1478,7 +1609,7 @@
     width: 2.75rem;
     height: 2.75rem;
     overflow: hidden;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-sm);
     background-color: var(--color-surface-2);
     color: var(--color-fg-2);
     font-size: 1.125rem;
@@ -1492,55 +1623,199 @@
     object-fit: cover;
   }
 
+  /* Bigger faces where there is room (v5.2). */
+  .c-avatar--xs {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-xs);
+    font-size: 0.875rem;
+  }
+
+  .c-avatar--md {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.375rem;
+  }
+
+  .c-avatar--lg {
+    width: 5.5rem;
+    height: 5.5rem;
+    font-size: 2.125rem;
+  }
+
+  /* The five 底图 (design-details 1.5, 2.2): a small still landscape behind a
+     face or a team logo without a picture, fixed by id; the label tint shows
+     while it loads. The initial is white on all five. */
+  .c-hue-1 {
+    background: var(--color-primary-soft) url("../img/placeholders/hue-1.svg") center / cover;
+  }
+
+  .c-hue-2 {
+    background: var(--color-accent-soft) url("../img/placeholders/hue-2.svg") center / cover;
+  }
+
+  .c-hue-3 {
+    background: var(--color-info-soft) url("../img/placeholders/hue-3.svg") center / cover;
+  }
+
+  .c-hue-4 {
+    background: var(--color-ok-soft) url("../img/placeholders/hue-4.svg") center / cover;
+  }
+
+  .c-hue-5 {
+    background: var(--color-warn-soft) url("../img/placeholders/hue-5.svg") center / cover;
+  }
+
+  .c-hue-1,
+  .c-hue-2,
+  .c-hue-3,
+  .c-hue-4,
+  .c-hue-5 {
+    color: var(--color-white);
+    text-shadow: 0 1px 3px color-mix(in oklab, var(--color-black) 45%, transparent);
+  }
+
   .c-avatar--sm {
     width: 1.75rem;
     height: 1.75rem;
     font-size: 0.875rem;
+    border-radius: var(--radius-xs);
   }
 
+  /* Two across on a phone, as many as fit from 640px. */
   .c-people {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
   }
 
   @media (min-width: 640px) {
     .c-people {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+      gap: 1rem;
     }
+  }
+
+  /* A group on the member page (v5.2): from 1024px its name and description
+     in a column on the left, the cards beside them, so a group of three
+     does not leave the row half empty. */
+  .c-group__about {
+    max-width: 42rem;
+    margin: -0.5rem 0 1.5rem;
+    color: var(--color-fg-2);
   }
 
   @media (min-width: 1024px) {
-    .c-people {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+    .c-group {
+      display: grid;
+      grid-template-columns: 15rem minmax(0, 1fr);
+      align-items: start;
+      gap: 2.5rem;
+    }
+
+    .c-group__head {
+      position: sticky;
+      top: 6rem;
+    }
+
+    .c-group__about {
+      margin: 0;
     }
   }
 
+  /* A member in a group (design-details 4.2): picture first, a square of the
+     person's base picture with the initial large, then name, posts, motto,
+     positions and teams. */
   .c-person {
     display: flex;
-    align-items: flex-start;
-    gap: 0.875rem;
-    padding: 1rem;
+    flex-direction: column;
+    overflow: hidden;
     border: 1px solid var(--color-line);
     border-radius: var(--radius-sm);
     background-color: var(--color-surface);
+    text-align: center;
+  }
+
+  .c-person__pic {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    font-size: clamp(2.5rem, 4.5vw, 4rem);
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  @media (max-width: 639px) {
+    .c-person__pic {
+      font-size: 2.25rem;
+    }
+  }
+
+  .c-person__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0.75rem 1.25rem;
   }
 
   .c-person__name {
     display: block;
+    max-width: 100%;
+    overflow: hidden;
     color: var(--color-fg);
-    font-weight: 600;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-person__titles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
   }
 
   .c-person__title {
-    display: block;
-    margin-top: 0.125rem;
-    color: var(--color-primary-text);
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.125rem 0.625rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-accent-soft);
+    color: var(--color-on-accent-soft);
     font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .c-person__more {
+    margin-top: 0.5rem;
+    padding: 0.125rem 0.375rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-person__motto {
+    display: block;
+    max-width: 100%;
+    margin-top: 0.625rem;
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-person .c-play {
+    justify-content: center;
+    margin-top: 0.75rem;
   }
 
   .c-person__meta {
     display: block;
-    margin-top: 0.25rem;
+    max-width: 100%;
+    margin-top: 0.75rem;
     overflow: hidden;
     color: var(--color-fg-3);
     font-size: 0.875rem;
@@ -2025,6 +2300,17 @@
     text-align: center;
   }
 
+  /* A small landscape over the words (design-details 1.9). */
+  .c-empty::before {
+    content: "";
+    display: block;
+    width: 10rem;
+    aspect-ratio: 16 / 9;
+    margin: 0 auto 1rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-ok-soft) url("../img/placeholders/hue-4.svg") center / cover;
+  }
+
   .c-empty__title {
     color: var(--color-fg);
     font-weight: 600;
@@ -2168,14 +2454,20 @@
     margin-block: 0 1em;
   }
 
+  /* Second-level headings carry an orange bar on the left (6.4). */
   .c-prose h2 {
-    margin: 2em 0 0.75em;
-    font-size: 1.375rem;
+    margin: 2.5em 0 0.75em;
+    padding-left: 0.75rem;
+    border-left: 4px solid var(--color-accent);
+    font-size: 1.5rem;
+    line-height: 1.35;
+    scroll-margin-top: 6rem;
   }
 
   .c-prose h3 {
     margin: 1.75em 0 0.5em;
-    font-size: 1.125rem;
+    font-size: 1.25rem;
+    scroll-margin-top: 6rem;
   }
 
   .c-prose ul,
@@ -2231,6 +2523,7 @@
 
   .c-prose figcaption {
     margin-top: 0.625rem;
+    text-align: center;
     color: var(--color-fg-3);
     font-size: 0.875rem;
     line-height: 1.6;
@@ -2250,6 +2543,7 @@
 
   .c-prose blockquote footer {
     margin-top: 0.5em;
+    text-align: right;
     color: var(--color-fg-3);
     font-size: 0.875rem;
   }
@@ -2578,6 +2872,12 @@
     .c-hero__body {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
+
+    /* On a wide screen the words sit in the middle of the left half, as the
+       emblem does in the right (v5.2), not against the edge. */
+    .c-hero__copy {
+      justify-self: center;
+    }
   }
 
   /* The emblem: large and see-through, so it reads as part of the picture
@@ -2596,7 +2896,7 @@
   @media (min-width: 1024px) {
     .c-hero__emblem {
       order: 0;
-      width: min(40rem, 46vw, calc(100svh - 16rem));
+      width: min(48rem, 44vw, calc(100svh - 16rem));
     }
   }
 
@@ -2639,8 +2939,15 @@
 
   @media (min-width: 1024px) {
     .c-hero__title {
-      font-size: 4.25rem;
+      font-size: clamp(4.25rem, 5.2vw, 6.25rem);
       line-height: 1.12;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .c-hero__lede {
+      max-width: 32rem;
+      font-size: 1.1875rem;
     }
   }
 
@@ -2689,6 +2996,14 @@
     gap: 0.125rem;
   }
 
+  /* Four across: each figure centred in its quarter (v5.2). */
+  @media (min-width: 768px) {
+    .c-stats > div {
+      align-items: center;
+      text-align: center;
+    }
+  }
+
   .c-stats dt {
     color: var(--color-fg-2);
   }
@@ -2711,7 +3026,16 @@
   @media (min-width: 1024px) {
     .c-upcoming--two {
       grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-      align-items: start;
+    }
+
+    /* The scrims share the picture's height, no gap under them (v5.2). */
+    .c-upcoming--two > .c-rows {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .c-upcoming--two > .c-rows > .c-row {
+      flex: 1;
     }
   }
 
@@ -2860,15 +3184,12 @@
     }
   }
 
+  /* Picture cards fill the width (v5.2): as many columns as fit, none
+     narrower than 22rem, so a wider window shows more and bigger cards. */
   .c-media-grid {
     display: grid;
-    gap: 1.5rem;
-  }
-
-  @media (min-width: 640px) {
-    .c-media-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 2rem 1.5rem;
   }
 
   /* A picture card (13.2.6 c-media): picture, tags and date, title. */
@@ -2943,17 +3264,18 @@
 
   @media (min-width: 1024px) {
     .c-teams {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
     }
   }
 
+  /* A team (design-details 5.1): picture first, a square of the team's base
+     picture with its logo (or initial) on it, then name, head count, intro
+     and recruiting. */
   .c-teams__item {
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 1.25rem 1rem;
+    overflow: hidden;
     border: 1px solid var(--color-line);
     border-radius: var(--radius-sm);
     background-color: var(--color-surface);
@@ -2968,25 +3290,48 @@
   .c-teams__logo {
     display: grid;
     place-items: center;
-    width: 4rem;
-    height: 4rem;
-    margin-bottom: 0.5rem;
+    width: 100%;
+    aspect-ratio: 1;
     overflow: hidden;
-    border-radius: 50%;
-    background-color: var(--color-surface-2);
-    color: var(--color-fg-2);
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: clamp(2.5rem, 4.5vw, 4rem);
+    font-weight: 800;
+    line-height: 1;
   }
 
+  /* Logos are cropped square on upload (7.1): they fill the picture;
+     transparent parts show the team's base picture. */
   .c-teams__logo img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 300ms var(--ease-standard);
+  }
+
+  .c-teams__item:hover .c-teams__logo img {
+    transform: scale(1.04);
+  }
+
+  .c-teams__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1rem 1rem 1.25rem;
   }
 
   .c-teams__name {
-    font-weight: 600;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-teams__item:hover .c-teams__name {
+    color: var(--color-primary-text);
   }
 
   .c-teams__meta {
@@ -2994,36 +3339,436 @@
     font-size: 0.875rem;
   }
 
-  .c-teams__item .c-status {
-    margin-top: 0.375rem;
+  .c-teams__about {
+    display: -webkit-box;
+    text-align: center;
+    margin-top: 0.5rem;
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .c-teams__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .c-teams__wanted,
+  .c-stage__wanted {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .c-stage__wanted {
+    margin-left: 0.5rem;
+  }
+
+  /* The team list: as many cards as fit, each at least 15rem. */
+  .c-teams--list {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 1.25rem;
   }
 
   /* ---- Editorial pages (design 13.2.7 刊物; round 087) ------------------------------ */
 
+  /* The article cover (design-details 6.2, v5.2): the picture across the
+     page under a dark scrim (a cover can be any picture), the words centred
+     on it, a row of facts, and a downward arc for its lower edge. */
+  .c-cover {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 22rem;
+    overflow: hidden;
+    border-radius: 0 0 50% 50% / 0 0 1.25rem 1.25rem;
+    background-color: var(--color-night);
+    color: var(--color-white);
+  }
+
   @media (min-width: 1024px) {
-    .c-media-grid--3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+    .c-cover {
+      min-height: clamp(28rem, 64vh, 42rem);
+      border-radius: 0 0 50% 50% / 0 0 2.5rem 2.5rem;
     }
   }
 
-  /* One reading column, centred (13.2.6 c-article). */
-  .c-article {
+  .c-cover__img {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    max-width: calc(var(--container-prose) + 2rem);
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .c-cover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-black) 50%, transparent) 0%,
+        color-mix(in oklab, var(--color-black) 0%, transparent) 30%
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-black) 30%, transparent) 30%,
+        color-mix(in oklab, var(--color-black) 75%, transparent) 100%
+      );
+  }
+
+  .c-cover__body {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 56rem;
+    padding: 3rem 1rem 3.5rem;
+    text-align: center;
+  }
+
+  .c-cover .c-crumbs,
+  .c-cover .c-crumbs a {
+    color: color-mix(in oklab, var(--color-white) 78%, transparent);
+  }
+
+  .c-cover .c-crumbs a:hover {
+    color: var(--color-white);
+  }
+
+  .c-cover__title {
+    font-size: 2rem;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  @media (min-width: 768px) {
+    .c-cover__title {
+      font-size: 2.75rem;
+      line-height: 1.2;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .c-cover__title {
+      font-size: 3.5rem;
+    }
+  }
+
+  .c-cover__summary {
+    display: -webkit-box;
+    max-width: 40rem;
+    overflow: hidden;
+    color: color-mix(in oklab, var(--color-white) 86%, transparent);
+    font-size: 1.0625rem;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  /* The row of facts: small see-through pills. */
+  .c-cover__facts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .c-cover__facts > li,
+  .c-cover__facts > li > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .c-cover__facts > li {
+    height: 2.25rem;
+    padding-inline: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--color-white) 18%, transparent);
+    border-radius: var(--radius-full);
+    background-color: color-mix(in oklab, var(--color-black) 35%, transparent);
+    color: var(--color-white);
+    font-size: 0.875rem;
+  }
+
+  .c-cover__facts > li:first-child {
+    padding-left: 0.375rem;
+  }
+
+  .c-cover__facts svg {
+    width: 1rem;
+    height: 1rem;
+    color: color-mix(in oklab, var(--color-white) 78%, transparent);
+  }
+
+  .c-cover__facts .c-article__author {
+    color: var(--color-white);
+  }
+
+  /* The text column, with the contents beside it from 1280px (6.5). */
+  .c-reading {
+    width: 100%;
+    max-width: 120rem;
     margin-inline: auto;
     padding: 2.5rem 1rem 3rem;
   }
 
+  @media (min-width: 640px) {
+    .c-reading {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-reading {
+      padding: 3.5rem 2.5rem 5rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .c-reading--toc {
+      display: grid;
+      grid-template-columns:
+        minmax(0, 1fr) minmax(0, var(--container-prose))
+        minmax(0, 1fr);
+      column-gap: 3rem;
+      align-items: start;
+    }
+
+    .c-reading--toc > .c-article {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .c-reading--toc > .c-toc--side {
+      grid-column: 3;
+      grid-row: 1;
+    }
+  }
+
+  .c-reading > .c-article {
+    max-width: var(--container-prose);
+    padding: 0;
+  }
+
+  .c-reading .c-article .c-prose {
+    margin-top: 0;
+  }
+
+  /* Contents (6.5): folded above the text on narrow screens, a column that
+     stays in view on wide ones. */
+  .c-toc--fold {
+    max-width: var(--container-prose);
+    margin: 0 auto 2rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+  }
+
+  .c-toc--fold > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .c-toc--fold > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-toc--fold svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .c-toc--fold .c-toc__list {
+    margin-top: 0.75rem;
+  }
+
+  .c-toc--side {
+    display: none;
+  }
+
+  @media (min-width: 1280px) {
+    .c-toc--fold {
+      display: none;
+    }
+
+    .c-toc--side {
+      position: sticky;
+      top: 6rem;
+      display: block;
+      max-width: 16rem;
+      padding-left: 1rem;
+      border-left: 1px solid var(--color-line);
+    }
+  }
+
+  .c-toc__head {
+    margin-bottom: 0.75rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .c-toc__list {
+    display: grid;
+    gap: 0.375rem;
+  }
+
+  .c-toc__item a {
+    display: block;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+
+  .c-toc__item a:hover {
+    color: var(--color-primary-text);
+  }
+
+  .c-toc__item--h3 {
+    padding-left: 1rem;
+  }
+
+  /* The author at the end of the text (6.6). */
+  .c-author {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding: 1.25rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+  }
+
+  .c-author__name {
+    font-weight: 700;
+  }
+
+  .c-author__motto {
+    margin-top: 0.125rem;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  .c-author__meta {
+    margin-top: 0.25rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  /* The article before and after (6.6). */
+  .c-sequel {
+    display: grid;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  @media (min-width: 640px) {
+    .c-sequel {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  .c-sequel__item {
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    transition: border-color 150ms var(--ease-standard);
+  }
+
+  .c-sequel__item:hover {
+    border-color: var(--color-control);
+  }
+
+  .c-sequel__item--next {
+    grid-column: -2;
+    text-align: right;
+  }
+
+  .c-sequel__dir {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-sequel__item--next .c-sequel__dir {
+    justify-content: flex-end;
+  }
+
+  .c-sequel__dir svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .c-sequel__title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-weight: 600;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .c-sequel__item:hover .c-sequel__title {
+    color: var(--color-primary-text);
+  }
+
+  /* An article (13.2.6 c-article, v5.2): the head centred, the cover wider
+     than the text, one reading column in the middle. */
+  .c-article {
+    width: 100%;
+    max-width: 76rem;
+    margin-inline: auto;
+    padding: 2.5rem 1rem 3rem;
+  }
+
+  @media (min-width: 640px) {
+    .c-article {
+      padding-inline: 1.5rem;
+    }
+  }
+
   @media (min-width: 1024px) {
     .c-article {
-      padding-block: 3.5rem 4rem;
+      padding: 4rem 2.5rem 5rem;
     }
+  }
+
+  .c-article > * {
+    max-width: var(--container-prose);
+    margin-inline: auto;
+  }
+
+  .c-article > .c-article__cover {
+    max-width: none;
   }
 
   .c-article__head {
     display: grid;
-    justify-items: start;
-    gap: 0.75rem;
+    justify-items: center;
+    gap: 1rem;
+    max-width: 52rem;
+    text-align: center;
   }
 
   .c-article__head .c-crumbs {
@@ -3032,18 +3777,25 @@
 
   .c-article__head .c-tabs {
     justify-self: stretch;
+    justify-content: center;
     margin-bottom: 1.5rem;
   }
 
   .c-article__title {
-    font-size: 1.75rem;
-    line-height: 1.3;
+    font-size: 2rem;
+    line-height: 1.25;
   }
 
   @media (min-width: 768px) {
     .c-article__title {
-      font-size: 2.25rem;
-      line-height: 1.25;
+      font-size: 2.75rem;
+      line-height: 1.2;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .c-article__title {
+      font-size: 3.25rem;
     }
   }
 
@@ -3051,6 +3803,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem 0.75rem;
     color: var(--color-fg-3);
     font-size: 0.875rem;
@@ -3062,7 +3815,7 @@
   }
 
   .c-article__cover {
-    margin-top: 2rem;
+    margin-top: 2.5rem;
     overflow: hidden;
     border-radius: var(--radius-sm);
     background-color: var(--color-surface-2);
@@ -3073,8 +3826,25 @@
     height: auto;
   }
 
+  /* Wider than the text, so a little flatter: the text starts on the
+     first screen (v5.2). */
+  @media (min-width: 1024px) {
+    .c-article__cover img {
+      aspect-ratio: 2 / 1;
+      object-fit: cover;
+    }
+  }
+
   .c-article .c-prose {
-    margin-top: 2rem;
+    margin-top: 2.5rem;
+    text-align: justify;
+  }
+
+  @media (min-width: 1024px) {
+    .c-article .c-prose {
+      margin-top: 3rem;
+      font-size: 1.125rem;
+    }
   }
 
   .c-article__part {
@@ -3260,11 +4030,39 @@
     gap: 1.5rem;
   }
 
+  /* On the team banner (design-details 5.3): the logo as a framed tile on
+     the same picture. */
   .c-teams__logo--lg {
+    flex-shrink: 0;
     width: 7rem;
-    height: 7rem;
-    margin-bottom: 0;
-    font-size: 2.75rem;
+    border: 2px solid color-mix(in oklab, var(--color-white) 70%, transparent);
+    border-radius: var(--radius-sm);
+    font-size: 3rem;
+  }
+
+  @media (min-width: 1024px) {
+    .c-teams__logo--lg {
+      width: 9rem;
+      font-size: 3.75rem;
+    }
+  }
+
+  /* The author and reading time at the foot of an article card (6.1). */
+  .c-media__byline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-media__author {
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* One line of facts under a picture card's title. */
@@ -3310,27 +4108,15 @@
   /* 全部成员: one small card each, numbered by joining order (6.3). */
   .c-roster {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
-  }
-
-  @media (min-width: 640px) {
-    .c-roster {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .c-roster {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 1rem;
   }
 
   .c-roster__item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem 1rem;
+    gap: 1rem;
+    padding: 1.25rem;
     border: 1px solid var(--color-line);
     border-radius: var(--radius-sm);
     background-color: var(--color-surface);
@@ -3339,7 +4125,8 @@
   .c-roster__name {
     display: block;
     overflow: hidden;
-    font-weight: 600;
+    font-size: 1.0625rem;
+    font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -3348,7 +4135,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
-    margin-top: 0.25rem;
+    margin-top: 0.375rem;
+  }
+
+  .c-roster__item .c-play {
+    margin-top: 0.375rem;
   }
 
   .c-roster__no {
@@ -3357,6 +4148,106 @@
     color: var(--color-fg-3);
     font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- Team roster (design-details 5.3, 5.4; v5.2) ------------------------------- */
+
+  /* 现役: a card per member. */
+  .c-squad {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1rem;
+  }
+
+  .c-squad__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+  }
+
+  .c-squad__main {
+    display: grid;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .c-squad__name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .c-squad__motto {
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-squad__meta {
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  /* 退役: one compact line each. */
+  .c-alumni {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 0.5rem 1.5rem;
+  }
+
+  .c-alumni__item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+    padding-block: 0.5rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .c-alumni__name {
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-alumni__when {
+    margin-left: auto;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  /* 「显示全部 N 人」: a <details>, no script. */
+  .c-more {
+    margin-top: 0.75rem;
+  }
+
+  .c-more > summary {
+    display: inline-flex;
+    color: var(--color-primary-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .c-more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-more[open] > summary {
+    display: none;
   }
 
   /* ---- Style guide page ------------------------------------------------------------ */

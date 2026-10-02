@@ -11,6 +11,11 @@ urlpatterns = [
     path("teams/<int:pk>/leave/", views.team_leave, name="team_leave"),
     path("teams/<int:pk>/members/remove/", views.member_remove, name="member_remove"),
     path(
+        "teams/<int:pk>/alumni/<int:alumnus_pk>/remove/",
+        views.alumnus_remove,
+        name="alumnus_remove",
+    ),
+    path(
         "teams/<int:pk>/members/transfer/",
         views.captain_transfer,
         name="captain_transfer",

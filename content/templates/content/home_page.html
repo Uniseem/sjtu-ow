@@ -120,12 +120,7 @@
       </div>
       <ul class="c-teams">
         {% for team in home_teams %}
-          <li class="c-teams__item">
-            <span class="c-teams__logo">{% if team.logo %}{% image team.logo fill-160x160 alt="" loading="lazy" %}{% else %}{{ team.name|initial }}{% endif %}</span>
-            <a href="{{ team.get_absolute_url }}" class="c-stretch c-teams__name">{{ team.name }}</a>
-            <span class="c-teams__meta">{{ team.member_count }} 人</span>
-            {% if team.is_recruiting %}<span class="c-status c-status--live">招募中</span>{% endif %}
-          </li>
+          {% include "components/team_tile.html" with members=team.member_count %}
         {% endfor %}
       </ul>
     </section>

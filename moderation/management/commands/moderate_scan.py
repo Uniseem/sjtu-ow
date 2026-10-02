@@ -40,6 +40,8 @@ class Command(BaseCommand):
                     break
                 if integrations.submit_nickname(user) is not None:
                     submitted += 1
+                if integrations.submit_motto(user) is not None:
+                    submitted += 1
 
         if options["what"] in ("all", "pages"):
             from content.models import ArticlePage, StandardPage

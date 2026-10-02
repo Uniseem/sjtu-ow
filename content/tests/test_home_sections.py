@@ -388,13 +388,16 @@ def test_disbanded_teams_leave_the_homepage():
 
 
 @pytest.mark.django_db
-def test_article_pages_leave_the_summary_to_lists(client, site):
+def test_the_summary_is_on_the_cover_and_in_lists(client, site):
+    """design-details 6.2 (v5.2): the summary is the line under the title on
+    the cover; before v5.2 it was for lists only."""
     _, news, author, category = site
     article = _article(
         news, category, author, title="文章", slug="a", summary="列表用的摘要"
     )
-    # The summary stays in <meta name="description">; the page body leaves it out.
-    assert "列表用的摘要" not in _main(client.get(article.url))
+    main = _main(client.get(article.url))
+    cover = main[main.index('<header class="c-cover">') : main.index("</header>")]
+    assert '<p class="c-cover__summary">列表用的摘要</p>' in cover
     assert "列表用的摘要" in _main(client.get(news.url))
 
 
@@ -406,7 +409,10 @@ def test_article_body_is_set_as_prose_with_its_cover(client, site):
     )
     main = _main(client.get(article.url))
     assert '<div class="c-prose">' in main
-    assert re.search(r"<figure[^>]*>\s*<img[^>]+cv", main)
+    # The cover runs across the head of the page (design-details 6.2).
+    cover = main[main.index('<header class="c-cover">') : main.index("</header>")]
+    assert re.search(r'<img[^>]+class="c-cover__img"[^>]*>', cover)
+    assert re.search(r"<img[^>]+cv", cover)
 
 
 @pytest.mark.django_db

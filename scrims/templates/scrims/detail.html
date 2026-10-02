@@ -6,7 +6,7 @@
 {% block content %}
   {# 赛场详情 (design 13.2.7): a scrim has no picture, so the banner is plain. #}
   <header class="c-stage c-stage--plain">
-    <div class="l-container c-stage__body">
+    <div class="l-container l-container--narrow c-stage__body">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/scrims/">内战</a><span class="c-crumbs__sep">/</span><span>{{ scrim.title }}</span></nav>
       <p class="c-stage__tags">
         {% if cancelled %}<span class="c-status">已取消</span>
@@ -26,7 +26,7 @@
     </div>
   </header>
 
-  <div class="l-container l-section">
+  <div class="l-container l-container--narrow l-section">
     {% if cancelled %}
       <div class="c-notice c-notice--warn mb-10" role="status">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">这场内战已取消。</div></div>
     {% endif %}

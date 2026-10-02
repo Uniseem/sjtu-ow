@@ -4,7 +4,7 @@
 
 {% block content %}
   <header class="c-pagehead">
-    <div class="l-container">
+    <div class="l-container l-container--narrow">
       <h1>站内搜索</h1>
       <form action="{% url 'search' %}" method="get" role="search" class="c-searchbar">
         {% include "components/icon.html" with name="search" %}
@@ -15,7 +15,7 @@
     </div>
   </header>
 
-  <div class="l-container pb-16 lg:pb-24">
+  <div class="l-container l-container--narrow pb-16 lg:pb-24">
     {% if not terms %}
       <p class="max-w-2xl text-fg-2">只搜公开内容：已发布的文章、赛事和内战、未解散的战队、成员展示页上的成员。多个词用空格隔开，每个词都要命中。</p>
     {% elif total == 0 %}

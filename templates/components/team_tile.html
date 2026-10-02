@@ -1,11 +1,19 @@
 {% load ow wagtailimages_tags %}
 {% comment %}
-  A team in the grid (design 13.2.6 c-teams): logo or initial, name, head
-  count (against the site's limit when capacity is given), recruiting.
+  A team card, picture first (design-details 1.9, 5.1): the team's base
+  picture with its logo (or initial) on it; then name, head count (against
+  the site's limit when capacity is given) and founding month, with
+  about=True two lines of the intro, and recruiting with the positions it is
+  short of.
 {% endcomment %}
 <li class="c-teams__item">
-  <span class="c-teams__logo">{% if team.logo %}{% image team.logo fill-160x160 alt="" loading="lazy" %}{% else %}{{ team.name|initial }}{% endif %}</span>
-  <a href="{{ team.get_absolute_url }}" class="c-stretch c-teams__name">{{ team.name }}</a>
-  <span class="c-teams__meta">{% if members %}{{ members }}{% else %}{{ team.member_count }}{% endif %}{% if capacity %} / {{ capacity }}{% endif %} 人</span>
-  {% if team.is_recruiting %}<span class="c-status c-status--live">招募中</span>{% elif show_closed %}<span class="c-status">暂不招募</span>{% endif %}
+  <span class="c-teams__logo c-hue-{{ team|hue }}">{% if team.logo %}{% image team.logo fill-400x400 alt="" loading="lazy" %}{% else %}{{ team.name|initial }}{% endif %}</span>
+  <span class="c-teams__body">
+    <a href="{{ team.get_absolute_url }}" class="c-stretch c-teams__name" title="{{ team.name }}">{{ team.name }}</a>
+    <span class="c-teams__meta font-numeric">{% if members %}{{ members }}{% else %}{{ team.member_count }}{% endif %}{% if capacity %} / {{ capacity }}{% endif %} 人 · {{ team.created_at|date:"Y.m" }} 成立</span>
+    {% if about and team.description %}<span class="c-teams__about">{{ team.description }}</span>{% endif %}
+    {% if team.is_recruiting %}
+      <span class="c-teams__status"><span class="c-status c-status--live">招募中</span>{% if team.wanted_roles %}<span class="c-teams__wanted">缺 {% for code, label in team.wanted_roles %}{{ label }}{% if not forloop.last %}、{% endif %}{% endfor %}</span>{% endif %}</span>
+    {% elif show_closed %}<span class="c-teams__status"><span class="c-status">暂不招募</span></span>{% endif %}
+  </span>
 </li>

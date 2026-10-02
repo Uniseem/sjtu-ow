@@ -66,17 +66,25 @@ def test_an_article_is_one_centred_column_with_more_after_it(client, site):
     _article(news, guide, author, title="正文页", slug="body")
     _article(news, guide, author, title="同栏目的另一篇", slug="other")
     html = _main(client.get("/news/body/"))
-    meta = html[html.index('class="c-article__meta"') :]
+    meta = html[html.index('c-article__meta"') :]
+    # The author's initial in their own tint (v5.2), in the cover's facts.
+    hue = author.pk % 5 + 1
     assert (
-        '<span class="c-avatar c-avatar--sm" aria-hidden="true">写</span>' in meta[:400]
-    )
+        f'<span class="c-avatar c-avatar--xs c-hue-{hue}" aria-hidden="true">写</span>'
+    ) in meta[:400]
     article = html[html.index('<article class="c-article">') : html.index("</article>")]
-    assert "同栏目的另一篇" not in article
+    # Only as the article before this one (design-details 6.6); the cards of
+    # the same category come after the article.
+    assert "同栏目的另一篇" not in article.split('<nav class="c-sequel"')[0]
     more = html[html.index('aria-labelledby="article-related"') :]
     assert "同栏目的另一篇" in more and '<article class="c-media">' in more
-    column = _block(INPUT_CSS.read_text(encoding="utf-8"), "\n  .c-article {")
-    assert "max-width: calc(var(--container-prose) + 2rem);" in column
+    # v5.2: the reading column is centred; the head is centred on it.
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    column = _block(css, "\n  .c-article > * {")
+    assert "max-width: var(--container-prose);" in column
     assert "margin-inline: auto;" in column
+    head = _block(css, "\n  .c-article__head {")
+    assert "text-align: center;" in head and "justify-items: center;" in head
     assert "c-byline" not in html and "c-related" not in html
 
 

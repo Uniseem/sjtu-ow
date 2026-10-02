@@ -23,22 +23,28 @@
 
     <div class="mt-12 flex flex-col gap-16">
       {% for section in sections %}
-        <section id="group-{{ section.group.pk }}" class="scroll-mt-6" data-member-group aria-labelledby="group-title-{{ section.group.pk }}">
-          {% include "components/section_head.html" with title=section.group.name heading_id="group-title-"|add:section.group.pk|stringformat:"s" %}
-          {% if section.group.description %}
-            <p class="-mt-2 mb-6 max-w-2xl text-fg-2">{{ section.group.description }}</p>
-          {% endif %}
+        <section id="group-{{ section.group.pk }}" class="c-group scroll-mt-6" data-member-group aria-labelledby="group-title-{{ section.group.pk }}">
+          <div class="c-group__head">
+            {% include "components/section_head.html" with title=section.group.name heading_id="group-title-"|add:section.group.pk|stringformat:"s" %}
+            {% if section.group.description %}<p class="c-group__about">{{ section.group.description }}</p>{% endif %}
+          </div>
           {% if section.entries %}
             <ul class="c-people">
-              {% for title, member in section.entries %}
+              {% for titles, member in section.entries %}
+                {# A profile card (design-details 4.2): this group's posts only (4.3). #}
                 <li class="c-person">
-                  <span class="c-avatar" aria-hidden="true">{{ member.user.nickname|initial }}</span>
-                  <span class="min-w-0">
-                    <span class="c-person__name">{{ member.user.nickname }}</span>
-                    {% if title %}<span class="c-person__title">{{ title }}</span>{% endif %}
-                    {% if member.teams %}
-                      <span class="c-person__meta">{% for team in member.teams %}<a href="{{ team.get_absolute_url }}">{{ team.name }}</a>{% if not forloop.last %}、{% endif %}{% endfor %}</span>
-                    {% endif %}
+                  {# Picture first (design-details 1.9, 4.2). #}
+                  <span class="c-person__pic c-hue-{{ member.user|hue }}" aria-hidden="true">{{ member.user.nickname|initial }}</span>
+                  <span class="c-person__body">
+                  <span class="c-person__name" title="{{ member.user.nickname }}">{{ member.user.nickname }}</span>
+                  {% if titles %}
+                    <span class="c-person__titles">{% for title in titles|slice:":3" %}<span class="c-person__title">{{ title }}</span>{% endfor %}{% if titles|length > 3 %}<span class="c-person__more">+{{ titles|length|add:"-3" }}</span>{% endif %}</span>
+                  {% endif %}
+                  {% if member.user.motto %}<span class="c-person__motto" title="{{ member.user.motto }}">“{{ member.user.motto }}”</span>{% endif %}
+                  {% include "components/play_style.html" with profile=member.profile %}
+                  {% if member.teams %}
+                    <span class="c-person__meta">{% for team in member.teams|slice:":2" %}<a href="{{ team.get_absolute_url }}">{{ team.name }}</a>{% if not forloop.last %}、{% endif %}{% endfor %}{% if member.teams|length > 2 %} 等 <span class="font-numeric">{{ member.teams|length }}</span> 支战队{% endif %}</span>
+                  {% endif %}
                   </span>
                 </li>
               {% endfor %}
@@ -49,18 +55,22 @@
         </section>
       {% endfor %}
 
-      <section id="all-members" class="scroll-mt-6" aria-labelledby="all-members-title">
-        <div class="c-sectionhead">
-          <h2 id="all-members-title">全部成员</h2>
+      <section id="all-members" class="c-group scroll-mt-6" aria-labelledby="all-members-title">
+        <div class="c-group__head">
+          <div class="c-sectionhead">
+            <h2 id="all-members-title">全部成员</h2>
+          </div>
+          <p class="c-group__about"><span class="font-numeric">{{ members|length }}</span> 位成员，按加入先后编号</p>
         </div>
         {% if members %}
           <ol class="c-roster">
             {% for member in members %}
               <li class="c-roster__item" data-member>
-                <span class="c-avatar" aria-hidden="true">{{ member.user.nickname|initial }}</span>
+                <span class="c-avatar c-avatar--md c-hue-{{ member.user|hue }}" aria-hidden="true">{{ member.user.nickname|initial }}</span>
                 <span class="min-w-0">
-                  <span class="c-roster__name">{{ member.user.nickname }}</span>
-                  {% if member.groups %}<span class="c-roster__groups">{% for group_name in member.groups %}<span class="c-tag">{{ group_name }}</span>{% endfor %}</span>{% endif %}
+                  <span class="c-roster__name" title="{{ member.user.nickname }}">{{ member.user.nickname }}</span>
+                  {% include "components/play_style.html" with profile=member.profile compact=True %}
+                  {% if member.tags %}<span class="c-roster__groups">{% for tag in member.tags|slice:":3" %}<span class="c-tag">{{ tag }}</span>{% endfor %}{% if member.tags|length > 3 %}<span class="c-tag">+{{ member.tags|length|add:"-3" }}</span>{% endif %}</span>{% endif %}
                 </span>
                 <span class="c-roster__no font-numeric" data-member-number>{{ forloop.counter|stringformat:"03d" }}</span>
               </li>

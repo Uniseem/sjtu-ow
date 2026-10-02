@@ -26,6 +26,10 @@
     {% csrf_token %}
     <label for="handling_note">处理说明</label>
     <input type="text" id="handling_note" name="handling_note" maxlength="300" value="{{ item.handling_note }}">
+    {% if item.target_type == "motto" %}
+      {# A motto has no other editing screen (design-details 3.1). #}
+      <p><label><input type="checkbox" name="clear_motto" value="1"> 同时清空这条个人宣言</label></p>
+    {% endif %}
     <p>
       {% for value, label in actions.items %}
         <button type="submit" name="action" value="{{ value }}" class="button {% if value == 'ok' %}button-primary{% else %}button-secondary{% endif %}">{{ label.1 }}</button>

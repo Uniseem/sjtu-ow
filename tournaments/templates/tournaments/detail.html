@@ -7,7 +7,7 @@
   {# 赛场详情 (design 13.2.7): the banner, then sign-up, rules and teams beside the facts. #}
   <header class="c-stage">
     {% if tournament.cover %}{% image tournament.cover fill-2400x900-c50 class="c-stage__img" alt="" %}{% else %}<img src="{{ tournament|cover_placeholder }}" width="2400" height="900" class="c-stage__img" alt="">{% endif %}
-    <div class="l-container c-stage__body">
+    <div class="l-container l-container--narrow c-stage__body">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/tournaments/">赛事</a><span class="c-crumbs__sep">/</span><span>{{ tournament.title }}</span></nav>
       <p class="c-stage__tags">
         {% if phase == "open" %}<span class="c-status c-status--live">{{ phase_label }}</span>
@@ -28,7 +28,7 @@
     </div>
   </header>
 
-  <div class="l-container l-section">
+  <div class="l-container l-container--narrow l-section">
     {% if tournament.status == "cancelled" %}
       <div class="c-notice c-notice--warn mb-10" role="status">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">这项赛事已取消。</div></div>
     {% endif %}

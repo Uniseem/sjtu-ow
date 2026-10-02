@@ -31,6 +31,10 @@ class Team(models.Model):
         related_name="+",
     )
     is_recruiting = models.BooleanField("招募中", default=True)
+    # Shown with 「招募中」 (design-details 5.2, v5.2); empty means any.
+    recruiting_roles = models.CharField(
+        "缺的位置", max_length=32, blank=True, help_text="位置代码，逗号分隔。"
+    )
     disbanded_at = models.DateTimeField("解散时间", null=True, blank=True)
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
@@ -63,6 +67,18 @@ class Team(models.Model):
 
     def member_count(self) -> int:
         return self.memberships.count()
+
+    @property
+    def wanted_roles(self) -> list[tuple[str, str]]:
+        """(code, label) of the positions the team is short of, while it
+        recruits; empty when it takes anyone or is not recruiting."""
+        from accounts.roles import ROLE_LABELS, parse_roles
+
+        if not self.is_recruiting:
+            return []
+        return [
+            (role, ROLE_LABELS[role]) for role in parse_roles(self.recruiting_roles)
+        ]
 
 
 class TeamMembership(models.Model):
@@ -169,3 +185,44 @@ class TeamApplication(models.Model):
         if self.role_support:
             labels.append("支援")
         return labels
+
+
+class LeaveReason(models.TextChoices):
+    LEFT = "left", "退出"
+    REMOVED = "removed", "被移除"
+
+
+class TeamAlumnus(models.Model):
+    """Someone who used to be on the roster: 退役成员 (design-details 5.4).
+
+    Written when a member leaves or is removed; not when the team disbands.
+    Deleted when they rejoin, when they or the captain take it off the list,
+    and with their account.
+    """
+
+    team = models.ForeignKey(
+        Team, verbose_name="战队", on_delete=models.CASCADE, related_name="alumni"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="成员",
+        on_delete=models.CASCADE,
+        related_name="team_alumni",
+    )
+    role = models.CharField("离队时的身份", max_length=16, choices=TeamRole.choices)
+    joined_at = models.DateTimeField("入队时间")
+    left_at = models.DateTimeField("离队时间")
+    reason = models.CharField("离队方式", max_length=16, choices=LeaveReason.choices)
+
+    class Meta:
+        verbose_name = "退役成员"
+        verbose_name_plural = "退役成员"
+        ordering = ["-left_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "user"], name="unique_team_alumnus"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.team.name} · {self.user.nickname}（退役）"

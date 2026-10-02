@@ -6,7 +6,7 @@
 {% endcomment %}
 {% with phase=tournament.phase %}
 <article class="c-media" data-tournament-card>
-  <div class="c-media__pic">{% if tournament.cover %}{% image tournament.cover fill-640x360-c50 alt="" loading="lazy" %}{% else %}<img src="{{ tournament|cover_placeholder }}" width="640" height="360" alt="" loading="lazy">{% endif %}</div>
+  <div class="c-media__pic">{% if tournament.cover %}{% image tournament.cover fill-960x540-c50 alt="" loading="lazy" %}{% else %}<img src="{{ tournament|cover_placeholder }}" width="960" height="540" alt="" loading="lazy">{% endif %}</div>
   <p class="c-media__meta">
     {% if phase == "open" %}<span class="c-status c-status--live">报名中</span><span>{{ tournament.registration_closes_at|ow_md }} {{ tournament.registration_closes_at|ow_time }} 截止</span>
     {% elif phase == "upcoming" %}<span class="c-status c-status--info">即将开始报名</span><span>{{ tournament.registration_opens_at|ow_md }} {{ tournament.registration_opens_at|ow_time }} 开放</span>

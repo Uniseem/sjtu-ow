@@ -1,0 +1,4 @@
+{# The article's h2 and h3 (design-details 6.5); h3 indented. #}
+<ol class="c-toc__list">
+  {% for heading in toc %}<li class="c-toc__item c-toc__item--h{{ heading.level }}"><a href="#{{ heading.anchor }}">{{ heading.text }}</a></li>{% endfor %}
+</ol>

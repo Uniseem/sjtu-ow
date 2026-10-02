@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator, MinLengthValidator
@@ -10,6 +12,7 @@ from accounts.models import (
     validate_battletag,
 )
 from accounts.ranks import parse_rank_choice, rank_select_choices
+from accounts.roles import ROLE_CHOICES, join_roles, parse_roles
 from accounts.services import add_contact_method, add_game_account, max_game_accounts
 
 
@@ -62,6 +65,9 @@ class SignupExtraForm(forms.Form):
         return None
 
 
+LINK_IN_TEXT = re.compile(r"https?:|www\.|\.(?:com|cn|net|org|top|xyz)\b", re.I)
+
+
 class ProfileForm(forms.ModelForm):
     is_sjtu = forms.TypedChoiceField(
         label="是否来自上海交通大学",
@@ -69,12 +75,41 @@ class ProfileForm(forms.ModelForm):
         coerce=_as_bool,
         widget=forms.RadioSelect,
     )
+    # Public on the member page and team pages (design-details 3, v5.2).
+    main_role = forms.ChoiceField(
+        label="主位置",
+        choices=[("", "不填"), *ROLE_CHOICES],
+        required=False,
+        widget=forms.RadioSelect,
+    )
+    flex_roles = forms.MultipleChoiceField(
+        label="也能打",
+        choices=ROLE_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="主位置以外还能打的位置。三个都选显示为「全能」。",
+    )
 
     class Meta:
         model = User
-        fields = ["nickname", "is_sjtu"]
+        fields = [
+            "nickname",
+            "is_sjtu",
+            "motto",
+            "main_role",
+            "flex_roles",
+            "show_rank",
+        ]
+        labels = {"show_rank": "在成员展示和战队主页公开我的段位"}
+        help_texts = {
+            "motto": "一句话，最多 30 字，所有人都看得到；不能放链接。",
+            "show_rank": (
+                "公开的是每个位置在你所有游戏 ID 里最高的段位，游戏 ID 本身不公开。"
+            ),
+        }
         widgets = {
             "nickname": forms.TextInput(attrs={"autocomplete": "nickname"}),
+            "motto": forms.TextInput(attrs={"maxlength": 30}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -87,9 +122,29 @@ class ProfileForm(forms.ModelForm):
         self.fields["nickname"].max_length = 16
         if self.instance.pk:
             self.initial["is_sjtu"] = "true" if self.instance.is_sjtu else "false"
+            self.initial["flex_roles"] = parse_roles(self.instance.flex_roles)
 
     def clean_nickname(self) -> str:
         return self.cleaned_data["nickname"].strip()
+
+    def clean_motto(self) -> str:
+        """One line, no links (design-details 3.1)."""
+        motto = " ".join((self.cleaned_data.get("motto") or "").split())
+        if LINK_IN_TEXT.search(motto):
+            raise ValidationError("个人宣言里不能放链接。")
+        return motto
+
+    def clean_flex_roles(self) -> str:
+        return join_roles(self.cleaned_data.get("flex_roles") or [])
+
+    def clean(self):
+        cleaned = super().clean()
+        main = cleaned.get("main_role") or ""
+        flex = [
+            role for role in parse_roles(cleaned.get("flex_roles", "")) if role != main
+        ]
+        cleaned["flex_roles"] = join_roles(flex)
+        return cleaned
 
 
 class RankChoiceField(forms.TypedChoiceField):

@@ -29,6 +29,7 @@ class Category(models.TextChoices):
 
 class TargetType(models.TextChoices):
     NICKNAME = "nickname", "昵称"
+    MOTTO = "motto", "个人宣言"
     TEAM_NAME = "team_name", "队名"
     TEAM_DESCRIPTION = "team_description", "战队简介"
     APPLICATION_MESSAGE = "application_message", "入队申请留言"

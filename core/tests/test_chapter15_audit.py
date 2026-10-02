@@ -661,6 +661,7 @@ def test_enum_values_match_appendix_b():
         ],
         TargetType: [
             "nickname",
+            "motto",  # design-details 3.1 (v5.2)
             "team_name",
             "team_description",
             "application_message",

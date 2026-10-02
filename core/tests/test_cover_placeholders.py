@@ -44,11 +44,16 @@ def _src(obj):
 
 
 FILES = placeholders.every_file()
+MOVING = placeholders.moving_files()
+STILL_FILES = placeholders.still_files()
 
 
 def test_the_committed_pictures_are_what_the_code_draws():
     """Change core/placeholders.py, then run render_placeholders and commit."""
-    assert len(FILES) == COUNT + len(placeholders.SECTION_SCENES) == 42
+    assert len(MOVING) == COUNT + len(placeholders.SECTION_SCENES) == 42
+    # v5.2: the five base pictures and the footer ridge (design-details 1.9).
+    assert sorted(STILL_FILES) == [*(f"hue-{n}.svg" for n in range(1, 6)), "ridge.svg"]
+    assert FILES == {**MOVING, **STILL_FILES}
     assert sorted(p.name for p in FOLDER.glob("*.svg")) == sorted(FILES)
     for name, svg in FILES.items():
         assert _committed(name) == svg, name
@@ -72,12 +77,14 @@ def test_the_command_writes_every_picture_and_drops_stale_ones(tmp_path, setting
 def test_the_pictures_are_plain_graphics():
     """Same rules as the emblem (13.2.8): nothing that runs, nothing fetched,
     no words. Served from our origin, an SVG with a script would run there.
-    The one <style> holds the motion and nothing else (v5.1)."""
+    The one <style> holds the motion and nothing else (v5.1); the still
+    pictures have none (v5.2)."""
     for name, svg in FILES.items():
-        assert svg.startswith(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" '
-            'width="1600" height="900" preserveAspectRatio="xMidYMid slice">'
-        ), name
+        if name != placeholders.RIDGE_FILE:
+            assert svg.startswith(
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" '
+                'width="1600" height="900" preserveAspectRatio="xMidYMid slice">'
+            ), name
         lowered = svg.lower()
         for bad in (
             "<script", "javascript:", "<foreignobject", "<image", "href=",
@@ -85,13 +92,16 @@ def test_the_pictures_are_plain_graphics():
         ):  # fmt: skip
             assert bad not in lowered, (name, bad)
         assert re.findall(r"url\((?!#)", svg) == [], name
+        assert len(svg.encode("utf-8")) < 40_000, name
+        if name in STILL_FILES:
+            assert "<style" not in lowered and "class=" not in lowered, name
+            continue
         assert lowered.count("<style") == 1, name
         style = svg[svg.index("<style>") + 7 : svg.index("</style>")]
         # Only class rules (.m12{…}), the keyframes they name and the still rule.
         rest = re.sub(r"\.m\d+\{[^{}]*\}", "", style)
         rest = re.sub(r"@keyframes [a-z]+\{(?:[^{}]*\{[^{}]*\})+\}", "", rest)
         assert rest == placeholders.STILL, name
-        assert len(svg.encode("utf-8")) < 40_000, name
 
 
 def test_every_picture_moves_and_stands_still_under_reduced_motion():
@@ -100,7 +110,7 @@ def test_every_picture_moves_and_stands_still_under_reduced_motion():
     assert placeholders.STILL == (
         "@media (prefers-reduced-motion:reduce){*{animation:none!important}}"
     )
-    for name, svg in FILES.items():
+    for name, svg in MOVING.items():
         named = set(re.findall(r"animation:([a-z]+) ", svg))
         assert named, name
         assert named <= set(placeholders.KEYFRAMES), name
@@ -187,15 +197,16 @@ def test_an_article_without_a_cover_shows_its_picture_on_card_and_page(client, s
     cards = listing.split('<article class="c-media">')[1:]
     plain_card = next(card for card in cards if ">没封面<" in card)
     assert _src(plain) in plain_card
-    assert 'width="640" height="360"' in plain_card
+    assert 'width="960" height="540"' in plain_card
     covered_card = next(card for card in cards if ">有封面<" in card)
     assert placeholders.DIRECTORY not in covered_card
     assert "<img" in covered_card
 
     def figure(article):
+        # The cover across the head of the page (design-details 6.2).
         page = _main(client, article.url)
-        start = page.index('<figure class="c-article__cover">')
-        return page[start : page.index("</figure>", start)]
+        start = page.index('<header class="c-cover">')
+        return page[start : page.index('<div class="c-cover__body">', start)]
 
     assert _src(plain) in figure(plain)
     assert placeholders.DIRECTORY not in figure(covered)
@@ -240,3 +251,57 @@ def test_a_tournament_with_a_cover_keeps_it(client, db):
         html = re.sub(r'<img class="c-(?:hero|pagehead)__img[^>]*>', "", html)
         assert placeholders.DIRECTORY not in html, path
         assert "tc" in html, path
+
+
+# --- the base pictures and the footer ridge (design-details 1.5, 1.9, 2.2) -----
+
+
+def test_the_five_base_pictures_are_still_landscapes_in_the_label_order():
+    """Faces and team logos without a picture stand on one of five still
+    landscapes; a page can hold dozens, so they do not move (1.9)."""
+    assert sorted(placeholders.HUE_SCENES) == [1, 2, 3, 4, 5]
+    styles = [placeholders.HUE_SCENES[n][0] for n in range(1, 6)]
+    assert len(set(styles)) == 5
+    for n in range(1, 6):
+        svg = STILL_FILES[f"hue-{n}.svg"]
+        assert "animation" not in svg and "<style" not in svg
+        assert svg == placeholders.render_hue(n)
+
+
+def test_the_stylesheet_puts_each_base_picture_on_its_class():
+    css = (Path(settings.BASE_DIR) / "assets" / "css" / "input.css").read_text(
+        encoding="utf-8"
+    )
+    tints = ["primary-soft", "accent-soft", "info-soft", "ok-soft", "warn-soft"]
+    for n, tint in enumerate(tints, start=1):
+        rule = css[css.index(f"\n  .c-hue-{n} {{") :]
+        rule = rule[: rule.index("}")]
+        assert f'url("../img/placeholders/hue-{n}.svg")' in rule
+        assert f"var(--color-{tint})" in rule  # while it loads
+
+
+def test_the_footer_ridge_is_drawn_in_the_night_colours():
+    """The front ridge has to be the footer's own ground or a seam shows."""
+    import re as _re
+
+    css = (Path(settings.BASE_DIR) / "assets" / "css" / "input.css").read_text(
+        encoding="utf-8"
+    )
+    tokens = dict(_re.findall(r"--color-([a-z0-9-]+):\s*(#[0-9a-f]{6})", css))
+    assert placeholders.RIDGE_SHADES == (
+        tokens["night-2"],
+        tokens["night-surface"],
+        tokens["night"],
+    )
+    ridge = STILL_FILES[placeholders.RIDGE_FILE]
+    assert ridge.startswith(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 160"'
+    )
+    assert 'preserveAspectRatio="none"' in ridge
+    assert [f'fill="{shade}"' in ridge for shade in placeholders.RIDGE_SHADES] == [
+        True,
+        True,
+        True,
+    ]
+    footer = css[css.index("\n  .c-footer::before {") :]
+    assert 'url("../img/placeholders/ridge.svg")' in footer[: footer.index("}")]

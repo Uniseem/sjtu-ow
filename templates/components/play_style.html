@@ -1,0 +1,26 @@
+{% load ow %}
+{% comment %}
+  A person's positions and rank (design-details 3.2, 3.3). profile is an
+  accounts.roles.PublicProfile. The main position is filled, the others
+  outlined; all three read 「全能」. Then the main rank (greyed when older than
+  180 days). compact=True: only the main position and the rank.
+{% endcomment %}
+{% if profile.roles or profile.main_rank %}
+  <span class="c-play">
+    {% if profile.is_flex and not compact %}
+      {% if profile.main_role %}{% for code, label, is_main in profile.role_items %}{% if is_main %}<span class="c-role c-role--main">{% include "components/icon.html" with name="role-"|add:code class="size-3.5" %}{{ label }}</span>{% endif %}{% endfor %}{% endif %}
+      <span class="c-role">全能</span>
+    {% else %}
+      {% for code, label, is_main in profile.role_items %}
+        {% if not compact or forloop.first %}
+          <span class="c-role{% if is_main %} c-role--main{% endif %}">{% include "components/icon.html" with name="role-"|add:code class="size-3.5" %}{{ label }}</span>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {% with rank=profile.main_rank %}
+      {% if rank %}
+        <span class="c-play__rank{% if rank.stale %} is-stale{% endif %}" title="{{ rank.role_label }}段位{% if rank.updated_at %}，更新于 {{ rank.updated_at|ow_date }}{% endif %}">{% include "components/rank_badge.html" with label=rank.label %}</span>
+      {% endif %}
+    {% endwith %}
+  </span>
+{% endif %}

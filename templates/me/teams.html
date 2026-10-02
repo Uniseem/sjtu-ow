@@ -35,6 +35,29 @@
     {% endif %}
   </section>
 
+  {% if alumni %}
+    {# Your 退役 records (design-details 5.4): you can take them off. #}
+    <section aria-labelledby="me-alumni" data-me-alumni>
+      {% include "components/section_head.html" with title="退役记录" heading_id="me-alumni" %}
+      <p class="mb-4 text-fg-2">离开的战队在战队主页的「退役成员」里列着你的名字和在队时间。不想被列出可以去掉。</p>
+      <ul class="c-rows">
+        {% for alumnus in alumni %}
+          <li class="c-row c-row--plain">
+            <div class="c-row__main">
+              <p class="c-row__title"><a href="{{ alumnus.team.get_absolute_url }}">{{ alumnus.team.name }}</a></p>
+              <p class="c-row__meta font-numeric">{{ alumnus.joined_at|ow_date }} – {{ alumnus.left_at|ow_date }}</p>
+            </div>
+            <form method="post" action="{% url 'alumnus_remove' alumnus.team_id alumnus.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="me">
+              <button type="submit" class="c-btn c-btn--secondary c-btn--sm">从名单去掉</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
   <section aria-labelledby="me-applications">
     {% include "components/section_head.html" with title="我的入队申请" heading_id="me-applications" %}
     {% if applications %}

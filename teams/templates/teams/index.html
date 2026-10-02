@@ -24,9 +24,9 @@
 
   <div class="l-container pt-10 pb-16 lg:pt-14 lg:pb-24">
     {% if teams %}
-      <ul class="c-teams">
+      <ul class="c-teams c-teams--list">
         {% for team in teams %}
-          {% include "components/team_tile.html" with members=team.members_total capacity=max_members show_closed=True %}
+          {% include "components/team_tile.html" with members=team.members_total capacity=max_members show_closed=True about=True %}
         {% endfor %}
       </ul>
     {% else %}

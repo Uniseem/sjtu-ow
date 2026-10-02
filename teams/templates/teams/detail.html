@@ -5,21 +5,23 @@
 
 {% block content %}
   {# 赛场详情 (design 13.2.7) for a team: the logo and name, then roster and record. #}
-  <header class="c-stage c-stage--plain">
-    <div class="l-container c-stage__body">
+  {# The team's base picture as the banner (design-details 1.9, 5.3). #}
+  <header class="c-stage c-stage--team">
+    <img class="c-stage__img" src="{{ team|hue_scene }}" width="1600" height="900" alt="">
+    <div class="l-container l-container--narrow c-stage__body">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/teams/">战队</a><span class="c-crumbs__sep">/</span><span>{{ team.name }}</span></nav>
       <div class="c-stage__team">
-        <span class="c-teams__logo c-teams__logo--lg">{% if team.logo %}{% image team.logo fill-288x288 alt=team.name %}{% else %}{{ team.name|initial }}{% endif %}</span>
+        <span class="c-teams__logo c-teams__logo--lg c-hue-{{ team|hue }}">{% if team.logo %}{% image team.logo fill-288x288 alt=team.name %}{% else %}{{ team.name|initial }}{% endif %}</span>
         <div class="min-w-0">
           <p class="c-stage__tags">
             {% if team.is_disbanded %}<span class="c-status">已解散</span>
-            {% elif team.is_recruiting %}<span class="c-status c-status--live">招募中</span>
+            {% elif team.is_recruiting %}<span class="c-status c-status--live">招募中</span>{% if team.wanted_roles %}<span class="c-stage__wanted">缺 {% for code, label in team.wanted_roles %}{{ label }}{% if not forloop.last %}、{% endif %}{% endfor %}</span>{% endif %}
             {% else %}<span class="c-status">暂不招募</span>{% endif %}
           </p>
           <h1 class="c-stage__title">{{ team.name }}</h1>
           <dl class="c-stage__facts">
             {% if captain %}<div><dt>队长</dt><dd>{{ captain.nickname }}</dd></div>{% endif %}
-            <div><dt>成员</dt><dd>{{ memberships|length }} / {{ max_members }} 人</dd></div>
+            <div><dt>现役</dt><dd>{{ memberships|length }} / {{ max_members }} 人</dd></div>
             <div><dt>参赛</dt><dd>{{ entries|length }} 次</dd></div>
             <div><dt>成立</dt><dd><time datetime="{{ team.created_at|date:'c' }}">{{ team.created_at|ow_date }}</time></dd></div>
           </dl>
@@ -28,7 +30,7 @@
     </div>
   </header>
 
-  <div class="l-container l-section">
+  <div class="l-container l-container--narrow l-section">
     {% if team.is_disbanded %}
       <div class="c-notice c-notice--warn mb-10" role="status">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">该战队已解散。</div></div>
     {% endif %}
@@ -47,25 +49,48 @@
           </section>
         {% endif %}
 
+        {# 现役 and 退役 (design-details 5.3, 5.4; v5.2). #}
         <section aria-labelledby="team-roster">
-          {% include "components/section_head.html" with title="成员" heading_id="team-roster" %}
+          {% include "components/section_head.html" with title="现役成员" heading_id="team-roster" %}
           {% if memberships %}
-            <table class="c-table">
-              <thead><tr><th scope="col" class="w-12">序号</th><th scope="col">昵称</th><th scope="col" class="is-num">入队</th></tr></thead>
-              <tbody>
-                {% for membership in memberships %}
-                  <tr>
-                    <td class="font-numeric text-fg-3">{{ forloop.counter|ow_index }}</td>
-                    <td><span class="inline-flex items-center gap-3"><span class="c-avatar c-avatar--sm" aria-hidden="true">{{ membership.user.nickname|initial }}</span><span class="font-semibold">{{ membership.user.nickname }}</span>{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}</span></td>
-                    <td class="is-num font-numeric">{{ membership.joined_at|ow_date }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+            <ul class="c-squad">
+              {% for membership in memberships %}
+                {% with person=membership.user %}
+                  <li class="c-squad__item" data-roster-member>
+                    <span class="c-avatar c-avatar--md c-hue-{{ person|hue }}" aria-hidden="true">{{ person.nickname|initial }}</span>
+                    <div class="c-squad__main">
+                      <p class="c-squad__name"><span class="truncate" title="{{ person.nickname }}">{{ person.nickname }}</span>{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}</p>
+                      {% if person.motto %}<p class="c-squad__motto" title="{{ person.motto }}">“{{ person.motto }}”</p>{% endif %}
+                      {% include "components/play_style.html" with profile=person|public_profile %}
+                      <p class="c-squad__meta"><time class="font-numeric" datetime="{{ membership.joined_at|date:'c' }}">{{ membership.joined_at|date:"Y.m" }}</time> 入队</p>
+                    </div>
+                  </li>
+                {% endwith %}
+              {% endfor %}
+            </ul>
           {% else %}
             <p class="text-fg-2">还没有成员。</p>
           {% endif %}
         </section>
+
+        {% if alumni %}
+          <section aria-labelledby="team-alumni" data-team-alumni>
+            {% include "components/section_head.html" with title="退役成员" heading_id="team-alumni" %}
+            <ul class="c-alumni">
+              {% for alumnus in alumni %}
+                {% if forloop.counter <= 12 %}{% include "teams/_alumnus.html" %}{% endif %}
+              {% endfor %}
+            </ul>
+            {% if alumni|length > 12 %}
+              <details class="c-more">
+                <summary>显示全部 <span class="font-numeric">{{ alumni|length }}</span> 人</summary>
+                <ul class="c-alumni">
+                  {% for alumnus in alumni %}{% if forloop.counter > 12 %}{% include "teams/_alumnus.html" %}{% endif %}{% endfor %}
+                </ul>
+              </details>
+            {% endif %}
+          </section>
+        {% endif %}
 
         <section aria-labelledby="team-record">
           {% include "components/section_head.html" with title="参赛记录" heading_id="team-record" %}
@@ -90,8 +115,10 @@
         <dl class="c-facts c-panel">
           <dt>队长</dt><dd>{% if captain %}{{ captain.nickname }}{% else %}—{% endif %}</dd>
           <dt>成立</dt><dd class="font-numeric">{{ team.created_at|ow_date }}</dd>
-          <dt>人数</dt><dd class="font-numeric">{{ memberships|length }} / {{ max_members }}</dd>
+          <dt>现役</dt><dd class="font-numeric">{{ memberships|length }} / {{ max_members }}</dd>
           <dt>招募</dt><dd>{% if team.is_recruiting and not team.is_disbanded %}招募中{% else %}暂不招募{% endif %}</dd>
+          {% if team.wanted_roles and not team.is_disbanded %}<dt>缺的位置</dt><dd>{% for code, label in team.wanted_roles %}{{ label }}{% if not forloop.last %}、{% endif %}{% endfor %}</dd>{% endif %}
+          {% if alumni %}<dt>退役</dt><dd class="font-numeric">{{ alumni|length }} 人</dd>{% endif %}
         </dl>
       </aside>
     </div>

@@ -3,7 +3,13 @@ from allauth.account.signals import email_confirmed
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from accounts.models import Feature, FeatureGroupRestriction, FeatureUserRule, User
+from accounts.models import (
+    Feature,
+    FeatureGroupRestriction,
+    FeatureUserRule,
+    GameAccount,
+    User,
+)
 from accounts.services import (
     refresh_nickname_pages,
     sync_sjtu_groups,
@@ -11,27 +17,45 @@ from accounts.services import (
     sync_submitters_for_group,
 )
 
+# Everything the public pages print about a person (13.13.4; motto, roles
+# and the rank switch from v5.2, design-details 3).
+PUBLIC_FIELDS = ("nickname", "motto", "main_role", "flex_roles", "show_rank")
+
 
 @receiver(pre_save, sender=User)
 def remember_nickname(sender, instance, raw, update_fields=None, **kwargs):
-    """Keep the stored nickname so post_save can tell whether it changed."""
+    """Keep the stored public fields so post_save can tell what changed."""
     instance._nickname_before = None
+    instance._public_before = None
     if raw or instance.pk is None:
         return
-    if update_fields is not None and "nickname" not in update_fields:
+    if update_fields is not None and not set(PUBLIC_FIELDS) & set(update_fields):
         return  # a login only saves last_login
-    instance._nickname_before = (
-        User.objects.filter(pk=instance.pk).values_list("nickname", flat=True).first()
+    instance._public_before = (
+        User.objects.filter(pk=instance.pk).values(*PUBLIC_FIELDS).first()
     )
+    if instance._public_before:
+        instance._nickname_before = instance._public_before["nickname"]
 
 
 @receiver(post_save, sender=User)
 def refresh_pages_showing_nickname(sender, instance, created, raw, **kwargs):
-    """Design 13.13.4: team pages, scrim details and bylines show nicknames."""
-    before = getattr(instance, "_nickname_before", None)
-    if raw or created or before is None or before == instance.nickname:
+    """Design 13.13.4: team pages, scrim details, bylines and the member page
+    show the nickname, and since v5.2 the motto, roles and ranks."""
+    before = getattr(instance, "_public_before", None)
+    if raw or created or before is None:
+        return
+    if all(before[name] == getattr(instance, name) for name in PUBLIC_FIELDS):
         return
     refresh_nickname_pages(instance)
+
+
+@receiver([post_save, post_delete], sender=GameAccount)
+def refresh_pages_showing_ranks(sender, instance, raw=False, **kwargs):
+    """Ranks are public unless the person hides them (design-details 3.3)."""
+    if raw or not instance.user.show_rank:
+        return
+    refresh_nickname_pages(instance.user)
 
 
 @receiver(post_save, sender=User)

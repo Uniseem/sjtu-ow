@@ -193,4 +193,4 @@ def test_the_emblem_is_see_through_in_the_mode_s_colours_and_its_gear_turns():
     assert "color-mix(in oklab, var(--color-primary) 55%, transparent)" in gear
     assert "animation: c-hero-gear 90s linear infinite;" in gear
     wide = css[css.index("@media (min-width: 1024px) {\n    .c-hero__emblem {") :]
-    assert "width: min(40rem, 46vw, calc(100svh - 16rem));" in wide[:200]
+    assert "width: min(48rem, 44vw, calc(100svh - 16rem));" in wide[:200]

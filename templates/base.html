@@ -36,8 +36,13 @@
         <nav class="c-nav font-nav" aria-label="主导航">
           {% include "components/main_nav.html" %}
         </nav>
+        {# From 1280px a search box in the middle of the bar (design 13.3, v5.2). #}
+        <form action="{% url 'search' %}" method="get" role="search" class="c-masthead__search">
+          <input type="search" name="q" maxlength="50" placeholder="搜索文章、赛事、战队、成员" aria-label="站内搜索">
+          <button type="submit" aria-label="搜索">{% include "components/icon.html" with name="search" %}</button>
+        </form>
         <div class="c-masthead__end">
-          <a href="{% url 'search' %}" class="c-iconbtn" aria-label="搜索">{% include "components/icon.html" with name="search" %}</a>
+          <a href="{% url 'search' %}" class="c-iconbtn c-masthead__find" aria-label="搜索">{% include "components/icon.html" with name="search" %}</a>
           {% comment %}
             Colour mode (design 13.2.1): hidden until js/theme.js runs; without the
             script the system decides. Phones have it in the drawer instead.

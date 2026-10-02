@@ -12,8 +12,9 @@ from moderation import integrations
 
 @receiver(post_save, sender=User)
 def on_user_saved(sender, instance, **kwargs):
-    """Nicknames are public the moment they are set (design 5.5.1)."""
+    """Nicknames and mottos are public the moment they are set (5.5.1)."""
     integrations.submit_nickname(instance)
+    integrations.submit_motto(instance)
 
 
 @receiver(page_published)

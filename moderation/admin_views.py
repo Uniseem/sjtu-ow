@@ -8,6 +8,7 @@ from __future__ import annotations
 from functools import wraps
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
@@ -132,10 +133,22 @@ def moderation_action(request, pk):
         messages.error(request, "未知的处理方式。")
         return redirect("moderation_detail", pk=pk)
     status, label = ACTIONS[action]
+    if request.POST.get("clear_motto") and item.target_type == TargetType.MOTTO:
+        # The one thing a reviewer can change here: a motto is a line of
+        # text with no other editing screen (design-details 3.1).
+        User = get_user_model()
+        User.objects.filter(pk=item.target_id).update(motto="")
+        owner = User.objects.filter(pk=item.target_id).first()
+        if owner is not None:
+            from accounts.services import refresh_nickname_pages
+
+            refresh_nickname_pages(owner)
+        label += "，并清空了这条个人宣言"
     item.status = status
     item.handling_note = request.POST.get("handling_note", "")[:300]
     item.reviewed_by = request.user
     item.reviewed_at = timezone.now()
     item.save(update_fields=["status", "handling_note", "reviewed_by", "reviewed_at"])
-    messages.success(request, f"已记录：{label}。内容本身没有被改动。")
+    untouched = "" if "清空" in label else "内容本身没有被改动。"
+    messages.success(request, f"已记录：{label}。{untouched}")
     return redirect("moderation_index")

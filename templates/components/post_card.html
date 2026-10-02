@@ -1,12 +1,15 @@
 {% load ow wagtailimages_tags %}
 {% comment %}
-  An article as a picture card (design 13.2.6 c-media): cover, or its
-  placeholder picture when there is none (13.2.5); tags and date; title; on
-  the news list (summary=True) two lines of the summary (design 5.2).
+  An article as a picture card (design-details 6.1): cover, or its moving
+  placeholder (13.2.5); category, pinned and date; title; on the news list
+  (summary=True) two lines of the summary; the author and the reading time.
 {% endcomment %}
 <article class="c-media">
-  <div class="c-media__pic">{% if article.cover %}{% image article.cover fill-640x360-c50 alt="" loading="lazy" %}{% else %}<img src="{{ article|cover_placeholder }}" width="640" height="360" alt="" loading="lazy">{% endif %}</div>
+  <div class="c-media__pic">{% if article.cover %}{% image article.cover fill-960x540-c50 alt="" loading="lazy" %}{% else %}<img src="{{ article|cover_placeholder }}" width="960" height="540" alt="" loading="lazy">{% endif %}</div>
   <p class="c-media__meta">{% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}{% if pinned %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}<time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_md }}</time></p>
-  <h3 class="c-media__title"><a href="{{ article.url }}" class="c-stretch">{{ article.title }}</a></h3>
+  <h3 class="c-media__title"><a href="{{ article.url }}" class="c-stretch" title="{{ article.title }}">{{ article.title }}</a></h3>
   {% if summary and article.summary %}<p class="c-media__summary">{{ article.summary }}</p>{% endif %}
+  {% if article.author %}
+    <p class="c-media__byline"><span class="c-avatar c-avatar--xs c-hue-{{ article.author|hue }}" aria-hidden="true">{{ article.author.nickname|initial }}</span><span class="c-media__author">{{ article.author.nickname }}</span><span aria-hidden="true">·</span><span>约 <span class="font-numeric">{{ article.facts.minutes }}</span> 分钟</span></p>
+  {% endif %}
 </article>

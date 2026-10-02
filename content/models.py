@@ -1,9 +1,12 @@
 """Wagtail page types and article categories (design 5.1–5.3, 12.5)."""
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import models
+from django.utils.functional import cached_property
 from modelcluster.fields import ParentalKey
 from wagtail.admin.panels import FieldPanel, InlinePanel
 from wagtail.fields import RichTextField, StreamField
@@ -286,9 +289,44 @@ class ArticlePage(SeoPageMixin, Page):
             .public()
             .filter(category_id=self.category_id)
             .exclude(pk=self.pk)
+            .select_related("category", "cover", "author")
             .order_by("-first_published_at", "-last_published_at")[
                 :RELATED_ARTICLE_COUNT
             ]
+        )
+        # The head, contents and end of the article (design-details 6, v5.2).
+        from content import article_meta
+
+        body_html, headings = article_meta.anchor_headings(str(self.body))
+        context["body_html"] = body_html
+        context["toc"] = (
+            headings if len(headings) >= article_meta.TOC_MIN_HEADINGS else []
+        )
+        context["facts"] = self.facts
+        context["updated"] = self.was_updated
+        siblings = (
+            ArticlePage.objects.live().public().child_of(self.get_parent())
+            if self.first_published_at
+            else ArticlePage.objects.none()
+        )
+        context["older"] = (
+            siblings.filter(first_published_at__lt=self.first_published_at)
+            .order_by("-first_published_at")
+            .select_related("category")
+            .first()
+            if self.first_published_at
+            else None
+        )
+        context["newer"] = (
+            siblings.filter(first_published_at__gt=self.first_published_at)
+            .order_by("first_published_at")
+            .select_related("category")
+            .first()
+            if self.first_published_at
+            else None
+        )
+        context["author_articles"] = (
+            ArticlePage.objects.live().public().filter(author_id=self.author_id).count()
         )
         # Design 5.6: the comment section, read-only for visitors; a signed-in
         # live render gets the interactive one (13.13.3).
@@ -320,6 +358,19 @@ class ArticlePage(SeoPageMixin, Page):
 
     def get_share_image(self):
         return self.cover
+
+    @cached_property
+    def facts(self):
+        """Words and reading time, for cards and the head (design-details 6.3)."""
+        from content.article_meta import facts
+
+        return facts(self.body)
+
+    @property
+    def was_updated(self) -> bool:
+        """Changed more than a day after it first went out (6.2)."""
+        first, last = self.first_published_at, self.last_published_at
+        return bool(first and last and last - first > timedelta(days=1))
 
     def get_share_description(self):
         return self.search_description or self.summary or None

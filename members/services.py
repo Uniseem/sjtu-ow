@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 MEMBERS_PATH = "/members/"
+# One 职务 field can hold several posts: 「社长、主播」 (design-details 4.3).
+TITLE_SEPARATORS = re.compile(r"[、/／,，;；]+")
+
+
+def split_titles(value) -> list[str]:
+    return [
+        part.strip() for part in TITLE_SEPARATORS.split(value or "") if part.strip()
+    ]
 
 
 def joined_users():
@@ -23,21 +32,32 @@ class Member:
     user: object
     teams: list = field(default_factory=list)
     groups: list = field(default_factory=list)
+    # Every post across the groups, in group order (design-details 4.3).
+    titles: list = field(default_factory=list)
+    profile: object = None
+
+    @property
+    def tags(self) -> list[str]:
+        """The posts, or the group names for someone without one."""
+        return self.titles or self.groups
 
 
 @dataclass
 class Section:
     group: object
-    entries: list  # (title, Member)
+    entries: list  # (titles in this group, Member)
 
 
 def showcase() -> dict:
     """Visible groups in order, then everyone who has joined, oldest first."""
+    from accounts.roles import public_profile
     from members.models import MemberGroup
     from teams.models import TeamMembership
 
-    users = list(joined_users().order_by("date_joined", "pk"))
-    members = {user.pk: Member(user) for user in users}
+    users = list(
+        joined_users().order_by("date_joined", "pk").prefetch_related("game_accounts")
+    )
+    members = {user.pk: Member(user, profile=public_profile(user)) for user in users}
     for membership in (
         TeamMembership.objects.filter(
             user_id__in=members, team__disbanded_at__isnull=True
@@ -58,8 +78,10 @@ def showcase() -> dict:
             member = members.get(membership.user_id)
             if member is None:
                 continue  # left, deactivated or not verified
-            entries.append((membership.title, member))
+            titles = split_titles(membership.title)
+            entries.append((titles, member))
             member.groups.append(group.name)
+            member.titles.extend(t for t in titles if t not in member.titles)
         sections.append(Section(group, entries))
     return {"sections": sections, "members": [members[user.pk] for user in users]}
 

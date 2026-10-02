@@ -4,13 +4,13 @@
 
 {% block content %}
   <header class="c-pagehead">
-    <div class="l-container">
+    <div class="l-container l-container--narrow">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'team_index' %}">战队</a><span class="c-crumbs__sep">/</span><a href="{{ team.get_absolute_url }}">{{ team.name }}</a><span class="c-crumbs__sep">/</span><span>申请加入</span></nav>
       <h1>申请加入「{{ team.name }}」</h1>
       <p class="c-pagehead__lede">队长会看到你的昵称、意向位置、留言和游戏 ID，通过后你就是队员了。</p>
     </div>
   </header>
-  <div class="l-container pt-8 pb-16 lg:pb-24">
+  <div class="l-container l-container--narrow pt-8 pb-16 lg:pb-24">
     {% if not allowed %}
       <div class="c-notice c-notice--warn max-w-xl" role="status">{% include "components/icon.html" with name="alert" %}<p class="c-notice__body">{{ reason }}</p></div>
       <p class="mt-6"><a href="{{ team.get_absolute_url }}" class="c-btn c-btn--secondary">返回战队主页</a></p>

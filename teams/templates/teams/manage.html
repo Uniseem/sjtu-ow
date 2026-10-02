@@ -5,7 +5,7 @@
 
 {% block content %}
   <header class="c-pagehead">
-    <div class="l-container">
+    <div class="l-container l-container--narrow">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="{% url 'team_index' %}">战队</a><span class="c-crumbs__sep">/</span><a href="{{ team.get_absolute_url }}">{{ team.name }}</a><span class="c-crumbs__sep">/</span><span>管理</span></nav>
       <div class="c-pagehead__row">
         <div>
@@ -17,7 +17,7 @@
     </div>
   </header>
 
-  <div class="l-container pt-8 pb-16 lg:pb-24">
+  <div class="l-container l-container--narrow pt-8 pb-16 lg:pb-24">
     <div class="flex max-w-4xl flex-col gap-14">
       <section aria-labelledby="manage-apps">
         {% include "components/section_head.html" with index="01" title="待审批的申请" heading_id="manage-apps" %}
@@ -94,6 +94,32 @@
           </tbody>
         </table>
       </section>
+
+      {% if alumni %}
+        {# 退役 records (design-details 5.4, 5.5): only here is how they left shown. #}
+        <section aria-labelledby="manage-alumni" data-manage-alumni>
+          {% include "components/section_head.html" with title="退役成员" heading_id="manage-alumni" %}
+          <table class="c-table c-table--stack">
+            <thead><tr><th scope="col">昵称</th><th scope="col" class="is-num">入队</th><th scope="col" class="is-num">离队</th><th scope="col">方式</th><th scope="col" class="is-num">操作</th></tr></thead>
+            <tbody>
+              {% for alumnus in alumni %}
+                <tr>
+                  <td data-label="昵称"><span class="font-semibold">{{ alumnus.user.nickname }}</span></td>
+                  <td data-label="入队" class="is-num font-numeric">{{ alumnus.joined_at|ow_date }}</td>
+                  <td data-label="离队" class="is-num font-numeric">{{ alumnus.left_at|ow_date }}</td>
+                  <td data-label="方式">{{ alumnus.get_reason_display }}</td>
+                  <td data-label="操作" class="is-num">
+                    <form method="post" action="{% url 'alumnus_remove' team.pk alumnus.pk %}">
+                      {% csrf_token %}
+                      <button type="submit" class="c-btn c-btn--secondary c-btn--sm">从名单去掉</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      {% endif %}
 
       <section aria-labelledby="manage-profile">
         {% include "components/section_head.html" with index="03" title="战队资料" heading_id="manage-profile" %}

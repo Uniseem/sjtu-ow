@@ -14,7 +14,7 @@ from core.ratelimit import over_limit
 from teams import services
 from teams.forms import ApplicationForm, RejectForm, TeamForm
 from teams.images import create_logo
-from teams.models import ApplicationStatus, Team, TeamApplication
+from teams.models import ApplicationStatus, Team, TeamAlumnus, TeamApplication
 from tournaments import services as tournament_services
 
 CREATE_LIMIT = 3  # per user per day (design 附录 C)
@@ -40,10 +40,14 @@ def team_index(request):
 
 @require_GET
 def team_detail(request, pk):
-    team = get_object_or_404(
-        Team.objects.select_related("logo").prefetch_related("memberships__user"), pk=pk
+    team = get_object_or_404(Team.objects.select_related("logo"), pk=pk)
+    # Ranks come from every game ID (design-details 3.3): one query for all.
+    memberships = (
+        team.memberships.select_related("user")
+        .prefetch_related("user__game_accounts")
+        .order_by("role", "joined_at")
     )
-    memberships = team.memberships.select_related("user").order_by("role", "joined_at")
+    alumni = team.alumni.select_related("user") if not team.is_disbanded else []
     can_apply, apply_reason = services.can_apply(team, request.user)
     return render(
         request,
@@ -51,6 +55,7 @@ def team_detail(request, pk):
         {
             "team": team,
             "memberships": memberships,
+            "alumni": alumni,
             "captain": team.captain(),
             "max_members": services.max_members(),
             "is_member": services.is_member(team, request.user),
@@ -92,6 +97,7 @@ def team_create(request):
                     description=form.cleaned_data.get("description", ""),
                     logo=logo,
                     is_recruiting=form.cleaned_data.get("is_recruiting", True),
+                    recruiting_roles=form.cleaned_data.get("recruiting_roles", ""),
                 )
             except services.TeamError as exc:
                 messages.error(request, str(exc))
@@ -160,6 +166,7 @@ def team_manage(request, pk):
                     description=form.cleaned_data.get("description", ""),
                     logo=logo,
                     is_recruiting=form.cleaned_data.get("is_recruiting", True),
+                    recruiting_roles=form.cleaned_data.get("recruiting_roles", ""),
                 )
             except services.TeamError as exc:
                 messages.error(request, str(exc))
@@ -176,6 +183,7 @@ def team_manage(request, pk):
             "memberships": team.memberships.select_related("user").order_by(
                 "role", "joined_at"
             ),
+            "alumni": team.alumni.select_related("user"),
             "max_members": services.max_members(),
             "reject_form": RejectForm(),
         },
@@ -260,6 +268,24 @@ def member_remove(request, pk):
 
 @login_required
 @require_POST
+def alumnus_remove(request, pk, alumnus_pk):
+    """The person or the captain takes a 退役 record off (design-details 5.4)."""
+    alumnus = get_object_or_404(
+        TeamAlumnus.objects.select_related("team", "user"), pk=alumnus_pk, team_id=pk
+    )
+    try:
+        services.remove_alumnus(alumnus=alumnus, actor=request.user)
+    except services.TeamError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "已从退役名单去掉。")
+    if request.POST.get("next") == "me":
+        return redirect("me_teams")
+    return redirect("team_manage", pk=pk)
+
+
+@login_required
+@require_POST
 def captain_transfer(request, pk):
     team = get_object_or_404(Team, pk=pk)
     member = get_object_or_404(User, pk=request.POST.get("user"))
@@ -298,6 +324,9 @@ def me_teams(request):
             "me_teams",
             teams=services.my_teams(request.user),
             applications=services.my_applications(request.user),
+            alumni=request.user.team_alumni.select_related("team").filter(
+                team__disbanded_at__isnull=True
+            ),
             pending_status=ApplicationStatus.PENDING,
         ),
     )

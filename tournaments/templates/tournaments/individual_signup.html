@@ -5,14 +5,14 @@
 
 {% block content %}
   <header class="c-pagehead">
-    <div class="l-container">
+    <div class="l-container l-container--narrow">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/tournaments/">赛事</a><span class="c-crumbs__sep">/</span><a href="{{ tournament.get_absolute_url }}">{{ tournament.title }}</a><span class="c-crumbs__sep">/</span><span>个人报名</span></nav>
       <h1>个人报名</h1>
       <p class="c-pagehead__lede"><a href="{{ tournament.get_absolute_url }}" class="c-link">{{ tournament.title }}</a> · 报名后由赛事管理员编成临时队伍</p>
     </div>
   </header>
 
-  <div class="l-container pt-8 pb-16 lg:pb-24">
+  <div class="l-container l-container--narrow pt-8 pb-16 lg:pb-24">
     <div class="flex max-w-2xl flex-col gap-8">
       {% if problems %}
         <div class="c-notice c-notice--error" role="alert">

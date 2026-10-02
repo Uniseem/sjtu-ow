@@ -68,9 +68,42 @@ def ow_index(value) -> str:
 
 @register.filter
 def initial(value) -> str:
-    """The first character of a name, for square avatars."""
-    text = str(value or "").strip()
-    return text[:1].upper() if text else "?"
+    """The first Chinese character or letter of a name, for avatars; leading
+    symbols, emoji and spaces are skipped; "?" when there is none
+    (design-details 2.2)."""
+    for char in str(value or ""):
+        if char.isalnum():
+            return char.upper()
+    return "?"
+
+
+AVATAR_HUES = 5
+
+
+@register.filter
+def hue(obj) -> int:
+    """One of the five tints (1–5) for a face or logo without a picture,
+    fixed by id so a person or team keeps its colour everywhere
+    (design-details 1.5)."""
+    return (getattr(obj, "pk", None) or 0) % AVATAR_HUES + 1
+
+
+@register.filter
+def hue_scene(obj) -> str:
+    """The static address of an object's base picture (design-details 2.2)."""
+    from django.templatetags.static import static
+
+    from core import placeholders
+
+    return static(f"{placeholders.DIRECTORY}/{placeholders.hue_filename(hue(obj))}")
+
+
+@register.filter
+def public_profile(user):
+    """Positions and ranks as the public pages show them (design-details 3)."""
+    from accounts.roles import public_profile as profile
+
+    return profile(user)
 
 
 @register.filter

@@ -6,7 +6,7 @@
 {% block content %}
   {# 个人中心 (design 13.5, 13.2.8). Live-rendered only, never prerendered. #}
   <header class="c-pagehead">
-    <div class="l-container">
+    <div class="l-container l-container--narrow">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>个人中心</span></nav>
       <div class="c-pagehead__row">
         <div>
@@ -18,7 +18,7 @@
     </div>
   </header>
 
-  <div class="l-container pt-6 pb-16 lg:pt-10 lg:pb-24">
+  <div class="l-container l-container--narrow pt-6 pb-16 lg:pt-10 lg:pb-24">
     <div class="grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-14">
       {% include "me/_nav.html" %}
       <div class="flex min-w-0 flex-col gap-10">

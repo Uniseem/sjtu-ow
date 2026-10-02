@@ -305,6 +305,7 @@ def test_v4_draws_no_glass_and_no_washes():
         ".c-pagehead--picture::after",
         ".c-feature::after",
         ".c-stage:not(.c-stage--plain)::after",
+        ".c-cover::after",  # the article cover (design-details 6.2)
     }
 
 
@@ -485,7 +486,9 @@ def test_reduced_motion_also_drops_delays():
 
 def test_homepage_columns_cannot_be_widened_by_their_content():
     """Round 082: a chip row widened the 资讯 column past a phone's width. Every
-    homepage grid track is minmax(0, …)."""
+    homepage grid track has a fixed minimum, never auto: minmax(0, …), or for
+    the full-width card grids (v5.2) minmax(min(100%, 22rem), 1fr), which also
+    never exceeds a phone's width."""
     css = INPUT_CSS.read_text(encoding="utf-8")
     section = css[
         css.index("---- Homepage and the shared content blocks") : css.index(
@@ -495,7 +498,14 @@ def test_homepage_columns_cannot_be_widened_by_their_content():
     tracks = re.findall(r"grid-template-columns:\s*([^;]+);", section)
     assert tracks
     for value in tracks:
-        assert "minmax(0," in value, value
+        minimums = re.findall(r"minmax\((min\([^()]*\)|[^,()]+),", value)
+        assert minimums, value
+        assert all(
+            m == "0" or m.startswith(("min(100%,", "11rem")) for m in minimums
+        ), value
+        # A flexible track outside minmax() would take its content's width.
+        bare = re.sub(r"minmax\((?:min\([^()]*\)|[^,()]+),[^()]*\)", "", value)
+        assert "fr" not in bare, value
 
 
 def test_the_emblem_file_is_clean_and_cropped():
@@ -768,3 +778,33 @@ def test_registration_status_has_its_own_shape(status, shape):
         Context({"registration": Registration()})
     )
     assert shape in html
+
+
+READ_AND_ACT_TEMPLATES = [
+    "tournaments/templates/tournaments/detail.html",
+    "tournaments/templates/tournaments/register.html",
+    "tournaments/templates/tournaments/individual_signup.html",
+    "tournaments/templates/tournaments/registration_detail.html",
+    "scrims/templates/scrims/detail.html",
+    "scrims/templates/scrims/index.html",
+    "teams/templates/teams/detail.html",
+    "teams/templates/teams/apply.html",
+    "teams/templates/teams/create.html",
+    "teams/templates/teams/manage.html",
+    "templates/me/base.html",
+    "search/templates/search/results.html",
+    "templates/account/layout.html",
+]
+
+
+@pytest.mark.parametrize("relative", READ_AND_ACT_TEMPLATES)
+def test_pages_to_read_and_act_on_sit_in_a_centred_column(relative):
+    """design-details 1.1 (v5.2): on a wide window a detail page left a gap
+    between its words and its sidebar; every container on these pages is the
+    80rem one, so the banner's words line up with the content below."""
+    text = (Path(settings.BASE_DIR) / relative).read_text(encoding="utf-8")
+    containers = re.findall(r'class="(l-container[^"]*)"', text)
+    assert containers, relative
+    assert all("l-container--narrow" in c for c in containers), relative
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    assert "max-width: 80rem;" in _block(css, "\n  .l-container--narrow {")

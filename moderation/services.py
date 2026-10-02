@@ -24,6 +24,7 @@ CHUNK_CHARS = 8000
 EXCERPT_CHARS = 2000
 SHORT_TYPES = {
     TargetType.NICKNAME,
+    TargetType.MOTTO,
     TargetType.TEAM_NAME,
     TargetType.COMMENT,
 }

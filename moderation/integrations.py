@@ -55,3 +55,17 @@ def submit_nickname(user):
         url="",
         author=user,
     )
+
+
+def submit_motto(user):
+    """The one-line motto on the member page (design-details 3.1, v5.2)."""
+    if not user.motto:
+        return None
+    return services.submit(
+        target_type=TargetType.MOTTO,
+        target_id=user.pk,
+        field="motto",
+        text=user.motto,
+        url="/members/",
+        author=user,
+    )

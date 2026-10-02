@@ -3,6 +3,7 @@
 lists in a panel, the scrim's role counts, related articles as rows, and the
 member roster as numbered cards."""
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -112,4 +113,6 @@ def test_the_roster_is_numbered_cards(client, world):
         '<span class="c-roster__no font-numeric" data-member-number>001</span>'
         in roster
     )
-    assert '<span class="c-avatar" aria-hidden="true">队</span>' in roster
+    # v5.2: a bigger face in the member's own tint.
+    face = r'class="c-avatar c-avatar--md c-hue-[1-5]" aria-hidden="true">'
+    assert re.search("<span " + face + "队</span>", roster)

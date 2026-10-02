@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import math
 import random
+import re
 from itertools import pairwise
 
 WIDTH, HEIGHT = 1600, 900
@@ -1015,10 +1016,15 @@ STYLE_LABELS = {
 CATALOGUE = [(style, variant) for variant in range(4) for style in STYLES]
 
 
-def _draw(style: str, variant: int, palette: dict) -> str:
+def _draw(style: str, variant: int, palette: dict, still: bool = False) -> str:
     draw, _palettes = STYLES[style]
     seed = 1000 * (list(STYLES).index(style) + 1) + variant
-    return draw(random.Random(seed), palette, random.Random(-seed)).render()
+    svg = draw(random.Random(seed), palette, random.Random(-seed))
+    if not still:
+        return svg.render()
+    svg.rules.clear()
+    svg.frames.clear()
+    return re.sub(r' class="m\d+"', "", svg.render())
 
 
 def render(index: int) -> str:
@@ -1100,11 +1106,81 @@ def section_paths(section: str) -> dict[str, str]:
     }
 
 
-def every_file() -> dict[str, str]:
-    """Every picture under static/img/placeholders/: file name → SVG."""
+# The five 底图 behind faces and team logos without a picture
+# (design-details 1.5, 2.2; v5.2): red, orange, blue, green, gold, in the
+# order of the label tints. Still: a page can show dozens of them.
+HUE_SCENES = {
+    1: ("landscape", 1, {
+        "top": "#2a0a12", "bottom": "#c0393f", "sun": "#ffcf9e", "near": "#16050a",
+    }),
+    2: ("dunes", 1, {
+        "top": "#6e2c0c", "bottom": "#f4a64e", "sun": "#ffe6b8", "sand": "#dd8a32",
+        "shadow": "#6b2e0e", "near": "#4a1d08",
+    }),
+    3: ("skyline", 0, {
+        "top": "#06101f", "bottom": "#1b4b80", "glow": "#4aa3ff",
+        "windows": ["#ffd28a", "#9ad1ff", "#ffffff", "#6fb6ff"],
+    }),
+    4: ("forest", 2, {
+        "top": "#103024", "bottom": "#6aa57a", "sun": "#eaffea", "mist": "#4c8a66",
+        "near": "#07150e",
+    }),
+    5: ("waves", 3, {
+        "top": "#2b2006", "bottom": "#d4aa2c", "sun": "#fff2bf", "far": "#94721a",
+        "near": "#191203",
+    }),
+}  # fmt: skip
+
+
+def hue_filename(hue: int) -> str:
+    return f"hue-{hue}.svg"
+
+
+def render_hue(hue: int) -> str:
+    style, variant, palette = HUE_SCENES[hue]
+    return _draw(style, variant, palette, still=True)
+
+
+# The footer's upper edge (design-details 1.9): three ridges in the night
+# colours (night-2, night-surface, night: the footer's own ground last) rising
+# out of a clear sky. Stretched to the page width, so no aspect ratio.
+RIDGE_FILE = "ridge.svg"
+RIDGE_HEIGHT = 160
+RIDGE_SHADES = ("#20242b", "#171a20", "#0e1014")
+
+
+def render_ridge() -> str:
+    rng = random.Random(1896)
+    shapes = []
+    for i, shade in enumerate(RIDGE_SHADES):
+        line = _ridge(
+            rng, RIDGE_HEIGHT * (0.38 + 0.2 * i), RIDGE_HEIGHT * (0.34 - 0.08 * i)
+        )
+        points = line + [(WIDTH, RIDGE_HEIGHT), (0, RIDGE_HEIGHT)]
+        shapes.append(f'<polygon points="{_points(points)}" fill="{shade}"/>')
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'viewBox="0 0 {WIDTH} {RIDGE_HEIGHT}" width="{WIDTH}" height="{RIDGE_HEIGHT}" '
+        'preserveAspectRatio="none">' + "".join(shapes) + "</svg>\n"
+    )
+
+
+def moving_files() -> dict[str, str]:
+    """The pictures that move (design-details 1.9): covers, section scenes."""
     files = {filename(i): render(i) for i in range(len(CATALOGUE))}
     files.update({daylight_filename(s): render_daylight(s) for s in SECTION_SCENES})
     return files
+
+
+def still_files() -> dict[str, str]:
+    files = {hue_filename(h): render_hue(h) for h in HUE_SCENES}
+    files[RIDGE_FILE] = render_ridge()
+    return files
+
+
+def every_file() -> dict[str, str]:
+    """Every picture under static/img/placeholders/: file name → SVG."""
+    return {**moving_files(), **still_files()}
 
 
 def catalogue() -> list[tuple[str, str]]:
