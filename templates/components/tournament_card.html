@@ -2,7 +2,8 @@
 {% comment %}
   A tournament as a picture card (design 13.2.6 c-media): cover, or its
   placeholder picture (13.2.5); the phase and the date that matters in it; title;
-  team size and approved teams. approved: the public count of approved teams.
+  how to sign up (v5.3), team size and approved teams. approved: the public
+  count of approved teams (formed ones, when people sign up alone).
 {% endcomment %}
 {% with phase=tournament.phase %}
 <article class="c-media" data-tournament-card>
@@ -15,6 +16,6 @@
     {% else %}<span class="c-status">报名已截止</span>{% if tournament.starts_at %}<span>{{ tournament.starts_at|ow_md }} 比赛</span>{% endif %}{% endif %}
   </p>
   <h3 class="c-media__title"><a href="{{ tournament.get_absolute_url }}" class="c-stretch">{{ tournament.title }}</a></h3>
-  <p class="c-media__facts">{{ tournament.roster_min }}–{{ tournament.roster_max }} 人一队{% if approved is not None %} · 已通过 {{ approved|default:0 }} 队{% endif %}{% if tournament.sjtu_only %} · 仅限交大{% endif %}</p>
+  <p class="c-media__facts">{{ tournament.get_registration_mode_display }} · {{ tournament.roster_min }}–{{ tournament.roster_max }} 人一队{% if approved is not None %} · {% if tournament.takes_individuals %}已编成{% else %}已通过{% endif %} {{ approved|default:0 }} 队{% endif %}{% if tournament.sjtu_only %} · 仅限交大{% endif %}</p>
 </article>
 {% endwith %}

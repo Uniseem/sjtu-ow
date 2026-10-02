@@ -24,6 +24,7 @@ PENDING = RegistrationStatus.PENDING
 def _tournament(title, *, opens, closes, status=TournamentStatus.PUBLISHED):
     now = timezone.now()
     return Tournament.objects.create(
+        registration_mode="team",
         title=title,
         registration_opens_at=now + opens,
         registration_closes_at=now + closes,

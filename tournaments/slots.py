@@ -30,17 +30,36 @@ def actions_context(request, tournament) -> dict:
 
     user = getattr(request, "user", None)
     signed_in = bool(getattr(user, "is_authenticated", False))
-    captain_teams = captain_teams_for(user)
+    # Design 8.2 (v5.3): the way in depends on the tournament's mode first and
+    # on who you are second. Captains sign up alone like anyone else when the
+    # tournament takes individuals.
+    captain_teams = []
     my_registration = None
-    if captain_teams:
-        my_registration = (
-            Registration.objects.filter(tournament=tournament, team__in=captain_teams)
-            .order_by("-submitted_at")
-            .first()
-        )
+    on_roster = None
     my_signup = None
     individual_problems = []
-    if signed_in and not captain_teams and tournament.allow_individual_signup:
+    if signed_in and tournament.takes_teams:
+        captain_teams = captain_teams_for(user)
+        if captain_teams:
+            my_registration = (
+                Registration.objects.filter(
+                    tournament=tournament, team__in=captain_teams
+                )
+                .order_by("-submitted_at")
+                .first()
+            )
+        else:
+            # Entered by a captain without confirming: this is where they see it.
+            on_roster = (
+                Registration.objects.filter(
+                    tournament=tournament,
+                    members__user=user,
+                    members__is_active=True,
+                )
+                .order_by("-submitted_at")
+                .first()
+            )
+    if signed_in and tournament.takes_individuals:
         my_signup = (
             IndividualSignup.objects.filter(tournament=tournament, user=user)
             .select_related("registration")
@@ -55,7 +74,7 @@ def actions_context(request, tournament) -> dict:
         "captain_teams": captain_teams,
         "registration_open": tournament.registration_open(),
         "my_registration": my_registration,
-        "individual_enabled": tournament.allow_individual_signup,
+        "on_roster": on_roster,
         "my_signup": my_signup,
         "individual_problems": individual_problems,
     }

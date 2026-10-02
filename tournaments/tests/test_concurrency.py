@@ -81,6 +81,7 @@ def test_two_captains_cannot_both_claim_the_same_player():
     """
     now = timezone.now()
     tournament = Tournament.objects.create(
+        registration_mode="team",
         title="并发赛事",
         registration_opens_at=now - timedelta(days=1),
         registration_closes_at=now + timedelta(days=7),
@@ -186,6 +187,7 @@ def test_reads_are_not_blocked_while_a_write_is_in_flight():
 
     now = timezone.now()
     Tournament.objects.create(
+        registration_mode="team",
         title="WAL 读写赛事",
         registration_opens_at=now - timedelta(days=1),
         registration_closes_at=now + timedelta(days=7),
@@ -238,6 +240,7 @@ def test_many_simultaneous_submissions_all_land():
     """
     now = timezone.now()
     tournament = Tournament.objects.create(
+        registration_mode="team",
         title="并发提交赛事",
         registration_opens_at=now - timedelta(days=1),
         registration_closes_at=now + timedelta(days=7),

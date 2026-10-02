@@ -47,6 +47,7 @@ def _tournament(**kwargs):
     kwargs.setdefault("roster_max", 3)
     kwargs.setdefault("status", TournamentStatus.PUBLISHED)
     kwargs.setdefault("published_at", now)
+    kwargs.setdefault("registration_mode", "team")
     return Tournament.objects.create(**kwargs)
 
 
@@ -331,7 +332,7 @@ def test_local_review_flow(team, captain):
 
 
 @pytest.mark.django_db
-def test_mails(team, captain, django_capture_on_commit_callbacks):
+def test_mails(team, captain, mate, django_capture_on_commit_callbacks):
     tournament = _tournament()
     mail.outbox.clear()
     with django_capture_on_commit_callbacks(execute=True):
@@ -341,9 +342,11 @@ def test_mails(team, captain, django_capture_on_commit_callbacks):
             actor=captain,
             selections=_selections(team),
         )
-    assert len(mail.outbox) == 1
-    assert captain.email in mail.outbox[0].recipients()
-    assert "报名已提交" in mail.outbox[0].subject
+    # The captain hears it was submitted; the member hears they were entered.
+    assert {m.recipients()[0]: m.subject for m in mail.outbox} == {
+        captain.email: "报名已提交",
+        mate.email: "你已被报名参加赛事",
+    }
 
     mail.outbox.clear()
     with django_capture_on_commit_callbacks(execute=True):

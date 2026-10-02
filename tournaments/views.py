@@ -58,7 +58,7 @@ def tournament_detail(request, pk):
         "phase_label": services.PHASE_LABELS[tournament.phase()],
         "approved_teams": services.approved_teams(tournament),
     }
-    if tournament.allow_individual_signup:
+    if tournament.takes_individuals:
         from tournaments import registration as registration_service
 
         pool = registration_service.individual_pool(tournament)

@@ -14,7 +14,7 @@
         {% elif phase == "upcoming" %}<span class="c-status c-status--info">{{ phase_label }}</span>
         {% else %}<span class="c-status">{{ phase_label }}</span>{% endif %}
         {% if tournament.sjtu_only %}<span class="c-tag">仅限交大</span>{% endif %}
-        {% if tournament.allow_individual_signup %}<span class="c-tag">支持个人报名</span>{% endif %}
+        <span class="c-tag" data-mode-tag>{{ tournament.get_registration_mode_display }}</span>
       </p>
       <h1 class="c-stage__title">{{ tournament.title }}</h1>
       {% if tournament.summary %}<p class="c-stage__lede">{{ tournament.summary }}</p>{% endif %}
@@ -22,8 +22,8 @@
         <div><dt>报名截止</dt><dd>{{ tournament.registration_closes_at|ow_md }} {{ tournament.registration_closes_at|ow_weekday }} {{ tournament.registration_closes_at|ow_time }}</dd></div>
         <div><dt>比赛时间</dt><dd>{% if tournament.starts_at %}{{ tournament.starts_at|ow_md }} {{ tournament.starts_at|ow_weekday }} {{ tournament.starts_at|ow_time }}{% else %}待定{% endif %}</dd></div>
         <div><dt>每队人数</dt><dd>{{ tournament.roster_min }}–{{ tournament.roster_max }} 人</dd></div>
-        <div><dt>已通过</dt><dd>{{ approved_teams|length }} 队</dd></div>
-        {% if tournament.allow_individual_signup %}<div><dt>个人报名</dt><dd>{{ pool_counts.total }} 人</dd></div>{% endif %}
+        {% if tournament.takes_individuals %}<div><dt>等待编队</dt><dd>{{ pool_counts.total }} 人</dd></div><div><dt>已编成</dt><dd>{{ approved_teams|length }} 队</dd></div>
+        {% else %}<div><dt>已通过</dt><dd>{{ approved_teams|length }} 队</dd></div>{% endif %}
       </dl>
     </div>
   </header>
@@ -46,7 +46,7 @@
         {% endif %}
 
         <section aria-labelledby="t-teams">
-          {% include "components/section_head.html" with title="已通过的队伍" heading_id="t-teams" %}
+          {% if tournament.takes_individuals %}{% include "components/section_head.html" with title="已编成的队伍" heading_id="t-teams" %}{% else %}{% include "components/section_head.html" with title="已通过的战队" heading_id="t-teams" %}{% endif %}
           {% if approved_teams %}
             <table class="c-table">
               <thead><tr><th scope="col" class="w-12">序号</th><th scope="col">队伍</th><th scope="col" class="is-num">人数</th></tr></thead>
@@ -67,22 +67,22 @@
               </tbody>
             </table>
           {% else %}
-            <p class="text-fg-2">暂时还没有通过审核的战队。</p>
+            <p class="text-fg-2">{% if tournament.takes_individuals %}还没有编队。{% else %}暂时还没有通过审核的战队。{% endif %}</p>
           {% endif %}
         </section>
 
-        {% if tournament.allow_individual_signup %}
+        {% if tournament.takes_individuals %}
           <section aria-labelledby="t-pool">
-            {% include "components/section_head.html" with title="个人报名" heading_id="t-pool" %}
+            {% include "components/section_head.html" with title="等待编队" heading_id="t-pool" %}
             <p class="text-fg-2">共 {{ pool_counts.total }} 人：坦克 {{ pool_counts.tank }}、输出 {{ pool_counts.damage }}、支援 {{ pool_counts.support }}</p>
             {% if pool %}
-              <ul class="c-people mt-4">
+              <ul class="c-roster mt-4" data-pool>
                 {% for entry in pool %}
-                  <li class="c-person">
-                    <span class="c-avatar c-avatar--sm" aria-hidden="true">{{ entry.user.nickname|initial }}</span>
-                    <span class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
-                      <span class="c-person__name">{{ entry.user.nickname }}</span>
-                      {% include "components/role_icons.html" with role_tank=entry.role_tank role_damage=entry.role_damage role_support=entry.role_support %}
+                  <li class="c-roster__item">
+                    <span class="c-avatar c-avatar--md c-hue-{{ entry.user|hue }}" aria-hidden="true">{{ entry.user.nickname|initial }}</span>
+                    <span class="min-w-0">
+                      <span class="c-roster__name" title="{{ entry.user.nickname }}">{{ entry.user.nickname }}</span>
+                      <span class="mt-1.5 block">{% include "components/role_icons.html" with role_tank=entry.role_tank role_damage=entry.role_damage role_support=entry.role_support %}</span>
                     </span>
                   </li>
                 {% endfor %}
@@ -100,7 +100,8 @@
           <dt>报名截止</dt><dd class="font-numeric">{{ tournament.registration_closes_at|ow_date }} {{ tournament.registration_closes_at|ow_time }}</dd>
           <dt>比赛时间</dt><dd class="font-numeric">{% if tournament.starts_at %}{{ tournament.starts_at|ow_date }} {{ tournament.starts_at|ow_time }}{% else %}待定{% endif %}</dd>
           <dt>每队人数</dt><dd>{{ tournament.roster_min }}–{{ tournament.roster_max }} 人</dd>
-          <dt>参赛条件</dt><dd>{% if tournament.sjtu_only %}仅限交大{% else %}不限学校{% endif %}{% if tournament.allow_individual_signup %} · 支持个人报名{% endif %}</dd>
+          <dt>报名方式</dt><dd data-mode>{{ tournament.get_registration_mode_display }}<span class="block text-fg-2">{{ tournament.mode_summary }}</span></dd>
+          <dt>参赛条件</dt><dd>{% if tournament.sjtu_only %}仅限交大{% else %}不限学校{% endif %}</dd>
         </dl>
         {% if articles %}
           <section aria-labelledby="t-articles">

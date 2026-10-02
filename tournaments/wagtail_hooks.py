@@ -21,20 +21,26 @@ ACTIONS = {
 
 
 class TournamentAdminForm(WagtailAdminModelForm):
-    """Design 8.1: 「报名自动通过」 is locked once anyone has registered.
+    """Design 8.1: 「报名自动通过」 and 「报名方式」 lock once anyone has signed up.
 
     Round 067: the old 「审核模式」 lock lived only in the API; the admin form
-    never checked it. This form is the only place the switch can change.
+    never checked it. This form is the only place either can change.
     """
 
     def clean(self):
         cleaned = super().clean()
-        if (
-            self.instance.pk
-            and "auto_approve" in self.changed_data
-            and services.has_registrations(self.instance)
+        if not self.instance.pk:
+            return cleaned
+        if "auto_approve" in self.changed_data and services.has_registrations(
+            self.instance
         ):
             self.add_error("auto_approve", "已经有报名了，不能再改「报名自动通过」。")
+        if "registration_mode" in self.changed_data and services.has_entries(
+            self.instance
+        ):
+            self.add_error(
+                "registration_mode", "已经有人报名了，不能再改「报名方式」。"
+            )
         return cleaned
 
 
@@ -62,7 +68,7 @@ class TournamentIndexView(generic.IndexView):
                     priority=61,
                 )
             )
-        if instance.allow_individual_signup:
+        if instance.takes_individuals:
             buttons.append(
                 ListingMenuItem(
                     "队伍编排",
@@ -121,7 +127,7 @@ class TournamentViewSet(ModelViewSet):
         "registration_opens_at",
         "registration_closes_at",
     ]
-    list_filter = ["status", "auto_approve", "allow_individual_signup", "sjtu_only"]
+    list_filter = ["status", "registration_mode", "auto_approve", "sjtu_only"]
     search_fields = ["title", "summary"]
     panels = [
         MultiFieldPanel(
@@ -143,11 +149,11 @@ class TournamentViewSet(ModelViewSet):
         ),
         MultiFieldPanel(
             [
+                FieldPanel("registration_mode"),
                 FieldPanel("roster_min"),
                 FieldPanel("roster_max"),
                 FieldPanel("sjtu_only"),
                 FieldPanel("auto_approve"),
-                FieldPanel("allow_individual_signup"),
             ],
             heading="报名规则",
         ),

@@ -32,10 +32,23 @@ def _tournament(**kwargs):
         "roster_max": 5,
         "status": TournamentStatus.PUBLISHED,
         "published_at": now,
-        "allow_individual_signup": True,
+        "registration_mode": "individual",
     }
     options.update(kwargs)
     return Tournament.objects.create(**options)
+
+
+def _enter_team_before_v53(tournament, **kwargs):
+    """Before v5.3 a tournament could take teams and individuals at once. The
+    pool still guards against what that left behind (design 8.8.2), so these
+    tests make such a tournament the only way left: switch, enter, switch back."""
+    tournament.registration_mode = "team"
+    tournament.save(update_fields=["registration_mode"])
+    try:
+        return reg.submit(tournament=tournament, **kwargs)
+    finally:
+        tournament.registration_mode = "individual"
+        tournament.save(update_fields=["registration_mode"])
 
 
 def _sign_up(tournament, user, roles=("tank",), account=None):
@@ -113,9 +126,9 @@ def test_the_pool_counts_each_role(solo):
 
 
 @pytest.mark.django_db
-def test_the_switch_must_be_on(solo):
-    tournament = _tournament(allow_individual_signup=False)
-    with pytest.raises(reg.RegistrationError, match="不接受个人报名"):
+def test_a_team_tournament_takes_no_individuals(solo):
+    tournament = _tournament(registration_mode="team")
+    with pytest.raises(reg.RegistrationError, match="只接受战队报名"):
         _sign_up(tournament, solo)
 
 
@@ -177,7 +190,7 @@ def test_someone_on_a_team_roster_cannot_also_sign_up_alone(solo):
     selections = {
         str(m.user.pk): m.user.game_accounts.first().pk for m in team.memberships.all()
     }
-    reg.submit(tournament=tournament, team=team, actor=solo, selections=selections)
+    _enter_team_before_v53(tournament, team=team, actor=solo, selections=selections)
 
     with pytest.raises(reg.RegistrationError, match="名单中"):
         _sign_up(tournament, mate)
@@ -277,8 +290,8 @@ def test_the_page_lists_nicknames_and_roles_only(client, solo):
 
 
 @pytest.mark.django_db
-def test_the_page_hides_the_pool_when_the_switch_is_off(client, solo):
-    tournament = _tournament(allow_individual_signup=False)
+def test_a_team_tournament_page_has_no_pool(client, solo):
+    tournament = _tournament(registration_mode="team")
 
     html = client.get(tournament.get_absolute_url()).content.decode()
 
@@ -358,16 +371,35 @@ def test_the_entry_lists_problems_instead_of_the_button(client, solo):
 
 
 @pytest.mark.django_db
-def test_without_the_switch_the_old_prompt_stays(client, solo):
-    tournament = _tournament(allow_individual_signup=False)
+def test_a_team_tournament_sends_the_teamless_to_their_captain(client, solo):
+    tournament = _tournament(registration_mode="team")
     client.force_login(solo)
 
-    assert "需要由队长为战队报名" in _slot(client, tournament)
+    fragment = _slot(client, tournament)
+
+    assert "需要由队长为战队报名" in fragment
+    assert reverse("tournament_individual_signup", args=[tournament.pk]) not in fragment
 
 
 @pytest.mark.django_db
-def test_a_captain_keeps_the_team_entry(client, solo):
+def test_a_captain_signs_up_alone_when_people_sign_up_alone(client, solo):
+    """Design 8.2 (v5.3): an individual tournament takes no teams, so a captain
+    gets the same way in as anyone."""
     tournament = _tournament()
+    team_services.create_team(user=solo, name="散人的战队")
+    client.force_login(solo)
+
+    fragment = _slot(client, tournament)
+
+    assert reverse("tournament_individual_signup", args=[tournament.pk]) in fragment
+    assert reverse("tournament_register", args=[tournament.pk]) not in fragment
+    _sign_up(tournament, solo)
+    assert tournament.individual_signups.filter(user=solo).exists()
+
+
+@pytest.mark.django_db
+def test_a_captain_enters_the_team_when_teams_enter(client, solo):
+    tournament = _tournament(registration_mode="team")
     team_services.create_team(user=solo, name="散人的战队")
     client.force_login(solo)
 
@@ -563,7 +595,7 @@ def test_the_admin_form_has_the_switch():
 
     form_class = TournamentViewSet().get_form_class(for_update=True)
 
-    assert "allow_individual_signup" in form_class.base_fields
+    assert "registration_mode" in form_class.base_fields
 
 
 @pytest.mark.django_db

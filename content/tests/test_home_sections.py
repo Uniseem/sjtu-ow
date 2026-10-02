@@ -53,6 +53,7 @@ def _requested():
 def _tournament(title, **kwargs):
     now = timezone.now()
     options = {
+        "registration_mode": "team",
         "title": title,
         "registration_opens_at": now - timedelta(days=1),
         "registration_closes_at": now + timedelta(days=5),

@@ -44,6 +44,7 @@ def _tournament(**kwargs):
     kwargs.setdefault("roster_max", 6)
     kwargs.setdefault("status", TournamentStatus.PUBLISHED)
     kwargs.setdefault("published_at", now)
+    kwargs.setdefault("registration_mode", "team")
     return Tournament.objects.create(**kwargs)
 
 

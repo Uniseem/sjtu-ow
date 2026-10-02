@@ -43,10 +43,23 @@ def _tournament(**kwargs):
         "roster_max": 3,
         "status": TournamentStatus.PUBLISHED,
         "published_at": now,
-        "allow_individual_signup": True,
+        "registration_mode": "individual",
     }
     options.update(kwargs)
     return Tournament.objects.create(**options)
+
+
+def _enter_team_before_v53(tournament, **kwargs):
+    """Before v5.3 a tournament could take teams and individuals at once. The
+    pool still guards against what that left behind (design 8.8.2), so these
+    tests make such a tournament the only way left: switch, enter, switch back."""
+    tournament.registration_mode = "team"
+    tournament.save(update_fields=["registration_mode"])
+    try:
+        return reg.submit(tournament=tournament, **kwargs)
+    finally:
+        tournament.registration_mode = "individual"
+        tournament.save(update_fields=["registration_mode"])
 
 
 def _pool(tournament, count, prefix="散人"):
@@ -204,8 +217,8 @@ def test_a_name_taken_by_a_live_registration_is_refused():
         team=team, user=mate, roles={"tank": True}
     )
     team_services.approve_application(application=application, actor=captain)
-    reg.submit(
-        tournament=tournament,
+    _enter_team_before_v53(
+        tournament,
         team=team,
         actor=captain,
         selections={
@@ -271,8 +284,8 @@ def test_someone_who_joined_a_real_roster_cannot_be_placed():
         team=team, user=stray.user, roles={"tank": True}
     )
     team_services.approve_application(application=application, actor=captain)
-    reg.submit(
-        tournament=tournament,
+    _enter_team_before_v53(
+        tournament,
         team=team,
         actor=captain,
         selections={
@@ -453,7 +466,7 @@ def test_dissolving_returns_everyone_and_mails_them(django_capture_on_commit_cal
 
 @pytest.mark.django_db
 def test_a_team_registration_cannot_be_dissolved_or_left():
-    tournament = _tournament()
+    tournament = _tournament(registration_mode="team")
     captain = player("real-cap@example.com", "真队长")
     mate = player("real-mate@example.com", "真队友")
     team = team_services.create_team(user=captain, name="真战队")

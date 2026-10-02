@@ -66,6 +66,7 @@ def make(db):
         index = counter["n"]
         now = timezone.now()
         tournament = Tournament.objects.create(
+            registration_mode="team",
             title=f"状态表赛事{index}",
             registration_opens_at=now - timedelta(days=1),
             registration_closes_at=now + timedelta(days=7),
@@ -334,9 +335,15 @@ def test_auto_approve_sends_one_mail_saying_approved(
         registration, *_ = make(auto_approve=True)
 
     # The fixture also builds the team, whose application mails land here too.
-    about_registration = [m for m in mail.outbox if "报名" in m.subject]
+    # Members entered by the captain hear separately (v5.3), saying approved.
+    captain = registration.submitted_by.email
+    about_registration = [
+        m for m in mail.outbox if "报名" in m.subject and captain in m.recipients()
+    ]
     assert [m.subject for m in about_registration] == ["报名已提交"]
     assert "已通过" in about_registration[0].body
+    entered = [m for m in mail.outbox if m.subject == "你已被报名参加赛事"]
+    assert entered and all("当前状态：已通过" in m.body for m in entered)
 
 
 @pytest.mark.django_db
@@ -412,6 +419,7 @@ def test_auto_approve_is_locked_once_anyone_has_registered(make):
         "roster_min": tournament.roster_min,
         "roster_max": tournament.roster_max,
         "sjtu_only": False,
+        "registration_mode": "team",
         "auto_approve": True,
     }
 
@@ -430,6 +438,7 @@ def test_auto_approve_can_change_while_nobody_has_registered(db):
 
     now = timezone.now()
     tournament = Tournament.objects.create(
+        registration_mode="team",
         title="还没人报名",
         registration_opens_at=now - timedelta(days=1),
         registration_closes_at=now + timedelta(days=7),
@@ -449,6 +458,7 @@ def test_auto_approve_can_change_while_nobody_has_registered(db):
         "roster_min": tournament.roster_min,
         "roster_max": tournament.roster_max,
         "sjtu_only": False,
+        "registration_mode": "team",
         "auto_approve": True,
     }
 

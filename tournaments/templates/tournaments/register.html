@@ -57,7 +57,7 @@
         <input type="hidden" name="action" value="submit">
         <div class="c-step">
           <div class="c-step__head"><h2 class="text-lg">「{{ team.name }}」的名单</h2></div>
-          <p class="text-sm text-fg-2">整支战队报名，不能只挑部分成员。为每个队员选一个游戏 ID（会写进名单快照）。</p>
+          <p class="text-sm text-fg-2" data-no-confirm>整支战队一起报名：提交后全队 {{ rows|length }} 人直接进入名单，<strong class="text-fg">不需要队员确认</strong>，队员会收到邮件。游戏 ID 已经默认选好（有多个的选了第一个），需要的话改一下再提交。</p>
           <ol class="border-t border-line">
             {% for row in rows %}
               <li class="grid gap-3 border-b border-line py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] sm:items-center" data-roster-row>

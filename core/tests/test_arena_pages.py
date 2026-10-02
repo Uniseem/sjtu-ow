@@ -97,15 +97,24 @@ def test_tickets_count_only_approved_teams(client):
 @pytest.mark.django_db
 def test_the_detail_head_lists_the_key_facts(client):
     tournament = _tournament("看事实的", opens=-DAY, closes=DAY)
-    tournament.allow_individual_signup = True
+    tournament.registration_mode = "individual"
     tournament.save()
     _approve(tournament, team_services.create_team(user=person("队长"), name="甲队"))
     head = _section(
         _html(client, tournament.get_absolute_url()), "data-key-facts", "</header>"
     )
-    for label in ("报名截止", "比赛时间", "每队人数", "已通过", "个人报名"):
+    for label in ("报名截止", "比赛时间", "每队人数", "等待编队", "已编成"):
         assert label in head, label
+    assert "<dt>已编成</dt><dd>1 队</dd>" in head
+    assert "<dt>已通过</dt>" not in head
+
+    tournament.registration_mode = "team"
+    tournament.save()
+    head = _section(
+        _html(client, tournament.get_absolute_url()), "data-key-facts", "</header>"
+    )
     assert "<dt>已通过</dt><dd>1 队</dd>" in head
+    assert "等待编队" not in head
 
 
 # --- scrims ---------------------------------------------------------------------

@@ -27,6 +27,8 @@ from tournaments.models import (
 logger = logging.getLogger(__name__)
 
 AUTO_APPROVE_NOTE = "自动通过"
+TEAMS_REFUSED = "这项赛事是个人报名，不接受战队报名"
+INDIVIDUALS_REFUSED = "这项赛事只接受战队报名"
 
 
 class RegistrationError(Exception):
@@ -81,6 +83,9 @@ def precheck(*, tournament, team, actor, exclude_registration=None):
 
     problems = []
     now = timezone.now()
+    if not tournament.takes_teams:
+        # Design 8.1 (v5.3): one way in per tournament.
+        problems.append(TEAMS_REFUSED)
     if tournament.status != TournamentStatus.PUBLISHED or not (
         tournament.registration_opens_at <= now <= tournament.registration_closes_at
     ):
@@ -230,6 +235,16 @@ def submit(*, tournament, team, actor, selections) -> Registration:
     if problems:
         raise RegistrationError(problems)
 
+    # Design 8.3, 8.4 (v5.3): members are entered without confirming, so the
+    # ones new to the active roster hear about it. A rejected or withdrawn
+    # roster no longer holds a place, so a resubmit tells everyone again.
+    already_on = set()
+    if not is_new:
+        already_on = set(
+            registration.members.filter(is_active=True).values_list(
+                "user_id", flat=True
+            )
+        )
     if is_new:
         registration = Registration(tournament=tournament, team=team)
     registration.team_name = team.name
@@ -241,7 +256,10 @@ def submit(*, tournament, team, actor, selections) -> Registration:
         registration.roster_version += 1
     registration.save()
 
-    _write_roster(registration, members, chosen)
+    rows = _write_roster(registration, members, chosen)
+    entered = [
+        row for row in rows if not row.is_captain and row.user_id not in already_on
+    ]
     _refresh_public_pages(registration, from_status, registration.status)
     log(
         registration,
@@ -263,7 +281,7 @@ def submit(*, tournament, team, actor, selections) -> Registration:
             actor_type=ActorType.SYSTEM,
             note=AUTO_APPROVE_NOTE,
         )
-    transaction.on_commit(lambda: _after_submit(registration, action))
+    transaction.on_commit(lambda: _after_submit(registration, action, entered))
     return registration
 
 
@@ -282,10 +300,12 @@ def _refresh_public_pages(registration, from_status, to_status) -> None:
         prerender.request_page(registration.team.get_absolute_url(), kind="team")
 
 
-def _after_submit(registration, action):
+def _after_submit(registration, action, entered=()):
     from tournaments import notifications
+    from tournaments import notifications_registration as mails
 
     notifications.registration_submitted(registration, action)
+    mails.team_members_entered(registration, entered)
 
 
 def captain_can_change(registration, now=None) -> bool:
@@ -442,8 +462,8 @@ def individual_problems(*, tournament, user, now=None) -> list[str]:
     if not getattr(user, "is_authenticated", False):
         return [NOT_SIGNED_IN]
     problems = []
-    if not tournament.allow_individual_signup:
-        problems.append("这项赛事不接受个人报名")
+    if not tournament.takes_individuals:
+        problems.append(INDIVIDUALS_REFUSED)
     if not tournament.registration_open(now):
         problems.append("当前不在报名时间内")
     problems.extend(member_problems(tournament=tournament, user=user))

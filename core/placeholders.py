@@ -24,7 +24,11 @@ DIRECTORY = "img/placeholders"
 
 # Picked per object type, so an article and a tournament with the same id do
 # not share a picture on the homepage.
-KIND_OFFSETS = {"content.articlepage": 0, "tournaments.tournament": 13}
+KIND_OFFSETS = {
+    "content.articlepage": 0,
+    "tournaments.tournament": 13,
+    "scrims.scrim": 26,
+}
 
 
 # --- drawing helpers ----------------------------------------------------------

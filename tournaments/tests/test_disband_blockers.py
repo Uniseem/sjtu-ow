@@ -94,6 +94,7 @@ def test_withdrawing_first_lets_the_captain_disband(make):
 def test_every_blocking_tournament_is_named(make):
     first, captain, team, selections = make()
     second_tournament = Tournament.objects.create(
+        registration_mode="team",
         title="第二个赛事",
         registration_opens_at=first.tournament.registration_opens_at,
         registration_closes_at=first.tournament.registration_closes_at,

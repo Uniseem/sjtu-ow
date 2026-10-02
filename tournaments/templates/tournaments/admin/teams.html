@@ -10,8 +10,8 @@
     <dt>报名截止</dt><dd>{{ tournament.registration_closes_at }}</dd>
   </dl>
 
-  {% if not tournament.allow_individual_signup %}
-    <div class="messages"><ul><li class="warning">这项赛事没有开放个人报名。已有的临时队伍仍可以在这里调整。</li></ul></div>
+  {% if not tournament.takes_individuals %}
+    <div class="messages"><ul><li class="warning">这项赛事是整队报名，不收个人报名。已有的临时队伍仍可以在这里调整。</li></ul></div>
   {% endif %}
 
   <form method="post" data-teams-form data-roster-max="{{ roster_max }}" data-roster-min="{{ roster_min }}">

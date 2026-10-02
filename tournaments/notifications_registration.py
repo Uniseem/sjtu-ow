@@ -51,6 +51,24 @@ def registration_submitted(registration, action) -> None:
     _send(subject, body, recipients(registration))
 
 
+def team_members_entered(registration, rows) -> None:
+    """Design 8.3 (v5.3): the captain enters the whole team and nobody confirms,
+    so each member new to the roster hears which team, which game ID and where
+    things stand. One message each, since the game ID differs."""
+    captain = registration.submitted_by
+    by = f"队长 {captain.nickname} " if captain is not None else "队长"
+    for row in rows:
+        body = (
+            f"{by}为战队「{registration.team_name}」报名了"
+            f"「{registration.tournament.title}」，你在名单里。\n\n"
+            f"你的游戏 ID：{row.battletag or '未填'}\n"
+            f"当前状态：{registration.get_status_display()}\n\n"
+            f"整队报名不需要你确认。不想参加的话请在报名截止前联系队长。\n"
+            f"报名详情：{site_url(registration.get_absolute_url())}"
+        )
+        _send("你已被报名参加赛事", body, [row.user])
+
+
 def registration_status_changed(registration, note="") -> None:
     label = registration.get_status_display()
     lines = [

@@ -13,6 +13,19 @@ class TournamentStatus(models.TextChoices):
     CANCELLED = "cancelled", "已取消"
 
 
+class RegistrationMode(models.TextChoices):
+    """Design 8.1 (v5.3): one way in per tournament, chosen before anyone signs up."""
+
+    INDIVIDUAL = "individual", "个人报名"
+    TEAM = "team", "整队报名"
+
+
+MODE_SUMMARIES = {
+    RegistrationMode.INDIVIDUAL: "每人报名，管理员编队",
+    RegistrationMode.TEAM: "队长为全队报名",
+}
+
+
 class Tournament(models.Model):
     title = models.CharField("标题", max_length=100)
     summary = models.CharField("简介", max_length=300, blank=True)
@@ -35,15 +48,24 @@ class Tournament(models.Model):
     roster_min = models.PositiveSmallIntegerField("参赛人数下限", default=5)
     roster_max = models.PositiveSmallIntegerField("参赛人数上限", default=6)
     sjtu_only = models.BooleanField("仅限交大", default=False)
-    allow_individual_signup = models.BooleanField(
-        "开放个人报名",
-        default=False,
-        help_text="打开后，没有战队的用户可以个人报名，由赛事管理员编成临时队伍。",
+    registration_mode = models.CharField(
+        "报名方式",
+        max_length=16,
+        choices=RegistrationMode.choices,
+        default=RegistrationMode.INDIVIDUAL,
+        help_text=(
+            "个人报名：每个人自己报名（队长也一样），由赛事管理员编成临时队伍。"
+            "整队报名：只收战队，队长报名后全队直接进入名单，不需要队员确认。"
+            "已经有人报名之后不能再改。"
+        ),
     )
     auto_approve = models.BooleanField(
         "报名自动通过",
         default=False,
-        help_text="打开后，报名通过全部校验即由系统自动通过，不需要管理员审核。已经有报名之后不能再改。",
+        help_text=(
+            "只对整队报名有效（临时队伍编成即通过）。打开后，报名通过全部校验即由系统"
+            "自动通过，不需要管理员审核。已经有报名之后不能再改。"
+        ),
     )
     status = models.CharField(
         "状态",
@@ -116,6 +138,20 @@ class Tournament(models.Model):
 
     def registration_open(self, now=None) -> bool:
         return self.status == TournamentStatus.PUBLISHED and self.phase(now) == "open"
+
+    @property
+    def takes_individuals(self) -> bool:
+        """Everyone signs up alone and admins form the teams (design 8.8)."""
+        return self.registration_mode == RegistrationMode.INDIVIDUAL
+
+    @property
+    def takes_teams(self) -> bool:
+        """Captains enter their whole team, no member confirms (design 8.3)."""
+        return self.registration_mode == RegistrationMode.TEAM
+
+    @property
+    def mode_summary(self) -> str:
+        return MODE_SUMMARIES[self.registration_mode]
 
 
 class RegistrationStatus(models.TextChoices):

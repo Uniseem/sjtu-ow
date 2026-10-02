@@ -1,36 +1,32 @@
 <div id="slot-tournament-actions" data-slot="tournament-actions:{{ tournament.pk }}" class="flex flex-wrap items-center gap-3"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% comment %}
+    Design 8.2 (v5.3): an individual tournament takes everyone alone, captains
+    included; a team tournament takes captains, and a member a captain entered
+    sees the team here, since nobody is asked to confirm.
+  {% endcomment %}
   {% if tournament.status == "cancelled" %}
     <span class="text-sm text-fg-2">赛事已取消，不再接受报名。</span>
   {% elif not request.user.is_authenticated %}
     <a href="{% url 'account_login' %}?next={{ tournament.get_absolute_url }}" class="c-btn c-btn--primary">登录后报名</a>
-  {% elif captain_teams %}
-    {% if my_registration %}
-      {% include "components/registration_status.html" with registration=my_registration %}
-      <a href="{{ my_registration.get_absolute_url }}" class="c-btn c-btn--primary">查看报名</a>
-    {% elif not registration_open %}
-      <span class="text-sm text-fg-2">当前不在报名时间内。</span>
-    {% else %}
-      <a href="{% url 'tournament_register' tournament.pk %}" class="c-btn c-btn--primary">为战队报名</a>
-    {% endif %}
-  {% elif my_signup %}
-    {% if my_signup.is_placed %}
-      {% include "components/status_badge.html" with kind="ok" label="已编入「"|add:my_signup.registration.team_name|add:"」" %}
-      <a href="{{ my_signup.registration.get_absolute_url }}" class="c-btn c-btn--primary">查看报名</a>
-    {% else %}
-      {% include "components/status_badge.html" with kind="ok" label="已个人报名，等待编队" %}
-      <span class="text-sm text-fg-2">{% for label in my_signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}</span>
-      {% if registration_open %}
-        <a href="{% url 'tournament_individual_signup' tournament.pk %}" class="c-btn c-btn--secondary c-btn--sm">修改</a>
-        <form method="post" action="{% url 'tournament_individual_cancel' tournament.pk %}">
-          {% csrf_token %}
-          <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消个人报名</button>
-        </form>
+  {% elif tournament.takes_individuals %}
+    {% if my_signup %}
+      {% if my_signup.is_placed %}
+        {% include "components/status_badge.html" with kind="ok" label="已编入「"|add:my_signup.registration.team_name|add:"」" %}
+        <a href="{{ my_signup.registration.get_absolute_url }}" class="c-btn c-btn--primary">查看报名</a>
       {% else %}
-        <span class="text-sm text-fg-2">报名已截止，不能再修改。</span>
+        {% include "components/status_badge.html" with kind="ok" label="已个人报名，等待编队" %}
+        <span class="text-sm text-fg-2">{% for label in my_signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}</span>
+        {% if registration_open %}
+          <a href="{% url 'tournament_individual_signup' tournament.pk %}" class="c-btn c-btn--secondary c-btn--sm">修改</a>
+          <form method="post" action="{% url 'tournament_individual_cancel' tournament.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消个人报名</button>
+          </form>
+        {% else %}
+          <span class="text-sm text-fg-2">报名已截止，不能再修改。</span>
+        {% endif %}
       {% endif %}
-    {% endif %}
-  {% elif individual_enabled %}
-    {% if not registration_open %}
+    {% elif not registration_open %}
       <span class="text-sm text-fg-2">当前不在报名时间内。</span>
     {% elif individual_problems %}
       <div class="c-notice c-notice--warn w-full max-w-2xl">{% include "components/icon.html" with name="alert" %}
@@ -43,9 +39,23 @@
       </div>
     {% else %}
       <a href="{% url 'tournament_individual_signup' tournament.pk %}" class="c-btn c-btn--primary">个人报名</a>
-      <span class="text-sm text-fg-2">没有战队？报名后由赛事管理员编队。</span>
+      <span class="text-sm text-fg-2">每人自己报名，截止后由赛事管理员编队。</span>
     {% endif %}
+  {% elif captain_teams %}
+    {% if my_registration %}
+      {% include "components/registration_status.html" with registration=my_registration %}
+      <a href="{{ my_registration.get_absolute_url }}" class="c-btn c-btn--primary">查看报名</a>
+    {% elif not registration_open %}
+      <span class="text-sm text-fg-2">当前不在报名时间内。</span>
+    {% else %}
+      <a href="{% url 'tournament_register' tournament.pk %}" class="c-btn c-btn--primary">为战队报名</a>
+      <span class="text-sm text-fg-2">整队报名，提交后全队直接进入名单，不需要队员确认。</span>
+    {% endif %}
+  {% elif on_roster %}
+    {% include "components/registration_status.html" with registration=on_roster %}
+    <span class="text-sm">你在「{{ on_roster.team_name }}」的名单里</span>
+    <a href="{{ on_roster.get_absolute_url }}" class="c-btn c-btn--primary">查看报名</a>
   {% else %}
-    <span class="text-sm text-fg-2">需要由队长为战队报名。</span>
+    <span class="text-sm text-fg-2">这项赛事是整队报名，需要由队长为战队报名。</span>
   {% endif %}
 </div>

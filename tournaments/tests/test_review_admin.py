@@ -53,6 +53,7 @@ def registration(site):
     team_services.approve_application(application=application, actor=captain)
     now = timezone.now()
     tournament = Tournament.objects.create(
+        registration_mode="team",
         title="审核赛",
         registration_opens_at=now - timedelta(days=1),
         registration_closes_at=now + timedelta(days=7),

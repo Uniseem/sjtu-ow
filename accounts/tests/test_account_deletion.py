@@ -40,6 +40,7 @@ def world(db):
 
     now = timezone.now()
     tournament = Tournament.objects.create(
+        registration_mode="team",
         title="注销测试赛",
         registration_opens_at=now - timedelta(days=1),
         registration_closes_at=now + timedelta(days=7),

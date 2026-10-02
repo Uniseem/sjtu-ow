@@ -77,6 +77,11 @@ def has_registrations(tournament) -> bool:
     return tournament.registrations.exists()
 
 
+def has_entries(tournament) -> bool:
+    """A team entry or a pool entry locks 「报名方式」 (design 8.1, v5.3)."""
+    return has_registrations(tournament) or tournament.individual_signups.exists()
+
+
 def cancellation_recipients(tournament):
     """Who hears that a tournament was cancelled (design 8.1, 10.2).
 
