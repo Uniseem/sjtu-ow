@@ -1171,34 +1171,45 @@ def render_ridge() -> str:
     )
 
 
-# The horizon under a picture head (v6.0 draft): a mask, not a picture. CSS
-# fills it with the page's own colour, so the scene sinks into the page under
-# two ridges; the far one is half see-through, the way the art fades what is
-# far away. Stretched to the page width like the footer's ridge.
-HORIZON_FILE = "horizon.svg"
+# The horizon under a picture head (v6.0 draft): masks, not pictures. CSS
+# fills them with the page's own colour, so the scene sinks into the page under
+# two jagged ridges. The far one is a flat half-tone, the step between the
+# picture and the page (the user, 10-03: no glow — 「继续用那种折线，加一个过渡层
+# 就好了」); the near one is the page itself. One file each, so the two can
+# drift at their own speed (「可以改成动态的」): each ridge ends where it began,
+# and tiles without a seam.
+HORIZON_FAR_FILE = "horizon-far.svg"
+HORIZON_NEAR_FILE = "horizon-near.svg"
 HORIZON_HEIGHT = 120
+HORIZON_STEP = "0.5"  # how much of the page shows in the far ridge
 
 
-def render_horizon() -> str:
-    rng = random.Random(2026)
-    shapes = []
-    # The far ridge is mist: clear at its crest, thicker towards the near one,
-    # so over a dark picture it reads as haze, not a grey band.
-    for i, fill in enumerate(("url(#mist)", "#000")):
-        line = _ridge(
-            rng, HORIZON_HEIGHT * (0.30 + 0.32 * i), HORIZON_HEIGHT * (0.24 - 0.08 * i)
-        )
-        points = line + [(WIDTH, HORIZON_HEIGHT), (0, HORIZON_HEIGHT)]
-        shapes.append(f'<polygon points="{_points(points)}" fill="{fill}"/>')
+def _tiling_ridge(rng, base, rough):
+    """A ridge whose right end meets its left, leaned by a straight line."""
+    line = _ridge(rng, base, rough)
+    lift = line[0][1] - line[-1][1]
+    last = len(line) - 1
+    return [(x, y + lift * i / last) for i, (x, y) in enumerate(line)]
+
+
+def _horizon(seed, base, rough, opacity) -> str:
+    line = _tiling_ridge(random.Random(seed), base, rough)
+    points = _points(line + [(WIDTH, HORIZON_HEIGHT), (0, HORIZON_HEIGHT)])
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" '
         f'viewBox="0 0 {WIDTH} {HORIZON_HEIGHT}" width="{WIDTH}" '
         f'height="{HORIZON_HEIGHT}" preserveAspectRatio="none">'
-        '<defs><linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">'
-        '<stop offset="0.1" stop-color="#000" stop-opacity="0"/>'
-        '<stop offset="0.75" stop-color="#000" stop-opacity="0.6"/>'
-        "</linearGradient></defs>" + "".join(shapes) + "</svg>\n"
+        f'<polygon points="{points}" fill="#000" fill-opacity="{opacity}"/>'
+        "</svg>\n"
     )
+
+
+def render_horizon_far() -> str:
+    return _horizon(2026, HORIZON_HEIGHT * 0.42, HORIZON_HEIGHT * 0.26, HORIZON_STEP)
+
+
+def render_horizon_near() -> str:
+    return _horizon(1896, HORIZON_HEIGHT * 0.66, HORIZON_HEIGHT * 0.18, "1")
 
 
 # The mark before a section's title (v6.0 draft): a far peak behind a near
@@ -1226,7 +1237,8 @@ def moving_files() -> dict[str, str]:
 def still_files() -> dict[str, str]:
     files = {hue_filename(h): render_hue(h) for h in HUE_SCENES}
     files[RIDGE_FILE] = render_ridge()
-    files[HORIZON_FILE] = render_horizon()
+    files[HORIZON_FAR_FILE] = render_horizon_far()
+    files[HORIZON_NEAR_FILE] = render_horizon_near()
     files[PEAKS_FILE] = render_peaks()
     return files
 

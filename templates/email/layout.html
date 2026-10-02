@@ -14,9 +14,9 @@
 <meta name="supported-color-schemes" content="light">
 <title>{{ subject }}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f1eee8;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f1eee8;font-size:1px;line-height:1px;">{% block preheader %}{{ preheader }}{% endblock %}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1eee8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Noto Sans SC','Helvetica Neue',Arial,sans-serif;">
+<body style="margin:0;padding:0;background-color:#f5f6f8;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f5f6f8;font-size:1px;line-height:1px;">{% block preheader %}{{ preheader }}{% endblock %}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f6f8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Noto Sans SC','Helvetica Neue',Arial,sans-serif;">
   <tr>
     <td align="center" style="padding:32px 12px 40px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
@@ -26,20 +26,20 @@
           </td>
         </tr>
         <tr>
-          <td data-letter-card style="background-color:#fbfaf7;border:1px solid #dcd5c9;border-top:0;border-radius:0 0 8px 8px;padding:32px;color:#1d2531;font-size:15px;line-height:1.75;">
+          <td data-letter-card style="background-color:#ffffff;border:1px solid #e1e4e8;border-top:0;border-radius:0 0 8px 8px;padding:32px;color:#111318;font-size:15px;line-height:1.75;">
             {% block greeting %}<p style="margin:0 0 16px;font-weight:600;">{{ greeting }}</p>{% endblock %}
             {% block body %}{% endblock %}
             {% block closing %}
             <p style="margin:32px 0 0;">{{ closing }}</p>
             <p style="margin:16px 0 0;font-weight:600;">{{ signature }}</p>
-            <p style="margin:0;color:#5a6373;font-size:14px;">{{ date }}</p>
+            <p style="margin:0;color:#5f6671;font-size:14px;">{{ date }}</p>
             {% endblock %}
           </td>
         </tr>
         <tr>
-          <td data-letter-foot style="padding:20px 32px 0;color:#5a6373;font-size:13px;line-height:1.7;">
+          <td data-letter-foot style="padding:20px 32px 0;color:#5f6671;font-size:13px;line-height:1.7;">
             {% block foot %}{% block reason %}{% endblock %}{{ no_reply }}<br>{% endblock %}
-            <a href="{{ site_url }}" style="color:#5a6373;">{{ site_host }}</a>
+            <a href="{{ site_url }}" style="color:#5f6671;">{{ site_host }}</a>
           </td>
         </tr>
       </table>

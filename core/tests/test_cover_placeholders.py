@@ -54,7 +54,8 @@ def test_the_committed_pictures_are_what_the_code_draws():
     # v5.2: the five base pictures and the footer ridge (design-details 1.9);
     # v6.0 draft: the horizon and the peaks, both masks.
     assert sorted(STILL_FILES) == [
-        "horizon.svg",
+        "horizon-far.svg",
+        "horizon-near.svg",
         *(f"hue-{n}.svg" for n in range(1, 6)),
         "peaks.svg",
         "ridge.svg",
@@ -81,7 +82,12 @@ def test_the_command_writes_every_picture_and_drops_stale_ones(tmp_path, setting
 
 
 # Drawn to a page's width or as a mark, not as a 16:9 scene.
-EDGES = (placeholders.RIDGE_FILE, placeholders.HORIZON_FILE, placeholders.PEAKS_FILE)
+EDGES = (
+    placeholders.RIDGE_FILE,
+    placeholders.HORIZON_FAR_FILE,
+    placeholders.HORIZON_NEAR_FILE,
+    placeholders.PEAKS_FILE,
+)
 
 
 def test_the_pictures_are_plain_graphics():

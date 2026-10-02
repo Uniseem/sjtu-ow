@@ -19,14 +19,14 @@ from django.views.decorators.http import require_GET
 ADMIN_PERMISSION = "wagtailadmin.access_admin"
 
 COLOURS = [
-    ("页面", "bg", "bg-bg", "#F1EEE8"),
-    ("卡片、页头", "surface", "bg-surface", "#FBFAF7"),
-    ("表头、占位、日期块", "surface-2", "bg-surface-2", "#E9E4DB"),
-    ("描边、分隔线", "line", "bg-line", "#DCD5C9"),
-    ("控件边框", "control", "bg-control", "#757B86"),
-    ("正文", "fg", "bg-fg", "#1D2531"),
-    ("次要文字", "fg-2", "bg-fg-2", "#485263"),
-    ("日期、署名", "fg-3", "bg-fg-3", "#5A6373"),
+    ("页面", "bg", "bg-bg", "#F5F6F8"),
+    ("卡片、页头", "surface", "bg-surface", "#FFFFFF"),
+    ("表头、占位、日期块", "surface-2", "bg-surface-2", "#EEF0F3"),
+    ("描边、分隔线", "line", "bg-line", "#E1E4E8"),
+    ("控件边框", "control", "bg-control", "#767D88"),
+    ("正文", "fg", "bg-fg", "#111318"),
+    ("次要文字", "fg-2", "bg-fg-2", "#4A505B"),
+    ("日期、署名", "fg-3", "bg-fg-3", "#5F6671"),
     ("砖红", "primary", "bg-primary", "#9B3A33"),
     ("砖红悬停", "primary-hover", "bg-primary-hover", "#80302A"),
     ("红色文字", "primary-text", "bg-primary-text", "#963830"),
@@ -43,8 +43,8 @@ COLOURS = [
     ("提醒底", "warn-soft", "bg-warn-soft", "#EFE7C7"),
     ("信息", "info", "bg-info", "#3A5F82"),
     ("信息底", "info-soft", "bg-info-soft", "#E0E8EF"),
-    ("操作提示底", "toast", "bg-toast", "#232A35"),
-    ("操作提示字", "on-toast", "bg-on-toast", "#F1EEE8"),
+    ("操作提示底", "toast", "bg-toast", "#1C1F25"),
+    ("操作提示字", "on-toast", "bg-on-toast", "#F2F3F5"),
     # Inside the night bands (13.2.6 深色条): the dark mode's values.
     ("深色条底", "night", "bg-night", "#141A24"),
     ("图片卡深底", "night-2", "bg-night-2", "#222A37"),

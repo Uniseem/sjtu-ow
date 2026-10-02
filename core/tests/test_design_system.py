@@ -696,8 +696,9 @@ def test_sign_in_is_a_card_beside_what_an_account_is_for(client, home):
     assert why.count('class="c-why__icon') == 3
     assert "border-fg" not in main
     card = _block(INPUT_CSS.read_text(encoding="utf-8"), "  .c-auth {")
-    assert "border: 1px solid var(--color-line);" in card
-    assert "border-radius: var(--radius-sm);" in card
+    # v6.0 draft: a tone apart from the page, no drawn edge, round corners.
+    assert "border:" not in card
+    assert "border-radius: var(--radius-lg);" in card
 
 
 @pytest.mark.parametrize(
