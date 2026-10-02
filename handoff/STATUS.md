@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: M10 前台视觉 v6.0（已合并到 main），M7 上线准备暂停
-round: 099-merge-v6
+round: 100-deploy-vps
 next: user
 updated: 2026-10-03
-blocked_on: 个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定；测试机升级要你的 SSH 密钥（先弄清主机密钥为什么变了）
+blocked_on: 169.58.217.180 要你配反向代理、告诉我域名（我改 .env）、自己建管理员；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定；测试机升级要你的 SSH 密钥（先弄清主机密钥为什么变了）
 ```
 
 ## 现在该谁动手
+
+**100（2026-10-03）**：v6.0（`a95a696`）**部署到 169.58.217.180**，按你说的端口 22887、不配反向代理。`http://169.58.217.180:22887` 已经能打开，`/healthz` 四项都是 ok，全量预渲染 9 页成功，定时任务装在 `/etc/cron.d/sjtu-ow`。机器上原有的 WordPress、HedgeDoc 等没动，本项目不占 80/443。细节（命令、本机专用的两个文件、`.env` 要点）在 `AGENTS.md`「第二台」。**你要做的**：① 反向代理指到 `22887`，带上 `X-Forwarded-Proto: https`；② 把域名告诉我，我把它加进 `DJANGO_ALLOWED_HOSTS`、`SITE_URL`、`DJANGO_CSRF_TRUSTED_ORIGINS`（不加的话用域名访问是 400）；③ HTTPS 好了以后自己建管理员：`docker compose -p sjtu-ow -f deploy/docker-compose.yml -f deploy/docker-compose.vps.yml --env-file .env exec web python manage.py createsuperuser`（在 `/srv/sjtu-ow` 里跑）；④ 现在开着「测试环境」横幅、禁止搜索引擎抓取，是正式站的话说一声关掉。
 
 **099（2026-10-03）**：你说「现在非常满意」，试验分支 `claude/flat-muted-ui`（095–098）**合并到 `main`**（`main` 没有新提交，直接快进），文档从「v6.0 草案」改成 v6.0：设计文档版本和附录 D、13.2.2 的说明、细节文档版本、README 的视觉风格一段、代码注释里的「v6.0 draft」、这份 STATUS。分支还留在 GitHub 上，已经没用了，要删就说。下面 095–098 的段落是当时写的，「试验分支」「没有合并」现在都已经合并。
 
@@ -380,6 +382,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 097-member-page | 成员个人主页（基础版，设计 6.4）：`/members/<编号>/`，只有已加入的用户有；只放本来公开的信息（头像、昵称、宣言、位置段位、分组职务、现役和待过的战队、文章），实时渲染、`noindex`；名片、小卡、战队成员卡、退役列表、作者卡、搜索结果都能点进去 | **Claude 实现**，自查通过。新测试 `test_member_page.py`（10 条）；10 处变异全部被抓到。页面设计待和用户讨论 |
 | 098-seats-and-status | **分支 `claude/flat-muted-ui`，099 合并**。首页「近期」内战行不拉伸、大图卡跟列表走；进度条换成名额格 `c-seats`（一格一个名额）；状态标签 `c-status` 去掉底色块，改成山形记号加字 | **Claude 实现**，自查通过。`test_flat_muted.py` 加 3 条；7 处变异全部被抓到。属性标签 `c-tag` 待用户定 |
 | 099-merge-v6 | 用户「合并到主分支，我现在非常满意」：试验分支快进合并到 `main`；文档从「v6.0 草案」改成 v6.0（设计文档版本、附录 D、13.2.2，细节文档版本，README 视觉风格，代码注释，STATUS） | **Claude**，只改文档和注释；整组检查重跑 |
+| 100-deploy-vps | v6.0 部署到 169.58.217.180：`/srv/sjtu-ow`、项目名 `sjtu-ow`，Caddy 只在 22887 听 HTTP（本机专用 `docker-compose.vps.yml`、`Caddyfile.vps`，信任私有地址的反向代理头），`.env` 在服务器上生成，`TEST_ENVIRONMENT=1`，`/etc/cron.d/sjtu-ow` 按柏林时区换算；迁移、`init_site`、全量预渲染 9 页成功，外部访问首页、成员、赛事 200，`/healthz` 全 ok | **Claude 部署**。反向代理、域名、管理员账号待用户 |
 
 ## 当前待定问题
 

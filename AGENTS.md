@@ -77,6 +77,22 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 - **不要**执行 `docker system prune`、`docker volume prune` 这类全局清理
 - 本项目的 Caddy 会占用 80 和 443 端口。以后这台机器上别的网站要用域名访问，得经过这个 Caddy 转发
 
+### 第二台：169.58.217.180（用户 2026-10-03 指定，v6.0 起）
+
+用户：「当前版本部署到 169.58.217.180 的 vps 上，端口使用 22887。不需要配置反代，我自己会配」。和测试机的区别：**本项目不占 80/443**，Caddy 只在 22887 上听 HTTP，域名和 HTTPS 由用户自己的反向代理负责。
+
+| 项目 | 内容 |
+|---|---|
+| 登录 | `root`，SSH 密钥（开发者本机的 `id_ed25519`），Debian 12，Docker 29 / Compose v5 |
+| 部署目录 | `/srv/sjtu-ow`；`.env` 权限 600，三把密钥在服务器上生成（`secrets.token_urlsafe`），没离开过服务器 |
+| Compose | 项目名 `sjtu-ow`。**每条命令**：`docker compose -p sjtu-ow -f deploy/docker-compose.yml -f deploy/docker-compose.vps.yml --env-file .env` |
+| 本机专用文件（不在仓库里） | `deploy/docker-compose.vps.yml`：`proxy` 的端口用 `!override` 换成 `22887:80`，站点地址 `:80`，挂 `Caddyfile.vps`；`deploy/Caddyfile.vps`：仓库 Caddyfile 的全局块加 `servers { trusted_proxies static private_ranges }`，信任同机反向代理带来的 `X-Forwarded-Proto` |
+| `.env` 要点 | `DJANGO_ALLOWED_HOSTS=169.58.217.180,localhost`、`SITE_URL` 和 `DJANGO_CSRF_TRUSTED_ORIGINS` 是 `http://169.58.217.180:22887`（**用户给了域名后要加上域名并改成 https**，然后 `up -d`）；`DJANGO_SECURE_SSL_REDIRECT=false`（跳转由用户的反向代理做）；`TEST_ENVIRONMENT=1`（横幅、禁止抓取，用户说是正式站再关） |
+| 定时任务 | `/etc/cron.d/sjtu-ow`（不碰 root 的 crontab）。服务器时区是 **Europe/Berlin**，cron 不支持 `CRON_TZ`，模板的北京时间按夏令时减 6 小时写 |
+| 登录后台 | 生产设置的 Cookie 只走 HTTPS，**直接用 `http://IP:22887` 登录不了**，要等反向代理配好 HTTPS。管理员账号由用户自己建：`… exec web python manage.py createsuperuser` |
+
+这台机器上还跑着 WordPress、HedgeDoc、FileCodeBox、相册和几个监控进程，规矩和测试机一样：只动 `/srv/sjtu-ow` 和 `sjtu-ow` 这个 Compose 项目，不做全局清理。升级照 README「生产 / 测试环境启动」，命令换成上面那条，升级后全量 `prerender`。
+
 ## 硬规则
 
 1. **`docs/design.md` 是唯一设计依据。** 要改设计：需要用户拍板的先问；定了之后**先改文档再改代码**，在附录 D 记版本。实现和设计不一致时，要么改代码，要么改设计，不能两边各说各的
