@@ -93,7 +93,7 @@ MOST_SEATS = 24
 
 @register.simple_tag
 def seats(taken, total) -> list[bool]:
-    """One cell per place, taken first (v6.0 draft c-seats). A game rarely
+    """One cell per place, taken first (v6.0 c-seats). A game rarely
     needs more than 12; past MOST_SEATS each cell stands for a share, so the
     row never runs to dozens of slivers."""
     try:

@@ -145,7 +145,7 @@ def test_upcoming_scrims_show_signups_against_what_a_match_needs(client):
     html = _html(client, "/scrims/")
     upcoming = _section(html, 'aria-labelledby="scrims-upcoming"')
     assert "已报 3 / 10" in upcoming
-    # v6.0 draft: one cell per place, the taken ones filled.
+    # v6.0: one cell per place, the taken ones filled.
     seats = upcoming[
         upcoming.index("data-seats>") : upcoming.index(
             "</span>", upcoming.index("data-seats>")

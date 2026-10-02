@@ -1,4 +1,4 @@
-"""Branch claude/flat-muted-ui (v6.0 draft): the placeholder art's flat,
+"""Design v6.0 (rounds 095–098, merged 10-03): the placeholder art's flat,
 layered, muted look carried into the interface.
 
 The user, 2026-10-03: 「把现在这个 svg 的扁平风格……以及它的这种比较克制比较淡的色调

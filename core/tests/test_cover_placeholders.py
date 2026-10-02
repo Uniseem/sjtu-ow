@@ -52,7 +52,7 @@ def test_the_committed_pictures_are_what_the_code_draws():
     """Change core/placeholders.py, then run render_placeholders and commit."""
     assert len(MOVING) == COUNT + len(placeholders.SECTION_SCENES) == 42
     # v5.2: the five base pictures and the footer ridge (design-details 1.9);
-    # v6.0 draft: the horizon and the peaks, both masks.
+    # v6.0: the horizon and the peaks, both masks.
     assert sorted(STILL_FILES) == [
         "horizon-far.svg",
         "horizon-near.svg",

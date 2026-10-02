@@ -1112,7 +1112,7 @@ def section_paths(section: str) -> dict[str, str]:
 
 # The five 底图 behind faces and team logos without a picture
 # (design-details 1.5, 2.2; v5.2): red, orange, blue, green, gold, in the
-# order of the label tints. Still: a page can show dozens of them. v6.0 draft:
+# order of the label tints. Still: a page can show dozens of them. v6.0:
 # the same scenes at dusk and muted (brick rose, sand, slate, sage, ochre), so
 # a wall of faces sits quietly on the paper-coloured page.
 HUE_SCENES = {
@@ -1171,7 +1171,7 @@ def render_ridge() -> str:
     )
 
 
-# The horizon under a picture head (v6.0 draft): masks, not pictures. CSS
+# The horizon under a picture head (v6.0): masks, not pictures. CSS
 # fills them with the page's own colour, so the scene sinks into the page under
 # two jagged ridges. The far one is a flat half-tone, the step between the
 # picture and the page (the user, 10-03: no glow — 「继续用那种折线，加一个过渡层
@@ -1212,7 +1212,7 @@ def render_horizon_near() -> str:
     return _horizon(1896, HORIZON_HEIGHT * 0.66, HORIZON_HEIGHT * 0.18, "1")
 
 
-# The mark before a section's title (v6.0 draft): a far peak behind a near
+# The mark before a section's title (v6.0): a far peak behind a near
 # one, also a mask, painted in the accent.
 PEAKS_FILE = "peaks.svg"
 

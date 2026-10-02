@@ -79,7 +79,7 @@
   --radius-*: initial;
   --radius-xs: 4px;
   --radius-sm: 8px;
-  /* v6.0 draft: surfaces are told apart by tone, not by a line, and round
+  /* v6.0: surfaces are told apart by tone, not by a line, and round
      off like Material 3's containers. */
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -1120,7 +1120,7 @@
     z-index: 1;
   }
 
-  /* The horizon (v6.0 draft): the picture sinks into the page under two
+  /* The horizon (v6.0): the picture sinks into the page under two
      ridges in the page's own colour, the far one a half-tone step, the way
      the art fades what is far away. --page-bg is the page's ground even
      inside a night band, where --color-bg means the band's. Each ridge is its
@@ -1212,7 +1212,7 @@
     margin-bottom: 1.25rem;
   }
 
-  /* The peaks before a section's title (v6.0 draft): the art's far and near
+  /* The peaks before a section's title (v6.0): the art's far and near
      ridge as a small mark in the accent. */
   .c-sectionhead > h2 {
     display: inline-flex;
@@ -1415,7 +1415,7 @@
     color: var(--color-surface);
   }
 
-  /* Status (v6.0 draft): a word after the site's small peaks, both in the
+  /* Status (v6.0): a word after the site's small peaks, both in the
      status's colour; no pill. The user, 10-03, of the tinted chips: 「ai 味道
      也很重，而且和站点的风格相违背了」. --status is the mark's colour, which
      stays when a picture band turns the word light. */
@@ -1475,7 +1475,7 @@
     color: var(--color-night-fg);
   }
 
-  /* Seats (v6.0 draft): one cell per place, taken ones in the accent — the
+  /* Seats (v6.0): one cell per place, taken ones in the accent — the
      grouped list's cut tiles, small. Replaces the rounded progress bar the
      user found 「AI 味道很重」. */
   .c-seats {
@@ -3171,7 +3171,7 @@
       grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     }
 
-    /* v6.0 draft: the scrims keep their own height (stretched to the
+    /* v6.0: the scrims keep their own height (stretched to the
        picture's, each row was mostly empty: 「空白太多了」); the picture follows
        the list instead, with a floor so it stays a picture. */
     .c-upcoming--two > .c-feature {
@@ -3240,7 +3240,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* List rows: a date block, the title and one line of facts. v6.0 draft: a
+  /* List rows: a date block, the title and one line of facts. v6.0: a
      Material 3 grouped list — each row its own tile, a few pixels of the page
      between them, the group's outer corners round, the inner ones tight. */
   .c-rows {
@@ -3302,7 +3302,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* The date leading a row (v6.0 draft): type, no box. The row is already a
+  /* The date leading a row (v6.0): type, no box. The row is already a
      tile; a grey square inside it was a box in a box. The month small in the
      accent, the day large in the figure face. */
   .c-date {
