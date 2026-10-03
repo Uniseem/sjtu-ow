@@ -153,3 +153,26 @@ def register_admin_log_actions(actions):
 
     for action, (label, message) in ACTIONS.items():
         actions.register_action(action, label, message)
+
+
+class ManualMenuItem(MenuItem):
+    """「后台手册」 for every role that has a part in it (design 14.1, v6.47)."""
+
+    def is_shown(self, request):
+        from core.admin_manual import parts_for
+
+        return bool(parts_for(request.user))
+
+
+@hooks.register("register_admin_urls")
+def register_manual_url():
+    from core.admin_manual import manual_view
+
+    return [path("manual/", manual_view, name="admin_manual")]
+
+
+@hooks.register("register_admin_menu_item")
+def register_manual_menu_item():
+    return ManualMenuItem(
+        "后台手册", reverse("admin_manual"), icon_name="help", order=990
+    )
