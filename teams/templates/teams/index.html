@@ -16,8 +16,11 @@
         </div>
       </div>
       <nav class="c-tabs mt-8" aria-label="筛选">
-        <a href="{% url 'team_index' %}"{% if not recruiting_only %} aria-current="page"{% endif %}>全部<span class="c-tabs__count">{{ team_total }}</span></a>
+        <a href="{% url 'team_index' %}"{% if not recruiting_only and not role %} aria-current="page"{% endif %}>全部<span class="c-tabs__count">{{ team_total }}</span></a>
         <a href="{% url 'team_index' %}?recruiting=1"{% if recruiting_only %} aria-current="page"{% endif %}>只看招募中<span class="c-tabs__count">{{ recruiting_total }}</span></a>
+        {% for code, label, count in role_tabs %}
+          <a href="{% url 'team_index' %}?role={{ code }}"{% if role == code %} aria-current="page"{% endif %} data-role-tab="{{ code }}">缺{{ label }}<span class="c-tabs__count">{{ count }}</span></a>
+        {% endfor %}
       </nav>
     </div>
   </header>
@@ -29,6 +32,8 @@
           {% include "components/team_tile.html" with members=team.members_total capacity=max_members show_closed=True about=True %}
         {% endfor %}
       </ul>
+    {% elif role %}
+      {% include "components/empty_state.html" with title="暂时没有缺"|add:role_label|add:"的战队" message="现在招募中的战队都不缺这个位置，或者已经满员。可以看看全部战队，或者自己建一支。" action_url="/teams/new/" action_label="创建战队" %}
     {% else %}
       {% include "components/empty_state.html" with title="还没有战队" message="第一支战队可以由你来建。" action_url="/teams/new/" action_label="创建战队" %}
     {% endif %}

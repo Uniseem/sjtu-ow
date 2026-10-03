@@ -463,18 +463,35 @@ def pending_applications(team):
     )
 
 
-def team_totals() -> dict:
-    """How many active teams, and how many recruit, in one query (design 7.6)."""
+def team_totals(limit=None) -> dict:
+    """How many active teams, how many recruit, and how many each position
+    could join now (design 7.6, v6.35: ``role_tank`` …), in one query."""
     from django.db.models import Count, Q
 
-    return active_teams().aggregate(
-        team_total=Count("id"),
-        recruiting_total=Count("id", filter=Q(is_recruiting=True)),
+    from accounts.roles import ROLE_ORDER
+
+    limit = limit or max_members()
+    open_now = Q(is_recruiting=True, members_total__lt=limit)
+    return (
+        active_teams()
+        .annotate(members_total=Count("memberships"))
+        .aggregate(
+            team_total=Count("id"),
+            recruiting_total=Count("id", filter=Q(is_recruiting=True)),
+            **{
+                f"role_{role}": Count("id", filter=open_now & _wants(role))
+                for role in ROLE_ORDER
+            },
+        )
     )
 
 
-def open_teams(recruiting_only=False):
-    """Team list: one query, with the member count annotated (no N+1)."""
+def open_teams(recruiting_only=False, role="", limit=None):
+    """Team list: one query, with the member count annotated (no N+1).
+
+    ``role`` (design 7.6, v6.35): only teams one could apply to now as that
+    position: recruiting, not full, asking for it or for no one position.
+    """
     from django.db.models import Count
 
     query = (
@@ -482,9 +499,17 @@ def open_teams(recruiting_only=False):
         .select_related("logo")
         .annotate(members_total=Count("memberships"))
     )
-    if recruiting_only:
+    if recruiting_only or role:
         query = query.filter(is_recruiting=True)
+    if role:
+        query = query.filter(_wants(role), members_total__lt=limit or max_members())
     return query
+
+
+def _wants(role):
+    from django.db.models import Q
+
+    return Q(recruiting_roles="") | Q(recruiting_roles__contains=role)
 
 
 def refresh_team_list() -> None:

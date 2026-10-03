@@ -26,16 +26,30 @@ DAY = 24 * 60 * 60
 
 @require_GET
 def team_index(request):
+    from accounts.roles import ROLE_CHOICES
+
     recruiting_only = request.GET.get("recruiting") == "1"
-    teams = services.open_teams(recruiting_only=recruiting_only)
+    # Design 7.6 (v6.35): 缺坦克 / 缺输出 / 缺支援.
+    role = request.GET.get("role", "")
+    labels = dict(ROLE_CHOICES)
+    if role not in labels:
+        role = ""
+    limit = services.max_members()
+    teams = services.open_teams(recruiting_only=recruiting_only, role=role, limit=limit)
+    totals = services.team_totals(limit)
     return render(
         request,
         "teams/index.html",
         {
             "teams": teams,
-            "recruiting_only": recruiting_only,
-            "max_members": services.max_members(),
-            **services.team_totals(),
+            "recruiting_only": recruiting_only and not role,
+            "role": role,
+            "role_label": labels.get(role, ""),
+            "role_tabs": [
+                (code, label, totals[f"role_{code}"]) for code, label in ROLE_CHOICES
+            ],
+            "max_members": limit,
+            **totals,
         },
     )
 

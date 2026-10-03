@@ -167,7 +167,14 @@ def test_team_tiles_say_members_against_the_limit(client):
     team_services.create_team(user=person("不招的"), name="满员队", is_recruiting=False)
     html = _html(client, "/teams/")
     assert f"1 / {team_services.max_members()} 人" in html
-    assert team_services.team_totals() == {"team_total": 2, "recruiting_total": 1}
+    totals = team_services.team_totals()
+    assert (totals["team_total"], totals["recruiting_total"]) == (2, 1)
+    # Round 140: the one recruiting team wants anyone, so every position counts it.
+    assert (totals["role_tank"], totals["role_damage"], totals["role_support"]) == (
+        1,
+        1,
+        1,
+    )
 
 
 @pytest.mark.django_db
