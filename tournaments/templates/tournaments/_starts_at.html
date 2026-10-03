@@ -1,0 +1,1 @@
+{% load ow %}{% if tournament.starts_at %}{{ tournament.starts_at|ow_date }} {{ tournament.starts_at|ow_time }}{% else %}<span class="text-fg-3">未定</span>{% endif %}

@@ -9,11 +9,12 @@
     {% include "components/section_head.html" with title="赛事报名" heading_id="me-regs" %}
     {% if registrations %}
       <table class="c-table c-table--stack">
-        <thead><tr><th scope="col">赛事</th><th scope="col">队伍</th><th scope="col">状态</th><th scope="col" class="is-num">提交</th></tr></thead>
+        <thead><tr><th scope="col">赛事</th><th scope="col">比赛时间</th><th scope="col">队伍</th><th scope="col">状态</th><th scope="col" class="is-num">提交</th></tr></thead>
         <tbody>
           {% for registration in registrations %}
             <tr>
               <td data-label="赛事"><a href="{{ registration.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ registration.tournament.title }}</a></td>
+              <td data-label="比赛时间" class="font-numeric" data-starts>{% include "tournaments/_starts_at.html" with tournament=registration.tournament %}</td>
               <td data-label="队伍">{{ registration.team_name }}{% if not registration.team_id %} <span class="c-tag ml-1">临时队伍</span>{% endif %}</td>
               <td data-label="状态">{% include "components/registration_status.html" %}</td>
               <td data-label="提交" class="is-num font-numeric">{{ registration.submitted_at|ow_date }}</td>
@@ -31,11 +32,12 @@
     {% include "components/section_head.html" with title="个人报名" heading_id="me-individual" %}
     {% if individual_signups %}
       <table class="c-table c-table--stack">
-        <thead><tr><th scope="col">赛事</th><th scope="col">游戏 ID</th><th scope="col">位置</th><th scope="col">状态</th><th scope="col" class="is-num">操作</th></tr></thead>
+        <thead><tr><th scope="col">赛事</th><th scope="col">比赛时间</th><th scope="col">游戏 ID</th><th scope="col">位置</th><th scope="col">状态</th><th scope="col" class="is-num">操作</th></tr></thead>
         <tbody>
           {% for signup in individual_signups %}
             <tr>
               <td data-label="赛事"><a href="{{ signup.tournament.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ signup.tournament.title }}</a></td>
+              <td data-label="比赛时间" class="font-numeric" data-starts>{% include "tournaments/_starts_at.html" with tournament=signup.tournament %}</td>
               <td data-label="游戏 ID" class="font-code">{{ signup.game_account.battletag|default:"游戏 ID 已删除" }}</td>
               <td data-label="位置">{% include "components/role_icons.html" with role_tank=signup.role_tank role_damage=signup.role_damage role_support=signup.role_support %}</td>
               <td data-label="状态">

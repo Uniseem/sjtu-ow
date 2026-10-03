@@ -14,6 +14,7 @@
         <a href="{{ registration.tournament.get_absolute_url }}" class="c-link">{{ registration.tournament.title }}</a>
         {% if is_adhoc %}<span class="c-tag">临时队伍</span>{% endif %}
         {% include "components/registration_status.html" %}
+        {% if registration.tournament.starts_at %}<span class="font-numeric" data-detail-starts>比赛 {{ registration.tournament.starts_at|ow_date }} {{ registration.tournament.starts_at|ow_time }}</span>{% endif %}
         <span class="font-numeric">名单版本 {{ registration.roster_version }}</span>
       </p>
     </div>
