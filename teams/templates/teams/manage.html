@@ -76,12 +76,12 @@
                 <td data-label="操作" class="is-num">
                   {% if not membership.is_captain %}
                     <span class="inline-flex flex-wrap justify-end gap-2">
-                      <form method="post" action="{% url 'captain_transfer' team.pk %}">
+                      <form method="post" action="{% url 'captain_transfer' team.pk %}" data-confirm="把队长转让给这名成员？转让后你就是普通队员了。">
                         {% csrf_token %}
                         <input type="hidden" name="user" value="{{ membership.user.pk }}">
                         <button type="submit" class="c-btn c-btn--secondary c-btn--sm">转让队长</button>
                       </form>
-                      <form method="post" action="{% url 'member_remove' team.pk %}">
+                      <form method="post" action="{% url 'member_remove' team.pk %}" data-confirm="把这名成员移出战队？对方会收到邮件。">
                         {% csrf_token %}
                         <input type="hidden" name="user" value="{{ membership.user.pk }}">
                         <button type="submit" class="c-btn c-btn--danger c-btn--sm">移除</button>
@@ -109,7 +109,7 @@
                   <td data-label="离队" class="is-num font-numeric">{{ alumnus.left_at|ow_date }}</td>
                   <td data-label="方式">{{ alumnus.get_reason_display }}</td>
                   <td data-label="操作" class="is-num">
-                    <form method="post" action="{% url 'alumnus_remove' team.pk alumnus.pk %}">
+                    <form method="post" action="{% url 'alumnus_remove' team.pk alumnus.pk %}" data-confirm="从退役名单里去掉这个人？">
                       {% csrf_token %}
                       <button type="submit" class="c-btn c-btn--secondary c-btn--sm">从名单去掉</button>
                     </form>
@@ -140,7 +140,7 @@
           {% include "components/icon.html" with name="alert" %}
           <div class="c-notice__body">
             <p>解散后成员会被清空、待审批的申请会取消，队名可以被其他战队使用。</p>
-            <form method="post" action="{% url 'team_disband' team.pk %}" class="mt-4">
+            <form method="post" action="{% url 'team_disband' team.pk %}" class="mt-4" data-confirm="确定解散战队？解散后不能恢复，全体成员会收到邮件。">
               {% csrf_token %}
               <button type="submit" class="c-btn c-btn--danger">解散战队</button>
             </form>

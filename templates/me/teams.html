@@ -20,7 +20,7 @@
                 {% if membership.is_captain %}
                   <a href="{% url 'team_manage' membership.team.pk %}" class="c-btn c-btn--secondary c-btn--sm">{% include "components/icon.html" with name="settings" %}管理</a>
                 {% else %}
-                  <form method="post" action="{% url 'team_leave' membership.team.pk %}" class="inline-block">
+                  <form method="post" action="{% url 'team_leave' membership.team.pk %}" class="inline-block" data-confirm="确定退出这支战队？">
                     {% csrf_token %}
                     <button type="submit" class="c-btn c-btn--danger c-btn--sm">退出</button>
                   </form>
@@ -47,7 +47,7 @@
               <p class="c-row__title"><a href="{{ alumnus.team.get_absolute_url }}">{{ alumnus.team.name }}</a></p>
               <p class="c-row__meta font-numeric">{{ alumnus.joined_at|ow_date }} – {{ alumnus.left_at|ow_date }}</p>
             </div>
-            <form method="post" action="{% url 'alumnus_remove' alumnus.team_id alumnus.pk %}">
+            <form method="post" action="{% url 'alumnus_remove' alumnus.team_id alumnus.pk %}" data-confirm="从这支战队的退役名单里去掉你的名字？">
               {% csrf_token %}
               <input type="hidden" name="next" value="me">
               <button type="submit" class="c-btn c-btn--secondary c-btn--sm">从名单去掉</button>
@@ -77,7 +77,7 @@
               <td data-label="提交" class="font-numeric">{{ application.created_at|ow_date }}</td>
               <td data-label="操作" class="is-num">
                 {% if application.status == pending_status %}
-                  <form method="post" action="{% url 'application_cancel' application.pk %}" class="inline-block">
+                  <form method="post" action="{% url 'application_cancel' application.pk %}" class="inline-block" data-confirm="撤回这份入队申请？">
                     {% csrf_token %}
                     <button type="submit" class="c-btn c-btn--secondary c-btn--sm">撤回</button>
                   </form>

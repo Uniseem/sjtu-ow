@@ -1,3 +1,5 @@
 {% if request.htmx %}
   {% include "me/_incomplete.html" with oob=True %}
+  {# Messages from an HTMX request (a refused delete, round 115) show as toasts. #}
+  {% include "slots/messages.html" with oob=True %}
 {% endif %}

@@ -3,7 +3,7 @@
     <a href="{% url 'team_manage' team.pk %}" class="c-btn c-btn--primary">{% include "components/icon.html" with name="settings" %}管理战队</a>
   {% elif is_member %}
     {% include "components/status_badge.html" with kind="ok" label="你已是成员" %}
-    <form method="post" action="{% url 'team_leave' team.pk %}">
+    <form method="post" action="{% url 'team_leave' team.pk %}" data-confirm="确定退出这支战队？">
       {% csrf_token %}
       <button type="submit" class="c-btn c-btn--danger c-btn--sm">退出战队</button>
     </form>

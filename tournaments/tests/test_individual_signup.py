@@ -539,7 +539,12 @@ def test_a_pooled_game_id_cannot_be_deleted(client, solo):
     response = client.post(
         reverse("me_game_account_delete", args=[account.pk]), HTTP_HX_REQUEST="true"
     )
-    assert response.status_code == 400
+    # Round 115: htmx ignores a 400, so the list comes back with the reason
+    # as a toast (it used to be a silent 400).
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert 'id="game-account-list"' in html
+    assert tournament.title in html and 'hx-swap-oob="true"' in html
     assert solo.game_accounts.filter(pk=account.pk).exists()
 
 

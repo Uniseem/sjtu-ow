@@ -35,7 +35,7 @@
               {% if resubmittable %}重新提交{% else %}同步名单{% endif %}
             </a>
             {% if registration.status in active_statuses %}
-              <form method="post" action="{% url 'registration_withdraw' registration.pk %}">
+              <form method="post" action="{% url 'registration_withdraw' registration.pk %}" data-confirm="撤回这份报名？">
                 {% csrf_token %}
                 <button type="submit" class="c-btn c-btn--danger">撤回报名</button>
               </form>
@@ -44,7 +44,7 @@
         {% elif is_captain %}
           <p class="text-sm text-fg-2">报名已截止，不能再修改。</p>
         {% elif can_leave %}
-          <form method="post" action="{% url 'registration_leave' registration.pk %}" class="flex flex-wrap items-center gap-3">
+          <form method="post" action="{% url 'registration_leave' registration.pk %}" class="flex flex-wrap items-center gap-3" data-confirm="退出这支临时队伍？">
             {% csrf_token %}
             <button type="submit" class="c-btn c-btn--danger">退出队伍</button>
             <span class="text-sm text-fg-2">退出后回到散人池，等赛事管理员重新编队。</span>

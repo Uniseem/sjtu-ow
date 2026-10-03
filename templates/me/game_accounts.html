@@ -14,8 +14,8 @@
         hx-target="#game-account-{{ account.pk }}"
         hx-swap="outerHTML"
       {% else %}
-        hx-target="#game-account-list"
-        hx-swap="outerHTML"
+        hx-target="#create-game-account"
+        hx-swap="innerHTML"
       {% endif %}
     >
       {% csrf_token %}
@@ -67,14 +67,10 @@
               hx-target="#game-account-{{ account.pk }}"
               hx-swap="outerHTML"
             >{% include "components/icon.html" with name="edit" %}编辑</a>
-            <button
-              type="button"
-              class="c-btn c-btn--danger c-btn--sm"
-              hx-post="{% url 'me_game_account_delete' account.pk %}"
-              hx-target="#game-account-list"
-              hx-swap="outerHTML"
-              hx-confirm="确定删除这个游戏 ID？"
-            >{% include "components/icon.html" with name="trash" %}删除</button>
+            <form method="post" action="{% url 'me_game_account_delete' account.pk %}" hx-post="{% url 'me_game_account_delete' account.pk %}" hx-target="#game-account-list" hx-swap="outerHTML" hx-confirm="确定删除这个游戏 ID？">
+              {% csrf_token %}
+              <button type="submit" class="c-btn c-btn--danger c-btn--sm">{% include "components/icon.html" with name="trash" %}删除</button>
+            </form>
           </div>
         {% endif %}
     </article>

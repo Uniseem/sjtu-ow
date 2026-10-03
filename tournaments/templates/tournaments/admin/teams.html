@@ -63,7 +63,7 @@
     <ul>
       {% for zone in zones %}
         <li>
-          <form method="post" class="split-dissolve">
+          <form method="post" class="split-dissolve" onsubmit="return window.confirm('解散这支临时队伍？成员回到散人池并收到邮件。')">
             {% csrf_token %}
             <input type="hidden" name="action" value="dissolve">
             <input type="hidden" name="registration" value="{{ zone.registration.pk }}">

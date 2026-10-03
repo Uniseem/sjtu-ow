@@ -1,17 +1,26 @@
-"""Team admin for superusers (design 14.2): view, edit, assign captain, disband."""
+"""Team admin for superusers (design 14.2): view, edit, assign captain, disband.
 
+No 新建 or 删除 (round 115): a team is founded by its captain on the site
+and ends by disbanding, which keeps its history and registrations.
+"""
+
+from django import forms
 from django.contrib import messages
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from wagtail import hooks
+from wagtail.admin.forms import WagtailAdminModelForm
 from wagtail.admin.panels import FieldPanel
 from wagtail.admin.ui.menus import MenuItem as ListingMenuItem
-from wagtail.admin.views.generic import IndexView
+from wagtail.admin.ui.tables import BooleanColumn
+from wagtail.admin.views.generic import EditView, IndexView
 from wagtail.admin.viewsets.model import ModelViewSet
 from wagtail.permission_policies.base import BasePermissionPolicy
 from wagtail.permissions import register_permission_policy
 
 from accounts.models import User
+from accounts.roles import ROLE_CHOICES, join_roles, parse_roles
 from teams import services
 from teams.models import Team
 
@@ -20,6 +29,8 @@ class SuperuserOnlyPolicy(BasePermissionPolicy):
     """Team administration is a rescue tool, not an everyday one (design 14.2)."""
 
     def user_has_permission(self, user, action):
+        if action in ("add", "delete"):
+            return False
         return bool(getattr(user, "is_superuser", False))
 
     def users_with_any_permission(self, actions):
@@ -32,15 +43,15 @@ register_permission_policy(Team, SuperuserOnlyPolicy(Team))
 class TeamIndexView(IndexView):
     def get_list_more_buttons(self, instance):
         buttons = super().get_list_more_buttons(instance)
-        buttons.append(
-            ListingMenuItem(
-                "指定队长",
-                url=reverse("team_assign_captain", args=[instance.pk]),
-                icon_name="user",
-                priority=60,
-            )
-        )
         if not instance.is_disbanded:
+            buttons.append(
+                ListingMenuItem(
+                    "指定队长",
+                    url=reverse("team_assign_captain", args=[instance.pk]),
+                    icon_name="user",
+                    priority=60,
+                )
+            )
             buttons.append(
                 ListingMenuItem(
                     "解散战队",
@@ -52,6 +63,39 @@ class TeamIndexView(IndexView):
         return buttons
 
 
+class TeamAdminForm(WagtailAdminModelForm):
+    """缺的位置 as three boxes, as on the captain's page (design-details 5.2)."""
+
+    recruiting_roles = forms.MultipleChoiceField(
+        label="缺的位置",
+        choices=ROLE_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="招募中时显示在战队卡和战队主页上。都不勾表示哪个位置都要。",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.initial["recruiting_roles"] = parse_roles(
+                self.instance.recruiting_roles
+            )
+
+    def clean_recruiting_roles(self) -> str:
+        return join_roles(self.cleaned_data.get("recruiting_roles") or [])
+
+
+Team.base_form_class = TeamAdminForm
+
+
+class TeamEditView(EditView):
+    def save_instance(self):
+        instance = super().save_instance()
+        # Same as the captain's own edit: pages and the AI review follow (7.1).
+        services.on_team_changed(instance, author=self.request.user)
+        return instance
+
+
 class TeamViewSet(ModelViewSet):
     model = Team
     name = "teams"
@@ -61,13 +105,20 @@ class TeamViewSet(ModelViewSet):
     inspect_view_enabled = True
     copy_view_enabled = False
     index_view_class = TeamIndexView
-    list_display = ["name", "is_recruiting", "disbanded_at", "created_at"]
+    edit_view_class = TeamEditView
+    list_display = [
+        "name",
+        BooleanColumn("is_recruiting", label="招募中", sort_key="is_recruiting"),
+        "disbanded_at",
+        "created_at",
+    ]
     search_fields = ["name", "description"]
     panels = [
         FieldPanel("name"),
         FieldPanel("description"),
         FieldPanel("logo"),
         FieldPanel("is_recruiting"),
+        FieldPanel("recruiting_roles"),
     ]
 
 
@@ -110,6 +161,14 @@ def superuser_required(view):
 def admin_assign_captain(request, pk):
     """Rescue path: hand a team to someone when its captain is gone (7.4)."""
     team = get_object_or_404(Team, pk=pk)
+    # Search by nickname or email instead of listing the first 200 (round 115).
+    query = request.GET.get("q", "").strip()
+    candidates = User.objects.filter(is_active=True).order_by("nickname")
+    if query:
+        candidates = candidates.filter(
+            Q(nickname__icontains=query) | Q(email__icontains=query)
+        )
+    candidates = candidates[:50]
     if request.method == "POST":
         user = get_object_or_404(User, pk=request.POST.get("user"))
         try:
@@ -129,9 +188,8 @@ def admin_assign_captain(request, pk):
             "header_icon": "user",
             "team": team,
             "memberships": team.memberships.select_related("user"),
-            "candidates": User.objects.filter(is_active=True).order_by("nickname")[
-                :200
-            ],
+            "query": query,
+            "candidates": candidates,
             "breadcrumbs_items": [
                 {"url": reverse("wagtailadmin_home"), "label": "首页"},
                 {"url": reverse("teams:index"), "label": "战队"},

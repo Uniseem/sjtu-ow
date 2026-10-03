@@ -1,0 +1,34 @@
+{% extends "wagtailusers/users/edit.html" %}
+{% load wagtailadmin_tags %}
+
+{% comment %}
+  The admin's user page (design 14.2 用户, 3.7; round 115): the site's own
+  fields instead of 名/姓, and what the person has on the site, read-only.
+{% endcomment %}
+
+{% block fields %}
+  <li>{% formattedfield form.email %}</li>
+  <li>{% formattedfield form.nickname %}</li>
+  <li>{% formattedfield form.is_sjtu %}</li>
+  {% if form.is_active %}<li>{% formattedfield form.is_active %}</li>{% endif %}
+  <li>{% formattedfield form.deactivation_note %}</li>
+  <li>
+    <section class="site-user-profile" aria-labelledby="site-user-profile">
+      <h2 id="site-user-profile" class="w-panel__heading">在社区里</h2>
+      <dl>
+        <dt>邮箱</dt>
+        <dd>{% if profile.verified %}已验证{% else %}未验证{% endif %}</dd>
+        <dt>常用位置</dt>
+        <dd>{% for code, label, is_main in profile.roles.role_items %}{{ label }}{% if is_main %}（主）{% endif %}{% if not forloop.last %}、{% endif %}{% empty %}未填{% endfor %}</dd>
+        <dt>游戏 ID</dt>
+        <dd>{% for tag, ranks in profile.game_accounts %}{{ tag }}：{{ ranks }}{% if not forloop.last %}<br>{% endif %}{% empty %}没有{% endfor %}</dd>
+        <dt>联系方式</dt>
+        <dd>{% if profile.contacts is None %}你没有查看联系方式的权限{% else %}{% for kind, value in profile.contacts %}{{ kind }} {{ value }}{% if not forloop.last %}<br>{% endif %}{% empty %}没有{% endfor %}{% endif %}</dd>
+        <dt>战队</dt>
+        <dd>{% for team, role in profile.teams %}{{ team.name }}（{{ role }}）{% if not forloop.last %}、{% endif %}{% empty %}没有{% endfor %}</dd>
+        <dt>功能权限规则</dt>
+        <dd>{% for feature, verb, note in profile.rules %}{{ verb }}{{ feature }}{% if note %}（{{ note }}）{% endif %}{% if not forloop.last %}<br>{% endif %}{% empty %}没有单独规则{% endfor %}</dd>
+      </dl>
+    </section>
+  </li>
+{% endblock %}

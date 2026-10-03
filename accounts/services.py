@@ -452,7 +452,9 @@ def personal_data(user) -> dict:
         "individual_signups": [
             {
                 "tournament": entry.tournament.title,
-                "battletag": entry.game_account.battletag,
+                "battletag": entry.game_account.battletag
+                if entry.game_account
+                else "（游戏 ID 已删除）",
                 "roles": entry.role_labels,
                 "created_at": when(entry.created_at),
                 "team": entry.registration.team_name if entry.registration else None,
@@ -694,3 +696,67 @@ def forget_uploaded_faces(user) -> None:
     ids = uploaded_face_ids(user)
     AvatarSubmission.objects.filter(user=user).delete()
     _delete_images(ids)
+
+
+# --- the admin's user screens (design 14.2, 3.7; round 115) -------------------------
+
+
+def after_deactivation(user) -> None:
+    """Design 3.7: a stopped account's pending team applications are cancelled
+    (it can no longer log in to follow them up)."""
+    from django.utils import timezone
+
+    from teams.models import ApplicationStatus
+
+    user.team_applications.filter(status=ApplicationStatus.PENDING).update(
+        status=ApplicationStatus.CANCELLED,
+        decided_at=timezone.now(),
+        decision_note="账号已停用",
+    )
+
+
+def admin_profile(user, *, viewer) -> dict:
+    """What the user edit page shows beside the form: the person on the site.
+    Contacts only for those allowed to see them (design 3.5.3, 4.1)."""
+    from accounts.roles import public_profile
+    from teams.models import TeamMembership
+
+    can_see_contacts = viewer.is_superuser or viewer.has_perm(
+        "accounts.view_contactmethod"
+    )
+    return {
+        "game_accounts": [
+            (
+                account.battletag,
+                "、".join(
+                    f"{label} {format_rank(getattr(account, field))}"
+                    for label, field in (
+                        ("坦克", "rank_tank"),
+                        ("输出", "rank_damage"),
+                        ("支援", "rank_support"),
+                    )
+                    if getattr(account, field) is not None
+                )
+                or "未定级",
+            )
+            for account in user.game_accounts.all()
+        ],
+        "contacts": [
+            (contact.get_type_display(), contact.value)
+            for contact in user.contact_methods.all()
+        ]
+        if can_see_contacts
+        else None,
+        "teams": [
+            (membership.team, membership.get_role_display())
+            for membership in TeamMembership.objects.filter(user=user).select_related(
+                "team"
+            )
+        ],
+        "roles": public_profile(user),
+        "rules": [
+            (rule.get_feature_display(), "允许" if rule.allowed else "禁止", rule.note)
+            for rule in user.feature_rules.all()
+        ],
+        "verified": email_is_verified(user),
+    }

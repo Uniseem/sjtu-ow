@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 from django.core.management import call_command
 from django.urls import reverse
@@ -245,9 +247,12 @@ def test_state_fragment_is_rate_limited(client, site_tree):
     from core.views import STATE_RATE_LIMIT
 
     url = reverse("state_fragment") + "?slots=account"
-    for _ in range(STATE_RATE_LIMIT):
-        assert client.get(url).status_code == 200
-    limited = client.get(url)
+    # The limiter counts per clock minute; a slow full run once crossed a
+    # minute mid-loop and the count started again (round 115). Hold the clock.
+    with mock.patch("core.ratelimit.time.time", return_value=1_800_000_000.0):
+        for _ in range(STATE_RATE_LIMIT):
+            assert client.get(url).status_code == 200
+        limited = client.get(url)
     assert limited.status_code == 429
     assert limited["Retry-After"] == "60"
 

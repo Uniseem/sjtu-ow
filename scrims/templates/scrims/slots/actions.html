@@ -19,7 +19,7 @@
               {% include "scrims/slots/_form.html" %}
             </div>
           </details>
-          <form method="post" action="{% url 'scrim_cancel_signup' scrim.pk %}">
+          <form method="post" action="{% url 'scrim_cancel_signup' scrim.pk %}" data-confirm="取消这场内战的报名？">
             {% csrf_token %}
             <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消报名</button>
           </form>

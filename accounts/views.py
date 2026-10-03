@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
@@ -165,7 +165,9 @@ def me_game_accounts(request):
                 _apply_validation_error(form, exc)
             else:
                 if request.htmx:
-                    return _game_accounts_list_response(request)
+                    return _whole_list(
+                        _game_accounts_list_response(request), "game-account-list"
+                    )
                 messages.success(request, "游戏 ID 已添加。")
                 return redirect("me_game_accounts")
         if request.htmx:
@@ -187,6 +189,8 @@ def me_game_accounts(request):
             "me/game_accounts.html#form_response",
             _game_accounts_form_context(request, form=form),
         )
+    if request.htmx:  # 取消: back to the list, never the whole page inside it
+        return _game_accounts_list_response(request)
     return render(
         request,
         "me/game_accounts.html",
@@ -235,9 +239,9 @@ def me_game_account_delete(request, pk: int):
     account = get_object_or_404(GameAccount, pk=pk, user=request.user)
     blocked = deletion_blocked_reason(account)
     if blocked:
-        if request.htmx:
-            return HttpResponse(blocked, status=400)
         messages.error(request, blocked)
+        if request.htmx:  # a 4xx would not be shown; the list carries the toast
+            return _game_accounts_list_response(request)
         return redirect("me_game_accounts")
     account.delete()
     if request.htmx:
@@ -258,7 +262,7 @@ def me_contacts(request):
                 _apply_validation_error(form, exc)
             else:
                 if request.htmx:
-                    return _contacts_list_response(request)
+                    return _whole_list(_contacts_list_response(request), "contact-list")
                 messages.success(request, "联系方式已添加。")
                 return redirect("me_contacts")
         if request.htmx:
@@ -275,6 +279,8 @@ def me_contacts(request):
             "me/contacts.html#form_response",
             _contacts_form_context(request, form=form),
         )
+    if request.htmx:  # 取消: back to the list, never the whole page inside it
+        return _contacts_list_response(request)
     return render(
         request,
         "me/contacts.html",
@@ -410,6 +416,14 @@ def _game_accounts_form_context(request, form, account=None):
         form_action=action,
         cancel_url=reverse("me_game_accounts"),
     )
+
+
+def _whole_list(response, list_id):
+    """The create form sits in its own box (so a mistake keeps the list);
+    once saved, the whole list is replaced instead (round 115)."""
+    response["HX-Retarget"] = f"#{list_id}"
+    response["HX-Reswap"] = "outerHTML"
+    return response
 
 
 def _game_accounts_list_response(request):

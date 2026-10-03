@@ -4,6 +4,7 @@ from functools import wraps
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from wagtail import hooks
@@ -12,6 +13,8 @@ from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.admin.ui.menus import MenuItem as ListingMenuItem
 from wagtail.admin.views import generic
 from wagtail.admin.viewsets.model import ModelViewSet
+from wagtail.permission_policies import ModelPermissionPolicy
+from wagtail.permissions import register_permission_policy
 
 from scrims import services
 from scrims.models import Scrim, ScrimStatus
@@ -23,6 +26,12 @@ ACTIONS = {
 
 
 class ScrimIndexView(generic.IndexView):
+    def get_delete_url(self, instance):
+        # The listing asks only the model-level permission (round 115).
+        if not services.can_delete(instance):
+            return None
+        return super().get_delete_url(instance)
+
     def get_list_more_buttons(self, instance):
         buttons = super().get_list_more_buttons(instance)
         if instance.status == ScrimStatus.DRAFT:
@@ -82,6 +91,29 @@ class ScrimEditView(ScrimSaveMixin, generic.EditView):
     pass
 
 
+class ScrimPermissionPolicy(ModelPermissionPolicy):
+    """Round 115: only a draft nobody signed up for can be deleted; after that
+    a scrim is cancelled, so signups and their emails stay accounted for."""
+
+    def user_has_permission_for_instance(self, user, action, instance):
+        if action == "delete" and not services.can_delete(instance):
+            return False
+        return super().user_has_permission_for_instance(user, action, instance)
+
+
+register_permission_policy(Scrim, ScrimPermissionPolicy(Scrim))
+
+
+class ScrimDeleteView(generic.DeleteView):
+    """The delete button is hidden for the rest; a typed address is refused too."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if not services.can_delete(self.object):
+            messages.error(request, "发布过或有人报名的内战不能删除，只能取消。")
+            return redirect("scrims:edit", self.object.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+
 class ScrimViewSet(ModelViewSet):
     model = Scrim
     name = "scrims"
@@ -93,6 +125,7 @@ class ScrimViewSet(ModelViewSet):
     index_view_class = ScrimIndexView
     add_view_class = ScrimCreateView
     edit_view_class = ScrimEditView
+    delete_view_class = ScrimDeleteView
     list_display = ["title", "status", "format", "starts_at", "signup_closes_at"]
     list_filter = ["status", "format", "sjtu_only"]
     search_fields = ["title", "description"]
@@ -152,6 +185,8 @@ def _breadcrumbs(scrim):
 
 @manager_required
 def scrim_action(request, pk, action):
+    if action not in ACTIONS:
+        raise Http404("没有这个操作。")
     scrim = get_object_or_404(Scrim, pk=pk)
     label, handler = ACTIONS[action]
     if request.method == "POST":

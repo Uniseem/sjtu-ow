@@ -9,6 +9,12 @@
       {{ membership.user.nickname }}{% if membership.is_captain %}（队长）{% endif %}{% if not forloop.last %}、{% endif %}
     {% empty %}（无）{% endfor %}
   </p>
+  <form method="get" class="w-mb-4">
+    <label for="q">按昵称或邮箱找人</label>
+    <input type="search" id="q" name="q" value="{{ query }}" placeholder="昵称或邮箱">
+    <button type="submit" class="button button-secondary">搜索</button>
+    <p class="help-block">列出最多 50 个已启用的账号{% if query %}（匹配「{{ query }}」）{% endif %}。</p>
+  </form>
   <form method="post">
     {% csrf_token %}
     <label for="user">新队长</label>

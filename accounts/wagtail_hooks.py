@@ -3,6 +3,7 @@
 from django.urls import reverse
 from wagtail import hooks
 from wagtail.admin.panels import FieldPanel
+from wagtail.admin.views import account as wagtail_account
 from wagtail.admin.views import generic
 from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
 from wagtail.admin.widgets.button import Button
@@ -10,6 +11,13 @@ from wagtail.permission_policies.base import BasePermissionPolicy
 from wagtail.permissions import register_permission_policy
 
 from accounts.models import FeatureGroupRestriction, FeatureUserRule, User
+
+# The admin account page is open to every admin user, which through 投稿者 is
+# every verified member (round 115). Its name panel asks for 名/姓 (the site
+# uses nicknames) and its picture panel takes an unreviewed face (design-details
+# 2.3), so both are off; the email is handled by WAGTAIL_EMAIL_MANAGEMENT_ENABLED.
+wagtail_account.NameEmailSettingsPanel.is_active = lambda self: False
+wagtail_account.AvatarSettingsPanel.is_active = lambda self: False
 
 
 class SuperuserOnlyPolicy(BasePermissionPolicy):

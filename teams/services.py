@@ -332,7 +332,13 @@ def assign_captain(*, team, actor, new_captain) -> None:
     """Superuser rescue path when a captain's account is gone (design 7.4)."""
     if not actor.is_superuser:
         raise TeamError("只有超级管理员可以指定队长。")
+    if team.is_disbanded:  # round 115
+        raise TeamError("战队已经解散了，不能再指定队长。")
+    if not new_captain.is_active:
+        raise TeamError("这个账号已停用，不能当队长。")
     if not is_member(team, new_captain):
+        if is_full(team):
+            raise TeamError("战队人数已满，先移除一名成员，或者从现有成员里指定。")
         TeamMembership.objects.create(team=team, user=new_captain, role=TeamRole.MEMBER)
         _unretire(team, new_captain)
     transfer_captain(team=team, actor=actor, new_captain=new_captain)

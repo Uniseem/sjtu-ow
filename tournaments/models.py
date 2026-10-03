@@ -383,9 +383,14 @@ class IndividualSignup(models.Model):
     game_account = models.ForeignKey(
         "accounts.GameAccount",
         verbose_name="游戏 ID",
-        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="individual_signups",
-        help_text="设计 3.5.2：未结束赛事的个人报名拦住删除。",
+        help_text=(
+            "设计 3.5.2：未结束赛事的个人报名拦住删除；赛事结束或取消后可以删，"
+            "这里置空（115 轮，原来是 PROTECT，删了会出错）。"
+        ),
     )
     role_tank = models.BooleanField("坦克", default=False)
     role_damage = models.BooleanField("输出", default=False)

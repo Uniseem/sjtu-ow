@@ -400,7 +400,11 @@ def approve(*, registration, actor) -> Registration:
 
 @transaction.atomic
 def reject(*, registration, actor, note) -> Registration:
-    """Design 8.5 rows 2 and 3: reject a pending one, or revoke an approval."""
+    """Design 8.5 rows 2 and 3: reject a pending one, or revoke an approval.
+    A 临时队伍 is changed on the 队伍编排 board, never here (8.8.2; round 115:
+    the review page only hid the buttons)."""
+    if registration.team_id is None:
+        raise RegistrationError("临时队伍请在「队伍编排」里调整，这里不能驳回。")
     if not note or not note.strip():
         raise RegistrationError("驳回必须填写备注")
     if registration.status == RegistrationStatus.APPROVED:

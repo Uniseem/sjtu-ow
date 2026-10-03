@@ -13,6 +13,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from wagtail.log_actions import log as wagtail_log
 
@@ -189,7 +190,10 @@ def review_bulk_approve(request):
             approved += 1
     if approved:
         messages.success(request, f"已通过 {approved} 条报名。")
-    return redirect(request.POST.get("next") or "registration_review_index")
+    back = request.POST.get("next", "")
+    if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
+        back = reverse("registration_review_index")
+    return redirect(back)
 
 
 @reviewer_required
@@ -223,7 +227,8 @@ def review_export(request):
     if show_contacts:
         from accounts.models import ContactMethod
 
-        for contact in ContactMethod.objects.all():
+        exported = queryset.values_list("members__user_id", flat=True)
+        for contact in ContactMethod.objects.filter(user_id__in=exported):
             contacts.setdefault(contact.user_id, []).append(
                 f"{contact.get_type_display()} {contact.value}"
             )

@@ -43,10 +43,10 @@
       {% if avatar_pending or request.user.avatar_id %}
         <div class="flex flex-wrap gap-3">
           {% if avatar_pending %}
-            <form method="post" action="{% url 'me_avatar_withdraw' %}">{% csrf_token %}<button type="submit" class="c-btn c-btn--secondary">撤回待审核的头像</button></form>
+            <form method="post" action="{% url 'me_avatar_withdraw' %}" data-confirm="撤回待审核的头像？那张图会被删除。">{% csrf_token %}<button type="submit" class="c-btn c-btn--secondary">撤回待审核的头像</button></form>
           {% endif %}
           {% if request.user.avatar_id %}
-            <form method="post" action="{% url 'me_avatar_remove' %}">{% csrf_token %}<button type="submit" class="c-btn c-btn--secondary">改用默认头像</button></form>
+            <form method="post" action="{% url 'me_avatar_remove' %}" data-confirm="改用默认头像？你上传的头像会被删除。">{% csrf_token %}<button type="submit" class="c-btn c-btn--secondary">改用默认头像</button></form>
           {% endif %}
         </div>
       {% endif %}

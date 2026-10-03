@@ -52,7 +52,7 @@
           </td>
           <td>
             <a class="button button-small button-secondary" href="{% url 'core_font_face_download' face.pk %}">下载</a>
-            <form method="post" action="{% url 'core_font_face_delete' face.pk %}" class="w-inline">
+            <form method="post" action="{% url 'core_font_face_delete' face.pk %}" class="w-inline" onsubmit="return window.confirm('删除这个字重？删除后不能恢复。')">
               {% csrf_token %}
               <button type="submit" class="button button-small serious">删除字重</button>
             </form>

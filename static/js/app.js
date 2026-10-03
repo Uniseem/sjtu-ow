@@ -31,6 +31,17 @@
     }
   }
 
+  // Forms that delete, cancel or email people ask first (round 115). Inline
+  // onsubmit is blocked by the site's CSP, so the question lives in the
+  // form's data-confirm; HTMX forms use hx-confirm instead.
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    var question = form && form.getAttribute && form.getAttribute("data-confirm");
+    if (question && !window.confirm(question)) {
+      event.preventDefault();
+    }
+  });
+
   if (window.htmx) {
     window.htmx.config.allowEval = false;
     window.htmx.config.includeIndicatorStyles = false;

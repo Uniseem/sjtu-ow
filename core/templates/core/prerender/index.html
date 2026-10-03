@@ -19,7 +19,7 @@
       {% csrf_token %}
       <button type="submit" class="button button-primary">全部重新生成</button>
     </form>
-    <form method="post" action="{% url 'core_prerender_clear' %}" class="w-inline">
+    <form method="post" action="{% url 'core_prerender_clear' %}" class="w-inline" onsubmit="return window.confirm('清空全部静态文件？清空后所有页面临时由 Django 实时渲染，直到重新生成。')">
       {% csrf_token %}
       <button type="submit" class="button serious">清空全部静态文件</button>
     </form>

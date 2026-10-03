@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     "wagtail.contrib.settings",
     "wagtail.embeds",
     "wagtail.sites",
-    "wagtail.users",
+    "accounts.users_app.SiteUsersAppConfig",  # wagtail.users, site screens
     "wagtail.snippets",
     "wagtail.documents",
     "wagtail.images",
@@ -284,6 +284,9 @@ WAGTAILADMIN_BASE_URL = SITE_URL
 WAGTAILADMIN_LOGIN_URL = "account_login"
 ADMIN_URL_PREFIX = "/admin/"
 WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
+# Every verified member can open /admin/account/ (through 投稿者). Changing
+# the login email there skipped design 3.4's verification (round 115).
+WAGTAIL_EMAIL_MANAGEMENT_ENABLED = False
 # No Gravatar: the admin CSP allows no external images, so the avatars only
 # ever rendered blank, and looking one up sends a hash of the admin's email
 # to a third party — which the privacy policy does not cover.

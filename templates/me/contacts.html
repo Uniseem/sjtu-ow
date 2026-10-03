@@ -14,8 +14,8 @@
         hx-target="#contact-{{ contact.pk }}"
         hx-swap="outerHTML"
       {% else %}
-        hx-target="#contact-list"
-        hx-swap="outerHTML"
+        hx-target="#create-contact"
+        hx-swap="innerHTML"
       {% endif %}
     >
       {% csrf_token %}
@@ -54,14 +54,10 @@
               hx-target="#contact-{{ contact.pk }}"
               hx-swap="outerHTML"
             >{% include "components/icon.html" with name="edit" %}编辑</a>
-            <button
-              type="button"
-              class="c-btn c-btn--danger c-btn--sm"
-              hx-post="{% url 'me_contact_delete' contact.pk %}"
-              hx-target="#contact-list"
-              hx-swap="outerHTML"
-              hx-confirm="确定删除这个联系方式？"
-            >{% include "components/icon.html" with name="trash" %}删除</button>
+            <form method="post" action="{% url 'me_contact_delete' contact.pk %}" hx-post="{% url 'me_contact_delete' contact.pk %}" hx-target="#contact-list" hx-swap="outerHTML" hx-confirm="确定删除这个联系方式？">
+              {% csrf_token %}
+              <button type="submit" class="c-btn c-btn--danger c-btn--sm">{% include "components/icon.html" with name="trash" %}删除</button>
+            </form>
             </div>
           </div>
         {% endif %}

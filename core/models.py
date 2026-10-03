@@ -202,10 +202,10 @@ class SiteSettings(BaseGenericSetting):
         "区域", max_length=32, blank=True, default="auto", help_text="R2 填 auto。"
     )
     backup_s3_access_key_id = models.CharField(
-        "Access Key ID", max_length=128, blank=True
+        "访问密钥 ID（Access Key ID）", max_length=128, blank=True
     )
     backup_s3_secret_access_key = EncryptedTextField(
-        "Secret Access Key",
+        "密钥（Secret Access Key）",
         blank=True,
         help_text="加密存储。",
     )
@@ -230,7 +230,7 @@ class SiteSettings(BaseGenericSetting):
     moderation_daily_limit = models.PositiveIntegerField(
         "审核每日调用上限",
         default=2000,
-        help_text="每天最多调用多少次审核接口，超出的内容记为「无法判定」转人工。",
+        help_text="每天最多调用多少次审核接口，超出的排到第二天再审（5.5.3）。",
     )
     moderation_image_enabled = models.BooleanField(
         "连图片一起审核",

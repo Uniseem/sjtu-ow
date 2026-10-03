@@ -2,29 +2,54 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 from wagtail.admin.forms import WagtailAdminModelForm
 
+# Stored secrets the form never shows again: blank keeps the saved value.
+SECRET_FIELDS = {
+    "smtp_password": (_("SMTP 密码"), "加密存储。留空表示不修改已保存的密码。"),
+    # Round 115: it used to show decrypted in a plain text box.
+    "backup_s3_secret_access_key": (
+        "密钥（Secret Access Key）",
+        "加密存储。留空表示不修改已保存的密钥。",
+    ),
+}
 
-class SiteSettingsAdminForm(WagtailAdminModelForm):
-    """Hide the stored SMTP secret; blank means keep the current password."""
 
-    smtp_password = forms.CharField(
-        label=_("SMTP 密码"),
+def _secret_field(label, help_text):
+    return forms.CharField(
+        label=label,
         required=False,
         widget=forms.PasswordInput(
             render_value=False,
             attrs={"autocomplete": "new-password"},
         ),
-        help_text="加密存储。留空表示不修改已保存的密码。",
+        help_text=help_text,
+    )
+
+
+class SiteSettingsAdminForm(WagtailAdminModelForm):
+    """Hide the stored secrets; blank means keep the current one."""
+
+    smtp_password = _secret_field(*SECRET_FIELDS["smtp_password"])
+    backup_s3_secret_access_key = _secret_field(
+        *SECRET_FIELDS["backup_s3_secret_access_key"]
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["smtp_password"].initial = ""
-        self.initial["smtp_password"] = ""
+        for name in SECRET_FIELDS:
+            if name in self.fields:
+                self.fields[name].initial = ""
+                self.initial[name] = ""
 
-    def clean_smtp_password(self):
-        raw = (self.cleaned_data.get("smtp_password") or "").strip()
+    def _kept(self, name):
+        raw = (self.cleaned_data.get(name) or "").strip()
         if raw:
             return raw
         if self.instance.pk:
-            return self.instance.smtp_password
+            return getattr(self.instance, name)
         return ""
+
+    def clean_smtp_password(self):
+        return self._kept("smtp_password")
+
+    def clean_backup_s3_secret_access_key(self):
+        return self._kept("backup_s3_secret_access_key")

@@ -47,7 +47,7 @@
                 {% if signup.is_placed %}
                   <a href="{{ signup.registration.get_absolute_url }}" class="c-btn c-btn--secondary c-btn--sm">查看报名</a>
                 {% elif signup.tournament.registration_open %}
-                  <form method="post" action="{% url 'tournament_individual_cancel' signup.tournament.pk %}" class="inline-block">
+                  <form method="post" action="{% url 'tournament_individual_cancel' signup.tournament.pk %}" class="inline-block" data-confirm="取消这项赛事的个人报名？">
                     {% csrf_token %}
                     <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消</button>
                   </form>

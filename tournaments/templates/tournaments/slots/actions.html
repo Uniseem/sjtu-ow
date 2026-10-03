@@ -18,7 +18,7 @@
         <span class="text-sm text-fg-2">{% for label in my_signup.role_labels %}{{ label }}{% if not forloop.last %} / {% endif %}{% endfor %}</span>
         {% if registration_open %}
           <a href="{% url 'tournament_individual_signup' tournament.pk %}" class="c-btn c-btn--secondary c-btn--sm">修改</a>
-          <form method="post" action="{% url 'tournament_individual_cancel' tournament.pk %}">
+          <form method="post" action="{% url 'tournament_individual_cancel' tournament.pk %}" data-confirm="取消个人报名？">
             {% csrf_token %}
             <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消个人报名</button>
           </form>

@@ -705,6 +705,9 @@ def test_a_game_id_used_by_a_live_scrim_is_still_refused(client, scrim, player):
         reverse("me_game_account_delete", args=[account.pk]), HTTP_HX_REQUEST="true"
     )
 
-    assert response.status_code == 400
+    # Round 115: the list comes back with the reason as a toast (htmx never
+    # showed the old 400).
+    assert response.status_code == 200
     assert "内战" in response.content.decode()
+    assert 'hx-swap-oob="true"' in response.content.decode()
     assert player.game_accounts.filter(pk=account.pk).exists()

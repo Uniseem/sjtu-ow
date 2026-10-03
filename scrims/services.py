@@ -265,6 +265,11 @@ def assign_scrim_permissions() -> list[str]:
     return granted
 
 
+def can_delete(scrim) -> bool:
+    """Only a draft nobody signed up for (round 115); otherwise cancel it."""
+    return scrim.status == ScrimStatus.DRAFT and not scrim.signups.exists()
+
+
 @transaction.atomic
 def publish(*, scrim, actor=None):
     if scrim.status == ScrimStatus.CANCELLED:

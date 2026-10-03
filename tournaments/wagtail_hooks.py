@@ -1,6 +1,7 @@
 """Tournament administration (design 8.1, 14.2)."""
 
 from django.contrib import messages
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from wagtail import hooks
@@ -10,6 +11,8 @@ from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.admin.ui.menus import MenuItem as ListingMenuItem
 from wagtail.admin.views import generic
 from wagtail.admin.viewsets.model import ModelViewSet
+from wagtail.permission_policies import ModelPermissionPolicy
+from wagtail.permissions import register_permission_policy
 
 from tournaments import services
 from tournaments.models import Tournament, TournamentStatus
@@ -48,6 +51,12 @@ Tournament.base_form_class = TournamentAdminForm
 
 
 class TournamentIndexView(generic.IndexView):
+    def get_delete_url(self, instance):
+        # The listing asks only the model-level permission (round 115).
+        if not services.can_delete(instance):
+            return None
+        return super().get_delete_url(instance)
+
     def get_list_more_buttons(self, instance):
         buttons = super().get_list_more_buttons(instance)
         if instance.status == TournamentStatus.DRAFT:
@@ -110,6 +119,29 @@ class TournamentEditView(TournamentSaveMixin, generic.EditView):
     pass
 
 
+class TournamentPermissionPolicy(ModelPermissionPolicy):
+    """Design 8.1 (round 115): only a draft never published can be deleted;
+    after that a tournament is cancelled, so registrations and their logs stay."""
+
+    def user_has_permission_for_instance(self, user, action, instance):
+        if action == "delete" and not services.can_delete(instance):
+            return False
+        return super().user_has_permission_for_instance(user, action, instance)
+
+
+register_permission_policy(Tournament, TournamentPermissionPolicy(Tournament))
+
+
+class TournamentDeleteView(generic.DeleteView):
+    """The delete button is hidden for the rest; a typed address is refused too."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if not services.can_delete(self.object):
+            messages.error(request, "发布过的赛事不能删除，只能取消。")
+            return redirect("tournaments:edit", self.object.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+
 class TournamentViewSet(ModelViewSet):
     model = Tournament
     name = "tournaments"
@@ -121,6 +153,7 @@ class TournamentViewSet(ModelViewSet):
     index_view_class = TournamentIndexView
     add_view_class = TournamentCreateView
     edit_view_class = TournamentEditView
+    delete_view_class = TournamentDeleteView
     list_display = [
         "title",
         "status",
@@ -196,6 +229,8 @@ def manager_required(view):
 
 @manager_required
 def tournament_action(request, pk, action):
+    if action not in ACTIONS:
+        raise Http404("没有这个操作。")
     tournament = get_object_or_404(Tournament, pk=pk)
     label, handler = ACTIONS[action]
     if request.method == "POST":
