@@ -232,3 +232,123 @@ def test_closing_or_reopening_an_account_regenerates_its_pages(site):
         user.is_active = True
         user.save()
         assert refresh.call_count == 2
+
+
+# --- by main position (v6.10, round 113) ---------------------------------------------
+
+
+def _with_role(index, role):
+    user = _bare(index)
+    user.main_role = role
+    user.save()
+    return user
+
+
+def _role_folders():
+    pool = _pool()
+    return {
+        "tank": pool.add_child(name="坦克"),
+        "damage": pool.add_child(name="输出"),
+        "support": pool.add_child(name="支援"),
+    }
+
+
+@pytest.mark.django_db
+def test_a_tank_gets_a_tank_face_and_a_support_a_support_face(site):
+    from core import avatars
+
+    folders = _role_folders()
+    tanks = [_face(folders["tank"], f"tank{index}") for index in range(2)]
+    _face(folders["damage"], "damage")
+    support = _face(folders["support"], "support")
+    pool = avatars.load_pool()
+    tank_player = _with_role(20, "tank")
+    assert avatars.pick(tank_player, pool) == tanks[tank_player.pk % 2]
+    assert avatars.pick(_with_role(21, "support"), pool) == support
+    html = _render(tank_player, size="md")
+    assert tanks[tank_player.pk % 2].get_rendition("fill-176x176").url in html
+
+
+@pytest.mark.django_db
+def test_without_a_main_position_any_face(site):
+    from core import avatars
+
+    folders = _role_folders()
+    faces = [
+        _face(folders["tank"], "tank"),
+        _face(folders["damage"], "damage"),
+        _face(_pool(), "loose"),
+    ]
+    pool = avatars.load_pool()
+    # Three people in a row get the three faces, whatever folder they are in.
+    people = [_with_role(index, "") for index in (30, 31, 32)]
+    assert {avatars.pick(user, pool) for user in people} == set(faces)
+    assert avatars.pick(people[0], pool) == faces[people[0].pk % 3]
+
+
+@pytest.mark.django_db
+def test_an_empty_position_folder_falls_back_to_the_whole_pool(site):
+    from core import avatars
+
+    folders = _role_folders()
+    faces = [_face(folders["tank"], "tank"), _face(folders["damage"], "damage")]
+    user = _with_role(23, "support")  # 支援 is there but empty
+    assert avatars.pick(user, avatars.load_pool()) == faces[user.pk % 2]
+
+
+@pytest.mark.django_db
+def test_folders_under_a_position_folder_count_for_it(site):
+    from core import avatars
+
+    folders = _role_folders()
+    reinhardt = _face(folders["tank"].add_child(name="莱因哈特"), "reinhardt")
+    _face(folders["damage"], "damage1")
+    _face(folders["damage"], "damage2")
+    pool = avatars.load_pool()
+    # The only tank face, for every tank player (two in a row, so a miss on
+    # the folder cannot land on it by chance).
+    for index in (40, 41):
+        assert avatars.pick(_with_role(index, "tank"), pool) == reinhardt
+
+
+@pytest.mark.django_db
+def test_loading_the_pool_costs_the_same_however_many_faces(site):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    from core import avatars
+
+    folders = _role_folders()
+
+    def looks():
+        with CaptureQueriesContext(connection) as queries:
+            avatars.load_pool()
+        return len(queries)
+
+    for index in range(3):
+        _face(folders["tank"], f"few{index}")
+    few = looks()
+    for index in range(9):
+        _face(folders["support"], f"many{index}")
+    assert looks() == few
+
+
+@pytest.mark.django_db
+def test_without_a_main_position_the_first_other_one_counts(site):
+    """The small card in the member list shows one position: the main one,
+    or else the first under 也能打; the face follows it."""
+    from core import avatars
+
+    folders = _role_folders()
+    tank = _face(folders["tank"], "tank")
+    damage = _face(folders["damage"], "damage")
+    _face(folders["support"], "support")
+    pool = avatars.load_pool()
+    for index, others, face in (
+        (50, "support,damage", damage),
+        (51, "damage,support", damage),
+        (52, "tank,damage,support", tank),
+    ):
+        user = _with_role(index, "")
+        user.flex_roles = others
+        assert avatars.pick(user, pool) == face, others
