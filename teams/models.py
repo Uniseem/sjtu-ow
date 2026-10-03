@@ -35,6 +35,13 @@ class Team(models.Model):
     recruiting_roles = models.CharField(
         "缺的位置", max_length=32, blank=True, help_text="位置代码，逗号分隔。"
     )
+    # Design 7.1 (v6.31): for the members only, never on the static page.
+    member_contact = models.CharField(
+        "队内联系方式",
+        max_length=100,
+        blank=True,
+        help_text="比如队伍 QQ 群号。只有本队成员看得到，入队通过的邮件里也会写上。",
+    )
     disbanded_at = models.DateTimeField("解散时间", null=True, blank=True)
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)

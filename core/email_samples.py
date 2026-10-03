@@ -30,7 +30,12 @@ class Sample:
 
 
 def _team():
-    return SimpleNamespace(pk=1, name="交大龙骑", get_absolute_url=lambda: "/teams/1/")
+    return SimpleNamespace(
+        pk=1,
+        name="交大龙骑",
+        member_contact="QQ 群 123456789",
+        get_absolute_url=lambda: "/teams/1/",
+    )
 
 
 def _tournament():

@@ -119,7 +119,15 @@ def create_team(
 
 
 def update_team(
-    *, team, user, name, description, logo, is_recruiting, recruiting_roles=None
+    *,
+    team,
+    user,
+    name,
+    description,
+    logo,
+    is_recruiting,
+    recruiting_roles=None,
+    member_contact=None,
 ) -> Team:
     if not is_captain(team, user) and not user.is_superuser:
         raise TeamError("只有队长可以修改战队资料。")
@@ -133,6 +141,8 @@ def update_team(
     team.is_recruiting = is_recruiting
     if recruiting_roles is not None:
         team.recruiting_roles = recruiting_roles
+    if member_contact is not None:
+        team.member_contact = member_contact.strip()
     try:
         team.save()
     except IntegrityError as exc:

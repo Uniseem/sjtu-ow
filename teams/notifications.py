@@ -41,9 +41,12 @@ def application_decided_letter(application) -> Letter:
     team = application.team
     reason = f"你收到这封邮件，是因为你申请过加入「{team.name}」。"
     if application.status == "approved":
+        # Design 7.1 (v6.31): how to reach the team, if the captain said.
+        contact = [("队内联系方式", team.member_contact)] if team.member_contact else []
         return Letter(
             subject=f"入队申请已通过：{team.name}",
             lead=f"你加入「{team.name}」的申请已通过，现在你是这支战队的队员了。",
+            facts=contact,
             action=("打开战队主页", site_url(team.get_absolute_url())),
             reason=reason,
         )

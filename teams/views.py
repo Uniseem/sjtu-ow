@@ -200,6 +200,7 @@ def team_manage(request, pk):
                     logo=logo,
                     is_recruiting=form.cleaned_data.get("is_recruiting", True),
                     recruiting_roles=form.cleaned_data.get("recruiting_roles", ""),
+                    member_contact=form.cleaned_data.get("member_contact", ""),
                 )
             except services.TeamError as exc:
                 _drop_unused_logo(new_logo)

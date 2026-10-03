@@ -31,7 +31,13 @@ class TeamForm(forms.ModelForm):
 
     class Meta:
         model = Team
-        fields = ["name", "description", "is_recruiting", "recruiting_roles"]
+        fields = [
+            "name",
+            "description",
+            "is_recruiting",
+            "recruiting_roles",
+            "member_contact",
+        ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 4, "maxlength": 500}),
         }
@@ -46,8 +52,9 @@ class TeamForm(forms.ModelForm):
                 self.instance.recruiting_roles
             )
         if not self.instance.pk:
-            # Nothing to remove yet on the create form.
+            # Nothing to remove yet on the create form, and nobody to tell.
             self.fields.pop("remove_logo", None)
+            self.fields.pop("member_contact", None)
 
     def clean_recruiting_roles(self) -> str:
         return join_roles(self.cleaned_data.get("recruiting_roles") or [])
