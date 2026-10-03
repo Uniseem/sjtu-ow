@@ -1,6 +1,6 @@
 """Full-page screenshots of signed-in pages, on the test machine (round 146).
 
-    bash scripts/remote-check.sh run uv run python scripts/screens.py [WIDTH]
+    bash scripts/remote-check.sh run uv run python scripts/screens.py [WIDTH] [dark]
 
 Builds a throwaway site in /tmp/sjtu-ow-screens (its own database and
 uploads), seeds a member, a captain, a team, two tournaments and a scrim,
@@ -41,6 +41,7 @@ PAGES = [
     ("teamcup-as-captain", "captain", "/tournaments/{teamcup}/"),
     ("scrim-signed-up", "member", "/scrims/{scrim}/"),
     ("teams-by-role", "member", "/teams/?role=support"),
+    ("members-free-supports", "captain", "/members/?role=support&free=1"),
 ]
 
 
@@ -273,7 +274,7 @@ def wait_for(url, seconds=60):
     raise SystemExit(f"{url} 没有起来")
 
 
-def shoot(width: int):
+def shoot(width: int, scheme: str = "light"):
     shutil.rmtree(WORK, ignore_errors=True)
     OUT.mkdir(parents=True)
     if not (ROOT / "static/css/app.css").exists():
@@ -323,6 +324,10 @@ def shoot(width: int):
         tools.send("Page.enable")
         tools.send("Network.enable")
         tools.send(
+            "Emulation.setEmulatedMedia",
+            {"features": [{"name": "prefers-color-scheme", "value": scheme}]},
+        )
+        tools.send(
             "Emulation.setDeviceMetricsOverride",
             {
                 "width": width,
@@ -361,7 +366,7 @@ def shoot(width: int):
                     },
                 },
             )
-            target = OUT / f"{name}-{width}.png"
+            target = OUT / f"{name}-{width}{'-dark' if scheme == 'dark' else ''}.png"
             target.write_bytes(base64.b64decode(shot["data"]))
             print(f"{target}  {int(full['height'])}px")
     finally:
@@ -376,4 +381,7 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["seed"]:
         print(json.dumps(seed()))
     else:
-        shoot(int(sys.argv[1]) if len(sys.argv) > 1 else 375)
+        shoot(
+            int(sys.argv[1]) if len(sys.argv) > 1 else 375,
+            "dark" if "dark" in sys.argv[2:] else "light",
+        )

@@ -22,7 +22,7 @@
     </nav>
 
     <div class="mt-12 flex flex-col gap-16">
-      {% for section in sections %}
+      {% if not filtering %}{% for section in sections %}
         <section id="group-{{ section.group.pk }}" class="c-group scroll-mt-6" data-member-group aria-labelledby="group-title-{{ section.group.pk }}">
           <div class="c-group__head">
             {% include "components/section_head.html" with title=section.group.name heading_id="group-title-"|add:section.group.pk|stringformat:"s" %}
@@ -53,18 +53,30 @@
             <p class="text-fg-2">这个分组暂时没有成员。</p>
           {% endif %}
         </section>
-      {% endfor %}
+      {% endfor %}{% endif %}
 
       <section id="all-members" class="c-group scroll-mt-6" aria-labelledby="all-members-title">
         <div class="c-group__head">
           <div class="c-sectionhead">
             <h2 id="all-members-title">全部成员</h2>
           </div>
-          <p class="c-group__about"><span class="font-numeric">{{ members|length }}</span> 位成员，按加入先后编号</p>
+          <p class="c-group__about">{% if filtering %}筛出 <span class="font-numeric">{{ shown|length }}</span> 位（共 <span class="font-numeric">{{ members|length }}</span> 位），{% else %}<span class="font-numeric">{{ members|length }}</span> 位成员，{% endif %}按加入先后编号</p>
+          {# Design 6.3 (v6.40): for a captain looking for players. #}
+          <nav class="c-tabs mt-4 mb-6" aria-label="按常用位置筛选" data-member-filter>
+            <a href="{% url 'members' %}{% if free %}?free=1{% endif %}#all-members"{% if not role %} aria-current="page"{% endif %}>全部位置</a>
+            {% for code, label in role_choices %}
+              <a href="?role={{ code }}{% if free %}&amp;free=1{% endif %}#all-members"{% if role == code %} aria-current="page"{% endif %}>{{ label }}</a>
+            {% endfor %}
+            {% if free %}
+              <a href="{% if role %}?role={{ role }}{% else %}{% url 'members' %}{% endif %}#all-members" aria-current="page">只看还没进战队的 ✕</a>
+            {% else %}
+              <a href="?{% if role %}role={{ role }}&amp;{% endif %}free=1#all-members">只看还没进战队的</a>
+            {% endif %}
+          </nav>
         </div>
-        {% if members %}
+        {% if shown %}
           <ol class="c-roster">
-            {% for member in members %}
+            {% for member in shown %}
               <li class="c-roster__item" data-member>
                 {% include "components/avatar.html" with person=member.user size="md" %}
                 <span class="min-w-0">
@@ -72,10 +84,12 @@
                   {% include "components/play_style.html" with profile=member.profile compact=True %}
                   {% if member.tags %}<span class="c-roster__groups">{% for tag in member.tags|slice:":3" %}<span class="c-tag">{{ tag }}</span>{% endfor %}{% if member.tags|length > 3 %}<span class="c-tag">+{{ member.tags|length|add:"-3" }}</span>{% endif %}</span>{% endif %}
                 </span>
-                <span class="c-roster__no font-numeric" data-member-number>{{ forloop.counter|stringformat:"03d" }}</span>
+                <span class="c-roster__no font-numeric" data-member-number>{{ member.number|stringformat:"03d" }}</span>
               </li>
             {% endfor %}
           </ol>
+        {% elif filtering %}
+          <p class="text-fg-2" data-member-filter-empty>没有符合条件的成员。</p>
         {% else %}
           <p class="text-fg-2">还没有成员。</p>
         {% endif %}

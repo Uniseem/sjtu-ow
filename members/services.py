@@ -35,6 +35,8 @@ class Member:
     # Every post across the groups, in group order (design-details 4.3).
     titles: list = field(default_factory=list)
     profile: object = None
+    # Place in the site's join order (001 …), kept when the list is filtered.
+    number: int = 0
 
     @property
     def tags(self) -> list[str]:
@@ -60,7 +62,10 @@ def showcase() -> dict:
         .order_by("date_joined", "pk")
         .prefetch_related("game_accounts")
     )
-    members = {user.pk: Member(user, profile=public_profile(user)) for user in users}
+    members = {
+        user.pk: Member(user, profile=public_profile(user), number=index)
+        for index, user in enumerate(users, start=1)
+    }
     for membership in (
         TeamMembership.objects.filter(
             user_id__in=members, team__disbanded_at__isnull=True
@@ -87,6 +92,16 @@ def showcase() -> dict:
             member.titles.extend(t for t in titles if t not in member.titles)
         sections.append(Section(group, entries))
     return {"sections": sections, "members": [members[user.pk] for user in users]}
+
+
+def looking_for(members, *, role="", free=False) -> list:
+    """Design 6.3 (v6.40): 「全部成员」 by usual position, or only people in
+    no team yet, for a captain looking for players."""
+    return [
+        member
+        for member in members
+        if (not role or member.user.main_role == role) and not (free and member.teams)
+    ]
 
 
 def member_url(user) -> str:
