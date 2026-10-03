@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: M10 前台视觉 v6.12，M7 上线准备暂停
-round: 141-stale-applications
+round: 142-finish-nudge
 next: claude（按用户 10-04 睡前说的：假定管理员、成员、投稿者等各种身份把流程走一遍，发现不完善的地方逐轮修）
 updated: 2026-10-04
 blocked_on: 默认头像以后要换动漫风的话需要你提供有授权的素材（官方没有公开的，现在用官方立绘）；演示站（sjtu.ow-shanghaiuniversity.com）的管理员要你自己建（`… exec web python manage.py createsuperuser`）；转正式站前要定演示数据和动漫头像怎么处理；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定
 ```
 
 ## 现在该谁动手
+
+**142（2026-10-04）**：以赛事管理员的身份：赛事不会自动结束（可能连打几天），打完忘了标的话一直挂在「已截止」。现在后台首页的待办会列出开赛 3 天以上还没标结束的赛事。顺带删了一个没人用的空文件。演示站已升级。
 
 **141（2026-10-04）**：以递了入队申请的人的身份：队长不上线，申请就一直挂在「待审批」。现在两周没人处理的申请由每天夜里的清理任务关闭，申请人收到信，可以再申请或看看别的招募中的战队。演示站已升级。
 
@@ -510,6 +512,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 139-time-changed | 改期走查（设计 v6.34）：已发布的赛事、内战改了开始时间时通知报了名的人，提醒按新时间重排 | **Claude 实现**，自查通过。新测试 8 条（含后台编辑页真实提交）；12 处变异全部被抓到（删了一处重复写法） |
 | 140-team-role-filter | 找队的人走查（设计 v6.35）：战队列表按缺的位置筛，数量并进原来的一次聚合 | **Claude 实现**，自查通过。`teams/tests/test_role_filter.py` 3 条；7 处变异全部被抓到 |
 | 141-stale-applications | 申请人走查（设计 v6.36）：队长 14 天没处理的入队申请由 `cleanup_old_data` 关闭并通知申请人 | **Claude 实现**，自查通过。`teams/tests/test_stale_applications.py` 3 条；6 处变异全部被抓到（修正了一条没测到的测试） |
+| 142-finish-nudge | 赛事管理员走查（设计 v6.37）：后台待办列出开赛 3 天以上还没标记结束的赛事；删空的 `moderation/views.py` | **Claude 实现**，自查通过。`core/tests/test_admin_functions.py` 加 1 条；3 处变异全部被抓到 |
 
 ## 当前待定问题
 

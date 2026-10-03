@@ -438,3 +438,40 @@ def test_the_arrangement_board_marks_deactivated_accounts(site, client):
     ).content.decode()
     assert "停用散人（账号已停用）" in page
     assert "在场散人（账号已停用）" not in page
+
+
+@pytest.mark.django_db
+def test_tournaments_long_started_ask_to_be_finished(site, client):
+    """Round 142 (design 14.1, v6.37): a tournament never finishes by itself."""
+    now = timezone.now()
+    window = {
+        "registration_opens_at": now - timedelta(days=20),
+        "registration_closes_at": now - timedelta(days=10),
+        "published_at": now - timedelta(days=20),
+    }
+    Tournament.objects.create(
+        title="打完没标杯",
+        starts_at=now - timedelta(days=4),
+        status=TournamentStatus.PUBLISHED,
+        **window,
+    )
+    Tournament.objects.create(
+        title="昨天开赛杯",
+        starts_at=now - timedelta(days=1),
+        status=TournamentStatus.PUBLISHED,
+        **window,
+    )
+    Tournament.objects.create(
+        title="早就结束杯",
+        starts_at=now - timedelta(days=9),
+        status=TournamentStatus.FINISHED,
+        **window,
+    )
+    client.force_login(_staff("finish142@example.com", "赛事管理员", GROUP_SUBMITTER))
+    todo = _todo(client)
+    assert "「打完没标杯」开赛已经 3 天以上" in todo
+    assert reverse("tournaments:index") in todo
+    assert "昨天开赛杯" not in todo
+    assert "早就结束杯" not in todo
+    client.force_login(_staff("editor142@example.com", "内容编辑"))
+    assert "打完没标杯" not in _todo(client)

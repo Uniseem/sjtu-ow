@@ -13,6 +13,8 @@ from django.urls import reverse
 from django.utils import timezone
 from wagtail.admin.ui.components import Component
 
+FINISH_NUDGE_AFTER = timezone.timedelta(days=3)
+
 
 @dataclass(frozen=True)
 class Todo:
@@ -99,6 +101,20 @@ def _tournament_rows(user) -> list[Todo]:
                 f"「{tournament.title}」有 {counts[tournament.pk]} 人等待编队",
                 reverse("tournament_teams_board", args=[tournament.pk]),
                 counts[tournament.pk],
+            )
+        )
+    # Design 14.1 (v6.37): a tournament may run for days, so it is never
+    # finished by itself; three days after it started, ask.
+    over = Tournament.objects.filter(
+        status=TournamentStatus.PUBLISHED,
+        starts_at__lt=timezone.now() - FINISH_NUDGE_AFTER,
+    ).order_by("starts_at")
+    for tournament in over:
+        rows.append(
+            Todo(
+                f"「{tournament.title}」开赛已经 {FINISH_NUDGE_AFTER.days} 天以上，"
+                "打完了的话在赛事列表的「更多」里标记已结束",
+                reverse("tournaments:index"),
             )
         )
     return rows

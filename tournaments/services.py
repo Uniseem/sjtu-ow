@@ -1,4 +1,6 @@
-"""Tournament rules and the hooks M4's registration round will fill in."""
+"""Tournament lifecycle (design 8.1): listing, publishing, cancelling, the
+static pages that follow, and the reminders and notices around the start.
+Registrations live in ``tournaments.registration``."""
 
 from __future__ import annotations
 
