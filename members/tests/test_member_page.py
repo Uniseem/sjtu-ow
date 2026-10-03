@@ -63,9 +63,11 @@ def test_the_page_shows_what_is_public_and_nothing_else(client):
 
     main = _main(client, reverse("member_detail", args=[user.pk]))
 
-    assert "<h1>全都有</h1>" in main
+    # Round 148 (design 6.4, v6.41): a banner like a team's, facts beneath.
+    assert '<h1 class="c-stage__title">全都有</h1>' in main
     assert "“推车不停”" in main
-    assert 'class="c-role c-role--main"' in main and "钻石" in main
+    assert "<dt>常用位置</dt><dd>输出</dd>" in main
+    assert "<dt>输出段位</dt><dd>钻石" in main
     assert "社团干部" in main
     for title in ("社长", "主播"):
         assert f'<dd class="c-tag">{title}</dd>' in main
@@ -85,7 +87,8 @@ def test_a_hidden_rank_stays_hidden(client):
 
     main = _main(client, reverse("member_detail", args=[user.pk]))
 
-    assert 'class="c-role c-role--main"' in main
+    assert "<dt>常用位置</dt><dd>输出</dd>" in main
+    assert "段位</dt>" not in main
     assert "钻石" not in main
 
 
@@ -217,3 +220,19 @@ def test_someone_without_a_page_is_not_linked(client):
 
     assert "停用了" in html
     assert reverse("member_detail", args=[gone.pk]) not in html
+
+
+@pytest.mark.django_db
+def test_the_banner_counts_teams_and_articles(client):
+    """Round 148 (design 6.4, v6.41)."""
+    from teams import services as team_services
+
+    user = person("数一数")
+    GameAccount.objects.create(user=user, battletag="Count#1480")
+    team = team_services.create_team(user=user, name="一支队")
+    main = _main(client, reverse("member_detail", args=[user.pk]))
+    assert "<dt>现役战队</dt><dd>1 支</dd>" in main
+    assert "<dt>文章</dt><dd>0 篇</dd>" in main
+    teams = main[main.index("data-member-teams") :]
+    assert "data-member-team>" in teams and team.get_absolute_url() in teams
+    assert "c-teams--list" not in teams  # compact rows, not the big list cards

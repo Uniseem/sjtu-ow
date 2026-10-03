@@ -110,7 +110,8 @@ def test_the_member_page_shows_the_picture_on_the_card_and_in_the_list(client, s
     assert _thumb(user, "fill-400x400") in html  # the big card (4.2)
     assert _thumb(user, "fill-176x176") in html  # 全部成员 (4.4)
     detail = client.get(f"/members/{user.pk}/").content.decode()
-    assert _thumb(user, "fill-176x176") in detail
+    # Round 148: the member page's banner, the same size as a team's big logo.
+    assert _thumb(user, "fill-288x288") in detail
 
 
 @pytest.mark.django_db

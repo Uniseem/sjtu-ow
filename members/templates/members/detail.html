@@ -1,57 +1,72 @@
 {% extends "base.html" %}
-{% load ow %}
+{% load ow wagtailimages_tags %}
 
 {% block title %}{{ page.user.nickname }} · 成员 · 上海交通大学守望先锋社区{% endblock %}
 
 {% block extra_head %}
-  {# Kept out of search engines until the page's design is settled (design 6.4). #}
+  {# Kept out of search engines for now (design 6.4). #}
   <meta name="robots" content="noindex">
 {% endblock %}
 
 {% block content %}
   {% comment %}
-    A member's own page, basic version (design 6.4): only what design-details
-    1.8 calls public, laid out with the components there are. The design of
-    this page is still to be discussed.
+    A member's own page (design 6.4; v6.41 settles its look): a banner like a
+    team's, with the person's base picture, face, name, motto and a few
+    facts; then the teams as compact rows, the teams they left, their
+    articles. Only what design-details 1.8 calls public.
   {% endcomment %}
-  <header class="c-pagehead">
-    <div class="l-container l-container--narrow">
+  <header class="c-stage c-stage--team" data-member-head>
+    <img class="c-stage__img" src="{{ page.user|hue_scene }}" width="1600" height="900" alt="">
+    <div class="l-container l-container--narrow c-stage__body">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/members/">成员</a><span class="c-crumbs__sep">/</span><span>{{ page.user.nickname }}</span></nav>
-      <div class="mt-6 flex flex-wrap items-center gap-6" data-member-head>
-        {% include "components/avatar.html" with person=page.user size="lg" %}
-        <div class="flex min-w-0 flex-col gap-2">
-          <h1>{{ page.user.nickname }}</h1>
-          {% if page.user.motto %}<p class="c-pagehead__lede" data-motto>“{{ page.user.motto }}”</p>{% elif is_owner %}<p class="text-sm text-fg-2" data-owner-hint>还没写个人宣言，<a href="{% url 'me_profile' %}" class="c-link">写一句</a>（只有你看得到这句提示）。</p>{% endif %}
-          {% include "components/play_style.html" with profile=page.profile %}
-          {% if is_owner and not page.user.main_role and not page.user.flex_roles %}<p class="text-sm text-fg-2" data-owner-hint>还没选常用位置，<a href="{% url 'me_profile' %}" class="c-link">去选</a>。</p>{% endif %}
+      <div class="c-stage__team">
+        <span class="c-teams__logo c-teams__logo--lg c-hue-{{ page.user|hue }}">{% if page.user.avatar_id %}{% image page.user.avatar fill-288x288 alt=page.user.nickname %}{% else %}{% default_avatar page.user "fill-288x288" as face %}{% if face %}{{ face }}{% else %}{{ page.user.nickname|initial }}{% endif %}{% endif %}</span>
+        <div class="min-w-0">
+          {% if page.groups %}
+            <dl class="c-stage__tags" data-member-groups>
+              {% for group, titles in page.groups %}
+                <div class="flex flex-wrap items-center gap-1.5"><dt class="c-stage__wanted">{{ group.name }}</dt>{% for title in titles %}<dd class="c-tag">{{ title }}</dd>{% endfor %}</div>
+              {% endfor %}
+            </dl>
+          {% endif %}
+          <h1 class="c-stage__title">{{ page.user.nickname }}</h1>
+          {% if page.user.motto %}<p class="c-stage__lede" data-motto>“{{ page.user.motto }}”</p>{% endif %}
+          <dl class="c-stage__facts" data-member-facts>
+            {% if page.profile.roles %}<div><dt>常用位置</dt><dd>{% if page.profile.is_flex %}全能{% else %}{% for code, label, is_main in page.profile.role_items %}{{ label }}{% if not forloop.last %}、{% endif %}{% endfor %}{% endif %}</dd></div>{% endif %}
+            {% with rank=page.profile.main_rank %}{% if rank %}<div><dt>{{ rank.role_label }}段位</dt><dd{% if rank.stale %} class="is-stale"{% endif %}>{{ rank.label }}</dd></div>{% endif %}{% endwith %}
+            <div><dt>现役战队</dt><dd>{{ page.teams|length }} 支</dd></div>
+            <div><dt>文章</dt><dd>{{ page.article_count }} 篇</dd></div>
+          </dl>
         </div>
-        {% if is_owner %}
-          <a href="{% url 'me_profile' %}" class="c-btn c-btn--secondary c-btn--sm sm:ml-auto" data-owner-edit>{% include "components/icon.html" with name="settings" %}编辑资料</a>
-        {% endif %}
       </div>
-      {% if page.groups %}
-        <dl class="mt-6 flex flex-wrap gap-x-8 gap-y-3" data-member-groups>
-          {% for group, titles in page.groups %}
-            <div class="flex flex-wrap items-center gap-2">
-              <dt class="text-fg-2">{{ group.name }}</dt>
-              {% for title in titles %}<dd class="c-tag">{{ title }}</dd>{% endfor %}
-            </div>
-          {% endfor %}
-        </dl>
-      {% endif %}
     </div>
   </header>
 
   <div class="l-container l-container--narrow pt-10 pb-16 lg:pt-14 lg:pb-24">
     <div class="flex flex-col gap-14">
+      {% if is_owner %}
+        {# Design 6.4 (v6.21): the owner's way back to 个人中心, and what is missing. #}
+        <section class="c-panel flex flex-col gap-3" aria-label="这是你的主页" data-owner-panel>
+          <p class="flex flex-wrap items-center gap-3"><span class="text-sm text-fg-2">这是你的主页，别人看到的就是这样。</span><a href="{% url 'me_profile' %}" class="c-btn c-btn--secondary c-btn--sm" data-owner-edit>{% include "components/icon.html" with name="settings" %}编辑资料</a></p>
+          {% if not page.user.motto %}<p class="text-sm text-fg-2" data-owner-hint>还没写个人宣言，<a href="{% url 'me_profile' %}" class="c-link">写一句</a>（只有你看得到这句提示）。</p>{% endif %}
+          {% if not page.user.main_role and not page.user.flex_roles %}<p class="text-sm text-fg-2" data-owner-hint>还没选常用位置，<a href="{% url 'me_profile' %}" class="c-link">去选</a>。</p>{% endif %}
+        </section>
+      {% endif %}
+
       <section aria-labelledby="member-teams" data-member-teams>
         {% include "components/section_head.html" with title="所在战队" heading_id="member-teams" %}
         {% if page.teams %}
-          <ul class="c-teams c-teams--list">
+          <ol class="c-rows">
             {% for team in page.teams %}
-              {% include "components/team_tile.html" with members=team.members_total %}
+              <li class="c-row" data-member-team>
+                <span class="c-avatar c-avatar--md c-hue-{{ team|hue }}" aria-hidden="true">{% if team.logo %}{% image team.logo fill-96x96 alt="" loading="lazy" %}{% else %}{{ team.name|initial }}{% endif %}</span>
+                <div class="c-row__main">
+                  <h3 class="c-row__title"><a href="{{ team.get_absolute_url }}" class="c-stretch">{{ team.name }}</a></h3>
+                  <p class="c-row__meta"><span class="font-numeric">{{ team.members_total }}</span> 人 · {% if team.is_recruiting %}招募中{% else %}暂不招募{% endif %}</p>
+                </div>
+              </li>
             {% endfor %}
-          </ul>
+          </ol>
         {% else %}
           <p class="text-fg-2">现在没有加入战队。{% if is_owner %}<a href="{% url 'team_index' %}" class="c-link" data-owner-hint>去找一支招募中的</a>{% endif %}</p>
         {% endif %}

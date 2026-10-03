@@ -29,7 +29,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WORK = Path("/tmp/sjtu-ow-screens")
 OUT = WORK / "out"
 
-# (file name, who is signed in, path). Paths use {team}, {cup}, {teamcup}, {scrim}.
+# (file name, who is signed in, path). Paths use {team}, {cup}, {teamcup},
+# {scrim} and {member}.
 PAGES = [
     ("me-profile", "member", "/me/"),
     ("me-registrations", "member", "/me/registrations/"),
@@ -42,6 +43,8 @@ PAGES = [
     ("scrim-signed-up", "member", "/scrims/{scrim}/"),
     ("teams-by-role", "member", "/teams/?role=support"),
     ("members-free-supports", "captain", "/members/?role=support&free=1"),
+    ("member-page", "captain", "/members/{member}/"),
+    ("own-page", "member", "/members/{member}/"),
 ]
 
 
@@ -188,6 +191,7 @@ def seed() -> dict:
         "cup": cup.pk,
         "teamcup": teamcup.pk,
         "scrim": scrim.pk,
+        "member": member.pk,
     }
 
 

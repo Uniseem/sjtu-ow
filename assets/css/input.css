@@ -4424,6 +4424,11 @@
     font-weight: 600;
   }
 
+  /* A rank older than 180 days (design-details 3.3), on a member's banner. */
+  .c-stage__facts dd.is-stale {
+    color: var(--color-fg-3);
+  }
+
   .c-stage__meter {
     max-width: 24rem;
     margin-top: 1rem;

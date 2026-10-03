@@ -33,7 +33,7 @@ def members_index(request):
 @require_GET
 def member_detail(request, pk):
     """A member's own page (design 6.4). Only people on the showcase have one;
-    rendered live and kept out of search engines until its design is settled."""
+    rendered live and kept out of search engines (v6.41 kept it that way)."""
     user = joined_users().filter(pk=pk).prefetch_related("game_accounts").first()
     if user is None:
         raise Http404("没有这位成员。")
