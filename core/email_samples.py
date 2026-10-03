@@ -147,6 +147,7 @@ def _wagtail() -> Sample:
 
 def samples() -> list[Sample]:
     from accounts import notifications as faces
+    from content import notifications as articles
     from core.mail import test_letter
     from moderation import notifications as moderation
     from scrims import notifications as scrims
@@ -342,6 +343,22 @@ def samples() -> list[Sample]:
                     get_registration_mode_display=lambda: "个人报名，赛事组编队",
                     sjtu_only=True,
                     get_absolute_url=lambda: "/tournaments/1/",
+                ),
+                "https://example.com/unsubscribe/sample/",
+            ),
+            "小天使",
+        ),
+        _letter(
+            "new-article",
+            "活动通知",
+            "新文章通知（群发）",
+            "开着活动通知的成员",
+            articles.new_article_letter(
+                SimpleNamespace(
+                    title="秋季招新开始了",
+                    summary="面向全校，不限段位，填表后拉你进群。",
+                    category=SimpleNamespace(name="公告"),
+                    url="/news/autumn-recruiting/",
                 ),
                 "https://example.com/unsubscribe/sample/",
             ),

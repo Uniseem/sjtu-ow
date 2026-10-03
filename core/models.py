@@ -629,6 +629,7 @@ class Broadcast(models.Model):
     class Kind(models.TextChoices):
         TOURNAMENT = "tournament", "新赛事"
         SCRIM = "scrim", "新内战"
+        ARTICLE = "article", "新文章"
 
     kind = models.CharField("类型", max_length=16, choices=Kind.choices)
     object_id = models.PositiveIntegerField("对象 ID")

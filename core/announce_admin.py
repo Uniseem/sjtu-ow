@@ -12,8 +12,6 @@ from django.urls import reverse
 from core import services
 from core.letters import text_of
 
-BACK = {"tournament": "tournaments:index", "scrim": "scrims:index"}
-
 
 def announce_view(request, kind, pk):
     entry = services.kinds().get(kind)
@@ -33,7 +31,7 @@ def announce_view(request, kind, pk):
                 f"已开始给 {broadcast.recipient_count} 人发「{broadcast.subject}」，"
                 "在后台逐封发出。",
             )
-        return redirect(BACK[kind])
+        return redirect(entry.back_url(obj))
     letter = entry.letter(obj, services.unsubscribe_url(request.user))
     return render(
         request,
@@ -47,13 +45,10 @@ def announce_view(request, kind, pk):
             "count": services.recipient_count(obj),
             "sjtu_only": getattr(obj, "sjtu_only", False),
             "problem": services.announcement_problem(kind, obj),
-            "back_url": reverse(BACK[kind]),
+            "back_url": entry.back_url(obj),
             "breadcrumbs_items": [
                 {"url": reverse("wagtailadmin_home"), "label": "首页"},
-                {
-                    "url": reverse(BACK[kind]),
-                    "label": "赛事" if kind == "tournament" else "内战活动",
-                },
+                {"url": entry.back_url(obj), "label": entry.label},
                 {"url": "", "label": "通知全体成员"},
             ],
         },

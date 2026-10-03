@@ -2,9 +2,11 @@
 
 from django.db.models import Q
 from django.urls import reverse
+from django.utils.functional import cached_property
 from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 from wagtail.admin.ui.components import Component
+from wagtail.admin.ui.menus.pages import PageMenuItem
 from wagtail.admin.ui.tables import BooleanColumn
 from wagtail.models import WorkflowState
 from wagtail.permission_policies.pages import PagePermissionPolicy
@@ -140,3 +142,41 @@ def _explorable_instances_for_submitters(self, user):
 
 
 PagePermissionPolicy.explorable_instances = _explorable_instances_for_submitters
+
+
+class AnnounceArticleItem(PageMenuItem):
+    """「通知全体成员」 for a published article (design 10.4, v6.23)."""
+
+    label = "通知全体成员"
+    icon_name = "mail"
+    priority = 55
+
+    @cached_property
+    def url(self):
+        return reverse("announce", args=["article", self.page.pk])
+
+
+def _announce_item(page, user, next_url=None):
+    from content.permissions import user_can_edit_author
+    from core.services import sent_broadcast
+
+    page_class = page.specific_class or type(page)
+    if not (issubclass(page_class, ArticlePage) and page.live):
+        return None
+    if not user_can_edit_author(user) or sent_broadcast("article", page):
+        return None
+    return AnnounceArticleItem(page=page, next_url=next_url)
+
+
+@hooks.register("register_page_listing_more_buttons")
+def article_announce_listing_button(page, user, next_url=None):
+    item = _announce_item(page, user, next_url)
+    if item is not None:
+        yield item
+
+
+@hooks.register("register_page_header_buttons")
+def article_announce_header_button(page, user, view_name, next_url=None):
+    item = _announce_item(page, user, next_url)
+    if item is not None:
+        yield item

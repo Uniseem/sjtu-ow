@@ -28,9 +28,19 @@ class Kind:
     letter: object  # (obj, unsubscribe_url) -> Letter
     can_send: object  # (user) -> bool
     model: object
+    is_live: object  # (obj) -> bool
+    back_url: object  # (obj) -> admin address to return to
+    label: str  # for the breadcrumb
+
+
+def _published(obj) -> bool:
+    return getattr(obj, "status", "") == "published"
 
 
 def kinds() -> dict[str, Kind]:
+    from content import notifications as article_mail
+    from content.models import ArticlePage
+    from content.permissions import user_can_edit_author
     from core.models import Broadcast
     from scrims import notifications as scrim_mail
     from scrims import services as scrim_services
@@ -45,12 +55,28 @@ def kinds() -> dict[str, Kind]:
             tournament_mail.new_tournament_letter,
             tournament_services.can_manage,
             Tournament,
+            _published,
+            lambda obj: reverse("tournaments:index"),
+            "赛事",
         ),
         Broadcast.Kind.SCRIM: Kind(
             Broadcast.Kind.SCRIM,
             scrim_mail.new_scrim_letter,
             scrim_services.can_manage,
             Scrim,
+            _published,
+            lambda obj: reverse("scrims:index"),
+            "内战活动",
+        ),
+        # Design 10.4 (v6.23): content editors announce a published article.
+        Broadcast.Kind.ARTICLE: Kind(
+            Broadcast.Kind.ARTICLE,
+            article_mail.new_article_letter,
+            user_can_edit_author,
+            ArticlePage,
+            lambda obj: bool(obj.live),
+            lambda obj: reverse("wagtailadmin_explore", args=[obj.get_parent().pk]),
+            "页面",
         ),
     }
 
@@ -117,7 +143,7 @@ def announcement_problem(kind: str, obj, *, publishing: bool = False) -> str:
     from core.mail import SMTPNotConfigured, build_smtp_backend
     from core.models import SiteSettings
 
-    if not publishing and getattr(obj, "status", "") != "published":
+    if not publishing and not kinds()[kind].is_live(obj):
         return "发布之后才能通知全体成员。"
     done = sent_broadcast(kind, obj)
     if done is not None:

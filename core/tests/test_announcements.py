@@ -295,7 +295,7 @@ def test_members_switch_it_in_account_security(site, client):
 def test_both_notices_are_on_the_specimen_page():
     from core.email_samples import sample
 
-    for key in ("new-tournament", "new-scrim"):
+    for key in ("new-tournament", "new-scrim", "new-article"):
         found = sample(key)
         assert found is not None, key
         assert "退订活动通知" in found.text
@@ -323,3 +323,74 @@ def test_a_deactivated_account_link_is_dead(site, client):
     path = services.unsubscribe_url(member).split("localhost:8000")[-1]
     User.objects.filter(pk=member.pk).update(is_active=False)
     assert client.get(path).status_code == 404
+
+
+# --- articles (v6.23) --------------------------------------------------
+
+
+def _article(author, title="秋季招新"):
+    from content.models import ArticleCategory, ArticleIndexPage, ArticlePage
+
+    news = ArticleIndexPage.objects.get(slug="news")
+    page = ArticlePage(
+        title=title,
+        slug=f"recruit-{ArticlePage.objects.count()}",
+        category=ArticleCategory.objects.get(slug="notice"),
+        author=author,
+        owner=author,
+        summary="面向全校，不限段位。",
+        body=[("paragraph", "<p>正文</p>")],
+    )
+    news.add_child(instance=page)
+    page.save_revision().publish()
+    return ArticlePage.objects.get(pk=page.pk)
+
+
+@pytest.mark.django_db
+def test_content_editors_announce_an_article(
+    site, worker, client, mailoutbox, django_capture_on_commit_callbacks
+):
+    editor = _member("editor123@example.com", "内容编辑")
+    member = _member("reader123@example.com")
+    page = _article(editor)
+    explore = reverse("wagtailadmin_explore", args=[page.get_parent().pk])
+    announce = reverse("announce", args=["article", page.pk])
+    edit = reverse("wagtailadmin_pages:edit", args=[page.pk])
+    client.force_login(editor)
+    assert announce in client.get(explore).content.decode()
+    assert announce in client.get(edit).content.decode()
+    preview = client.get(announce).content.decode()
+    assert "公告：秋季招新" in preview
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(announce)
+    letter = next(message for message in mailoutbox if message.to == [member.email])
+    assert letter.subject.endswith("公告：秋季招新")
+    assert "面向全校" in letter.body
+    assert page.url in letter.body
+    assert announce not in client.get(explore).content.decode()
+    assert announce not in client.get(edit).content.decode()
+
+
+@pytest.mark.django_db
+def test_drafts_and_other_roles_cannot_announce_articles(site, client):
+    editor = _member("editor123b@example.com", "内容编辑")
+    page = _article(editor, title="草稿招新")
+    page.unpublish()
+    announce = reverse("announce", args=["article", page.pk])
+    client.force_login(editor)
+    explore = reverse("wagtailadmin_explore", args=[page.get_parent().pk])
+    assert announce not in client.get(explore).content.decode()
+    with pytest.raises(services.AnnouncementError, match="发布之后"):
+        services.announce(kind="article", obj=page, actor=editor)
+    manager = _member("manager123h@example.com", "赛事管理员")
+    client.force_login(manager)
+    response = client.get(announce)
+    assert response.status_code in (302, 403)
+    live = _article(editor, title="已发布招新")
+    client.force_login(_member("writer123@example.com", "投稿者"))
+    listing = client.get(explore)
+    assert listing.status_code == 200
+    assert live.title in listing.content.decode()
+    assert (
+        reverse("announce", args=["article", live.pk]) not in listing.content.decode()
+    )
