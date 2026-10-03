@@ -155,7 +155,10 @@ def _backup(site) -> Check:
             "BACKUP_ENCRYPTION_KEY，再在全站设置里填对象存储（设计 16.7）。"
         )
     else:
-        detail = "加密密钥已设置，全站设置里「备份上传到对象存储」还没开。"
+        detail = (
+            "加密密钥已设置，全站设置里「备份上传到对象存储」还没开。"
+            "填好对象存储后点「测试对象存储」，测通了再打开。"
+        )
     return Check("异地备份", done, detail, _settings_url(site), required=False)
 
 

@@ -124,6 +124,26 @@ def send_site_test_email(request):
     )
 
 
+@require_POST
+def try_offsite_backup(request):
+    """「测试对象存储」 on the site settings page (design 16.7, v6.28)."""
+    from core import offsite
+
+    if not request.user.has_perm("core.change_sitesettings"):
+        raise PermissionDenied
+    settings_obj = SiteSettings.load(request)
+    try:
+        messages.success(request, offsite.probe())
+    except offsite.OffsiteError as exc:
+        messages.error(request, f"测试没通过：{exc}")
+    return redirect(
+        reverse(
+            "wagtailsettings:edit",
+            args=["core", "sitesettings", settings_obj.pk],
+        )
+    )
+
+
 @csrf_exempt
 def announcements_unsubscribe(request, token):
     """Turn activity notices off from the link in one (design 10.4). No

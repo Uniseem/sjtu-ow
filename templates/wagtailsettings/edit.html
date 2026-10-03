@@ -22,5 +22,10 @@
             <button type="submit" class="button">发送测试邮件</button>
             <p class="help">发给当前登录管理员自己的邮箱，用于检查 SMTP 配置。发送失败时会显示原因。</p>
         </form>
+        <form method="post" action="{% url 'core_try_offsite' %}" class="w-mb-8">
+            {% csrf_token %}
+            <button type="submit" class="button button-secondary">测试对象存储</button>
+            <p class="help">用已保存的异地备份设置，往存储桶里写一个小文件再删掉，看能不能连上、有没有权限。改了设置要先保存；「备份上传到对象存储」没打开也能测。</p>
+        </form>
     {% endif %}
 {% endblock %}

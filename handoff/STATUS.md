@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: M10 前台视觉 v6.12，M7 上线准备暂停
-round: 132-my-registrations-time
+round: 133-offsite-probe
 next: claude（按用户 10-04 睡前说的：假定管理员、成员、投稿者等各种身份把流程走一遍，发现不完善的地方逐轮修）
 updated: 2026-10-04
 blocked_on: 默认头像以后要换动漫风的话需要你提供有授权的素材（官方没有公开的，现在用官方立绘）；演示站（sjtu.ow-shanghaiuniversity.com）的管理员要你自己建（`… exec web python manage.py createsuperuser`）；转正式站前要定演示数据和动漫头像怎么处理；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定
 ```
 
 ## 现在该谁动手
+
+**133（2026-10-04）**：以站长的身份配异地备份：SMTP 有「发送测试邮件」、AI 有「试一下」，对象存储填完却没法验证，只能等夜里真备份时看日志。现在全站设置页上有「测试对象存储」，写入再删除一个小文件，当场说成功还是哪一步出错（缺设置、连不上、没有写或删的权限），没打开上传也能测。演示站已升级。
 
 **132（2026-10-04）**：以报了几场赛事的成员身份：个人中心「我的报名」两张表和报名详情页都不写比赛时间（「我的内战」是写的），要点进赛事页才知道几点打。现在都写了，没定的写「未定」。演示站已升级。
 
@@ -483,6 +485,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 130-submitter-editor | 投稿者走查（设计 v6.25）：要过审的人的编辑页去掉「推荐」标签页，六个字段从表单里拿掉，新稿网址片段按标题生成并避开保留词和重名；更正 127「认证作者能发通知」的说法 | **Claude 实现**，自查通过。`content/tests/test_submitter_editor.py` 3 条；6 处变异全部被抓到 |
 | 131-member-left | 队长走查（设计 v6.26）：队员退出战队时邮件通知队长，还在有效报名名单里的写出赛事和同步名单的办法（`entries_still_listing`） | **Claude 实现**，自查通过。`teams/tests/test_member_left.py` 5 条；6 处变异全部被抓到（第一次漏的一处是重复条件，删掉了） |
 | 132-my-registrations-time | 参赛成员走查（设计 v6.27）：「我的报名」两张表加比赛时间、报名详情页页头写比赛时间 | **Claude 实现**，自查通过。`tournaments/tests/test_my_registrations.py` 3 条；5 处变异全部被抓到 |
+| 133-offsite-probe | 站长走查（设计 v6.28）：全站设置加「测试对象存储」（`offsite.probe()`，写入再删除），上线清单提到它 | **Claude 实现**，自查通过。`core/tests/test_offsite_backup.py` 加 4 条；8 处变异全部被抓到 |
 
 ## 当前待定问题
 

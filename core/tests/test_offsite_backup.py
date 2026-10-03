@@ -278,3 +278,96 @@ def test_listing_shows_what_is_in_the_bucket(tmp_path, settings, bucket, configu
 def test_restore_needs_a_source():
     with pytest.raises(CommandError, match="--from-s3"):
         run("restore")
+
+
+# --- 「测试对象存储」 (round 133, design 16.7 v6.28) ---------------------------
+
+
+class ProbeBucket(FakeBucket):
+    def __init__(self, *, fail=""):
+        super().__init__()
+        self.fail = fail
+        self.calls: list[tuple[str, str]] = []
+
+    def put_object(self, Bucket, Key, Body):  # noqa: N803
+        self.calls.append(("put", Key))
+        if self.fail == "put":
+            raise RuntimeError("AccessDenied")
+        self.objects[Key] = Body
+
+    def delete_object(self, Bucket, Key):  # noqa: N803
+        self.calls.append(("delete", Key))
+        if self.fail == "delete":
+            raise RuntimeError("AccessDenied")
+        self.objects.pop(Key, None)
+
+
+def _probe_with(monkeypatch, fake):
+    monkeypatch.setattr(offsite, "client_factory", lambda config: fake)
+    return offsite.probe()
+
+
+def test_the_probe_writes_then_cleans_up(monkeypatch, settings, configured):
+    settings.BACKUP_ENCRYPTION_KEY = KEY
+    fake = ProbeBucket()
+    message = _probe_with(monkeypatch, fake)
+    assert "写入和删除都成功" in message
+    (put, key), (delete, again) = fake.calls
+    assert (put, delete) == ("put", "delete") and key == again
+    assert key.startswith("sjtu-ow/sjtu-ow-probe-")
+    assert fake.objects == {}
+
+
+def test_the_probe_works_before_uploading_is_on(monkeypatch, settings, configured):
+    settings.BACKUP_ENCRYPTION_KEY = ""
+    configured.backup_s3_enabled = False
+    configured.save()
+    message = _probe_with(monkeypatch, ProbeBucket())
+    assert "BACKUP_ENCRYPTION_KEY" in message
+    settings.BACKUP_ENCRYPTION_KEY = KEY
+    assert "打开「备份上传到对象存储」" in _probe_with(monkeypatch, ProbeBucket())
+
+
+def test_the_probe_says_which_step_failed(monkeypatch, settings, configured):
+    with pytest.raises(offsite.OffsiteError, match="写入"):
+        _probe_with(monkeypatch, ProbeBucket(fail="put"))
+    with pytest.raises(offsite.OffsiteError, match="删除测试文件"):
+        _probe_with(monkeypatch, ProbeBucket(fail="delete"))
+    configured.backup_s3_bucket = ""
+    configured.save()
+    with pytest.raises(offsite.OffsiteError, match="存储桶"):
+        _probe_with(monkeypatch, ProbeBucket())
+
+
+def test_the_settings_page_button(client, monkeypatch, settings, configured):
+    from django.urls import reverse
+    from django.utils import timezone
+
+    from accounts.models import User
+    from accounts.tests.test_onboarding import _user
+
+    call_command("init_site", verbosity=0)
+    settings.BACKUP_ENCRYPTION_KEY = KEY
+    fake = ProbeBucket()
+    monkeypatch.setattr(offsite, "client_factory", lambda config: fake)
+    admin = User.objects.create_superuser(
+        email="root133@example.com",
+        password="Correct-Horse-Battery-1",
+        nickname="站长133",
+        agreed_terms_at=timezone.now(),
+        agreed_cross_border_at=timezone.now(),
+    )
+    client.force_login(admin)
+
+    edit = reverse("wagtailsettings:edit", args=["core", "sitesettings", configured.pk])
+    assert reverse("core_try_offsite") in client.get(edit).content.decode()
+    page = client.post(reverse("core_try_offsite"), follow=True).content.decode()
+    assert "写入和删除都成功" in page
+
+    # Into the admin, but not a site settings person: Wagtail sends them home.
+    fake.calls.clear()
+    client.force_login(_user("editor133@example.com", "内容编辑"))
+    response = client.post(reverse("core_try_offsite"))
+    assert response.status_code == 302
+    assert response.url == reverse("wagtailadmin_home")
+    assert fake.calls == []

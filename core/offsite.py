@@ -149,6 +149,44 @@ def upload(archive: Path, *, config: Config | None = None) -> str:
     return key
 
 
+PROBE_BODY = b"sjtu-ow offsite probe; safe to delete\n"
+
+
+def probe(*, config: Config | None = None) -> str:
+    """「测试对象存储」 (design 16.7, v6.28): write a small file under the
+    prefix and delete it again, with the saved settings, whether or not
+    uploading is switched on. Returns what to tell the admin."""
+    from django.utils import timezone
+
+    config = config or load_config()
+    if config.missing:
+        raise OffsiteError(f"还缺这些设置：{'、'.join(config.missing)}。填好后先保存。")
+    key = config.key_for(f"sjtu-ow-probe-{timezone.now():%Y%m%d-%H%M%S}.txt")
+    try:
+        client = client_factory(config)
+    except OffsiteError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise OffsiteError(f"连不上对象存储：{exc}") from exc
+    try:
+        client.put_object(Bucket=config.bucket, Key=key, Body=PROBE_BODY)
+    except Exception as exc:  # noqa: BLE001
+        raise OffsiteError(f"写入「{config.bucket}」失败：{exc}") from exc
+    try:
+        client.delete_object(Bucket=config.bucket, Key=key)
+    except Exception as exc:  # noqa: BLE001
+        raise OffsiteError(
+            f"写入成功，但删除测试文件 {key} 失败：{exc}。"
+            "没有删除权限的话，旧备份也清理不掉。"
+        ) from exc
+    message = f"能连上「{config.bucket}」，写入和删除都成功。"
+    if not encryption_key():
+        message += "但还没设置环境变量 BACKUP_ENCRYPTION_KEY，没有它备份不会上传。"
+    elif not config.enabled:
+        message += "确认无误后打开「备份上传到对象存储」并保存。"
+    return message
+
+
 def listing(*, config: Config | None = None, limit: int = 50) -> list[dict]:
     """Recent objects under the prefix, newest first."""
     config = config or load_config()

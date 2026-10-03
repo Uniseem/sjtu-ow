@@ -6,7 +6,7 @@ from core.admin_setup import SetupPanel
 from core.admin_todo import TodoPanel, has_duties
 from core.fonts import admin_views
 from core.prerender_admin import prerender_clear, prerender_index, prerender_rebuild
-from core.views import send_site_test_email
+from core.views import send_site_test_email, try_offsite_backup
 
 
 @hooks.register("register_admin_urls")
@@ -24,6 +24,12 @@ def register_test_email_url():
             "settings/core/send-test-email/",
             send_site_test_email,
             name="core_send_test_email",
+        ),
+        # Design 16.7 (v6.28): 「测试对象存储」.
+        path(
+            "settings/core/try-offsite/",
+            try_offsite_backup,
+            name="core_try_offsite",
         ),
     ]
 
