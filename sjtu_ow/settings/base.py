@@ -298,6 +298,10 @@ WAGTAILEMBEDS_FINDERS = [
 ]
 WAGTAILIMAGES_MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 WAGTAILIMAGES_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
+# Thumbnails are WebP whatever was uploaded (design 13.10, v6.5): a PNG
+# avatar card was over 200 KB. Share images ask for JPEG themselves.
+WAGTAILIMAGES_FORMAT_CONVERSIONS = {"png": "webp", "jpeg": "webp"}
+WAGTAILIMAGES_WEBP_QUALITY = 80
 
 TAILWIND_CLI_USE_DAISY_UI = True
 # Source lives outside STATICFILES_DIRS so collectstatic/hashed storage

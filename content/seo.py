@@ -29,7 +29,8 @@ def absolute_uri(request, path: str = "") -> str:
 def image_absolute_url(request, image) -> str:
     if image is None:
         return ""
-    rendition = image.get_rendition("fill-1200x630")
+    # JPEG, not the site's WebP: link previews in chat apps (design 13.10).
+    rendition = image.get_rendition("fill-1200x630|format-jpeg")
     return absolute_uri(request, rendition.url)
 
 

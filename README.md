@@ -148,6 +148,8 @@ journalctl -u cron | grep CMD      # 看任务有没有按时跑
 
 停掉 `web` 后，Caddy 对会打到后端的请求返回维护页；已经生成的预渲染公开页面仍可访问。
 
+**升级到 107 及以后时清一次旧缩略图**：107 起缩略图一律存成 WebP（设计 13.10），但已经生成过的 PNG、JPEG 缩略图还记在库里、会被继续使用。升级后执行 `$C exec web python manage.py wagtail_update_image_renditions --purge-only`，再 `$C exec web python manage.py prerender`，页面重新生成时按新格式生成缩略图。**核对输出的两个数**：「Purging N」和「Successfully processed N」要一样；worker 刚启动时可能锁着数据库，有几条删不掉（错误打在 stderr 里），再跑一次就行（107 在演示站上第一次就漏了 41 条）。
+
 **改了 `deploy/Caddyfile` 之后要 `$C restart proxy`**：Caddyfile 全局关了管理接口（`admin off`），`caddy reload` 用不了。改之前可以先验证：`docker run --rm -e CADDY_SITE_ADDRESS=:80 -v $PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`。
 
 `init_site` 创建全部预置用户组（交大用户、校外用户、内容编辑、赛事管理员、内战管理员、认证作者、投稿者），删除 Wagtail 自带的 Editors / Moderators，写入文章分类和页面树（首页、「资讯」、用户协议、隐私政策、关于我们），按 `SITE_URL` 设置 Wagtail 默认站点的主机名和端口（`https` 默认 443、`http` 默认 80，带端口时用给定端口），创建「内容审核」工作流并绑定到文章栏目，创建「投稿图片」集合，并为后台角色分配进入 Wagtail 的权限、为赛事/内战管理员分配查看联系方式的权限，以及各自管理赛事、内战的权限、为投稿相关角色分配栏目和图片权限。然后按「邮箱已验证且可以使用投稿功能」同步「投稿者」组成员，创建 9 个排版区域（默认系统字体）并生成初始字体样式表。命令可重复执行，不会改写已有成员关系（投稿者组除外）或已改过的分类名称：
