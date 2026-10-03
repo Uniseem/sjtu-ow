@@ -94,6 +94,8 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 
 在服务器上跑一段脚本：`$C exec -T web python manage.py shell < /root/脚本.py`（`$C` 是上面那条 Compose 命令；Linux 上 Django 会把整段输入当脚本执行）。
 
+**仓库的 `deploy/Caddyfile` 改了之后**，`Caddyfile.vps` 要跟着重新生成：它就是仓库那份在 `admin off` 下面插 5 行 `servers { trusted_proxies static private_ranges }`（105 用 `awk` 插入、`diff` 核对）；然后 `caddy validate`、`$C restart proxy`。升级后用 `docker images | grep sjtu-ow` 看一眼镜像时间：105 有一次 `build -q` 什么都没构建也没报错，容器跑的还是旧镜像
+
 这台机器上还跑着 WordPress、HedgeDoc、FileCodeBox、相册和几个监控进程，规矩和测试机一样：只动 `/srv/sjtu-ow` 和 `sjtu-ow` 这个 Compose 项目，不做全局清理。升级照 README「生产 / 测试环境启动」，命令换成上面那条，升级后全量 `prerender`。
 
 ## 硬规则
@@ -139,6 +141,7 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 - **Windows 上改了 Python 文件后 `tailwind runserver` 可能卡死**（090、091 各两三次）：进程还在、端口不再响应，或者干脆退出。重启开发服务器就好；变异测试这类连续改文件的脚本跑完先确认服务器还活着
 - **`tailwind runserver` 会改写 `static/css/app.css`**（091）：它的监视进程在你改任何被扫描的文件（包括 `.py`）后重新编译出**不压缩、保留 CSS 嵌套**的版本，覆盖掉 `tailwind build` 的压缩版。读 `app.css` 的测试要两种写法都认；要确定性地跑全量测试，先 `tailwind build --force`，跑完之前别改文件。**最稳的是跑全量前停掉开发服务器**：096–098 里开发服务器卡死重启后，它的监视进程好几次在测试中途重写 `app.css`，`test_body_text_rules_match_what_wagtail_renders` 就红了
 - **挂载的数据卷只能清空、不能删**（102 发现，103 修了）：Compose 里 `/app/media`、`/app/prerendered` 都是挂载点，`shutil.rmtree` 删光里面的文件后删目录本身时报 `Device or resource busy`。102 的 `restore` 就这样换好了数据库、上传文件却全没了。现在 `restore` 用 `empty_folder()` 只清内容，再 `copytree(..., dirs_exist_ok=True)`；以后写会碰这些目录的代码也一样，测试里的临时目录删得掉，测不出来（103 的测试把 `os.rmdir` 换成对这两个目录报错）
+- **从 Windows 打包文件传到服务器会带 CRLF**（105）：本机工作区是 CRLF（仓库里是 LF），`tar` 原样打包。Caddy、Python 照样能读，但按行匹配的脚本（`awk '/^\tadmin off$/'`）会对不上，105 生成 `Caddyfile.vps` 时 `trusted_proxies` 就这样漏插了一次。传上去后 `sed -i 's/\r$//'`，或者等提交推送后在服务器上 `git pull`
 - **Windows 上别用 `manage.py shell < 文件`**（102）：Windows 的管道不支持 `select`，Django 退回交互式控制台逐行执行，函数和循环中间的空行会把语句截断，脚本只跑了一半还不报错退出。本机用 `manage.py shell -c "exec(open(r'路径', encoding='utf-8').read())"`；服务器（Linux）上 `<` 没问题
 - **本机推送 403**（101）：本机 `gh` 登录了两个 GitHub 账号，当前激活的不是 `Uniseem` 时，`git push` 会被拒（Permission denied）。不要切换全局账号，只给这一次推送指定凭据：`git -c credential.helper= -c 'credential.helper=!f() { test "$1" = get && echo username=Uniseem && echo "password=$(gh auth token -h github.com -u Uniseem)"; }; f' push origin main`
 - **Git Bash 的 heredoc 会吃掉一层反斜杠**（092）：在 Bash 工具里用 `python - << 'EOF'` 跑内联脚本时，脚本源码里写的两个反斜杠加 n 到 Python 那里只剩一个，替换进文件的就成了真换行；正则里的反斜杠也会少一层。091、092 几次把测试文件写坏（字符串字面量被拆成两行）。改文件用编辑工具，或者先把脚本写成 `.py` 文件再运行

@@ -1,0 +1,9 @@
+{% comment %}
+  Prepare the next page ahead of the click (design 13.10, v6.3): while the
+  pointer rests on a link for about 200ms, or as a finger presses it, the
+  browser loads and renders the page in the background. Public pages only.
+  JSON, not script: the policy allows it with 'inline-speculation-rules'.
+{% endcomment %}
+<script type="speculationrules">
+{"prerender": [{"where": {"and": [{"href_matches": "/*"}, {"not": {"href_matches": ["/admin/*", "/accounts/*", "/me/*", "/_fragments/*", "/_styleguide/*"]}}, {"not": {"selector_matches": "[download], [target], [data-no-prerender]"}}]}, "eagerness": "moderate"}]}
+</script>

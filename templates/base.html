@@ -20,6 +20,7 @@
     {% tailwind_css %}
     {% if font_css_url %}<link rel="stylesheet" href="{{ font_css_url }}">{% endif %}
     <script src="{% static 'js/state.js' %}"></script>
+    {% include "components/speculation_rules.html" %}
     {% block extra_head %}{% endblock %}
   </head>
   <body class="flex min-h-screen flex-col" data-state-filled="{% if request.user.is_authenticated %}1{% else %}0{% endif %}">

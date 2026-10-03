@@ -39,11 +39,21 @@
           );
         });
     }
-    if (window.htmx) {
-      fill();
+    function start() {
+      if (window.htmx) {
+        fill();
+      } else {
+        d.addEventListener("htmx:load", fill, { once: true });
+        window.setTimeout(fill, 300);
+      }
+    }
+    // A page the browser prepared ahead of a click (design 13.10, v6.3)
+    // asks only once it is shown: the sign-in state and a flash message
+    // belong to the moment the visitor sees the page.
+    if (d.prerendering) {
+      d.addEventListener("prerenderingchange", start, { once: true });
     } else {
-      d.addEventListener("htmx:load", fill, { once: true });
-      window.setTimeout(fill, 300);
+      start();
     }
   });
 })();

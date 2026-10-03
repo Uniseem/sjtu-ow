@@ -148,6 +148,8 @@ journalctl -u cron | grep CMD      # 看任务有没有按时跑
 
 停掉 `web` 后，Caddy 对会打到后端的请求返回维护页；已经生成的预渲染公开页面仍可访问。
 
+**改了 `deploy/Caddyfile` 之后要 `$C restart proxy`**：Caddyfile 全局关了管理接口（`admin off`），`caddy reload` 用不了。改之前可以先验证：`docker run --rm -e CADDY_SITE_ADDRESS=:80 -v $PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`。
+
 `init_site` 创建全部预置用户组（交大用户、校外用户、内容编辑、赛事管理员、内战管理员、认证作者、投稿者），删除 Wagtail 自带的 Editors / Moderators，写入文章分类和页面树（首页、「资讯」、用户协议、隐私政策、关于我们），按 `SITE_URL` 设置 Wagtail 默认站点的主机名和端口（`https` 默认 443、`http` 默认 80，带端口时用给定端口），创建「内容审核」工作流并绑定到文章栏目，创建「投稿图片」集合，并为后台角色分配进入 Wagtail 的权限、为赛事/内战管理员分配查看联系方式的权限，以及各自管理赛事、内战的权限、为投稿相关角色分配栏目和图片权限。然后按「邮箱已验证且可以使用投稿功能」同步「投稿者」组成员，创建 9 个排版区域（默认系统字体）并生成初始字体样式表。命令可重复执行，不会改写已有成员关系（投稿者组除外）或已改过的分类名称：
 
 ```bash
@@ -213,6 +215,8 @@ python manage.py load_legal_pages --force  # 覆盖后台里已有的正文
 - **未登录访客不发这个请求**：`<head>` 里的 `static/js/state.js` 只在 `ow_logged_in` / `ow_flash` 两个提示 Cookie 存在时才发请求，两个 Cookie 都不含身份信息。
 - **静态文件只是加速层**：文件不在就由 Django 实时渲染，同时排一个生成任务，结果一样。
 - 开关：`PRERENDER_ENABLED`（生产默认开，开发默认关）；目录：`PRERENDER_ROOT`（默认 `prerendered/`）。
+- **响应头**（105 起，设计 13.13.2）：Caddy 返回预渲染页时带上和 Django 一样的内容安全策略、`X-Frame-Options`、`nosniff`、`Referrer-Policy`、`Cross-Origin-Opener-Policy`；内容安全策略在 `deploy/Caddyfile` 里写死一份，改 `SECURE_CSP` 时两边一起改（有测试比对）。页面现场压缩（zstd / gzip），缓存头见设计 13.10。
+- **提前准备下一页**（105 起，设计 13.10）：页面 `<head>` 里有一段 Speculation Rules（`templates/components/speculation_rules.html`），鼠标停在站内链接上或手指按下时，Chromium 系浏览器在后台把目标页准备好。不想被提前准备的链接加 `data-no-prerender`。
 - 后台「设置 → 静态页面」可以看生成情况、重新生成单页或全部、清空全部静态文件。
 
 ```bash

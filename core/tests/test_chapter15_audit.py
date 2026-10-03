@@ -324,6 +324,8 @@ def test_the_front_end_csp_forbids_inline_script_and_eval():
     script = policy["script-src"]
     assert "'unsafe-inline'" not in script
     assert "'unsafe-eval'" not in script
+    # The one inline thing allowed is speculation rules JSON (design 13.10).
+    assert set(script) == {"'self'", "'inline-speculation-rules'"}
     assert "'unsafe-inline'" not in policy["style-src"]
 
     frames = policy["frame-src"]
@@ -336,8 +338,13 @@ def test_the_front_end_csp_forbids_inline_script_and_eval():
 def test_a_real_page_carries_no_inline_script(client):
     response = client.get("/")
     html = response.content.decode()
-    # An inline <script> with a body would be blocked by the policy above.
-    inline = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)
+    # An inline <script> with a body would be blocked by the policy above;
+    # speculation rules are JSON the policy names on its own (design 13.10).
+    inline = re.findall(
+        r'<script(?![^>]*\bsrc=)(?![^>]*type="speculationrules")[^>]*>(.*?)</script>',
+        html,
+        re.S,
+    )
     meaningful = [block for block in inline if block.strip()]
     assert meaningful == [], meaningful
 

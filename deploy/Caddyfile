@@ -2,8 +2,23 @@
 	admin off
 }
 
+# What Django sends with every page it renders (design 13.13.2, v6.3). The
+# policy must match SECURE_CSP word for word; a test compares the two.
+(page_security) {
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'inline-speculation-rules'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		Cross-Origin-Opener-Policy "same-origin"
+	}
+}
+
 {$CADDY_SITE_ADDRESS:localhost} {
-	encode gzip zstd
+	# Compressed on the fly (design 13.10, v6.3). Caddy 2.10's precompressed
+	# answers 206 Partial Content to requests that asked for no range, so
+	# the .br/.gz files next to static and prerendered files go unused.
+	encode zstd gzip
 
 	handle_errors {
 		@backend expression `{err.status_code} == 502 || {err.status_code} == 503 || {err.status_code} == 504`
@@ -19,17 +34,13 @@
 	handle @hashed_static {
 		root * /srv
 		header Cache-Control "public, max-age=31536000, immutable"
-		file_server {
-			precompressed br gzip
-		}
+		file_server
 	}
 
 	handle /static/* {
 		root * /srv
 		header Cache-Control "public, max-age=300, must-revalidate"
-		file_server {
-			precompressed br gzip
-		}
+		file_server
 	}
 
 	# Font slices and the generated font stylesheet carry a content hash.
@@ -40,8 +51,17 @@
 		file_server
 	}
 
+	# Thumbnails are named after the original's file name and the crop, so
+	# a new picture always gets a new address (design 13.10, v6.3).
+	handle /media/images/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
 	handle /media/* {
 		root * /srv
+		header Cache-Control "public, max-age=86400"
 		file_server
 	}
 
@@ -70,9 +90,8 @@
 		root * /srv/prerendered
 		rewrite * {path}/index.html
 		header Cache-Control "public, max-age=0, must-revalidate"
-		file_server {
-			precompressed br gzip
-		}
+		import page_security
+		file_server
 	}
 
 	handle {

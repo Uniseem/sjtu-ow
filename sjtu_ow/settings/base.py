@@ -258,9 +258,12 @@ ACCOUNT_RATE_LIMITS = {
     "reauthenticate": "10/m/user",
 }
 
+# deploy/Caddyfile sends the same policy with prerendered pages (design
+# 13.13.2, v6.3); a test keeps the two identical.
 SECURE_CSP = {
     "default-src": [CSP.SELF],
-    "script-src": [CSP.SELF],
+    # Speculation rules JSON only, never script (design 13.10, v6.3).
+    "script-src": [CSP.SELF, "'inline-speculation-rules'"],
     "style-src": [CSP.SELF],
     "img-src": [CSP.SELF, "data:"],
     "font-src": [CSP.SELF],
