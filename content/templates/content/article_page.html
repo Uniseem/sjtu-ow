@@ -11,7 +11,7 @@
     comments, and more from the category.
   {% endcomment %}
   <header class="c-cover">
-    {% if page.cover %}{% image page.cover fill-2400x1200-c50 class="c-cover__img" alt="" %}{% else %}<img class="c-cover__img" src="{{ page|cover_placeholder }}" width="2400" height="1200" alt="">{% endif %}
+    {% if page.cover %}{% image page.cover fill-2400x1200-c50 class="c-cover__img" alt="" %}{% else %}{% cover_fallback page "fill-2400x1200-c50" "c-cover__img" %}{% endif %}
     <div class="c-cover__body">
       <nav class="c-crumbs" aria-label="位置">
         <a href="/">首页</a><span class="c-crumbs__sep">/</span>

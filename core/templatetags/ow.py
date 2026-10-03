@@ -197,3 +197,34 @@ def cover_placeholder(obj) -> str:
     from core import placeholders
 
     return static(placeholders.static_path(obj))
+
+
+@register.simple_tag(takes_context=True)
+def cover_fallback(context, obj, spec, css_class="", lazy=False):
+    """What a cover spot shows when the object has none (13.2.5, v6.7): a
+    picture from the 默认封面 pool, drifting slowly, or else the drawn
+    placeholder. ``spec`` is a Wagtail fill spec such as "fill-960x540-c50";
+    its size goes into width and height either way."""
+    import re
+
+    from django.utils.safestring import mark_safe
+
+    from core import covers
+
+    width, height = re.match(r"fill-(\d+)x(\d+)", spec).groups()
+    pool = context.get("cover_pool")
+    image = covers.pick(obj, covers.load_pool() if pool is None else pool)
+    classes = [css_class] if css_class else []
+    if image is None:
+        src = cover_placeholder(obj)
+    else:
+        src = image.get_rendition(spec).url
+        classes += ["c-drift", f"c-drift--{(obj.pk or 0) % covers.DRIFTS + 1}"]
+    return format_html(
+        '<img src="{}" width="{}" height="{}"{}{} alt="">',
+        src,
+        width,
+        height,
+        format_html(' class="{}"', " ".join(classes)) if classes else "",
+        mark_safe(' loading="lazy"') if lazy else "",
+    )

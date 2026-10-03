@@ -6,7 +6,7 @@
 {% block content %}
   {# 赛场详情 (design 13.2.6, v5.3): a scrim cannot have a cover, so its banner is its placeholder picture. #}
   <header class="c-stage">
-    <img src="{{ scrim|cover_placeholder }}" width="2400" height="900" class="c-stage__img" alt="">
+    {% cover_fallback scrim "fill-2400x900-c50" "c-stage__img" %}
     <div class="l-container l-container--narrow c-stage__body">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/scrims/">内战</a><span class="c-crumbs__sep">/</span><span>{{ scrim.title }}</span></nav>
       <p class="c-stage__tags">

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
-from wagtail.models import Page, Site
+from wagtail.images import get_image_model
+from wagtail.models import Collection, Page, Site
 from wagtail.signals import (
     page_published,
     page_slug_changed,
@@ -151,3 +152,49 @@ def on_category_saved(sender, instance, **kwargs):
         url = page.get_url()
         if url:
             prerender.request_page(url, kind="article")
+
+
+# --- the 默认封面 pool (design 13.2.5, v6.7) -------------------------------------
+
+Image = get_image_model()
+
+
+def _in_cover_pool(collection_id) -> bool:
+    from core.covers import DEFAULT_COVER_COLLECTION
+
+    return bool(collection_id) and (
+        Collection.objects.filter(
+            pk=collection_id, name=DEFAULT_COVER_COLLECTION
+        ).exists()
+    )
+
+
+@receiver(pre_save, sender=Image)
+def remember_cover_collection(sender, instance, raw=False, **kwargs):
+    """Note the collection before a save, to see a picture leave the pool."""
+    instance._collection_before = None
+    if raw or instance.pk is None:
+        return
+    instance._collection_before = (
+        sender.objects.filter(pk=instance.pk)
+        .values_list("collection_id", flat=True)
+        .first()
+    )
+
+
+@receiver(post_save, sender=Image)
+def refresh_after_cover_pool_change(sender, instance, raw=False, **kwargs):
+    """Covers come from the pool by position, so a picture coming, going or
+    changing moves covers all over the site: regenerate everything."""
+    if raw:
+        return
+    before = getattr(instance, "_collection_before", None)
+    left = before and before != instance.collection_id and _in_cover_pool(before)
+    if left or _in_cover_pool(instance.collection_id):
+        prerender.request_all_soon()
+
+
+@receiver(post_delete, sender=Image)
+def refresh_after_cover_pool_delete(sender, instance, **kwargs):
+    if _in_cover_pool(instance.collection_id):
+        prerender.request_all_soon()

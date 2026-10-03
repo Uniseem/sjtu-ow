@@ -6,7 +6,7 @@
 {% block content %}
   {# 赛场详情 (design 13.2.7): the banner, then sign-up, rules and teams beside the facts. #}
   <header class="c-stage">
-    {% if tournament.cover %}{% image tournament.cover fill-2400x900-c50 class="c-stage__img" alt="" %}{% else %}<img src="{{ tournament|cover_placeholder }}" width="2400" height="900" class="c-stage__img" alt="">{% endif %}
+    {% if tournament.cover %}{% image tournament.cover fill-2400x900-c50 class="c-stage__img" alt="" %}{% else %}{% cover_fallback tournament "fill-2400x900-c50" "c-stage__img" %}{% endif %}
     <div class="l-container l-container--narrow c-stage__body">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/tournaments/">赛事</a><span class="c-crumbs__sep">/</span><span>{{ tournament.title }}</span></nav>
       <p class="c-stage__tags">

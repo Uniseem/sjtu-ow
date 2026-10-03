@@ -248,6 +248,20 @@ def ensure_submission_image_collection() -> Collection:
     return root.add_child(name=SUBMISSION_IMAGE_COLLECTION)
 
 
+def ensure_default_cover_collection() -> Collection:
+    """The 默认封面 pool (design 13.2.5, v6.7): official pictures the club
+    uploads; objects without a cover take one of them."""
+    from core.covers import DEFAULT_COVER_COLLECTION
+
+    root = Collection.get_first_root_node()
+    if root is None:
+        root = Collection.add_root(name="Root")
+    existing = root.get_children().filter(name=DEFAULT_COVER_COLLECTION).first()
+    if existing is not None:
+        return existing
+    return root.add_child(name=DEFAULT_COVER_COLLECTION)
+
+
 def ensure_content_workflow() -> Workflow:
     workflow, _created = Workflow.objects.get_or_create(
         name=CONTENT_WORKFLOW_NAME,

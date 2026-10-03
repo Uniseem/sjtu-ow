@@ -5,7 +5,7 @@
   (summary=True) two lines of the summary; the author and the reading time.
 {% endcomment %}
 <article class="c-media">
-  <div class="c-media__pic">{% if article.cover %}{% image article.cover fill-960x540-c50 alt="" loading="lazy" %}{% else %}<img src="{{ article|cover_placeholder }}" width="960" height="540" alt="" loading="lazy">{% endif %}</div>
+  <div class="c-media__pic">{% if article.cover %}{% image article.cover fill-960x540-c50 alt="" loading="lazy" %}{% else %}{% cover_fallback article "fill-960x540-c50" lazy=True %}{% endif %}</div>
   <p class="c-media__meta">{% if article.category %}<span class="c-tag">{{ article.category.name }}</span>{% endif %}{% if pinned %}<span class="c-tag c-tag--accent">置顶</span>{% endif %}<time datetime="{{ article.first_published_at|date:'c' }}">{{ article.first_published_at|ow_md }}</time></p>
   <h3 class="c-media__title"><a href="{% pageurl article %}" class="c-stretch" title="{{ article.title }}">{{ article.title }}</a></h3>
   {% if summary and article.summary %}<p class="c-media__summary">{{ article.summary }}</p>{% endif %}

@@ -389,3 +389,26 @@ def request_all() -> None:
     if not is_enabled():
         return
     transaction.on_commit(lambda: prerender_all.enqueue())
+
+
+ALL_PENDING_KEY = "prerender:all-pending"
+
+
+def request_all_soon() -> bool:
+    """Ask for every page to be regenerated, merging requests 30 seconds
+    apart like request_page: uploading twenty pictures to the cover pool
+    runs one full regeneration, not twenty (design 13.2.5, v6.7)."""
+    from datetime import timedelta
+
+    from django.core.cache import cache
+    from django.db import transaction
+
+    from core.tasks import prerender_all
+
+    if not is_enabled():
+        return False
+    if not cache.add(ALL_PENDING_KEY, 1, COALESCE_SECONDS):
+        return False  # an earlier request is already scheduled
+    run_after = timezone.now() + timedelta(seconds=COALESCE_SECONDS)
+    transaction.on_commit(lambda: prerender_all.using(run_after=run_after).enqueue())
+    return True

@@ -44,7 +44,7 @@
       <div class="c-upcoming{% if feature and scrim_rows %} c-upcoming--two{% endif %}">
         {% if feature %}
           <article class="c-feature" data-next-up="tournament">
-            {% if feature.tournament.cover %}{% image feature.tournament.cover fill-1280x720-c50 class="c-feature__img" alt="" %}{% else %}<img src="{{ feature.tournament|cover_placeholder }}" width="1280" height="720" class="c-feature__img" alt="">{% endif %}
+            {% if feature.tournament.cover %}{% image feature.tournament.cover fill-1280x720-c50 class="c-feature__img" alt="" %}{% else %}{% cover_fallback feature.tournament "fill-1280x720-c50" "c-feature__img" %}{% endif %}
             <div class="c-feature__body">
               <span class="c-status c-status--live">报名中</span>
               <h3 class="c-feature__title"><a href="{{ feature.tournament.get_absolute_url }}" class="c-stretch">{{ feature.tournament.title }}</a></h3>

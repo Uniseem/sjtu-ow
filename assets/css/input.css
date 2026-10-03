@@ -3482,6 +3482,80 @@
     transform: scale(1.03);
   }
 
+  /* A picture from the 默认封面 pool (design 13.2.5, v6.7) drifts slowly,
+     like a camera: four ways, picked by the object's id, so neighbours move
+     apart. Only scale and translate move, so a card's hover zoom (transform)
+     still adds on top. */
+  .c-drift {
+    animation: ow-drift-1 26s ease-in-out infinite alternate;
+  }
+
+  .c-drift--2 {
+    animation-name: ow-drift-2;
+    animation-duration: 30s;
+    animation-delay: -11s;
+  }
+
+  .c-drift--3 {
+    animation-name: ow-drift-3;
+    animation-duration: 22s;
+    animation-delay: -6s;
+  }
+
+  .c-drift--4 {
+    animation-name: ow-drift-4;
+    animation-duration: 28s;
+    animation-delay: -17s;
+  }
+
+  @keyframes ow-drift-1 {
+    from {
+      scale: 1.04;
+      translate: -1.2% -0.8%;
+    }
+
+    to {
+      scale: 1.1;
+      translate: 1.2% 0.8%;
+    }
+  }
+
+  @keyframes ow-drift-2 {
+    from {
+      scale: 1.1;
+      translate: 1.4% -0.6%;
+    }
+
+    to {
+      scale: 1.04;
+      translate: -1.4% 0.6%;
+    }
+  }
+
+  @keyframes ow-drift-3 {
+    from {
+      scale: 1.05;
+      translate: 0 1%;
+    }
+
+    to {
+      scale: 1.12;
+      translate: 0 -1%;
+    }
+  }
+
+  @keyframes ow-drift-4 {
+    from {
+      scale: 1.12;
+      translate: -1% 1%;
+    }
+
+    to {
+      scale: 1.05;
+      translate: 1% -1%;
+    }
+  }
+
   .c-media__meta {
     display: flex;
     flex-wrap: wrap;
