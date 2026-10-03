@@ -237,6 +237,14 @@ def samples() -> list[Sample]:
             "小天使",
         ),
         _letter(
+            "unplaced-reminder",
+            "赛事",
+            "赛事开始提醒（还没编进队伍）",
+            "散人池里还没编进的人",
+            tournaments.unplaced_reminder_letter(_tournament()),
+            "西瓜",
+        ),
+        _letter(
             "member-left",
             "战队",
             "队员退出战队",

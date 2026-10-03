@@ -55,6 +55,39 @@ def tournament_reminder_letter(tournament, row) -> Letter:
     )
 
 
+def unplaced_reminder_letter(tournament) -> Letter:
+    """Design 8.1 (v6.29): a pool signup nobody has placed yet, once teams
+    are being formed."""
+    return Letter(
+        subject=f"赛事提醒：{tournament.title}",
+        lead=(
+            f"「{tournament.title}」将在 {moment(tournament.starts_at)} 开始，"
+            "你还在散人池里，没有被编进队伍。"
+        ),
+        facts=[("比赛时间", moment(tournament.starts_at))],
+        paragraphs=[
+            "赛事管理员可能还在编队，编进队伍时你会另外收到一封邮件。"
+            "到开赛还没编进的话，这次可能没有位置；有疑问请联系赛事管理员。"
+        ],
+        action=("查看赛事页面", site_url(tournament.get_absolute_url())),
+        reason=f"你收到这封邮件，是因为你个人报名了「{tournament.title}」。",
+    )
+
+
+def unplaced_reminder(tournament) -> int:
+    """Everyone still in the pool, one letter each."""
+    sent = 0
+    for signup in tournament.individual_signups.filter(
+        registration__isnull=True
+    ).select_related("user"):
+        if not (signup.user.is_active and signup.user.email):
+            continue
+        sent += send(
+            unplaced_reminder_letter(tournament), [signup.user], fail_silently=True
+        )
+    return sent
+
+
 def tournament_reminder(tournament) -> int:
     """Everyone holding a place on an approved roster, one letter each."""
     from tournaments.models import RegistrationMember, RegistrationStatus

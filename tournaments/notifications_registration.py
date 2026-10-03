@@ -139,13 +139,20 @@ def registration_status_changed(registration, note="") -> None:
 
 def adhoc_team_formed_letter(registration) -> Letter:
     title = registration.tournament.title
+    facts = [("赛事", title), ("队伍", registration.team_name)]
+    if registration.tournament.starts_at:
+        # Design 8.1 (v6.29): placed after the reminder went out, they still
+        # learn when to show up.
+        from tournaments.notifications import moment
+
+        facts.append(("比赛时间", moment(registration.tournament.starts_at)))
     return Letter(
         subject=f"已编入临时队伍：{title}",
         lead=(
             f"赛事管理员把你编入了「{title}」的临时队伍"
             f"「{registration.team_name}」，报名已通过。"
         ),
-        facts=[("赛事", title), ("队伍", registration.team_name)],
+        facts=facts,
         paragraphs=["报名截止前，你可以在报名详情页退出队伍，回到散人池。"],
         action=_details(registration),
         reason=f"你收到这封邮件，是因为你个人报名了「{title}」。",

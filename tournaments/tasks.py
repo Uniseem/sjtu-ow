@@ -36,9 +36,12 @@ def send_tournament_reminder(tournament_id: int) -> str:
 
     sent = notifications.tournament_reminder(tournament)
     # With nobody approved yet it stays unsent, so saving the tournament
-    # later arranges it again.
-    if sent:
-        Tournament.objects.filter(
-            pk=tournament_id, reminder_sent_at__isnull=True
-        ).update(reminder_sent_at=now)
-    return f"sent:{sent}"
+    # later arranges it again. The pool hears only once teams are being
+    # formed (v6.29): before that the admin has most likely not started.
+    if not sent:
+        return "sent:0"
+    pool = notifications.unplaced_reminder(tournament)
+    Tournament.objects.filter(pk=tournament_id, reminder_sent_at__isnull=True).update(
+        reminder_sent_at=now
+    )
+    return f"sent:{sent}" + (f",pool:{pool}" if pool else "")
