@@ -18,4 +18,12 @@ def member_detail(request, pk):
     user = joined_users().filter(pk=pk).prefetch_related("game_accounts").first()
     if user is None:
         raise Http404("没有这位成员。")
-    return render(request, "members/detail.html", {"page": member_page(user)})
+    return render(
+        request,
+        "members/detail.html",
+        {
+            "page": member_page(user),
+            # Design 6.4 (v6.21): the owner gets a way back to 个人中心.
+            "is_owner": request.user.is_authenticated and request.user.pk == user.pk,
+        },
+    )

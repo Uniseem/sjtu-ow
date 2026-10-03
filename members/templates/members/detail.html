@@ -21,9 +21,13 @@
         {% include "components/avatar.html" with person=page.user size="lg" %}
         <div class="flex min-w-0 flex-col gap-2">
           <h1>{{ page.user.nickname }}</h1>
-          {% if page.user.motto %}<p class="c-pagehead__lede" data-motto>“{{ page.user.motto }}”</p>{% endif %}
+          {% if page.user.motto %}<p class="c-pagehead__lede" data-motto>“{{ page.user.motto }}”</p>{% elif is_owner %}<p class="text-sm text-fg-2" data-owner-hint>还没写个人宣言，<a href="{% url 'me_profile' %}" class="c-link">写一句</a>（只有你看得到这句提示）。</p>{% endif %}
           {% include "components/play_style.html" with profile=page.profile %}
+          {% if is_owner and not page.user.main_role and not page.user.flex_roles %}<p class="text-sm text-fg-2" data-owner-hint>还没选常用位置，<a href="{% url 'me_profile' %}" class="c-link">去选</a>。</p>{% endif %}
         </div>
+        {% if is_owner %}
+          <a href="{% url 'me_profile' %}" class="c-btn c-btn--secondary c-btn--sm sm:ml-auto" data-owner-edit>{% include "components/icon.html" with name="settings" %}编辑资料</a>
+        {% endif %}
       </div>
       {% if page.groups %}
         <dl class="mt-6 flex flex-wrap gap-x-8 gap-y-3" data-member-groups>
@@ -49,7 +53,7 @@
             {% endfor %}
           </ul>
         {% else %}
-          <p class="text-fg-2">现在没有加入战队。</p>
+          <p class="text-fg-2">现在没有加入战队。{% if is_owner %}<a href="{% url 'team_index' %}" class="c-link" data-owner-hint>去找一支招募中的</a>{% endif %}</p>
         {% endif %}
       </section>
 

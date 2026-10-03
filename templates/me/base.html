@@ -11,7 +11,7 @@
       <div class="c-pagehead__row">
         <div>
           <h1>{% block me_heading %}个人中心{% endblock %}</h1>
-          <p class="c-pagehead__meta gap-2">{% include "components/avatar.html" with person=request.user size="sm" plain=True %}<span class="font-semibold text-fg">{{ request.user.nickname }}</span></p>
+          <p class="c-pagehead__meta gap-2">{% include "components/avatar.html" with person=request.user size="sm" plain=True %}<span class="font-semibold text-fg">{{ request.user.nickname }}</span><a href="{% url 'member_detail' request.user.pk %}" class="c-link text-sm" data-own-page>我的主页</a></p>
         </div>
         <div class="c-pagehead__actions">{% block me_actions %}{% endblock %}</div>
       </div>
