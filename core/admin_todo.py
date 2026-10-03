@@ -14,6 +14,7 @@ from django.utils import timezone
 from wagtail.admin.ui.components import Component
 
 FINISH_NUDGE_AFTER = timezone.timedelta(days=3)
+MAIL_LOOKBACK = timezone.timedelta(days=7)
 
 
 @dataclass(frozen=True)
@@ -143,21 +144,69 @@ def _scrim_rows(user) -> list[Todo]:
     ]
 
 
+def _attempt(args_kwargs) -> int:
+    args = (args_kwargs or {}).get("args") or []
+    if len(args) > 1:
+        return int(args[1])
+    return int(((args_kwargs or {}).get("kwargs") or {}).get("attempt", 0))
+
+
+def mail_failures(now=None) -> tuple[int, str]:
+    """Emails the worker gave up on after its last retry in the past week,
+    and the last error (design 14.1, v6.43). A broken SMTP setting used to
+    show nowhere: sign-up codes simply did not arrive."""
+    from django_tasks.base import TaskResultStatus
+    from django_tasks_db.models import DBTaskResult
+
+    from core.tasks import MAIL_RETRY_DELAYS
+
+    rows = (
+        DBTaskResult.objects.filter(
+            task_path="core.tasks.deliver_queued_email",
+            status=TaskResultStatus.FAILED,
+            finished_at__gte=(now or timezone.now()) - MAIL_LOOKBACK,
+        )
+        .order_by("-finished_at")
+        .values_list("args_kwargs", "traceback")
+    )
+    given_up = [
+        traceback
+        for args_kwargs, traceback in rows
+        if _attempt(args_kwargs) >= len(MAIL_RETRY_DELAYS)
+    ]
+    if not given_up:
+        return 0, ""
+    lines = (given_up[0] or "").strip().splitlines()
+    return len(given_up), (lines[-1] if lines else "")[:120]
+
+
 def _site_rows(user) -> list[Todo]:
-    from core.models import PrerenderedPage
+    from core.admin_setup import _settings_url
+    from core.models import PrerenderedPage, SiteSettings
 
     if not user.is_superuser:
         return []
     failed = PrerenderedPage.objects.filter(
         status=PrerenderedPage.Status.FAILED
     ).count()
-    return [
+    rows = [
         Todo(
             f"{failed} 个静态页面生成失败",
             reverse("core_prerender_index") + "?status=failed",
             failed,
         )
     ]
+    lost, error = mail_failures()
+    if lost:
+        rows.append(
+            Todo(
+                f"最近 {MAIL_LOOKBACK.days} 天有 {lost} 封邮件重试后仍没发出去"
+                f"（{error}），检查全站设置里的 SMTP，先发一封测试邮件",
+                _settings_url(SiteSettings.load()),
+                lost,
+            )
+        )
+    return rows
 
 
 def has_duties(user) -> bool:

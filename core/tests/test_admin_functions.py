@@ -475,3 +475,49 @@ def test_tournaments_long_started_ask_to_be_finished(site, client):
     assert "早就结束杯" not in todo
     client.force_login(_staff("editor142@example.com", "内容编辑"))
     assert "打完没标杯" not in _todo(client)
+
+
+def _mail_task(attempt, *, status="FAILED", days_ago=1, error="ok"):
+    from django_tasks_db.models import DBTaskResult
+
+    when = timezone.now() - timedelta(days=days_ago)
+    args = [{"to": ["x@example.com"]}] + ([attempt] if attempt else [])
+    return DBTaskResult.objects.create(
+        task_path="core.tasks.deliver_queued_email",
+        status=status,
+        args_kwargs={"args": args, "kwargs": {}},
+        run_after=when,
+        finished_at=when,
+        backend_name="default",
+        queue_name="default",
+        exception_class_path="smtplib.SMTPAuthenticationError",
+        traceback=f"Traceback (most recent call last):\n  ...\n{error}\n",
+    )
+
+
+@pytest.mark.django_db
+def test_the_owner_hears_about_mail_that_never_went_out(site, client):
+    """Round 150 (design 14.1, v6.43)."""
+    from core.models import SiteSettings
+
+    _mail_task(3, error="smtplib.SMTPAuthenticationError: (535, b'auth failed')")
+    _mail_task(1)  # a retry is still coming
+    _mail_task(3, days_ago=10)  # too long ago
+    _mail_task(3, status="SUCCESSFUL")
+    client.force_login(_staff("root150@example.com", superuser=True))
+    todo = _todo(client)
+    assert "最近 7 天有 1 封邮件重试后仍没发出去" in todo
+    assert "SMTPAuthenticationError: (535" in todo
+    settings_url = reverse(
+        "wagtailsettings:edit", args=["core", "sitesettings", SiteSettings.load().pk]
+    )
+    assert settings_url in todo
+    client.force_login(_staff("editor150@example.com", "内容编辑"))
+    assert "邮件重试后仍没发出去" not in _todo(client)
+
+
+@pytest.mark.django_db
+def test_no_lost_mail_no_line(site, client):
+    _mail_task(2)
+    client.force_login(_staff("root150b@example.com", superuser=True))
+    assert "邮件重试后仍没发出去" not in _todo(client)
