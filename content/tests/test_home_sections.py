@@ -501,3 +501,12 @@ def test_the_current_section_is_marked_in_the_navigation(client, site):
     html = client.get("/news/").content.decode("utf-8")
     assert '<a href="/news/" aria-current="page">资讯</a>' in html
     assert '<a href="/" aria-current="page">' not in html
+
+
+@pytest.mark.django_db
+def test_the_feature_card_says_when_they_play(client, site):
+    """Round 143 (design 5.2, v6.38)."""
+    starts = timezone.now() + timedelta(days=12)
+    _tournament("带比赛时间的赛事", starts_at=starts)
+    html = _main(client.get("/"))
+    assert f"· {timezone.localtime(starts):%m.%d} 比赛 ·" in html

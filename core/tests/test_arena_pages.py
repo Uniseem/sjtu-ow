@@ -204,3 +204,29 @@ def test_the_roster_numbers_people_by_when_they_joined(client):
 
     numbers = [number_of(name) for name in ("第一个", "第二个", "第三个")]
     assert numbers == ["001", "002", "003"]
+
+
+@pytest.mark.django_db
+def test_open_and_upcoming_cards_say_when_they_play(client):
+    """Round 143 (design 5.2, v6.38): not only once registration has closed."""
+    from tournaments.models import Tournament
+
+    starts = timezone.now() + 10 * DAY
+    for title, opens, closes in (
+        ("报名中带时间", -DAY, DAY),
+        ("快开始带时间", DAY, 2 * DAY),
+    ):
+        tournament = _tournament(title, opens=opens, closes=closes)
+        Tournament.objects.filter(pk=tournament.pk).update(starts_at=starts)
+    _tournament("报名中没时间", opens=-DAY, closes=DAY)
+    html = _html(client, "/tournaments/")
+    when = f"{timezone.localtime(starts):%m.%d} 比赛"
+    for phase, title in (("open", "报名中带时间"), ("upcoming", "快开始带时间")):
+        block = _section(html, f'data-phase="{phase}"')
+        card = block[block.index(title) - 1500 : block.index(title)]
+        assert f"<span data-card-starts>{when}</span>" in card, phase
+    open_block = _section(html, 'data-phase="open"')
+    bare = open_block[
+        open_block.index("报名中没时间") - 1500 : open_block.index("报名中没时间")
+    ]
+    assert "data-card-starts" not in bare.split("data-tournament-card")[-1]

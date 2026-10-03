@@ -48,7 +48,7 @@
             <div class="c-feature__body">
               <span class="c-status c-status--live">报名中</span>
               <h3 class="c-feature__title"><a href="{{ feature.tournament.get_absolute_url }}" class="c-stretch">{{ feature.tournament.title }}</a></h3>
-              <p class="c-feature__facts">{{ feature.tournament.get_registration_mode_display }} · 报名截止 {{ feature.tournament.registration_closes_at|ow_md }} {{ feature.tournament.registration_closes_at|ow_time }} · {% if feature.tournament.takes_individuals %}已编成{% else %}已通过{% endif %} {{ feature.approved }} 队</p>
+              <p class="c-feature__facts">{{ feature.tournament.get_registration_mode_display }} · 报名截止 {{ feature.tournament.registration_closes_at|ow_md }} {{ feature.tournament.registration_closes_at|ow_time }}{% if feature.tournament.starts_at %} · {{ feature.tournament.starts_at|ow_md }} 比赛{% endif %} · {% if feature.tournament.takes_individuals %}已编成{% else %}已通过{% endif %} {{ feature.approved }} 队</p>
             </div>
           </article>
         {% endif %}
