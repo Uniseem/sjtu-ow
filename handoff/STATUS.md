@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: M10 前台视觉 v6.12，M7 上线准备暂停
-round: 145-captain-reminder
+round: 146-signed-in-screens
 next: claude（按用户 10-04 睡前说的：假定管理员、成员、投稿者等各种身份把流程走一遍，发现不完善的地方逐轮修）
 updated: 2026-10-04
 blocked_on: 默认头像以后要换动漫风的话需要你提供有授权的素材（官方没有公开的，现在用官方立绘）；演示站（sjtu.ow-shanghaiuniversity.com）的管理员要你自己建（`… exec web python manage.py createsuperuser`）；转正式站前要定演示数据和动漫头像怎么处理；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定
 ```
 
 ## 现在该谁动手
+
+**146（2026-10-04）**：最近加的很多东西登录后才看得到，一直没在手机上看过。在测试机上装了 Chromium 和中文字体，写了一个截图工具：建测试数据、直接生成登录状态（不输入任何密码）、截个人中心、战队、赛事、内战等页面。看了 10 个页面，手机宽度下都正常。
 
 **145（2026-10-04）**：接着 141，从队长这边看：申请满两周会被自动关闭，但队长在这之前只收到过提交时那一封。现在申请等了一周还没处理时，队长收到一封提醒（同一支队合成一封，写上再过一周会自动关闭）。演示站已升级。
 
@@ -522,6 +524,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 143-card-dates | 访客走查（设计 v6.38，手机截图时发现）：报名中、即将开始报名的赛事卡和首页大图卡写比赛日期 | **Claude 实现**，自查通过。测试 2 条；4 处变异全部被抓到 |
 | 144-tailwind-cli-cache | 检查和部署的稳定性：Tailwind 命令行每个版本只下载一次（Dockerfile 缓存层 + `deploy/fetch_tailwind_cli.py` 带重试，`check.sh` 文件在就不下） | **Claude 实现**，自查通过。`core/tests/test_tailwind_cli_fetch.py` 7 条；6 处变异全部被抓到；再构建时那一层 CACHED |
 | 145-captain-reminder | 队长走查（设计 v6.39）：入队申请等了 7 天提醒队长一次，同队合成一封（`captain_reminded_at`） | **Claude 实现**，自查通过。测试加 3 条；7 处变异全部被抓到 |
+| 146-signed-in-screens | 工具：测试机上截登录后页面的整页图（`scripts/screens.py`，Chromium + 思源字体） | **Claude 实现**，自查通过。截了 10 个页面，没发现排版问题 |
 
 ## 当前待定问题
 
