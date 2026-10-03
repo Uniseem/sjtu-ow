@@ -521,3 +521,21 @@ def test_no_lost_mail_no_line(site, client):
     _mail_task(2)
     client.force_login(_staff("root150b@example.com", superuser=True))
     assert "邮件重试后仍没发出去" not in _todo(client)
+
+
+@pytest.mark.django_db
+def test_the_owner_hears_when_the_worker_is_down(site, client):
+    """Round 151 (design 14.1, v6.44)."""
+    from core.worker import write_worker_heartbeat
+
+    client.force_login(_staff("root151@example.com", superuser=True))
+    todo = _todo(client)
+    assert "后台任务（worker）没在运行：心跳缺失" in todo
+    assert 'href="/healthz"' in todo
+    write_worker_heartbeat()
+    assert "worker）没在运行" not in _todo(client)
+    client.force_login(_staff("editor151@example.com", "内容编辑"))
+    from django.core.cache import cache
+
+    cache.clear()
+    assert "worker）没在运行" not in _todo(client)

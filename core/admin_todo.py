@@ -196,6 +196,19 @@ def _site_rows(user) -> list[Todo]:
             failed,
         )
     ]
+    # Design 14.1 (v6.44): with the worker down nothing is sent or rebuilt,
+    # while the site itself looks fine.
+    from core.health import check_worker_heartbeat
+
+    beating, detail = check_worker_heartbeat()
+    if not beating:
+        rows.append(
+            Todo(
+                f"后台任务（worker）没在运行：{detail}。邮件、提醒、静态页都停了，"
+                "到服务器上看 worker 容器",
+                "/healthz",
+            )
+        )
     lost, error = mail_failures()
     if lost:
         rows.append(
