@@ -21,4 +21,4 @@
 {% if letter.action %}{% include "email/parts/button.html" with label=letter.action.0 url=letter.action.1 %}{% endif %}
 {% if letter.note %}<p style="margin:16px 0 0;color:#4a505b;font-size:14px;">{{ letter.note }}</p>{% endif %}
 {% endblock %}
-{% block reason %}{{ letter.reason }}{% endblock %}
+{% block reason %}{{ letter.reason }}{% if letter.unsubscribe %}不想再收到？<a href="{{ letter.unsubscribe }}" style="color:#5f6671;">退订活动通知</a>。{% endif %}{% endblock %}

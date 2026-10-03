@@ -36,3 +36,42 @@ def registration_status_changed(registration, note="") -> None:
     )
 
     impl(registration, note)
+
+
+# --- 「通知全体成员」 (design 10.4, v6.19) -----------------------------------
+
+ANNOUNCE_WHY = "你收到这封邮件，是因为你在社区开着「活动通知」。"
+
+
+def _moment(value) -> str:
+    from django.utils.timezone import localtime
+
+    return f"{localtime(value):%Y-%m-%d %H:%M}"
+
+
+def new_tournament_letter(tournament, unsubscribe: str = "") -> Letter:
+    from django.utils import timezone
+
+    if tournament.registration_opens_at > timezone.now():
+        lead = (
+            f"社团发布了新的赛事「{tournament.title}」，"
+            f"{_moment(tournament.registration_opens_at)} 开始报名。"
+        )
+    else:
+        lead = f"社团发布了新的赛事「{tournament.title}」，现在可以报名了。"
+    facts = []
+    if tournament.starts_at:
+        facts.append(("比赛时间", _moment(tournament.starts_at)))
+    facts.append(("报名截止", _moment(tournament.registration_closes_at)))
+    facts.append(("报名方式", tournament.get_registration_mode_display()))
+    if tournament.sjtu_only:
+        facts.append(("参赛范围", "仅限交大成员"))
+    return Letter(
+        subject=f"新赛事：{tournament.title}",
+        lead=lead,
+        facts=facts,
+        paragraphs=[tournament.summary] if tournament.summary else [],
+        action=("查看并报名", site_url(tournament.get_absolute_url())),
+        reason=ANNOUNCE_WHY,
+        unsubscribe=unsubscribe,
+    )

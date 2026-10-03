@@ -40,6 +40,9 @@ class Letter:
     action: tuple[str, str] | None = None  # (button label, absolute url)
     note: str = ""  # small print after the button
     reason: str = ""  # footer: why this person gets it
+    # Only on mail people may turn off (design 10.4): the footer links to it
+    # and the message carries List-Unsubscribe for mail clients.
+    unsubscribe: str = ""
 
 
 def site_url(path: str = "/") -> str:
@@ -97,7 +100,8 @@ def text_of(letter: Letter, name: str = "") -> str:
         parts.append(letter.note)
     parts.append(CLOSING)
     parts.append(f"{SIGNATURE}\n{dated()}")
-    parts.append(f"——\n{letter.reason}{NO_REPLY}\n{site_url('/')}")
+    unsubscribe = f"\n退订活动通知：{letter.unsubscribe}" if letter.unsubscribe else ""
+    parts.append(f"——\n{letter.reason}{NO_REPLY}{unsubscribe}\n{site_url('/')}")
     return "\n\n".join(part for part in parts if part)
 
 
@@ -113,7 +117,16 @@ def render(letter: Letter, name: str = "") -> tuple[str, str]:
 
 def message(letter: Letter, address: str, name: str = "") -> EmailMultiAlternatives:
     text, html = render(letter, name)
-    email = EmailMultiAlternatives(subject=letter.subject, body=text, to=[address])
+    headers = {}
+    if letter.unsubscribe:
+        # RFC 8058: the mail client's own 「退订」 posts to this address.
+        headers = {
+            "List-Unsubscribe": f"<{letter.unsubscribe}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        }
+    email = EmailMultiAlternatives(
+        subject=letter.subject, body=text, to=[address], headers=headers
+    )
     email.attach_alternative(html, "text/html")
     return email
 

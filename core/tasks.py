@@ -82,3 +82,15 @@ def remove_prerendered(path: str) -> None:
     if not prerender.is_enabled():
         return
     prerender.drop(path)
+
+
+@task
+def send_broadcast(broadcast_id: int) -> None:
+    """「通知全体成员」 (design 10.4): each letter is queued on its own, so
+    the SMTP retries of 10.1 apply per person."""
+    from core.models import Broadcast
+    from core.services import deliver
+
+    broadcast = Broadcast.objects.filter(pk=broadcast_id).first()
+    if broadcast is not None:
+        deliver(broadcast)

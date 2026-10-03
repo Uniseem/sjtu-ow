@@ -1,0 +1,25 @@
+{% extends "account/layout.html" %}
+{% comment %}
+  Design 10.4 (v6.19): the 「退订活动通知」 link in every activity notice.
+  Only the notices stop; mail about the member's own things goes on.
+{% endcomment %}
+
+{% block head_title %}退订活动通知{% endblock %}
+
+{% block account_content %}
+  <h1>退订活动通知</h1>
+  {% if invalid %}
+    <p>这个退订链接无效，可能复制时缺了一段。登录后在「个人中心 → 账号安全」里也能关掉活动通知。</p>
+    <div><a href="{% url 'me_security' %}" class="c-btn c-btn--secondary">去账号安全</a></div>
+  {% elif done %}
+    <p>{{ person.nickname }}，已经退订：之后发布新赛事、新内战时不会再给你发信。</p>
+    <p>报名、战队、审核结果这些和你本人有关的邮件照常会发。想重新收到活动通知，登录后在「个人中心 → 账号安全」里打开。</p>
+    <div><a href="{% url 'home' %}" class="c-btn c-btn--secondary">回到首页</a></div>
+  {% else %}
+    <p>{{ person.nickname }}，确定不再接收活动通知吗？之后发布新赛事、新内战时不会再给你发信；和你本人有关的邮件照常会发。</p>
+    <form method="post">
+      {% csrf_token %}
+      <div><button type="submit" class="c-btn c-btn--primary c-btn--block">退订</button></div>
+    </form>
+  {% endif %}
+{% endblock %}

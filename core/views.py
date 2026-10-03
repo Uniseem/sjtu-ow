@@ -122,3 +122,26 @@ def send_site_test_email(request):
             args=["core", "sitesettings", settings_obj.pk],
         )
     )
+
+
+@csrf_exempt
+def announcements_unsubscribe(request, token):
+    """Turn activity notices off from the link in one (design 10.4). No
+    login: the link is signed for one member. GET asks; POST does it, from
+    our own button or a mail client's one-click 「退订」 (RFC 8058, which
+    posts without a CSRF token, hence the exemption: the token in the
+    address is what proves who it is for)."""
+    from core.services import set_announcements, user_for_token
+
+    person = user_for_token(token)
+    if person is None:
+        return render(request, "core/unsubscribe.html", {"invalid": True}, status=404)
+    done = False
+    if request.method == "POST":
+        set_announcements(person, False)
+        done = True
+    return render(
+        request,
+        "core/unsubscribe.html",
+        {"person": person, "done": done or not person.accepts_announcements},
+    )

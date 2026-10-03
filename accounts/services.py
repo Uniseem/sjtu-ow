@@ -381,6 +381,7 @@ def personal_data(user) -> dict:
             "main_role": ROLE_LABELS.get(user.main_role, ""),
             "flex_roles": [ROLE_LABELS[role] for role in parse_roles(user.flex_roles)],
             "show_rank": user.show_rank,
+            "accepts_announcements": user.accepts_announcements,
         },
         "game_accounts": [
             {

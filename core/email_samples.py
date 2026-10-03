@@ -326,6 +326,44 @@ def samples() -> list[Sample]:
             "小天使",
         ),
         _letter(
+            "new-tournament",
+            "活动通知",
+            "新赛事通知（群发）",
+            "开着活动通知的成员",
+            tournaments.new_tournament_letter(
+                SimpleNamespace(
+                    title="2026 秋季校内杯",
+                    summary="五人一队，单败淘汰，冠军队伍有社团周边。",
+                    starts_at=timezone.make_aware(datetime(2026, 11, 8, 14, 0)),
+                    registration_opens_at=timezone.make_aware(datetime(2026, 10, 1)),
+                    registration_closes_at=timezone.make_aware(
+                        datetime(2026, 11, 1, 23, 59)
+                    ),
+                    get_registration_mode_display=lambda: "个人报名，赛事组编队",
+                    sjtu_only=True,
+                    get_absolute_url=lambda: "/tournaments/1/",
+                ),
+                "https://example.com/unsubscribe/sample/",
+            ),
+            "小天使",
+        ),
+        _letter(
+            "new-scrim",
+            "活动通知",
+            "新内战通知（群发）",
+            "开着活动通知的成员",
+            scrims.new_scrim_letter(
+                SimpleNamespace(
+                    **vars(_scrim()),
+                    signup_deadline=timezone.make_aware(datetime(2026, 10, 5, 18, 0)),
+                    sjtu_only=False,
+                    description="怀旧版本，六人一队，不限位置。",
+                ),
+                "https://example.com/unsubscribe/sample/",
+            ),
+            "小天使",
+        ),
+        _letter(
             "scrim-cancelled",
             "内战",
             "内战取消",

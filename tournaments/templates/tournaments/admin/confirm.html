@@ -13,6 +13,7 @@
   {% endif %}
   <form method="post">
     {% csrf_token %}
+    {% include "core/admin/_announce_box.html" %}
     {% if needs_reason %}
       <label for="reason">说明（会写进通知邮件）</label>
       <input type="text" id="reason" name="reason" maxlength="300">

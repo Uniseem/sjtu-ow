@@ -83,6 +83,13 @@ class User(AbstractUser):
         default=True,
         help_text="在成员展示和战队主页显示各位置的最高段位。",
     )
+    accepts_announcements = models.BooleanField(
+        "接收活动通知",
+        default=True,
+        help_text=(
+            "新赛事、新内战发布时的群发邮件（设计 10.4）。和本人有关的通知不受影响。"
+        ),
+    )
     # Shown wherever the face is (design-details 2.3, v6.1). Nothing sets it
     # yet (no upload, not in the admin); empty means the 底图 and the initial.
     avatar = models.ForeignKey(

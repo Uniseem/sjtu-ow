@@ -1,0 +1,15 @@
+{% comment %}
+  「同时通知全体成员」 on a publish page (design 10.4, v6.19). Off by
+  default: a mass email should be a decision, not a leftover tick.
+{% endcomment %}
+{% if announce %}
+  <fieldset class="w-mb-4">
+    <legend>活动通知</legend>
+    {% if announce.problem %}
+      <p class="help-block help-warning">发布后不能马上通知全体成员：{{ announce.problem }}</p>
+    {% else %}
+      <label><input type="checkbox" name="announce" value="1"> 发布后同时通知全体成员（{{ announce.count }} 人）</label>
+      <p class="help">发给开着「活动通知」的成员，每场只能发一次。不勾也可以之后在列表的「更多」里发，发之前能看到信的样子。</p>
+    {% endif %}
+  </fieldset>
+{% endif %}

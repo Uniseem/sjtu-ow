@@ -73,3 +73,30 @@ def scrim_reminder_letter(scrim) -> Letter:
 def scrim_reminder(scrim) -> int:
     """Design 9.1: the reminder that goes out before it starts."""
     return send(scrim_reminder_letter(scrim), _recipients(scrim), fail_silently=True)
+
+
+# --- 「通知全体成员」 (design 10.4, v6.19) -----------------------------------
+
+
+def new_scrim_letter(scrim, unsubscribe: str = "") -> Letter:
+    facts = [
+        *_facts(scrim),
+        (
+            "报名截止",
+            timezone.localtime(scrim.signup_deadline).strftime("%Y-%m-%d %H:%M"),
+        ),
+    ]
+    if scrim.sjtu_only:
+        facts.append(("参加范围", "仅限交大成员"))
+    description = (scrim.description or "").strip()
+    if len(description) > 300:
+        description = description[:300] + "……"
+    return Letter(
+        subject=f"新内战：{scrim.title}",
+        lead=f"社团发布了新的内战「{scrim.title}」，现在可以报名了。",
+        facts=facts,
+        paragraphs=[description] if description else [],
+        action=("查看并报名", _link(scrim)),
+        reason="你收到这封邮件，是因为你在社区开着「活动通知」。",
+        unsubscribe=unsubscribe,
+    )

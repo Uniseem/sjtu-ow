@@ -10,6 +10,14 @@ from core.views import send_site_test_email
 
 
 @hooks.register("register_admin_urls")
+def register_announce_url():
+    from core.announce_admin import announce_view
+
+    # Design 10.4 (v6.19): 「通知全体成员」 for a tournament or a scrim.
+    return [path("announce/<str:kind>/<int:pk>/", announce_view, name="announce")]
+
+
+@hooks.register("register_admin_urls")
 def register_test_email_url():
     return [
         path(

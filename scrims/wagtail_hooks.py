@@ -46,6 +46,15 @@ class ScrimIndexView(generic.IndexView):
                 )
             )
         if instance.status == ScrimStatus.PUBLISHED:
+            # Design 10.4 (v6.19): once per scrim, after a preview.
+            buttons.append(
+                ListingMenuItem(
+                    "通知全体成员",
+                    url=reverse("announce", args=["scrim", instance.pk]),
+                    icon_name="mail",
+                    priority=62,
+                )
+            )
             buttons.append(
                 ListingMenuItem(
                     "标记为已结束",
@@ -199,6 +208,8 @@ def scrim_action(request, pk, action):
         else:
             admin_log.record(scrim, LOG_ACTIONS[action], request.user)
             messages.success(request, f"「{scrim.title}」已{label[:2]}。")
+            if action == "publish" and request.POST.get("announce"):
+                _announce_after_publish(request, scrim)
         return redirect("scrims:index")
     return render(
         request,
@@ -208,6 +219,7 @@ def scrim_action(request, pk, action):
             "header_icon": "group",
             "scrim": scrim,
             "action_label": label,
+            "announce": _announce_offer(scrim) if action == "publish" else None,
             "breadcrumbs_items": _breadcrumbs(scrim),
         },
     )
@@ -254,3 +266,26 @@ def register_scrim_urls():
         ),
         path("scrims/<int:pk>/<str:action>/", scrim_action, name="scrim_action"),
     ]
+
+
+def _announce_offer(scrim) -> dict:
+    """The 「同时通知全体成员」 box on the publish page (design 10.4)."""
+    from core import services as core_services
+
+    return {
+        "count": core_services.recipient_count(scrim),
+        "problem": core_services.announcement_problem("scrim", scrim, publishing=True),
+    }
+
+
+def _announce_after_publish(request, scrim) -> None:
+    from core import services as core_services
+
+    try:
+        broadcast = core_services.announce(kind="scrim", obj=scrim, actor=request.user)
+    except core_services.AnnouncementError as exc:
+        messages.warning(request, f"没有通知全体成员：{exc}")
+    else:
+        messages.success(
+            request, f"已开始通知全体成员（{broadcast.recipient_count} 人）。"
+        )

@@ -349,6 +349,23 @@ def me_security(request):
     )
 
 
+@login_required
+@require_POST
+def me_notifications(request):
+    """「邮件通知」 on 账号安全 (design 10.4): the activity notices only."""
+    from core.services import set_announcements
+
+    accepts = request.POST.get("accepts_announcements") == "1"
+    set_announcements(request.user, accepts)
+    messages.success(
+        request,
+        "已打开活动通知：发布新赛事、新内战时会给你发信。"
+        if accepts
+        else "已关闭活动通知。和你本人有关的邮件照常会发。",
+    )
+    return redirect("me_security")
+
+
 EXPORTS_PER_HOUR = 5  # design 3.8 (default)
 
 

@@ -28,6 +28,8 @@ ACTIONS = {
     "scrims.save_teams": ("保存分队", "保存了分队"),
     "teams.assign_captain": ("指定队长", "指定了队长"),
     "teams.disband": ("解散战队", "解散了战队"),
+    "tournaments.announce": ("通知全体成员", "发了新赛事通知"),
+    "scrims.announce": ("通知全体成员", "发了新内战通知"),
 }
 
 

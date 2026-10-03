@@ -15,6 +15,7 @@
   {% endif %}
   <form method="post">
     {% csrf_token %}
+    {% include "core/admin/_announce_box.html" %}
     <p>
       <button type="submit" class="button {% if action_label == '取消内战' %}serious{% else %}button-primary{% endif %}">{{ action_label }}</button>
       <a class="button button-secondary" href="{% url 'scrims:index' %}">返回</a>

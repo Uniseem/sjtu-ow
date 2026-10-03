@@ -30,6 +30,7 @@ urlpatterns = [
         name="me_contact_delete",
     ),
     path("me/security/", views.me_security, name="me_security"),
+    path("me/notifications/", views.me_notifications, name="me_notifications"),
     path("me/export/", views.me_export, name="me_export"),
     path("me/delete/", views.me_delete, name="me_delete"),
 ]

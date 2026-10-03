@@ -1,5 +1,6 @@
 """Site-wide models: health probe and Wagtail generic settings (design 12.4.1)."""
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
@@ -619,3 +620,39 @@ class PrerenderedPage(models.Model):
     @property
     def kind_label(self) -> str:
         return self.KIND_LABELS.get(self.kind, self.kind)
+
+
+class Broadcast(models.Model):
+    """One 「通知全体成员」 (design 10.4, v6.19): what went out, by whom, to
+    how many. At most one per tournament or scrim."""
+
+    class Kind(models.TextChoices):
+        TOURNAMENT = "tournament", "新赛事"
+        SCRIM = "scrim", "新内战"
+
+    kind = models.CharField("类型", max_length=16, choices=Kind.choices)
+    object_id = models.PositiveIntegerField("对象 ID")
+    subject = models.CharField("主题", max_length=200)
+    sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="操作人",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    recipient_count = models.PositiveIntegerField("收信人数", default=0)
+    created_at = models.DateTimeField("时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "活动通知"
+        verbose_name_plural = "活动通知"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["kind", "object_id"], name="core_broadcast_once"
+            )
+        ]
+
+    def __str__(self):
+        return self.subject

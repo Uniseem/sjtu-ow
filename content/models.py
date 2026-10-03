@@ -44,6 +44,7 @@ RESERVED_CHILD_SLUGS = frozenset(
         "_fragments",
         "_styleguide",
         "_util",
+        "unsubscribe",
         "healthz",
         "sitemap.xml",
         "robots.txt",

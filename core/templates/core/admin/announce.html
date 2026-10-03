@@ -1,0 +1,27 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}通知全体成员{% endblock %}
+
+{% block main_content %}
+  <dl>
+    <dt>活动</dt><dd>{{ obj }}</dd>
+    <dt>收信的人</dt><dd>{{ count }} 人（在用、邮箱已验证、开着「活动通知」的成员{% if sjtu_only %}，只发交大成员{% endif %}）</dd>
+    <dt>主题</dt><dd>{{ subject }}</dd>
+  </dl>
+
+  {% if problem %}
+    <p class="help-block help-warning">{{ problem }}</p>
+  {% endif %}
+
+  <h2>信的正文（预览）</h2>
+  <p class="help">每人一封、互相看不到；底部有各自的退订链接。下面是写给你自己的样子。</p>
+  <pre class="w-whitespace-pre-wrap">{{ preview }}</pre>
+
+  <form method="post" onsubmit="return window.confirm('给 {{ count }} 人发这封信？同一场只能发一次。')">
+    {% csrf_token %}
+    <p>
+      <button type="submit" class="button button-primary" {% if problem or not count %}disabled{% endif %}>发给 {{ count }} 人</button>
+      <a class="button button-secondary" href="{{ back_url }}">返回</a>
+    </p>
+  </form>
+{% endblock %}
