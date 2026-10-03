@@ -67,9 +67,15 @@ class FeatureUserRuleCreateView(FeatureCreateView):
         return initial
 
 
+class FeatureGroupRestrictionIndexView(generic.IndexView):
+    def get_base_queryset(self):
+        # One query for the list, not one per row (round 119).
+        return super().get_base_queryset().select_related("group", "updated_by")
+
+
 class FeatureUserRuleIndexView(generic.IndexView):
     def get_base_queryset(self):
-        qs = super().get_base_queryset()
+        qs = super().get_base_queryset().select_related("user", "updated_by")
         user_id = self.request.GET.get("user")
         if user_id:
             qs = qs.filter(user_id=user_id)
@@ -90,6 +96,7 @@ class FeatureGroupRestrictionViewSet(ModelViewSet):
         FieldPanel("feature"),
         FieldPanel("note"),
     ]
+    index_view_class = FeatureGroupRestrictionIndexView
     add_view_class = FeatureCreateView
     edit_view_class = FeatureEditView
 

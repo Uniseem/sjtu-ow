@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from core import admin_log
 from tournaments import registration as registration_service
 from tournaments.models import Registration, Tournament
 from tournaments.review_admin import reviewer_required
@@ -38,8 +39,9 @@ def page_context(request, tournament):
     teams = registration_service.adhoc_registrations(tournament)
     by_team = {team.pk: [] for team in teams}
     bench = []
+    conflicts = registration_service.pool_conflicts(tournament, pool)
     for entry in pool:
-        entry.conflict = registration_service.pool_entry_conflict(entry)
+        entry.conflict = conflicts[entry.pk]
         if entry.registration_id in by_team:
             by_team[entry.registration_id].append(entry)
         else:
@@ -118,6 +120,15 @@ def board_view(request, pk):
                     tournament=tournament,
                     actor=request.user,
                     layout=layout_from_post(request, tournament),
+                )
+                admin_log.record(
+                    tournament,
+                    "tournaments.arrange",
+                    request.user,
+                    **{
+                        key: result[key]
+                        for key in ("created", "updated", "dissolved", "returned")
+                    },
                 )
                 messages.success(
                     request,

@@ -26,3 +26,21 @@
 .typography-row { border-bottom: 1px solid #e5e5e5; padding: .5rem 0 1rem; }
 .typography-row .fields { display: flex; flex-wrap: wrap; gap: 1rem; }
 .typography-row .fields > * { min-width: 9rem; }
+
+/* Design 13.12: the preview beside the settings on wide screens, kept in
+   view while the nine regions scroll past (round 119). */
+@media (min-width: 75em) {
+  .typography-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 30rem);
+    gap: 2rem;
+    align-items: start;
+  }
+  .typography-aside {
+    position: sticky;
+    top: 1rem;
+  }
+  .typography-aside #typography-preview {
+    margin-top: 0;
+  }
+}

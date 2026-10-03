@@ -18,6 +18,8 @@
 
   {{ font_weights|json_script:"font-weights-data" }}
 
+  {# Design 13.12: the preview sits beside the settings (round 119). #}
+  <div class="typography-layout">
   <form method="post" novalidate id="typography-form">
     {% csrf_token %}
     {{ formset.management_form }}
@@ -42,7 +44,8 @@
     </p>
   </form>
 
-  <h2>实时预览</h2>
+  <aside class="typography-aside" aria-labelledby="typography-preview-heading">
+  <h2 id="typography-preview-heading">实时预览</h2>
   <p class="help-block">预览随表单变化，保存后才会应用到前台。</p>
   <div id="typography-preview">
     <div class="p-nav"><span>首页</span><span>资讯</span><span>赛事</span><span>成员</span></div>
@@ -54,6 +57,8 @@
     <h4 class="p-h4">数据</h4>
     <p class="p-numeric">钻石 3 · 3250 分 · 12 胜 8 负 · 2026-09-16 19:30</p>
     <p><button type="button" class="p-button">报名</button></p>
+  </div>
+  </aside>
   </div>
 {% endblock %}
 

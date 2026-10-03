@@ -21,6 +21,7 @@ from wagtail.permissions import register_permission_policy
 
 from accounts.models import User
 from accounts.roles import ROLE_CHOICES, join_roles, parse_roles
+from core import admin_log
 from teams import services
 from teams.models import Team
 
@@ -176,6 +177,13 @@ def admin_assign_captain(request, pk):
         except services.TeamError as exc:
             messages.error(request, str(exc))
         else:
+            admin_log.record(
+                team,
+                "teams.assign_captain",
+                request.user,
+                captain=user.nickname,
+                captain_id=user.pk,
+            )
             messages.success(
                 request, f"已指定 {user.nickname} 为「{team.name}」的队长。"
             )
@@ -208,6 +216,7 @@ def admin_disband(request, pk):
         except services.TeamError as exc:
             messages.error(request, str(exc))
         else:
+            admin_log.record(team, "teams.disband", request.user)
             messages.success(request, f"战队「{team.name}」已解散。")
         return redirect("teams:index")
     return render(

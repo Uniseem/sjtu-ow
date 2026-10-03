@@ -15,6 +15,7 @@ from wagtail.models import Orderable, Page
 from content.blocks import ARTICLE_BODY_BLOCKS
 from content.forms import ArticlePageForm
 from content.seo import build_seo
+from moderation.panels import ModerationVerdictPanel
 
 ARTICLES_PER_PAGE = 12
 MAX_PINNED_ARTICLES = 3
@@ -349,7 +350,10 @@ class ArticlePage(SeoPageMixin, Page):
 
     base_form_class = ArticlePageForm
 
-    content_panels = Page.content_panels + [
+    content_panels = [
+        # Design 5.5.1: the AI's read, for the editor reviewing (round 119).
+        ModerationVerdictPanel(heading="AI 审核"),
+        *Page.content_panels,
         FieldPanel("category"),
         FieldPanel("cover"),
         FieldPanel("summary"),

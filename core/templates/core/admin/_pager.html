@@ -1,0 +1,11 @@
+{% comment %}
+  Page links under a custom admin list (round 119, findings #29). The
+  links keep every filter in the address and change only ?page=.
+{% endcomment %}
+{% if page.has_other_pages %}
+  <nav class="w-mt-4" aria-label="翻页">
+    {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}">上一页</a>{% endif %}
+    第 {{ page.number }} / {{ page.paginator.num_pages }} 页
+    {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}">下一页</a>{% endif %}
+  </nav>
+{% endif %}

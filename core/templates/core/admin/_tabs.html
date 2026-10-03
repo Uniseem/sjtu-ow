@@ -1,0 +1,10 @@
+{% comment %}
+  Status buttons above a custom admin list (round 119, findings #29): the
+  review queue, avatar review, static pages and the split page's order all
+  use this one. tabs: (value, label, count or None); current; param.
+{% endcomment %}
+<nav class="w-mb-4" aria-label="{{ label|default:'状态' }}">
+  {% for value, text, count in tabs %}
+    <a href="?{{ param|default:'status' }}={{ value }}" class="button {% if small %}button-small {% endif %}{% if current == value %}button-primary{% else %}button-secondary{% endif %}"{% if current == value %} aria-current="true"{% endif %}>{{ text }}{% if count is not None %}（{{ count }}）{% endif %}</a>
+  {% endfor %}
+</nav>

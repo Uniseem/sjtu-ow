@@ -25,11 +25,7 @@
     </form>
   </p>
 
-  <nav class="w-mb-4" aria-label="状态">
-    {% for value, label, count in statuses %}
-      <a href="?status={{ value }}" class="button {% if status == value %}button-primary{% else %}button-secondary{% endif %}">{{ label }}（{{ count }}）</a>
-    {% endfor %}
-  </nav>
+  {% include "core/admin/_tabs.html" with tabs=statuses current=status %}
 
   <table class="listing">
     <thead>
@@ -67,11 +63,5 @@
     </tbody>
   </table>
 
-  {% if records.has_other_pages %}
-    <p>
-      {% if records.has_previous %}<a href="?page={{ records.previous_page_number }}&amp;status={{ status }}">上一页</a>{% endif %}
-      第 {{ records.number }} / {{ records.paginator.num_pages }} 页
-      {% if records.has_next %}<a href="?page={{ records.next_page_number }}&amp;status={{ status }}">下一页</a>{% endif %}
-    </p>
-  {% endif %}
+  {% include "core/admin/_pager.html" with page=records %}
 {% endblock %}

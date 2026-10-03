@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from core import admin_log
 from scrims import services, teaming
 from scrims.models import ROLE_REQUIREMENTS, Role, Scrim
 
@@ -108,7 +109,7 @@ def page_context(request, scrim):
         "scrim": scrim,
         "signups": signups,
         "order": order,
-        "orders": ORDERS,
+        "order_tabs": [(value, label, None) for value, label in ORDERS.items()],
         "show_contacts": contacts is not None,
         "selected_count": sum(1 for row in signups if row.is_selected),
         "needed": scrim.players_needed,
@@ -158,6 +159,7 @@ def split_view(request, pk):
             services.set_selection(
                 scrim=scrim, signup_ids=request.POST.getlist("signups")
             )
+            admin_log.record(scrim, "scrims.select", request.user)
             messages.success(request, "已保存上场名单。")
         elif action == "generate":
             services.set_selection(
@@ -172,6 +174,9 @@ def split_view(request, pk):
                     scrim=scrim,
                     placements=services.placements_from_split(split, players, scrim),
                 )
+                admin_log.record(
+                    scrim, "scrims.generate", request.user, score=list(split.score)
+                )
                 messages.success(
                     request,
                     f"已生成分队，总分差 {split.score[0]}，位置分差 {split.score[1]}。",
@@ -180,6 +185,7 @@ def split_view(request, pk):
             services.save_teams(
                 scrim=scrim, placements=_placements_from_post(request, scrim)
             )
+            admin_log.record(scrim, "scrims.save_teams", request.user)
             messages.success(request, "已保存分队。")
         order = _order(request.POST.get("order"))
         return redirect(f"{reverse('scrim_split', args=[scrim.pk])}?order={order}")

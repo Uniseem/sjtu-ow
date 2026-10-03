@@ -15,11 +15,7 @@
   {% endif %}
 
   <h2>勾选上场</h2>
-  <nav class="w-mb-4" aria-label="排序">
-    {% for value, label in orders.items %}
-      <a href="?order={{ value }}" class="button button-small {% if order == value %}button-primary{% else %}button-secondary{% endif %}"{% if order == value %} aria-current="true"{% endif %}>{{ label }}</a>
-    {% endfor %}
-  </nav>
+  {% include "core/admin/_tabs.html" with tabs=order_tabs current=order param="order" label="排序" small=True %}
 
   <form method="post" data-split-form>
     {% csrf_token %}

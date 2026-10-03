@@ -154,10 +154,18 @@ def approved_teams(tournament):
     ]
 
 
-def roster_min_warning(tournament) -> str:
+def team_max_members() -> int:
     from core.models import SiteSettings
 
-    team_max = int(SiteSettings.load().team_max_members or 10)
+    return int(SiteSettings.load().team_max_members or 10)
+
+
+def roster_min_warning(tournament) -> str:
+    """Only teams are capped by the site's team size; ad-hoc teams formed
+    from individual signups are not (round 119)."""
+    if tournament.registration_mode != "team":
+        return ""
+    team_max = team_max_members()
     if tournament.roster_min > team_max:
         return (
             f"参赛人数下限 {tournament.roster_min} 大于全站战队人数上限 "

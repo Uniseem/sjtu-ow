@@ -80,7 +80,11 @@ def existing_roster_conflict(*, tournament, user, exclude_registration=None):
     entry = query.first()
     if entry is None:
         return ""
-    return f"{user.nickname} 已经在该赛事的战队「{entry.registration.team_name}」名单中"
+    return _roster_conflict_message(user, entry.registration)
+
+
+def _roster_conflict_message(user, registration) -> str:
+    return f"{user.nickname} 已经在该赛事的战队「{registration.team_name}」名单中"
 
 
 def precheck(*, tournament, team, actor, exclude_registration=None):
@@ -593,6 +597,36 @@ def adhoc_registrations(tournament) -> list[Registration]:
             team__isnull=True, status__in=ACTIVE_STATUSES
         ).order_by("submitted_at", "id")
     )
+
+
+def pool_conflicts(tournament, entries) -> dict[int, str]:
+    """``pool_entry_conflict`` for a whole pool in one query (round 119:
+    the board asked once per person)."""
+    rosters: dict[int, list] = {}
+    members = (
+        RegistrationMember.objects.filter(
+            tournament=tournament,
+            is_active=True,
+            user_id__in={entry.user_id for entry in entries},
+        )
+        .select_related("registration")
+        .order_by("pk")
+    )
+    for member in members:
+        rosters.setdefault(member.user_id, []).append(member)
+    found = {}
+    for entry in entries:
+        others = [
+            member
+            for member in rosters.get(entry.user_id, [])
+            if member.registration_id != entry.registration_id
+        ]
+        found[entry.pk] = (
+            _roster_conflict_message(entry.user, others[0].registration)
+            if others
+            else ""
+        )
+    return found
 
 
 def pool_entry_conflict(entry) -> str:

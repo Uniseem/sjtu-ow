@@ -16,6 +16,7 @@ from wagtail.admin.viewsets.model import ModelViewSet
 from wagtail.permission_policies import ModelPermissionPolicy
 from wagtail.permissions import register_permission_policy
 
+from core import admin_log
 from scrims import services
 from scrims.models import Scrim, ScrimStatus
 
@@ -23,6 +24,7 @@ ACTIONS = {
     "publish": ("发布内战", services.publish),
     "finish": ("标记为已结束", services.finish),
 }
+LOG_ACTIONS = {"publish": "scrims.publish", "finish": "scrims.finish"}
 
 
 class ScrimIndexView(generic.IndexView):
@@ -195,6 +197,7 @@ def scrim_action(request, pk, action):
         except services.ScrimError as exc:
             messages.error(request, str(exc))
         else:
+            admin_log.record(scrim, LOG_ACTIONS[action], request.user)
             messages.success(request, f"「{scrim.title}」已{label[:2]}。")
         return redirect("scrims:index")
     return render(
@@ -219,6 +222,7 @@ def scrim_cancel(request, pk):
         except services.ScrimError as exc:
             messages.error(request, str(exc))
         else:
+            admin_log.record(scrim, "scrims.cancel", request.user)
             messages.success(
                 request, f"「{scrim.title}」已取消，已报名的人会收到邮件。"
             )

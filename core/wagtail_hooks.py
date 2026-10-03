@@ -127,3 +127,11 @@ def add_todo_panel(request, panels):
     from content.wagtail_hooks, which runs later and replaces the list."""
     if has_duties(request.user):
         panels.insert(0, TodoPanel())
+
+
+@hooks.register("register_log_actions")
+def register_admin_log_actions(actions):
+    from core.admin_log import ACTIONS
+
+    for action, (label, message) in ACTIONS.items():
+        actions.register_action(action, label, message)

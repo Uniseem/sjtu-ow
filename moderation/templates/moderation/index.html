@@ -85,11 +85,5 @@
     </tbody>
   </table>
 
-  {% if items.has_other_pages %}
-    <p>
-      {% if items.has_previous %}<a href="?page={{ items.previous_page_number }}&amp;status={{ status }}&amp;risk={{ risk }}&amp;target_type={{ target_type }}&amp;since={{ since }}">上一页</a>{% endif %}
-      第 {{ items.number }} / {{ items.paginator.num_pages }} 页
-      {% if items.has_next %}<a href="?page={{ items.next_page_number }}&amp;status={{ status }}&amp;risk={{ risk }}&amp;target_type={{ target_type }}&amp;since={{ since }}">下一页</a>{% endif %}
-    </p>
-  {% endif %}
+  {% include "core/admin/_pager.html" with page=items %}
 {% endblock %}

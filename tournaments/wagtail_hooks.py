@@ -14,6 +14,7 @@ from wagtail.admin.viewsets.model import ModelViewSet
 from wagtail.permission_policies import ModelPermissionPolicy
 from wagtail.permissions import register_permission_policy
 
+from core import admin_log
 from tournaments import services
 from tournaments.models import Tournament, TournamentStatus
 
@@ -21,6 +22,7 @@ ACTIONS = {
     "publish": ("发布赛事", services.publish),
     "finish": ("标记为已结束", services.finish),
 }
+LOG_ACTIONS = {"publish": "tournaments.publish", "finish": "tournaments.finish"}
 
 
 class TournamentAdminForm(WagtailAdminModelForm):
@@ -30,8 +32,33 @@ class TournamentAdminForm(WagtailAdminModelForm):
     never checked it. This form is the only place either can change.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "roster_min" in self.fields:
+            cap = services.team_max_members()
+            self.fields["roster_min"].help_text = (
+                f"整队报名时不能超过全站战队人数上限（现在是 {cap} 人，"
+                "在全站设置里改），否则没有战队能报名。个人报名不受这条限制。"
+            )
+
     def clean(self):
         cleaned = super().clean()
+        # Round 119: say it on the field before saving, not in a toast after.
+        # Only when these change: lowering the site cap later must not block
+        # unrelated edits (the toast after saving still says it then).
+        touched = {"roster_min", "registration_mode"} & set(self.changed_data)
+        if (
+            (touched or not self.instance.pk)
+            and cleaned.get("roster_min")
+            and cleaned.get("registration_mode")
+        ):
+            probe = Tournament(
+                roster_min=cleaned["roster_min"],
+                registration_mode=cleaned["registration_mode"],
+            )
+            warning = services.roster_min_warning(probe)
+            if warning:
+                self.add_error("roster_min", warning)
         if not self.instance.pk:
             return cleaned
         if "auto_approve" in self.changed_data and services.has_registrations(
@@ -239,6 +266,7 @@ def tournament_action(request, pk, action):
         except services.TournamentError as exc:
             messages.error(request, str(exc))
         else:
+            admin_log.record(tournament, LOG_ACTIONS[action], request.user)
             messages.success(request, f"「{tournament.title}」已{label[:2]}。")
         return redirect("tournaments:index")
     return render(
@@ -260,14 +288,14 @@ def tournament_cancel(request, pk):
     tournament = get_object_or_404(Tournament, pk=pk)
     if request.method == "POST":
         try:
-            services.cancel(
-                tournament=tournament,
-                actor=request.user,
-                reason=request.POST.get("reason", "")[:300],
-            )
+            reason = request.POST.get("reason", "")[:300]
+            services.cancel(tournament=tournament, actor=request.user, reason=reason)
         except services.TournamentError as exc:
             messages.error(request, str(exc))
         else:
+            admin_log.record(
+                tournament, "tournaments.cancel", request.user, reason=reason
+            )
             messages.success(
                 request,
                 f"「{tournament.title}」已取消，已报名的队长会收到邮件。",

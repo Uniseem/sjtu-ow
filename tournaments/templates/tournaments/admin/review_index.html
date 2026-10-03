@@ -58,11 +58,5 @@
     <p><button type="submit" class="button button-primary">批量通过所选</button></p>
   </form>
 
-  {% if registrations.has_other_pages %}
-    <p>
-      {% if registrations.has_previous %}<a href="?page={{ registrations.previous_page_number }}&amp;status={{ status }}&amp;tournament={{ tournament_id }}">上一页</a>{% endif %}
-      第 {{ registrations.number }} / {{ registrations.paginator.num_pages }} 页
-      {% if registrations.has_next %}<a href="?page={{ registrations.next_page_number }}&amp;status={{ status }}&amp;tournament={{ tournament_id }}">下一页</a>{% endif %}
-    </p>
-  {% endif %}
+  {% include "core/admin/_pager.html" with page=registrations %}
 {% endblock %}

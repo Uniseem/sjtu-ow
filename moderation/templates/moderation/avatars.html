@@ -15,11 +15,7 @@
   {% endcomment %}
   <p class="help-block">成员上传的头像审核通过后才会换上；不通过、撤下会删掉图片并发信告诉本人原因。图片已经在服务器上裁成正方形，看到的就是会显示的样子。</p>
 
-  <nav class="w-mb-4" aria-label="状态">
-    {% for value, label, count in tabs %}
-      <a href="?status={{ value }}" class="button {% if status == value %}button-primary{% else %}button-secondary{% endif %}">{{ label }}（{{ count }}）</a>
-    {% endfor %}
-  </nav>
+  {% include "core/admin/_tabs.html" with tabs=tabs current=status %}
 
   <ul class="avatar-review">
     {% for item in items %}
@@ -74,12 +70,6 @@
     {% endfor %}
   </ul>
 
-  {% if items.has_other_pages %}
-    <p>
-      {% if items.has_previous %}<a href="?page={{ items.previous_page_number }}&amp;status={{ status }}">上一页</a>{% endif %}
-      第 {{ items.number }} / {{ items.paginator.num_pages }} 页
-      {% if items.has_next %}<a href="?page={{ items.next_page_number }}&amp;status={{ status }}">下一页</a>{% endif %}
-    </p>
-  {% endif %}
+  {% include "core/admin/_pager.html" with page=items %}
 
 {% endblock %}

@@ -51,6 +51,8 @@ class SubmitterHomePanel(Component):
         pages = (
             ArticlePage.objects.filter(owner=request.user)
             .select_related("category")
+            # One query for every row's review state (round 119).
+            .prefetch_workflow_states()
             .order_by("-latest_revision_created_at", "-path")
         )
         rows = []
