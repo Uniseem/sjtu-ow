@@ -35,7 +35,10 @@ def _team():
 
 def _tournament():
     return SimpleNamespace(
-        pk=1, title="2026 秋季校内杯", get_absolute_url=lambda: "/tournaments/1/"
+        pk=1,
+        title="2026 秋季校内杯",
+        starts_at=timezone.make_aware(datetime(2026, 11, 8, 14, 0)),
+        get_absolute_url=lambda: "/tournaments/1/",
     )
 
 
@@ -317,6 +320,17 @@ def samples() -> list[Sample]:
             "赛事管理员",
             registration.adhoc_member_left_letter(adhoc, leaver),
             "赛事管理员",
+        ),
+        _letter(
+            "tournament-reminder",
+            "赛事",
+            "赛事开始提醒",
+            "已通过报名的队员，每人一封",
+            tournaments.tournament_reminder_letter(
+                _tournament(),
+                SimpleNamespace(registration=approved, battletag=row.battletag),
+            ),
+            "小天使",
         ),
         _letter(
             "reminder",

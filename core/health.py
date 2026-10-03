@@ -8,7 +8,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db import connection, transaction
+from django.db import DatabaseError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -153,12 +153,22 @@ def check_task_backlog() -> tuple[bool, str]:
     return True, "ok"
 
 
+def _reported(check) -> tuple[bool, str]:
+    """A check that runs into a broken database says so instead of turning
+    /healthz into a 500. Reading an expired cache entry deletes it, which a
+    read-only database refuses (round 129)."""
+    try:
+        return check()
+    except DatabaseError as exc:
+        return False, f"数据库出错：{exc}"
+
+
 def run_health_checks() -> dict:
     """Run checks that affect the HTTP status (database, disk, worker, backlog)."""
     database_ok, database_detail = check_database()
     disk_ok, disk_detail = check_disk()
-    heartbeat_ok, heartbeat_detail = check_worker_heartbeat()
-    backlog_ok, backlog_detail = check_task_backlog()
+    heartbeat_ok, heartbeat_detail = _reported(check_worker_heartbeat)
+    backlog_ok, backlog_detail = _reported(check_task_backlog)
     blocking_ok = database_ok and disk_ok and heartbeat_ok and backlog_ok
     return {
         "status": "ok" if blocking_ok else "error",

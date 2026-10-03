@@ -82,6 +82,7 @@ class Tournament(models.Model):
         related_name="+",
     )
     published_at = models.DateTimeField("首次发布时间", null=True, blank=True)
+    reminder_sent_at = models.DateTimeField("提醒发送时间", null=True, blank=True)
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
 

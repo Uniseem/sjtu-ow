@@ -110,11 +110,17 @@ def registration_status_changed_letter(registration, note="") -> Letter:
     paragraphs = []
     if registration.status == RegistrationStatus.REJECTED and registration.team_id:
         paragraphs.append("你可以按备注修改后，在报名截止前重新提交。")
+    facts = [("赛事", title), ("队伍", registration.team_name)]
+    starts_at = registration.tournament.starts_at
+    if registration.status == RegistrationStatus.APPROVED and starts_at:
+        # Design 8.1 (v6.24): the approval says when to show up.
+        from tournaments.notifications import moment
+
+        facts.append(("比赛时间", moment(starts_at)))
     return Letter(
         subject=f"报名{label}：{title}",
         lead=lead,
-        facts=[("赛事", title), ("队伍", registration.team_name)]
-        + ([("备注", note)] if note else []),
+        facts=facts + ([("备注", note)] if note else []),
         paragraphs=paragraphs,
         action=_details(registration),
         reason=_why(registration),

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from django.db import transaction
 from django.utils import timezone
 
 from tournaments.models import Tournament, TournamentStatus
@@ -238,6 +239,7 @@ def after_change(tournament, actor=None) -> None:
     # The homepage lists tournaments open for registration (design 13.13.4).
     prerender.request_page("/", kind="home")
     schedule_phase_refresh(tournament)
+    schedule_reminder(tournament)
     if tournament.description:
         _submit_moderation(tournament, actor)
 
@@ -260,6 +262,43 @@ def schedule_phase_refresh(tournament) -> None:
             )
             prerender_page.using(run_after=moment).enqueue("/tournaments/")
             prerender_page.using(run_after=moment).enqueue("/")
+
+
+def reminder_offset_hours() -> int:
+    from core.models import SiteSettings
+
+    return int(getattr(SiteSettings.load(), "tournament_reminder_hours", 24) or 24)
+
+
+def reminder_time(tournament):
+    return tournament.starts_at - timezone.timedelta(hours=reminder_offset_hours())
+
+
+def schedule_reminder(tournament) -> None:
+    """Design 8.1 (v6.24): remind the players a day before it starts.
+
+    Re-scheduling is safe: the task re-reads the tournament and checks the
+    time and ``reminder_sent_at``, so an outdated task does nothing.
+    """
+    from tournaments.tasks import send_tournament_reminder
+
+    if (
+        tournament.status != TournamentStatus.PUBLISHED
+        or tournament.starts_at is None
+        or tournament.reminder_sent_at is not None
+        or tournament.starts_at <= timezone.now()
+    ):
+        return
+    run_at = reminder_time(tournament)
+    tournament_id = tournament.pk
+
+    def enqueue():
+        if run_at <= timezone.now():
+            send_tournament_reminder.enqueue(tournament_id)
+        else:
+            send_tournament_reminder.using(run_after=run_at).enqueue(tournament_id)
+
+    transaction.on_commit(enqueue)
 
 
 def _submit_moderation(tournament, actor) -> None:

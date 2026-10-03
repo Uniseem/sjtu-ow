@@ -82,6 +82,38 @@ def test_healthz_returns_503_when_database_not_writable(client, monkeypatch):
     assert payload["checks"]["database"]["ok"] is False
 
 
+@pytest.mark.django_db(transaction=True)
+def test_a_read_only_database_with_an_expired_heartbeat_still_answers(
+    client, monkeypatch
+):
+    """Round 129: reading an expired cache entry deletes it; on a read-only
+    database that delete failed and /healthz answered 500 instead of 503."""
+    from django.core.cache import cache
+    from django.db import connection
+
+    from core.health import WORKER_HEARTBEAT_CACHE_KEY
+
+    cache.set(WORKER_HEARTBEAT_CACHE_KEY, "2026-01-01T00:00:00+08:00", timeout=600)
+    with connection.cursor() as cursor:
+        cursor.execute("UPDATE django_cache SET expires = '2000-01-01 00:00:00'")
+    original = CursorWrapper.execute
+
+    def execute(self, sql, params=None):
+        if sql.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
+            raise OperationalError("attempt to write a readonly database")
+        if params is None:
+            return original(self, sql)
+        return original(self, sql, params)
+
+    monkeypatch.setattr(CursorWrapper, "execute", execute)
+    response = client.get(reverse("healthz"))
+    assert response.status_code == 503
+    payload = json.loads(response.content)
+    assert payload["checks"]["database"]["ok"] is False
+    assert payload["checks"]["worker_heartbeat"]["ok"] is False
+    assert "数据库出错" in payload["checks"]["worker_heartbeat"]["detail"]
+
+
 @pytest.mark.django_db
 def test_healthz_returns_503_when_heartbeat_expired(client):
     from datetime import timedelta

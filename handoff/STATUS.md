@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: M10 前台视觉 v6.12，M7 上线准备暂停
-round: 128-remote-checks
+round: 129-tournament-reminder
 next: claude（按用户 10-04 睡前说的：假定管理员、成员、投稿者等各种身份把流程走一遍，发现不完善的地方逐轮修）
 updated: 2026-10-04
 blocked_on: 默认头像以后要换动漫风的话需要你提供有授权的素材（官方没有公开的，现在用官方立绘）；演示站（sjtu.ow-shanghaiuniversity.com）的管理员要你自己建（`… exec web python manage.py createsuperuser`）；转正式站前要定演示数据和动漫头像怎么处理；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定
 ```
 
 ## 现在该谁动手
+
+**129（2026-10-04）**：以参赛队员的身份：整队报名时，队员只在被报名时收到一封「待审核」，通过没通过只有队长知道，比赛前也没有任何提醒。现在填了比赛时间的赛事，开赛前 24 小时（后台「社区参数」可改）给已通过报名的每个队员发一封提醒，写比赛时间、所在队伍、报名用的游戏 ID；「报名已通过」的信也写比赛时间。演示站上两场赛事已排好提醒（没配 SMTP 发不出去）。**要告诉你的一件事**：127 那轮我在演示站上清理文件时，误删了服务器本机的 `docker-compose.vps.yml`（和另一个会话留的备份），这轮部署时才发现。网站一直正常（运行中的容器不受影响），已经照原内容恢复，资源分配（`cpu_shares: 2048`）也在；之后清理只动我传上去的文件。顺带修了健康检查在数据库只读时会报 500 的问题。
 
 **128（2026-10-04）**：按你说的，测试检查都放到测试机上跑，测试机已换成 `2a0e:6a80:3:9c7::`。本机一条 `bash scripts/remote-check.sh` 把当前代码（包括没提交的改动）传过去，跑和 CI 一样的整组检查，Docker 镜像也一起构建。为了用满这台机器：pytest 按 4 个核分成 4 片同时跑；测试里的密码哈希原来用网站的 Argon2，每次要 100 MB、几十毫秒，换成快的。整组从本机的 5 分多降到约 1 分钟。旧测试机 185.99.135.224 上我建的目录已删掉。有一件事你可能想知道：连旧测试机时，长连接几分钟就被掐断，所以检查改成在服务器上后台跑、本机每 3 秒取一次日志。
 
@@ -471,6 +473,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 126-my-placement | 内战参加者走查（设计 v6.22）：本人在活动页报名区、「我的内战」、提醒邮件里看到自己的分队（`placement`），公开页面不展示 | **Claude 实现**，自查通过。新测试 `scrims/tests/test_my_placement.py`（4 条）；6 处变异全部被抓到 |
 | 127-article-announcements | 内容编辑走查（设计 v6.23）：已发布的文章也能「通知全体成员」（页面列表「更多」、编辑页顶部菜单），`Kind` 带上是否已发布、发完回哪 | **Claude 实现**，自查通过。`core/tests/test_announcements.py` 加 2 条；10 处变异全部被抓到 |
 | 128-remote-checks | 测试检查搬到测试机（用户 10-04 要求，测试机换成 `2a0e:6a80:3:9c7::`）：`scripts/check.sh`（和 CI 同序，可分片、可构建镜像）、`scripts/remote-check.sh`（工作区快照经 bundle 传过去，服务器上脱离连接跑）、`scripts/pytest-shards.sh`（每片一个 worktree）、测试密码哈希改 MD5 | **Claude 实现**，自查通过。整组 1 分 08 秒（本机原来 5 分 20 秒）；`core/tests/test_check_script.py` 2 条，6 处变异全部被抓到 |
+| 129-tournament-reminder | 参赛队员走查（设计 v6.24）：赛事开始前 24 小时（可配）给已通过报名的队员每人一封提醒（`tournaments/tasks.py`），通过信写比赛时间；顺带修 `/healthz` 只读库 500、0008 迁移测试不迁回、`remote-check.sh` 退出码；演示站误删的 `docker-compose.vps.yml` 已恢复 | **Claude 实现**，自查通过。`tournaments/tests/test_reminder.py` 8 条 + `/healthz` 1 条；16 处变异全部被抓到 |
 
 ## 当前待定问题
 

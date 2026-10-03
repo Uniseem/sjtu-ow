@@ -132,11 +132,20 @@ def test_the_old_switch_becomes_the_mode():
         title="只收战队", allow_individual_signup=False, **window
     )
 
-    executor = MigrationExecutor(connection)
-    executor.migrate(after)
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate(after)
+        new = executor.loader.project_state(after).apps.get_model(
+            "tournaments", "Tournament"
+        )
 
-    assert Tournament.objects.get(pk=people.pk).registration_mode == "individual"
-    assert Tournament.objects.get(pk=teams.pk).registration_mode == "team"
+        assert new.objects.get(pk=people.pk).registration_mode == "individual"
+        assert new.objects.get(pk=teams.pk).registration_mode == "team"
+    finally:
+        # Later tests in this process need today's tables (round 129 added a
+        # column after 0008).
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
 
 
 # --- one way in ----------------------------------------------------------------------

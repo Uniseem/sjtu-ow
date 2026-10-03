@@ -101,6 +101,13 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 
 在服务器上跑一段脚本：`$C exec -T web python manage.py shell < /root/脚本.py`（`$C` 是上面那条 Compose 命令；Linux 上 Django 会把整段输入当脚本执行）。
 
+**每轮升级**（120 起的做法，脚本在服务器 `/root/`，不在仓库里）：
+1. 本机把改动的文件（`git status` 里除 `handoff/`、`docs/` 以外的）列成 `shipN.txt`、打成 `shipN.tar`，两个都传到 `/root/`
+2. 跑 `sh /root/deploy_ship.sh N`：解包、去 CRLF、构建、迁移、重启、全量预渲染、健康检查。129 起它先检查 Compose 配置读不读得出来，读不出来就停
+3. 提交推送以后跑 `sh /root/align_after_push.sh N`：**只把清单里的文件放回原样**，再 `git pull`
+
+**服务器上有三样本机专用的未跟踪文件**：`deploy/docker-compose.vps.yml`、`deploy/Caddyfile.vps`、`.env.bak-*`，129 起写在服务器的 `.git/info/exclude` 里，`git status` 不再显示。**别按 `git status` 删未跟踪文件**：127 对齐时这样删，把 `docker-compose.vps.yml` 和它的备份一起删了（当时看的 `git status | head` 截掉了这两行），129 部署时构建、迁移、重启全失败（运行中的容器不受影响），照会话里读到过的内容恢复
+
 **仓库的 `deploy/Caddyfile` 改了之后**，`Caddyfile.vps` 要跟着重新生成：它就是仓库那份在 `admin off` 下面插上一行说的 `servers` 块（105 用 `awk` 插入、`diff` 核对；120 起块里是两行：`trusted_proxies static private_ranges 100.96.0.0/12`、`trusted_proxies_strict`）；然后 `caddy validate`、`$C restart proxy`。升级后用 `docker images | grep sjtu-ow` 看一眼镜像时间：105 有一次 `build -q` 什么都没构建也没报错，容器跑的还是旧镜像
 
 这台机器上还跑着 WordPress、HedgeDoc、FileCodeBox、相册和几个监控进程，规矩和测试机一样：只动 `/srv/sjtu-ow` 和 `sjtu-ow` 这个 Compose 项目，不做全局清理。升级照 README「生产 / 测试环境启动」，命令换成上面那条，升级后全量 `prerender`。

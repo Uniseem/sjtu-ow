@@ -184,6 +184,11 @@ class SiteSettings(BaseGenericSetting):
         default=2,
         help_text="内战开始前多久给报名者发提醒邮件。",
     )
+    tournament_reminder_hours = models.PositiveIntegerField(
+        "赛事提前提醒小时数",
+        default=24,
+        help_text="填了比赛时间的赛事，开始前多久给已通过报名的队员发提醒邮件。",
+    )
     # Off-site backups (design 16.7). The S3 credentials live here because
     # they are what you need to *reach* the bucket; losing them with the
     # database is fine, you re-enter them on the new server. The encryption
@@ -298,6 +303,7 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("team_max_captained"),
                 FieldPanel("max_game_accounts"),
                 FieldPanel("scrim_reminder_hours"),
+                FieldPanel("tournament_reminder_hours"),
             ],
             heading="社区参数",
         ),

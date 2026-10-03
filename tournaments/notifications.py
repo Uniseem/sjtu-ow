@@ -24,6 +24,55 @@ def tournament_cancelled(tournament, captain, reason="") -> None:
     send(tournament_cancelled_letter(tournament, reason), [captain])
 
 
+def moment(value) -> str:
+    from django.utils.timezone import localtime
+
+    return f"{localtime(value):%Y-%m-%d %H:%M}"
+
+
+def tournament_reminder_letter(tournament, row) -> Letter:
+    """Design 8.1 (v6.24): one per player, with their own team and game ID."""
+    registration = row.registration
+    ask = "赛事管理员" if registration.team_id is None else "队长"
+    return Letter(
+        subject=f"赛事提醒：{tournament.title}",
+        lead=(
+            f"「{tournament.title}」将在 {moment(tournament.starts_at)} 开始，"
+            f"你所在的「{registration.team_name}」已通过报名。"
+        ),
+        facts=[
+            ("比赛时间", moment(tournament.starts_at)),
+            ("你的队伍", registration.team_name),
+            ("你的游戏 ID", row.battletag or "未填"),
+        ],
+        paragraphs=[
+            f"比赛安排和规则以赛事页面为准，请提前上线。临时来不了的话，请尽早告诉{ask}。"
+        ],
+        action=("查看赛事页面", site_url(tournament.get_absolute_url())),
+        reason=(
+            f"你收到这封邮件，是因为你在「{tournament.title}」已通过报名的名单里。"
+        ),
+    )
+
+
+def tournament_reminder(tournament) -> int:
+    """Everyone holding a place on an approved roster, one letter each."""
+    from tournaments.models import RegistrationMember, RegistrationStatus
+
+    rows = RegistrationMember.objects.filter(
+        tournament=tournament,
+        is_active=True,
+        registration__status=RegistrationStatus.APPROVED,
+    ).select_related("registration", "user")
+    sent = 0
+    for row in rows:
+        if not (row.user.is_active and row.user.email):
+            continue
+        letter = tournament_reminder_letter(tournament, row)
+        sent += send(letter, [row.user], fail_silently=True)
+    return sent
+
+
 def registration_submitted(registration, action) -> None:
     from tournaments.notifications_registration import registration_submitted as impl
 
@@ -43,26 +92,20 @@ def registration_status_changed(registration, note="") -> None:
 ANNOUNCE_WHY = "你收到这封邮件，是因为你在社区开着「活动通知」。"
 
 
-def _moment(value) -> str:
-    from django.utils.timezone import localtime
-
-    return f"{localtime(value):%Y-%m-%d %H:%M}"
-
-
 def new_tournament_letter(tournament, unsubscribe: str = "") -> Letter:
     from django.utils import timezone
 
     if tournament.registration_opens_at > timezone.now():
         lead = (
             f"社团发布了新的赛事「{tournament.title}」，"
-            f"{_moment(tournament.registration_opens_at)} 开始报名。"
+            f"{moment(tournament.registration_opens_at)} 开始报名。"
         )
     else:
         lead = f"社团发布了新的赛事「{tournament.title}」，现在可以报名了。"
     facts = []
     if tournament.starts_at:
-        facts.append(("比赛时间", _moment(tournament.starts_at)))
-    facts.append(("报名截止", _moment(tournament.registration_closes_at)))
+        facts.append(("比赛时间", moment(tournament.starts_at)))
+    facts.append(("报名截止", moment(tournament.registration_closes_at)))
     facts.append(("报名方式", tournament.get_registration_mode_display()))
     if tournament.sjtu_only:
         facts.append(("参赛范围", "仅限交大成员"))

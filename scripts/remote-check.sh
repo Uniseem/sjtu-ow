@@ -80,7 +80,6 @@ run=$(date +%Y%m%d-%H%M%S)-${snapshot:0:7}
 job=$base/runs/$run
 headline=$(printf '%q' "$(git log -1 --format='%h %s')")
 cat >"$tmp/job.sh" <<EOF
-trap 'printf %s \$? >"$job.status"' EXIT
 set -e
 exec 9>"$base/lock"
 flock -n 9 || { echo "另一次检查还在跑，等它结束……"; flock 9; }
@@ -100,5 +99,8 @@ ssh "$host" "mkdir -p $base/runs && ls -t $base/runs/*.log 2>/dev/null | tail -n
   sed 's/\.log\$//' | xargs -r -I{} sh -c 'rm -f {}.*'"
 scp -q "$tmp/job.bundle" "$copy_to:$job.bundle"
 scp -q "$tmp/job.sh" "$copy_to:$job.sh"
-ssh "$host" "setsid -f bash $job.sh >$job.log 2>&1 </dev/null"
+# The exit code is written outside the job, so even a job that cannot start
+# leaves one behind and follow() stops.
+ssh "$host" "setsid -f sh -c 'bash $job.sh >$job.log 2>&1; printf %s \$? >$job.status' \
+  </dev/null >/dev/null 2>&1"
 follow "$run"
