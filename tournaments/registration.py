@@ -433,6 +433,18 @@ def reject(*, registration, actor, note) -> Registration:
     )
 
 
+def takes_part(tournament, user) -> bool:
+    """Design 8.1 (v6.32): who may see the participants' contact. On a live
+    roster (a row holds its place only while pending or approved), or signed
+    up alone, placed or still in the pool."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    return (
+        tournament.roster_members.filter(user=user, is_active=True).exists()
+        or tournament.individual_signups.filter(user=user).exists()
+    )
+
+
 def entries_still_listing(team, user) -> list:
     """Live registrations of ``team`` whose locked roster still has ``user``
     (design 7.4, v6.26): what the captain needs to hear when they leave."""

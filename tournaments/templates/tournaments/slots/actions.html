@@ -59,4 +59,5 @@
   {% else %}
     <span class="text-sm text-fg-2">这项赛事是整队报名，需要由队长为战队报名。</span>
   {% endif %}
+  {% if participant_contact %}<p class="w-full text-sm text-fg-2" data-participant-contact>选手联系方式：<span class="font-code text-fg">{{ participant_contact }}</span></p>{% endif %}
 </div>

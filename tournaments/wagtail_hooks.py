@@ -226,6 +226,7 @@ class TournamentViewSet(ModelViewSet):
             ],
             heading="报名规则",
         ),
+        FieldPanel("participant_contact"),
     ]
 
 

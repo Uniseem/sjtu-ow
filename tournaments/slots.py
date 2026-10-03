@@ -79,6 +79,14 @@ def actions_context(request, tournament) -> dict:
         "individual_problems": individual_problems,
         # Round 124: the notice says what is missing and links to fill it in.
         "profile_gaps": _gaps(user) if individual_problems else [],
+        # Design 8.1 (v6.32): only for the people taking part.
+        "participant_contact": (
+            tournament.participant_contact
+            if signed_in
+            and tournament.participant_contact
+            and registration_service.takes_part(tournament, user)
+            else ""
+        ),
     }
 
 

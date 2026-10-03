@@ -27,6 +27,12 @@ def recipients(registration) -> list:
     return [user for user in users if user.email and user.is_active]
 
 
+def _contact(registration) -> list:
+    from tournaments.notifications import contact_fact
+
+    return contact_fact(registration.tournament)
+
+
 def _details(registration) -> tuple[str, str]:
     return ("查看报名详情", site_url(registration.get_absolute_url()))
 
@@ -87,6 +93,7 @@ def team_member_entered_letter(registration, row) -> Letter:
             ("队伍", registration.team_name),
             ("你的游戏 ID", row.battletag or "未填"),
             ("当前状态", registration.get_status_display()),
+            *_contact(registration),
         ],
         paragraphs=["整队报名不需要你确认。不想参加的话，请在报名截止前联系队长。"],
         action=_details(registration),
@@ -117,6 +124,8 @@ def registration_status_changed_letter(registration, note="") -> Letter:
         from tournaments.notifications import moment
 
         facts.append(("比赛时间", moment(starts_at)))
+    if registration.status == RegistrationStatus.APPROVED:
+        facts.extend(_contact(registration))
     return Letter(
         subject=f"报名{label}：{title}",
         lead=lead,
@@ -146,6 +155,7 @@ def adhoc_team_formed_letter(registration) -> Letter:
         from tournaments.notifications import moment
 
         facts.append(("比赛时间", moment(registration.tournament.starts_at)))
+    facts.extend(_contact(registration))
     return Letter(
         subject=f"已编入临时队伍：{title}",
         lead=(

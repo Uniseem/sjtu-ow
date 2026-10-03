@@ -23,6 +23,9 @@
   <div class="l-container l-container--narrow pt-8 pb-16 lg:pb-24">
     <div class="flex max-w-3xl flex-col gap-12">
       <div class="flex flex-col gap-4">
+        {% if registration.status in active_statuses and registration.tournament.participant_contact %}
+          <div class="c-notice" data-participant-contact>{% include "components/icon.html" with name="info" %}<p class="c-notice__body">选手联系方式：<span class="font-code">{{ registration.tournament.participant_contact }}</span></p></div>
+        {% endif %}
         {% if registration.status_note %}
           <div class="c-notice">{% include "components/icon.html" with name="info" %}<p class="c-notice__body">审核备注：{{ registration.status_note }}</p></div>
         {% endif %}

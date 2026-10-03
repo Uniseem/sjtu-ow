@@ -83,6 +83,17 @@ class Tournament(models.Model):
     )
     published_at = models.DateTimeField("首次发布时间", null=True, blank=True)
     reminder_sent_at = models.DateTimeField("提醒发送时间", null=True, blank=True)
+    # Design 8.1 (v6.32): for the people taking part only.
+    participant_contact = models.CharField(
+        "选手联系方式",
+        max_length=100,
+        blank=True,
+        help_text=(
+            "比如选手 QQ 群号。只有报了这项赛事的人看得到（有效名单里的人、"
+            "个人报名过的人），也会写进报名通过、编队和开赛提醒的邮件。"
+            "不要写进上面公开的详细说明。"
+        ),
+    )
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
 

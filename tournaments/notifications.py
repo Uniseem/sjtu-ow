@@ -24,6 +24,12 @@ def tournament_cancelled(tournament, captain, reason="") -> None:
     send(tournament_cancelled_letter(tournament, reason), [captain])
 
 
+def contact_fact(tournament) -> list:
+    """Design 8.1 (v6.32): letters to people taking part carry the contact."""
+    contact = getattr(tournament, "participant_contact", "")
+    return [("选手联系方式", contact)] if contact else []
+
+
 def moment(value) -> str:
     from django.utils.timezone import localtime
 
@@ -44,6 +50,7 @@ def tournament_reminder_letter(tournament, row) -> Letter:
             ("比赛时间", moment(tournament.starts_at)),
             ("你的队伍", registration.team_name),
             ("你的游戏 ID", row.battletag or "未填"),
+            *contact_fact(tournament),
         ],
         paragraphs=[
             f"比赛安排和规则以赛事页面为准，请提前上线。临时来不了的话，请尽早告诉{ask}。"
@@ -64,7 +71,7 @@ def unplaced_reminder_letter(tournament) -> Letter:
             f"「{tournament.title}」将在 {moment(tournament.starts_at)} 开始，"
             "你还在散人池里，没有被编进队伍。"
         ),
-        facts=[("比赛时间", moment(tournament.starts_at))],
+        facts=[("比赛时间", moment(tournament.starts_at)), *contact_fact(tournament)],
         paragraphs=[
             "赛事管理员可能还在编队，编进队伍时你会另外收到一封邮件。"
             "到开赛还没编进的话，这次可能没有位置；有疑问请联系赛事管理员。"

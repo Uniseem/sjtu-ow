@@ -44,6 +44,7 @@ def _tournament():
         title="2026 秋季校内杯",
         starts_at=timezone.make_aware(datetime(2026, 11, 8, 14, 0)),
         registration_closes_at=timezone.make_aware(datetime(2026, 11, 1, 23, 59)),
+        participant_contact="选手群 987654321",
         get_absolute_url=lambda: "/tournaments/1/",
     )
 
