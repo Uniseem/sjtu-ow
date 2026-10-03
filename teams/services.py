@@ -284,6 +284,34 @@ def cancel_application(*, application, actor) -> TeamApplication:
     return application
 
 
+# Design 7.3 (v6.36): a captain who has not answered in two weeks is not
+# going to; the applicant hears so and can look elsewhere.
+STALE_APPLICATION_DAYS = 14
+STALE_NOTE = f"队长 {STALE_APPLICATION_DAYS} 天没有处理，申请自动关闭"
+
+
+def stale_applications(now=None):
+    cutoff = (now or timezone.now()) - timezone.timedelta(days=STALE_APPLICATION_DAYS)
+    return TeamApplication.objects.filter(
+        status=ApplicationStatus.PENDING, created_at__lt=cutoff
+    ).select_related("team", "applicant")
+
+
+def close_stale_applications(now=None) -> int:
+    """Run nightly by ``cleanup_old_data``; each applicant gets a letter."""
+    from teams import notifications
+
+    closed = 0
+    for application in stale_applications(now):
+        application.status = ApplicationStatus.CANCELLED
+        application.decided_at = now or timezone.now()
+        application.decision_note = STALE_NOTE
+        application.save(update_fields=["status", "decided_at", "decision_note"])
+        notifications.application_expired(application)
+        closed += 1
+    return closed
+
+
 def leave_team(*, team, user) -> None:
     membership = TeamMembership.objects.filter(team=team, user=user).first()
     if membership is None:

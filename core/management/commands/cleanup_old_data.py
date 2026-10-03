@@ -2,7 +2,8 @@
 
 Retention comes from design 15.5 / 16.5: finished task records 30 days,
 handled moderation records 180 days, plus expired sessions. API call logs and
-webhook deliveries went with the open API in round 067.
+webhook deliveries went with the open API in round 067. Since round 141 it
+also closes team applications no captain answered in 14 days (design 7.3).
 """
 
 from django.core.management.base import BaseCommand
@@ -15,7 +16,10 @@ MODERATION_DAYS = 180
 
 
 class Command(BaseCommand):
-    help = "清理过期的任务记录、已处理的 AI 审核记录和会话（设计 16.5）"
+    help = (
+        "清理过期的任务记录、已处理的 AI 审核记录和会话，"
+        "关闭 14 天没人处理的入队申请（设计 16.5、7.3）"
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -36,10 +40,13 @@ class Command(BaseCommand):
             counts[label] = total
 
         counts["过期会话"] = self.clear_sessions(dry_run)
+        closed = self.stale_applications(dry_run, now)
 
         prefix = "将删除" if dry_run else "已删除"
         for label, total in counts.items():
             self.stdout.write(f"{prefix} {label}：{total}")
+        verb = "将关闭" if dry_run else "已关闭"
+        self.stdout.write(f"{verb} 14 天没人处理的入队申请（并通知申请人）：{closed}")
         return None
 
     def targets(self, now):
@@ -79,6 +86,14 @@ class Command(BaseCommand):
         return DBTaskResult.objects.filter(
             status__in=["SUCCESSFUL", "FAILED"], finished_at__lt=cutoff
         )
+
+    @staticmethod
+    def stale_applications(dry_run, now):
+        from teams import services
+
+        if dry_run:
+            return services.stale_applications(now).count()
+        return services.close_stale_applications(now)
 
     @staticmethod
     def clear_sessions(dry_run):

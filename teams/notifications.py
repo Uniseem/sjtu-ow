@@ -64,6 +64,27 @@ def application_decided(application) -> None:
     send(application_decided_letter(application), [application.applicant])
 
 
+def application_expired_letter(application) -> Letter:
+    """Design 7.3 (v6.36): the captain never answered."""
+    from teams.services import STALE_APPLICATION_DAYS
+
+    team = application.team
+    return Letter(
+        subject=f"入队申请已关闭：{team.name}",
+        lead=(
+            f"你加入「{team.name}」的申请，队长 {STALE_APPLICATION_DAYS} 天没有处理，"
+            "已经自动关闭。"
+        ),
+        paragraphs=["队长可能最近不在。你可以过一阵再申请，或者看看别的招募中的战队。"],
+        action=("看看招募中的战队", site_url("/teams/?recruiting=1")),
+        reason=f"你收到这封邮件，是因为你申请过加入「{team.name}」。",
+    )
+
+
+def application_expired(application) -> None:
+    send(application_expired_letter(application), [application.applicant])
+
+
 def member_removed_letter(team) -> Letter:
     return Letter(
         subject=f"你已被移出战队：{team.name}",
