@@ -136,11 +136,17 @@ def scrim_actions_fragment(request, pk):
 def me_scrims(request):
     if not request.user.is_authenticated:
         return redirect_to_login(request)
-    signups = (
+    signups = list(
         request.user.scrim_signups.select_related("scrim", "game_account")
         .exclude(scrim__status=ScrimStatus.DRAFT)
         .order_by("-scrim__starts_at")
     )
+    # Design 9.2 (v6.22): each row says where the player was put.
+    split = services.split_scrim_ids([signup.scrim_id for signup in signups])
+    for signup in signups:
+        signup.placement = services.placement(
+            signup, has_split=signup.scrim_id in split
+        )
     from accounts.views import me_context
 
     return render(

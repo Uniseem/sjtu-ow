@@ -10,6 +10,7 @@
         <span class="font-code text-sm">{{ my_signup.battletag }}</span>
         {% include "components/role_icons.html" with role_tank=my_signup.role_tank role_damage=my_signup.role_damage role_support=my_signup.role_support %}
       </p>
+      {% if my_placement %}<p class="mt-2 text-sm" data-my-placement>当前分队：<strong>{{ my_placement }}</strong><span class="text-fg-2">（以管理员在群里发的为准）</span></p>{% endif %}
       {% if signup_open %}
         <div class="mt-4 flex flex-wrap items-start gap-3">
           {# <details> needs no script, so it works under the site CSP. #}

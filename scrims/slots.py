@@ -31,6 +31,8 @@ def actions_context(request, scrim) -> dict:
         "profile_gaps": profile_gaps(user) if signed_in else [],
         "can_sign_up": not problems and bool(accounts),
         "cancelled": scrim.status == ScrimStatus.CANCELLED,
+        # Design 9.2 (v6.22): the player's own place, once there is a split.
+        "my_placement": services.placement(my_signup) if my_signup else "",
     }
 
 

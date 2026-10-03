@@ -605,3 +605,38 @@ def copy_text(scrim) -> str:
                     f"{format_rank(row.rating_used)}"
                 )
     return "\n".join(lines)
+
+
+# --- a player's own placement (design 9.2, v6.22) ---------------------------
+
+
+def split_scrim_ids(scrim_ids) -> set[int]:
+    """Which of these scrims have a saved split (anyone on team A or B)."""
+    from scrims.models import ScrimSignup
+
+    return set(
+        ScrimSignup.objects.filter(scrim_id__in=scrim_ids, team__in=["a", "b"])
+        .values_list("scrim_id", flat=True)
+        .distinct()
+    )
+
+
+def placement(signup, *, has_split: bool | None = None) -> str:
+    """What this player is told about their own place: 「A 队 · 坦克」,
+    「替补」, 「这次没排上场」, or "" before there is a split. Only ever
+    shown to the player (the public page has no split, design 9.2)."""
+    from scrims.models import Role, Team
+
+    scrim = signup.scrim
+    if has_split is None:
+        has_split = bool(split_scrim_ids([scrim.pk]))
+    if not has_split:
+        return ""
+    if signup.team in (Team.A, Team.B):
+        text = Team(signup.team).label
+        if scrim.role_queue and signup.assigned_role:
+            text += f" · {Role(signup.assigned_role).label}"
+        return text
+    if signup.is_selected:
+        return "替补"
+    return "这次没排上场"
