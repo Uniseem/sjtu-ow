@@ -129,3 +129,39 @@ def send_moderation_digest() -> None:
     from moderation.notifications import send_digest
 
     send_digest()
+
+
+SCAN_LOCK_KEY = "moderation-scan-running"
+SCAN_LOCK_SECONDS = 15 * 60
+# Design 5.5.3: the full scan runs in DeepSeek's off-peak hours (Beijing
+# 00:30–08:30), when its price is half.
+OFF_PEAK_START = time(0, 30)
+OFF_PEAK_END = time(8, 30)
+
+
+def scan_start(now=None):
+    """When a full scan asked for now should run: at once inside the
+    off-peak window, otherwise at its next start."""
+    local = timezone.localtime(now or timezone.now())
+    if OFF_PEAK_START <= local.time() < OFF_PEAK_END:
+        return local
+    day = (
+        local.date()
+        if local.time() < OFF_PEAK_START
+        else local.date() + timedelta(days=1)
+    )
+    return timezone.make_aware(datetime.combine(day, OFF_PEAK_START))
+
+
+@task
+def scan_existing_content() -> None:
+    """The 「全量扫描」 button in the admin (design 5.5.4, round 118)."""
+    from django.core.cache import cache
+
+    from moderation.integrations import scan_existing
+
+    try:
+        submitted = scan_existing()
+        logger.info("全量扫描完成：提交 %s 条", submitted)
+    finally:
+        cache.delete(SCAN_LOCK_KEY)

@@ -213,8 +213,45 @@
     refresh();
   }
 
+  // --- copying the result (round 118) ---------------------------------------
+
+  function wireCopy() {
+    var button = document.querySelector("[data-copy-button]");
+    var text = document.querySelector("[data-copy-text]");
+    var status = document.querySelector("[data-copy-status]");
+    if (!button || !text) {
+      return;
+    }
+    function say(message) {
+      if (status) {
+        status.textContent = message;
+      }
+    }
+    function selectAll() {
+      text.focus();
+      text.select();
+    }
+    button.addEventListener("click", function () {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text.value).then(
+          function () {
+            say("已复制，可以发到群里了。");
+          },
+          function () {
+            selectAll();
+            say("浏览器不让直接复制，文本已选中，按 Ctrl+C 复制。");
+          }
+        );
+      } else {
+        selectAll();
+        say("文本已选中，按 Ctrl+C 复制。");
+      }
+    });
+  }
+
   ready(function () {
     wirePicker();
     wireBoard();
+    wireCopy();
   });
 })();

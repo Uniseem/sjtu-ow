@@ -44,7 +44,7 @@
           <tr>
             <td><input type="checkbox" name="registration" value="{{ registration.pk }}"></td>
             <td>{{ registration.tournament.title }}</td>
-            <td><a href="{% url 'registration_review_detail' registration.pk %}">{{ registration.team_name }}</a></td>
+            <td><a href="{% url 'registration_review_detail' registration.pk %}">{{ registration.team_name }}</a>{% if registration.deactivated %}<br><span class="help-block help-warning">名单里有 {{ registration.deactivated }} 个账号已停用</span>{% endif %}</td>
             <td>{{ registration.members.count }}</td>
             <td>{{ registration.get_status_display }}</td>
             <td>{{ registration.roster_version }}</td>

@@ -9,6 +9,7 @@ from functools import wraps
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -63,6 +64,14 @@ def _filtered(request):
     queryset = (
         Registration.objects.select_related("tournament", "team")
         .prefetch_related("members")
+        .annotate(
+            # Design 3.7: rosters keeping a deactivated account are marked.
+            deactivated=Count(
+                "members",
+                filter=Q(members__is_active=True, members__user__is_active=False),
+                distinct=True,
+            )
+        )
         .order_by("-submitted_at")
     )
     status = request.GET.get("status", RegistrationStatus.PENDING)

@@ -1,0 +1,440 @@
+"""Round 118: the admin functions the review found missing
+(handoff/rounds/115-admin-review/findings.md #21, #24, #25, design 3.7).
+
+The dashboard's 「待办」, the review queue's time filter, full scan and
+handling history, the scrim split page's kept order, copy button and
+contacts, and 「账号已停用」 wherever a roster or signup keeps such a person.
+"""
+
+import re
+from datetime import datetime, timedelta
+from pathlib import Path
+from unittest import mock
+
+import pytest
+from allauth.account.models import EmailAddress
+from django.conf import settings as django_settings
+from django.contrib.auth.models import Group
+from django.core.cache import cache
+from django.core.management import call_command
+from django.urls import reverse
+from django.utils import timezone
+
+from accounts.models import AvatarSubmission, ContactMethod, User
+from accounts.services import GROUP_SUBMITTER
+from core.models import PrerenderedPage
+from moderation.models import ModerationItem, Risk, TargetType
+from scrims import services as scrim_services
+from scrims.models import Role, Scrim, ScrimFormat, ScrimStatus
+from tournaments import registration as reg
+from tournaments.models import Tournament, TournamentStatus
+from tournaments.tests.test_state_table import make, player  # noqa: F401
+
+PASSWORD = "Correct-Horse-Battery-1"
+
+
+@pytest.fixture
+def site(db):
+    call_command("init_site", verbosity=0)
+    cache.clear()
+
+
+def _staff(email, *groups, superuser=False):
+    user = User.objects.create_user(
+        email=email,
+        password=PASSWORD,
+        nickname=email.split("@")[0][:12],
+        is_superuser=superuser,
+        agreed_terms_at=timezone.now(),
+        agreed_cross_border_at=timezone.now(),
+    )
+    EmailAddress.objects.create(user=user, email=email, verified=True, primary=True)
+    for name in groups:
+        user.groups.add(Group.objects.get(name=name))
+    return user
+
+
+def _todo(client):
+    html = client.get("/admin/").content.decode()
+    start = html.find('id="site-todo-heading"')
+    if start < 0:
+        return None
+    return html[start : html.find("</section>", start)]
+
+
+def _flagged(**extra):
+    values = {
+        "target_type": TargetType.NICKNAME,
+        "target_id": 1,
+        "field": "nickname",
+        "excerpt": "可疑的昵称",
+        "text_hash": f"hash-{ModerationItem.objects.count()}",
+        "risk": Risk.HIGH,
+        "checked_at": timezone.now(),
+    }
+    values.update(extra)
+    return ModerationItem.objects.create(**values)
+
+
+def _individual_tournament(title="编队杯"):
+    now = timezone.now()
+    return Tournament.objects.create(
+        title=title,
+        registration_mode="individual",
+        registration_opens_at=now - timedelta(days=1),
+        registration_closes_at=now + timedelta(days=7),
+        roster_min=2,
+        roster_max=3,
+        status=TournamentStatus.PUBLISHED,
+        published_at=now,
+    )
+
+
+def _pool_entry(tournament, email, nickname):
+    user = player(email, nickname)
+    return reg.sign_up_individual(
+        tournament=tournament,
+        user=user,
+        game_account_id=user.game_accounts.first().pk,
+        roles=["tank"],
+    )
+
+
+def _closed_scrim(title="待分队内战"):
+    now = timezone.now()
+    return Scrim.objects.create(
+        title=title,
+        format=ScrimFormat.RQ_5V5,
+        status=ScrimStatus.PUBLISHED,
+        starts_at=now + timedelta(hours=3),
+        signup_closes_at=now - timedelta(hours=1),
+    )
+
+
+# --- the dashboard's to-do --------------------------------------------
+
+
+@pytest.mark.django_db
+def test_content_editors_see_what_waits_for_review(site, client):
+    _flagged()
+    member = player("face118@example.com", "换头像的人")
+    AvatarSubmission.objects.create(user=member)
+    client.force_login(_staff("editor118@example.com", "内容编辑"))
+    todo = _todo(client)
+    assert "1 条内容等待复核" in todo
+    assert reverse("moderation_index") in todo
+    assert "1 张头像等待审核" in todo
+    assert "报名" not in todo
+
+
+@pytest.mark.django_db
+def test_tournament_managers_see_registrations_and_the_pool(site, client, make):  # noqa: F811
+    make()  # one pending team registration
+    tournament = _individual_tournament("新人编队杯")
+    _pool_entry(tournament, "pool118@example.com", "散人118")
+    client.force_login(_staff("manager118@example.com", "赛事管理员", GROUP_SUBMITTER))
+    todo = _todo(client)
+    assert "1 份报名等待审核" in todo
+    assert "「新人编队杯」有 1 人等待编队" in todo
+    assert reverse("tournament_teams_board", args=[tournament.pk]) in todo
+    assert "内容等待复核" not in todo
+
+
+@pytest.mark.django_db
+def test_scrim_managers_see_closed_scrims_without_teams(site, client):
+    scrim = _closed_scrim()
+    client.force_login(_staff("scrimmer118@example.com", "内战管理员"))
+    assert "「待分队内战」报名已截止，还没分队" in _todo(client)
+    user = player("split118@example.com", "上场者")
+    signup = scrim_services.sign_up(
+        scrim=scrim,
+        user=user,
+        game_account_id=user.game_accounts.first().pk,
+        roles=[Role.DAMAGE],
+        now=timezone.now() - timedelta(hours=2),
+    )
+    signup.team = "a"
+    signup.save(update_fields=["team"])
+    assert "待分队内战" not in _todo(client)
+
+
+@pytest.mark.django_db
+def test_superusers_see_failed_static_pages(site, client):
+    PrerenderedPage.objects.create(path="/broken/", kind="page", status="failed")
+    client.force_login(_staff("root118@example.com", superuser=True))
+    todo = _todo(client)
+    assert "1 个静态页面生成失败" in todo
+    assert "?status=failed" in todo
+
+
+@pytest.mark.django_db
+def test_editors_see_submissions_waiting_for_them(site, client):
+    from content.models import ArticleCategory, ArticleIndexPage, ArticlePage
+
+    news = ArticleIndexPage.objects.get(slug="news")
+    author = _staff("writer118@example.com", GROUP_SUBMITTER)
+    page = ArticlePage(
+        title="待审稿件118",
+        slug="waiting-118",
+        category=ArticleCategory.objects.filter(allow_submission=True).first(),
+        author=author,
+        owner=author,
+        summary="摘要",
+        body=[("paragraph", "<p>正文</p>")],
+    )
+    news.add_child(instance=page)
+    page.save_revision(user=author)
+    page.get_workflow().start(page, author)
+    client.force_login(_staff("approver118@example.com", "内容编辑"))
+    assert "1 篇稿件等待审核" in _todo(client)
+
+
+@pytest.mark.django_db
+def test_nothing_waiting_says_so_and_people_without_queues_get_no_panel(site, client):
+    client.force_login(_staff("calm118@example.com", "内容编辑"))
+    assert "暂时没有待办" in _todo(client)
+    client.force_login(_staff("author118@example.com", "认证作者", GROUP_SUBMITTER))
+    assert _todo(client) is None
+
+
+# --- the review queue --------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_the_review_list_filters_by_time(site, client):
+    _flagged(excerpt="昨天的可疑内容118")
+    old = _flagged(excerpt="上个月的可疑内容118")
+    ModerationItem.objects.filter(pk=old.pk).update(
+        created_at=timezone.now() - timedelta(days=20)
+    )
+    client.force_login(_staff("filter118@example.com", "内容编辑"))
+    week = client.get(reverse("moderation_index") + "?since=7").content.decode()
+    assert "昨天的可疑内容118" in week
+    assert "上个月的可疑内容118" not in week
+    month = client.get(reverse("moderation_index") + "?since=30").content.decode()
+    assert "上个月的可疑内容118" in month
+
+
+@pytest.mark.django_db
+def test_the_full_scan_runs_in_the_background_once_at_a_time(
+    site, client, django_capture_on_commit_callbacks
+):
+    client.force_login(_staff("scanner118@example.com", "内容编辑"))
+    with (
+        mock.patch("moderation.admin_views.services.is_enabled", return_value=True),
+        mock.patch("moderation.admin_views.scan_existing_content") as task,
+    ):
+        with django_capture_on_commit_callbacks(execute=True):
+            first = client.post(reverse("moderation_scan"), follow=True)
+        assert task.using.return_value.enqueue.call_count == 1
+        assert "全量扫描" in first.content.decode()
+        with django_capture_on_commit_callbacks(execute=True):
+            second = client.post(reverse("moderation_scan"), follow=True)
+        assert task.using.return_value.enqueue.call_count == 1
+        assert "全量扫描已经排上或正在进行" in second.content.decode()
+
+
+def test_the_full_scan_waits_for_the_off_peak_hours():
+    from zoneinfo import ZoneInfo
+
+    from moderation.tasks import scan_start
+
+    beijing = ZoneInfo("Asia/Shanghai")
+    afternoon = datetime(2026, 10, 3, 15, 0, tzinfo=beijing)
+    assert timezone.localtime(scan_start(afternoon)).replace(tzinfo=None) == (
+        datetime(2026, 10, 4, 0, 30)
+    )
+    small_hours = datetime(2026, 10, 4, 0, 10, tzinfo=beijing)
+    assert timezone.localtime(scan_start(small_hours)).replace(tzinfo=None) == (
+        datetime(2026, 10, 4, 0, 30)
+    )
+    night = datetime(2026, 10, 4, 3, 0, tzinfo=beijing)
+    assert scan_start(night) == night
+
+
+@pytest.mark.django_db
+def test_the_scan_task_releases_its_lock(site):
+    from moderation.tasks import SCAN_LOCK_KEY, scan_existing_content
+
+    cache.set(SCAN_LOCK_KEY, 1, 60)
+    with mock.patch("moderation.integrations.scan_existing", return_value=0):
+        scan_existing_content.call()
+    assert cache.get(SCAN_LOCK_KEY) is None
+
+
+@pytest.mark.django_db
+def test_the_scan_covers_teams_and_comments_too(site):
+    from comments import services as comment_services
+    from content.models import ArticleCategory, ArticleIndexPage, ArticlePage
+    from moderation import integrations
+    from teams import services as team_services
+
+    captain = player("scan-captain118@example.com", "扫描队长")
+    captain.motto = "冲就完了"
+    captain.save(update_fields=["motto"])
+    team = team_services.create_team(user=captain, name="扫描战队118")
+    team.description = "我们招人"
+    team.save(update_fields=["description"])
+    news = ArticleIndexPage.objects.get(slug="news")
+    article = ArticlePage(
+        title="扫描文章118",
+        slug="scan-118",
+        category=ArticleCategory.objects.first(),
+        author=captain,
+        owner=captain,
+        summary="摘要",
+        body=[("paragraph", "<p>正文</p>")],
+    )
+    news.add_child(instance=article)
+    article.save_revision().publish()
+    with mock.patch("comments.services._submit_moderation"):
+        comment_services.create(
+            page=ArticlePage.objects.get(pk=article.pk), author=captain, body="好文章"
+        )
+    sent = []
+    with mock.patch.object(
+        integrations.services,
+        "submit",
+        side_effect=lambda **kwargs: sent.append(kwargs["target_type"]) or object(),
+    ):
+        integrations.scan_existing()
+    for kind in (
+        "nickname",
+        "motto",
+        "article",
+        "team_name",
+        "team_description",
+        "comment",
+    ):
+        assert kind in sent, kind
+
+
+@pytest.mark.django_db
+def test_every_handling_stays_on_record(site, client):
+    item = _flagged()
+    client.force_login(_staff("handler118@example.com", "内容编辑"))
+    url = reverse("moderation_action", args=[item.pk])
+    client.post(url, {"action": "handled", "handling_note": "第一次：已联系作者"})
+    client.post(url, {"action": "ok", "handling_note": "第二次：作者改好了"})
+    detail = client.get(reverse("moderation_detail", args=[item.pk])).content.decode()
+    assert "第一次：已联系作者" in detail
+    assert "第二次：作者改好了" in detail
+    assert "已处置" in detail
+
+
+# --- the scrim split page ----------------------------------------------
+
+
+def _split_scrim_with_signups():
+    scrim = Scrim.objects.create(
+        title="分队页118",
+        format=ScrimFormat.OPEN_5V5,
+        status=ScrimStatus.PUBLISHED,
+        starts_at=timezone.now() + timedelta(days=1),
+    )
+    signups = []
+    for index in range(2):
+        user = player(f"split-{index}-118@example.com", f"分队{index}")
+        ContactMethod.objects.filter(user=user).update(value=f"8800{index}118")
+        signups.append(
+            scrim_services.sign_up(
+                scrim=scrim,
+                user=user,
+                game_account_id=user.game_accounts.first().pk,
+                roles=[Role.DAMAGE],
+            )
+        )
+    return scrim, signups
+
+
+@pytest.mark.django_db
+def test_the_split_page_keeps_its_order_after_saving(site, client):
+    scrim, _signups = _split_scrim_with_signups()
+    client.force_login(_staff("order118@example.com", "内战管理员"))
+    url = reverse("scrim_split", args=[scrim.pk])
+    page = client.get(url + "?order=rating").content.decode()
+    assert re.search(r'href="\?order=rating"[^>]*aria-current="true"', page)
+    assert 'name="order" value="rating"' in page
+    response = client.post(url, {"action": "select", "order": "rating"})
+    assert response.url.endswith("?order=rating")
+
+
+@pytest.mark.django_db
+def test_scrim_managers_see_contacts_on_the_split_page(site, client):
+    scrim, _signups = _split_scrim_with_signups()
+    client.force_login(_staff("contacts118@example.com", "内战管理员"))
+    page = client.get(reverse("scrim_split", args=[scrim.pk])).content.decode()
+    assert "88000118" in page
+    from django.contrib.auth.models import Permission
+
+    bare = _staff("nocontacts118@example.com")
+    bare.user_permissions.add(
+        Permission.objects.get(codename="change_scrim"),
+        Permission.objects.get(codename="access_admin"),
+    )
+    client.force_login(bare)
+    page = client.get(reverse("scrim_split", args=[scrim.pk])).content.decode()
+    assert "88000118" not in page
+
+
+@pytest.mark.django_db
+def test_the_split_result_has_a_copy_button(site, client):
+    scrim, signups = _split_scrim_with_signups()
+    for signup, team in zip(signups, ("a", "b"), strict=True):
+        signup.is_selected = True
+        signup.team = team
+        signup.save(update_fields=["is_selected", "team"])
+    client.force_login(_staff("copier118@example.com", "内战管理员"))
+    page = client.get(reverse("scrim_split", args=[scrim.pk])).content.decode()
+    assert "data-copy-button" in page
+    script = Path(django_settings.BASE_DIR, "static/js/scrim-split.js").read_text(
+        encoding="utf-8"
+    )
+    assert "navigator.clipboard.writeText" in script
+    assert "[data-copy-button]" in script
+
+
+# --- 「账号已停用」 (design 3.7) -----------------------------------------
+
+
+@pytest.mark.django_db
+def test_split_page_marks_deactivated_accounts(site, client):
+    scrim, signups = _split_scrim_with_signups()
+    for signup, team in zip(signups, ("a", "b"), strict=True):
+        signup.is_selected = True
+        signup.team = team
+        signup.save(update_fields=["is_selected", "team"])
+    User.objects.filter(pk=signups[0].user_id).update(is_active=False)
+    client.force_login(_staff("marker118@example.com", "内战管理员"))
+    page = client.get(reverse("scrim_split", args=[scrim.pk])).content.decode()
+    assert "<td>分队0（账号已停用）</td>" in page
+    assert 'split-card-name">分队0（账号已停用）' in page
+    assert "分队1（账号已停用）" not in page
+
+
+@pytest.mark.django_db
+def test_registration_review_marks_deactivated_accounts(site, client, make):  # noqa: F811
+    registration, _captain, _team, _selections = make()
+    mate = registration.members.exclude(user=_captain).first().user
+    User.objects.filter(pk=mate.pk).update(is_active=False)
+    client.force_login(_staff("review118@example.com", "赛事管理员"))
+    listing = client.get(reverse("registration_review_index")).content.decode()
+    assert "名单里有 1 个账号已停用" in listing
+    detail = client.get(
+        reverse("registration_review_detail", args=[registration.pk])
+    ).content.decode()
+    assert f"{mate.nickname}（账号已停用）" in detail
+
+
+@pytest.mark.django_db
+def test_the_arrangement_board_marks_deactivated_accounts(site, client):
+    tournament = _individual_tournament()
+    entry = _pool_entry(tournament, "gone118@example.com", "停用散人")
+    _pool_entry(tournament, "here118@example.com", "在场散人")
+    User.objects.filter(pk=entry.user_id).update(is_active=False)
+    client.force_login(_staff("board118@example.com", "赛事管理员"))
+    page = client.get(
+        reverse("tournament_teams_board", args=[tournament.pk])
+    ).content.decode()
+    assert "停用散人（账号已停用）" in page
+    assert "在场散人（账号已停用）" not in page

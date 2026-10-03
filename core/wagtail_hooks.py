@@ -2,6 +2,7 @@ from django.urls import path, reverse
 from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 
+from core.admin_todo import TodoPanel, has_duties
 from core.fonts import admin_views
 from core.prerender_admin import prerender_clear, prerender_index, prerender_rebuild
 from core.views import send_site_test_email
@@ -117,3 +118,12 @@ def register_typography_menu_item():
         icon_name="edit",
         order=810,
     )
+
+
+@hooks.register("construct_homepage_panels")
+def add_todo_panel(request, panels):
+    """「待办」 first on the dashboard for the staff who handle queues
+    (findings #24, round 118). Submitter-only users get their own panel
+    from content.wagtail_hooks, which runs later and replaces the list."""
+    if has_duties(request.user):
+        panels.insert(0, TodoPanel())

@@ -1,0 +1,12 @@
+<section class="w-panel" aria-labelledby="site-todo-heading">
+  <h2 class="w-panel__heading" id="site-todo-heading">待办</h2>
+  {% if rows %}
+    <ul class="site-todo">
+      {% for row in rows %}
+        <li><a href="{{ row.url }}">{{ row.text }}</a></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="help">暂时没有待办。</p>
+  {% endif %}
+</section>

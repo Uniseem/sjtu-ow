@@ -15,29 +15,31 @@
   {% endif %}
 
   <h2>勾选上场</h2>
-  <p class="help-block">
-    排序：
-    <a href="?order=created">按报名时间</a> ·
-    <a href="?order=rating">按段位</a>
-  </p>
+  <nav class="w-mb-4" aria-label="排序">
+    {% for value, label in orders.items %}
+      <a href="?order={{ value }}" class="button button-small {% if order == value %}button-primary{% else %}button-secondary{% endif %}"{% if order == value %} aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
 
   <form method="post" data-split-form>
     {% csrf_token %}
+    <input type="hidden" name="order" value="{{ order }}">
     <table class="listing">
       <thead>
-        <tr><th>上场</th><th>昵称</th><th>游戏 ID</th><th>能打的位置与段位</th><th>报名时间</th></tr>
+        <tr><th>上场</th><th>昵称</th><th>游戏 ID</th><th>能打的位置与段位</th>{% if show_contacts %}<th>联系方式</th>{% endif %}<th>报名时间</th></tr>
       </thead>
       <tbody>
         {% for signup in signups %}
           <tr>
             <td><input type="checkbox" name="signups" value="{{ signup.pk }}" data-pick {% if signup.is_selected %}checked{% endif %}></td>
-            <td>{{ signup.user.nickname }}</td>
+            <td>{{ signup.user.nickname }}{% if not signup.user.is_active %}（账号已停用）{% endif %}</td>
             <td><code>{{ signup.battletag }}</code></td>
             <td>{% include "scrims/admin/_roles.html" with signup=signup %}</td>
+            {% if show_contacts %}<td>{{ signup.contact_lines|join:"；"|default:"—" }}</td>{% endif %}
             <td>{{ signup.created_at }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="5">还没有人报名。</td></tr>
+          <tr><td colspan="{% if show_contacts %}6{% else %}5{% endif %}">还没有人报名。</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -64,6 +66,7 @@
 
     <form method="post" data-teams-form data-team-size="{{ team_size }}">
       {% csrf_token %}
+      <input type="hidden" name="order" value="{{ order }}">
       <p class="help-block" data-drag-help hidden>
         拖动卡片换队伍和位置。<strong>队伍满员时不能直接拖进去</strong>——先把要换下来的人拖到下面的缓冲区，再把新人拖进来。
         不用鼠标的话，每张卡片上的按钮也能移动。
@@ -101,7 +104,10 @@
     </form>
 
     <h2>复制结果</h2>
-    <p class="help-block">全选下面的文本复制，发到群里。</p>
+    <p>
+      <button type="button" class="button button-secondary" data-copy-button>复制</button>
+      <span class="help" data-copy-status role="status">复制后发到群里。</span>
+    </p>
     <textarea readonly rows="12" class="split-copy" data-copy-text>{{ copy_text }}</textarea>
   {% endif %}
 

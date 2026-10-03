@@ -12,7 +12,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--what",
-            choices=["all", "nicknames", "pages"],
+            choices=["all", *integrations.SCAN_KINDS],
             default="all",
         )
         parser.add_argument("--limit", type=int, default=0, help="最多送审多少条")
@@ -30,28 +30,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.NOTICE("AI 审核在后台是关闭的，未做任何事。"))
             return
 
-        limit = options["limit"]
-        submitted = 0
-        if options["what"] in ("all", "nicknames"):
-            from accounts.models import User
-
-            for user in User.objects.filter(is_active=True).order_by("pk"):
-                if limit and submitted >= limit:
-                    break
-                if integrations.submit_nickname(user) is not None:
-                    submitted += 1
-                if integrations.submit_motto(user) is not None:
-                    submitted += 1
-
-        if options["what"] in ("all", "pages"):
-            from content.models import ArticlePage, StandardPage
-
-            for model in (ArticlePage, StandardPage):
-                for page in model.objects.live().order_by("pk"):
-                    if limit and submitted >= limit:
-                        break
-                    if integrations.submit_page(page) is not None:
-                        submitted += 1
+        submitted = integrations.scan_existing(options["what"], options["limit"])
 
         pending = ModerationItem.objects.filter(checked_at__isnull=True).count()
         self.stdout.write(

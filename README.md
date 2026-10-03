@@ -352,7 +352,7 @@ python manage.py remove_stale_contenttypes --include-stale-apps --noinput
 - 省钱措施：短内容一次最多合并 20 条、相同文本 30 天内不重复送审、每天调用上限（默认 2000）、后台显示本月调用次数和估算花费。
 
 ```bash
-uv run python manage.py moderate_scan               # 全量扫描现有内容
+uv run python manage.py moderate_scan               # 全量扫描现有内容（立即执行；后台「内容审核」的按钮排到夜间）
 uv run python manage.py moderate_scan --what pages --limit 50
 uv run python manage.py moderate_scan --digest      # 发送每日汇总邮件
 ```

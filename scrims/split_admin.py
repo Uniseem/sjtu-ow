@@ -54,9 +54,40 @@ def zones_for(scrim, members):
     return zones
 
 
+# Design 9.3: by signup time or by rank. Kept across the page's own POSTs
+# (round 118: saving used to drop back to signup time).
+ORDERS = {"created": "按报名时间", "rating": "按段位"}
+
+
+def _order(value) -> str:
+    return value if value in ORDERS else "created"
+
+
+def _contacts(request, signups) -> dict | None:
+    """Design 4.1: tournament and scrim managers may see contact details."""
+    from tournaments.review_admin import can_see_contacts
+
+    if not can_see_contacts(request.user):
+        return None
+    from accounts.models import ContactMethod
+
+    found: dict[int, list[str]] = {}
+    for contact in ContactMethod.objects.filter(
+        user_id__in={row.user_id for row in signups}
+    ):
+        found.setdefault(contact.user_id, []).append(
+            f"{contact.get_type_display()} {contact.value}"
+        )
+    return found
+
+
 def page_context(request, scrim):
-    order = request.GET.get("order", "created")
+    order = _order(request.GET.get("order"))
     signups = services.all_signups(scrim, order=order)
+    contacts = _contacts(request, signups)
+    if contacts is not None:
+        for row in signups:
+            row.contact_lines = contacts.get(row.user_id, [])
     rows = services.team_rows(scrim)
     bench = [row for row in signups if row.team not in ("a", "b") and row.is_selected]
     sides = [
@@ -77,6 +108,8 @@ def page_context(request, scrim):
         "scrim": scrim,
         "signups": signups,
         "order": order,
+        "orders": ORDERS,
+        "show_contacts": contacts is not None,
         "selected_count": sum(1 for row in signups if row.is_selected),
         "needed": scrim.players_needed,
         "sides": sides,
@@ -148,7 +181,8 @@ def split_view(request, pk):
                 scrim=scrim, placements=_placements_from_post(request, scrim)
             )
             messages.success(request, "已保存分队。")
-        return redirect("scrim_split", pk=scrim.pk)
+        order = _order(request.POST.get("order"))
+        return redirect(f"{reverse('scrim_split', args=[scrim.pk])}?order={order}")
 
     return render(request, "scrims/admin/split.html", page_context(request, scrim))
 

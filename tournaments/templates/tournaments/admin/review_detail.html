@@ -24,7 +24,7 @@
     <tbody>
       {% for row in rows %}
         <tr>
-          <td>{{ row.member.nickname }}</td>
+          <td>{{ row.member.nickname }}{% if not row.member.user.is_active %}（账号已停用）{% endif %}</td>
           <td>{{ row.member.battletag }}</td>
           <td>{{ row.member.rank_tank|rank_label }}</td>
           <td>{{ row.member.rank_damage|rank_label }}</td>

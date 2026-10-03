@@ -20,6 +20,25 @@
   <h2>送审内容</h2>
   <pre class="w-whitespace-pre-wrap">{{ item.excerpt }}</pre>
 
+  <h2>处理记录</h2>
+  {% if history %}
+    <table class="listing">
+      <thead><tr><th>时间</th><th>处理人</th><th>结果</th><th>说明</th></tr></thead>
+      <tbody>
+        {% for entry in history %}
+          <tr>
+            <td>{{ entry.timestamp|date:"Y.m.d H:i" }}</td>
+            <td>{{ entry.user.nickname|default:"—" }}</td>
+            <td>{{ entry.data.result }}</td>
+            <td>{{ entry.data.note|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="help">还没有人处理过这条。</p>
+  {% endif %}
+
   <h2>记录处理结果</h2>
   <p class="help-block">这里只记录你做了什么。退回稿件、清空战队简介、停用账号等操作请到对应功能里执行——AI 和这个页面都不会替你改动内容。</p>
   <form method="post" action="{% url 'moderation_action' item.pk %}">

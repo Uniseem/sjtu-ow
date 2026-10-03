@@ -38,7 +38,22 @@
         {% endfor %}
       </select>
     </label>
+    <label>提交时间
+      <select name="since">
+        <option value="">全部</option>
+        {% for value, label in since_choices %}
+          <option value="{{ value }}" {% if since == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
     <button type="submit" class="button button-secondary">筛选</button>
+  </form>
+
+  <form method="post" action="{% url 'moderation_scan' %}" class="w-mb-4"
+        onsubmit="return window.confirm('把现有的昵称、个人宣言、文章和页面、战队、评论全部送审一遍？在夜间 0:30–8:30 进行（价格低一半），送过的内容不会重复送，每日上限照常。')">
+    {% csrf_token %}
+    <button type="submit" class="button button-secondary" {% if not enabled or scan_running %}disabled{% endif %}>全量扫描</button>
+    <span class="help">{% if scan_running %}全量扫描已经排上或正在进行。{% else %}刚上线或调整了判断标准之后用：把现有内容全部送审一遍，在夜间 0:30–8:30 后台进行。{% endif %}</span>
   </form>
 
   <table class="listing">
@@ -72,9 +87,9 @@
 
   {% if items.has_other_pages %}
     <p>
-      {% if items.has_previous %}<a href="?page={{ items.previous_page_number }}&amp;status={{ status }}&amp;risk={{ risk }}&amp;target_type={{ target_type }}">上一页</a>{% endif %}
+      {% if items.has_previous %}<a href="?page={{ items.previous_page_number }}&amp;status={{ status }}&amp;risk={{ risk }}&amp;target_type={{ target_type }}&amp;since={{ since }}">上一页</a>{% endif %}
       第 {{ items.number }} / {{ items.paginator.num_pages }} 页
-      {% if items.has_next %}<a href="?page={{ items.next_page_number }}&amp;status={{ status }}&amp;risk={{ risk }}&amp;target_type={{ target_type }}">下一页</a>{% endif %}
+      {% if items.has_next %}<a href="?page={{ items.next_page_number }}&amp;status={{ status }}&amp;risk={{ risk }}&amp;target_type={{ target_type }}&amp;since={{ since }}">下一页</a>{% endif %}
     </p>
   {% endif %}
 {% endblock %}

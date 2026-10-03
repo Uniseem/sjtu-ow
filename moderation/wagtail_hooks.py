@@ -5,10 +5,12 @@ from wagtail import hooks
 from wagtail.admin.menu import Menu, MenuItem, SubmenuMenuItem
 
 from moderation.admin_views import (
+    HANDLE_LOG_ACTION,
     can_review,
     moderation_action,
     moderation_detail,
     moderation_index,
+    moderation_scan,
 )
 from moderation.avatar_admin import avatar_review, avatar_review_action
 
@@ -17,6 +19,7 @@ from moderation.avatar_admin import avatar_review, avatar_review_action
 def register_moderation_urls():
     return [
         path("moderation/", moderation_index, name="moderation_index"),
+        path("moderation/scan/", moderation_scan, name="moderation_scan"),
         path("moderation/<int:pk>/", moderation_detail, name="moderation_detail"),
         path(
             "moderation/<int:pk>/action/",
@@ -72,3 +75,8 @@ def register_avatar_review_menu_item():
         icon_name="user",
         order=60,
     )
+
+
+@hooks.register("register_log_actions")
+def register_moderation_log_actions(actions):
+    actions.register_action(HANDLE_LOG_ACTION, "处理待复核内容", "处理了待复核内容")
