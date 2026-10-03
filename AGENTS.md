@@ -163,6 +163,7 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 - **本机推送 403**（101）：本机 `gh` 登录了两个 GitHub 账号，当前激活的不是 `Uniseem` 时，`git push` 会被拒（Permission denied）。不要切换全局账号，只给这一次推送指定凭据：`git -c credential.helper= -c 'credential.helper=!f() { test "$1" = get && echo username=Uniseem && echo "password=$(gh auth token -h github.com -u Uniseem)"; }; f' push origin main`
 - **Git Bash 的 heredoc 会吃掉一层反斜杠**（092）：在 Bash 工具里用 `python - << 'EOF'` 跑内联脚本时，脚本源码里写的两个反斜杠加 n 到 Python 那里只剩一个，替换进文件的就成了真换行；正则里的反斜杠也会少一层。091、092 几次把测试文件写坏（字符串字面量被拆成两行）。改文件用编辑工具，或者先把脚本写成 `.py` 文件再运行
 - **到测试机的长连接可能被半路掐断**（128）：连原来那台 `185.99.135.224` 时，输出一直在走、开着保活，`ssh` 照样在 1 分 53 秒、5 分 08 秒被断开，两头都说是对方断的，服务器上跟着连接的进程一起被杀。所以 `remote-check.sh` 让检查在服务器上脱离连接跑（`setsid`），本机每 3 秒用短连接取一次日志。在远程机器上跑长任务都这样做，别 `ssh host 长命令`
+- **`manage.py tailwind download_cli` 每次都重新下载**（144）：django-tailwind-cli 这个命令是强制下载（112 MB），原来 `check.sh` 和 Dockerfile 每次都调，GitHub 一返回 503，检查和部署都失败。现在 Dockerfile 在 `COPY . .` 之前用 `deploy/fetch_tailwind_cli.py`（带重试）下载固定版本，这一层能缓存；`check.sh` 只在文件不在时才下载。升级 `TAILWIND_CLI_VERSION` 时 Dockerfile 的 `ARG` 要一起改（有测试比对）
 - **测试里的密码哈希是 MD5**（128，根目录 `conftest.py`）：网站用 Argon2，每次哈希要 100 MB、几十毫秒，测试建几百个用户和登录，换掉后 pytest 快了一倍半。要测和哈希有关的东西，在那条测试里自己设 `settings.PASSWORD_HASHERS`
 - **测试库是固定文件 `data/test.sqlite3`**（128）：两个 pytest 不能在同一个目录里同时跑。`scripts/pytest-shards.sh` 给每个分片一个 git worktree（各自的库、`prerendered/`、`.venv`）
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果

@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: M10 前台视觉 v6.12，M7 上线准备暂停
-round: 143-card-dates
+round: 144-tailwind-cli-cache
 next: claude（按用户 10-04 睡前说的：假定管理员、成员、投稿者等各种身份把流程走一遍，发现不完善的地方逐轮修）
 updated: 2026-10-04
 blocked_on: 默认头像以后要换动漫风的话需要你提供有授权的素材（官方没有公开的，现在用官方立绘）；演示站（sjtu.ow-shanghaiuniversity.com）的管理员要你自己建（`… exec web python manage.py createsuperuser`）；转正式站前要定演示数据和动漫头像怎么处理；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定
 ```
 
 ## 现在该谁动手
+
+**144（2026-10-04）**：143 跑检查时两次因为 GitHub 返回 503 失败。查下来，Tailwind 命令行（112 MB）每次检查、每次部署构建镜像都会重新下载一遍。现在镜像里单独缓存这一层，检查机上文件在就不再下；GitHub 暂时不通也不再拖垮部署。演示站已升级。
 
 **143（2026-10-04）**：给演示站截了手机宽度的图看排版，战队、赛事、内战列表都正常；只发现报名中的赛事卡片不写比赛日期（要等报名截止才写）。现在报名中、即将开始报名的卡片和首页大图卡都写「MM.DD 比赛」。演示站已升级。
 
@@ -516,6 +518,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 141-stale-applications | 申请人走查（设计 v6.36）：队长 14 天没处理的入队申请由 `cleanup_old_data` 关闭并通知申请人 | **Claude 实现**，自查通过。`teams/tests/test_stale_applications.py` 3 条；6 处变异全部被抓到（修正了一条没测到的测试） |
 | 142-finish-nudge | 赛事管理员走查（设计 v6.37）：后台待办列出开赛 3 天以上还没标记结束的赛事；删空的 `moderation/views.py` | **Claude 实现**，自查通过。`core/tests/test_admin_functions.py` 加 1 条；3 处变异全部被抓到 |
 | 143-card-dates | 访客走查（设计 v6.38，手机截图时发现）：报名中、即将开始报名的赛事卡和首页大图卡写比赛日期 | **Claude 实现**，自查通过。测试 2 条；4 处变异全部被抓到 |
+| 144-tailwind-cli-cache | 检查和部署的稳定性：Tailwind 命令行每个版本只下载一次（Dockerfile 缓存层 + `deploy/fetch_tailwind_cli.py` 带重试，`check.sh` 文件在就不下） | **Claude 实现**，自查通过。`core/tests/test_tailwind_cli_fetch.py` 7 条；6 处变异全部被抓到；再构建时那一层 CACHED |
 
 ## 当前待定问题
 

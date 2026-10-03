@@ -34,7 +34,9 @@ uv run ruff check .
 uv run ruff format --check .
 
 step "Tailwind"
-uv run python manage.py tailwind download_cli >/dev/null
+# download_cli fetches the 112 MB binary again every time; only when missing (144).
+ls .django_tailwind_cli/tailwindcss* >/dev/null 2>&1 ||
+  uv run python manage.py tailwind download_cli >/dev/null
 uv run python manage.py tailwind build --force
 
 step "pytest"

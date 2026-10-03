@@ -20,13 +20,19 @@ RUN apt-get update \
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.15 /uv /usr/local/bin/uv
 
+# The Tailwind CLI (112 MB) in its own layer before the code: a code change
+# no longer downloads it again, and a GitHub hiccup only hurts the first build
+# (round 144). Keep in step with TAILWIND_CLI_VERSION in settings/base.py.
+ARG TAILWIND_CLI_VERSION=2.9.0
+COPY deploy/fetch_tailwind_cli.py /tmp/fetch_tailwind_cli.py
+RUN python /tmp/fetch_tailwind_cli.py "$TAILWIND_CLI_VERSION" /app/.django_tailwind_cli
+
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
 RUN chmod +x /app/deploy/entrypoint-web.sh /app/deploy/entrypoint-worker.sh \
     && uv sync --frozen --no-dev \
-    && uv run python manage.py tailwind download_cli \
     && uv run python manage.py tailwind build
 
 ENV PATH="/app/.venv/bin:$PATH"
