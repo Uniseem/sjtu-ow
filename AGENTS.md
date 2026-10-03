@@ -55,27 +55,33 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
   uv run python manage.py check --deploy
 ```
 
+**这组检查在测试机上跑**（2026-10-04 起，见「测试机与部署」）：
+
+```bash
+bash scripts/remote-check.sh                  # 整组，和 CI 一样（scripts/check.sh），pytest 按核数分片、镜像同时构建
+bash scripts/remote-check.sh run uv run pytest -q core/tests/test_announcements.py
+bash scripts/remote-check.sh run uv run python handoff/rounds/NNN-名字/mutate.py
+bash scripts/remote-check.sh attach           # 本机这边断了，接着看最近一次
+```
+
+它把工作区（**包括没提交的改动**，不碰暂存区）做成一个提交、打成 git bundle 传上去，测试机检出的就是本机现在的样子（换行是 LF）。检查在服务器上脱离连接跑，本机每 3 秒取一次日志，退出码就是检查的结果；同一时间只跑一个，后来的排队。整组里 pytest 按核数分片、`docker build` 同时在后台构建，全部约 1 分半。本机只在测试机连不上时才跑这组检查。
+
 改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。改了 `core/placeholders.py`（占位图的画法和动画）后跑 `uv run python manage.py render_placeholders` 并提交 `static/img/placeholders/`。换了校徽文件 `static/img/sjtu-emblem.svg` 后跑 `uv run python manage.py render_emblem_layers` 并提交两张图层。改了 `locale/` 下的 `.po`（后台中文，117 起）后跑 `uv run python manage.py compile_translations` 并提交 `.mo`。
 
 ## 测试机与部署
 
-**测试机是 `185.99.135.224`，部署先放在这台机器上。** 用户 2026-09-18 指定。
+**测试机是 `2a0e:6a80:3:9c7::`（只有 IPv6），各种测试检查都在这台上跑。** 用户 2026-10-04：「各种测试检查放到 IP 为 185.99.135.224 的 vps 上进行，你可以搭建完整的工作测试流」，随后「测试机换到 IP 为 2a0e:6a80:3:9c7:: 的 vps 上。这台机子所有资源都由你掌控，请务必用满性能以达最高效率」。
 
 | 项目 | 内容 |
 |---|---|
-| 域名 | 原来是 `sjtu.ow-shanghaiuniversity.com`（050 轮核对时解析到这台）。**2026-10-04 起这个域名给了第二台的演示站**（见下一节），测试机现在没有域名 |
-| 权限 | **助手拥有这台机器的全部权限**，可以直接部署、改配置、重启服务 |
-| 登录 | SSH 密钥登录。登录用户和密钥位置在开发者本机的 SSH 配置里，**不写进仓库**（仓库是公开的） |
-| 部署目录 | `/srv/sjtu-ow`（和 `deploy/crontab.example` 里的路径一致）。`.env` 在服务器上，权限 600，密钥是在服务器上生成的 |
-| Compose | 项目名 `sjtu-ow-test`。**每条命令都带 `--env-file .env`**，完整步骤见 `README.md`「生产 / 测试环境启动」 |
-| 证书 | Caddy 自动申请和续期，走 **HTTP 验证**，不用 DNS 验证。前提是 80 端口对外开放；`CADDY_SITE_ADDRESS` 填域名本身（不带 `http://`），Caddy 才会申请证书 |
-| 跳转 | **HTTP 必须自动跳转到 HTTPS**。站点地址是域名时 Caddy 默认会做，部署后要实测：`curl -I http://sjtu.ow-shanghaiuniversity.com/` 应返回跳转到 `https://` 的 3xx |
+| 机器（128 核对） | Debian 13，4 核 AMD EPYC 9275F，19 GB 内存，Docker 已装。出 IPv4（GitHub、PyPI）走 Cloudflare WARP（`warp-svc`）。还跑着 Komari 监控探针（`komari-agent`） |
+| 权限 | **整台机器归本项目用**，资源随便用；`warp-svc` 和 `komari-agent` 别停（前者断了就连不上 GitHub） |
+| 登录 | SSH 密钥。登录用户和密钥在开发者本机的 `~/.ssh/config`（`Host 2a0e:6a80:3:9c7:: sjtu-ow-test`），**不写进仓库**（仓库是公开的）。`scp` 要给 IPv6 地址加方括号，`remote-check.sh` 自己处理 |
+| 检查目录 | `/srv/sjtu-ow-check/`：`uv/`（uv 二进制，从 GitHub 发布页下载、核对过 sha256，缓存也在这里）、`repo/`（从 GitHub 克隆，每次检查切到传过来的快照）、`shards/1…4`（pytest 分片用的 worktree，各有自己的 `.venv` 和测试库）、`runs/`（每次检查的脚本、日志、退出码，留最近 30 次）、`lock`。Docker 里留一个 `sjtu-ow:check` 镜像，每次构建后删掉上一个 |
+| 怎么用 | 本机 `bash scripts/remote-check.sh`，见「常用命令」。整组检查（含 `docker build`）约 1 分半，pytest 分 4 片、每片 40 秒左右 |
+| 以后要部署测试站 | 照 README「生产 / 测试环境启动」：部署目录 `/srv/sjtu-ow`、Compose 项目名 `sjtu-ow-test`、每条命令带 `--env-file .env`。要 HTTPS 得有一个解析到这个 IPv6 地址的域名 |
 
-**机器上还跑着别的项目**（另一套 Docker Compose 和一个监控探针）。只动 `/srv/sjtu-ow` 和本项目的 Compose 项目：
-
-- 不停、不重启、不删别人的容器、网络和数据卷
-- **不要**执行 `docker system prune`、`docker volume prune` 这类全局清理
-- 本项目的 Caddy 会占用 80 和 443 端口。以后这台机器上别的网站要用域名访问，得经过这个 Caddy 转发
+**原来的测试机 `185.99.135.224`**（2026-09-18 起）重装过、没有 Docker，128 在上面搭过一次，换机器后把 `/srv/sjtu-ow-check` 删了，现在不用。上面有别人的东西（Komari 探针、`/opt` 和 `/root` 下的 Flutter、Android、FlClash 工具链），再上去也只动自己建的目录，不做全局清理。
 
 ### 第二台：169.58.217.180（用户 2026-10-03 指定，v6.0 起）
 
@@ -149,6 +155,9 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 - **Windows 上别用 `manage.py shell < 文件`**（102）：Windows 的管道不支持 `select`，Django 退回交互式控制台逐行执行，函数和循环中间的空行会把语句截断，脚本只跑了一半还不报错退出。本机用 `manage.py shell -c "exec(open(r'路径', encoding='utf-8').read())"`；服务器（Linux）上 `<` 没问题
 - **本机推送 403**（101）：本机 `gh` 登录了两个 GitHub 账号，当前激活的不是 `Uniseem` 时，`git push` 会被拒（Permission denied）。不要切换全局账号，只给这一次推送指定凭据：`git -c credential.helper= -c 'credential.helper=!f() { test "$1" = get && echo username=Uniseem && echo "password=$(gh auth token -h github.com -u Uniseem)"; }; f' push origin main`
 - **Git Bash 的 heredoc 会吃掉一层反斜杠**（092）：在 Bash 工具里用 `python - << 'EOF'` 跑内联脚本时，脚本源码里写的两个反斜杠加 n 到 Python 那里只剩一个，替换进文件的就成了真换行；正则里的反斜杠也会少一层。091、092 几次把测试文件写坏（字符串字面量被拆成两行）。改文件用编辑工具，或者先把脚本写成 `.py` 文件再运行
+- **到测试机的长连接可能被半路掐断**（128）：连原来那台 `185.99.135.224` 时，输出一直在走、开着保活，`ssh` 照样在 1 分 53 秒、5 分 08 秒被断开，两头都说是对方断的，服务器上跟着连接的进程一起被杀。所以 `remote-check.sh` 让检查在服务器上脱离连接跑（`setsid`），本机每 3 秒用短连接取一次日志。在远程机器上跑长任务都这样做，别 `ssh host 长命令`
+- **测试里的密码哈希是 MD5**（128，根目录 `conftest.py`）：网站用 Argon2，每次哈希要 100 MB、几十毫秒，测试建几百个用户和登录，换掉后 pytest 快了一倍半。要测和哈希有关的东西，在那条测试里自己设 `settings.PASSWORD_HASHERS`
+- **测试库是固定文件 `data/test.sqlite3`**（128）：两个 pytest 不能在同一个目录里同时跑。`scripts/pytest-shards.sh` 给每个分片一个 git worktree（各自的库、`prerendered/`、`.venv`）
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
 ## 改了什么，就更新哪份文档

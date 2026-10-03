@@ -18,6 +18,14 @@ def _media_in_a_throwaway_folder(settings, tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
+def _cheap_password_hashing(settings):
+    """Argon2 spends 100 MB and tens of milliseconds on every hash, and the
+    tests make hundreds of users and logins (round 128). No test is about
+    which hasher the site uses; base.py keeps Argon2 for the real thing."""
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+
+@pytest.fixture(autouse=True)
 def _forget_renditions():
     """The thumbnail cache lives in memory across tests, while the images
     behind it roll back with each test and their ids come round again."""

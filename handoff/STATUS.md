@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: M10 前台视觉 v6.12，M7 上线准备暂停
-round: 127-article-announcements
+round: 128-remote-checks
 next: claude（按用户 10-04 睡前说的：假定管理员、成员、投稿者等各种身份把流程走一遍，发现不完善的地方逐轮修）
 updated: 2026-10-04
-blocked_on: 默认头像以后要换动漫风的话需要你提供有授权的素材（官方没有公开的，现在用官方立绘）；演示站（sjtu.ow-shanghaiuniversity.com）的管理员要你自己建（`… exec web python manage.py createsuperuser`）；转正式站前要定演示数据和动漫头像怎么处理；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定；测试机升级要你的 SSH 密钥（先弄清主机密钥为什么变了）
+blocked_on: 默认头像以后要换动漫风的话需要你提供有授权的素材（官方没有公开的，现在用官方立绘）；演示站（sjtu.ow-shanghaiuniversity.com）的管理员要你自己建（`… exec web python manage.py createsuperuser`）；转正式站前要定演示数据和动漫头像怎么处理；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定
 ```
 
 ## 现在该谁动手
+
+**128（2026-10-04）**：按你说的，测试检查都放到测试机上跑，测试机已换成 `2a0e:6a80:3:9c7::`。本机一条 `bash scripts/remote-check.sh` 把当前代码（包括没提交的改动）传过去，跑和 CI 一样的整组检查，Docker 镜像也一起构建。为了用满这台机器：pytest 按 4 个核分成 4 片同时跑；测试里的密码哈希原来用网站的 Argon2，每次要 100 MB、几十毫秒，换成快的。整组从本机的 5 分多降到约 1 分钟。旧测试机 185.99.135.224 上我建的目录已删掉。有一件事你可能想知道：连旧测试机时，长连接几分钟就被掐断，所以检查改成在服务器上后台跑、本机每 3 秒取一次日志。
 
 **127（2026-10-04）**：以内容编辑的身份：社团发了「秋季招新」这类公告，最想让所有人知道，但原来只有赛事、内战能「通知全体成员」。现在已发布的文章在页面列表的「更多」和编辑页顶部菜单里也有这个按钮，信的主题是「公告：秋季招新」，正文是摘要，带「阅读全文」。内容编辑、认证作者能发，每篇一次，同样遵守退订。演示站已升级（没配 SMTP，发不出去）。
 
@@ -468,6 +470,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 125-own-page | 成员看自己的主页（设计 v6.21）：个人中心「我的主页」；本人看自己主页有「编辑资料」和空着的地方的提示 | **Claude 实现**，自查通过。新测试 `members/tests/test_own_page.py`（3 条）；5 处变异全部被抓到（第一次漏 1 处，测试改准） |
 | 126-my-placement | 内战参加者走查（设计 v6.22）：本人在活动页报名区、「我的内战」、提醒邮件里看到自己的分队（`placement`），公开页面不展示 | **Claude 实现**，自查通过。新测试 `scrims/tests/test_my_placement.py`（4 条）；6 处变异全部被抓到 |
 | 127-article-announcements | 内容编辑走查（设计 v6.23）：已发布的文章也能「通知全体成员」（页面列表「更多」、编辑页顶部菜单），`Kind` 带上是否已发布、发完回哪 | **Claude 实现**，自查通过。`core/tests/test_announcements.py` 加 2 条；10 处变异全部被抓到 |
+| 128-remote-checks | 测试检查搬到测试机（用户 10-04 要求，测试机换成 `2a0e:6a80:3:9c7::`）：`scripts/check.sh`（和 CI 同序，可分片、可构建镜像）、`scripts/remote-check.sh`（工作区快照经 bundle 传过去，服务器上脱离连接跑）、`scripts/pytest-shards.sh`（每片一个 worktree）、测试密码哈希改 MD5 | **Claude 实现**，自查通过。整组 1 分 08 秒（本机原来 5 分 20 秒）；`core/tests/test_check_script.py` 2 条，6 处变异全部被抓到 |
 
 ## 当前待定问题
 
