@@ -539,3 +539,30 @@ def test_the_owner_hears_when_the_worker_is_down(site, client):
 
     cache.clear()
     assert "worker）没在运行" not in _todo(client)
+
+
+@pytest.mark.django_db
+def test_the_owner_hears_about_missing_or_failed_backups(
+    site, client, settings, tmp_path
+):
+    """Round 152 (design 16.7, v6.45)."""
+    import json
+    import os
+
+    settings.BACKUP_ROOT = tmp_path
+    client.force_login(_staff("root152@example.com", superuser=True))
+    assert "还没有任何备份" in _todo(client)
+
+    archive = tmp_path / "sjtu-ow-20261001-030000.tar.gz"
+    archive.write_bytes(b"x")
+    two_days = (timezone.now() - timedelta(hours=48)).timestamp()
+    os.utime(archive, (two_days, two_days))
+    assert "最近一次备份是 48 小时前" in _todo(client)
+
+    os.utime(archive, None)
+    assert "备份定时任务" not in _todo(client)
+    (tmp_path / "last-backup.json").write_text(
+        json.dumps({"offsite": "failed", "error": "上传失败：bucket says no"}),
+        encoding="utf-8",
+    )
+    assert "最近一次备份的异地上传失败：上传失败：bucket says no" in _todo(client)

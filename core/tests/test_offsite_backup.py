@@ -371,3 +371,35 @@ def test_the_settings_page_button(client, monkeypatch, settings, configured):
     assert response.status_code == 302
     assert response.url == reverse("wagtailadmin_home")
     assert fake.calls == []
+
+
+# --- what the last run did (round 152, design 16.7 v6.45) --------------------------
+
+
+def _status(root):
+    import json
+
+    return json.loads((Path(root) / "last-backup.json").read_text(encoding="utf-8"))
+
+
+def test_each_run_leaves_a_status(tmp_path, settings, db, monkeypatch, configured):
+    settings.BACKUP_ENCRYPTION_KEY = KEY
+    configured.backup_s3_enabled = False
+    configured.save()
+    run("backup", "--output", str(tmp_path))
+    assert _status(tmp_path)["offsite"] == "off"
+
+    configured.backup_s3_enabled = True
+    configured.save()
+
+    class Broken(FakeBucket):
+        def upload_file(self, *args, **kwargs):
+            raise RuntimeError("bucket says no")
+
+    monkeypatch.setattr(offsite, "client_factory", lambda config: Broken())
+    with pytest.raises(CommandError):
+        run("backup", "--output", str(tmp_path / "again"))
+    status = _status(tmp_path / "again")
+    assert status["offsite"] == "failed" and "bucket says no" in status["error"]
+    run("backup", "--output", str(tmp_path / "third"), "--no-upload")
+    assert _status(tmp_path / "third")["offsite"] == "skipped"

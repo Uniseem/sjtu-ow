@@ -15,6 +15,7 @@ from wagtail.admin.ui.components import Component
 
 FINISH_NUDGE_AFTER = timezone.timedelta(days=3)
 MAIL_LOOKBACK = timezone.timedelta(days=7)
+BACKUP_STALE = timezone.timedelta(hours=36)
 
 
 @dataclass(frozen=True)
@@ -180,6 +181,37 @@ def mail_failures(now=None) -> tuple[int, str]:
     return len(given_up), (lines[-1] if lines else "")[:120]
 
 
+def backup_problems(now=None) -> list[str]:
+    """Design 16.7 (v6.45): no fresh archive, or the last upload failed. The
+    nightly job runs from cron; nobody reads its output."""
+    from datetime import datetime
+
+    from core.management.commands.backup import (
+        backup_root,
+        existing_backups,
+        read_status,
+    )
+
+    now = now or timezone.now()
+    root = backup_root()
+    archives = existing_backups(root) if root.exists() else []
+    problems = []
+    if not archives:
+        problems.append("还没有任何备份，每天夜里的备份定时任务可能没设好")
+    else:
+        newest = max(path.stat().st_mtime for path in archives)
+        age = now - datetime.fromtimestamp(newest, tz=timezone.get_current_timezone())
+        if age > BACKUP_STALE:
+            hours = int(age.total_seconds() // 3600)
+            problems.append(
+                f"最近一次备份是 {hours} 小时前，每天夜里的备份定时任务可能没在跑"
+            )
+    status = read_status(root) if root.exists() else {}
+    if status.get("offsite") == "failed":
+        problems.append(f"最近一次备份的异地上传失败：{status.get('error', '')[:120]}")
+    return problems
+
+
 def _site_rows(user) -> list[Todo]:
     from core.admin_setup import _settings_url
     from core.models import PrerenderedPage, SiteSettings
@@ -209,6 +241,8 @@ def _site_rows(user) -> list[Todo]:
                 "/healthz",
             )
         )
+    for problem in backup_problems():
+        rows.append(Todo(problem, ""))
     lost, error = mail_failures()
     if lost:
         rows.append(

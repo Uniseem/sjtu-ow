@@ -47,6 +47,37 @@ def existing_backups(root: Path) -> list[Path]:
     return sorted(root.glob(f"{PREFIX}*{SUFFIX}"))
 
 
+# Design 16.7 (v6.45): what the last run did, for the admin's to-do.
+STATUS_FILE = "last-backup.json"
+
+
+def write_status(root: Path, archive: Path, offsite: str, error: str = "") -> None:
+    import json
+
+    (root / STATUS_FILE).write_text(
+        json.dumps(
+            {
+                "finished_at": timezone.now().isoformat(),
+                "archive": archive.name,
+                "size": archive.stat().st_size,
+                "offsite": offsite,
+                "error": error,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
+def read_status(root: Path) -> dict:
+    import json
+
+    try:
+        return json.loads((root / STATUS_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
 class Command(BaseCommand):
     help = "备份数据库和上传文件（设计 16.7）"
 
@@ -89,11 +120,19 @@ class Command(BaseCommand):
         removed = self.prune(root, keep_days)
         if removed:
             self.stdout.write(f"已清理 {removed} 个超过 {keep_days} 天的旧备份")
-        self.upload(archive, skip=options["no_upload"], keep_days=keep_days)
+        try:
+            offsite_result = self.upload(
+                archive, skip=options["no_upload"], keep_days=keep_days
+            )
+        except CommandError as exc:
+            write_status(root, archive, "failed", str(exc))
+            raise
+        write_status(root, archive, offsite_result)
         return None
 
-    def upload(self, archive: Path, *, skip: bool, keep_days: int) -> None:
-        """Design 16.7 step 3: encrypt and send a copy off the server."""
+    def upload(self, archive: Path, *, skip: bool, keep_days: int) -> str:
+        """Design 16.7 step 3: encrypt and send a copy off the server.
+        Returns what happened, for the status file: off / skipped / uploaded."""
         from core import offsite
 
         config = offsite.load_config()
@@ -105,10 +144,10 @@ class Command(BaseCommand):
                     "在「设置 → 全站设置 → 异地备份」里配置对象存储（设计 16.7）。"
                 )
             )
-            return
+            return "off"
         if skip:
             self.stdout.write("按 --no-upload 跳过上传。")
-            return
+            return "skipped"
         try:
             key = offsite.upload(archive, config=config)
         except offsite.OffsiteError as exc:
@@ -123,6 +162,7 @@ class Command(BaseCommand):
         else:
             if removed:
                 self.stdout.write(f"已清理异地 {removed} 个超过 {keep_days} 天的旧备份")
+        return "uploaded"
 
     def prune(self, root: Path, keep_days: int) -> int:
         cutoff = timezone.now() - timedelta(days=keep_days)

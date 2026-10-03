@@ -3,7 +3,7 @@
   {% if rows %}
     <ul class="site-todo">
       {% for row in rows %}
-        <li><a href="{{ row.url }}">{{ row.text }}</a></li>
+        <li>{% if row.url %}<a href="{{ row.url }}">{{ row.text }}</a>{% else %}{{ row.text }}{% endif %}</li>
       {% endfor %}
     </ul>
   {% else %}
