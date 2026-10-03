@@ -90,7 +90,7 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 | `.env` 要点 | `DJANGO_ALLOWED_HOSTS=169.58.217.180,localhost`、`SITE_URL` 和 `DJANGO_CSRF_TRUSTED_ORIGINS` 是 `http://169.58.217.180:22887`（**用户给了域名后要加上域名并改成 https**，然后 `up -d`）；`DJANGO_SECURE_SSL_REDIRECT=false`（跳转由用户的反向代理做）；`TEST_ENVIRONMENT=1`（横幅、禁止抓取，用户说是正式站再关） |
 | 定时任务 | `/etc/cron.d/sjtu-ow`（不碰 root 的 crontab）。服务器时区是 **Europe/Berlin**，cron 不支持 `CRON_TZ`，模板的北京时间按夏令时减 6 小时写 |
 | 登录后台 | 生产设置的 Cookie 只走 HTTPS，**直接用 `http://IP:22887` 登录不了**，要等反向代理配好 HTTPS。管理员账号由用户自己建：`… exec web python manage.py createsuperuser` |
-| 对外演示站（102 起） | 用户要的是「已经填入了测试数据的版本，作为对外的演示站」：库是本机演示库恢复过去的（40 个演示用户、7 支战队、21 篇文章、70 条评论，邮箱都是 `demo.example.com`，SMTP 没配），之后的补充都用脚本在服务器上直接跑（`handoff/rounds/102-demo-site/`），**不要再用备份整库覆盖**：会冲掉用户在服务器上建的管理员和改动。头像是 nekos.best 的动漫插画（用户选的，版权归画师，画师和出处记在图片说明里） |
+| 对外演示站（102 起） | 用户要的是「已经填入了测试数据的版本，作为对外的演示站」：库是本机演示库恢复过去的（40 个演示用户、7 支战队、21 篇文章、70 条评论，邮箱都是 `demo.example.com`，SMTP 没配），之后的补充都用脚本在服务器上直接跑（`handoff/rounds/102-demo-site/`），**不要再用备份整库覆盖**：会冲掉用户在服务器上建的管理员和改动。头像是 nekos.best 的动漫插画（用户选的，版权归画师，画师和出处记在图片说明里）；111 起偶数编号的 20 人按用户要求拿掉了头像、显示默认头像，原来的图片编号在服务器 `/root/avatars_removed.json` |
 
 在服务器上跑一段脚本：`$C exec -T web python manage.py shell < /root/脚本.py`（`$C` 是上面那条 Compose 命令；Linux 上 Django 会把整段输入当脚本执行）。
 
