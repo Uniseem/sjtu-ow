@@ -38,6 +38,7 @@ def _tournament():
         pk=1,
         title="2026 秋季校内杯",
         starts_at=timezone.make_aware(datetime(2026, 11, 8, 14, 0)),
+        registration_closes_at=timezone.make_aware(datetime(2026, 11, 1, 23, 59)),
         get_absolute_url=lambda: "/tournaments/1/",
     )
 
@@ -234,6 +235,16 @@ def samples() -> list[Sample]:
             "被移除的人",
             teams.member_removed_letter(_team()),
             "小天使",
+        ),
+        _letter(
+            "member-left",
+            "战队",
+            "队员退出战队",
+            "队长",
+            teams.member_left_letter(
+                _team(), SimpleNamespace(nickname="西瓜"), [_registration()]
+            ),
+            "七月流火",
         ),
         _letter(
             "captain",

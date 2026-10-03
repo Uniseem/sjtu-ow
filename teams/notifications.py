@@ -74,6 +74,47 @@ def member_removed(team, user) -> None:
     send(member_removed_letter(team), [user])
 
 
+def member_left_letter(team, user, entries=()) -> Letter:
+    """Design 7.4 (v6.26): the captain hears that someone left, and which
+    submitted rosters still list them."""
+    facts = [("退出的人", user.nickname)]
+    paragraphs = []
+    action = ("打开战队管理", _manage(team))
+    if entries:
+        from tournaments.notifications import moment
+
+        for registration in entries:
+            closes = moment(registration.tournament.registration_closes_at)
+            facts.append(
+                (
+                    "还在报名名单里",
+                    f"{registration.tournament.title}（报名截止 {closes}）",
+                )
+            )
+        paragraphs.append(
+            "已经提交的报名名单不会跟着战队变。报名截止前可以在报名详情页同步名单，"
+            "截止以后请联系赛事管理员。"
+        )
+        action = ("查看报名详情", site_url(entries[0].get_absolute_url()))
+    return Letter(
+        subject=f"队员退出战队：{team.name}",
+        lead=f"{user.nickname} 退出了战队「{team.name}」。",
+        facts=facts,
+        paragraphs=paragraphs,
+        action=action,
+        reason=f"你收到这封邮件，是因为你是战队「{team.name}」的队长。",
+    )
+
+
+def member_left(team, user) -> None:
+    from tournaments.registration import entries_still_listing
+
+    captain = team.captain()
+    if captain is None:
+        return
+    send(member_left_letter(team, user, entries_still_listing(team, user)), [captain])
+
+
 def captain_changed_letter(team) -> Letter:
     return Letter(
         subject=f"你已成为队长：{team.name}",

@@ -282,6 +282,9 @@ def leave_team(*, team, user) -> None:
         raise TeamError("队长不能直接退出，请先转让队长或解散战队。")
     _retire(membership, LeaveReason.LEFT)
     membership.delete()
+    from teams import notifications
+
+    notifications.member_left(team, user)
     on_team_changed(team, author=user)
 
 

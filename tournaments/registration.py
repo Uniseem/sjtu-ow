@@ -433,6 +433,30 @@ def reject(*, registration, actor, note) -> Registration:
     )
 
 
+def entries_still_listing(team, user) -> list:
+    """Live registrations of ``team`` whose locked roster still has ``user``
+    (design 7.4, v6.26): what the captain needs to hear when they leave."""
+    from tournaments.models import Registration, TournamentStatus
+
+    # A roster row holds its place only while the registration is pending or
+    # approved (``_set_status`` keeps the two in step), so this also leaves
+    # out rejected and withdrawn entries.
+    return list(
+        Registration.objects.filter(
+            team=team,
+            tournament__status__in=(
+                TournamentStatus.DRAFT,
+                TournamentStatus.PUBLISHED,
+            ),
+            members__user=user,
+            members__is_active=True,
+        )
+        .select_related("tournament")
+        .order_by("tournament__registration_closes_at")
+        .distinct()
+    )
+
+
 def roster_differs_from_team(registration) -> bool:
     """Design 8.4: prompt the captain when the team changed after locking."""
     if registration.team_id is None:
