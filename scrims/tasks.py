@@ -13,6 +13,25 @@ logger = logging.getLogger(__name__)
 
 
 @task
+def finish_past_scrim(scrim_id: int) -> str:
+    """Design 9.1 (v6.30): mark it finished six hours after it started."""
+    from scrims import services
+
+    scrim = Scrim.objects.filter(pk=scrim_id).first()
+    if scrim is None:
+        return "gone"
+    if scrim.status != ScrimStatus.PUBLISHED:
+        return "not_published"
+    due = services.finish_time(scrim)
+    if timezone.now() < due:
+        # The start moved later; come back then.
+        finish_past_scrim.using(run_after=due).enqueue(scrim_id)
+        return "rescheduled"
+    services.finish(scrim=scrim)
+    return "finished"
+
+
+@task
 def send_scrim_reminder(scrim_id: int) -> str:
     """Remind everyone signed up. Safe to schedule more than once.
 

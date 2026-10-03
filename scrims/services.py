@@ -270,6 +270,28 @@ def can_delete(scrim) -> bool:
     return scrim.status == ScrimStatus.DRAFT and not scrim.signups.exists()
 
 
+# Design 9.1 (v6.30): a scrim is an evening; six hours after it starts it is
+# over, whether or not anyone pressed 「标记已结束」.
+FINISH_AFTER = timedelta(hours=6)
+
+
+def finish_time(scrim):
+    return scrim.starts_at + FINISH_AFTER
+
+
+def schedule_auto_finish(scrim) -> None:
+    """Re-scheduling is safe: the task re-reads the scrim."""
+    from scrims.tasks import finish_past_scrim
+
+    run_at = finish_time(scrim)
+    scrim_id = scrim.pk
+
+    def enqueue():
+        finish_past_scrim.using(run_after=run_at).enqueue(scrim_id)
+
+    transaction.on_commit(enqueue)
+
+
 @transaction.atomic
 def publish(*, scrim, actor=None):
     if scrim.status == ScrimStatus.CANCELLED:
@@ -281,6 +303,7 @@ def publish(*, scrim, actor=None):
         fields.append("created_by")
     scrim.save(update_fields=fields)
     schedule_reminder(scrim)
+    schedule_auto_finish(scrim)
     _status_changed(scrim)
     return scrim
 
@@ -312,6 +335,7 @@ def after_change(scrim, *, actor=None):
     prerender.forget_targets()
     if scrim.status == ScrimStatus.PUBLISHED:
         schedule_reminder(scrim)
+        schedule_auto_finish(scrim)
     _refresh_pages(scrim)
 
 
