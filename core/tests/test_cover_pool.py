@@ -125,6 +125,39 @@ def test_pictures_elsewhere_are_not_in_the_pool(site):
     assert "c-drift" not in _tag(_article())
 
 
+@pytest.mark.django_db
+def test_the_folders_under_the_pool_are_in_it(site):
+    """v6.8: one folder per hero, maps, groups, posters; all of them count,
+    a collection next to the pool (投稿图片) does not."""
+    from wagtail.models import Collection
+
+    from content.services import SUBMISSION_IMAGE_COLLECTION
+    from core import covers
+
+    folder = _pool().add_child(name="莱因哈特")
+    deeper = folder.add_child(name="活动")
+    in_folder = _picture(folder, "in-folder")
+    in_deeper = _picture(deeper, "deeper")
+    _picture(Collection.objects.get(name=SUBMISSION_IMAGE_COLLECTION), "submitted")
+    assert [image.pk for image in covers.load_pool()] == [in_folder.pk, in_deeper.pk]
+    assert "c-drift" in _tag(_article())
+
+
+@pytest.mark.django_db
+def test_moving_a_picture_into_or_out_of_a_folder_regenerates(site):
+    from wagtail.models import Collection
+
+    folder = _pool().add_child(name="地图场景")
+    picture = _picture(Collection.get_first_root_node(), "loose")
+    with mock.patch("core.prerender.request_all_soon") as regenerate:
+        picture.collection = folder
+        picture.save()
+        assert regenerate.call_count == 1  # into a folder
+        picture.collection = Collection.get_first_root_node()
+        picture.save()
+        assert regenerate.call_count == 2  # out of it
+
+
 # --- on the pages ------------------------------------------------------------------
 
 

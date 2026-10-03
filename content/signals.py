@@ -7,7 +7,7 @@ import logging
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 from wagtail.images import get_image_model
-from wagtail.models import Collection, Page, Site
+from wagtail.models import Page, Site
 from wagtail.signals import (
     page_published,
     page_slug_changed,
@@ -160,13 +160,10 @@ Image = get_image_model()
 
 
 def _in_cover_pool(collection_id) -> bool:
-    from core.covers import DEFAULT_COVER_COLLECTION
+    """默认封面 or any folder under it (v6.8)."""
+    from core.covers import in_pool
 
-    return bool(collection_id) and (
-        Collection.objects.filter(
-            pk=collection_id, name=DEFAULT_COVER_COLLECTION
-        ).exists()
-    )
+    return in_pool(collection_id)
 
 
 @receiver(pre_save, sender=Image)
