@@ -4,7 +4,7 @@
 
 1. `core/models.py`：`Broadcast.Kind` 加 `ARTICLE`（「新文章」），迁移 `core/0017` 只改 choices
 2. `content/notifications.py`（新）：`new_article_letter()`，主题「分类名：标题」，没有分类写「文章」；摘要做正文，按钮「阅读全文」指向文章地址，带退订
-3. `core/services.py`：`Kind` 多了 `is_live`（只有已发布的能发）、`back_url`（发完回哪）、`label`（面包屑）；`announcement_problem()` 改用 `is_live` 判断。文章这一类：内容编辑、认证作者能发（`user_can_edit_author`），已发布的才能发，发完回到文章所在的页面列表
+3. `core/services.py`：`Kind` 多了 `is_live`（只有已发布的能发）、`back_url`（发完回哪）、`label`（面包屑）；`announcement_problem()` 改用 `is_live` 判断。文章这一类：内容编辑、认证作者能发（`user_can_edit_author`）（**130 轮更正**：`user_can_edit_author` 只认超级管理员和内容编辑，认证作者不能发；设计 10.4 写的也是「内容编辑（含超级管理员）」，代码和设计一致，是这里写错了），已发布的才能发，发完回到文章所在的页面列表
 4. `core/announce_admin.py`：去掉自己维护的「回哪」表，统一从 `kinds()` 取
 5. `content/wagtail_hooks.py`：页面列表的「更多」和编辑页顶部菜单加「通知全体成员」（`AnnounceArticleItem`），已发布、有权限、没发过才出现
 6. 邮件样张页加「新文章通知（群发）」
