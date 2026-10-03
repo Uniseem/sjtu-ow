@@ -17,6 +17,7 @@ from content.services import (
     ensure_submission_image_collection,
     ensure_user_avatar_collection,
     remove_wagtail_stock_groups,
+    retire_wagtail_stock_workflow,
     sync_default_site_from_site_url,
 )
 from core.fonts.css import regenerate_font_css
@@ -54,6 +55,12 @@ class Command(BaseCommand):
         else:
             self.stdout.write(
                 "Wagtail 自带的 Editors / Moderators 组不存在，无需删除。"
+            )
+        if retire_wagtail_stock_workflow():
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "已停用 Wagtail 自带的「Moderators approval」工作流（没人能审批）。"
+                )
             )
 
         categories = ensure_article_categories()

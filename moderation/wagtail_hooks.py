@@ -50,7 +50,7 @@ def register_community_menu():
         "社区",
         community_menu,
         icon_name="group",
-        order=300,
+        order=310,
     )
 
 
@@ -60,7 +60,7 @@ def register_moderation_menu_item():
         "内容审核",
         reverse("moderation_index"),
         icon_name="view",
-        order=100,
+        order=50,
     )
 
 
@@ -70,5 +70,5 @@ def register_avatar_review_menu_item():
         "头像审核",
         reverse("avatar_review"),
         icon_name="user",
-        order=110,
+        order=60,
     )

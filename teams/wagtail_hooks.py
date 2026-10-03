@@ -139,7 +139,7 @@ def register_team_menu_item():
         "战队",
         reverse("teams:index"),
         icon_name="group",
-        order=200,
+        order=40,
     )
 
 

@@ -1,0 +1,28 @@
+# 项目自己补的后台脚本中文翻译（117 轮），说明见同目录的 django.po。
+# 原文取自 Wagtail 8 打包后的脚本里 gettext 调用、而 /admin/jsi18n/ 里没有的。
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "(New)"
+msgstr "（新）"
+
+msgid "(1 new item in this menu)"
+msgstr "（这个菜单里有 1 项新内容）"
+
+msgid "(%(number)s new items in this menu)"
+msgstr "（这个菜单里有 %(number)s 项新内容）"
+
+msgid "Blocks"
+msgstr "块"
+
+msgid "Insert a block"
+msgstr "插入块"
+
+msgid "Split block"
+msgstr "拆分块"
+
+msgid "Write something or type ‘/’ to insert a block"
+msgstr "输入内容，或输入「/」插入块"

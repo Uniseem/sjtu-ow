@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Count, Max
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -11,16 +13,28 @@ from core import prerender
 from core.fonts.admin_views import superuser_required
 from core.models import PrerenderedPage
 
+PER_PAGE = 50
+
 
 @superuser_required
 def prerender_index(request):
-    records = list(PrerenderedPage.objects.all())
-    failed = [item for item in records if item.status == PrerenderedPage.Status.FAILED]
-    ready = [item for item in records if item.status == PrerenderedPage.Status.READY]
-    latest = max(
-        (item.generated_at for item in ready if item.generated_at),
-        default=None,
+    counts = dict(
+        PrerenderedPage.objects.values_list("status").annotate(total=Count("id"))
     )
+    latest = PrerenderedPage.objects.filter(
+        status=PrerenderedPage.Status.READY
+    ).aggregate(latest=Max("generated_at"))["latest"]
+    status = request.GET.get("status", "")
+    if status not in PrerenderedPage.Status.values:
+        status = ""
+    records = PrerenderedPage.objects.all()
+    if status:
+        records = records.filter(status=status)
+    page = Paginator(records, PER_PAGE).get_page(request.GET.get("page"))
+    statuses = [("", "全部", sum(counts.values()))] + [
+        (value, label, counts.get(value, 0))
+        for value, label in PrerenderedPage.Status.choices
+    ]
     return render(
         request,
         "core/prerender/index.html",
@@ -28,9 +42,11 @@ def prerender_index(request):
             "page_title": "静态页面",
             "header_icon": "doc-full",
             "enabled": prerender.is_enabled(),
-            "records": records,
-            "ready_count": len(ready),
-            "failed": failed,
+            "records": page,
+            "status": status,
+            "statuses": statuses,
+            "ready_count": counts.get(PrerenderedPage.Status.READY, 0),
+            "failed_count": counts.get(PrerenderedPage.Status.FAILED, 0),
             "latest": latest,
             "disk_bytes": prerender.disk_usage(),
             "root": str(prerender.root()),

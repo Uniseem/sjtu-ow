@@ -572,6 +572,23 @@ class TypographyRule(models.Model):
 class PrerenderedPage(models.Model):
     """One public page that is, or should be, served as a static file (12.4.6)."""
 
+    # The ``kind`` codes the apps' prerender_targets give (round 117 shows
+    # them in Chinese in the admin list).
+    KIND_LABELS = {
+        "home": "首页",
+        "article_index": "文章栏目",
+        "article": "文章",
+        "standard": "普通页面",
+        "members": "成员展示",
+        "team_index": "战队列表",
+        "team": "战队主页",
+        "tournament_index": "赛事列表",
+        "tournament": "赛事详情",
+        "scrim_index": "内战列表",
+        "scrim": "内战详情",
+        "page": "其他页面",
+    }
+
     class Status(models.TextChoices):
         PENDING = "pending", "等待生成"
         READY = "ready", "已生成"
@@ -598,3 +615,7 @@ class PrerenderedPage(models.Model):
 
     def __str__(self):
         return self.path
+
+    @property
+    def kind_label(self) -> str:
+        return self.KIND_LABELS.get(self.kind, self.kind)

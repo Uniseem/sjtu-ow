@@ -209,7 +209,7 @@ def register_tournament_menu_item():
         "赛事",
         reverse("tournaments:index"),
         icon_name="date",
-        order=150,
+        order=10,
     )
 
 
@@ -308,7 +308,7 @@ def register_review_menu_item():
         "报名审核",
         reverse("registration_review_index"),
         icon_name="tasks",
-        order=160,
+        order=20,
     )
 
 

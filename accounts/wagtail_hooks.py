@@ -2,7 +2,9 @@
 
 from django.urls import reverse
 from wagtail import hooks
+from wagtail.admin.menu import Menu, SubmenuMenuItem
 from wagtail.admin.panels import FieldPanel
+from wagtail.admin.ui.tables import Column
 from wagtail.admin.views import account as wagtail_account
 from wagtail.admin.views import generic
 from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
@@ -10,7 +12,9 @@ from wagtail.admin.widgets.button import Button
 from wagtail.permission_policies.base import BasePermissionPolicy
 from wagtail.permissions import register_permission_policy
 
+from accounts.admin_users import USERS_MENU_HOOK
 from accounts.models import FeatureGroupRestriction, FeatureUserRule, User
+from accounts.services import GROUP_CONTENT
 
 # The admin account page is open to every admin user, which through 投稿者 is
 # every verified member (round 115). Its name panel asks for 名/姓 (the site
@@ -96,7 +100,18 @@ class FeatureUserRuleViewSet(ModelViewSet):
     icon = "user"
     add_to_admin_menu = False
     copy_view_enabled = False
-    list_display = ["user", "feature", "allowed", "note", "updated_by"]
+    list_display = [
+        "user",
+        "feature",
+        Column(
+            "allowed",
+            label="规则",
+            accessor=lambda rule: "单独允许" if rule.allowed else "单独禁止",
+            sort_key="allowed",
+        ),
+        "note",
+        "updated_by",
+    ]
     search_fields = ["note"]
     form_fields = ["user", "feature", "allowed", "note"]
     panels = [
@@ -115,8 +130,7 @@ class FeaturePermissionViewSetGroup(ModelViewSetGroup):
     menu_icon = "lock"
     menu_name = "feature_permissions"
     menu_order = 700
-    add_to_admin_menu = False
-    add_to_settings_menu = True
+    menu_hook = USERS_MENU_HOOK
     items = (FeatureGroupRestrictionViewSet, FeatureUserRuleViewSet)
 
 
@@ -135,3 +149,40 @@ def feature_rule_user_listing_button(user, request_user):
         icon_name="lock",
         priority=50,
     )
+
+
+users_menu = Menu(
+    register_hook_name=USERS_MENU_HOOK,
+    construct_hook_name="construct_users_menu",
+)
+
+
+@hooks.register("register_admin_menu_item")
+def register_users_menu():
+    """「用户」: users, groups and feature permissions, out of 「设置」
+    (design 14.1, round 117). Shown when any of them is (superusers)."""
+    return SubmenuMenuItem(
+        "用户",
+        users_menu,
+        name="users-menu",
+        icon_name="user",
+        order=8000,
+    )
+
+
+# Wagtail's own reports and help are for superusers and content editors
+# (design 14.1). The report pages filter by Wagtail's object permissions on
+# their own, so another role opening one by URL only sees its own objects.
+EDITOR_ONLY_MENUS = frozenset({"reports", "help"})
+
+
+@hooks.register("construct_main_menu")
+def hide_reports_and_help(request, menu_items):
+    user = request.user
+    if user.is_superuser or user.groups.filter(name=GROUP_CONTENT).exists():
+        return
+    menu_items[:] = [
+        item
+        for item in menu_items
+        if getattr(item, "name", "") not in EDITOR_ONLY_MENUS
+    ]

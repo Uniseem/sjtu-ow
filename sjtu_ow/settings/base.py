@@ -172,6 +172,9 @@ LANGUAGE_CODE = "zh-hans"
 TIME_ZONE = "Asia/Shanghai"
 USE_I18N = True
 USE_TZ = True
+# Wagtail 8's Chinese catalog misses a hundred-odd admin strings; the project
+# fills them in (core/translations.py, round 117).
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 STATIC_URL = "/static/"
 STATIC_ROOT = Path(env("STATIC_ROOT", str(BASE_DIR / "staticfiles")))
@@ -291,6 +294,14 @@ WAGTAIL_EMAIL_MANAGEMENT_ENABLED = False
 # ever rendered blank, and looking one up sends a hash of the admin's email
 # to a third party — which the privacy policy does not cover.
 WAGTAIL_GRAVATAR_PROVIDER_URL = None
+# The admin is in Chinese and on Beijing time only (design 14.1); with one
+# choice each, Wagtail drops the language and time zone pickers.
+WAGTAILADMIN_PERMITTED_LANGUAGES = [("zh-hans", "简体中文")]
+WAGTAIL_CONTENT_LANGUAGES = [("zh-hans", "简体中文")]
+WAGTAIL_USER_TIME_ZONES = ["Asia/Shanghai"]
+# Upgrading is the developers' job; the dashboard notice only told admins
+# about it, and had their browsers call Wagtail's server (round 117).
+WAGTAIL_ENABLE_UPDATE_CHECK = False
 WAGTAILSEARCH_BACKENDS = {
     "default": {
         "BACKEND": "wagtail.search.backends.database",

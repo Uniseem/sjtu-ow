@@ -10,7 +10,7 @@
   <dl>
     <dt>已生成</dt><dd>{{ ready_count }} 个页面</dd>
     <dt>最近生成时间</dt><dd>{{ latest|default:"—" }}</dd>
-    <dt>失败</dt><dd>{{ failed|length }} 个</dd>
+    <dt>失败</dt><dd>{{ failed_count }} 个</dd>
     <dt>磁盘占用</dt><dd>{{ disk_bytes|filesizeformat }}（{{ root }}）</dd>
   </dl>
 
@@ -24,6 +24,12 @@
       <button type="submit" class="button serious">清空全部静态文件</button>
     </form>
   </p>
+
+  <nav class="w-mb-4" aria-label="状态">
+    {% for value, label, count in statuses %}
+      <a href="?status={{ value }}" class="button {% if status == value %}button-primary{% else %}button-secondary{% endif %}">{{ label }}（{{ count }}）</a>
+    {% endfor %}
+  </nav>
 
   <table class="listing">
     <thead>
@@ -40,7 +46,7 @@
       {% for record in records %}
         <tr>
           <td><a href="{{ record.path }}">{{ record.path }}</a></td>
-          <td>{{ record.kind }}</td>
+          <td>{{ record.kind_label }}</td>
           <td>
             {{ record.get_status_display }}
             {% if record.error %}<br><span class="help-block help-critical">{{ record.error }}</span>{% endif %}
@@ -56,8 +62,16 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="6">还没有记录。发布内容或点「全部重新生成」后会出现。</td></tr>
+        <tr><td colspan="6">{% if status %}没有这个状态的页面。{% else %}还没有记录。发布内容或点「全部重新生成」后会出现。{% endif %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
+
+  {% if records.has_other_pages %}
+    <p>
+      {% if records.has_previous %}<a href="?page={{ records.previous_page_number }}&amp;status={{ status }}">上一页</a>{% endif %}
+      第 {{ records.number }} / {{ records.paginator.num_pages }} 页
+      {% if records.has_next %}<a href="?page={{ records.next_page_number }}&amp;status={{ status }}">下一页</a>{% endif %}
+    </p>
+  {% endif %}
 {% endblock %}

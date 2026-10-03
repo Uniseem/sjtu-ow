@@ -40,6 +40,19 @@ def is_submitter_only(user) -> bool:
     return names.isdisjoint(STAFF_BESIDES_SUBMITTER)
 
 
+def sees_only_own_drafts(user) -> bool:
+    """In the page tree, everyone but superusers and content editors sees
+    only live pages and their own (14.3). Round 117 widened this from pure
+    submitters: tournament and scrim managers are submitters too once their
+    email is verified, and verified authors may only edit their own pages,
+    yet both were shown other people's unpublished titles."""
+    if user is None or not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_superuser", False):
+        return False
+    return GROUP_CONTENT not in _group_names(user)
+
+
 def user_can_edit_author(user) -> bool:
     if user is None or not getattr(user, "is_authenticated", False):
         return False

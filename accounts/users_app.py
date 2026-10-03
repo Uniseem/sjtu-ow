@@ -7,3 +7,4 @@ from wagtail.users.apps import WagtailUsersAppConfig
 
 class SiteUsersAppConfig(WagtailUsersAppConfig):
     user_viewset = "accounts.admin_users.SiteUserViewSet"
+    group_viewset = "accounts.admin_users.SiteGroupViewSet"

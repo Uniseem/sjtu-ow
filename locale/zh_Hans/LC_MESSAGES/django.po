@@ -1,0 +1,460 @@
+# 项目自己补的后台中文翻译（117 轮）。
+#
+# Wagtail 8 的简体中文翻译缺了一百多条，后台到处是英文。这里只放 Wagtail
+# 没翻译的原文（逐页渲染后台、记下查不到译文的字符串得来的），外加两条
+# 「帐号」改成全站统一的「账号」。原文必须和 Wagtail 源码一字不差。
+# 改完运行 `uv run python manage.py compile_translations`，把 .mo 一起提交。
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# 全站统一写「账号」（Wagtail 原译「帐号」）
+msgid "Account"
+msgstr "账号"
+
+msgid "Your account settings have been changed successfully!"
+msgstr "账号设置已保存。"
+
+# 页面树、列表
+msgid "Exploring"
+msgstr "正在浏览"
+
+msgid "Sort by '%(label)s' in ascending order."
+msgstr "按「%(label)s」升序排列。"
+
+msgid "Sort by '%(label)s' in descending order."
+msgstr "按「%(label)s」降序排列。"
+
+msgid "Date updated"
+msgstr "更新时间"
+
+msgid "Edited by"
+msgstr "编辑人"
+
+msgid "Has child pages"
+msgstr "有子页面"
+
+msgid "Page type"
+msgstr "页面类型"
+
+msgid "Any"
+msgstr "不限"
+
+msgid ""
+"The root level is where you can add new sites to your Wagtail installation. "
+"Pages created here will not be accessible at any URL until they are "
+"associated with a site."
+msgstr "根层级用来添加新的站点。在这里创建的页面要关联到一个站点之后才能通过网址访问。"
+
+msgid ""
+"If you just want to add pages to an existing site, create them as children "
+"of the homepage instead."
+msgstr "如果只是想给现有站点加页面，请在首页下面创建。"
+
+msgid "%(start_index)s-%(end_index)s of %(items_count)s %(model_name)s"
+msgstr "第 %(start_index)s–%(end_index)s 条，共 %(items_count)s 条%(model_name)s"
+
+msgid ""
+"There are no %(model_name)s to display. Why not <a href=\"%(add_url)s\">add "
+"one</a>?"
+msgstr "还没有%(model_name)s，<a href=\"%(add_url)s\">现在添加</a>。"
+
+msgid "New: %(model_name)s"
+msgstr "新建%(model_name)s"
+
+msgid "Actions (footer)"
+msgstr "操作（底部）"
+
+msgid "Go to the first error"
+msgstr "跳到第一个错误"
+
+msgid "Compare"
+msgstr "比较"
+
+msgid "%(time)s by %(user_display_name)s"
+msgstr "%(user_display_name)s 于 %(time)s"
+
+msgid "%(time_period)s ago by %(user_display_name)s"
+msgstr "%(user_display_name)s 于 %(time_period)s前"
+
+msgid "To be created by %(user)s"
+msgstr "将由 %(user)s 创建"
+
+msgid "This %(model_name)s is referenced %(usage_count)s time."
+msgid_plural "This %(model_name)s is referenced %(usage_count)s times."
+msgstr[0] "这个%(model_name)s被引用了 %(usage_count)s 次。"
+
+msgid "Referenced %(count)s time"
+msgid_plural "Referenced %(count)s times"
+msgstr[0] "被引用 %(count)s 次"
+
+# 后台首页
+msgid "Search all pages…"
+msgstr "搜索全部页面…"
+
+msgid ""
+"%(total)s Page <span class=\"w-sr-only\">created in %(site_name)s</span>"
+msgid_plural ""
+"%(total)s Pages <span class=\"w-sr-only\">created in %(site_name)s</span>"
+msgstr[0] "%(total)s 个页面<span class=\"w-sr-only\">（%(site_name)s）</span>"
+
+msgid ""
+"%(total)s Image <span class=\"w-sr-only\">created in %(site_name)s</span>"
+msgid_plural ""
+"%(total)s Images <span class=\"w-sr-only\">created in %(site_name)s</span>"
+msgstr[0] "%(total)s 张图片<span class=\"w-sr-only\">（%(site_name)s）</span>"
+
+msgid ""
+"%(total)s Document <span class=\"w-sr-only\">created in %(site_name)s</span>"
+msgid_plural ""
+"%(total)s Documents <span class=\"w-sr-only\">created in %(site_name)s</span>"
+msgstr[0] "%(total)s 个文档<span class=\"w-sr-only\">（%(site_name)s）</span>"
+
+msgid "Edit account avatar"
+msgstr "账号设置"
+
+msgid "Wagtail %(current_version)s editor guide"
+msgstr "Wagtail %(current_version)s 编辑指南"
+
+msgid "Wagtail upgrade available"
+msgstr "Wagtail 有新版本"
+
+msgid ""
+"Your version: <strong>%(current_version)s</strong>. New version: <strong "
+"data-w-upgrade-target=\"latestVersion\"></strong>."
+msgstr ""
+"当前版本：<strong>%(current_version)s</strong>。新版本：<strong data-w-"
+"upgrade-target=\"latestVersion\"></strong>。"
+
+msgid "Read the release notes."
+msgstr "查看更新说明。"
+
+msgid ""
+"JavaScript is required to use Wagtail, but it is currently disabled.<br /> "
+"Here are the <a href=\"https://www.enable-javascript.com/\" target=\"_blank\" "
+"rel=\"noreferrer\">instructions how to enable JavaScript in your web "
+"browser</a>."
+msgstr ""
+"后台需要 JavaScript，但浏览器现在禁用了它。<br /> 可以参考<a href=\"https://"
+"www.enable-javascript.com/\" target=\"_blank\" rel=\"noreferrer\">在浏览器里"
+"启用 JavaScript 的方法</a>。"
+
+# 报告
+msgid "Page types usage"
+msgstr "页面类型使用情况"
+
+msgid "Locked by"
+msgstr "锁定人"
+
+msgid "Anyone"
+msgstr "不限"
+
+msgid "By task"
+msgstr "按任务"
+
+msgid "By workflow"
+msgstr "按工作流"
+
+msgid "Is commenting action"
+msgstr "是否评论操作"
+
+# 帮助菜单、快捷键
+msgid "Shortcuts"
+msgstr "快捷键"
+
+msgid "Show keyboard shortcuts"
+msgstr "显示快捷键"
+
+msgid "Section"
+msgstr "分类"
+
+msgid "Application"
+msgstr "通用"
+
+msgid "Text editing"
+msgstr "文本编辑"
+
+msgid "Text formatting"
+msgstr "文本格式"
+
+msgid "Toggle minimap"
+msgstr "显示或隐藏缩略导航"
+
+msgid "Close modal dialogs (like this one)"
+msgstr "关闭对话框（比如这个）"
+
+msgid "Save changes"
+msgstr "保存修改"
+
+msgid "Add or show comments"
+msgstr "添加或查看评论"
+
+msgid "Cut"
+msgstr "剪切"
+
+msgid "Paste"
+msgstr "粘贴"
+
+msgid "Paste without formatting"
+msgstr "粘贴为纯文本"
+
+msgid "Insert or edit a link"
+msgstr "插入或编辑链接"
+
+msgid "Monospace (code)"
+msgstr "等宽（代码）"
+
+msgid "Strike-through"
+msgstr "删除线"
+
+msgid "account"
+msgstr "账号设置"
+
+msgid ""
+"Keyboard shortcuts are currently enabled; manage your %(account_link)s to "
+"disable them."
+msgstr "快捷键现在是开着的，可以在%(account_link)s里关闭。"
+
+# 账号页
+msgid "Theme preferences"
+msgstr "主题偏好"
+
+msgid "admin theme"
+msgstr "后台主题"
+
+msgid "contrast"
+msgstr "对比度"
+
+msgid "More contrast"
+msgstr "更高对比度"
+
+msgid "density"
+msgstr "密度"
+
+msgid "Snug"
+msgstr "紧凑"
+
+msgid "Enable custom keyboard shortcuts specific to Wagtail."
+msgstr "启用后台专用的快捷键。"
+
+msgid "Use server language: %(language_name)s"
+msgstr "使用服务器语言：%(language_name)s"
+
+msgid "Save your changes before leaving"
+msgstr "离开前请先保存修改"
+
+# 编辑页：自动保存、侧栏
+msgid "Saved"
+msgstr "已保存"
+
+msgid "Autosave is paused"
+msgstr "自动保存已暂停"
+
+msgid "Autosave is <span>paused</span>"
+msgstr "自动保存<span>已暂停</span>"
+
+msgid "A network error occurred"
+msgstr "网络出错了"
+
+msgid ""
+"Troubleshoot your connection to the site before proceeding. Open the editor "
+"in a separate tab to view the last saved version."
+msgstr "请先检查和网站的连接再继续。可以在新标签页里打开编辑页，看最后一次保存的版本。"
+
+msgid "View latest version"
+msgstr "查看最新版本"
+
+msgid "Locking: "
+msgstr "锁定："
+
+msgid "Anyone can edit this %(model_name)s"
+msgstr "任何人都能编辑这个%(model_name)s"
+
+msgid ""
+"Anyone can edit this %(model_name)s – lock it to prevent others from editing"
+msgstr "任何人都能编辑这个%(model_name)s，锁定后别人就不能改了"
+
+msgid "Choose who can view the live version of this page"
+msgstr "选择谁能看到这个页面已发布的版本"
+
+msgid "Choose when this %(model_name)s should go live and/or expire"
+msgstr "选择这个%(model_name)s什么时候上线、什么时候过期"
+
+msgid "Choose when this page should go live and/or expire"
+msgstr "选择这个页面什么时候上线、什么时候过期"
+
+msgid ""
+"This publishing schedule will only take effect after you select the "
+"\"Schedule to publish\" option"
+msgstr "选了「定时发布」之后，这个发布计划才生效"
+
+msgid ""
+"Correct the validation errors to resume preview (saving will highlight "
+"errors)"
+msgstr "改正填写错误后才能继续预览（保存时会标出错误）"
+
+# 编辑页：检查和内容指标
+msgid "Toggle checks"
+msgstr "显示或隐藏检查"
+
+msgid "Checks"
+msgstr "检查"
+
+msgid "Show issue"
+msgstr "查看问题"
+
+msgid "Content metrics"
+msgstr "内容指标"
+
+msgid "Words"
+msgstr "字数"
+
+msgid "Reading time"
+msgstr "阅读时间"
+
+msgid "Readability"
+msgstr "可读性"
+
+msgid "This data explained"
+msgstr "这些数据怎么来的"
+
+msgid "How we calculate our metrics"
+msgstr "指标的计算方法"
+
+msgid ""
+"We extract the main content from the page preview, remove all formatting, "
+"and calculate the number of words."
+msgstr "从页面预览里取出正文，去掉所有格式，再统计字数。"
+
+msgid ""
+"We calculate reading time from word count, using different reading speeds "
+"for different languages."
+msgstr "按字数估算阅读时间，不同语言按不同的阅读速度算。"
+
+msgid ""
+"We use a readability formula based on length of words and sentences. Long "
+"sentences and words result in a worse readability score."
+msgstr "按词和句子的长度计算可读性，句子和词越长，分数越差。"
+
+msgid ""
+"See our <a href=\"%(guide_link)s\" target=\"_blank\">content checks guide</a> "
+"for more information on how content metrics are calculated."
+msgstr "指标怎么算，详见<a href=\"%(guide_link)s\" target=\"_blank\">内容检查指南</a>（英文）。"
+
+msgid "Button text is empty"
+msgstr "按钮没有文字"
+
+msgid "Input button text is empty"
+msgstr "输入按钮没有文字"
+
+msgid "Link text is empty"
+msgstr "链接没有文字"
+
+msgid "Use meaningful text for screen reader users"
+msgstr "写上有意义的文字，方便用读屏软件的人"
+
+msgid "Use meaningful text"
+msgstr "写上有意义的文字"
+
+msgid "Empty heading found"
+msgstr "有空的标题"
+
+msgid "Table header text is empty"
+msgstr "表头没有文字"
+
+msgid "Empty frame title found"
+msgstr "有没写标题的内嵌框架"
+
+msgid "Use a meaningful title for screen reader users"
+msgstr "写上有意义的标题，方便用读屏软件的人"
+
+msgid "Incorrect heading hierarchy"
+msgstr "标题层级不对"
+
+msgid "Avoid skipping levels"
+msgstr "不要跳级"
+
+msgid "Misusing paragraphs as headings"
+msgstr "把段落当标题用了"
+
+msgid "Use proper heading tags"
+msgstr "请用标题格式"
+
+msgid "Image alt text has inappropriate pattern"
+msgstr "图片说明的写法不合适"
+
+msgid "Meta description is empty"
+msgstr "页面描述是空的"
+
+msgid "Add a concise description for search engines"
+msgstr "给搜索引擎写一句简短的描述"
+
+# 页面的访问权限
+msgid "Private, accessible with a shared password"
+msgstr "不公开，凭共享密码访问"
+
+msgid "Private, accessible to any logged-in users"
+msgstr "不公开，登录的人都能访问"
+
+msgid ""
+"Shared passwords should not be used to protect sensitive content. Anyone who "
+"has this password will be able to view the content."
+msgstr "共享密码不能用来保护敏感内容：知道密码的人都能看到。"
+
+msgid "shared password"
+msgstr "共享密码"
+
+# 图片
+msgid "Oldest"
+msgstr "最早"
+
+msgid "Usage count: (low to high)"
+msgstr "引用次数（从少到多）"
+
+msgid "Usage count: (high to low)"
+msgstr "引用次数（从多到少）"
+
+msgid "Grid layout"
+msgstr "网格"
+
+msgid "List layout"
+msgstr "列表"
+
+msgid "Image focal point"
+msgstr "图片焦点"
+
+msgid ""
+"Please provide an image description to comply with best practices for "
+"accessibility."
+msgstr "请填写图片说明，方便用读屏软件的人。"
+
+msgid ""
+"Upload successful. However, your new image seems to be a duplicate of this "
+"existing image. You may delete it if it wasn't required."
+msgstr "上传成功，但这张图和下面这张已有的图片好像是重复的，不需要的话可以删掉。"
+
+# 用户组、工作流
+msgid "Can view"
+msgstr "可以查看"
+
+msgid "Can access Wagtail admin"
+msgstr "可以进入后台"
+
+msgid "Toggle all change permissions"
+msgstr "全选或取消所有修改权限"
+
+msgid "Toggle all delete permissions"
+msgstr "全选或取消所有删除权限"
+
+msgid "Toggle all custom permissions"
+msgstr "全选或取消所有自定义权限"
+
+msgid "Show disabled"
+msgstr "显示已停用的"
+
+msgid ""
+"Pages/snippets at this step in a workflow will be moderated or approved by "
+"these groups of users"
+msgstr "工作流走到这一步时，页面或片段由这些用户组审核"

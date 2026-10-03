@@ -32,6 +32,8 @@ INITIAL_CATEGORIES = (
 )
 
 WAGTAIL_STOCK_GROUP_NAMES = ("Editors", "Moderators")
+WAGTAIL_STOCK_WORKFLOW_NAME = "Moderators approval"
+ROOT_TITLE = "根目录"
 
 SITE_DISPLAY_NAME = "上海交通大学守望先锋社区"
 
@@ -111,6 +113,31 @@ def remove_wagtail_stock_groups() -> list[str]:
     return names
 
 
+def retire_wagtail_stock_workflow() -> bool:
+    """Switch off Wagtail's stock 「Moderators approval」 workflow (round 117).
+
+    Wagtail's own migration puts it on the root page, with one task that
+    asks the stock Moderators group — which ``remove_wagtail_stock_groups``
+    deletes. A page outside the article sections submitted for moderation
+    would then wait for nobody. Left alone when someone gave it approvers.
+    """
+    retired = False
+    for workflow in Workflow.objects.filter(
+        name=WAGTAIL_STOCK_WORKFLOW_NAME, active=True
+    ):
+        tasks = [item.task.specific for item in workflow.workflow_tasks.all()]
+        if any(
+            getattr(task, "groups", None) and task.groups.exists() for task in tasks
+        ):
+            continue
+        workflow.deactivate()
+        for task in tasks:
+            if task.name == WAGTAIL_STOCK_WORKFLOW_NAME and task.active:
+                task.deactivate()
+        retired = True
+    return retired
+
+
 def _default_locale() -> Locale:
     locale = Locale.objects.first()
     if locale is None:
@@ -124,7 +151,7 @@ def _ensure_root() -> Page:
     root = Page.get_first_root_node()
     if root is not None:
         return root
-    return Page.add_root(title="Root", slug="root", locale=_default_locale())
+    return Page.add_root(title=ROOT_TITLE, slug="root", locale=_default_locale())
 
 
 def _ensure_child(parent: Page, model, title: str, slug: str, **fields):
@@ -241,7 +268,7 @@ def _grant_collection_perms(
 def ensure_submission_image_collection() -> Collection:
     root = Collection.get_first_root_node()
     if root is None:
-        root = Collection.add_root(name="Root")
+        root = Collection.add_root(name=ROOT_TITLE)
     existing = root.get_children().filter(name=SUBMISSION_IMAGE_COLLECTION).first()
     if existing is not None:
         return existing
@@ -255,7 +282,7 @@ def ensure_default_cover_collection() -> Collection:
 
     root = Collection.get_first_root_node()
     if root is None:
-        root = Collection.add_root(name="Root")
+        root = Collection.add_root(name=ROOT_TITLE)
     existing = root.get_children().filter(name=DEFAULT_COVER_COLLECTION).first()
     if existing is not None:
         return existing
@@ -269,7 +296,7 @@ def ensure_default_avatar_collection() -> Collection:
 
     root = Collection.get_first_root_node()
     if root is None:
-        root = Collection.add_root(name="Root")
+        root = Collection.add_root(name=ROOT_TITLE)
     existing = root.get_children().filter(name=DEFAULT_AVATAR_COLLECTION).first()
     if existing is not None:
         return existing
@@ -284,7 +311,7 @@ def ensure_user_avatar_collection() -> Collection:
     2.3, v6.11). Not a pool: nothing is picked from it."""
     root = Collection.get_first_root_node()
     if root is None:
-        root = Collection.add_root(name="Root")
+        root = Collection.add_root(name=ROOT_TITLE)
     existing = root.get_children().filter(name=USER_AVATAR_COLLECTION).first()
     if existing is not None:
         return existing

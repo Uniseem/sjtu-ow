@@ -5,13 +5,14 @@ from django.urls import reverse
 from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 from wagtail.admin.ui.components import Component
+from wagtail.admin.ui.tables import BooleanColumn
 from wagtail.models import WorkflowState
 from wagtail.permission_policies.pages import PagePermissionPolicy
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
 
 from content.models import ArticleCategory, ArticlePage
-from content.permissions import is_submitter_only
+from content.permissions import is_submitter_only, sees_only_own_drafts
 from content.services import article_create_admin_url
 
 SUBMITTER_MENU_ALLOWLIST = frozenset({"images", "home"})
@@ -22,9 +23,16 @@ class ArticleCategoryViewSet(SnippetViewSet):
     icon = "tag"
     menu_label = "文章分类"
     menu_name = "article_categories"
-    menu_order = 250
+    menu_order = 330
     add_to_admin_menu = True
-    list_display = ["name", "slug", "sort_order", "allow_submission"]
+    list_display = [
+        "name",
+        "slug",
+        "sort_order",
+        BooleanColumn(
+            "allow_submission", label="开放投稿", sort_key="allow_submission"
+        ),
+    ]
     search_fields = ["name", "slug"]
     ordering = ["sort_order", "name"]
     copy_view_enabled = False
@@ -114,7 +122,7 @@ def hide_summary_for_submitters(request, items):
 
 @hooks.register("construct_explorer_page_queryset")
 def filter_submitter_explorer(parent_page, pages, request):
-    if not is_submitter_only(request.user):
+    if not sees_only_own_drafts(request.user):
         return pages
     return pages.filter(Q(live=True) | Q(owner=request.user))
 
@@ -124,7 +132,7 @@ _original_explorable_instances = PagePermissionPolicy.explorable_instances
 
 def _explorable_instances_for_submitters(self, user):
     pages = _original_explorable_instances(self, user)
-    if is_submitter_only(user):
+    if sees_only_own_drafts(user):
         return pages.filter(Q(live=True) | Q(owner=user))
     return pages
 

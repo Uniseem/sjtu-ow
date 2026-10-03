@@ -113,5 +113,5 @@ def register_comment_menu_item():
         "评论",
         reverse("comments:index"),
         icon_name="comment",
-        order=170,
+        order=70,
     )
