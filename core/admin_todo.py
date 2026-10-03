@@ -16,6 +16,8 @@ from wagtail.admin.ui.components import Component
 FINISH_NUDGE_AFTER = timezone.timedelta(days=3)
 MAIL_LOOKBACK = timezone.timedelta(days=7)
 BACKUP_STALE = timezone.timedelta(hours=36)
+AI_LOOKBACK = timezone.timedelta(hours=24)
+FAILED_CALL = "调用失败："
 
 
 @dataclass(frozen=True)
@@ -212,6 +214,21 @@ def backup_problems(now=None) -> list[str]:
     return problems
 
 
+def ai_failures(now=None) -> tuple[int, str]:
+    """Design 14.1 (v6.46): reviews the provider could not answer in the past
+    day, and why. They land in the queue as 「无法判定」, looking like a content
+    problem when the key or the service is broken."""
+    from moderation.models import ModerationItem
+
+    failed = ModerationItem.objects.filter(
+        checked_at__gte=(now or timezone.now()) - AI_LOOKBACK,
+        reason__startswith=FAILED_CALL,
+    ).order_by("-checked_at")
+    count = failed.count()
+    last = failed.values_list("reason", flat=True).first() if count else ""
+    return count, (last or "").removeprefix(FAILED_CALL)[:120]
+
+
 def _site_rows(user) -> list[Todo]:
     from core.admin_setup import _settings_url
     from core.models import PrerenderedPage, SiteSettings
@@ -239,6 +256,16 @@ def _site_rows(user) -> list[Todo]:
                 f"后台任务（worker）没在运行：{detail}。邮件、提醒、静态页都停了，"
                 "到服务器上看 worker 容器",
                 "/healthz",
+            )
+        )
+    calls, why = ai_failures()
+    if calls:
+        rows.append(
+            Todo(
+                f"AI 审核最近 24 小时有 {calls} 次调用失败（{why}），"
+                "检查密钥和接口，在内容审核页点「试一下」",
+                reverse("moderation_index"),
+                calls,
             )
         )
     for problem in backup_problems():

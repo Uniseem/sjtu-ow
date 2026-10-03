@@ -566,3 +566,18 @@ def test_the_owner_hears_about_missing_or_failed_backups(
         encoding="utf-8",
     )
     assert "最近一次备份的异地上传失败：上传失败：bucket says no" in _todo(client)
+
+
+@pytest.mark.django_db
+def test_the_owner_hears_when_the_ai_cannot_be_reached(site, client):
+    """Round 153 (design 14.1, v6.46)."""
+    now = timezone.now()
+    _flagged(reason="调用失败：HTTP 401", checked_at=now - timedelta(hours=2))
+    _flagged(reason="调用失败：HTTP 500", checked_at=now - timedelta(hours=30))
+    _flagged(reason="疑似广告", checked_at=now - timedelta(hours=1))
+    client.force_login(_staff("root153@example.com", superuser=True))
+    todo = _todo(client)
+    assert "AI 审核最近 24 小时有 1 次调用失败（HTTP 401）" in todo
+    assert reverse("moderation_index") in todo
+    client.force_login(_staff("editor153@example.com", "内容编辑"))
+    assert "调用失败" not in _todo(client)
