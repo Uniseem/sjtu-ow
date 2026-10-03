@@ -152,6 +152,8 @@ journalctl -u cron | grep CMD      # 看任务有没有按时跑
 
 **改了 `deploy/Caddyfile` 之后要 `$C restart proxy`**：Caddyfile 全局关了管理接口（`admin off`），`caddy reload` 用不了。改之前可以先验证：`docker run --rm -e CADDY_SITE_ADDRESS=:80 -v $PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`。
 
+**前面还有一层反向代理时**（演示站就是，120 起；设计 16.9）：域名写进 `DJANGO_ALLOWED_HOSTS`，`SITE_URL`、`DJANGO_CSRF_TRUSTED_ORIGINS` 用 `https://域名`，改完 `up -d`、同步 Wagtail 站点地址（`init_site` 会做）再全量 `prerender`；Caddy 全局块加 `servers { trusted_proxies static <反代连过来的地址段>` 和 `trusted_proxies_strict }`。症状对照：**只有后台、登录、成员个人页 400，首页正常**＝域名不在 `ALLOWED_HOSTS`。Caddy 没信任反代时，它会丢掉反代带来的 `X-Forwarded-Proto: https`，Django 以为是明文 HTTP，限流看到的访客也全成了反代的地址。Caddy 算出的访客地址经 `X-Real-IP` 交给 Django，只用来限流，不写日志。
+
 `init_site` 创建全部预置用户组（交大用户、校外用户、内容编辑、赛事管理员、内战管理员、认证作者、投稿者），删除 Wagtail 自带的 Editors / Moderators，写入文章分类和页面树（首页、「资讯」、用户协议、隐私政策、关于我们），按 `SITE_URL` 设置 Wagtail 默认站点的主机名和端口（`https` 默认 443、`http` 默认 80，带端口时用给定端口），创建「内容审核」工作流并绑定到文章栏目，创建「投稿图片」「默认封面」「默认头像」「用户头像」四个图片集合，并为后台角色分配进入 Wagtail 的权限、为赛事/内战管理员分配查看联系方式的权限，以及各自管理赛事、内战的权限、为投稿相关角色分配栏目和图片权限。然后按「邮箱已验证且可以使用投稿功能」同步「投稿者」组成员，创建 9 个排版区域（默认系统字体）并生成初始字体样式表。命令可重复执行，不会改写已有成员关系（投稿者组除外）或已改过的分类名称：
 
 ```bash

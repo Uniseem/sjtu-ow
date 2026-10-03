@@ -8,11 +8,14 @@ from django.core.cache import cache
 
 
 def client_ip(request) -> str:
-    """The visitor's address. Caddy appends it to X-Forwarded-For."""
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    if forwarded:
-        return forwarded.split(",")[-1].strip()
-    return request.META.get("REMOTE_ADDR", "")
+    """The visitor's address. Caddy works it out, honouring the reverse
+    proxies it trusts, and sends it as X-Real-IP in place of any the visitor
+    sent (deploy/Caddyfile, round 120). The last X-Forwarded-For entry used
+    here before is the outer proxy once there is one. Without Caddy
+    (development) it is REMOTE_ADDR."""
+    return request.headers.get("X-Real-IP", "").strip() or request.META.get(
+        "REMOTE_ADDR", ""
+    )
 
 
 def over_limit(key: str, limit: int, window_seconds: int = 60) -> bool:

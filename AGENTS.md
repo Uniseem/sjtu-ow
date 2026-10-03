@@ -63,7 +63,7 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 
 | 项目 | 内容 |
 |---|---|
-| 域名 | `sjtu.ow-shanghaiuniversity.com`，经 CNAME 指向一个线路优化服务，最终解析到 `185.99.135.224`。模拟交大、国内、海外来源查询，结果都是这个 IP（050 轮核对） |
+| 域名 | 原来是 `sjtu.ow-shanghaiuniversity.com`（050 轮核对时解析到这台）。**2026-10-04 起这个域名给了第二台的演示站**（见下一节），测试机现在没有域名 |
 | 权限 | **助手拥有这台机器的全部权限**，可以直接部署、改配置、重启服务 |
 | 登录 | SSH 密钥登录。登录用户和密钥位置在开发者本机的 SSH 配置里，**不写进仓库**（仓库是公开的） |
 | 部署目录 | `/srv/sjtu-ow`（和 `deploy/crontab.example` 里的路径一致）。`.env` 在服务器上，权限 600，密钥是在服务器上生成的 |
@@ -86,15 +86,16 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 | 登录 | `root`，SSH 密钥（开发者本机的 `id_ed25519`），Debian 12，Docker 29 / Compose v5 |
 | 部署目录 | `/srv/sjtu-ow`；`.env` 权限 600，三把密钥在服务器上生成（`secrets.token_urlsafe`），没离开过服务器 |
 | Compose | 项目名 `sjtu-ow`。**每条命令**：`docker compose -p sjtu-ow -f deploy/docker-compose.yml -f deploy/docker-compose.vps.yml --env-file .env` |
-| 本机专用文件（不在仓库里） | `deploy/docker-compose.vps.yml`：`proxy` 的端口用 `!override` 换成 `22887:80`，站点地址 `:80`，挂 `Caddyfile.vps`；`deploy/Caddyfile.vps`：仓库 Caddyfile 的全局块加 `servers { trusted_proxies static private_ranges }`，信任同机反向代理带来的 `X-Forwarded-Proto` |
-| `.env` 要点 | `DJANGO_ALLOWED_HOSTS=169.58.217.180,localhost`、`SITE_URL` 和 `DJANGO_CSRF_TRUSTED_ORIGINS` 是 `http://169.58.217.180:22887`（**用户给了域名后要加上域名并改成 https**，然后 `up -d`）；`DJANGO_SECURE_SSL_REDIRECT=false`（跳转由用户的反向代理做）；`TEST_ENVIRONMENT=1`（横幅、禁止抓取，用户说是正式站再关） |
+| 本机专用文件（不在仓库里） | `deploy/docker-compose.vps.yml`：`proxy` 的端口用 `!override` 换成 `22887:80`，站点地址 `:80`，挂 `Caddyfile.vps`；`deploy/Caddyfile.vps`：仓库 Caddyfile 的全局块（`admin off` 下面）加 `servers { trusted_proxies static private_ranges 100.96.0.0/12` 和 `trusted_proxies_strict }`（120 起），信任反代带来的 `X-Forwarded-Proto` 和访客 IP |
+| 域名与反代（120 起） | `sjtu.ow-shanghaiuniversity.com` → CNAME `anylocate.cc`（`189.24.110.12`，用户自己的反向代理，**在另一台机器上**）→ 经 **Cloudflare WARP 内网**连到本机 22887，来源地址 `100.96.0.x`。所以 `Caddyfile.vps` 要信任 `100.96.0.0/12`，否则反代带来的 `X-Forwarded-Proto: https` 和访客 IP 会被 Caddy 丢掉 |
+| `.env` 要点 | `DJANGO_ALLOWED_HOSTS=sjtu.ow-shanghaiuniversity.com,169.58.217.180,localhost`；`SITE_URL=https://sjtu.ow-shanghaiuniversity.com`；`DJANGO_CSRF_TRUSTED_ORIGINS=https://sjtu.ow-shanghaiuniversity.com,http://169.58.217.180:22887`（120 改，改前备份在 `.env.bak-120`）。**域名不在 `ALLOWED_HOSTS` 里时，Django 生成的页面（后台、登录、成员个人页）全部 400，预渲染页照常**，看起来像「有些页面坏了」。改了 `SITE_URL` 要同步 Wagtail 站点地址（`content.services.sync_default_site_from_site_url()`）再全量 `prerender`。`DJANGO_SECURE_SSL_REDIRECT=false`（跳转由用户的反向代理做）；`TEST_ENVIRONMENT=1`（横幅、禁止抓取，用户说是正式站再关） |
 | 定时任务 | `/etc/cron.d/sjtu-ow`（不碰 root 的 crontab）。服务器时区是 **Europe/Berlin**，cron 不支持 `CRON_TZ`，模板的北京时间按夏令时减 6 小时写 |
 | 登录后台 | 生产设置的 Cookie 只走 HTTPS，**直接用 `http://IP:22887` 登录不了**，要等反向代理配好 HTTPS。管理员账号由用户自己建：`… exec web python manage.py createsuperuser` |
 | 对外演示站（102 起） | 用户要的是「已经填入了测试数据的版本，作为对外的演示站」：库是本机演示库恢复过去的（40 个演示用户、7 支战队、21 篇文章、70 条评论，邮箱都是 `demo.example.com`，SMTP 没配），之后的补充都用脚本在服务器上直接跑（`handoff/rounds/102-demo-site/`），**不要再用备份整库覆盖**：会冲掉用户在服务器上建的管理员和改动。头像是 nekos.best 的动漫插画（用户选的，版权归画师，画师和出处记在图片说明里）；111 起偶数编号的 20 人按用户要求拿掉了头像、显示默认头像，原来的图片编号在服务器 `/root/avatars_removed.json` |
 
 在服务器上跑一段脚本：`$C exec -T web python manage.py shell < /root/脚本.py`（`$C` 是上面那条 Compose 命令；Linux 上 Django 会把整段输入当脚本执行）。
 
-**仓库的 `deploy/Caddyfile` 改了之后**，`Caddyfile.vps` 要跟着重新生成：它就是仓库那份在 `admin off` 下面插 5 行 `servers { trusted_proxies static private_ranges }`（105 用 `awk` 插入、`diff` 核对）；然后 `caddy validate`、`$C restart proxy`。升级后用 `docker images | grep sjtu-ow` 看一眼镜像时间：105 有一次 `build -q` 什么都没构建也没报错，容器跑的还是旧镜像
+**仓库的 `deploy/Caddyfile` 改了之后**，`Caddyfile.vps` 要跟着重新生成：它就是仓库那份在 `admin off` 下面插上一行说的 `servers` 块（105 用 `awk` 插入、`diff` 核对；120 起块里是两行：`trusted_proxies static private_ranges 100.96.0.0/12`、`trusted_proxies_strict`）；然后 `caddy validate`、`$C restart proxy`。升级后用 `docker images | grep sjtu-ow` 看一眼镜像时间：105 有一次 `build -q` 什么都没构建也没报错，容器跑的还是旧镜像
 
 这台机器上还跑着 WordPress、HedgeDoc、FileCodeBox、相册和几个监控进程，规矩和测试机一样：只动 `/srv/sjtu-ow` 和 `sjtu-ow` 这个 Compose 项目，不做全局清理。升级照 README「生产 / 测试环境启动」，命令换成上面那条，升级后全量 `prerender`。
 

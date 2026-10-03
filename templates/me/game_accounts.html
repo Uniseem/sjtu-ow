@@ -19,9 +19,6 @@
       {% endif %}
     >
       {% csrf_token %}
-      {% if form.non_field_errors %}
-        <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ form.non_field_errors.0 }}</span></p>
-      {% endif %}
       {% include "account/_form.html" %}
       <div class="flex flex-wrap gap-3">
         <button type="submit" class="c-btn c-btn--primary">保存</button>

@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.utils.encoding import force_str
 
 from core.mail import get_from_email
+from core.ratelimit import client_ip
 
 
 def user_display(user) -> str:
@@ -35,6 +36,12 @@ class AccountAdapter(DefaultAccountAdapter):
         "same_as_current": "新值必须和当前值不同。",
         "rate_limited": "操作太频繁，请稍后再试。",
     }
+
+    def get_client_ip(self, request) -> str:
+        """allauth's login and signup limits count per visitor (round 120).
+        Its default, REMOTE_ADDR, is the Caddy container for everyone, so
+        ten failed logins by anybody locked everybody out for a minute."""
+        return client_ip(request) or super().get_client_ip(request)
 
     def format_email_subject(self, subject: str) -> str:
         # Prefix is applied once by the mail delivery layer (design 10.1).

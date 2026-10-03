@@ -212,7 +212,8 @@ def test_the_page_says_when_nothing_matches(client):
 def test_the_page_is_rate_limited_per_ip(client):
     _tree()
     cache.clear()
-    headers = {"HTTP_X_FORWARDED_FOR": "203.0.113.9"}
+    # Caddy names the visitor in X-Real-IP (round 120).
+    headers = {"HTTP_X_REAL_IP": "203.0.113.9"}
     for _ in range(30):
         assert client.get(reverse("search"), {"q": "x"}, **headers).status_code == 200
 
@@ -220,9 +221,7 @@ def test_the_page_is_rate_limited_per_ip(client):
 
     assert response.status_code == 429
     # Another address is unaffected.
-    other = client.get(
-        reverse("search"), {"q": "x"}, HTTP_X_FORWARDED_FOR="203.0.113.10"
-    )
+    other = client.get(reverse("search"), {"q": "x"}, HTTP_X_REAL_IP="203.0.113.10")
     assert other.status_code == 200
 
 

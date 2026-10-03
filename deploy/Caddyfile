@@ -14,6 +14,17 @@
 	}
 }
 
+# Every request Django answers goes through here (round 120). Caddy tells
+# Django who the visitor is: {client_ip} honours trusted_proxies (a reverse
+# proxy in front, see Caddyfile.vps on the demo server), and header_up
+# replaces any X-Real-IP the visitor sent. Django's own REMOTE_ADDR is only
+# this container, so without it every visitor shared one rate limit.
+(django) {
+	reverse_proxy web:8000 {
+		header_up X-Real-IP {client_ip}
+	}
+}
+
 {$CADDY_SITE_ADDRESS:localhost} {
 	# Compressed on the fly (design 13.10, v6.3). Caddy 2.10's precompressed
 	# answers 206 Partial Content to requests that asked for no range, so
@@ -67,17 +78,17 @@
 
 	@always_django path /admin/* /admin /accounts/* /accounts /me/* /me /_fragments/* /_fragments /healthz /healthz/
 	handle @always_django {
-		reverse_proxy web:8000
+		import django
 	}
 
 	@not_get_head not method GET HEAD
 	handle @not_get_head {
-		reverse_proxy web:8000
+		import django
 	}
 
 	@has_query expression `{query} != ""`
 	handle @has_query {
-		reverse_proxy web:8000
+		import django
 	}
 
 	@prerendered {
@@ -95,6 +106,6 @@
 	}
 
 	handle {
-		reverse_proxy web:8000
+		import django
 	}
 }

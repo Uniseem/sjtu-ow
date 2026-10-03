@@ -1,3 +1,11 @@
+{% comment %}
+  The whole-form error (「邮箱或密码不正确」「登录失败次数过多」, a duplicate
+  contact) goes first. Round 120: login, signup and the password pages never
+  showed it, so a wrong password only reloaded the page.
+{% endcomment %}
+{% if form.non_field_errors %}
+  <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ form.non_field_errors.0 }}</span></p>
+{% endif %}
 {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
 {% for field in form.visible_fields %}
   {% include "components/form_field.html" %}
