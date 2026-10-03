@@ -134,6 +134,9 @@ DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
 - **表格放在网格或弹性布局里会被拉高**（074）：行高被撑开到和旁边一栏一样。`c-table` 已经设了 `align-self: start`，自己写的表格也要注意
 - **变异测试前先确认测试本身是绿的**：变异脚本只看「改坏后红不红」，基线已经红的话，每处变异都会显示「被抓到」。083 就这样出过一轮假结果。084 起的 `mutate.py` 先跑一遍基线，红了直接停（083）
 - **内置浏览器面板在后台时不渲染动画帧**：`requestAnimationFrame` 不回调、CSS 过渡停在起点，动效看起来像坏了（081，当时的 `motion.js` 在 086 删了）。截图和量尺寸更可靠的办法是用无头 Edge 的调试端口：`Emulation.setEmulatedMedia` 切深浅色、`Emulation.setDeviceMetricsOverride` 切手机宽度、`Page.captureScreenshot` 带 `captureBeyondViewport` 截整页（086）；站点禁止被 iframe 嵌入
+- **无头 Edge 的探测脚本要按配置目录名关进程**（106）：`msedge.exe` 的启动进程马上就退出，`terminate()`、`taskkill /T` 都关不掉真正的浏览器。上一次的实例会一直占着调试端口，下一次探测连上的其实是它和它的旧缓存，106 因此一度得出错误结论（清掉 48 个残留进程）。每次用空闲端口、单独的 `--user-data-dir`，结束时按目录名找进程关掉（`handoff/rounds/106-page-transitions/loadbar_probe.py` 的 `kill_profile`）
+- **调试工具在跳转进行时会压住对页面的读取**（106）：点了链接以后 `Runtime.evaluate` 要等新页面加载完才返回，读不到旧页上发生的事。要看旧页（比如加载条），在 `window` 上挂一个更晚执行的点击监听取消跳转
+- **内置浏览器面板会跑旧脚本、不做预渲染**（106）：开发服务器发静态文件不带 `Cache-Control`，面板按启发式缓存，改了 JS 刷新后还是旧的（看调用栈的行号就知道）；它也关掉了 Speculation Rules 的预渲染。验证脚本和预加载用无头 Edge
 - **深浅两套颜色**（086 起，091 可以手动切换）：深色值写在 `input.css` 的 `:root { @variant dark { … } }` 里，覆盖 `@theme` 的同名变量。加新颜色要两处都写，漏写深色的测试会红；模板里别写只在浅色下成立的东西（白底图、黑色文字）。**组件里区分模式只用 `@variant dark`**，直接写 `@media (prefers-color-scheme: dark)` 的话，访客在页头选了浅色或深色时不生效（有测试数这个词只出现一次）。截图测模式时，无头浏览器的 `Emulation.setEmulatedMedia` 只模拟系统设置；要测手动选择，在页面里设 `localStorage['ow-theme']` 或 `<html data-theme>`
 - **Django 的 `default` 过滤器会先算参数**：`{{ members|default:team.member_count }}` 即使 `members` 有值也会求 `team.member_count`，列表里每一项多查一次数据库（088）。参数有代价时用 `{% if %}`
 - **前端脚本里别用 `DOMParser` 解析带 `style=""` 的 SVG**（091）：解析出的文档沿用页面的内容安全策略，每个 `style` 属性都报一次违规（校徽有 50 条）。要拆 SVG 就用字符串处理（现在校徽在服务端由 `core/emblem.py` 拆）

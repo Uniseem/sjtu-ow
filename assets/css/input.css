@@ -346,6 +346,34 @@
   }
 }
 
+/* ---- Moving between pages (design 13.2.4, v6.4) -------------------------------- */
+
+/* While the next page is on its way the masthead shows a loading bar
+   (.c-loadbar, loading.js). When it arrives the browser swaps the pages
+   with a short cross-fade: no movement, and the browser's own blending
+   keeps the brightness steady, so nothing flashes through. The masthead
+   is its own layer and stays put. Browsers without it switch at once. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
+}
+
+/* Changing colour mode cross-fades the whole page a little slower (theme.js). */
+:root.is-theme-switch::view-transition-old(root),
+:root.is-theme-switch::view-transition-new(root) {
+  animation-duration: 240ms;
+}
+
 /* The 13.12 region classes; the generated stylesheet adds overrides to them. */
 .font-nav {
   font-family: var(--font-nav);
@@ -535,6 +563,53 @@
     top: 0;
     z-index: 40;
     background-color: var(--color-surface);
+    /* Its own layer when the page changes, so it does not fade (v6.4). */
+    view-transition-name: masthead;
+  }
+
+  /* The next page is on its way (design 13.2.4, v6.4): a thin bar along the
+     masthead's lower edge from 150ms after the click (a page that is already
+     prepared never shows it), quick at first and then creeping. It fades
+     with the old page when the new one arrives. */
+  .c-loadbar {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    transform: scaleX(0);
+    transform-origin: left;
+    background-color: var(--color-accent);
+    opacity: 0;
+    pointer-events: none;
+    view-transition-name: loadbar;
+  }
+
+  .is-loading .c-loadbar {
+    opacity: 1;
+    animation: ow-loadbar 15s ease-out 150ms both;
+  }
+
+  @keyframes ow-loadbar {
+    0% {
+      transform: scaleX(0);
+    }
+
+    4% {
+      transform: scaleX(0.3);
+    }
+
+    15% {
+      transform: scaleX(0.6);
+    }
+
+    40% {
+      transform: scaleX(0.8);
+    }
+
+    100% {
+      transform: scaleX(0.95);
+    }
   }
 
   .c-masthead__bar {

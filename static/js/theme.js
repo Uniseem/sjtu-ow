@@ -60,6 +60,28 @@
     paintBar();
   }
 
+  // The whole page cross-fades into the new mode (design 13.2.4, v6.4);
+  // at once when the browser cannot or the visitor asked for less motion.
+  function switchTo(choice) {
+    var still =
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!document.startViewTransition || still) {
+      apply(choice);
+      mark();
+      return;
+    }
+    root.classList.add("is-theme-switch");
+    var transition = document.startViewTransition(function () {
+      apply(choice);
+      mark();
+    });
+    var done = function () {
+      root.classList.remove("is-theme-switch");
+    };
+    transition.finished.then(done, done);
+  }
+
   function choose(event) {
     var button = event.target.closest("[data-theme-choice]");
     if (!button) {
@@ -75,8 +97,7 @@
     } catch (error) {
       // Private mode: the choice holds for this page only.
     }
-    apply(choice);
-    mark();
+    switchTo(choice);
     // The masthead menu closes; the drawer stays open to show the change.
     if (event.currentTarget.tagName === "DETAILS") {
       event.currentTarget.open = false;

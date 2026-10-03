@@ -23,7 +23,7 @@
     <ul class="c-rows max-w-3xl">
       <li class="c-row c-row--plain">
         <div class="c-row__main"><h3 class="c-row__title">导出</h3><p class="c-row__text">下载本站保存的你的全部个人信息（JSON 文件）。</p></div>
-        <a href="{% url 'me_export' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="download" %}导出我的个人信息</a>
+        <a href="{% url 'me_export' %}" class="c-btn c-btn--secondary" download>{% include "components/icon.html" with name="download" %}导出我的个人信息</a>
       </li>
       <li class="c-row c-row--plain">
         <div class="c-row__main"><h3 class="c-row__title">注销账号</h3><p class="c-row__text">删除邮箱、游戏 ID 和联系方式，昵称改为「已注销用户」。不能恢复。</p></div>

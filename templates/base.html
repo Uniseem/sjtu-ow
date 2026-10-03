@@ -92,6 +92,8 @@
           </details>
         </div>
       </div>
+      {# The next page is on its way (design 13.2.4, v6.4; loading.js). #}
+      <div class="c-loadbar" aria-hidden="true"></div>
     </header>
 
     {% include "slots/messages.html" %}
@@ -143,6 +145,7 @@
     <script src="{% static 'vendor/htmx.min.js' %}"></script>
     <script src="{% static 'vendor/alpine.csp.min.js' %}" defer></script>
     <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/loading.js' %}"></script>
     {% block extra_js %}{% endblock %}
   </body>
 </html>
