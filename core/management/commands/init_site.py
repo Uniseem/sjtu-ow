@@ -1,3 +1,4 @@
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 from accounts.services import (
@@ -26,6 +27,17 @@ from members.services import assign_member_permissions
 from moderation.services import assign_moderation_permissions
 from scrims.services import assign_scrim_permissions
 from tournaments.services import assign_tournament_permissions
+
+# What the owner still has to do; the dashboard checklist (core/admin_setup.py,
+# round 122) shows the same, with links.
+NEXT_STEPS = """
+接下来：
+  1. 还没有管理员的话：python manage.py createsuperuser
+  2. 登录后台，首页的「上线清单」列出还没做的事，逐项完成。最要紧的是
+     全站设置里的邮件（SMTP）：注册要验证邮箱，没有邮件就没人能注册；
+     还有用户协议、隐私政策里的【】
+  3. AI 内容审核要在服务器环境变量里设 MODERATION_API_KEY，再在后台打开
+"""
 
 
 class Command(BaseCommand):
@@ -77,6 +89,10 @@ class Command(BaseCommand):
                 f"已确保页面树：{homepage.title}、资讯、用户协议、隐私政策、关于我们"
             )
         )
+        # Round 122: people tick 「我已阅读并同意用户协议」 on signup, so the
+        # pages start from the drafts instead of empty; pages with a body
+        # are left alone. The 【】 left in them show on the setup checklist.
+        call_command("load_legal_pages", stdout=self.stdout, verbosity=0)
 
         site = sync_default_site_from_site_url()
         self.stdout.write(
@@ -172,3 +188,4 @@ class Command(BaseCommand):
                 "工作流和权限存在。"
             )
         )
+        self.stdout.write(NEXT_STEPS)

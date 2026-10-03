@@ -2,6 +2,7 @@ from django.urls import path, reverse
 from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 
+from core.admin_setup import SetupPanel
 from core.admin_todo import TodoPanel, has_duties
 from core.fonts import admin_views
 from core.prerender_admin import prerender_clear, prerender_index, prerender_rebuild
@@ -127,6 +128,9 @@ def add_todo_panel(request, panels):
     from content.wagtail_hooks, which runs later and replaces the list."""
     if has_duties(request.user):
         panels.insert(0, TodoPanel())
+    # 「上线清单」 (round 122): what only the owner can set up.
+    if request.user.is_superuser:
+        panels.insert(1, SetupPanel())
 
 
 @hooks.register("register_log_actions")

@@ -115,6 +115,8 @@ def moderation_index(request):
             "risks": Risk.choices,
             "target_types": TargetType.choices,
             "enabled": services.is_enabled(),
+            "disabled_reason": services.disabled_reason(),
+            "configured": services.is_configured(),
             "model": services.current_model(),
             "usage": usage,
             "quota_left": services.quota_left(),
@@ -245,3 +247,12 @@ def moderation_ask_author(request, pk):
         "这条记为「已处置」，内容本身没有被改动。",
     )
     return redirect("moderation_detail", pk=pk)
+
+
+@reviewer_required
+@require_POST
+def moderation_try(request):
+    """「试一下」 (round 122): one sample through the AI, to check the key."""
+    ok, message = services.try_connection()
+    (messages.success if ok else messages.error)(request, message)
+    return redirect("moderation_index")

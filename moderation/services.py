@@ -372,3 +372,53 @@ def ask_author_to_revise(*, item, actor, message: str) -> ModerationItem:
     )
     transaction.on_commit(lambda: ask_author(item, message))
     return item
+
+
+# --- checking the connection (round 122) ------------------------------------
+
+TRY_SAMPLE = "这是后台「试一下」发出的测试内容：周五晚上八点内战，欢迎大家来玩。"
+
+
+def disabled_reason() -> str:
+    """Why nothing is being reviewed, in words the owner can act on."""
+    if not is_configured():
+        return (
+            "服务器没有设置环境变量 MODERATION_API_KEY（或自建服务的 "
+            "MODERATION_BASE_URL），AI 审核不会运行。写进 .env 后重启 web 和 worker。"
+        )
+    if not is_enabled():
+        return "全站设置里「启用 AI 内容审核」关着，新内容不会送审。"
+    return ""
+
+
+def try_connection():
+    """Send one harmless sample and return (ok, message). Works while the
+    switch is still off, so the owner can check the key before turning it
+    on; it counts towards today's usage like any call."""
+    from moderation.providers import get_provider
+
+    if not is_configured():
+        return False, disabled_reason()
+    model = current_model()
+    result = get_provider().review([TRY_SAMPLE], model=model)
+    note_usage(
+        calls=1,
+        items=1,
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+    )
+    verdict = result.verdicts[0] if result.verdicts else None
+    if verdict is None or verdict.risk == Risk.UNKNOWN:
+        reason = verdict.reason if verdict else "没有返回结果"
+        hint = ""
+        if "401" in reason or "403" in reason:
+            hint = "（多半是密钥不对）"
+        elif "404" in reason:
+            hint = "（多半是模型名或服务地址不对）"
+        return False, f"连不上 AI 审核：{reason}{hint}。模型 {model}。"
+    used = result.input_tokens + result.output_tokens
+    label = dict(Risk.choices).get(verdict.risk, verdict.risk)
+    return True, (
+        f"AI 审核能用：模型 {result.model or model} 把测试内容判为"
+        f"「{label}」，用了 {used} 个 token。"
+    )

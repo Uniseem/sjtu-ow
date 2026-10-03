@@ -103,7 +103,9 @@ def test_generated_pages_carry_nothing_personal(prerender_root, site_tree):
         assert "csrfmiddlewaretoken" not in text
         assert "sessionid" not in text
         assert "@example.com" not in text
-        assert "退出" not in text  # the logged-in account area
+        # The logged-in account area. Round 122: the privacy draft now on the
+        # page says 「退出所有战队」, so look for the logout link itself.
+        assert 'href="/accounts/logout/"' not in text
 
 
 @pytest.mark.django_db

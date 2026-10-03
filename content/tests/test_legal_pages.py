@@ -55,9 +55,11 @@ def test_the_command_publishes_both_drafts(pages, client):
 
 @pytest.mark.django_db
 def test_an_edited_page_is_not_overwritten_without_force(pages, tmp_path):
+    # init_site already filled the pages from the drafts (round 122), so the
+    # first version goes in with --force, standing in for an editor's text.
     (tmp_path / "terms.md").write_text("## 旧版\n", encoding="utf-8")
     (tmp_path / "privacy.md").write_text("## 旧版\n", encoding="utf-8")
-    call_command("load_legal_pages", source=tmp_path, verbosity=0)
+    call_command("load_legal_pages", source=tmp_path, force=True, verbosity=0)
 
     (tmp_path / "terms.md").write_text("## 新版\n", encoding="utf-8")
     call_command("load_legal_pages", source=tmp_path, verbosity=0)

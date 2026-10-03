@@ -3,8 +3,15 @@
 {% block titletag %}内容审核{% endblock %}
 
 {% block main_content %}
-  {% if not enabled %}
-    <p class="help-block help-warning">AI 审核当前是关闭的（「设置 → 全站设置」里的「启用 AI 内容审核」）。已有记录仍可复核。</p>
+  {% if disabled_reason %}
+    <p class="help-block help-warning">AI 审核没有在运行：{{ disabled_reason }}已有记录仍可复核。</p>
+  {% endif %}
+  {% if configured %}
+    <form method="post" action="{% url 'moderation_try' %}" class="w-mb-4">
+      {% csrf_token %}
+      <button type="submit" class="button button-secondary button-small">试一下</button>
+      <span class="help">发一句测试内容给 AI，看密钥和模型能不能用（算一次调用，不留记录）。</span>
+    </form>
   {% endif %}
 
   <p class="help-block">
