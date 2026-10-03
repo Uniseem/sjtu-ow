@@ -3,6 +3,7 @@
 {% block head_title %}邮箱地址{% endblock %}
 
 {% block account_content %}
+  {% include "account/_back_to_security.html" with here="邮箱地址" %}
   <h1>邮箱地址</h1>
   {% if emailaddresses %}
     <form method="post" action="{% url 'account_email' %}">

@@ -22,7 +22,8 @@
         </tbody>
       </table>
     {% else %}
-      <p class="text-fg-2">你还没有参加任何赛事报名。<a href="{% url 'tournament_index' %}" class="c-link">去看看赛事</a></p>
+      {% url 'tournament_index' as tournaments_url %}
+      {% include "components/empty_state.html" with title="还没有参加赛事报名" message="战队报名由队长提交，名单里有你就会出现在这里。" action_url=tournaments_url action_label="去看看赛事" %}
     {% endif %}
   </section>
 
@@ -30,15 +31,20 @@
     {% include "components/section_head.html" with title="个人报名" heading_id="me-individual" %}
     {% if individual_signups %}
       <table class="c-table c-table--stack">
-        <thead><tr><th scope="col">赛事</th><th scope="col">位置</th><th scope="col">状态</th><th scope="col" class="is-num">操作</th></tr></thead>
+        <thead><tr><th scope="col">赛事</th><th scope="col">游戏 ID</th><th scope="col">位置</th><th scope="col">状态</th><th scope="col" class="is-num">操作</th></tr></thead>
         <tbody>
           {% for signup in individual_signups %}
             <tr>
               <td data-label="赛事"><a href="{{ signup.tournament.get_absolute_url }}" class="font-semibold hover:text-primary-text">{{ signup.tournament.title }}</a></td>
+              <td data-label="游戏 ID" class="font-code">{{ signup.game_account.battletag|default:"游戏 ID 已删除" }}</td>
               <td data-label="位置">{% include "components/role_icons.html" with role_tank=signup.role_tank role_damage=signup.role_damage role_support=signup.role_support %}</td>
               <td data-label="状态">
                 {% if signup.is_placed %}
                   {% include "components/status_badge.html" with kind="ok" label="已编入「"|add:signup.registration.team_name|add:"」" %}
+                {% elif signup.tournament.status == "cancelled" %}
+                  {% include "components/status_badge.html" with kind="off" label="赛事已取消" %}
+                {% elif signup.tournament.status == "finished" %}
+                  {% include "components/status_badge.html" with kind="done" label="赛事已结束，没有编队" %}
                 {% else %}
                   {% include "components/status_badge.html" with kind="warn" label="等待编队" %}
                 {% endif %}
@@ -49,7 +55,7 @@
                 {% elif signup.tournament.registration_open %}
                   <form method="post" action="{% url 'tournament_individual_cancel' signup.tournament.pk %}" class="inline-block" data-confirm="取消这项赛事的个人报名？">
                     {% csrf_token %}
-                    <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消</button>
+                    <button type="submit" class="c-btn c-btn--danger c-btn--sm">取消个人报名</button>
                   </form>
                 {% endif %}
               </td>
@@ -58,7 +64,7 @@
         </tbody>
       </table>
     {% else %}
-      <p class="text-fg-2">没有个人报名。标着「个人报名」的赛事，在赛事页就能报名。</p>
+      {% include "components/empty_state.html" with title="没有个人报名" message="标着「个人报名」的赛事，在赛事页就能报名。" %}
     {% endif %}
   </section>
 

@@ -17,7 +17,7 @@
         </ul>
       </div>
     </div>
-    <p class="text-fg-2">注销前可以先<a href="{% url 'me_export' %}" class="c-link" download>导出你的个人信息</a>。</p>
+    <p class="text-fg-2">注销前可以先<a href="{% url 'me_export' %}" class="c-link" data-no-loading>导出你的个人信息</a>。</p>
 
     {% if blockers %}
       <div class="c-notice c-notice--warn" role="alert" data-deletion-blocked>

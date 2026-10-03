@@ -36,14 +36,19 @@ def _login_response(request):
     return redirect_to_login(request.get_full_path(), login_url)
 
 
-def _section_response(request, page, problems=()):
+def _section_response(request, page, problems=(), draft=""):
     """Re-render the interactive section, or bounce back to the article."""
     if getattr(request, "htmx", False):
         sort = request.POST.get("sort") or request.GET.get("sort")
         context = section_context(request, page, interactive=True, sort=sort)
         if problems:
-            context["post_problems"] = list(problems)
-            context["can_post"] = False
+            # A refused comment (too fast, too long) keeps the box and what was
+            # typed in it; only a lasting reason (no right to comment) hides
+            # the box, which section_context decides (round 116).
+            context["post_problems"] = list(
+                dict.fromkeys([*problems, *context["post_problems"]])
+            )
+            context["draft_body"] = draft
         return render(request, "comments/section.html", context)
     for problem in problems:
         messages.error(request, problem)
@@ -59,8 +64,10 @@ def _too_many(user) -> bool:
 def _post(request, page, parent=None):
     if not request.user.is_authenticated:
         return _login_response(request)
+    # A top-level draft goes back into the box if the comment is refused.
+    draft = request.POST.get("body", "") if parent is None else ""
     if _too_many(request.user):
-        return _section_response(request, page, ["评论太频繁了，稍后再试"])
+        return _section_response(request, page, ["评论太频繁了，稍后再试"], draft)
     try:
         services.create(
             page=page,
@@ -69,7 +76,7 @@ def _post(request, page, parent=None):
             parent=parent,
         )
     except services.CommentError as exc:
-        return _section_response(request, page, exc.problems)
+        return _section_response(request, page, exc.problems, draft)
     if not getattr(request, "htmx", False):
         messages.success(request, "评论已发表。")
     return _section_response(request, page)

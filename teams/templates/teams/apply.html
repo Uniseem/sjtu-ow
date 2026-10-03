@@ -12,7 +12,7 @@
   </header>
   <div class="l-container l-container--narrow pt-8 pb-16 lg:pb-24">
     {% if not allowed %}
-      <div class="c-notice c-notice--warn max-w-xl" role="status">{% include "components/icon.html" with name="alert" %}<p class="c-notice__body">{{ reason }}</p></div>
+      <div class="c-notice c-notice--warn max-w-xl" role="status">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body"><p>{{ reason }}</p>{% include "components/profile_gap_links.html" %}</div></div>
       <p class="mt-6"><a href="{{ team.get_absolute_url }}" class="c-btn c-btn--secondary">返回战队主页</a></p>
     {% else %}
       <form method="post" class="c-form max-w-xl">

@@ -11,6 +11,13 @@
     </div>
   </header>
   <div class="l-container l-container--narrow pt-8 pb-16 lg:pb-24">
+    {% if blocker %}
+      {# Said before the form is filled in (round 116). #}
+      <div class="c-notice c-notice--warning max-w-2xl" role="status">
+        {% include "components/icon.html" with name="alert" %}
+        <div class="c-notice__body"><p>{{ blocker }}</p><p class="mt-2"><a href="{% url 'me_teams' %}">回到我的战队</a></p></div>
+      </div>
+    {% else %}
     <form method="post" enctype="multipart/form-data" class="c-form max-w-xl">
       {% csrf_token %}
       {% if form.non_field_errors %}
@@ -22,5 +29,6 @@
         <a href="{% url 'team_index' %}" class="c-btn c-btn--quiet">取消</a>
       </div>
     </form>
+    {% endif %}
   </div>
 {% endblock %}

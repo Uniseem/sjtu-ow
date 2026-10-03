@@ -242,3 +242,26 @@ def default_avatar(context, person, spec):
     if image is None:
         return ""
     return image.get_rendition(spec).img_tag({"alt": "", "loading": "lazy"})
+
+
+@register.filter
+def rank_summary(account) -> str:
+    """One game ID's ranks, 「坦克 钻石 3 · 支援 大师 1」, or 「未定级」 (the
+    captain's view of applicants and members, design 7.2, 7.3)."""
+    from accounts.ranks import format_rank
+    from accounts.roles import RANK_FIELDS, ROLE_CHOICES
+
+    parts = [
+        f"{label} {format_rank(getattr(account, RANK_FIELDS[code]))}"
+        for code, label in ROLE_CHOICES
+        if getattr(account, RANK_FIELDS[code], None) is not None
+    ]
+    return " · ".join(parts) or "未定级"
+
+
+@register.filter
+def rank_label(score) -> str:
+    """A stored rank as people say it, 22 → 「钻石 3」; 「—」 when unranked."""
+    from accounts.ranks import format_rank
+
+    return format_rank(score) if score is not None else "—"

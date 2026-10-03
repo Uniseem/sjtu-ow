@@ -96,7 +96,7 @@ def signup_counts(scrim) -> dict:
 
 def signup_problems(*, scrim, user, now=None):
     """Every reason this player may not sign up (design 9.2)."""
-    from accounts.permissions import can_use
+    from accounts.permissions import can_use, feature_denied_message
     from accounts.services import profile_gaps
 
     now = now or timezone.now()
@@ -106,7 +106,7 @@ def signup_problems(*, scrim, user, now=None):
     if not user.is_active:
         problems.append("账号已停用")
     elif not can_use(user, "scrim_signup"):
-        problems.append("你暂时无法报名内战")
+        problems.append(feature_denied_message("scrim_signup"))  # 4.3.2, round 116
     gaps = [label for label, _url, _hint in profile_gaps(user)]
     if gaps:
         problems.append(f"资料不完整（缺少{'、'.join(gaps)}）")

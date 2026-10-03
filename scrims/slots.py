@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from django.template.loader import render_to_string
 
+from accounts.services import profile_gaps
 from scrims import services
 from scrims.models import Role, ScrimStatus
 
@@ -27,6 +28,7 @@ def actions_context(request, scrim) -> dict:
         "role_choices": Role.choices,
         "signup_open": scrim.signup_open(),
         "signup_problems": problems,
+        "profile_gaps": profile_gaps(user) if signed_in else [],
         "can_sign_up": not problems and bool(accounts),
         "cancelled": scrim.status == ScrimStatus.CANCELLED,
     }

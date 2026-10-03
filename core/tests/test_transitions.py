@@ -178,7 +178,9 @@ def test_downloads_are_marked_so_the_bar_skips_them():
     for name in ("delete.html", "security.html"):
         page = (ROOT / "templates" / "me" / name).read_text(encoding="utf-8")
         link = re.search(r"<a href=\"\{% url 'me_export' %\}\"[^>]*>", page)
-        assert link and " download" in link.group(0), name
+        # Round 116: data-no-loading, not download (a download attribute saved
+        # the rate-limit page as a file and lost its message).
+        assert link and " data-no-loading" in link.group(0), name
 
 
 # --- colour mode and anchors -------------------------------------------------

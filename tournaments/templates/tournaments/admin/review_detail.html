@@ -1,4 +1,5 @@
 {% extends "wagtailadmin/generic/base.html" %}
+{% load ow %}
 
 {% block titletag %}报名详情{% endblock %}
 
@@ -25,9 +26,9 @@
         <tr>
           <td>{{ row.member.nickname }}</td>
           <td>{{ row.member.battletag }}</td>
-          <td>{{ row.member.rank_tank|default:"—" }}</td>
-          <td>{{ row.member.rank_damage|default:"—" }}</td>
-          <td>{{ row.member.rank_support|default:"—" }}</td>
+          <td>{{ row.member.rank_tank|rank_label }}</td>
+          <td>{{ row.member.rank_damage|rank_label }}</td>
+          <td>{{ row.member.rank_support|rank_label }}</td>
           <td>{% if row.member.is_sjtu %}是{% else %}否{% endif %}</td>
           <td>{% if row.member.is_captain %}是{% else %}否{% endif %}</td>
           {% if show_contacts %}<td>{{ row.contacts|join:"；"|default:"—" }}</td>{% endif %}

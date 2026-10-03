@@ -1,0 +1,2 @@
+{# Where to fill in what a signup is missing (round 116: the notice only said what). #}
+{% if profile_gaps %}<p class="mt-2">去补全：{% for label, url_name, hint in profile_gaps %}<a href="{% url url_name %}" class="c-link">{{ label }}</a>{% if not forloop.last %}、{% endif %}{% endfor %}</p>{% endif %}

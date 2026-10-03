@@ -8,7 +8,8 @@
   <form method="post" action="{% url 'account_signup' %}">
     {% csrf_token %}
     {% include "account/_form.html" %}
-    <p class="text-sm text-fg-2">用户协议和隐私政策内容由社团提供。两个同意必须分别勾选。</p>
+    {# Read before agreeing (round 116; the old line here was a note from the design doc). #}
+    <p class="text-sm text-fg-2">请先阅读<a href="/terms/" class="c-link" target="_blank" rel="noopener">用户协议</a>和<a href="/privacy/" class="c-link" target="_blank" rel="noopener">隐私政策</a>（在新标签页打开），两项同意要分别勾选。</p>
     <div><button type="submit" class="c-btn c-btn--primary c-btn--block">注册</button></div>
   </form>
 {% endblock %}

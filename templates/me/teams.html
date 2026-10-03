@@ -31,7 +31,8 @@
         </tbody>
       </table>
     {% else %}
-      <p class="text-fg-2">你还没有加入任何战队。<a href="{% url 'team_index' %}" class="c-link">去看看</a></p>
+      {% url 'team_index' as teams_url %}
+      {% include "components/empty_state.html" with title="还没有加入战队" message="去战队页看看谁在招人，或者自己创建一支。" action_url=teams_url action_label="去看看战队" %}
     {% endif %}
   </section>
 
@@ -88,7 +89,7 @@
         </tbody>
       </table>
     {% else %}
-      <p class="text-fg-2">还没有提交过入队申请。</p>
+      {% include "components/empty_state.html" with title="还没有提交过入队申请" %}
     {% endif %}
   </section>
 {% endblock %}

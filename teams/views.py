@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from accounts.models import User
-from accounts.services import with_avatars
+from accounts.services import profile_gaps, with_avatars
 from content.seo import absolute_uri, build_seo
 from core.ratelimit import over_limit
 from teams import services
@@ -84,7 +84,8 @@ def team_detail(request, pk):
 @login_required
 def team_create(request):
     form = TeamForm(request.POST or None, request.FILES or None)
-    if request.method == "POST":
+    blocker = services.create_blocker(request.user)
+    if request.method == "POST" and not blocker:
         if over_limit(f"team_create:{request.user.pk}", CREATE_LIMIT, DAY):
             messages.error(request, "今天创建的战队太多了，明天再试。")
         elif form.is_valid():
@@ -105,15 +106,30 @@ def team_create(request):
                     recruiting_roles=form.cleaned_data.get("recruiting_roles", ""),
                 )
             except services.TeamError as exc:
-                messages.error(request, str(exc))
+                _drop_unused_logo(logo)
+                _show_team_error(form, exc)
             else:
                 messages.success(request, f"战队「{team.name}」已创建。")
                 return redirect("team_manage", pk=team.pk)
     return render(
         request,
         "teams/create.html",
-        {"form": form, "max_captained": services.max_captained()},
+        {"form": form, "max_captained": services.max_captained(), "blocker": blocker},
     )
+
+
+def _drop_unused_logo(logo) -> None:
+    """The logo is saved before the team; a refused team leaves none behind."""
+    if logo is not None:
+        logo.delete()
+
+
+def _show_team_error(form, exc) -> None:
+    """A taken name belongs on the name field, not in a passing toast."""
+    if str(exc) == services.NAME_TAKEN:
+        form.add_error("name", str(exc))
+    else:
+        form.add_error(None, str(exc))
 
 
 @login_required
@@ -142,7 +158,16 @@ def team_apply(request, pk):
     return render(
         request,
         "teams/apply.html",
-        {"team": team, "form": form, "allowed": allowed, "reason": reason},
+        {
+            "team": team,
+            "form": form,
+            "allowed": allowed,
+            "reason": reason,
+            # 「请先添加游戏 ID」 links to where it is added (round 116).
+            "profile_gaps": [
+                gap for gap in profile_gaps(request.user) if gap[0] == "游戏 ID"
+            ],
+        },
     )
 
 
@@ -157,8 +182,9 @@ def team_manage(request, pk):
             logo = team.logo
             if form.cleaned_data.get("remove_logo"):
                 logo = None
+            new_logo = None
             if form.cleaned_data.get("logo_file"):
-                logo = create_logo(
+                logo = new_logo = create_logo(
                     form.cleaned_data["logo_file"],
                     title=f"{form.cleaned_data['name']} 队标",
                     user=request.user,
@@ -174,7 +200,8 @@ def team_manage(request, pk):
                     recruiting_roles=form.cleaned_data.get("recruiting_roles", ""),
                 )
             except services.TeamError as exc:
-                messages.error(request, str(exc))
+                _drop_unused_logo(new_logo)
+                _show_team_error(form, exc)
             else:
                 messages.success(request, "战队资料已保存。")
                 return redirect("team_manage", pk=team.pk)
@@ -184,10 +211,13 @@ def team_manage(request, pk):
         {
             "team": team,
             "form": form,
-            "applications": services.pending_applications(team),
-            "memberships": team.memberships.select_related("user").order_by(
-                "role", "joined_at"
+            "applications": services.pending_applications(team).prefetch_related(
+                "applicant__game_accounts"
             ),
+            "memberships": team.memberships.select_related("user")
+            .prefetch_related("user__game_accounts")
+            .order_by("role", "joined_at"),
+            "disband_blockers": services.disband_blockers(team),
             "alumni": team.alumni.select_related("user"),
             "max_members": services.max_members(),
             "reject_form": RejectForm(),

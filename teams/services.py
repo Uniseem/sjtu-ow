@@ -76,18 +76,30 @@ def is_full(team) -> bool:
     return team.memberships.count() >= max_members()
 
 
+NAME_TAKEN = "已经有同名的战队了，换一个队名吧。"
+
+
+def create_blocker(user) -> str:
+    """Why this person cannot found a team now, or "": the create page says
+    so before the form is filled in (round 115 review)."""
+    from accounts.permissions import can_use, feature_denied_message
+
+    if not can_use(user, "team_create"):
+        return feature_denied_message("team_create")
+    if captained_count(user) >= max_captained():
+        return f"每人最多同时担任 {max_captained()} 支战队的队长。"
+    return ""
+
+
 def create_team(
     *, user, name, description="", logo=None, is_recruiting=True, recruiting_roles=""
 ) -> Team:
     """Create a team; the creator becomes its captain (design 7.1)."""
-    from accounts.permissions import can_use, feature_denied_message
-
-    if not can_use(user, "team_create"):
-        raise TeamError(feature_denied_message("team_create"))
-    if captained_count(user) >= max_captained():
-        raise TeamError(f"每人最多同时担任 {max_captained()} 支战队的队长。")
+    blocker = create_blocker(user)
+    if blocker:
+        raise TeamError(blocker)
     if name_taken(name):
-        raise TeamError("已经有同名的战队了，换一个队名吧。")
+        raise TeamError(NAME_TAKEN)
 
     try:
         with transaction.atomic():
@@ -101,7 +113,7 @@ def create_team(
             TeamMembership.objects.create(team=team, user=user, role=TeamRole.CAPTAIN)
     except IntegrityError as exc:
         # Someone took the name between the check and the insert.
-        raise TeamError("已经有同名的战队了，换一个队名吧。") from exc
+        raise TeamError(NAME_TAKEN) from exc
     on_team_changed(team, author=user)
     return team
 
@@ -114,7 +126,7 @@ def update_team(
     if team.is_disbanded:
         raise TeamError("战队已解散。")
     if name_taken(name, exclude_pk=team.pk):
-        raise TeamError("已经有同名的战队了，换一个队名吧。")
+        raise TeamError(NAME_TAKEN)
     team.name = name
     team.description = description
     team.logo = logo
@@ -124,7 +136,7 @@ def update_team(
     try:
         team.save()
     except IntegrityError as exc:
-        raise TeamError("已经有同名的战队了，换一个队名吧。") from exc
+        raise TeamError(NAME_TAKEN) from exc
     on_team_changed(team, author=user)
     return team
 

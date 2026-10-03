@@ -55,14 +55,15 @@
       </div>
 
       <section aria-labelledby="reg-roster">
-        {% include "components/section_head.html" with title="名单快照" en="ROSTER" heading_id="reg-roster" %}
+        {% include "components/section_head.html" with title="名单快照" heading_id="reg-roster" %}
         <table class="c-table c-table--stack">
-          <thead><tr><th scope="col">昵称</th><th scope="col">游戏 ID</th><th scope="col" class="is-num">身份</th></tr></thead>
+          <thead><tr><th scope="col">昵称</th><th scope="col">游戏 ID</th><th scope="col">段位（提交时）</th><th scope="col" class="is-num">身份</th></tr></thead>
           <tbody>
             {% for member in members %}
               <tr>
                 <td data-label="昵称" class="font-semibold">{{ member.nickname }}</td>
                 <td data-label="游戏 ID" class="font-code">{{ member.battletag }}</td>
+                <td data-label="段位（提交时）" class="text-sm">{{ member|rank_summary }}</td>
                 <td data-label="身份" class="is-num">{% if member.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}{% if member.is_sjtu %}<span class="c-tag ml-1">交大</span>{% endif %}</td>
               </tr>
             {% endfor %}
@@ -71,7 +72,7 @@
       </section>
 
       <section aria-labelledby="reg-log">
-        {% include "components/section_head.html" with title="状态历史" en="LOG" heading_id="reg-log" %}
+        {% include "components/section_head.html" with title="状态历史" heading_id="reg-log" %}
         <ol class="border-t border-line">
           {% for entry in logs %}
             <li class="grid gap-1 border-b border-line py-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">

@@ -15,6 +15,10 @@
         <div class="c-row__main"><h3 class="c-row__title">邮箱</h3><p class="c-row__text">用于登录和接收验证码，只有你自己和超级管理员能看到。</p></div>
         <a href="{{ email_url }}" class="c-btn c-btn--secondary">修改邮箱</a>
       </li>
+      <li class="c-row c-row--plain">
+        <div class="c-row__main"><h3 class="c-row__title">退出登录</h3><p class="c-row__text">在这台设备上退出。</p></div>
+        <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit" class="c-btn c-btn--secondary">退出登录</button></form>
+      </li>
     </ul>
   </section>
 
@@ -23,7 +27,7 @@
     <ul class="c-rows max-w-3xl">
       <li class="c-row c-row--plain">
         <div class="c-row__main"><h3 class="c-row__title">导出</h3><p class="c-row__text">下载本站保存的你的全部个人信息（JSON 文件）。</p></div>
-        <a href="{% url 'me_export' %}" class="c-btn c-btn--secondary" download>{% include "components/icon.html" with name="download" %}导出我的个人信息</a>
+        <a href="{% url 'me_export' %}" class="c-btn c-btn--secondary" data-no-loading>{% include "components/icon.html" with name="download" %}导出我的个人信息</a>
       </li>
       <li class="c-row c-row--plain">
         <div class="c-row__main"><h3 class="c-row__title">注销账号</h3><p class="c-row__text">删除邮箱、游戏 ID 和联系方式，昵称改为「已注销用户」。不能恢复。</p></div>

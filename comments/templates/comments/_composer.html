@@ -6,7 +6,7 @@
   {% csrf_token %}
   <label>
     <span class="sr-only">{% if parent %}回复 {{ parent.author.nickname }}{% else %}写评论{% endif %}</span>
-    <textarea name="body" rows="3" maxlength="500" required class="c-input" placeholder="{% if parent %}回复 {{ parent.author.nickname }}…{% else %}说点什么…（最多 500 字）{% endif %}"></textarea>
+    <textarea name="body" rows="3" maxlength="500" required class="c-input" placeholder="{% if parent %}回复 {{ parent.author.nickname }}…{% else %}说点什么…（最多 500 字）{% endif %}">{% if not parent %}{{ draft_body }}{% endif %}</textarea>
   </label>
   <div class="c-composer__bar">
     <button type="submit" class="c-btn c-btn--primary c-btn--sm">{% if parent %}回复{% else %}发表评论{% endif %}</button>

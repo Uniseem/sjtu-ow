@@ -45,22 +45,28 @@ def team_members(team):
     return list(team.memberships.select_related("user").order_by("-role", "joined_at"))
 
 
-def member_problems(*, tournament, user, is_captain=False):
-    """Everything wrong with one member, for the pre-check on the form (8.3)."""
-    from accounts.permissions import can_use
+def member_problems(*, tournament, user, is_captain=False, as_self=False):
+    """Everything wrong with one member, for the pre-check on the form (8.3).
+    ``as_self`` words it to the person themselves (individual signup, round
+    116: it used to call the reader by their own nickname)."""
+    from accounts.permissions import can_use, feature_denied_message
     from accounts.services import profile_gaps
 
     problems = []
     # Design 8.3 check 5: one message for a deactivated account and a blocked
     # feature alike, so the captain never learns why (round 059). can_use()
     # already says no for an inactive user.
+    who = "你" if as_self else f"{user.nickname} "
     if not can_use(user, "tournament_register"):
-        problems.append(f"{user.nickname} 暂时无法参加赛事报名")
+        if as_self:
+            problems.append(feature_denied_message("tournament_register"))
+        else:
+            problems.append(f"{user.nickname} 暂时无法参加赛事报名")
     gaps = [label for label, _url, _hint in profile_gaps(user)]
     if gaps:
-        problems.append(f"{user.nickname} 的资料不完整（缺少{'、'.join(gaps)}）")
+        problems.append(f"{who}的资料不完整（缺少{'、'.join(gaps)}）")
     if tournament.sjtu_only and not user.is_sjtu:
-        problems.append(f"该赛事仅限交大用户参加，{user.nickname} 不符合")
+        problems.append(f"该赛事仅限交大用户参加，{who.strip()}不符合")
     return problems
 
 
@@ -444,8 +450,10 @@ def visible_to(registration, user) -> bool:
 
 
 def my_registrations(user):
+    """The registrations whose roster this person is on now (design 13.5:
+    「我所在的有效赛事报名名单」; round 116: it listed rosters they had left)."""
     return (
-        Registration.objects.filter(members__user=user)
+        Registration.objects.filter(members__user=user, members__is_active=True)
         .select_related("tournament", "team")
         .distinct()
         .order_by("-submitted_at")
@@ -470,7 +478,7 @@ def individual_problems(*, tournament, user, now=None) -> list[str]:
         problems.append(INDIVIDUALS_REFUSED)
     if not tournament.registration_open(now):
         problems.append("当前不在报名时间内")
-    problems.extend(member_problems(tournament=tournament, user=user))
+    problems.extend(member_problems(tournament=tournament, user=user, as_self=True))
     conflict = existing_roster_conflict(tournament=tournament, user=user)
     if conflict:
         problems.append(conflict)
@@ -565,9 +573,9 @@ def _refresh_tournament_page(tournament) -> None:
 
 def my_individual_signups(user):
     return list(
-        user.individual_signups.select_related("tournament", "registration").order_by(
-            "-created_at"
-        )
+        user.individual_signups.select_related(
+            "tournament", "registration", "game_account"
+        ).order_by("-created_at")
     )
 
 

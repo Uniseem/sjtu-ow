@@ -156,7 +156,8 @@ def test_the_feature_rule_applies(solo):
     FeatureUserRule.objects.create(
         user=solo, feature=Feature.TOURNAMENT_REGISTER, allowed=False
     )
-    with pytest.raises(reg.RegistrationError, match="暂时无法参加赛事报名"):
+    # Said to the person, in the standard words (4.3.2; round 116).
+    with pytest.raises(reg.RegistrationError, match="你暂时无法使用此功能"):
         _sign_up(tournament, solo)
 
 

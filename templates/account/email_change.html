@@ -3,6 +3,7 @@
 {% block head_title %}修改邮箱{% endblock %}
 
 {% block account_content %}
+  {% include "account/_back_to_security.html" with here="修改邮箱" %}
   <h1>修改邮箱</h1>
   {% if not emailaddresses %}
     {% include "account/snippets/warn_no_email.html" %}

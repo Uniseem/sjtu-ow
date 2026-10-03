@@ -283,7 +283,8 @@ def test_the_feature_permission(scrim, player):
         user=player, feature=Feature.SCRIM_SIGNUP, allowed=False
     )
     problems = services.signup_problems(scrim=scrim, user=player)
-    assert any("无法报名内战" in problem for problem in problems)
+    # The standard words of design 4.3.2 (round 116).
+    assert any("你暂时无法使用此功能" in problem for problem in problems)
 
 
 @pytest.mark.django_db

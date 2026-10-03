@@ -12,6 +12,7 @@ from django.views.decorators.http import (
     require_POST,
 )
 
+from accounts.services import profile_gaps
 from teams.models import TeamMembership, TeamRole
 from tournaments import registration as registration_service
 from tournaments.models import (
@@ -250,6 +251,7 @@ def individual_signup(request, pk):
             "tournament": tournament,
             "my_signup": my_signup,
             "problems": problems,
+            "profile_gaps": profile_gaps(request.user),
             "game_accounts": list(request.user.game_accounts.all()),
             "role_choices": Role.choices,
         },
