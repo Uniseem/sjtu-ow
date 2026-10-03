@@ -362,7 +362,9 @@ def samples() -> list[Sample]:
             "内战",
             "内战开始提醒",
             "全部报名者",
-            scrims.scrim_reminder_letter(_scrim()),
+            scrims.scrim_reminder_letter(
+                _scrim(), "A 队 · 坦克", "https://qm.qq.com/q/example"
+            ),
             "小天使",
         ),
         _letter(

@@ -59,11 +59,14 @@ def scrim_cancelled(scrim) -> int:
     return send(scrim_cancelled_letter(scrim), _recipients(scrim), fail_silently=True)
 
 
-def scrim_reminder_letter(scrim, placement: str = "") -> Letter:
+def scrim_reminder_letter(scrim, placement: str = "", group_url: str = "") -> Letter:
     facts = _facts(scrim)
     if placement:
         # Design 9.2 (v6.22): the player's own place, if it is set by now.
         facts = [*facts, ("你的分队", f"{placement}（以群里发的为准）")]
+    if group_url:
+        # Design 9.2 (v6.33): which group that is.
+        facts = [*facts, ("社团 QQ 群", group_url)]
     return Letter(
         subject=f"内战提醒：{scrim.title}",
         lead=f"内战「{scrim.title}」就要开始了，请提前上线。",
@@ -77,14 +80,17 @@ def scrim_reminder_letter(scrim, placement: str = "") -> Letter:
 def scrim_reminder(scrim) -> int:
     """Design 9.1: the reminder that goes out before it starts, one per
     player so each sees their own place (v6.22)."""
-    from scrims.services import placement, split_scrim_ids
+    from scrims.services import community_group_url, placement, split_scrim_ids
 
     has_split = bool(split_scrim_ids([scrim.pk]))
+    group_url = community_group_url()
     sent = 0
     for signup in scrim.signups.select_related("user", "scrim"):
         if not (signup.user.is_active and signup.user.email):
             continue
-        letter = scrim_reminder_letter(scrim, placement(signup, has_split=has_split))
+        letter = scrim_reminder_letter(
+            scrim, placement(signup, has_split=has_split), group_url
+        )
         sent += send(letter, [signup.user], fail_silently=True)
     return sent
 

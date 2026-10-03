@@ -104,3 +104,56 @@ def test_the_reminder_tells_each_player_their_place(mailoutbox):
     assert "A 队 · 坦克" in letters[first.email]
     assert "B 队" not in letters[first.email]
     assert "B 队 · 坦克" in letters[second.email]
+
+
+# --- which group (round 138, design 9.2 v6.33) ------------------------------------
+
+
+def _group(url):
+    from core.models import SiteSettings
+
+    site = SiteSettings.load()
+    site.qq_group_url = url
+    site.save()
+
+
+GROUP_URL = "https://qm.qq.com/q/sjtu-ow-138"
+
+
+@pytest.mark.django_db
+def test_signed_up_players_are_told_which_group(client):
+    _group(GROUP_URL)
+    scrim = _scrim()
+    me, _mine = _signup(scrim, "group138@example.com", "群138")
+    client.force_login(me)
+    page = client.get(reverse("scrim_detail", args=[scrim.pk])).content.decode()
+    assert f'href="{GROUP_URL}"' in page
+    client.force_login(make_user("nosign138@example.com", "没报138", tank=DIAMOND_3))
+    page = client.get(reverse("scrim_detail", args=[scrim.pk])).content.decode()
+    assert "data-group-link" not in page
+    client.logout()
+    page = client.get(reverse("scrim_detail", args=[scrim.pk])).content.decode()
+    assert "data-group-link" not in page
+
+
+@pytest.mark.django_db
+def test_no_group_link_set_nothing_said(client):
+    _group("")
+    scrim = _scrim()
+    me, _mine = _signup(scrim, "group138b@example.com", "群138b")
+    client.force_login(me)
+    page = client.get(reverse("scrim_detail", args=[scrim.pk])).content.decode()
+    assert "data-group-link" not in page
+
+
+@pytest.mark.django_db
+def test_the_reminder_links_the_group(mailoutbox):
+    _group(GROUP_URL)
+    scrim = _scrim()
+    _signup(scrim, "group138c@example.com", "群138c")
+    notifications.scrim_reminder(scrim)
+    assert GROUP_URL in mailoutbox[-1].body
+    _group("")
+    mailoutbox.clear()
+    notifications.scrim_reminder(scrim)
+    assert "社团 QQ 群" not in mailoutbox[-1].body

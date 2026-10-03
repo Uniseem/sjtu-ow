@@ -429,6 +429,13 @@ def _notify_cancelled(scrim_id) -> None:
         notifications.scrim_cancelled(scrim)
 
 
+def community_group_url() -> str:
+    """The community QQ group the split is posted to (design 9.2, v6.33)."""
+    from core.models import SiteSettings
+
+    return SiteSettings.load().qq_group_url or ""
+
+
 def reminder_offset_hours() -> int:
     from core.models import SiteSettings
 

@@ -33,6 +33,8 @@ def actions_context(request, scrim) -> dict:
         "cancelled": scrim.status == ScrimStatus.CANCELLED,
         # Design 9.2 (v6.22): the player's own place, once there is a split.
         "my_placement": services.placement(my_signup) if my_signup else "",
+        # Design 9.2 (v6.33): which group the split goes to.
+        "group_url": services.community_group_url() if my_signup else "",
     }
 
 

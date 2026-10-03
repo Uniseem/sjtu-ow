@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: M10 前台视觉 v6.12，M7 上线准备暂停
-round: 137-participant-contact
+round: 138-scrim-group-link
 next: claude（按用户 10-04 睡前说的：假定管理员、成员、投稿者等各种身份把流程走一遍，发现不完善的地方逐轮修）
 updated: 2026-10-04
 blocked_on: 默认头像以后要换动漫风的话需要你提供有授权的素材（官方没有公开的，现在用官方立绘）；演示站（sjtu.ow-shanghaiuniversity.com）的管理员要你自己建（`… exec web python manage.py createsuperuser`）；转正式站前要定演示数据和动漫头像怎么处理；个人主页的具体设计要和你讨论；属性标签（c-tag）要不要也去掉底色块；读一下 docs/design-details.md 里我替你定的细节；段位默认公开要你确认；Wagtail 投稿通知的正文要不要也改写由你定
 ```
 
 ## 现在该谁动手
+
+**138（2026-10-04）**：以报了内战的成员身份：活动页和提醒邮件都说「分队结果发到群里」，但没说哪个群。现在报名的人在活动页报名区和提醒邮件里能看到社团 QQ 群的加入链接（用全站设置里首页那个链接；演示站还没填，所以暂时看不到）。演示站已升级。
 
 **137（2026-10-04）**：以临时队伍队员的身份：个人报名编出来的队伍互不认识，没有战队主页，管理员的选手群号只能写进公开的赛事说明。现在赛事有「选手联系方式」，只给报了这项赛事的人看（名单里的、散人池里的），显示在赛事页报名区和报名详情页，也写进报名相关的几封邮件。演示站已升级。
 
@@ -498,6 +500,7 @@ $C exec web python manage.py prerender               # 086–089 换了全部模
 | 135-scrim-auto-finish | 内战管理员走查（设计 v6.30）：内战开始 6 小时后自动标记已结束（`finish_past_scrim`），发布、保存时安排 | **Claude 实现**，自查通过。`scrims/tests/test_auto_finish.py` 4 条；7 处变异全部被抓到 |
 | 136-team-contact | 新队员走查（设计 v6.31）：战队「队内联系方式」，只给本队成员和队长看，入队通过的信里写上 | **Claude 实现**，自查通过。`teams/tests/test_member_contact.py` 5 条；7 处变异全部被抓到（视图传参一处等价） |
 | 137-participant-contact | 临时队伍队员走查（设计 v6.32）：赛事「选手联系方式」，只给报了名的人看（`takes_part`），写进被报名、通过、编队、提醒的信 | **Claude 实现**，自查通过。`tournaments/tests/test_participant_contact.py` 6 条；9 处变异全部被抓到 |
+| 138-scrim-group-link | 内战报名者走查（设计 v6.33）：报名区和提醒邮件给出社团 QQ 群链接 | **Claude 实现**，自查通过。`scrims/tests/test_my_placement.py` 加 3 条；5 处变异全部被抓到 |
 
 ## 当前待定问题
 
