@@ -171,9 +171,9 @@ class Command(BaseCommand):
                 self.stdout.write("FIELD_ENCRYPTION_KEY 校验通过。")
 
             plan = [
+                f"恢复 media 到 {media}",
                 f"用备份里的数据库替换 {database}",
                 f"删除 WAL 文件：{', '.join(str(p) for p in wal_siblings(database))}",
-                f"恢复 media 到 {media}",
                 f"清空 {prerendered}",
             ]
             for line in plan:
@@ -185,6 +185,26 @@ class Command(BaseCommand):
                 )
                 return None
 
+            # Uploads first, database second (design 16.7, v6.2): copying
+            # thousands of files is the step that can fail, and if it does
+            # the old database is still in place, so the same command can
+            # simply run again. The other way round left new data pointing
+            # at missing files.
+            #
+            # Empty the folders, never remove them: under Compose both are
+            # mounted volumes, and removing a mount point fails halfway --
+            # files gone, nothing copied back (round 103).
+            staged_media = staging / "media"
+            if staged_media.exists():
+                try:
+                    empty_folder(media)
+                    shutil.copytree(staged_media, media, dirs_exist_ok=True)
+                except OSError as exc:
+                    raise CommandError(
+                        f"恢复 media 失败：{exc}。数据库还没有替换；"
+                        "解决问题后重新运行同一条命令。"
+                    ) from exc
+
             # Close our own connection and drop the old WAL *before* the new
             # file lands. Replacing the database underneath an open connection
             # risks SQLite replaying the previous WAL into the fresh file.
@@ -194,14 +214,6 @@ class Command(BaseCommand):
                 if path.exists():
                     path.unlink()
             shutil.copy2(snapshot, database)
-
-            # Empty the folders, never remove them: under Compose both are
-            # mounted volumes, and removing a mount point fails halfway --
-            # files gone, nothing copied back (round 103).
-            staged_media = staging / "media"
-            if staged_media.exists():
-                empty_folder(media)
-                shutil.copytree(staged_media, media, dirs_exist_ok=True)
 
             empty_folder(prerendered)
 

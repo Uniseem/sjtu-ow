@@ -11,6 +11,13 @@ def django_db_setup(django_db_setup, django_db_blocker):
 
 
 @pytest.fixture(autouse=True)
+def _media_in_a_throwaway_folder(settings, tmp_path_factory):
+    """Uploads made by tests land in a temporary folder, never in the
+    project's media/ (round 104). Tests needing a particular one set it."""
+    settings.MEDIA_ROOT = tmp_path_factory.mktemp("media")
+
+
+@pytest.fixture(autouse=True)
 def _forget_renditions():
     """The thumbnail cache lives in memory across tests, while the images
     behind it roll back with each test and their ids come round again."""

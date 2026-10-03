@@ -253,6 +253,11 @@ def refresh_nickname_pages(user) -> None:
         url = article.get_url()
         if url:
             prerender.request_page(url, kind="article")
+    # Article cards on the homepage and the listings carry the byline (v6.2).
+    if ArticlePage.objects.live().public().filter(author=user).exists():
+        from content.signals import refresh_listings
+
+        refresh_listings("article")
     prerender.request_page("/members/", kind="members")
 
 
@@ -324,6 +329,10 @@ def delete_account(user) -> None:
         user.email = f"deleted-{user.pk}@deleted.invalid"
         user.nickname = DELETED_NICKNAME
         user.avatar = None  # design-details 2.3
+        # Public profile (design 3.8, v6.2): the author card still shows it.
+        user.motto = ""
+        user.main_role = ""
+        user.flex_roles = ""
         user.is_sjtu = False
         user.sjtu_verified_via = None
         user.sjtu_verified_at = None
@@ -334,10 +343,11 @@ def delete_account(user) -> None:
         user.save()
         # After the save: its signal puts everyone back in 交大用户 / 校外用户.
         user.groups.clear()
-        # The review queue keeps a copy of each nickname it checked, including
-        # the one the save above just sent.
+        # The review queue keeps a copy of each nickname and motto it checked,
+        # including the nickname the save above just sent.
         ModerationItem.objects.filter(
-            target_type=TargetType.NICKNAME, target_id=user.pk
+            target_type__in=[TargetType.NICKNAME, TargetType.MOTTO],
+            target_id=user.pk,
         ).delete()
 
 

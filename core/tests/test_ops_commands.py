@@ -449,6 +449,35 @@ def test_restore_brings_the_uploads_back_and_drops_the_rest(
 
 
 @pytest.mark.django_db(transaction=True)
+def test_a_failed_upload_copy_leaves_the_database_alone(
+    backups, settings, tmp_path, monkeypatch
+):
+    """Design 16.7 (v6.2): uploads go back first. If that fails the old
+    database is untouched, and the same command can simply run again."""
+    from accounts.models import User
+
+    archive = make_backup(backups, settings, tmp_path)
+    now = timezone.now()
+    User.objects.create_user(
+        email="after-the-backup@example.com",
+        password="Correct-Horse-Battery-1",
+        nickname="备份之后的人",
+        agreed_terms_at=now,
+        agreed_cross_border_at=now,
+    )
+    settings.PRERENDER_ROOT = tmp_path / "prerendered"
+
+    def disk_full(*args, **kwargs):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(shutil, "copytree", disk_full)
+
+    with pytest.raises(CommandError, match="数据库还没有替换"):
+        run("restore", str(archive), "--yes")
+    assert User.objects.filter(email="after-the-backup@example.com").exists()
+
+
+@pytest.mark.django_db(transaction=True)
 def test_restore_works_when_media_is_a_mounted_volume(
     backups, settings, tmp_path, monkeypatch
 ):

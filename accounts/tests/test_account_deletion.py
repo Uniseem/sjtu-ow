@@ -123,10 +123,34 @@ def test_deleting_drops_the_review_queues_copies_of_the_nickname(world, settings
         excerpt="要注销的人",
         text_hash="x",
     )
+    ModerationItem.objects.create(
+        target_type=TargetType.MOTTO,
+        target_id=member.pk,
+        field="motto",
+        excerpt="注销前的宣言",
+        text_hash="y",
+    )
     delete_account(member)
     assert not ModerationItem.objects.filter(
-        target_type=TargetType.NICKNAME, target_id=member.pk
+        target_type__in=[TargetType.NICKNAME, TargetType.MOTTO], target_id=member.pk
     ).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_clears_the_public_profile(world):
+    """Design 3.8 (v6.2): the author card under old articles showed the
+    motto of someone who had deleted their account."""
+    member = world["member"]
+    member.motto = "注销前的宣言"
+    member.main_role = "damage"
+    member.flex_roles = "tank,support"
+    member.save()
+    delete_account(member)
+    member.refresh_from_db()
+
+    assert member.motto == ""
+    assert member.main_role == ""
+    assert member.flex_roles == ""
 
 
 @pytest.mark.django_db

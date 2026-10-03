@@ -202,6 +202,35 @@ def test_a_new_picture_regenerates_the_pages_that_show_it():
 
 
 @pytest.mark.django_db
+def test_an_authors_new_face_reaches_the_homepage_and_listings(site):
+    """Article cards carry the byline (design 13.13.4, v6.2); people who
+    never wrote anything do not set off the whole front page."""
+    from accounts.services import refresh_nickname_pages
+    from content.models import ArticleCategory, ArticleIndexPage
+    from content.tests.test_content import _article
+
+    author = make_user(14)
+    reader = make_user(15)
+    news = ArticleIndexPage.objects.get(slug="news")
+    _article(
+        news,
+        ArticleCategory.objects.get(slug="guide"),
+        author,
+        title="署名文章",
+        slug="byline-article",
+    )
+    with mock.patch("core.prerender.request_page") as request_page:
+        refresh_nickname_pages(author)
+    urls = [c.args[0] for c in request_page.call_args_list]
+    assert "/" in urls
+    assert news.url in urls
+
+    with mock.patch("core.prerender.request_page") as request_page:
+        refresh_nickname_pages(reader)
+    assert "/" not in [c.args[0] for c in request_page.call_args_list]
+
+
+@pytest.mark.django_db
 def test_a_former_members_team_page_is_regenerated_too():
     """Former members are listed with their face (design-details 5.3)."""
     from accounts.services import refresh_nickname_pages
