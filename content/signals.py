@@ -154,16 +154,16 @@ def on_category_saved(sender, instance, **kwargs):
             prerender.request_page(url, kind="article")
 
 
-# --- the 默认封面 pool (design 13.2.5, v6.7) -------------------------------------
+# --- the 默认封面 and 默认头像 pools (13.2.5, v6.7; details 2.4, v6.9) -------------
 
 Image = get_image_model()
 
 
-def _in_cover_pool(collection_id) -> bool:
-    """默认封面 or any folder under it (v6.8)."""
-    from core.covers import in_pool
+def _in_default_pool(collection_id) -> bool:
+    """默认封面 or 默认头像, or any folder under them (v6.8, v6.9)."""
+    from core import avatars, covers
 
-    return in_pool(collection_id)
+    return covers.in_pool(collection_id) or avatars.in_pool(collection_id)
 
 
 @receiver(pre_save, sender=Image)
@@ -181,17 +181,18 @@ def remember_cover_collection(sender, instance, raw=False, **kwargs):
 
 @receiver(post_save, sender=Image)
 def refresh_after_cover_pool_change(sender, instance, raw=False, **kwargs):
-    """Covers come from the pool by position, so a picture coming, going or
-    changing moves covers all over the site: regenerate everything."""
+    """Covers and default faces come from their pools by position, so a
+    picture coming, going or changing moves them all over the site:
+    regenerate everything."""
     if raw:
         return
     before = getattr(instance, "_collection_before", None)
-    left = before and before != instance.collection_id and _in_cover_pool(before)
-    if left or _in_cover_pool(instance.collection_id):
+    left = before and before != instance.collection_id and _in_default_pool(before)
+    if left or _in_default_pool(instance.collection_id):
         prerender.request_all_soon()
 
 
 @receiver(post_delete, sender=Image)
 def refresh_after_cover_pool_delete(sender, instance, **kwargs):
-    if _in_cover_pool(instance.collection_id):
+    if _in_default_pool(instance.collection_id):
         prerender.request_all_soon()

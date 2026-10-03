@@ -262,6 +262,20 @@ def ensure_default_cover_collection() -> Collection:
     return root.add_child(name=DEFAULT_COVER_COLLECTION)
 
 
+def ensure_default_avatar_collection() -> Collection:
+    """The 默认头像 pool (design-details 2.4, v6.9): faces for people without
+    a picture of their own."""
+    from core.avatars import DEFAULT_AVATAR_COLLECTION
+
+    root = Collection.get_first_root_node()
+    if root is None:
+        root = Collection.add_root(name="Root")
+    existing = root.get_children().filter(name=DEFAULT_AVATAR_COLLECTION).first()
+    if existing is not None:
+        return existing
+    return root.add_child(name=DEFAULT_AVATAR_COLLECTION)
+
+
 def ensure_content_workflow() -> Workflow:
     workflow, _created = Workflow.objects.get_or_create(
         name=CONTENT_WORKFLOW_NAME,

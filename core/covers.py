@@ -18,34 +18,31 @@ DEFAULT_COVER_COLLECTION = "默认封面"
 DRIFTS = 4
 
 
-def pool_root():
-    """The 默认封面 collection itself (the top-most one of that name)."""
+def pool_root(name: str = DEFAULT_COVER_COLLECTION):
+    """The 默认封面 collection itself (the top-most one of that name); the
+    默认头像 pool (core.avatars) is looked up the same way."""
     from wagtail.models import Collection
 
-    return (
-        Collection.objects.filter(name=DEFAULT_COVER_COLLECTION)
-        .order_by("depth", "path")
-        .first()
-    )
+    return Collection.objects.filter(name=name).order_by("depth", "path").first()
 
 
-def in_pool(collection_id) -> bool:
+def in_pool(collection_id, name: str = DEFAULT_COVER_COLLECTION) -> bool:
     """Whether a collection is 默认封面 or one of its folders (v6.8)."""
     from wagtail.models import Collection
 
-    root = pool_root()
+    root = pool_root(name)
     return bool(collection_id and root) and (
         Collection.objects.filter(pk=collection_id, path__startswith=root.path).exists()
     )
 
 
-def load_pool() -> list:
+def load_pool(name: str = DEFAULT_COVER_COLLECTION) -> list:
     """The pool's images, the folders under it included (one per hero, maps,
     groups, posters; v6.8), oldest first, thumbnails fetched with them: the
     same few queries per page however many cards use it."""
     from wagtail.images import get_image_model
 
-    root = pool_root()
+    root = pool_root(name)
     if root is None:
         return []
     return list(

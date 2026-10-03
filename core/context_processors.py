@@ -1,5 +1,5 @@
 """Values every template needs: fonts (13.12.4), environment (16.10), the
-default cover pool (13.2.5)."""
+default cover pool (13.2.5) and the default avatar pool (details 2.4)."""
 
 from django.conf import settings
 
@@ -20,3 +20,10 @@ def cover_pool(request):
     from core.covers import lazy_pool
 
     return {"cover_pool": lazy_pool()}
+
+
+def avatar_pool(request):
+    """The 默认头像 pool, loaded at most once per page (details 2.4, v6.9)."""
+    from core.avatars import lazy_pool
+
+    return {"avatar_pool": lazy_pool()}

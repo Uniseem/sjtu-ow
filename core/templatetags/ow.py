@@ -228,3 +228,17 @@ def cover_fallback(context, obj, spec, css_class="", lazy=False):
         format_html(' class="{}"', " ".join(classes)) if classes else "",
         mark_safe(' loading="lazy"') if lazy else "",
     )
+
+
+@register.simple_tag(takes_context=True)
+def default_avatar(context, person, spec):
+    """The face of someone without a picture (design-details 2.4, v6.9): a
+    thumbnail from the 默认头像 pool, or "" when there is none for them (own
+    picture, closed account, empty pool) and the initial should show."""
+    from core import avatars
+
+    pool = context.get("avatar_pool")
+    image = avatars.pick(person, avatars.load_pool() if pool is None else pool)
+    if image is None:
+        return ""
+    return image.get_rendition(spec).img_tag({"alt": "", "loading": "lazy"})

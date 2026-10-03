@@ -91,6 +91,7 @@ TEMPLATES = [
                 "core.context_processors.fonts",
                 "core.context_processors.site_environment",
                 "core.context_processors.cover_pool",
+                "core.context_processors.avatar_pool",
             ],
         },
     },

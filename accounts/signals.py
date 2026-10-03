@@ -18,7 +18,9 @@ from accounts.services import (
 )
 
 # Everything the public pages print about a person (13.13.4; motto, roles
-# and the rank switch from v5.2, design-details 3; the picture from v6.1, 2.3).
+# and the rank switch from v5.2, design-details 3; the picture from v6.1, 2.3;
+# whether the account is open, which picks a default face or the initial,
+# v6.9, 2.4).
 PUBLIC_FIELDS = (
     "nickname",
     "motto",
@@ -26,6 +28,7 @@ PUBLIC_FIELDS = (
     "flex_roles",
     "show_rank",
     "avatar_id",
+    "is_active",
 )
 # save(update_fields=...) may name the picture either way.
 _PUBLIC_UPDATE_FIELDS = {*PUBLIC_FIELDS, "avatar"}
