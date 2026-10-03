@@ -429,6 +429,32 @@ def _notify_cancelled(scrim_id) -> None:
         notifications.scrim_cancelled(scrim)
 
 
+def time_changed(scrim, old_starts_at) -> bool:
+    """Design 9.1 (v6.34): the admin moved a published scrim. Tell everyone
+    signed up and let the reminder go out again. Call before ``after_change``."""
+    new = scrim.starts_at
+    if (
+        scrim.status != ScrimStatus.PUBLISHED
+        or old_starts_at is None
+        or new == old_starts_at
+        or new <= timezone.now()
+    ):
+        return False
+    Scrim.objects.filter(pk=scrim.pk).update(reminder_sent_at=None)
+    scrim.reminder_sent_at = None
+    scrim_id = scrim.pk
+
+    def notify():
+        from scrims import notifications
+
+        moved = Scrim.objects.filter(pk=scrim_id).first()
+        if moved is not None:
+            notifications.scrim_time_changed(moved, old_starts_at)
+
+    transaction.on_commit(notify)
+    return True
+
+
 def community_group_url() -> str:
     """The community QQ group the split is posted to (design 9.2, v6.33)."""
     from core.models import SiteSettings

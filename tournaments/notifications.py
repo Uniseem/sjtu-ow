@@ -36,6 +36,48 @@ def moment(value) -> str:
     return f"{localtime(value):%Y-%m-%d %H:%M}"
 
 
+def time_changed_letter(tournament, old_starts_at) -> Letter:
+    """Design 8.1 (v6.34): the start moved; say from when to when."""
+    return Letter(
+        subject=f"比赛时间改了：{tournament.title}",
+        lead=(
+            f"「{tournament.title}」的比赛时间改了："
+            f"原来 {moment(old_starts_at)}，现在 {moment(tournament.starts_at)}。"
+        ),
+        facts=[
+            ("现在的时间", moment(tournament.starts_at)),
+            *contact_fact(tournament),
+        ],
+        paragraphs=[
+            "开赛前会按新的时间再提醒一次。新时间来不了的话，请尽早告诉队长或赛事管理员。"
+        ],
+        action=("查看赛事页面", site_url(tournament.get_absolute_url())),
+        reason=f"你收到这封邮件，是因为你报名了「{tournament.title}」。",
+    )
+
+
+def participants(tournament) -> list:
+    """Everyone taking part (design 8.1): live rosters and the pool, once each."""
+    from accounts.models import User
+
+    ids = set(
+        tournament.roster_members.filter(is_active=True).values_list(
+            "user_id", flat=True
+        )
+    ) | set(tournament.individual_signups.values_list("user_id", flat=True))
+    return list(
+        User.objects.filter(pk__in=ids, is_active=True).exclude(email="").order_by("pk")
+    )
+
+
+def time_changed(tournament, old_starts_at) -> int:
+    return send(
+        time_changed_letter(tournament, old_starts_at),
+        participants(tournament),
+        fail_silently=True,
+    )
+
+
 def tournament_reminder_letter(tournament, row) -> Letter:
     """Design 8.1 (v6.24): one per player, with their own team and game ID."""
     registration = row.registration

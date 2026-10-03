@@ -264,6 +264,34 @@ def schedule_phase_refresh(tournament) -> None:
             prerender_page.using(run_after=moment).enqueue("/")
 
 
+def time_changed(tournament, old_starts_at) -> bool:
+    """Design 8.1 (v6.34): the admin moved a published tournament. Tell the
+    people taking part, and let the reminder go out again for the new time.
+    Call before ``after_change``, which arranges that reminder."""
+    new = tournament.starts_at
+    if (
+        tournament.status != TournamentStatus.PUBLISHED
+        or old_starts_at is None
+        or new is None
+        or new == old_starts_at
+        or new <= timezone.now()
+    ):
+        return False
+    Tournament.objects.filter(pk=tournament.pk).update(reminder_sent_at=None)
+    tournament.reminder_sent_at = None
+    tournament_id = tournament.pk
+
+    def notify():
+        from tournaments import notifications
+
+        moved = Tournament.objects.filter(pk=tournament_id).first()
+        if moved is not None:
+            notifications.time_changed(moved, old_starts_at)
+
+    transaction.on_commit(notify)
+    return True
+
+
 def reminder_offset_hours() -> int:
     from core.models import SiteSettings
 

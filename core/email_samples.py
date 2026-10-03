@@ -251,6 +251,16 @@ def samples() -> list[Sample]:
             "西瓜",
         ),
         _letter(
+            "tournament-moved",
+            "赛事",
+            "比赛时间改了",
+            "报了名的人（名单里的、散人池里的）",
+            tournaments.time_changed_letter(
+                _tournament(), timezone.make_aware(datetime(2026, 11, 7, 14, 0))
+            ),
+            "小天使",
+        ),
+        _letter(
             "member-left",
             "战队",
             "队员退出战队",
@@ -418,6 +428,16 @@ def samples() -> list[Sample]:
                     description="怀旧版本，六人一队，不限位置。",
                 ),
                 "https://example.com/unsubscribe/sample/",
+            ),
+            "小天使",
+        ),
+        _letter(
+            "scrim-moved",
+            "内战",
+            "内战时间改了",
+            "全部报名者",
+            scrims.scrim_time_changed_letter(
+                _scrim(), timezone.make_aware(datetime(2026, 10, 4, 19, 30))
             ),
             "小天使",
         ),

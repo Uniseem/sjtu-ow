@@ -136,7 +136,11 @@ class TournamentIndexView(generic.IndexView):
 
 class TournamentSaveMixin:
     def save_instance(self):
+        # Design 8.1 (v6.34): the start before this save, for 「时间改了」.
+        form = getattr(self, "form", None)
+        old_starts_at = form.initial.get("starts_at") if form is not None else None
         instance = super().save_instance()
+        services.time_changed(instance, old_starts_at)
         if instance.created_by_id is None:
             instance.created_by = self.request.user
             instance.save(update_fields=["created_by"])

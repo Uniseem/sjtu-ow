@@ -59,6 +59,30 @@ def scrim_cancelled(scrim) -> int:
     return send(scrim_cancelled_letter(scrim), _recipients(scrim), fail_silently=True)
 
 
+def scrim_time_changed_letter(scrim, old_starts_at) -> Letter:
+    """Design 9.1 (v6.34): the start moved; say from when to when."""
+    old = timezone.localtime(old_starts_at).strftime("%Y-%m-%d %H:%M")
+    new = timezone.localtime(scrim.starts_at).strftime("%Y-%m-%d %H:%M")
+    return Letter(
+        subject=f"内战时间改了：{scrim.title}",
+        lead=f"内战「{scrim.title}」的开始时间改了：原来 {old}，现在 {new}。",
+        facts=_facts(scrim),
+        paragraphs=[
+            "开始前会按新的时间再提醒一次。新时间来不了的话，请取消报名或告诉管理员。"
+        ],
+        action=("查看活动页面", _link(scrim)),
+        reason=_why(scrim),
+    )
+
+
+def scrim_time_changed(scrim, old_starts_at) -> int:
+    return send(
+        scrim_time_changed_letter(scrim, old_starts_at),
+        _recipients(scrim),
+        fail_silently=True,
+    )
+
+
 def scrim_reminder_letter(scrim, placement: str = "", group_url: str = "") -> Letter:
     facts = _facts(scrim)
     if placement:
