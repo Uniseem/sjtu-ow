@@ -114,3 +114,19 @@ def test_the_service_saves_it_trimmed():
         member_contact=f"  {GROUP}  ",
     )
     assert Team.objects.get(pk=team.pk).member_contact == GROUP
+
+
+@pytest.mark.django_db
+def test_my_teams_lists_how_to_reach_each(client):
+    """Round 149 (design 7.1, v6.42)."""
+    team, captain = _team()
+    mate = _join(team, captain, "mate149@example.com", "队员149")
+    client.force_login(mate)
+    page = client.get(reverse("me_teams")).content.decode()
+    assert "队长还没填" in page
+    Team.objects.filter(pk=team.pk).update(member_contact=GROUP)
+    page = client.get(reverse("me_teams")).content.decode()
+    assert f'<span class="font-code">{GROUP}</span>' in page
+    client.force_login(captain)
+    Team.objects.filter(pk=team.pk).update(member_contact="")
+    assert "还没填，去填" in client.get(reverse("me_teams")).content.decode()
