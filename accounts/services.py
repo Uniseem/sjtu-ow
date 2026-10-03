@@ -1,4 +1,4 @@
-"""Account helpers: groups, profile completeness, game IDs."""
+"""Account helpers: groups, profile completeness, game IDs, uploaded faces."""
 
 from __future__ import annotations
 
@@ -6,13 +6,14 @@ from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
 
 from accounts.models import (
+    AvatarSubmission,
     ContactMethod,
     Feature,
     FeatureUserRule,
     GameAccount,
     User,
 )
-from accounts.permissions import can_use
+from accounts.permissions import can_use, feature_denied_message
 from accounts.ranks import format_rank
 
 GROUP_SJTU = "交大用户"
@@ -341,6 +342,7 @@ def delete_account(user) -> None:
         user.deactivation_note = DELETED_NOTE
         user.set_unusable_password()
         user.save()
+        forget_uploaded_faces(user)  # design 3.8, v6.11
         # After the save: its signal puts everyone back in 交大用户 / 校外用户.
         user.groups.clear()
         # The review queue keeps a copy of each nickname and motto it checked,
@@ -403,6 +405,17 @@ def personal_data(user) -> dict:
             for membership in TeamMembership.objects.filter(user=user).select_related(
                 "team"
             )
+        ],
+        # design 3.8 (v6.11): what happened to each picture, not who reviewed it
+        "avatar_uploads": [
+            {
+                "status": upload.get_status_display(),
+                "uploaded_at": when(upload.created_at),
+                "reviewed_at": when(upload.reviewed_at),
+                "reason": upload.get_reason_display() if upload.reason else "",
+                "note": upload.note,
+            }
+            for upload in user.avatar_submissions.all()
         ],
         "team_alumni": [
             {
@@ -478,3 +491,206 @@ def personal_data(user) -> dict:
             for page in ArticlePage.objects.filter(author=user)
         ],
     }
+
+
+# --- uploaded faces (design-details 2.3, v6.11) ------------------------------------
+
+AVATAR_UPLOADS_PER_DAY = 5
+DAY_SECONDS = 24 * 60 * 60
+
+
+class AvatarUploadError(Exception):
+    """Why an upload was refused; the message is for the person."""
+
+
+class AvatarReviewError(Exception):
+    """Why a review action cannot be done; the message is for the reviewer."""
+
+
+def pending_avatar(user):
+    """The picture this person is waiting on, if any."""
+    return (
+        user.avatar_submissions.filter(status=AvatarSubmission.Status.PENDING)
+        .select_related("image")
+        .first()
+    )
+
+
+def uploaded_face_ids(user) -> set[int]:
+    """Pictures that came to this person through the upload: theirs to
+    delete. Faces put on the demo by script are not among them."""
+    return set(
+        AvatarSubmission.objects.filter(user=user)
+        .exclude(image=None)
+        .values_list("image_id", flat=True)
+    )
+
+
+def _delete_images(ids) -> None:
+    from wagtail.images import get_image_model
+
+    ids = [pk for pk in ids if pk]
+    for image in get_image_model().objects.filter(pk__in=ids):
+        image.delete()  # Wagtail removes the file and thumbnails after commit
+
+
+def _set_face(user, image_id) -> None:
+    """Change the face through save(), so its pages are regenerated (2.3)."""
+    user.avatar_id = image_id
+    user.save(update_fields=["avatar"])
+
+
+def submit_avatar(user, uploaded) -> AvatarSubmission:
+    """Process an upload and put it in the review queue; whatever the person
+    was waiting on before is withdrawn. Their face does not change yet."""
+    from django.db import transaction
+
+    from accounts.images import AvatarError, create_face_image
+    from accounts.notifications import avatars_waiting_soon
+    from core.ratelimit import over_limit
+
+    if not can_use(user, Feature.AVATAR_UPLOAD):
+        raise AvatarUploadError(feature_denied_message())
+    if over_limit(f"avatar-upload:{user.pk}", AVATAR_UPLOADS_PER_DAY, DAY_SECONDS):
+        raise AvatarUploadError("今天上传的次数用完了，明天再来吧。")
+    try:
+        image = create_face_image(uploaded, user=user)
+    except AvatarError as error:
+        raise AvatarUploadError(str(error)) from error
+    with transaction.atomic():
+        earlier = list(
+            AvatarSubmission.objects.filter(
+                user=user, status=AvatarSubmission.Status.PENDING
+            )
+        )
+        for old in earlier:
+            old.status = AvatarSubmission.Status.WITHDRAWN
+            old.save(update_fields=["status"])
+        _delete_images(old.image_id for old in earlier)
+        submission = AvatarSubmission.objects.create(user=user, image=image)
+    avatars_waiting_soon()
+    return submission
+
+
+def withdraw_avatar(user) -> bool:
+    """Take back the picture waiting for review."""
+    from django.db import transaction
+
+    with transaction.atomic():
+        submission = pending_avatar(user)
+        if submission is None:
+            return False
+        submission.status = AvatarSubmission.Status.WITHDRAWN
+        submission.save(update_fields=["status"])
+        _delete_images([submission.image_id])
+    return True
+
+
+def remove_avatar(user) -> bool:
+    """Back to the default face at once, no review; the old picture goes if
+    the person uploaded it."""
+    from django.db import transaction
+
+    if not user.avatar_id:
+        return False
+    with transaction.atomic():
+        old = user.avatar_id
+        owned = old in uploaded_face_ids(user)
+        _set_face(user, None)
+        if owned:
+            _delete_images([old])
+    return True
+
+
+def _decided(submission, status, reviewer, reason="", note=""):
+    from django.utils import timezone
+
+    submission.status = status
+    submission.reason = reason
+    submission.note = (note or "")[:200]
+    submission.reviewed_by = reviewer
+    submission.reviewed_at = timezone.now()
+    submission.save(
+        update_fields=["status", "reason", "note", "reviewed_by", "reviewed_at"]
+    )
+
+
+def _locked(submission_id, status):
+    submission = (
+        AvatarSubmission.objects.select_related("user", "image")
+        .filter(pk=submission_id)
+        .first()
+    )
+    if submission is None or submission.status != status:
+        raise AvatarReviewError("这张头像已经被处理过了，刷新看看。")
+    return submission
+
+
+def approve_avatar(submission_id, reviewer) -> AvatarSubmission:
+    """The picture becomes the face; an earlier uploaded face is deleted."""
+    from django.db import transaction
+
+    with transaction.atomic():
+        submission = _locked(submission_id, AvatarSubmission.Status.PENDING)
+        if submission.image_id is None:
+            raise AvatarReviewError("这张头像的图片不见了，没法通过。")
+        user = submission.user
+        old = user.avatar_id
+        owned = old in uploaded_face_ids(user)
+        _decided(submission, AvatarSubmission.Status.APPROVED, reviewer)
+        _set_face(user, submission.image_id)
+        if old and owned:
+            _delete_images([old])
+    return submission
+
+
+def _check_reason(reason) -> str:
+    from moderation.models import Category
+
+    if reason not in Category.values:
+        raise AvatarReviewError("请选一个原因。")
+    return reason
+
+
+def reject_avatar(submission_id, reviewer, reason, note="") -> AvatarSubmission:
+    """Not shown; the picture is deleted and the person told why."""
+    from django.db import transaction
+
+    from accounts.notifications import avatar_rejected
+
+    reason = _check_reason(reason)
+    with transaction.atomic():
+        submission = _locked(submission_id, AvatarSubmission.Status.PENDING)
+        image_id = submission.image_id
+        _decided(submission, AvatarSubmission.Status.REJECTED, reviewer, reason, note)
+        _delete_images([image_id])
+        transaction.on_commit(lambda: avatar_rejected(submission))
+    return submission
+
+
+def take_down_avatar(submission_id, reviewer, reason, note="") -> AvatarSubmission:
+    """An approved face that turned out wrong: off the site, deleted, the
+    person told why."""
+    from django.db import transaction
+
+    from accounts.notifications import avatar_taken_down
+
+    reason = _check_reason(reason)
+    with transaction.atomic():
+        submission = _locked(submission_id, AvatarSubmission.Status.APPROVED)
+        user = submission.user
+        if not submission.image_id or user.avatar_id != submission.image_id:
+            raise AvatarReviewError("这张头像现在没在用，不用撤下。")
+        image_id = submission.image_id
+        _decided(submission, AvatarSubmission.Status.TAKEN_DOWN, reviewer, reason, note)
+        _set_face(user, None)
+        _delete_images([image_id])
+        transaction.on_commit(lambda: avatar_taken_down(submission))
+    return submission
+
+
+def forget_uploaded_faces(user) -> None:
+    """Account deletion (design 3.8): every uploaded picture and its record."""
+    ids = uploaded_face_ids(user)
+    AvatarSubmission.objects.filter(user=user).delete()
+    _delete_images(ids)

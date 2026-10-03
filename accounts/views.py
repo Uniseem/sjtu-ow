@@ -10,21 +10,28 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.forms import (
+    AvatarForm,
     ContactMethodForm,
     DeleteAccountForm,
     GameAccountForm,
     ProfileForm,
     game_account_limit_reached,
 )
-from accounts.models import ContactMethod, GameAccount
+from accounts.models import AvatarSubmission, ContactMethod, Feature, GameAccount
+from accounts.permissions import can_use, feature_denied_message
 from accounts.services import (
     AccountDeletionError,
+    AvatarUploadError,
     delete_account,
     deletion_blocked_reason,
     deletion_blockers,
     max_game_accounts,
+    pending_avatar,
     personal_data,
     profile_gaps,
+    remove_avatar,
+    submit_avatar,
+    withdraw_avatar,
 )
 from core.ratelimit import over_limit
 
@@ -62,6 +69,41 @@ def me_context(request, current: str, **extra):
 _me_context = me_context
 
 
+def _avatar_context(request, avatar_form=None) -> dict:
+    """The 头像 block on 基本资料 (design-details 2.3, v6.11)."""
+    user = request.user
+    latest = (
+        user.avatar_submissions.exclude(status=AvatarSubmission.Status.WITHDRAWN)
+        .order_by("-created_at")
+        .first()
+    )
+    turned_down = (
+        latest
+        if latest
+        and latest.status
+        in (AvatarSubmission.Status.REJECTED, AvatarSubmission.Status.TAKEN_DOWN)
+        else None
+    )
+    return {
+        "avatar_form": avatar_form or AvatarForm(),
+        "avatar_pending": pending_avatar(user),
+        "avatar_turned_down": turned_down,
+        "avatar_can_upload": can_use(user, Feature.AVATAR_UPLOAD),
+        "avatar_denied": feature_denied_message(),
+    }
+
+
+def _profile_page(request, form=None, avatar_form=None):
+    form = form or ProfileForm(instance=request.user)
+    return render(
+        request,
+        "me/profile.html",
+        _me_context(
+            request, "me_profile", form=form, **_avatar_context(request, avatar_form)
+        ),
+    )
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def me_profile(request):
@@ -71,13 +113,40 @@ def me_profile(request):
             form.save()
             messages.success(request, "资料已保存。")
             return redirect("me_profile")
-    else:
-        form = ProfileForm(instance=request.user)
-    return render(
-        request,
-        "me/profile.html",
-        _me_context(request, "me_profile", form=form),
-    )
+        return _profile_page(request, form=form)
+    return _profile_page(request)
+
+
+@login_required
+@require_POST
+def me_avatar_upload(request):
+    """Upload a face; it shows once a reviewer approves it (v6.11)."""
+    form = AvatarForm(request.POST, request.FILES)
+    if form.is_valid():
+        try:
+            submit_avatar(request.user, form.cleaned_data["file"])
+        except AvatarUploadError as error:
+            form.add_error("file", str(error))
+        else:
+            messages.success(request, "头像已上传，审核通过后会换上。")
+            return redirect("me_profile")
+    return _profile_page(request, avatar_form=form)
+
+
+@login_required
+@require_POST
+def me_avatar_withdraw(request):
+    if withdraw_avatar(request.user):
+        messages.success(request, "已撤回待审核的头像。")
+    return redirect("me_profile")
+
+
+@login_required
+@require_POST
+def me_avatar_remove(request):
+    if remove_avatar(request.user):
+        messages.success(request, "已改用默认头像。")
+    return redirect("me_profile")
 
 
 @login_required

@@ -4,6 +4,9 @@ from accounts import views
 
 urlpatterns = [
     path("me/", views.me_profile, name="me_profile"),
+    path("me/avatar/", views.me_avatar_upload, name="me_avatar_upload"),
+    path("me/avatar/withdraw/", views.me_avatar_withdraw, name="me_avatar_withdraw"),
+    path("me/avatar/remove/", views.me_avatar_remove, name="me_avatar_remove"),
     path("me/game-accounts/", views.me_game_accounts, name="me_game_accounts"),
     path(
         "me/game-accounts/<int:pk>/",

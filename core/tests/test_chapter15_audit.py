@@ -671,7 +671,7 @@ def test_enum_values_match_appendix_b():
     """附录 B lists every stored enum value. They are in URLs and in the
     database, so a rename is a silent breaking change — worth pinning rather
     than trusting to review."""
-    from accounts.models import Feature
+    from accounts.models import AvatarSubmission, Feature
     from core.models import PrerenderedPage, TypographyRule
     from moderation.models import ModerationItem, Risk, TargetType
     from scrims.models import Role as ScrimRole
@@ -699,6 +699,14 @@ def test_enum_values_match_appendix_b():
             "scrim_signup",
             "article_submit",
             "article_comment",
+            "avatar_upload",  # design-details 2.3 (v6.11)
+        ],
+        AvatarSubmission.Status: [
+            "pending",
+            "approved",
+            "rejected",
+            "withdrawn",
+            "taken_down",
         ],
         TargetType: [
             "nickname",

@@ -10,6 +10,7 @@ from moderation.admin_views import (
     moderation_detail,
     moderation_index,
 )
+from moderation.avatar_admin import avatar_review, avatar_review_action
 
 
 @hooks.register("register_admin_urls")
@@ -21,6 +22,13 @@ def register_moderation_urls():
             "moderation/<int:pk>/action/",
             moderation_action,
             name="moderation_action",
+        ),
+        # design-details 2.3 (v6.11)
+        path("avatars/", avatar_review, name="avatar_review"),
+        path(
+            "avatars/<int:pk>/action/",
+            avatar_review_action,
+            name="avatar_review_action",
         ),
     ]
 
@@ -53,4 +61,14 @@ def register_moderation_menu_item():
         reverse("moderation_index"),
         icon_name="view",
         order=100,
+    )
+
+
+@hooks.register("register_community_menu_item")
+def register_avatar_review_menu_item():
+    return ReviewerMenuItem(
+        "头像审核",
+        reverse("avatar_review"),
+        icon_name="user",
+        order=110,
     )

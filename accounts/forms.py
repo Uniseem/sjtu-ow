@@ -259,3 +259,32 @@ class DeleteAccountForm(forms.Form):
         if not self.user.check_password(password):
             raise forms.ValidationError("密码不对。")
         return password
+
+
+class AvatarForm(forms.Form):
+    """Pick a picture for your face (design-details 2.3, v6.11). The checks
+    here are the cheap ones; the picture itself is checked when it is opened
+    (accounts.images)."""
+
+    file = forms.FileField(
+        label="上传新头像",
+        help_text=(
+            "JPG、PNG 或 WebP，不超过 5MB，至少 128×128 像素。会从中间裁成正方形，"
+            "想要别的范围请先自己裁好。审核通过后才会换上。"
+        ),
+        widget=forms.FileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
+    )
+
+    def clean_file(self):
+        from accounts.images import AVATAR_EXTENSIONS, AVATAR_MAX_BYTES, AVATAR_TYPES
+
+        uploaded = self.cleaned_data["file"]
+        if uploaded.size > AVATAR_MAX_BYTES:
+            raise ValidationError("头像不能超过 5MB。")
+        name = (uploaded.name or "").lower()
+        content_type = getattr(uploaded, "content_type", "")
+        if not name.endswith(AVATAR_EXTENSIONS) or (
+            content_type and content_type not in AVATAR_TYPES
+        ):
+            raise ValidationError("头像只支持 JPG、PNG 或 WebP。")
+        return uploaded

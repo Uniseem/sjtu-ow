@@ -276,6 +276,21 @@ def ensure_default_avatar_collection() -> Collection:
     return root.add_child(name=DEFAULT_AVATAR_COLLECTION)
 
 
+USER_AVATAR_COLLECTION = "用户头像"
+
+
+def ensure_user_avatar_collection() -> Collection:
+    """Where members' uploaded faces live, approved or waiting (design-details
+    2.3, v6.11). Not a pool: nothing is picked from it."""
+    root = Collection.get_first_root_node()
+    if root is None:
+        root = Collection.add_root(name="Root")
+    existing = root.get_children().filter(name=USER_AVATAR_COLLECTION).first()
+    if existing is not None:
+        return existing
+    return root.add_child(name=USER_AVATAR_COLLECTION)
+
+
 def ensure_content_workflow() -> Workflow:
     workflow, _created = Workflow.objects.get_or_create(
         name=CONTENT_WORKFLOW_NAME,

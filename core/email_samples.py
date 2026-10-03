@@ -87,6 +87,17 @@ def _flagged(pk, risk, kind, excerpt):
     )
 
 
+def _avatar(status, reason, note=""):
+    labels = {"porn": "色情低俗", "impersonation": "冒充官方"}
+    return SimpleNamespace(
+        status=status,
+        get_reason_display=lambda: labels[reason],
+        note=note,
+        user=SimpleNamespace(nickname="小天使", email="angel@example.com"),
+        created_at=timezone.make_aware(datetime(2026, 10, 3, 14, 20)),
+    )
+
+
 def _letter(key, group, title, to, letter, name) -> Sample:
     text, html = letters.render(letter, name)
     return Sample(key, group, title, to, letter.subject, text, html)
@@ -135,6 +146,7 @@ def _wagtail() -> Sample:
 
 
 def samples() -> list[Sample]:
+    from accounts import notifications as faces
     from core.mail import test_letter
     from moderation import notifications as moderation
     from scrims import notifications as scrims
@@ -336,6 +348,34 @@ def samples() -> list[Sample]:
             "内容编辑、超级管理员",
             moderation.digest_letter(flagged),
             "编辑甲",
+        ),
+        _letter(
+            "avatars-waiting",
+            "审核",
+            "有头像待审核",
+            "内容编辑、超级管理员",
+            faces.avatars_waiting_letter(
+                [_avatar("pending", "porn"), _avatar("pending", "porn")]
+            ),
+            "编辑甲",
+        ),
+        _letter(
+            "avatar-rejected",
+            "账号",
+            "头像未通过",
+            "上传的人",
+            faces.avatar_rejected_letter(
+                _avatar("rejected", "impersonation", "图里有社团的标志，像官方账号。")
+            ),
+            "小天使",
+        ),
+        _letter(
+            "avatar-taken-down",
+            "账号",
+            "头像被撤下",
+            "上传的人",
+            faces.avatar_taken_down_letter(_avatar("taken_down", "porn")),
+            "小天使",
         ),
         _wagtail(),
     ]

@@ -15,6 +15,7 @@ from content.services import (
     ensure_default_cover_collection,
     ensure_page_tree,
     ensure_submission_image_collection,
+    ensure_user_avatar_collection,
     remove_wagtail_stock_groups,
     sync_default_site_from_site_url,
 )
@@ -80,6 +81,8 @@ class Command(BaseCommand):
         collection = ensure_default_cover_collection()
         self.stdout.write(self.style.SUCCESS(f"已确保图片集合：{collection.name}"))
         collection = ensure_default_avatar_collection()
+        self.stdout.write(self.style.SUCCESS(f"已确保图片集合：{collection.name}"))
+        collection = ensure_user_avatar_collection()
         self.stdout.write(self.style.SUCCESS(f"已确保图片集合：{collection.name}"))
 
         workflow = ensure_content_workflow()

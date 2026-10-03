@@ -1,13 +1,64 @@
 {% extends "me/base.html" %}
+{% load ow wagtailimages_tags %}
 
 {% block me_title %}基本资料{% endblock %}
 {% block me_heading %}基本资料{% endblock %}
 {% block me_actions %}<a href="{% url 'submit' %}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="pen" %}我要投稿</a>{% endblock %}
 
 {% block me_content %}
-  <form method="post" action="{% url 'me_profile' %}" class="c-form max-w-xl">
-    {% csrf_token %}
-    {% include "account/_form.html" %}
-    <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
-  </form>
+  {% comment %}
+    头像 (design-details 2.3, v6.11): the face everyone sees now, the upload
+    waiting for review beside it (only you see it), the upload form and the
+    two ways back: withdraw what is waiting, go back to the default face.
+  {% endcomment %}
+  <section aria-labelledby="me-avatar" class="max-w-xl">
+    {% include "components/section_head.html" with title="头像" heading_id="me-avatar" %}
+    <div class="flex flex-col gap-5">
+      <div class="c-faces">
+        <figure>
+          {% include "components/avatar.html" with person=request.user size="lg" %}
+          <figcaption>{% if request.user.avatar_id %}现在的头像{% else %}现在是默认头像{% endif %}</figcaption>
+        </figure>
+        {% if avatar_pending and avatar_pending.image %}
+          <figure>
+            <span class="c-avatar c-avatar--lg c-hue-{{ request.user|hue }}">{% image avatar_pending.image fill-176x176 alt="待审核的新头像" loading="lazy" %}</span>
+            <figcaption>审核中</figcaption>
+          </figure>
+        {% endif %}
+      </div>
+      {% if avatar_pending %}
+        <p class="text-sm text-fg-2">新头像在等审核，通过后会换上；在这之前，大家看到的还是现在这张。</p>
+      {% elif avatar_turned_down %}
+        <p class="text-sm text-fg-2" role="status">上次上传的头像{% if avatar_turned_down.status == "taken_down" %}被管理员撤下了{% else %}没有通过审核{% endif %}，原因：{{ avatar_turned_down.get_reason_display }}{% if avatar_turned_down.note %}（{{ avatar_turned_down.note }}）{% endif %}。可以换一张再传。</p>
+      {% endif %}
+      {% if avatar_can_upload %}
+        <form method="post" action="{% url 'me_avatar_upload' %}" enctype="multipart/form-data" class="c-form">
+          {% csrf_token %}
+          {% include "components/form_field.html" with field=avatar_form.file %}
+          <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">上传</button></div>
+        </form>
+      {% else %}
+        <p class="text-sm text-fg-2">{{ avatar_denied }}</p>
+      {% endif %}
+      {% if avatar_pending or request.user.avatar_id %}
+        <div class="flex flex-wrap gap-3">
+          {% if avatar_pending %}
+            <form method="post" action="{% url 'me_avatar_withdraw' %}">{% csrf_token %}<button type="submit" class="c-btn c-btn--secondary">撤回待审核的头像</button></form>
+          {% endif %}
+          {% if request.user.avatar_id %}
+            <form method="post" action="{% url 'me_avatar_remove' %}">{% csrf_token %}<button type="submit" class="c-btn c-btn--secondary">改用默认头像</button></form>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section aria-labelledby="me-basic">
+    {% include "components/section_head.html" with title="资料" heading_id="me-basic" %}
+    <form method="post" action="{% url 'me_profile' %}" class="c-form max-w-xl">
+      {% csrf_token %}
+      {% include "account/_form.html" %}
+      <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
+    </form>
+  </section>
 {% endblock %}

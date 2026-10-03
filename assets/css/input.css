@@ -2203,6 +2203,53 @@
     line-height: 1.7;
   }
 
+  /* A file picker (v6.11, the avatar upload; team logos too): the text says
+     which file was chosen, the button looks like c-btn--secondary. */
+  .c-field input[type="file"] {
+    width: 100%;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  .c-field input[type="file"]::file-selector-button {
+    min-height: 2.75rem;
+    margin-right: 0.875rem;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    font-family: var(--font-button);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  .c-field input[type="file"]:hover::file-selector-button {
+    background-color: var(--color-surface-2);
+  }
+
+  /* The avatar block on 基本资料 (design-details 2.3, v6.11): the face now and
+     the one waiting for review side by side, a word under each. */
+  .c-faces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  .c-faces figure {
+    display: grid;
+    justify-items: center;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .c-faces figcaption {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
   .c-field select,
   select.c-input {
     appearance: none;

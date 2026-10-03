@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from accounts.ranks import decode_rank, format_rank
 from accounts.roles import ROLE_CHOICES
+from moderation.models import Category
 
 
 class UserManager(BaseUserManager):
@@ -112,6 +113,68 @@ class User(AbstractUser):
         return self.nickname or self.email
 
 
+class AvatarSubmission(models.Model):
+    """A picture a member uploaded as their face (design-details 2.3, v6.11).
+
+    It shows only once a reviewer approves it; until then the person keeps the
+    face they had. The status changes only through accounts.services.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "待审核"
+        APPROVED = "approved", "已通过"
+        REJECTED = "rejected", "未通过"
+        WITHDRAWN = "withdrawn", "已撤回"
+        TAKEN_DOWN = "taken_down", "已撤下"
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="avatar_submissions",
+        verbose_name="上传人",
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image",
+        verbose_name="图片",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    status = models.CharField(
+        "状态", max_length=16, choices=Status.choices, default=Status.PENDING
+    )
+    reason = models.CharField(
+        "原因", max_length=32, choices=Category.choices, blank=True
+    )
+    note = models.CharField("说明", max_length=200, blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="审核人",
+    )
+    reviewed_at = models.DateTimeField("审核时间", null=True, blank=True)
+    created_at = models.DateTimeField("上传时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "头像上传"
+        verbose_name_plural = "头像上传"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                "user",
+                condition=models.Q(status="pending"),
+                name="accounts_avatarsubmission_one_pending",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user} · {self.get_status_display()}"
+
+
 class Feature(models.TextChoices):
     TEAM_CREATE = "team_create", "创建战队"
     TEAM_APPLY = "team_apply", "申请加入战队"
@@ -119,6 +182,7 @@ class Feature(models.TextChoices):
     SCRIM_SIGNUP = "scrim_signup", "报名内战"
     ARTICLE_SUBMIT = "article_submit", "投稿"
     ARTICLE_COMMENT = "article_comment", "评论文章"
+    AVATAR_UPLOAD = "avatar_upload", "上传头像"
 
 
 BATTLTAG_TAKEN = "该游戏 ID 已被其他账号绑定，如有疑问请联系管理员"

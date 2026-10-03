@@ -1,0 +1,85 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load static wagtailimages_tags %}
+
+{% block titletag %}头像审核{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/avatar-review.css' %}">
+{% endblock %}
+
+{% block main_content %}
+  {% comment %}
+    Uploaded faces (design-details 2.3, design 14.2; v6.11). A face shows on
+    the site only after 「通过」; until then the member keeps their old one.
+  {% endcomment %}
+  <p class="help-block">成员上传的头像审核通过后才会换上；不通过、撤下会删掉图片并发信告诉本人原因。图片已经在服务器上裁成正方形，看到的就是会显示的样子。</p>
+
+  <nav class="w-mb-4" aria-label="状态">
+    {% for value, label, count in tabs %}
+      <a href="?status={{ value }}" class="button {% if status == value %}button-primary{% else %}button-secondary{% endif %}">{{ label }}（{{ count }}）</a>
+    {% endfor %}
+  </nav>
+
+  <ul class="avatar-review">
+    {% for item in items %}
+      <li class="avatar-review__item">
+        <div class="avatar-review__picture">
+          {% if item.image %}{% image item.image fill-240x240 alt="" loading="lazy" %}{% else %}<span>图片已删除</span>{% endif %}
+        </div>
+        <div class="avatar-review__body">
+          <p><strong>{{ item.user.nickname }}</strong>{% if not item.user.is_active %}（账号已停用）{% endif %}</p>
+          <p>{{ item.created_at|date:"Y.m.d H:i" }} 上传{% if item.turned_down %} · 之前被拒或撤下 {{ item.turned_down }} 次{% endif %}</p>
+          {% if item.reviewed_at %}
+            <p>{{ item.get_status_display }}：{{ item.reviewed_by.nickname|default:"—" }}，{{ item.reviewed_at|date:"Y.m.d H:i" }}{% if item.reason %}；原因：{{ item.get_reason_display }}{% endif %}{% if item.note %}（{{ item.note }}）{% endif %}</p>
+          {% endif %}
+          {% if item.status == "approved" and item.user.avatar_id and item.user.avatar_id == item.image_id %}<p>正在使用</p>{% endif %}
+
+          {% if item.status == "pending" %}
+            <form method="post" action="{% url 'avatar_review_action' item.pk %}" class="avatar-review__form">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button type="submit" name="action" value="approve" class="button">通过</button>
+            </form>
+            <form method="post" action="{% url 'avatar_review_action' item.pk %}" class="avatar-review__form">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <label>原因
+                <select name="reason" required>
+                  <option value="">请选择</option>
+                  {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </select>
+              </label>
+              <label>说明（会写进给本人的信，可不填）<input type="text" name="note" maxlength="200"></label>
+              <button type="submit" name="action" value="reject" class="button button-secondary no">不通过</button>
+            </form>
+          {% elif item.status == "approved" and item.image_id and item.user.avatar_id == item.image_id %}
+            <form method="post" action="{% url 'avatar_review_action' item.pk %}" class="avatar-review__form">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <label>原因
+                <select name="reason" required>
+                  <option value="">请选择</option>
+                  {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </select>
+              </label>
+              <label>说明（可不填）<input type="text" name="note" maxlength="200"></label>
+              <button type="submit" name="action" value="take_down" class="button button-secondary no">撤下</button>
+            </form>
+          {% endif %}
+        </div>
+      </li>
+    {% empty %}
+      <li>没有{{ status_label }}的头像。</li>
+    {% endfor %}
+  </ul>
+
+  {% if items.has_other_pages %}
+    <p>
+      {% if items.has_previous %}<a href="?page={{ items.previous_page_number }}&amp;status={{ status }}">上一页</a>{% endif %}
+      第 {{ items.number }} / {{ items.paginator.num_pages }} 页
+      {% if items.has_next %}<a href="?page={{ items.next_page_number }}&amp;status={{ status }}">下一页</a>{% endif %}
+    </p>
+  {% endif %}
+
+{% endblock %}
