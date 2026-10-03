@@ -1,4 +1,6 @@
 from allauth.account.adapter import DefaultAccountAdapter
+from django.contrib import messages
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_str
 
@@ -36,6 +38,17 @@ class AccountAdapter(DefaultAccountAdapter):
         "same_as_current": "新值必须和当前值不同。",
         "rate_limited": "操作太频繁，请稍后再试。",
     }
+
+    def get_signup_redirect_url(self, request) -> str:
+        """A new member lands on their profile, not the homepage, with what
+        to do next (round 124): signing up for anything needs a game ID and
+        a contact, and the profile page lists what is missing."""
+        messages.success(
+            request,
+            "欢迎加入社区！先在这里补全游戏 ID 和联系方式，就能报名赛事和内战；"
+            "也可以去「战队」找一支招募中的队伍。",
+        )
+        return reverse("me_profile")
 
     def get_client_ip(self, request) -> str:
         """allauth's login and signup limits count per visitor (round 120).

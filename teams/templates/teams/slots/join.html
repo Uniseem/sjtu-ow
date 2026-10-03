@@ -10,7 +10,7 @@
   {% elif can_apply %}
     <a href="{% url 'team_apply' team.pk %}" class="c-btn c-btn--primary">申请加入</a>
   {% elif request.user.is_authenticated %}
-    <span class="text-sm text-fg-2">{{ apply_reason }}</span>
+    <div class="text-sm text-fg-2">{{ apply_reason }}{% include "components/profile_gap_links.html" %}</div>
   {% else %}
     <a href="{% url 'account_login' %}?next={{ team.get_absolute_url }}" class="c-btn c-btn--primary">登录后申请</a>
   {% endif %}

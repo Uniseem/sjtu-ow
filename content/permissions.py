@@ -53,6 +53,17 @@ def sees_only_own_drafts(user) -> bool:
     return GROUP_CONTENT not in _group_names(user)
 
 
+def submits_for_review(user) -> bool:
+    """Whose articles go through the 内容审核 workflow rather than straight
+    out: everyone but superusers, content editors and verified authors.
+    They get the 「投稿须知」 in the editor (round 124)."""
+    if user is None or not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_superuser", False):
+        return False
+    return _group_names(user).isdisjoint({GROUP_CONTENT, GROUP_AUTHOR})
+
+
 def user_can_edit_author(user) -> bool:
     if user is None or not getattr(user, "is_authenticated", False):
         return False

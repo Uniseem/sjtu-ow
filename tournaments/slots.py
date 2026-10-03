@@ -77,7 +77,15 @@ def actions_context(request, tournament) -> dict:
         "on_roster": on_roster,
         "my_signup": my_signup,
         "individual_problems": individual_problems,
+        # Round 124: the notice says what is missing and links to fill it in.
+        "profile_gaps": _gaps(user) if individual_problems else [],
     }
+
+
+def _gaps(user):
+    from accounts.services import profile_gaps
+
+    return profile_gaps(user)
 
 
 def tournament_actions_slot(request, argument):

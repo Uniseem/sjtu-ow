@@ -143,7 +143,6 @@ def update_team(
 
 def can_apply(team, user) -> tuple[bool, str]:
     """All the conditions from design 7.3, with the reason to show."""
-    from accounts.models import GameAccount
     from accounts.permissions import can_use, feature_denied_message
 
     if not getattr(user, "is_authenticated", False):
@@ -158,13 +157,21 @@ def can_apply(team, user) -> tuple[bool, str]:
         return False, "这支战队暂时不招募。"
     if is_full(team):
         return False, "战队人数已满。"
-    if not GameAccount.objects.filter(user=user).exists():
+    if lacks_game_account(user):
         return False, "请先在个人中心添加至少一个游戏 ID。"
     if TeamApplication.objects.filter(
         team=team, applicant=user, status=ApplicationStatus.PENDING
     ).exists():
         return False, "你对这支战队还有一条待审批的申请。"
     return True, ""
+
+
+def lacks_game_account(user) -> bool:
+    from accounts.models import GameAccount
+
+    return bool(getattr(user, "is_authenticated", False)) and not (
+        GameAccount.objects.filter(user=user).exists()
+    )
 
 
 def apply_to_team(*, team, user, roles, message="") -> TeamApplication:

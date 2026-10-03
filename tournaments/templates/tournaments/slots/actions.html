@@ -35,6 +35,7 @@
           <ul class="mt-1 list-[square] pl-5">
             {% for problem in individual_problems %}<li>{{ problem }}</li>{% endfor %}
           </ul>
+          {% include "components/profile_gap_links.html" %}
         </div>
       </div>
     {% else %}
