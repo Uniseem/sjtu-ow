@@ -297,6 +297,42 @@ def stale_applications(now=None):
     ).select_related("team", "applicant")
 
 
+REMIND_CAPTAIN_DAYS = 7
+
+
+def remind_captains(now=None) -> int:
+    """Design 7.3 (v6.39): a week in, one letter per team listing what still
+    waits; each application is mentioned once. Returns the letters sent."""
+    from teams import notifications
+
+    now = now or timezone.now()
+    cutoff = now - timezone.timedelta(days=REMIND_CAPTAIN_DAYS)
+    waiting = (
+        TeamApplication.objects.filter(
+            status=ApplicationStatus.PENDING,
+            created_at__lt=cutoff,
+            captain_reminded_at__isnull=True,
+            team__disbanded_at__isnull=True,
+        )
+        .select_related("team", "applicant")
+        .order_by("team_id", "created_at")
+    )
+    by_team: dict[int, list] = {}
+    for application in waiting:
+        by_team.setdefault(application.team_id, []).append(application)
+    sent = 0
+    for applications in by_team.values():
+        team = applications[0].team
+        captain = team.captain()
+        if captain is not None and captain.is_active and captain.email:
+            notifications.applications_waiting(team, applications, captain)
+            sent += 1
+        TeamApplication.objects.filter(pk__in=[a.pk for a in applications]).update(
+            captain_reminded_at=now
+        )
+    return sent
+
+
 def close_stale_applications(now=None) -> int:
     """Run nightly by ``cleanup_old_data``; each applicant gets a letter."""
     from teams import notifications

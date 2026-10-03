@@ -235,6 +235,14 @@ def samples() -> list[Sample]:
             "小天使",
         ),
         _letter(
+            "applications-waiting",
+            "战队",
+            "入队申请等你处理",
+            "队长",
+            teams.applications_waiting_letter(_team(), [_application("pending")]),
+            "七月流火",
+        ),
+        _letter(
             "removed",
             "战队",
             "被移出战队",

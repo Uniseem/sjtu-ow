@@ -81,3 +81,47 @@ def test_a_dry_run_only_counts(team):
     assert old.status == ApplicationStatus.PENDING
     assert _closed_letters() == []
     assert "将关闭 14 天没人处理的入队申请（并通知申请人）：1" in out.getvalue()
+
+
+# --- a week in, the captain hears (round 145, design 7.3 v6.39) --------------------
+
+
+def _waiting_letters():
+    return [m for m in mail.outbox if "入队申请等你处理" in m.subject]
+
+
+@pytest.mark.django_db
+def test_a_week_in_the_captain_hears_once(team):
+    first = _application(team, "w1145@example.com", "等一周甲", 8)
+    second = _application(team, "w2145@example.com", "等一周乙", 9)
+    _application(team, "w3145@example.com", "刚三天", 3)
+    mail.outbox.clear()
+    out = StringIO()
+    call_command("cleanup_old_data", stdout=out)
+    (letter,) = _waiting_letters()
+    assert letter.to == [team.captain().email]
+    assert "等一周甲" in letter.body and "等一周乙" in letter.body
+    assert "刚三天" not in letter.body
+    assert "再过 7 天没处理会自动关闭" in letter.body
+    assert "已提醒队长（入队申请等了 7 天）：1 封" in out.getvalue()
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert first.captain_reminded_at and second.captain_reminded_at
+    mail.outbox.clear()
+    call_command("cleanup_old_data", stdout=StringIO())
+    assert _waiting_letters() == []
+
+
+@pytest.mark.django_db
+def test_two_weeks_in_it_just_closes(team):
+    _application(team, "late145@example.com", "太晚了", 15)
+    mail.outbox.clear()
+    call_command("cleanup_old_data", stdout=StringIO())
+    assert _waiting_letters() == []
+    assert len(_closed_letters()) == 1
+
+
+def test_the_reminder_is_on_the_specimen_page():
+    from core.email_samples import sample
+
+    assert "自动关闭" in sample("applications-waiting").text

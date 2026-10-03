@@ -166,6 +166,8 @@ class TeamApplication(models.Model):
     )
     decided_at = models.DateTimeField("审批时间", null=True, blank=True)
     decision_note = models.CharField("拒绝原因", max_length=200, blank=True)
+    # Design 7.3 (v6.39): the one reminder a captain gets, a week in.
+    captain_reminded_at = models.DateTimeField("提醒队长时间", null=True, blank=True)
     created_at = models.DateTimeField("提交时间", auto_now_add=True)
 
     class Meta:

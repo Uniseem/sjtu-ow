@@ -64,6 +64,30 @@ def application_decided(application) -> None:
     send(application_decided_letter(application), [application.applicant])
 
 
+def applications_waiting_letter(team, applications) -> Letter:
+    """Design 7.3 (v6.39): a week in, before they close by themselves."""
+    from teams.services import REMIND_CAPTAIN_DAYS, STALE_APPLICATION_DAYS
+
+    left = STALE_APPLICATION_DAYS - REMIND_CAPTAIN_DAYS
+    return Letter(
+        subject=f"入队申请等你处理：{team.name}",
+        lead=(
+            f"「{team.name}」有 {len(applications)} 个入队申请等了 "
+            f"{REMIND_CAPTAIN_DAYS} 天以上，再过 {left} 天没处理会自动关闭。"
+        ),
+        facts=[
+            (a.applicant.nickname, "、".join(a.role_labels()) or "未填位置")
+            for a in applications
+        ],
+        action=("去审批", _manage(team)),
+        reason=f"你收到这封邮件，是因为你是战队「{team.name}」的队长。",
+    )
+
+
+def applications_waiting(team, applications, captain) -> None:
+    send(applications_waiting_letter(team, applications), [captain])
+
+
 def application_expired_letter(application) -> Letter:
     """Design 7.3 (v6.36): the captain never answered."""
     from teams.services import STALE_APPLICATION_DAYS

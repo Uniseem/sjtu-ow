@@ -41,12 +41,15 @@ class Command(BaseCommand):
 
         counts["过期会话"] = self.clear_sessions(dry_run)
         closed = self.stale_applications(dry_run, now)
+        reminded = 0 if dry_run else self.remind_captains(now)
 
         prefix = "将删除" if dry_run else "已删除"
         for label, total in counts.items():
             self.stdout.write(f"{prefix} {label}：{total}")
         verb = "将关闭" if dry_run else "已关闭"
         self.stdout.write(f"{verb} 14 天没人处理的入队申请（并通知申请人）：{closed}")
+        if not dry_run:
+            self.stdout.write(f"已提醒队长（入队申请等了 7 天）：{reminded} 封")
         return None
 
     def targets(self, now):
@@ -94,6 +97,12 @@ class Command(BaseCommand):
         if dry_run:
             return services.stale_applications(now).count()
         return services.close_stale_applications(now)
+
+    @staticmethod
+    def remind_captains(now):
+        from teams import services
+
+        return services.remind_captains(now)
 
     @staticmethod
     def clear_sessions(dry_run):
