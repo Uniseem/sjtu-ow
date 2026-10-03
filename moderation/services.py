@@ -1,7 +1,8 @@
 """Submitting content for AI review and recording the verdicts (design 5.5).
 
 Nothing in this module changes content, accounts or visibility. The only thing
-the AI path ever writes is a ModerationItem row.
+the AI path ever writes is a ModerationItem row; a reviewer's actions at the
+end record how an item was handled and may write to its author.
 """
 
 from __future__ import annotations
@@ -317,3 +318,57 @@ def month_usage():
         totals["output_tokens"] += row.output_tokens
     totals["cost"] = estimated_cost(totals["input_tokens"], totals["output_tokens"])
     return totals
+
+
+# --- what a reviewer does (design 5.5.4) ------------------------------------
+
+REVISE_LOG_ACTION = "moderation.ask_author"
+REVISE_MAX_CHARS = 500
+
+
+class ModerationError(Exception):
+    pass
+
+
+def author_problem(item) -> str:
+    """Why this item's author cannot be written to; "" when they can."""
+    author = item.author
+    if author is None:
+        return "这条内容没有作者（系统内容，或作者已注销），不能发信。"
+    if not author.is_active:
+        return "作者的账号已停用，不能发信。"
+    if not author.email:
+        return "作者没有邮箱，不能发信。"
+    return ""
+
+
+@transaction.atomic
+def ask_author_to_revise(*, item, actor, message: str) -> ModerationItem:
+    """Email the author what to change (v6.17: the one direct action the
+    review page takes, 「直接处置只做发信」). The item counts as handled;
+    the whole message stays in the action log."""
+    from wagtail.log_actions import log as wagtail_log
+
+    from moderation.notifications import ask_author
+
+    message = (message or "").strip()
+    if not message:
+        raise ModerationError("写一段说明，告诉作者要改什么。")
+    if len(message) > REVISE_MAX_CHARS:
+        raise ModerationError(f"说明最多 {REVISE_MAX_CHARS} 字。")
+    problem = author_problem(item)
+    if problem:
+        raise ModerationError(problem)
+    item.status = ModerationItem.Status.HANDLED
+    item.handling_note = "已发信要求作者修改"
+    item.reviewed_by = actor
+    item.reviewed_at = timezone.now()
+    item.save(update_fields=["status", "handling_note", "reviewed_by", "reviewed_at"])
+    wagtail_log(
+        instance=item,
+        action=REVISE_LOG_ACTION,
+        user=actor,
+        data={"result": "要求作者修改（已发信）", "note": message},
+    )
+    transaction.on_commit(lambda: ask_author(item, message))
+    return item

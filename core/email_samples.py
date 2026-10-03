@@ -350,6 +350,24 @@ def samples() -> list[Sample]:
             "编辑甲",
         ),
         _letter(
+            "ask-author",
+            "审核",
+            "要求修改内容",
+            "内容的作者",
+            moderation.revise_letter(
+                SimpleNamespace(
+                    target_type="team_description",
+                    target_id=3,
+                    url="/teams/3/",
+                    quote="来的都是菜鸡",
+                    excerpt="欢迎新人！来的都是菜鸡，别来拖后腿。",
+                    get_target_type_display=lambda: "战队简介",
+                ),
+                "简介里有贬低其他玩家的说法，请改成正面的招募介绍。",
+            ),
+            "队长甲",
+        ),
+        _letter(
             "avatars-waiting",
             "审核",
             "有头像待审核",

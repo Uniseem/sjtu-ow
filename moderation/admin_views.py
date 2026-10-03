@@ -147,8 +147,10 @@ def moderation_detail(request, pk):
             "categories": item.category_labels(),
             "author_flags": author_flags,
             "actions": ACTIONS,
+            "author_problem": services.author_problem(item),
+            "revise_max": services.REVISE_MAX_CHARS,
             "history": ModelLogEntry.objects.for_instance(item)
-            .filter(action=HANDLE_LOG_ACTION)
+            .filter(action__in=[HANDLE_LOG_ACTION, services.REVISE_LOG_ACTION])
             .select_related("user")
             .order_by("-timestamp"),
             "all_categories": dict(Category.choices),
@@ -223,3 +225,23 @@ def moderation_scan(request):
             "在后台进行，结果陆续出现在列表里。送过的内容不会重复送，每日上限照常。",
         )
     return redirect("moderation_index")
+
+
+@reviewer_required
+@require_POST
+def moderation_ask_author(request, pk):
+    """「要求作者修改」: the one direct action on this page (v6.17)."""
+    item = get_object_or_404(ModerationItem.objects.select_related("author"), pk=pk)
+    try:
+        services.ask_author_to_revise(
+            item=item, actor=request.user, message=request.POST.get("message", "")
+        )
+    except services.ModerationError as exc:
+        messages.error(request, str(exc))
+        return redirect("moderation_detail", pk=pk)
+    messages.success(
+        request,
+        f"已发信给 {item.author.nickname}，请其修改。"
+        "这条记为「已处置」，内容本身没有被改动。",
+    )
+    return redirect("moderation_detail", pk=pk)

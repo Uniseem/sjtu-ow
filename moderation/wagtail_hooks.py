@@ -8,6 +8,7 @@ from moderation.admin_views import (
     HANDLE_LOG_ACTION,
     can_review,
     moderation_action,
+    moderation_ask_author,
     moderation_detail,
     moderation_index,
     moderation_scan,
@@ -25,6 +26,11 @@ def register_moderation_urls():
             "moderation/<int:pk>/action/",
             moderation_action,
             name="moderation_action",
+        ),
+        path(
+            "moderation/<int:pk>/ask-author/",
+            moderation_ask_author,
+            name="moderation_ask_author",
         ),
         # design-details 2.3 (v6.11)
         path("avatars/", avatar_review, name="avatar_review"),
@@ -79,4 +85,7 @@ def register_avatar_review_menu_item():
 
 @hooks.register("register_log_actions")
 def register_moderation_log_actions(actions):
+    from moderation.services import REVISE_LOG_ACTION
+
     actions.register_action(HANDLE_LOG_ACTION, "处理待复核内容", "处理了待复核内容")
+    actions.register_action(REVISE_LOG_ACTION, "发信要求作者修改", "发信要求作者修改")

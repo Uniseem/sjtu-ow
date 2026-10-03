@@ -39,6 +39,20 @@
     <p class="help">还没有人处理过这条。</p>
   {% endif %}
 
+  <h2>要求作者修改</h2>
+  {% if author_problem %}
+    <p class="help-block">{{ author_problem }}</p>
+  {% else %}
+    <form method="post" action="{% url 'moderation_ask_author' item.pk %}"
+          onsubmit="return window.confirm('把这段说明发邮件给 {{ item.author.nickname|escapejs }}？发出后这条记为「已处置」。')">
+      {% csrf_token %}
+      <label for="ask_message">写给作者的说明（会原样发出去）</label>
+      <textarea id="ask_message" name="message" rows="4" maxlength="{{ revise_max }}" required placeholder="比如：队名里有辱骂的词，请换一个。"></textarea>
+      <p class="help">发给 {{ item.author.nickname }}。信里会附上这条内容的类型、片段和修改入口。</p>
+      <p><button type="submit" class="button button-secondary">发信给作者</button></p>
+    </form>
+  {% endif %}
+
   <h2>记录处理结果</h2>
   <p class="help-block">这里只记录你做了什么。退回稿件、清空战队简介、停用账号等操作请到对应功能里执行——AI 和这个页面都不会替你改动内容。</p>
   <form method="post" action="{% url 'moderation_action' item.pk %}">
