@@ -461,6 +461,17 @@ def test_the_masthead_is_a_plain_bar_that_stays_put(client, home):
     assert "is-capsule" not in css and "is-hidden" not in css
 
 
+def test_only_the_search_box_gives_way_in_the_masthead():
+    """112: from 1024px the brand, the links and the account area keep their
+    width on one line; a short bar narrows the search box, never 「首/页」."""
+    css = INPUT_CSS.read_text(encoding="utf-8")
+    wide = css[css.index("@media (min-width: 1024px) {\n    .c-nav {") :]
+    keep = _block(wide, ".c-brand,\n    .c-nav,\n    .c-masthead__end {")
+    assert "flex-shrink: 0;" in keep
+    one_line = _block(wide, ".c-nav a,\n    .c-masthead__end {")
+    assert "white-space: nowrap;" in one_line
+
+
 def test_nothing_waits_for_a_script_to_appear(client, home):
     """13.2.4: no scroll reveals, count-ups or parallax; content is there as
     soon as the HTML is."""

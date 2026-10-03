@@ -670,6 +670,21 @@
       align-self: stretch;
       gap: 1.75rem;
     }
+
+    /* The brand, the links and the account area keep their width and stay
+       on one line; when the bar is short of room only the search box
+       narrows (112: Chinese breaks between any two characters, so a
+       shrinking link went down to one character a line, 「首/页」). */
+    .c-brand,
+    .c-nav,
+    .c-masthead__end {
+      flex-shrink: 0;
+    }
+
+    .c-nav a,
+    .c-masthead__end {
+      white-space: nowrap;
+    }
   }
 
   .c-nav a {
