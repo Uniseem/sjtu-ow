@@ -111,6 +111,69 @@ def test_the_bar_gives_up_and_clears_when_the_page_stays():
     assert re.search(r"if \(event\.persisted\)\s*\{\s*stop\(\);", pageshow)
 
 
+# --- the bar finishing on the next page (v6.6, round 108) ---------------------------
+
+ARRIVAL = (ROOT / "static" / "js" / "arrival.js").read_text(encoding="utf-8")
+
+
+def test_on_the_next_page_the_bar_runs_to_the_end_then_fades():
+    """User: the bar should run smoothly, not linearly, to the end and then
+    fade; it used to fade with the old page wherever it had stopped."""
+    arriving = _block(CSS, "  .is-arriving .c-loadbar {")
+    assert re.search(
+        r"ow-loadbar-finish\s+300ms\s+cubic-bezier\(0\.2, 0, 0, 1\)\s+both", arriving
+    )
+    assert re.search(r"ow-loadbar-fade\s+250ms\s+ease\s+300ms\s+forwards", arriving)
+    finish = _block(CSS, "  @keyframes ow-loadbar-finish {")
+    assert "scaleX(var(--loadbar-from, 0.6))" in finish
+    assert "scaleX(1)" in finish
+    assert "opacity: 0;" in _block(CSS, "  @keyframes ow-loadbar-fade {")
+
+
+def test_the_next_page_reads_where_the_bar_was_before_its_first_paint():
+    head = BASE[: BASE.index("</head>")]
+    assert "{% static 'js/arrival.js' %}" in head
+    arrive = _block(ARRIVAL, "function arrive() {")
+    assert "window.sessionStorage.removeItem(KEY)" in arrive  # read once
+    assert "Date.now() - note.at > FRESH" in arrive
+    assert 'root.style.setProperty("--loadbar-from"' in arrive
+    assert 'root.classList.add("is-arriving")' in arrive
+    assert "var FRESH = 20000;" in ARRIVAL
+    # A prepared page looks when it is shown, not when it was prepared.
+    assert re.search(
+        r"if \(document\.prerendering\)\s*\{\s*document\.addEventListener\("
+        r'"prerenderingchange", arrive',
+        ARRIVAL,
+    )
+
+
+def test_only_a_bar_the_visitor_saw_is_finished():
+    """A page that comes within the bar's delay never showed one, so the
+    next page must not show a finishing bar out of nowhere."""
+    key = re.search(r'var KEY = "([^"]+)";', LOADING).group(1)
+    assert f'var KEY = "{key}";' in ARRIVAL
+    delay = re.search(r"var SHOWN_AFTER = (\d+);", LOADING).group(1)
+    assert f"ow-loadbar 15s ease-out {delay}ms both" in CSS
+    start = _block(LOADING, "function start() {")
+    assert re.search(
+        r"shown = window\.setTimeout\(function \(\) \{\s*note\(\{ at: Date\.now\(\), "
+        r"from: 0 \}\);\s*\}, SHOWN_AFTER\);",
+        start,
+    )
+    assert "note(null);" in start  # an old note never reaches the next page
+    assert 'root.classList.remove("is-arriving")' in start
+    assert "note(null);" in _block(LOADING, "function stop() {")
+
+
+def test_leaving_notes_where_the_bar_got_to():
+    leaving = _block(LOADING, 'window.addEventListener("pagehide", function () {')
+    assert re.search(
+        r'if \(!root\.classList\.contains\("is-loading"\) \|\| !current\)', leaving
+    )
+    assert "current.from = progress();" in leaving
+    assert "note(current);" in leaving
+
+
 def test_downloads_are_marked_so_the_bar_skips_them():
     for name in ("delete.html", "security.html"):
         page = (ROOT / "templates" / "me" / name).read_text(encoding="utf-8")

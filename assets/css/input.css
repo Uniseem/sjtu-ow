@@ -590,6 +590,32 @@
     animation: ow-loadbar 15s ease-out 150ms both;
   }
 
+  /* The page it waited for has come (v6.6): from where the last page left
+     it (arrival.js sets --loadbar-from), quick then slow to the end, then
+     it fades. */
+  .is-arriving .c-loadbar {
+    opacity: 1;
+    animation:
+      ow-loadbar-finish 300ms cubic-bezier(0.2, 0, 0, 1) both,
+      ow-loadbar-fade 250ms ease 300ms forwards;
+  }
+
+  @keyframes ow-loadbar-finish {
+    from {
+      transform: scaleX(var(--loadbar-from, 0.6));
+    }
+
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes ow-loadbar-fade {
+    to {
+      opacity: 0;
+    }
+  }
+
   @keyframes ow-loadbar {
     0% {
       transform: scaleX(0);
