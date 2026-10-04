@@ -194,6 +194,7 @@ def registration_leave(request, pk):
 @require_GET
 def me_registrations(request):
     from accounts.views import me_context
+    from core.calendar_feed import feed_url
 
     return render(
         request,
@@ -203,6 +204,9 @@ def me_registrations(request):
             "me_registrations",
             registrations=registration_service.my_registrations(request.user),
             individual_signups=registration_service.my_individual_signups(request.user),
+            # Design 13.5 (v6.49): 「订阅到手机日历」.
+            calendar_webcal=feed_url(request.user, webcal=True),
+            calendar_https=feed_url(request.user),
         ),
     )
 

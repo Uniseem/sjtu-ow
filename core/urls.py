@@ -12,6 +12,7 @@ urlpatterns = [
         views.announcements_unsubscribe,
         name="announcements_unsubscribe",
     ),
+    path("calendar/<str:token>.ics", views.calendar_feed, name="calendar_feed"),
     path("_styleguide/", styleguide.styleguide, name="styleguide"),
     path(
         "_styleguide/emails/",

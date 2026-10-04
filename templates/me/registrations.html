@@ -74,4 +74,16 @@
     {% include "components/section_head.html" with title="内战报名" heading_id="me-scrim-link" %}
     <p class="text-fg-2">内战报名在<a href="{% url 'me_scrims' %}" class="c-link">我的内战</a>里查看。</p>
   </section>
+
+  {# Design 13.5 (v6.49): your signed-up scrims and tournaments in your phone's calendar. #}
+  <section aria-labelledby="me-calendar" data-calendar>
+    {% include "components/section_head.html" with title="订阅到手机日历" heading_id="me-calendar" %}
+    <p class="text-fg-2">把你报名的内战和赛事放进手机日历，时间改了日历也会跟着变，提醒用日历自己的。</p>
+    <p class="mt-4 flex flex-wrap gap-3">
+      <a href="{{ calendar_webcal }}" class="c-btn c-btn--secondary">{% include "components/icon.html" with name="calendar" %}订阅到日历</a>
+    </p>
+    <p class="mt-3 text-sm text-fg-2">点不开的话，在日历里选「添加订阅日历」，填这个地址：</p>
+    <p class="mt-1 break-all font-code text-sm" data-calendar-url>{{ calendar_https }}</p>
+    <p class="mt-2 text-sm text-fg-3">这个地址只属于你，别发给别人：拿到的人能看到你报名的活动名、队名和时间。</p>
+  </section>
 {% endblock %}

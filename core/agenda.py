@@ -28,7 +28,7 @@ class Item:
     note: str
 
 
-def items_for(user, now=None) -> list[Item]:
+def items_for(user, now=None, limit: int | None = MAX_ITEMS) -> list[Item]:
     from scrims.models import ScrimSignup, ScrimStatus
     from scrims.services import placement, split_scrim_ids
     from tournaments.models import (
@@ -99,7 +99,7 @@ def items_for(user, now=None) -> list[Item]:
 
     # Dated ones by time, then those without a start time.
     items.sort(key=lambda item: (item.when is None, item.when or now))
-    return items[:MAX_ITEMS]
+    return items[:limit] if limit else items
 
 
 def agenda_context(request) -> dict:

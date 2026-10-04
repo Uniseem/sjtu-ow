@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -142,6 +142,26 @@ def try_offsite_backup(request):
             args=["core", "sitesettings", settings_obj.pk],
         )
     )
+
+
+CALENDAR_RATE_LIMIT = 30
+
+
+def calendar_feed(request, token):
+    """「订阅到手机日历」 (design 13.5, v6.49): no login, a signed address."""
+    from core import calendar_feed as feed
+
+    if over_limit(f"calendar:{client_ip(request)}", CALENDAR_RATE_LIMIT):
+        response = HttpResponse(status=429)
+        response["Retry-After"] = "60"
+        return response
+    user = feed.user_for(token)
+    if user is None:
+        raise Http404("没有这个日历。")
+    response = HttpResponse(feed.ics(user), content_type="text/calendar; charset=utf-8")
+    response["Cache-Control"] = "private, max-age=900"
+    response["X-Robots-Tag"] = "noindex"
+    return response
 
 
 @csrf_exempt
