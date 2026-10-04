@@ -4,34 +4,34 @@ from tournaments import registration_views, views
 
 urlpatterns = [
     path("tournaments/", views.tournament_index, name="tournament_index"),
-    path("tournaments/<int:pk>/", views.tournament_detail, name="tournament_detail"),
+    path("tournaments/<id:pk>/", views.tournament_detail, name="tournament_detail"),
     path(
-        "tournaments/<int:pk>/register/",
+        "tournaments/<id:pk>/register/",
         registration_views.register,
         name="tournament_register",
     ),
     path(
-        "tournaments/<int:pk>/signup/",
+        "tournaments/<id:pk>/signup/",
         registration_views.individual_signup,
         name="tournament_individual_signup",
     ),
     path(
-        "tournaments/<int:pk>/signup/cancel/",
+        "tournaments/<id:pk>/signup/cancel/",
         registration_views.individual_cancel,
         name="tournament_individual_cancel",
     ),
     path(
-        "registrations/<int:pk>/",
+        "registrations/<id:pk>/",
         registration_views.registration_detail,
         name="registration_detail",
     ),
     path(
-        "registrations/<int:pk>/withdraw/",
+        "registrations/<id:pk>/withdraw/",
         registration_views.registration_withdraw,
         name="registration_withdraw",
     ),
     path(
-        "registrations/<int:pk>/leave/",
+        "registrations/<id:pk>/leave/",
         registration_views.registration_leave,
         name="registration_leave",
     ),

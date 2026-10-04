@@ -269,14 +269,14 @@ def register_scrim_urls():
     from scrims import split_admin
 
     return [
-        path("scrims/<int:pk>/cancel/", scrim_cancel, name="scrim_cancel"),
-        path("scrims/<int:pk>/split/", split_admin.split_view, name="scrim_split"),
+        path("scrims/<id:pk>/cancel/", scrim_cancel, name="scrim_cancel"),
+        path("scrims/<id:pk>/split/", split_admin.split_view, name="scrim_split"),
         path(
-            "scrims/<int:pk>/split/text/",
+            "scrims/<id:pk>/split/text/",
             split_admin.copy_view,
             name="scrim_split_text",
         ),
-        path("scrims/<int:pk>/<str:action>/", scrim_action, name="scrim_action"),
+        path("scrims/<id:pk>/<str:action>/", scrim_action, name="scrim_action"),
     ]
 
 

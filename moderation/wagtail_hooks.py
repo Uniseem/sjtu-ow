@@ -23,21 +23,21 @@ def register_moderation_urls():
         path("moderation/", moderation_index, name="moderation_index"),
         path("moderation/scan/", moderation_scan, name="moderation_scan"),
         path("moderation/try/", moderation_try, name="moderation_try"),
-        path("moderation/<int:pk>/", moderation_detail, name="moderation_detail"),
+        path("moderation/<id:pk>/", moderation_detail, name="moderation_detail"),
         path(
-            "moderation/<int:pk>/action/",
+            "moderation/<id:pk>/action/",
             moderation_action,
             name="moderation_action",
         ),
         path(
-            "moderation/<int:pk>/ask-author/",
+            "moderation/<id:pk>/ask-author/",
             moderation_ask_author,
             name="moderation_ask_author",
         ),
         # design-details 2.3 (v6.11)
         path("avatars/", avatar_review, name="avatar_review"),
         path(
-            "avatars/<int:pk>/action/",
+            "avatars/<id:pk>/action/",
             avatar_review_action,
             name="avatar_review_action",
         ),

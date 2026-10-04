@@ -239,9 +239,9 @@ def admin_disband(request, pk):
 def register_team_admin_urls():
     return [
         path(
-            "teams/<int:pk>/assign-captain/",
+            "teams/<id:pk>/assign-captain/",
             admin_assign_captain,
             name="team_assign_captain",
         ),
-        path("teams/<int:pk>/disband/", admin_disband, name="team_admin_disband"),
+        path("teams/<id:pk>/disband/", admin_disband, name="team_admin_disband"),
     ]

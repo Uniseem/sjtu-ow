@@ -371,7 +371,7 @@ def register_tournament_admin_urls():
 
     return [
         path(
-            "tournaments/<int:pk>/teams/",
+            "tournaments/<id:pk>/teams/",
             teams_admin.board_view,
             name="tournament_teams_board",
         ),
@@ -381,12 +381,12 @@ def register_tournament_admin_urls():
             name="registration_review_index",
         ),
         path(
-            "registrations/<int:pk>/",
+            "registrations/<id:pk>/",
             review_admin.review_detail,
             name="registration_review_detail",
         ),
         path(
-            "registrations/<int:pk>/action/",
+            "registrations/<id:pk>/action/",
             review_admin.review_action,
             name="registration_review_action",
         ),
@@ -401,12 +401,12 @@ def register_tournament_admin_urls():
             name="registration_review_export",
         ),
         path(
-            "tournaments/<int:pk>/action/<str:action>/",
+            "tournaments/<id:pk>/action/<str:action>/",
             tournament_action,
             name="tournament_action",
         ),
         path(
-            "tournaments/<int:pk>/cancel/",
+            "tournaments/<id:pk>/cancel/",
             tournament_cancel,
             name="tournament_cancel",
         ),

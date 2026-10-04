@@ -7,6 +7,13 @@ class CoreConfig(AppConfig):
     verbose_name = "全站"
 
     def ready(self):
+        from django.urls import register_converter
+
+        from core.converters import IdConverter
+
+        # Before any URLconf is read: every id in an address is <id:…> (166).
+        register_converter(IdConverter, "id")
+
         from core.forms import SiteSettingsAdminForm
         from core.models import SiteSettings
         from core.slots import register, template_slot

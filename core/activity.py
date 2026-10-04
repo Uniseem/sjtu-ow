@@ -21,6 +21,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 SCHOOL_YEAR_STARTS = (9, 1)  # 9 月 1 日
+# Dates people can ask for (round 166): 9999-12-31 plus a day overflowed.
+EARLIEST, LATEST = date(2000, 1, 1), date(2100, 12, 31)
 
 
 @dataclass(frozen=True)
@@ -66,6 +68,10 @@ def period_from(params, today: date) -> tuple[Period, str]:
         return school_year(today), "日期没填全或格式不对，下面是本学年的数据。"
     if start > end:
         return school_year(today), "开始日期晚于结束日期，下面是本学年的数据。"
+    if start < EARLIEST or end > LATEST:
+        return school_year(
+            today
+        ), "日期只能在 2000 年到 2100 年之间，下面是本学年的数据。"
     return Period(start, end), ""
 
 

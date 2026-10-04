@@ -14,7 +14,7 @@ def register_announce_url():
     from core.announce_admin import announce_view
 
     # Design 10.4 (v6.19): 「通知全体成员」 for a tournament or a scrim.
-    return [path("announce/<str:kind>/<int:pk>/", announce_view, name="announce")]
+    return [path("announce/<str:kind>/<id:pk>/", announce_view, name="announce")]
 
 
 @hooks.register("register_admin_urls")
@@ -45,27 +45,27 @@ def register_font_urls():
             name="core_font_faces_css",
         ),
         path(
-            "settings/fonts/<int:pk>/",
+            "settings/fonts/<id:pk>/",
             admin_views.font_detail,
             name="core_font_detail",
         ),
         path(
-            "settings/fonts/<int:pk>/reprocess/",
+            "settings/fonts/<id:pk>/reprocess/",
             admin_views.font_reprocess,
             name="core_font_reprocess",
         ),
         path(
-            "settings/fonts/<int:pk>/delete/",
+            "settings/fonts/<id:pk>/delete/",
             admin_views.font_delete,
             name="core_font_delete",
         ),
         path(
-            "settings/fonts/weights/<int:pk>/download/",
+            "settings/fonts/weights/<id:pk>/download/",
             admin_views.font_face_download,
             name="core_font_face_download",
         ),
         path(
-            "settings/fonts/weights/<int:pk>/delete/",
+            "settings/fonts/weights/<id:pk>/delete/",
             admin_views.font_face_delete,
             name="core_font_face_delete",
         ),
