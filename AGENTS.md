@@ -168,6 +168,11 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 - **`manage.py tailwind download_cli` 每次都重新下载**（144）：django-tailwind-cli 这个命令是强制下载（112 MB），原来 `check.sh` 和 Dockerfile 每次都调，GitHub 一返回 503，检查和部署都失败。现在 Dockerfile 在 `COPY . .` 之前用 `deploy/fetch_tailwind_cli.py`（带重试）下载固定版本，这一层能缓存；`check.sh` 只在文件不在时才下载。升级 `TAILWIND_CLI_VERSION` 时 Dockerfile 的 `ARG` 要一起改（有测试比对）
 - **测试里的密码哈希是 MD5**（128，根目录 `conftest.py`）：网站用 Argon2，每次哈希要 100 MB、几十毫秒，测试建几百个用户和登录，换掉后 pytest 快了一倍半。要测和哈希有关的东西，在那条测试里自己设 `settings.PASSWORD_HASHERS`
 - **测试库是固定文件 `data/test.sqlite3`**（128）：两个 pytest 不能在同一个目录里同时跑。`scripts/pytest-shards.sh` 给每个分片一个 git worktree（各自的库、`prerendered/`、`.venv`）
+- **`page.get_url()`、`page.url` 不带请求，在循环里就是 N+1**（163）：Wagtail 每次都去缓存里读站点根路径，本站的默认缓存是数据库表，一次调用一次查询。列表里用 `{% pageurl %}`（模板里有请求）或 `page.get_url(request)`。搜索就这样每篇命中的文章多查一次
+- **`ArticlePage.objects…` 别再 `.specific()`**（163）：拿到的已经是文章本身，`.specific()` 让 Wagtail 再取一遍，前面写的 `select_related` 也跟着丢了
+- **量查询数时，数据要覆盖页面上的每一类内容**（163）：临时探测给搜索只放了战队，结论「平的」；正式守卫放了文章才发现每篇多两次查询。`core/tests/test_chapter15_audit.py` 的 `assert_no_n_plus_one` 比 3 份和 10 份数据
+- **Wagtail 自带的复制页拿原对象预填表单**（159）：表单提交到新建地址时没事，但直接提交回复制地址的话，状态、发布时间这些不在表单里的字段会一起带进新的一条。本站的内战、赛事复制改成只照抄列出的字段新建对象（`core.services.copy_ahead`），别的模型要开复制也照这样做
+- **`querydict_from_html` 的两个坑**（159）：没写 `value` 的勾选框读出来是空字符串，Django 会当成没勾（浏览器发的是 `on`，测试里按 `checked` 改回 `on`）；Django 在 `<textarea>` 后面加一个换行，读出来的值开头多一个换行，比较前 `strip()`
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
 ## 改了什么，就更新哪份文档
