@@ -1,7 +1,9 @@
+{% load ow %}
 {% comment %}页脚「账号」一栏 (design 13.2.7, v6.52): 登录、注册 on the static page and for visitors, the member's own pages once signed in (13.13.3).{% endcomment %}
 <nav id="slot-footer-account" data-slot="footer-account" class="c-footer__col font-nav" aria-label="账号"{% if oob %} hx-swap-oob="true"{% endif %}>
   <h2 class="c-eyebrow">账号</h2>
   {% if request.user.is_authenticated %}
+    {% if request.user|runs_admin %}<a href="{% url 'wagtailadmin_home' %}" data-admin-link>管理后台</a>{% endif %}
     <a href="{% url 'me_profile' %}">个人中心</a>
     <a href="{% url 'me_registrations' %}">我的报名</a>
     <a href="{% url 'me_teams' %}">我的战队</a>

@@ -119,6 +119,18 @@ def member_url(user) -> str:
 
 
 @register.filter
+def runs_admin(user) -> bool:
+    """Design 13.3 (v6.64): the account menu links to the admin for people
+    with a job there. Every verified member is a submitter, and submitters
+    enter the admin only to write; they keep 「我要投稿」 instead."""
+    from content.permissions import is_submitter_only
+
+    if user is None or not getattr(user, "is_authenticated", False):
+        return False
+    return user.has_perm("wagtailadmin.access_admin") and not is_submitter_only(user)
+
+
+@register.filter
 def hue_scene(obj) -> str:
     """The static address of an object's base picture (design-details 2.2)."""
     from django.templatetags.static import static
