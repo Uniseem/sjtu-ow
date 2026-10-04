@@ -122,3 +122,17 @@ def test_each_role_gets_its_own_buttons(site, client):
         assert actions == wanted, groups
         assert "上线清单" not in html
         client.logout()
+
+
+def test_admin_text_is_whole_pixels_with_yahei_before_pingfang():
+    """Round 191 (用户：「字体可以做成模糊的了」): Wagtail's 85% body (13.6px)
+    renders Chinese soft on Windows, and so does 苹方 when installed there."""
+    admin = ADMIN_CSS.read_text(encoding="utf-8")
+    assert re.search(r"\nbody \{\n  font-size: 14px;\n\}", admin)
+    stack = re.search(r"--sj-font:([^;]+);", admin).group(1)
+    assert stack.index('"Microsoft YaHei UI"') < stack.index('"PingFang SC"')
+    mapping = _block(
+        admin, ":root,\n.w-theme-light,\n.w-theme-dark,\n.w-theme-system {"
+    )
+    assert "--w-color-text-meta: var(--sj-fg-2);" in mapping
+    assert "--w-color-text-label-menus-default: var(--sj-fg);" in mapping

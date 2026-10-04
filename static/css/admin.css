@@ -41,10 +41,12 @@
   --sj-radius-sm: 8px;
   --sj-radius-md: 12px;
   --sj-radius-lg: 16px;
+  /* Round 191: Windows' own 微软雅黑 before 苹方, which Windows renders soft
+     at small sizes when someone has installed it; Macs have no 雅黑 and go
+     on to 苹方. */
   --sj-font:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC",
-    "MiSans", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC",
-    "Source Han Sans SC", "Noto Sans SC", sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei",
+    "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans SC", sans-serif;
 }
 
 /* --- the tokens, dark (13.2.2) ------------------------------------------------ */
@@ -136,11 +138,11 @@
   --w-color-surface-dashboard-panel: var(--sj-surface);
 
   --w-color-text-button: #ffffff;
-  --w-color-text-label-menus-default: var(--sj-fg-2);
+  --w-color-text-label-menus-default: var(--sj-fg);
   --w-color-text-label-menus-active: var(--sj-on-primary-soft);
   --w-color-text-label: var(--sj-fg);
   --w-color-text-context: var(--sj-fg);
-  --w-color-text-meta: var(--sj-fg-3);
+  --w-color-text-meta: var(--sj-fg-2);
   --w-color-text-placeholder: var(--sj-fg-3);
   --w-color-text-link-default: var(--sj-primary-text);
   --w-color-text-link-hover: var(--sj-fg);
@@ -169,6 +171,15 @@
   --w-color-border-interactive-more-contrast-dark-bg-hover: var(--sj-fg-3);
 
   --w-color-focus: var(--sj-primary-text);
+}
+
+/* --- type: whole pixels (round 191) ----------------------------------------------
+   Wagtail sets the body to 85% (13.6px). Chinese at a fractional size on
+   Windows comes out soft (用户 10-04：「字体可以做成模糊的了」); the site's
+   own pages use whole sizes. */
+
+body {
+  font-size: 14px;
 }
 
 /* --- shapes: the site's radii ------------------------------------------------- */
