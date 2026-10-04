@@ -258,6 +258,25 @@ def _site_rows(user) -> list[Todo]:
                 "/healthz",
             )
         )
+    # Design 3.7 (v6.60): a disabled captain leaves the team stuck.
+    from teams.services import teams_without_captain
+
+    stuck = list(teams_without_captain().order_by("name")[:2])
+    if stuck:
+        count = teams_without_captain().count()
+        where = (
+            reverse("team_assign_captain", args=[stuck[0].pk])
+            if count == 1
+            else reverse("teams:index") + "?captain=gone"
+        )
+        rows.append(
+            Todo(
+                f"{count} 支战队的队长账号已停用，没人能审批入队申请、为它报名，"
+                "去指定新队长",
+                where,
+                count,
+            )
+        )
     calls, why = ai_failures()
     if calls:
         rows.append(

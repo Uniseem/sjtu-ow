@@ -43,6 +43,13 @@ register_permission_policy(Team, SuperuserOnlyPolicy(Team))
 
 
 class TeamIndexView(IndexView):
+    def get_base_queryset(self):
+        queryset = super().get_base_queryset()
+        # From the to-do (design 3.7, v6.60): the teams needing a captain.
+        if self.request.GET.get("captain") == "gone":
+            queryset = queryset.filter(pk__in=services.teams_without_captain())
+        return queryset
+
     def get_list_more_buttons(self, instance):
         buttons = super().get_list_more_buttons(instance)
         if not instance.is_disbanded:

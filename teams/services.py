@@ -50,6 +50,26 @@ def name_taken(name: str, exclude_pk=None) -> bool:
     return query.exists()
 
 
+def teams_without_captain():
+    """Design 3.7 (v6.60): teams still going whose captain's account is
+    disabled, or which have no captain at all. Nobody can approve their
+    applications or enter them for a tournament until an admin names one."""
+    working = TeamMembership.objects.filter(
+        role=TeamRole.CAPTAIN, user__is_active=True
+    ).values("team_id")
+    return Team.objects.filter(disbanded_at__isnull=True).exclude(pk__in=working)
+
+
+def captained_teams(user) -> list:
+    return list(
+        Team.objects.filter(
+            disbanded_at__isnull=True,
+            memberships__user=user,
+            memberships__role=TeamRole.CAPTAIN,
+        ).order_by("name")
+    )
+
+
 def captained_count(user) -> int:
     return TeamMembership.objects.filter(
         user=user,
