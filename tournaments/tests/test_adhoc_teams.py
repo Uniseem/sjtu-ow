@@ -706,7 +706,9 @@ def test_the_board_carries_what_the_script_and_the_view_need(board):
     assert f'name="name-r{registration.pk}"' in html
     assert 'name="name-new"' in html
     assert "Sortable.min.js" in html and "tournament-teams.js" in html
-    assert "cdn" not in html.lower()
+    # Nothing loaded from another host. A bare 「"cdn" not in html」 also hit
+    # random tokens on the page and failed CI once (round 175).
+    assert not re.search(r'<(script|link)[^>]+(src|href)="(https?:)?//', html)
     for attribute in ("x-data", "x-on:", "x-ref", "@click", "onclick=", "style="):
         assert attribute not in html, attribute
     assert "未填段位" in html  # the pool entries have no tank rank

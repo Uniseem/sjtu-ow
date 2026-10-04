@@ -1,6 +1,7 @@
 """Design 9.3-9.6: selection, the split algorithm, adjustment, copy text."""
 
 import random
+import re
 import time
 from datetime import timedelta
 from itertools import combinations
@@ -701,7 +702,9 @@ def test_the_board_carries_what_the_capacity_rule_needs(split_page):
     assert 'data-zone-capacity="2"' in html  # 6v6 wants two tanks
     assert "data-ratings=" in html  # per-role score, for live totals
     assert "Sortable.min.js" in html  # served from our own static files
-    assert "cdn" not in html.lower()
+    # Nothing loaded from another host. A bare 「"cdn" not in html」 also hit
+    # random tokens on the page and failed CI once (round 175).
+    assert not re.search(r'<(script|link)[^>]+(src|href)="(https?:)?//', html)
 
 
 @pytest.mark.django_db
