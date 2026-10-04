@@ -109,3 +109,17 @@ terms says True False True
 - 头像没有自动检查（AI 只看文字），见复核
 - `content/notifications.py` 里给作者的「审核通过 / 退回」代码没删（不会再触发），后台重写时一起清
 - 认证作者只剩「推荐」标签页的区别
+
+## 推送后补的（同一轮）：CI 红了一次
+
+195 推送后 CI 红在 `core/tests/test_calendar_feed.py::test_my_registrations_page_offers_it`（之前几轮记过的偶发失败）。原因：日历订阅地址里的令牌用 `signing.dumps` 生成，带时间戳，页面渲染和测试里算的那一次跨过一秒就不一样。改成 `signing.Signer(...).sign_object`，同一个人永远是同一个地址；195 以前发出去的带时间戳的地址照样能用（先按新格式认，认不出再按旧格式）。顺带发现：改坏的令牌（比如末尾多一个字）原来会让 `signing.loads` 抛 JSON 解析错误，也就是 500，现在当成无效地址。加了一条测试（把时间拨到几十年后令牌不变、旧地址能用、坏地址返回空），改回 `signing.dumps` 时它会红（手动改坏跑过：`1 failed`，改回 `7 passed`）。测试机整组：
+
+```
+分片 1：438 passed in 51.08s
+分片 2：437 passed in 46.58s
+分片 3：437 passed in 54.31s
+分片 4：437 passed in 47.60s
+构建成功：a63bc45bdb3a
+== 全部通过 (17:45:43)
+```
+

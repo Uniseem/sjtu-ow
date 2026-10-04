@@ -97,3 +97,21 @@ def test_hammering_the_feed_is_limited(site, client):
     for _ in range(CALENDAR_RATE_LIMIT):
         assert _feed(client, me).status_code == 200
     assert _feed(client, me).status_code == 429
+
+
+@pytest.mark.django_db
+def test_the_address_is_the_same_every_time_and_old_ones_still_work(site, client):
+    """Round 195: the token carried a timestamp, so it changed every second
+    (and the page test above failed whenever a second ticked over)."""
+    from unittest import mock
+
+    from django.core import signing
+
+    me, _ = _signup(_scrim(), "stable195@example.com", "稳定195")
+    first = calendar_feed.token(me)
+    with mock.patch("time.time", return_value=4102444800):  # years later
+        assert calendar_feed.token(me) == first
+    old = signing.dumps(me.pk, salt=calendar_feed.CALENDAR_SALT)
+    assert calendar_feed.user_for(old) == me
+    assert calendar_feed.user_for(first) == me
+    assert calendar_feed.user_for(first + "x") is None

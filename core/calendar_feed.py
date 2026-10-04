@@ -16,16 +16,23 @@ LENGTHS = {"内战": timedelta(hours=3), "赛事": timedelta(hours=4)}
 
 
 def token(user) -> str:
-    return signing.dumps(user.pk, salt=CALENDAR_SALT)
+    """The same address every time (round 195): until then it was signed with
+    a timestamp, so each page showed a different one and a phone that had
+    subscribed saw the page offer it a "new" calendar."""
+    return signing.Signer(salt=CALENDAR_SALT).sign_object(user.pk)
 
 
 def user_for(raw: str):
     from accounts.models import User
 
     try:
-        pk = signing.loads(raw, salt=CALENDAR_SALT)
-    except signing.BadSignature:
-        return None
+        pk = signing.Signer(salt=CALENDAR_SALT).unsign_object(raw)
+    except (signing.BadSignature, ValueError):
+        try:
+            # Addresses handed out before round 195 keep working.
+            pk = signing.loads(raw, salt=CALENDAR_SALT)
+        except (signing.BadSignature, ValueError):
+            return None
     return User.objects.filter(pk=pk, is_active=True).first()
 
 
