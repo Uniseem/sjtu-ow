@@ -18,6 +18,13 @@ opens every page the project's own apps define, as a visitor, a member and
 a superuser (admin pages as the superuser only), and reports each one where
 the browser saw an error or the page answered 500. Covers the admin's
 script-heavy pages (drag-and-drop teams) that no test can run.
+
+    bash scripts/remote-check.sh run uv run python scripts/journey.py admin
+
+is the officers' evening: ten more players sign up, the scrim admin ticks
+ten on the split page, generates the teams, moves a card out and back with
+the card buttons and saves; the tournament admin moves three people from the
+pool into a new team with the card buttons, names it and saves.
 """
 
 from __future__ import annotations
@@ -320,6 +327,157 @@ def sweep(tools, base, data, routes) -> list[str]:
     return bad
 
 
+def add_players(scrim_id: int, cup_id: int) -> None:
+    """Inside Django (``journey.py players``): ten more people signed up for
+    the scrim and in the tournament's pool, every one able to play anything."""
+    import django
+
+    django.setup()
+    from allauth.account.models import EmailAddress
+    from django.utils import timezone
+
+    from accounts.models import ContactMethod, ContactType, GameAccount, User
+    from scrims import services as scrim_services
+    from scrims.models import Role, Scrim
+    from tournaments import registration as reg
+    from tournaments.models import Tournament
+
+    now = timezone.now()
+    scrim, cup = Scrim.objects.get(pk=scrim_id), Tournament.objects.get(pk=cup_id)
+    for number in range(10):
+        email = f"player{number}@journey.test"
+        user = User.objects.create_user(
+            email=email,
+            password=None,
+            nickname=f"队员{number}",
+            is_sjtu=True,
+            agreed_terms_at=now,
+            agreed_cross_border_at=now,
+        )
+        EmailAddress.objects.create(user=user, email=email, verified=True, primary=True)
+        account = GameAccount.objects.create(
+            user=user,
+            battletag=f"Player{number}#{4000 + number}",
+            rank_tank=14 + number,
+            rank_damage=15 + number,
+            rank_support=16 + number,
+        )
+        ContactMethod.objects.create(user=user, type=ContactType.QQ, value="10000")
+        scrim_services.sign_up(
+            scrim=scrim,
+            user=user,
+            game_account_id=account.pk,
+            roles=[Role.TANK, Role.DAMAGE, Role.SUPPORT],
+        )
+        reg.sign_up_individual(
+            tournament=cup,
+            user=user,
+            game_account_id=account.pk,
+            roles=["tank", "damage", "support"],
+        )
+
+
+def officers(tools, base, data) -> list[str]:
+    failed = []
+
+    def js(expression):
+        reply = tools.send(
+            "Runtime.evaluate", {"expression": expression, "returnByValue": True}
+        )
+        return reply.get("result", {}).get("value")
+
+    def step(name, ok, detail=""):
+        print(f"{'ok ' if ok else 'BAD'} {name} {detail}".rstrip())
+        if not ok:
+            failed.append(name)
+
+    def go(path):
+        tools.send("Page.navigate", {"url": base + path})
+        time.sleep(2)
+
+    def press(selector):
+        """Click this button the way a person does, and wait for the page it
+        leads to (generating teams takes a few seconds on the dev server)."""
+        found = js(
+            f"(() => {{ const b = document.querySelector({selector!r});"
+            " if (!b) return 'no button';"
+            " if (b.disabled) return 'disabled';"
+            " window.__journeyOld = true; b.click(); return 'clicked'; })()"
+        )
+        if found != "clicked":
+            print(f"    按钮 {selector}：{found}")
+            return
+        for _ in range(60):
+            time.sleep(0.5)
+            if js("!window.__journeyOld && document.readyState === 'complete'"):
+                break
+        time.sleep(0.5)
+
+    def says(text):
+        return bool(js(f"document.body.innerText.includes({text!r})"))
+
+    tools.send("Network.clearBrowserCookies")
+    tools.send(
+        "Network.setCookie",
+        {
+            "name": "sessionid",
+            "value": data["sessions"]["officer"],
+            "domain": "127.0.0.1",
+            "path": "/",
+        },
+    )
+
+    go(f"/admin/scrims/{data['scrim']}/split/")
+    enabled = js("""(() => {
+        const boxes = [...document.querySelectorAll('[data-pick]')];
+        boxes.forEach((box, index) => {
+            box.checked = index < 10;
+            box.dispatchEvent(new Event('change', {bubbles: true}));
+        });
+        return !document.querySelector('[data-generate]').disabled;
+    })()""")
+    step("勾满 10 人后「生成分队」能点了", bool(enabled))
+    press("[data-generate]")
+    counts = js("""(() => {
+        const count = team => document
+            .querySelectorAll(`[data-zone-team=${team}] [data-card]`).length;
+        return count('a') + '/' + count('b');
+    })()""")
+    step("生成了两队各 5 人", counts == "5/5", counts or "")
+    moved = js("""(() => {
+        const card = document.querySelector('[data-zone-team=a] [data-card]');
+        card.querySelector('[data-move=""]').click();
+        const out = document.querySelectorAll('[data-zone-team=a] [data-card]').length;
+        card.querySelector('[data-move=a]').click();
+        const back = document.querySelectorAll('[data-zone-team=a] [data-card]').length;
+        return out + '/' + back;
+    })()""")
+    step("卡片按钮移到缓冲区再移回", moved == "4/5", moved or "")
+    press("button[name=action][value=save]")
+    step("保存分队", says("已保存分队"))
+
+    go(f"/admin/tournaments/{data['cup']}/teams/")
+    placed = js("""(() => {
+        const cards = [...document.querySelectorAll('[data-card]')]
+            .filter(card => !card.closest('[data-team-panel]'))
+            .filter(card => card.querySelector('[data-move="new"]'))
+            .slice(0, 3);
+        cards.forEach(card => card.querySelector('[data-move="new"]').click());
+        document.querySelector('input[name="name-new"]').value = '浏览器编的队';
+        return cards.length;
+    })()""")
+    step("三个散人移进新队伍", placed == 3, str(placed))
+    press("button[name=action][value=save]")
+    step("保存编队", says("已保存：新建 1 支"))
+    step("新队伍出现在页面上", says("浏览器编的队"))
+
+    tools.send("Runtime.evaluate", {"expression": "1"})
+    for kind, text in EVENTS:
+        print(f"    浏览器报告 {kind}: {text[:200]}")
+    step("浏览器没有报错", not EVENTS, f"（{len(EVENTS)} 条）" if EVENTS else "")
+    return failed
+
+
 def main() -> int:
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True)
@@ -377,7 +535,21 @@ def main() -> int:
         tools = Watching(page["webSocketDebuggerUrl"])
         for domain in ("Page", "Runtime", "Log", "Network"):
             tools.send(f"{domain}.enable")
-        if "pages" in sys.argv[1:]:
+        if "admin" in sys.argv[1:]:
+            subprocess.run(
+                [
+                    sys.executable,
+                    __file__,
+                    "players",
+                    str(data["scrim"]),
+                    str(data["cup"]),
+                ],
+                cwd=ROOT,
+                env=env,
+                check=True,
+            )
+            failed = officers(tools, base, data)
+        elif "pages" in sys.argv[1:]:
             listed = subprocess.run(
                 [sys.executable, __file__, "routes"],
                 cwd=ROOT,
@@ -406,5 +578,8 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["routes"]:
         sys.path.insert(0, str(ROOT))
         print(json.dumps(list_routes()))
+    elif sys.argv[1:2] == ["players"]:
+        sys.path.insert(0, str(ROOT))
+        add_players(int(sys.argv[2]), int(sys.argv[3]))
     else:
         raise SystemExit(main())
