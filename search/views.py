@@ -22,7 +22,7 @@ def search(request):
     if terms:
         if over_limit(f"search:{client_ip(request)}", SEARCH_RATE_LIMIT, 60):
             return render(request, "errors/429.html", {"retry_after": 60}, status=429)
-        groups = services.search_all(terms)
+        groups = services.search_all(terms, request)
     context = {
         "query": query,
         "terms": terms,

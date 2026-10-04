@@ -80,13 +80,12 @@ def _gather(rows, terms, text_of, hit_of) -> tuple[list[Hit], bool]:
     return hits, False
 
 
-def search_articles(terms) -> Group:
+def search_articles(terms, request=None) -> Group:
     from content.models import ArticlePage
 
     pages = (
         ArticlePage.objects.live()
         .public()
-        .specific()
         .select_related("category")
         .order_by("-last_published_at", "-pk")
     )
@@ -97,7 +96,9 @@ def search_articles(terms) -> Group:
     def hit_of(page, text):
         return Hit(
             title=page.title,
-            url=page.get_url() or "",
+            # With the request, Wagtail looks the site's root paths up once
+            # per request instead of once per article (round 163).
+            url=page.get_url(request) or "",
             excerpt=excerpt(text, terms),
             meta=page.category.name if page.category_id else "文章",
         )
@@ -175,9 +176,9 @@ def search_members(terms) -> Group:
     return Group("members", "成员", hits, truncated)
 
 
-def search_all(terms) -> list[Group]:
+def search_all(terms, request=None) -> list[Group]:
     return [
-        search_articles(terms),
+        search_articles(terms, request),
         search_events(terms),
         search_teams(terms),
         search_members(terms),

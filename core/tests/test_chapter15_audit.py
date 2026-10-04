@@ -245,6 +245,178 @@ def test_no_n_plus_one_on_a_tournament_detail_page(client):
     assert_no_n_plus_one(client, f"/tournaments/{tournament.pk}/", seed)
 
 
+# --- 15.1 N+1, the pages added since (round 163) ------------------------------
+
+
+@pytest.fixture
+def site_tree(db):
+    from django.core.management import call_command
+
+    call_command("init_site", verbosity=0)
+
+
+def _verified(user):
+    from allauth.account.models import EmailAddress
+
+    EmailAddress.objects.create(
+        user=user, email=user.email, verified=True, primary=True
+    )
+    return user
+
+
+def _publish_article(owner):
+    from content.models import ArticleCategory, ArticleIndexPage, ArticlePage
+
+    number = ArticlePage.objects.count() + 1
+    page = ArticlePage(
+        title=f"审计文章{number}",
+        slug=f"audit-article-{number}",
+        category=ArticleCategory.objects.first(),
+        summary="审计摘要。",
+        owner=owner,
+        author=owner,
+    )
+    ArticleIndexPage.objects.live().first().add_child(instance=page)
+    page.save_revision().publish()
+    return page
+
+
+def _new_people(count):
+    start = User.objects.count()
+    return [_verified(make_user(start + index)) for index in range(count)]
+
+
+@pytest.mark.django_db
+def test_no_n_plus_one_on_the_news_list(site_tree, client):
+    def seed(count):
+        for author in _new_people(count):
+            _publish_article(author)
+
+    assert_no_n_plus_one(client, "/news/", seed)
+
+
+@pytest.mark.django_db
+def test_no_n_plus_one_on_the_homepage(site_tree, client):
+    from scrims.models import Scrim, ScrimStatus
+    from teams import services as team_services
+
+    now = timezone.now()
+
+    def seed(count):
+        for index, person in enumerate(_new_people(count)):
+            _publish_article(person)
+            team_services.create_team(user=person, name=f"首页队{person.pk}")
+            Scrim.objects.create(
+                title=f"首页内战{person.pk}",
+                starts_at=now + timedelta(days=1, hours=index),
+                status=ScrimStatus.PUBLISHED,
+            )
+
+    assert_no_n_plus_one(client, "/", seed)
+
+
+@pytest.mark.django_db
+def test_no_n_plus_one_under_an_article(site_tree, client):
+    from comments.models import Comment
+
+    article = _publish_article(_new_people(1)[0])
+
+    def seed(count):
+        for person in _new_people(count):
+            top = Comment.objects.create(page=article, author=person, body="评论")
+            Comment.objects.create(
+                page=article,
+                author=article.author,
+                parent=top,
+                reply_to_user=person,
+                body="回复",
+            )
+
+    assert_no_n_plus_one(client, article.url, seed)
+
+
+@pytest.mark.django_db
+def test_no_n_plus_one_in_search_results(site_tree, client):
+    from teams import services as team_services
+
+    def seed(count):
+        for person in _new_people(count):
+            _publish_article(person)
+            team_services.create_team(user=person, name=f"审计搜索{person.pk}")
+
+    assert_no_n_plus_one(client, "/search/?q=审计", seed)
+
+
+@pytest.mark.django_db
+def test_no_n_plus_one_in_my_registrations(site_tree, client):
+    from tournaments import registration as reg
+    from tournaments.tests.test_adhoc_teams import _tournament
+
+    me = _new_people(1)[0]
+    client.force_login(me)
+
+    def seed(count):
+        for index in range(count):
+            reg.sign_up_individual(
+                tournament=_tournament(title=f"散人杯{index}{timezone.now():%f}"),
+                user=me,
+                game_account_id=me.game_accounts.first().pk,
+                roles=["damage"],
+            )
+
+    assert_no_n_plus_one(client, "/me/registrations/", seed)
+
+
+def _scrim_seed(me):
+    from scrims import services as scrim_services
+    from scrims.models import Role, Scrim, ScrimStatus
+
+    def seed(count):
+        for index in range(count):
+            scrim = Scrim.objects.create(
+                title=f"我的内战{Scrim.objects.count()}",
+                starts_at=timezone.now() + timedelta(days=2, hours=index),
+                status=ScrimStatus.PUBLISHED,
+            )
+            scrim_services.sign_up(
+                scrim=scrim,
+                user=me,
+                game_account_id=me.game_accounts.first().pk,
+                roles=[Role.DAMAGE],
+            )
+
+    return seed
+
+
+@pytest.mark.django_db
+def test_no_n_plus_one_in_my_scrims(site_tree, client):
+    me = _new_people(1)[0]
+    client.force_login(me)
+    assert_no_n_plus_one(client, "/me/scrims/", _scrim_seed(me))
+
+
+@pytest.mark.django_db
+def test_no_n_plus_one_in_the_calendar_feed(site_tree, client):
+    from core.calendar_feed import token
+
+    me = _new_people(1)[0]
+    assert_no_n_plus_one(client, f"/calendar/{token(me)}.ics", _scrim_seed(me))
+
+
+@pytest.mark.django_db
+def test_no_n_plus_one_on_a_team_page(site_tree, client):
+    from teams import services as team_services
+    from teams.models import TeamMembership
+
+    team = team_services.create_team(user=_new_people(1)[0], name="满员审计队")
+
+    def seed(count):
+        for person in _new_people(count):
+            TeamMembership.objects.create(team=team, user=person)
+
+    assert_no_n_plus_one(client, f"/teams/{team.pk}/", seed)
+
+
 # --- 15.1 homepage weight ------------------------------------------------------
 
 
