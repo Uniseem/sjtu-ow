@@ -64,7 +64,7 @@ class UserEditView(wagtail_users.EditView):
         if self.was_active and not instance.is_active:
             from teams.services import captained_teams
 
-            after_deactivation(instance)
+            paused = after_deactivation(instance)
             messages.info(
                 self.request, "账号已停用：不能再登录，待审批的入队申请已取消。"
             )
@@ -74,6 +74,12 @@ class UserEditView(wagtail_users.EditView):
                 messages.warning(
                     self.request,
                     f"这个账号是{names}的队长，到「社区 → 战队」给这些队指定新队长。",
+                )
+            if paused:
+                names = "、".join(f"「{team.name}」" for team in paused)
+                messages.info(
+                    self.request,
+                    f"{names}已改成暂不招募，新队长可以在战队管理页重新打开。",
                 )
         return instance
 

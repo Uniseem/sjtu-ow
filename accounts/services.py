@@ -826,18 +826,21 @@ def forget_uploaded_faces(user) -> None:
 # --- the admin's user screens (design 14.2, 3.7; round 115) -------------------------
 
 
-def after_deactivation(user) -> None:
+def after_deactivation(user) -> list:
     """Design 3.7: a stopped account's pending team applications are cancelled
-    (it can no longer log in to follow them up)."""
+    (it can no longer log in to follow them up), and the teams it captains
+    stop recruiting (v6.62). Returns those teams."""
     from django.utils import timezone
 
     from teams.models import ApplicationStatus
+    from teams.services import pause_recruiting
 
     user.team_applications.filter(status=ApplicationStatus.PENDING).update(
         status=ApplicationStatus.CANCELLED,
         decided_at=timezone.now(),
         decision_note="账号已停用",
     )
+    return pause_recruiting(user)
 
 
 def admin_profile(user, *, viewer) -> dict:

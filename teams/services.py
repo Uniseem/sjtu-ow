@@ -70,6 +70,22 @@ def captained_teams(user) -> list:
     )
 
 
+def pause_recruiting(user) -> list:
+    """Design 3.7 (v6.62): the account was stopped, so the teams it captains
+    take no applications (``can_apply``); stop advertising them as recruiting.
+    The next captain turns it back on."""
+    from core import prerender
+
+    paused = [team for team in captained_teams(user) if team.is_recruiting]
+    for team in paused:
+        team.is_recruiting = False
+        team.save(update_fields=["is_recruiting", "updated_at"])
+        prerender.request_page(team.get_absolute_url(), kind="team")
+    if paused:
+        refresh_team_list()
+    return paused
+
+
 def captained_count(user) -> int:
     return TeamMembership.objects.filter(
         user=user,
