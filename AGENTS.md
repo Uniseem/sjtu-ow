@@ -66,6 +66,8 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 
 **登录后的页面截图**（146 起）：`bash scripts/remote-check.sh run uv run python scripts/screens.py 375`（宽度可换，比如 1280）。在测试机上用临时数据库建一套测试数据（成员、队长、战队、个人赛、整队赛、内战），起开发服务器，在服务器里直接给测试用户生成会话（不输入任何密码），用无头 Chromium 截个人中心、战队、赛事、内战等页面的整页图到 `/tmp/sjtu-ow-screens/out/`，再 `scp "[2a0e:6a80:3:9c7::]:/tmp/sjtu-ow-screens/out/*.png" 本机目录` 拿回来看。测试机上装了 `chromium` 和 `fonts-noto-cjk`；截图里文件选择框写「Choose File」是无头浏览器的语言，不是网站的问题。要加页面就改脚本里的 `PAGES`
 
+**在真浏览器里走一遍新人的第一晚**（168 起）：`bash scripts/remote-check.sh run uv run python scripts/journey.py`。同样在测试机上建临时站点（用 `screens.py` 的种子数据），起开发服务器和 worker，用无头 Chromium 真的填注册表单（只在这个临时站点上用测试值）、从 worker 打到控制台的邮件里读验证码、验证、加游戏 ID 和联系方式、报内战、申请战队，最后看首页「我的安排」。浏览器报的错误、未捕获的异常、内容安全策略的拦截都打印出来并算失败，有一步没走通就退出码 1。测试直接调 Django 看不到的东西（脚本被拦、按钮没反应、区块没填上）靠它发现；改了这几个页面的表单或脚本后跑一次
+
 它把工作区（**包括没提交的改动**，不碰暂存区）做成一个提交、打成 git bundle 传上去，测试机检出的就是本机现在的样子（换行是 LF）。检查在服务器上脱离连接跑，本机每 3 秒取一次日志，退出码就是检查的结果；同一时间只跑一个，后来的排队。整组里 pytest 按核数分片、`docker build` 同时在后台构建，全部约 1 分半。本机只在测试机连不上时才跑这组检查。
 
 改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。改了 `core/placeholders.py`（占位图的画法和动画）后跑 `uv run python manage.py render_placeholders` 并提交 `static/img/placeholders/`。换了校徽文件 `static/img/sjtu-emblem.svg` 后跑 `uv run python manage.py render_emblem_layers` 并提交两张图层。改了 `locale/` 下的 `.po`（后台中文，117 起）后跑 `uv run python manage.py compile_translations` 并提交 `.mo`。
@@ -172,6 +174,8 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 - **`ArticlePage.objects…` 别再 `.specific()`**（163）：拿到的已经是文章本身，`.specific()` 让 Wagtail 再取一遍，前面写的 `select_related` 也跟着丢了
 - **量查询数时，数据要覆盖页面上的每一类内容**（163）：临时探测给搜索只放了战队，结论「平的」；正式守卫放了文章才发现每篇多两次查询。`core/tests/test_chapter15_audit.py` 的 `assert_no_n_plus_one` 比 3 份和 10 份数据
 - **Wagtail 自带的复制页拿原对象预填表单**（159）：表单提交到新建地址时没事，但直接提交回复制地址的话，状态、发布时间这些不在表单里的字段会一起带进新的一条。本站的内战、赛事复制改成只照抄列出的字段新建对象（`core.services.copy_ahead`），别的模型要开复制也照这样做
+- **编号一律过一道关**（166、167）：地址里写 `<id:pk>` 不写 `<int:pk>`（最多 18 位，有测试拦 `<int:`）；从表单或查询参数里取的编号用 `core.converters.as_id()`，不是编号就是 None。直接把 `request.POST.get(...)` 交给 `pk=` 的话，「abc」是 `ValueError`，20 位数字查一对一外键（Wagtail 页面）是 `OverflowError`，都是 500。`core/tests/test_garbage_input.py` 把全站地址乱填一遍，新加的页面出 500 它会红
+- **用了 `account/_form.html` 就别再自己写 `form.non_field_errors`**（168）：这个共用的表单片段已经显示整表单的错误，战队的申请、新建、管理页又写了一遍，同一句话显示两次。有测试拦
 - **`querydict_from_html` 的两个坑**（159）：没写 `value` 的勾选框读出来是空字符串，Django 会当成没勾（浏览器发的是 `on`，测试里按 `checked` 改回 `on`）；Django 在 `<textarea>` 后面加一个换行，读出来的值开头多一个换行，比较前 `strip()`
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 

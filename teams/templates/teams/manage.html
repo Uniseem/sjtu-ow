@@ -127,9 +127,6 @@
         <form method="post" enctype="multipart/form-data" class="c-form max-w-xl">
           {% csrf_token %}
           <input type="hidden" name="form" value="profile">
-          {% if form.non_field_errors %}
-            <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ form.non_field_errors.0 }}</span></p>
-          {% endif %}
           {% include "account/_form.html" %}
           <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
         </form>

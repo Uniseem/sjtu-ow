@@ -17,9 +17,6 @@
     {% else %}
       <form method="post" class="c-form max-w-xl">
         {% csrf_token %}
-        {% if form.non_field_errors %}
-          <p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ form.non_field_errors.0 }}</span></p>
-        {% endif %}
         {% include "account/_form.html" %}
         <div class="c-formbar">
           <button type="submit" class="c-btn c-btn--primary">提交申请</button>
