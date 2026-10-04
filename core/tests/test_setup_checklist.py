@@ -14,7 +14,6 @@ from django.contrib.auth.models import Group
 from django.core.management import call_command
 from django.urls import reverse
 from django.utils import timezone
-from wagtail.rich_text import RichText
 
 from accounts.models import User
 from content.models import StandardPage
@@ -85,10 +84,10 @@ def test_the_agreements_need_their_blanks_filled(site):
     assert not terms.done
     assert "处【】" in terms.detail
     page = StandardPage.objects.get(slug="terms")
-    page.body = [("paragraph", RichText("<p>一、账号：由守望先锋社团运营。</p>"))]
+    page.body = "一、账号：由守望先锋社团运营。"
     page.save_revision().publish()
     assert _check("用户协议").done
-    page.body = []
+    page.body = ""
     page.save_revision().publish()
     empty = _check("用户协议")
     assert not empty.done
@@ -152,7 +151,7 @@ def test_init_site_fills_the_agreements_and_says_what_is_next(client):
     assert "接下来" in text
     assert "上线清单" in text
     page = StandardPage.objects.get(slug="terms")
-    page.body = [("paragraph", RichText("<p>社团改过的协议</p>"))]
+    page.body = "社团改过的协议"
     page.save_revision().publish()
     call_command("init_site", stdout=io.StringIO())
     assert "社团改过的协议" in client.get("/terms/").content.decode()

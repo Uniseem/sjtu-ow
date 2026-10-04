@@ -8,81 +8,24 @@ overwrites what an editor has written in the admin.
 
 from __future__ import annotations
 
-import html
 import re
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-from wagtail.rich_text import RichText
 
 from content.models import StandardPage
 
 PAGES = (("terms", "terms.md"), ("privacy", "privacy.md"))
 _COMMENT = re.compile(r"<!--.*?-->", re.S)
-_BOLD = re.compile(r"\*\*(.+?)\*\*")
-_ORDERED = re.compile(r"^\d+\.\s+")
+_TITLE = re.compile(r"^# [^\n]*\n?", re.M)
 
 
-def _inline(text: str) -> str:
-    return _BOLD.sub(r"<b>\1</b>", html.escape(text.strip(), quote=False))
-
-
-def markdown_to_html(source: str) -> str:
-    """The small subset the drafts use: ## / ###, - and 1. lists, **bold**.
-
-    The page title is the Wagtail title, so the draft's own # heading is dropped.
-    """
-    out: list[str] = []
-    paragraph: list[str] = []
-    list_tag = ""
-
-    def flush_paragraph():
-        if paragraph:
-            # Chinese: joining lines with a space would leave 「。 第」 gaps.
-            out.append(f"<p>{_inline(''.join(paragraph))}</p>")
-            paragraph.clear()
-
-    def close_list():
-        nonlocal list_tag
-        if list_tag:
-            out.append(f"</{list_tag}>")
-            list_tag = ""
-
-    for raw in _COMMENT.sub("", source).splitlines():
-        line = raw.rstrip()
-        if not line.strip():
-            flush_paragraph()
-            close_list()
-            continue
-        if line.startswith("# "):
-            continue
-        heading = re.match(r"^(#{2,3})\s+(.*)$", line)
-        if heading:
-            flush_paragraph()
-            close_list()
-            level = len(heading.group(1))
-            out.append(f"<h{level}>{_inline(heading.group(2))}</h{level}>")
-            continue
-        item_tag = ""
-        if line.startswith("- "):
-            item_tag = "ul"
-        elif _ORDERED.match(line):
-            item_tag = "ol"
-        if item_tag:
-            flush_paragraph()
-            if list_tag != item_tag:
-                close_list()
-                out.append(f"<{item_tag}>")
-                list_tag = item_tag
-            text = line[2:] if item_tag == "ul" else _ORDERED.sub("", line)
-            out.append(f"<li>{_inline(text)}</li>")
-            continue
-        close_list()
-        paragraph.append(line)
-    flush_paragraph()
-    close_list()
-    return "".join(out)
+def body_from_draft(source: str) -> str:
+    """The draft as the page body (Markdown, design 5.2 v6.70): without the
+    note to the club at the top, and without its own # title, which is the
+    page title."""
+    return _TITLE.sub("", _COMMENT.sub("", source), count=1).strip()
 
 
 class Command(BaseCommand):
@@ -111,6 +54,6 @@ class Command(BaseCommand):
                 self.stdout.write(f"「{page.title}」已有正文，跳过（覆盖请加 --force）")
                 continue
             text = (source / filename).read_text(encoding="utf-8")
-            page.body = [("paragraph", RichText(markdown_to_html(text)))]
+            page.body = body_from_draft(text)
             page.save_revision().publish()
             self.stdout.write(self.style.SUCCESS(f"已发布「{page.title}」"))

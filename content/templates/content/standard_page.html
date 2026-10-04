@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags %}
+{% load ow wagtailcore_tags %}
 
 {% block title %}{{ seo.document_title }}{% endblock %}
 
@@ -16,7 +16,7 @@
       {% if page.last_published_at %}<p class="c-article__meta">最后更新 <time class="font-numeric" datetime="{{ page.last_published_at|date:'c' }}">{{ page.last_published_at|date:"Y.m.d" }}</time></p>{% endif %}
     </header>
     <div class="c-prose">
-      {% include_block page.body %}
+      {{ page.body|markdown }}
     </div>
   </article>
 {% endblock %}

@@ -2941,6 +2941,75 @@
     border-radius: var(--radius-sm);
   }
 
+  /* What Markdown adds (v6.70, design-details 6.4). */
+  .c-prose s {
+    color: var(--color-fg-3);
+  }
+
+  .c-prose code {
+    padding: 0.125em 0.375em;
+    border-radius: 4px;
+    background-color: var(--color-surface-2);
+    font-size: 0.875em;
+  }
+
+  .c-prose pre {
+    margin-block: 0 1em;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    border-radius: 6px;
+    background-color: var(--color-surface-2);
+    text-align: left;
+    line-height: 1.6;
+  }
+
+  .c-prose pre code {
+    padding: 0;
+    background: none;
+  }
+
+  .c-prose__video {
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .c-prose__table {
+    margin-block: 0 1em;
+    overflow-x: auto;
+  }
+
+  .c-prose table {
+    border-collapse: collapse;
+    font-size: 0.9375em;
+    line-height: 1.6;
+  }
+
+  /* Toned apart, not ruled (13.2 纯色切割): the head and every other row
+     on the second surface. */
+  .c-prose th,
+  .c-prose td {
+    padding: 0.5em 0.875em;
+    text-align: left;
+  }
+
+  .c-prose th,
+  .c-prose tbody tr:nth-child(even) {
+    background-color: var(--color-surface-2);
+  }
+
+  .c-prose th {
+    font-weight: 700;
+  }
+
+  /* An image inside a line of text (one alone on its line is a figure). */
+  .c-prose p img {
+    display: inline;
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-sm);
+  }
+
   /* ---- Comments (design 5.6) ------------------------------------------------------- */
 
   .c-comments {

@@ -78,7 +78,7 @@ def famous(db):
         author=user,
         owner=user,
         summary="摘要",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
     )
     news.add_child(instance=article)
     article.save_revision().publish()
@@ -135,7 +135,7 @@ def test_an_article_refreshes_the_tournament_it_is_linked_to(prerender_on, famou
         author=user,
         owner=user,
         summary="摘要",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
         tournament=tournament,
     )
     news.add_child(instance=article)

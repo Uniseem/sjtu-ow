@@ -63,7 +63,7 @@ def _tree():
 
 def _article(parent, category, author, *, title, slug, live=True, **fields):
     fields.setdefault("summary", "这是摘要")
-    fields.setdefault("body", [("paragraph", "<p>这是正文</p>")])
+    fields.setdefault("body", "这是正文")
     page = ArticlePage(
         title=title,
         slug=slug,
@@ -162,10 +162,7 @@ def test_article_detail_visible_and_unpublished_is_404(client):
         title="公开攻略",
         slug="public-guide",
         summary="列表摘要",
-        body=[
-            ("paragraph", "<p>正文段落</p>"),
-            ("quote", {"text": "一句引用", "attribution": "出处"}),
-        ],
+        body="正文段落\n\n> 一句引用\n> ——出处",
     )
     url = article.url
     response = client.get(url)
@@ -226,7 +223,7 @@ def test_home_uses_pinned_articles_when_present(client):
 
 @pytest.mark.django_db
 def test_reserved_slug_rejected_on_homepage_children():
-    page = StandardPage(title="战队占位", slug="teams", body=[])
+    page = StandardPage(title="战队占位", slug="teams", body="")
     with pytest.raises(ValidationError, match="固定路由"):
         page.clean()
 
@@ -254,7 +251,7 @@ def test_every_fixed_top_level_route_is_reserved():
     assert {"search", "registrations", "healthz"} <= fixed
     assert sorted(fixed - RESERVED_CHILD_SLUGS) == []
     for slug in ("search", "registrations", "static"):
-        page = StandardPage(title="占位", slug=slug, body=[])
+        page = StandardPage(title="占位", slug=slug, body="")
         with pytest.raises(ValidationError, match="固定路由"):
             page.clean()
 

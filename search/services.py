@@ -1,9 +1,10 @@
 """Site search (design 13.16): substring matching over four kinds of content.
 
 No tokeniser: every term must occur somewhere in the text, case-folded.
-Article bodies are StreamFields whose JSON escapes Chinese, so all matching
-is done in Python on rendered text rather than in SQL. The club's data is
-small enough for that (13.16 says when to revisit).
+Bodies and event descriptions are Markdown (v6.70), matched in Python on the
+words a reader sees rather than in SQL, so markup and link addresses never
+match or show in excerpts. The club's data is small enough for that (13.16
+says when to revisit).
 """
 
 from __future__ import annotations
@@ -11,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from django.utils.html import strip_tags
+
+from content.markdown import plain_text
 
 PER_TYPE_LIMIT = 20
 MAX_QUERY_LENGTH = 50
@@ -91,7 +94,7 @@ def search_articles(terms, request=None) -> Group:
     )
 
     def text_of(page):
-        return f"{page.title}\n{page.summary}\n{plain(page.body)}"
+        return f"{page.title}\n{page.summary}\n{plain(plain_text(page.body))}"
 
     def hit_of(page, text):
         return Hit(
@@ -123,7 +126,7 @@ def search_events(terms) -> Group:
     def text_of(item):
         _kind, row = item
         summary = getattr(row, "summary", "")
-        return f"{row.title}\n{summary}\n{plain(row.description)}"
+        return f"{row.title}\n{summary}\n{plain(plain_text(row.description))}"
 
     def hit_of(item, text):
         kind, row = item

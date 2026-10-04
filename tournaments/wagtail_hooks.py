@@ -15,6 +15,7 @@ from wagtail.admin.viewsets.model import ModelViewSet
 from wagtail.permission_policies import ModelPermissionPolicy
 from wagtail.permissions import register_permission_policy
 
+from content.widgets import MarkdownEditor
 from core import admin_log
 from tournaments import services
 from tournaments.models import Tournament, TournamentStatus
@@ -215,7 +216,7 @@ class TournamentViewSet(ModelViewSet):
             [
                 FieldPanel("title"),
                 FieldPanel("summary"),
-                FieldPanel("description"),
+                FieldPanel("description", widget=MarkdownEditor),
                 FieldPanel("cover"),
             ],
             heading="内容",

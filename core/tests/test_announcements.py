@@ -339,7 +339,7 @@ def _article(author, title="秋季招新"):
         author=author,
         owner=author,
         summary="面向全校，不限段位。",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
     )
     news.add_child(instance=page)
     page.save_revision().publish()
@@ -410,7 +410,7 @@ def _planned(author, go_live_at, title="周五招新"):
         author=author,
         owner=author,
         summary="周五晚上八点见。",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
         live=False,
     )
     news.add_child(instance=page)

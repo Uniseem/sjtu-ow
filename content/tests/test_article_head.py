@@ -56,7 +56,7 @@ def _main(client, url):
 
 
 def _body(*parts):
-    return [("paragraph", "".join(parts))]
+    return "".join(parts)  # Markdown (v6.70)
 
 
 @pytest.mark.django_db
@@ -64,7 +64,7 @@ def test_the_cover_carries_the_facts(client, site):
     news, author, guide = site
     article = _article(
         news, guide, author, title="推进图", slug="push",
-        body=_body("<p>" + "字" * 450 + "</p>"),
+        body=_body("字" * 450),
     )  # fmt: skip
     main = _main(client, article.url)
     cover = main[main.index('<header class="c-cover">') : main.index("</header>")]
@@ -98,12 +98,12 @@ def test_contents_appear_from_three_headings(client, site):
     news, author, guide = site
     two = _article(
         news, guide, author, title="两节", slug="two",
-        body=_body("<h2>一</h2><p>a</p><h2>二</h2><p>b</p>"),
+        body=_body("## 一\n\na\n\n## 二\n\nb"),
     )  # fmt: skip
     assert "c-toc" not in _main(client, two.url)
     three = _article(
         news, guide, author, title="三节", slug="three",
-        body=_body("<h2>一</h2><p>a</p><h3>一点一</h3><p>b</p><h2>二</h2><p>c</p>"),
+        body=_body("## 一\n\na\n\n### 一点一\n\nb\n\n## 二\n\nc"),
     )  # fmt: skip
     main = _main(client, three.url)
     assert '<h2 id="h-1">一</h2>' in main

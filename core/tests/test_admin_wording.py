@@ -380,7 +380,7 @@ def test_staff_who_are_also_submitters_do_not_see_others_drafts(site, client):
         author=author,
         owner=author,
         summary="摘要",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
     )
     news.add_child(instance=draft)
     draft.save_revision(user=author)
@@ -419,7 +419,7 @@ def test_both_page_tree_filters_hide_others_drafts(site, rf):
         author=author,
         owner=author,
         summary="摘要",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
     )
     news.add_child(instance=draft)
     draft.save_revision(user=author)

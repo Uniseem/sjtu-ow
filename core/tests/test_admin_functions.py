@@ -180,7 +180,7 @@ def test_editors_see_submissions_waiting_for_them(site, client):
         author=author,
         owner=author,
         summary="摘要",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
     )
     news.add_child(instance=page)
     page.save_revision(user=author)
@@ -283,7 +283,7 @@ def test_the_scan_covers_teams_and_comments_too(site):
         author=captain,
         owner=captain,
         summary="摘要",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
     )
     news.add_child(instance=article)
     article.save_revision().publish()

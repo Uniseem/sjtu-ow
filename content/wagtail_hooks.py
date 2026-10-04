@@ -246,3 +246,24 @@ def article_announce_header_button(page, user, view_name, next_url=None):
     item = _announce_item(page, user, next_url)
     if item is not None:
         yield item
+
+
+@hooks.register("register_admin_urls")
+def register_markdown_urls():
+    """The Markdown editor's preview and image upload (design 5.2, v6.70)."""
+    from django.urls import path
+
+    from content import markdown_views
+
+    return [
+        path(
+            "markdown/preview/",
+            markdown_views.preview,
+            name="content_markdown_preview",
+        ),
+        path(
+            "markdown/image/",
+            markdown_views.upload_image,
+            name="content_markdown_image",
+        ),
+    ]

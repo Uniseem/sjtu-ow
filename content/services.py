@@ -20,7 +20,13 @@ from wagtail.models import (
     WorkflowTask,
 )
 
-from accounts.services import GROUP_AUTHOR, GROUP_CONTENT, GROUP_SUBMITTER
+from accounts.services import (
+    GROUP_AUTHOR,
+    GROUP_CONTENT,
+    GROUP_SCRIM,
+    GROUP_SUBMITTER,
+    GROUP_TOURNAMENT,
+)
 from content.models import ArticleCategory, ArticleIndexPage, HomePage, StandardPage
 
 INITIAL_CATEGORIES = (
@@ -211,7 +217,7 @@ def ensure_page_tree() -> HomePage:
 
     _ensure_child(homepage, ArticleIndexPage, "资讯", "news", intro="")
     for title, slug in STANDARD_PAGES:
-        _ensure_child(homepage, StandardPage, title, slug, body=[])
+        _ensure_child(homepage, StandardPage, title, slug, body="")
     return homepage
 
 
@@ -364,7 +370,13 @@ def assign_content_permissions() -> None:
     """Page and collection permissions for 内容编辑 / 认证作者 / 投稿者."""
     groups = {
         name: Group.objects.get_or_create(name=name)[0]
-        for name in (GROUP_CONTENT, GROUP_AUTHOR, GROUP_SUBMITTER)
+        for name in (
+            GROUP_CONTENT,
+            GROUP_AUTHOR,
+            GROUP_SUBMITTER,
+            GROUP_TOURNAMENT,
+            GROUP_SCRIM,
+        )
     }
     # Design 4.1: 内容编辑 manage article categories (a snippet, so plain
     # model permissions). init_site never granted these until round 068.
@@ -405,6 +417,11 @@ def assign_content_permissions() -> None:
         collection,
         ("add_image", "choose_image"),
     )
+    # v6.70: everyone who can open a Markdown editor can put pictures in it;
+    # the managers write the event descriptions, and are not always in 投稿者
+    # (an unverified address, or submitting switched off for them).
+    for name in (GROUP_TOURNAMENT, GROUP_SCRIM):
+        _grant_collection_perms(groups[name], collection, ("add_image", "choose_image"))
     root = Collection.get_first_root_node()
     if root is not None:
         _grant_collection_perms(

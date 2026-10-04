@@ -523,7 +523,7 @@ def test_a_quote_names_its_source(client, site):
         author,
         title="有引用",
         slug="q",
-        body=[("quote", {"text": "一起进步。", "attribution": "社团负责人"})],
+        body="> 一起进步。\n> ——社团负责人",
     )
     html = client.get(article.url).content.decode("utf-8")
     assert re.search(

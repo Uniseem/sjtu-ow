@@ -21,23 +21,12 @@ TOC_MIN_HEADINGS = 3
 
 
 def body_text(body) -> tuple[str, int, int]:
-    """(plain text, images, videos) of a StreamField body, without rendering
-    it: rich text and quotes as text, image captions counted as text."""
-    parts, images, videos = [], 0, 0
-    for block in body or ():
-        kind = block.block_type
-        if kind == "paragraph":
-            parts.append(strip_tags(getattr(block.value, "source", str(block.value))))
-        elif kind == "quote":
-            parts.extend(
-                [block.value.get("text", ""), block.value.get("attribution", "")]
-            )
-        elif kind == "image":
-            images += 1
-            parts.append(block.value.get("caption", ""))
-        elif kind == "video":
-            videos += 1
-    return "\n".join(part for part in parts if part), images, videos
+    """(plain text, images, videos) of a Markdown body (v6.70): what the
+    reader sees, so no asterisks or link addresses; image captions count."""
+    from content.markdown import analyse, plain_text
+
+    rendered = analyse(body)
+    return plain_text(body), rendered.images, rendered.videos
 
 
 def word_count(text: str) -> int:

@@ -83,7 +83,7 @@ def _article(author, title="AI 看过的稿件"):
         author=author,
         owner=author,
         summary="摘要",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
     )
     news.add_child(instance=page)
     page.save_revision(user=author)

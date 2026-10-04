@@ -33,7 +33,7 @@ def _settings_url(site) -> str:
 
 
 def _page_text(page) -> str:
-    return " ".join(str(block.value) for block in page.body) if page.body else ""
+    return page.body or ""  # Markdown (v6.70)
 
 
 def _mail(site) -> Check:

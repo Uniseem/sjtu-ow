@@ -61,7 +61,7 @@ def articles(db):
         title="源氏教学",
         slug="genji-guide",
         summary="一篇摘要",
-        body=[("paragraph", "<p>正文里提到了<strong>龙刃</strong>的时机。</p>")],
+        body="正文里提到了**龙刃**的时机。",
     )
     draft = _article(
         news, category, author, title="未发布的龙刃心得", slug="draft-guide", live=False

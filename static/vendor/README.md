@@ -8,5 +8,7 @@
 # |                   |         | npm: @alpinejs/csp (CSP-compatible build, no eval) |
 # | Sortable.min.js   | 1.15.6  | https://unpkg.com/sortablejs@1.15.6/Sortable.min.js |
 # |                   |         | upstream: https://github.com/SortableJS/Sortable/releases/tag/1.15.6 |
+# | easymde/          | 2.21.0  | https://registry.npmjs.org/easymde/-/easymde-2.21.0.tgz (dist/, LICENSE) |
+# |                   |         | sha512 checked against the npm registry; admin only (design 5.2, v6.70) |
 #
 # SortableJS is for M6 scrim admin drag-and-drop. M0 does not load it on every page.

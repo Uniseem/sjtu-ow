@@ -116,7 +116,7 @@ class Command(BaseCommand):
         assign_content_permissions()
         self.stdout.write(
             self.style.SUCCESS(
-                "已分配内容权限：投稿者可新建稿件并上传投稿图片；"
+                "已分配内容权限：投稿者可新建稿件并上传投稿图片（赛事、内战管理员也能传）；"
                 "内容编辑可审核发布；认证作者可直接发布。"
             )
         )

@@ -1,0 +1,22 @@
+{% comment %}Design 5.2 (v6.70): the textarea holds the Markdown; markdown-editor.js turns it into the editor. The cheat sheet opens from the toolbar's 「写法说明」.{% endcomment %}
+<div class="md-field">
+  {% include "django/forms/widgets/textarea.html" %}
+  <div class="md-help" data-markdown-help hidden>
+    <table>
+      <thead><tr><th scope="col">想要</th><th scope="col">这样写</th></tr></thead>
+      <tbody>
+        <tr><td>二级标题、三级标题</td><td><code>## 标题</code>　<code>### 小标题</code></td></tr>
+        <tr><td>加粗、斜体、删除线</td><td><code>**加粗**</code>　<code>*斜体*</code>　<code>~~删除~~</code></td></tr>
+        <tr><td>换行、分段</td><td>回车就换行；空一行是新的一段</td></tr>
+        <tr><td>列表</td><td><code>- 一项</code>　<code>1. 第一项</code>（每项一行）</td></tr>
+        <tr><td>引用</td><td><code>&gt; 引用的话</code>；最后一行写 <code>&gt; ——出处</code>，出处会靠右单独一行</td></tr>
+        <tr><td>链接</td><td><code>[显示的字](https://网址)</code>；直接粘贴的网址也会变成链接</td></tr>
+        <tr><td>图片</td><td>点「图片」、拖进来或直接粘贴就会上传；单独一行的图片显示成大图，<code>![图注](地址)</code> 方括号里是图注。只显示本站上传的图片</td></tr>
+        <tr><td>B 站视频</td><td>单独一行粘贴 <code>https://www.bilibili.com/video/BV…</code> 或 <code>b23.tv</code> 链接，显示成播放器</td></tr>
+        <tr><td>表格</td><td>点「表格」插入模板，用 <code>|</code> 分列</td></tr>
+        <tr><td>分隔线</td><td>单独一行 <code>---</code></td></tr>
+      </tbody>
+    </table>
+    <p>不支持 HTML，写了会原样显示成文字。</p>
+  </div>
+</div>

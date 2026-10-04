@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from django.utils.html import strip_tags
-
 from moderation import services
 from moderation.models import TargetType
 
@@ -25,8 +23,9 @@ def page_text(page) -> str:
     if summary:
         parts.append(summary)
     body = getattr(specific, "body", None)
-    if body is not None:
-        parts.append(strip_tags(str(body)))
+    if body:
+        # Markdown (v6.70): sent as written, link addresses included.
+        parts.append(str(body))
     return "\n\n".join(part for part in parts if part).strip()
 
 

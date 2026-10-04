@@ -3,28 +3,24 @@
 import pytest
 from django.core.management import call_command
 
-from content.management.commands.load_legal_pages import markdown_to_html
+from content.management.commands.load_legal_pages import body_from_draft
 from content.models import StandardPage
 
 
-def test_the_markdown_subset_becomes_rich_text():
-    html = markdown_to_html(
-        "<!-- 草稿说明 -->\n# 标题\n\n## 一、账号\n\n"
-        "第一段，**加粗**。\n第一段第二行。\n\n"
-        "- 甲\n- 乙\n\n1. 一\n2. 二\n\n### 小节\n"
+def test_the_draft_goes_in_as_markdown_without_the_note_and_title():
+    """v6.70: bodies are Markdown, so the draft is stored as written, minus
+    the note to the club and its own # title (the page title)."""
+    body = body_from_draft(
+        "<!-- 草稿说明 -->\n# 标题\n\n## 一、账号\n\n第一段，**加粗**。\n"
     )
-    assert html == (
-        "<h2>一、账号</h2>"
-        "<p>第一段，<b>加粗</b>。第一段第二行。</p>"
-        "<ul><li>甲</li><li>乙</li></ul>"
-        "<ol><li>一</li><li>二</li></ol>"
-        "<h3>小节</h3>"
-    )
+    assert body == "## 一、账号\n\n第一段，**加粗**。"
 
 
-def test_markup_in_the_draft_is_escaped():
-    assert markdown_to_html("<script>alert(1)</script>") == (
-        "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>"
+def test_markup_in_the_draft_is_escaped_on_the_page():
+    from content.markdown import render
+
+    assert str(render(body_from_draft("<script>alert(1)</script>"))) == (
+        "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>\n"
     )
 
 
@@ -37,7 +33,7 @@ def pages(db):
 
 
 def _body(slug):
-    return str(StandardPage.objects.get(slug=slug).body[0].value)
+    return StandardPage.objects.get(slug=slug).body
 
 
 @pytest.mark.django_db

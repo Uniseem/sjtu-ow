@@ -9,13 +9,13 @@ from django.db import models
 from django.utils.functional import cached_property
 from modelcluster.fields import ParentalKey
 from wagtail.admin.panels import FieldPanel, InlinePanel
-from wagtail.fields import RichTextField, StreamField
+from wagtail.fields import RichTextField
 from wagtail.models import Orderable, Page
 
-from content.blocks import ARTICLE_BODY_BLOCKS
 from content.forms import ArticlePageForm
 from content.panels import SubmissionGuidePanel, TitlePanel
 from content.seo import build_seo
+from content.widgets import MarkdownEditor
 from moderation.panels import ModerationVerdictPanel
 
 ARTICLES_PER_PAGE = 12
@@ -265,11 +265,8 @@ class ArticlePage(SeoPageMixin, Page):
         verbose_name="封面",
     )
     summary = models.CharField("摘要", max_length=200, blank=True)
-    body = StreamField(
-        ARTICLE_BODY_BLOCKS,
-        blank=True,
-        verbose_name="正文",
-    )
+    # Markdown (design 5.2, v6.70; a StreamField until then).
+    body = models.TextField("正文", blank=True)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -310,8 +307,9 @@ class ArticlePage(SeoPageMixin, Page):
         )
         # The head, contents and end of the article (design-details 6, v5.2).
         from content import article_meta
+        from content.markdown import render
 
-        body_html, headings = article_meta.anchor_headings(str(self.body))
+        body_html, headings = article_meta.anchor_headings(render(self.body))
         context["body_html"] = body_html
         context["toc"] = (
             headings if len(headings) >= article_meta.TOC_MIN_HEADINGS else []
@@ -370,7 +368,7 @@ class ArticlePage(SeoPageMixin, Page):
         FieldPanel("category"),
         FieldPanel("cover"),
         FieldPanel("summary"),
-        FieldPanel("body"),
+        FieldPanel("body", widget=MarkdownEditor),
         FieldPanel("tournament"),
         FieldPanel("author"),
         FieldPanel("comments_enabled"),
@@ -405,17 +403,13 @@ class ArticlePage(SeoPageMixin, Page):
 
 
 class StandardPage(SeoPageMixin, ReservedSlugMixin, Page):
-    body = StreamField(
-        ARTICLE_BODY_BLOCKS,
-        blank=True,
-        verbose_name="正文",
-    )
+    body = models.TextField("正文", blank=True)  # Markdown, as articles (v6.70)
 
     parent_page_types = ["content.HomePage"]
     subpage_types = []
 
     content_panels = Page.content_panels + [
-        FieldPanel("body"),
+        FieldPanel("body", widget=MarkdownEditor),
     ]
 
     class Meta:

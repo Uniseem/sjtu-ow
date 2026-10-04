@@ -277,3 +277,11 @@ def rank_label(score) -> str:
     from accounts.ranks import format_rank
 
     return format_rank(score) if score is not None else "—"
+
+
+@register.filter
+def markdown(value):
+    """Bodies and event descriptions (design 5.2, v6.70)."""
+    from content.markdown import render
+
+    return render(value)

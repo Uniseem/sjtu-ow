@@ -3,7 +3,6 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
-from wagtail.fields import RichTextField
 
 
 class TournamentStatus(models.TextChoices):
@@ -29,11 +28,7 @@ MODE_SUMMARIES = {
 class Tournament(models.Model):
     title = models.CharField("标题", max_length=100)
     summary = models.CharField("简介", max_length=300, blank=True)
-    description = RichTextField(
-        "详细说明",
-        blank=True,
-        features=["h2", "h3", "bold", "italic", "ol", "ul", "link", "hr"],
-    )
+    description = models.TextField("详细说明", blank=True)  # Markdown (v6.70)
     cover = models.ForeignKey(
         "wagtailimages.Image",
         verbose_name="封面",

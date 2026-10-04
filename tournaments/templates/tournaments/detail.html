@@ -41,7 +41,7 @@
         {% if tournament.description %}
           <section aria-labelledby="t-rules">
             {% include "components/section_head.html" with title="赛事说明" heading_id="t-rules" %}
-            <div class="c-prose l-prose">{{ tournament.description|richtext }}</div>
+            <div class="c-prose l-prose">{{ tournament.description|markdown }}</div>
           </section>
         {% endif %}
 

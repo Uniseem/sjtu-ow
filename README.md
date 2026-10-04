@@ -23,6 +23,7 @@ Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)，�
 | `static/vendor/htmx.min.js` | 2.0.10 | [htmx v2.0.10](https://github.com/bigskysoftware/htmx/releases/tag/v2.0.10) |
 | `static/vendor/alpine.csp.min.js` | 3.17.1 | npm `@alpinejs/csp` |
 | `static/vendor/Sortable.min.js` | 1.15.6 | [SortableJS 1.15.6](https://github.com/SortableJS/Sortable/releases/tag/v1.15.6) |
+| `static/vendor/easymde/` | 2.21.0 | npm `easymde`（只在后台用，192 起；sha512 和 npm 登记的一致） |
 
 前台不加载 Google Fonts 或其他网络字体：管理员可以在后台从 Google Fonts **下载**字体，下载后只使用本站保存的副本。
 
@@ -412,6 +413,19 @@ uv run python manage.py moderate_scan --digest      # 发送每日汇总邮件
 CRON_TZ=Asia/Shanghai
 30 9 * * * docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py moderate_scan --digest
 ```
+
+## 正文的写法（192 起）
+
+文章正文、普通页面（关于我们、用户协议、隐私政策）正文、赛事详细说明、内战说明都存 **Markdown**，后台是 Markdown 编辑器（EasyMDE，`static/vendor/easymde/`，不从外站加载任何东西）。设计 5.2 有完整规则，要点：
+
+- 单个换行就是换行，空一行分段；`#`、`##` 是二级标题，`###` 及以下是三级标题
+- **不收 HTML**，写了原样显示成文字；链接只放行安全的协议
+- 图片：工具栏的图片按钮、拖进来、直接粘贴都会上传，进图片库的「投稿图片」集合（Wagtail 的格式和 5 MB 校验），插入最长边 1600 的缩略图。能打开编辑器的人都能传：验证过邮箱的成员都在投稿者组里，认证作者、内容编辑、赛事管理员、内战管理员的组也给了这个集合的上传权限（`init_site` 分配）。单独一行的图片显示成带图注的大图；只显示本站的图片
+- 单独一行的 B 站视频链接（`bilibili.com/video/…`、`b23.tv/…`）显示成播放器
+- 引用最后一行写 `> ——出处`，出处靠右另起一行
+- 预览由服务器渲染（`/admin/markdown/preview/`），和前台一模一样；底部字数和文章头的字数同一个算法
+
+渲染只有一处：`content/markdown.py`（前台页面、后台预览、字数和阅读时长、站内搜索、新内战邮件都用它；AI 审核收到的是 Markdown 原文）。模板里用 `{{ 字段|markdown }}`（`{% load ow %}`）。v6.70 以前的内容由迁移 `content/0007`、`tournaments/0012` 转成了 Markdown（包括没发布的修订），转换代码在 `content/legacy_body.py`，迁移还要用，别删；`content/blocks.py` 只剩迁移 0001 引用的一个类，同样留着。
 
 ## 文章评论
 

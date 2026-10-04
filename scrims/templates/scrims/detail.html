@@ -40,7 +40,7 @@
         {% if scrim.description %}
           <section aria-labelledby="s-about">
             {% include "components/section_head.html" with title="说明" heading_id="s-about" %}
-            <div class="l-prose whitespace-pre-line leading-8">{{ scrim.description }}</div>
+            <div class="c-prose l-prose">{{ scrim.description|markdown }}</div>
           </section>
         {% endif %}
 

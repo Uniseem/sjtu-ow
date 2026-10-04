@@ -3,7 +3,6 @@ from io import BytesIO
 import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth.models import Group
-from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.urls import reverse
@@ -15,7 +14,6 @@ from wagtail.models import Collection, GroupCollectionPermission, Site
 
 from accounts.models import Feature, FeatureGroupRestriction, FeatureUserRule, User
 from accounts.services import GROUP_CONTENT, GROUP_SUBMITTER
-from content.blocks import UNSUPPORTED_VIDEO_MESSAGE, VideoBlock
 from content.embeds import BilibiliEmbedFinder
 from content.models import ArticleCategory, ArticleIndexPage, ArticlePage
 from content.permissions import is_submitter_only
@@ -71,7 +69,7 @@ def _article(parent, category, author, *, title, slug, live=False):
         author=author,
         owner=author,
         summary="摘要",
-        body=[("paragraph", "<p>正文</p>")],
+        body="正文",
     )
     parent.add_child(instance=page)
     if live:
@@ -328,12 +326,12 @@ def test_bilibili_finder_and_unsupported_url_error():
     finally:
         embed_mod.urlopen = original
 
-    block = VideoBlock()
-    with pytest.raises(ValidationError, match="哔哩哔哩"):
-        block.clean(block.to_python("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
-    cleaned = block.clean(block.to_python(BV_URL))
-    assert cleaned.url == BV_URL
-    assert UNSUPPORTED_VIDEO_MESSAGE
+    # v6.70: a Bilibili link alone on a line is the player; others stay links.
+    from content.markdown import render
+
+    assert "player.bilibili.com/player.html?bvid=BV1xx411c7mD" in render(BV_URL)
+    youtube = str(render("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+    assert "<iframe" not in youtube and '<a href="https://www.youtube.com/' in youtube
 
 
 @pytest.mark.django_db
