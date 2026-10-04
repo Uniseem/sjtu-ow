@@ -26,6 +26,21 @@ def _cheap_password_hashing(settings):
 
 
 @pytest.fixture(autouse=True)
+def _rate_limit_window_stays_put(monkeypatch):
+    """Rate limits count per clock minute (core.ratelimit). A test that makes
+    61 requests could straddle a minute and see the count start over, more
+    often when the machine is busy (round 155). Tests that need the clock to
+    move patch ``core.ratelimit.time.time`` themselves."""
+    from types import SimpleNamespace
+
+    from core import ratelimit
+
+    monkeypatch.setattr(
+        ratelimit, "time", SimpleNamespace(time=lambda: 1_800_000_000.0)
+    )
+
+
+@pytest.fixture(autouse=True)
 def _forget_renditions():
     """The thumbnail cache lives in memory across tests, while the images
     behind it roll back with each test and their ids come round again."""

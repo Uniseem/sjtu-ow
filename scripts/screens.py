@@ -45,6 +45,9 @@ PAGES = [
     ("members-free-supports", "captain", "/members/?role=support&free=1"),
     ("member-page", "captain", "/members/{member}/"),
     ("own-page", "member", "/members/{member}/"),
+    ("mail-tournament-reminder", "member", "/_styleguide/emails/tournament-reminder/"),
+    ("mail-tournament-moved", "member", "/_styleguide/emails/tournament-moved/"),
+    ("mail-member-left", "member", "/_styleguide/emails/member-left/"),
 ]
 
 
