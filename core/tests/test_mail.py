@@ -111,3 +111,18 @@ def test_task_backlog_counts_old_ready_jobs():
     ok, detail = check_task_backlog()
     assert ok is False
     assert "10 分钟" in detail
+
+
+@pytest.mark.django_db
+def test_a_test_email_the_server_did_not_take_is_an_error(monkeypatch):
+    """Round 179: the button must not say 「已发送」 when nothing went out."""
+    from core import mail
+
+    class Refusing:
+        def send_messages(self, messages):
+            return 0
+
+    SiteSettings.objects.create(smtp_host="smtp.example.com")
+    monkeypatch.setattr(mail, "build_smtp_backend", lambda site: Refusing())
+    with pytest.raises(RuntimeError, match="没有接受"):
+        send_test_email("admin@example.com")

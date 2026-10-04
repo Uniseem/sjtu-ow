@@ -299,6 +299,14 @@ def test_superuser_can_assign_a_captain(team, captain):
     services.assign_captain(team=team, actor=admin, new_captain=rescue)
     assert services.is_captain(team, rescue)
 
+    # Round 179: the rescue must not hand the team to another stopped account.
+    stopped = _user("stopped-rescue@example.com", "停用的人")
+    User.objects.filter(pk=stopped.pk).update(is_active=False)
+    stopped.refresh_from_db()
+    with pytest.raises(services.TeamError, match="已停用"):
+        services.assign_captain(team=team, actor=admin, new_captain=stopped)
+    assert services.is_captain(team, rescue)
+
 
 # --- disbanding ----------------------------------------------------------------
 

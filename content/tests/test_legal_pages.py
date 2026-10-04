@@ -77,3 +77,12 @@ def test_the_privacy_draft_names_every_processor_the_site_uses(settings):
     # Design 3.8: the rights the policy promises exist on the site.
     for right in ("导出我的个人信息", "注销"):
         assert right in text
+
+
+@pytest.mark.django_db
+def test_the_command_asks_for_init_site_first():
+    """Round 179: no page to fill is a clear message, not a traceback."""
+    from django.core.management.base import CommandError
+
+    with pytest.raises(CommandError, match="init_site"):
+        call_command("load_legal_pages", verbosity=0)

@@ -202,6 +202,20 @@ def test_check_7_game_id_must_belong_to_the_member(team, captain, mate):
 
 
 @pytest.mark.django_db
+def test_check_7_a_member_who_removed_every_game_id(team, captain, mate):
+    """Round 179: joining needs a game ID, but it can be deleted afterwards."""
+    tournament = _tournament()
+    mate.game_accounts.all().delete()
+    selections = {str(captain.pk): captain.game_accounts.first().pk}
+    with pytest.raises(reg.RegistrationError) as exc:
+        reg.submit(
+            tournament=tournament, team=team, actor=captain, selections=selections
+        )
+    assert f"{mate.nickname} 还没有填写游戏 ID" in str(exc.value)
+    assert not Registration.objects.filter(tournament=tournament).exists()
+
+
+@pytest.mark.django_db
 def test_check_8_member_already_on_another_roster(team, captain, mate):
     tournament = _tournament()
     reg.submit(

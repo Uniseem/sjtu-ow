@@ -222,3 +222,15 @@ def test_app_js_reveals_the_wechat_hint_for_wechat_only(settings):
     script = (settings.BASE_DIR / "static" / "js" / "app.js").read_text()
     assert "/MicroMessenger/i.test(navigator.userAgent)" in script
     assert 'getElementById("wechat-hint")' in script
+
+
+@pytest.mark.django_db
+def test_a_write_that_does_not_show_up_fails_the_check(monkeypatch):
+    """Round 179: the probe reads back what it wrote."""
+    from core.health import check_database
+    from core.models import HealthProbe
+
+    monkeypatch.setattr(
+        HealthProbe.objects, "filter", lambda **kwargs: HealthProbe.objects.none()
+    )
+    assert check_database() == (False, "database write did not persist")

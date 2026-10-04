@@ -230,6 +230,22 @@ def test_only_editors_pin_and_only_visible_top_level_comments(article, reader, e
 
 
 @pytest.mark.django_db
+def test_readers_cannot_undo_what_editors_did(article, reader, editor):
+    """Round 179: unhiding and unpinning check the permission themselves."""
+    hidden = _comment(article, reader, "被藏的")
+    services.hide(comment=hidden, actor=editor)
+    pinned = _comment(article, reader, "被置顶的")
+    services.pin(comment=pinned, actor=editor)
+    with pytest.raises(services.CommentError, match="内容编辑权限"):
+        services.unhide(comment=hidden, actor=reader)
+    with pytest.raises(services.CommentError, match="内容编辑权限"):
+        services.unpin(comment=pinned, actor=reader)
+    hidden.refresh_from_db()
+    pinned.refresh_from_db()
+    assert hidden.is_hidden and pinned.is_pinned
+
+
+@pytest.mark.django_db
 def test_hiding_or_deleting_a_pinned_comment_unpins_it(article, reader, editor):
     pinned = _comment(article, reader, "置顶后隐藏")
     services.pin(comment=pinned, actor=editor)

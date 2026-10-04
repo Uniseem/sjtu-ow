@@ -384,6 +384,16 @@ def test_workflow_submission_sends_queued_mail(settings):
 
 
 @pytest.mark.django_db
+def test_site_hostname_sync_says_when_there_is_no_site():
+    """Round 179: run from a shell after changing SITE_URL (README)."""
+    from content.services import sync_default_site_from_site_url
+
+    Site.objects.all().delete()
+    with pytest.raises(Site.DoesNotExist, match="missing"):
+        sync_default_site_from_site_url()
+
+
+@pytest.mark.django_db
 def test_site_hostname_sync_updates_canonical(client, settings):
     call_command("init_site", verbosity=0)
     settings.SITE_URL = "https://ow.example.com"

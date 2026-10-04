@@ -710,3 +710,34 @@ def test_restore_checks_the_object_storage_secret_too(
 
     with pytest.raises(CommandError, match="FIELD_ENCRYPTION_KEY"):
         run("restore", str(archive), "--yes")
+
+
+# --- round 179: refusals no test had reached ------------------------------------
+
+
+@pytest.mark.django_db
+def test_a_second_backup_in_the_same_second_does_not_overwrite(
+    backups, settings, tmp_path, monkeypatch
+):
+    settings.MEDIA_ROOT = tmp_path / "media"
+    settings.MEDIA_ROOT.mkdir()
+    moment = timezone.localtime()
+    monkeypatch.setattr(backup_command.timezone, "localtime", lambda: moment)
+    taken = backups / f"sjtu-ow-{moment.strftime(backup_command.STAMP)}.tar.gz"
+    taken.write_bytes(b"the earlier backup")
+
+    with pytest.raises(CommandError, match="已经存在"):
+        run("backup", "--output", str(backups))
+    assert taken.read_bytes() == b"the earlier backup"
+
+
+@pytest.mark.django_db
+def test_an_archive_without_a_database_is_refused(tmp_path):
+    archive = tmp_path / "sjtu-ow-media-only.tar.gz"
+    picture = tmp_path / "logo.png"
+    picture.write_bytes(b"png")
+    with tarfile.open(archive, "w:gz") as bundle:
+        bundle.add(picture, arcname="media/logo.png")
+
+    with pytest.raises(CommandError, match="没有 db.sqlite3"):
+        run("restore", str(archive))

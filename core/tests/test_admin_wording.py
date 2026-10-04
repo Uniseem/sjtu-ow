@@ -148,6 +148,20 @@ def test_the_compiler_writes_what_python_gettext_reads():
     assert build_mo(catalog) == build_mo(dict(reversed(catalog.items())))
 
 
+@pytest.mark.parametrize(
+    "po, reason",
+    [
+        ('"orphan line"\nmsgstr "x"\n', "续行前没有关键字"),
+        ('msgid "Save"\nmsgstr "保存"\nmsgstr "存"\n', "出现两次"),
+        ('msgctxt "verb"\nmsgstr "锁定"\n', "没有 msgid"),
+    ],
+)
+def test_a_broken_po_file_is_refused_not_half_read(po, reason):
+    """Round 179: a mistake in a hand-edited .po stops compile_translations."""
+    with pytest.raises(ValueError, match=reason):
+        parse_po(po)
+
+
 @pytest.mark.django_db
 def test_the_admin_has_no_wagtail_english_left(site, client):
     client.force_login(_user("root117@example.com", superuser=True))

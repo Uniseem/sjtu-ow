@@ -832,3 +832,20 @@ def test_a_bitmap_only_font_cannot_be_used_on_the_web():
 def test_a_font_without_characters_is_refused():
     with pytest.raises(FontError, match="没有任何字符"):
         inspect_font(make_font_bytes(""))
+
+
+@pytest.mark.parametrize("form_class", [FontUploadForm, FontFaceAddForm])
+def test_an_oversized_upload_is_refused_before_it_is_read(monkeypatch, form_class):
+    """Round 179: the form looks at the size first, so a huge file is never
+    read into memory just to be refused by inspect_font."""
+    from core.fonts import processing
+
+    def never(data):
+        raise AssertionError("the file was read and parsed")
+
+    monkeypatch.setattr(processing, "MAX_FONT_BYTES", 10)
+    monkeypatch.setattr(processing, "inspect_font", never)
+    upload = SimpleUploadedFile("big.ttf", b"x" * 11)
+    form = form_class(data={"name": "大字体"}, files={"file": upload})
+    assert not form.is_valid()
+    assert "超过 30MB 上限" in form.errors["file"][0]

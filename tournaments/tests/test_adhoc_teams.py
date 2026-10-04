@@ -559,6 +559,39 @@ def test_a_stranger_cannot_leave(formed):
 
 
 @pytest.mark.django_db
+def test_saving_a_board_that_names_a_dissolved_team(formed):
+    """Round 179: two admins on the board; one dissolved the team the other
+    still has on screen. A message, not a crash."""
+    tournament, registration, entries, admin = formed
+    reg.dissolve(registration=registration, actor=admin)
+    stale = [
+        {
+            "registration_id": registration.pk,
+            "name": "一队",
+            "signup_ids": [entry.pk for entry in entries],
+        }
+    ]
+    with pytest.raises(reg.RegistrationError, match="已经不存在了"):
+        reg.form_teams(tournament=tournament, actor=admin, layout=stale)
+    assert tournament.registrations.count() == 1
+
+
+@pytest.mark.django_db
+def test_nobody_leaves_a_team_that_was_already_dissolved(formed):
+    """Round 179: dissolving keeps the roster rows (for the record), so a
+    stale 「退出」 button would otherwise still find the member."""
+    _tournament_, registration, entries, admin = formed
+    reg.dissolve(registration=registration, actor=admin)
+    registration.refresh_from_db()
+    logs = registration.logs.count()
+
+    with pytest.raises(reg.RegistrationError, match="不在报名中"):
+        reg.leave(registration=registration, user=entries[0].user)
+    assert registration.members.filter(user=entries[0].user).exists()
+    assert registration.logs.count() == logs
+
+
+@pytest.mark.django_db
 def test_the_last_member_leaving_dissolves_the_team(
     formed, django_capture_on_commit_callbacks
 ):
@@ -682,6 +715,20 @@ def test_a_tournament_manager_opens_the_board_and_an_editor_does_not(board):
     editor.groups.add(Group.objects.get(name="内容编辑"))
     response = board(tournament, user=editor)
     assert response.status_code in (302, 403)
+
+
+@pytest.mark.django_db
+def test_the_board_flags_a_team_that_fell_below_the_minimum(board):
+    """Round 179: a member left, so the team no longer meets roster_min."""
+    tournament = _tournament(roster_min=2, roster_max=3)
+    entries = _pool(tournament, 2)
+    reg.form_teams(
+        tournament=tournament, actor=_admin(), layout=_layout(("一队", entries))
+    )
+    assert "人数不足" not in board(tournament).content.decode()
+
+    reg.leave(registration=tournament.registrations.get(), user=entries[0].user)
+    assert "人数不足：1 / 下限 2" in board(tournament).content.decode()
 
 
 @pytest.mark.django_db

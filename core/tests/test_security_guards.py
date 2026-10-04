@@ -33,6 +33,60 @@ def test_a_url_without_a_host_is_refused():
         assert_public_https_url("https:///font.ttf")
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://127.0.0.1/font.ttf",
+        "https://10.0.0.8/font.ttf",
+        "https://192.168.1.1/font.ttf",
+        "https://169.254.169.254/latest/meta-data/",  # cloud metadata
+        "https://[::1]/font.ttf",
+    ],
+)
+def test_addresses_inside_our_network_are_refused(url):
+    """Round 179: the tests for this went with the webhooks in 067."""
+    with pytest.raises(UnsafeUrl, match="内网"):
+        assert_public_https_url(url)
+
+
+def test_a_name_that_resolves_inside_is_refused_too(monkeypatch):
+    import ipaddress
+
+    from core import net
+
+    monkeypatch.setattr(
+        net,
+        "resolved_addresses",
+        lambda host, port: [
+            ipaddress.ip_address("93.184.216.34"),
+            ipaddress.ip_address("10.1.2.3"),
+        ],
+    )
+    with pytest.raises(UnsafeUrl, match="内网"):
+        assert_public_https_url("https://fonts.example.com/x.woff2")
+    monkeypatch.undo()
+    assert_public_https_url("https://93.184.216.34/font.ttf")  # no DNS needed
+
+
+def test_a_redirect_into_our_network_is_refused():
+    """Round 179: a public address can answer 302 to an internal one."""
+    import urllib.request
+    from email.message import Message
+
+    from core.fonts.download import DownloadError, _SafeRedirectHandler
+
+    handler = _SafeRedirectHandler()
+    request = urllib.request.Request("https://93.184.216.34/font.ttf")
+    with pytest.raises(DownloadError, match="内网"):
+        handler.redirect_request(
+            request, None, 302, "Found", Message(), "https://169.254.169.254/"
+        )
+    onward = handler.redirect_request(
+        request, None, 302, "Found", Message(), "https://93.184.216.35/font.ttf"
+    )
+    assert onward.full_url == "https://93.184.216.35/font.ttf"
+
+
 # --- prerender paths and gates ----------------------------------------------------
 
 

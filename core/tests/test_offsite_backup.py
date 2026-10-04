@@ -403,3 +403,27 @@ def test_each_run_leaves_a_status(tmp_path, settings, db, monkeypatch, configure
     assert status["offsite"] == "failed" and "bucket says no" in status["error"]
     run("backup", "--output", str(tmp_path / "third"), "--no-upload")
     assert _status(tmp_path / "third")["offsite"] == "skipped"
+
+
+@pytest.mark.django_db
+def test_upload_itself_refuses_when_the_feature_is_off(tmp_path, settings, bucket):
+    """Round 179: not only the backup command checks the switch."""
+    archive = tmp_path / "sjtu-ow-20261004-000000.tar.gz"
+    archive.write_bytes(b"archive")
+    with pytest.raises(offsite.OffsiteError, match="没有开启"):
+        offsite.upload(archive)
+    assert bucket.uploads == []
+
+
+@pytest.mark.django_db
+def test_listing_pruning_and_fetching_say_what_is_missing(tmp_path, bucket, configured):
+    """Round 179: a clear list of the missing settings, not a client error."""
+    configured.backup_s3_bucket = ""
+    configured.save()
+    for call in (
+        lambda: offsite.listing(),
+        lambda: offsite.prune(14),
+        lambda: offsite.download("sjtu-ow/x.tar.gz.enc", tmp_path / "x.tar.gz"),
+    ):
+        with pytest.raises(offsite.OffsiteError, match="还缺这些设置"):
+            call()
