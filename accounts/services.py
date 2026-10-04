@@ -163,6 +163,27 @@ def email_is_verified(user) -> bool:
     return EmailAddress.objects.filter(user=user, verified=True).exists()
 
 
+def trust_email(user) -> None:
+    """Design 3.1 (v6.63): record the account's email as verified and primary,
+    for accounts someone vouched for on the server (createsuperuser,
+    verify_email). Nobody is mailed."""
+    from allauth.account.models import EmailAddress
+
+    EmailAddress.objects.filter(user=user).exclude(email__iexact=user.email).update(
+        primary=False
+    )
+    address = EmailAddress.objects.filter(user=user, email__iexact=user.email).first()
+    if address is None:
+        EmailAddress.objects.create(
+            user=user, email=user.email, verified=True, primary=True
+        )
+    else:
+        address.verified = True
+        address.primary = True
+        address.save(update_fields=["verified", "primary"])
+    sync_submitter_group(user)
+
+
 def user_should_be_submitter(user) -> bool:
     if user is None or not getattr(user, "pk", None):
         return False

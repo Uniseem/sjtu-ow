@@ -32,7 +32,7 @@ from tournaments.services import assign_tournament_permissions
 # round 122) shows the same, with links.
 NEXT_STEPS = """
 接下来：
-  1. 还没有管理员的话：python manage.py createsuperuser
+  1. 还没有管理员的话：python manage.py createsuperuser（建完直接能登录）
   2. 登录后台，首页的「上线清单」列出还没做的事，逐项完成。最要紧的是
      全站设置里的邮件（SMTP）：注册要验证邮箱，没有邮件就没人能注册；
      还有用户协议、隐私政策里的【】

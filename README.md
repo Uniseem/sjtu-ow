@@ -115,9 +115,11 @@ $C run --rm --no-deps web python manage.py migrate --noinput
 $C run --rm --no-deps web python manage.py createcachetable
 $C run --rm --no-deps web python manage.py init_site
 $C up -d
-$C exec web python manage.py createsuperuser
+$C exec web python manage.py createsuperuser   # 邮箱直接算已验证（184 起），不用收验证码
 $C exec web python manage.py prerender
 ```
+
+登录要验证过的邮箱（设计 3.1），但新站点还没配发信。所以 `createsuperuser` 建的超级管理员邮箱直接记成已验证，建完就能登录后台去配 SMTP（184 起；之前会卡在收不到的验证码页）。发信坏了、有人收不到验证码时，在服务器上 `$C exec web python manage.py verify_email 邮箱` 把那个账号的邮箱标成已验证。
 
 检查：
 
