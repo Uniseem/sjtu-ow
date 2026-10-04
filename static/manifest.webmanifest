@@ -1,0 +1,12 @@
+{
+  "name": "上海交通大学守望先锋社区",
+  "short_name": "交大守望先锋",
+  "start_url": "/",
+  "display": "browser",
+  "theme_color": "#a4161a",
+  "background_color": "#ffffff",
+  "icons": [
+    {"src": "img/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "img/icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

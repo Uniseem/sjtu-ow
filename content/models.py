@@ -50,6 +50,8 @@ RESERVED_CHILD_SLUGS = frozenset(
         "healthz",
         "sitemap.xml",
         "robots.txt",
+        "favicon.ico",
+        "apple-touch-icon.png",
     }
 )
 

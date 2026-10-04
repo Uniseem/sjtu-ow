@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 |---|---|
-| 版本 | v6.54 |
+| 版本 | v6.55 |
 | 日期 | 2026-10-04 |
 | 状态 | 开发中。进度见 `handoff/STATUS.md`，本文档不记录进度 |
 | 读者 | 社团负责人、开发成员、以后接手维护的同学 |
@@ -2106,6 +2106,8 @@ DATABASES = {
 - 两张都写进页面（`{% section_picture %}`，类名 `c-scene--light` / `c-scene--dark`），样式按当前模式只显示一张；后台上传了图就只有那一张，两种模式都用它
 - **首屏的校徽**：交大校徽在首屏右半边（手机上在文字上面），桌面宽约 40rem，用正文色 20% 的透明度画，齿轮那一圈用 `primary` 55% 的透明度、90 秒转一圈，所以浅色模式下是灰色带红齿轮、深色模式下是浅灰带红齿轮，都像印在图上。校徽文件切成两层（`core/emblem.py`：齿轮是 `<defs>` 之后最长的那条路径，`manage.py render_emblem_layers` 生成 `static/img/sjtu-emblem-body.svg`、`sjtu-emblem-gear.svg`），用 CSS `mask` 着色，颜色都是令牌
 
+**网站图标**（v6.55）：`static/img/favicon.svg`（交大红圆角方块、白色向上折线）是原稿，浏览器标签页优先用它。`render_icons` 命令用 Pillow 照同样的形状画出 `favicon.ico`（16、32、48，给不认 SVG 的浏览器和直接要 `/favicon.ico` 的工具）、`apple-touch-icon.png`（180，满版不留圆角，iOS「添加到主屏幕」自己裁圆角）、`icon-192.png`、`icon-512.png`（网页清单 `manifest.webmanifest` 用，安卓「添加到主屏幕」），文件提交进仓库，有测试核对和代码画出来的一致。根地址 `/favicon.ico`、`/apple-touch-icon.png` 永久跳转到这两个静态文件；原来只有 SVG，`/favicon.ico` 是 404
+
 #### 13.2.6 组件
 
 组件类以 `c-` 开头，布局类以 `l-` 开头，都写在 `input.css` 里；模板里其余的只用 Tailwind 的间距、排列类。**前台不使用 daisyUI**。
@@ -3455,3 +3457,4 @@ sequenceDiagram
 | design v6.52 | 2026-10-04 | 截图走查（160 轮）：页脚「账号」一栏跟着登录状态，登录的人不再看到登录、注册（13.2.7） |
 | design v6.53 | 2026-10-04 | 社团干部走查（162 轮）：后台「活动数据」，按时间段汇总内战、赛事、成员、文章，给年审和换届总结用（14.2） |
 | design v6.54 | 2026-10-04 | 内容编辑走查（165 轮）：定时发布的文章可以「上线时通知全体成员」，上线那一刻自动发出（10.4） |
+| design v6.55 | 2026-10-04 | 网站图标补齐（171 轮）：favicon.ico、apple-touch-icon、网页清单图标，`/favicon.ico` 不再 404（13.2.5） |

@@ -185,3 +185,12 @@ def announcements_unsubscribe(request, token):
         "core/unsubscribe.html",
         {"person": person, "done": done or not person.accepts_announcements},
     )
+
+
+def site_icon(request, name):
+    """/favicon.ico and /apple-touch-icon.png, which browsers, phones and
+    link previews ask for at the root (design 13.2.5, v6.55): straight on to
+    the static file with its hashed name."""
+    from django.templatetags.static import static
+
+    return redirect(static(f"img/{name}"), permanent=True)

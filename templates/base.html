@@ -15,7 +15,10 @@
     {% if seo.og_image %}
       <meta property="og:image" content="{{ seo.og_image }}">
     {% endif %}
+    <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="48x48">
     <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
     <script src="{% static 'js/theme.js' %}"></script>
     <script src="{% static 'js/arrival.js' %}"></script>
     {% tailwind_css %}
