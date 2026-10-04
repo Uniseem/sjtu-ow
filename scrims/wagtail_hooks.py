@@ -12,6 +12,7 @@ from wagtail.admin.menu import MenuItem
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.admin.ui.menus import MenuItem as ListingMenuItem
 from wagtail.admin.views import generic
+from wagtail.admin.views.generic.models import CopyViewMixin
 from wagtail.admin.viewsets.model import ModelViewSet
 from wagtail.permission_policies import ModelPermissionPolicy
 from wagtail.permissions import register_permission_policy
@@ -106,6 +107,13 @@ class ScrimEditView(ScrimSaveMixin, generic.EditView):
     pass
 
 
+class ScrimCopyView(CopyViewMixin, ScrimCreateView):
+    """「复制」 (design 14.2, v6.51): the new-scrim form filled from this one."""
+
+    def get_initial_form_instance(self):
+        return services.copy_for_new(super().get_initial_form_instance())
+
+
 class ScrimPermissionPolicy(ModelPermissionPolicy):
     """Round 115: only a draft nobody signed up for can be deleted; after that
     a scrim is cancelled, so signups and their emails stay accounted for."""
@@ -135,10 +143,10 @@ class ScrimViewSet(ModelViewSet):
     icon = "group"
     menu_label = "内战活动"
     add_to_admin_menu = False
-    copy_view_enabled = False
     inspect_view_enabled = True
     index_view_class = ScrimIndexView
     add_view_class = ScrimCreateView
+    copy_view_class = ScrimCopyView
     edit_view_class = ScrimEditView
     delete_view_class = ScrimDeleteView
     list_display = ["title", "status", "format", "starts_at", "signup_closes_at"]

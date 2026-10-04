@@ -697,3 +697,17 @@ def placement(signup, *, has_split: bool | None = None) -> str:
     if signup.is_selected:
         return "替补"
     return "这次没排上场"
+
+
+# 「复制」 (design 14.2, v6.51): what a copy takes over. Only these, so the
+# status, signups, reminders and notices of the old one never come along; a
+# field added to the form later is left blank until it is decided here.
+COPIED_FIELDS = ("title", "description", "format", "sjtu_only")
+COPIED_TIMES = ("starts_at", "signup_closes_at")
+
+
+def copy_for_new(scrim, now=None):
+    """A new, unsaved scrim from this one, its times whole weeks later."""
+    from core.services import copy_ahead
+
+    return copy_ahead(scrim, COPIED_FIELDS, COPIED_TIMES, now)

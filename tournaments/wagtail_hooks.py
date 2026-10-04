@@ -10,6 +10,7 @@ from wagtail.admin.menu import MenuItem
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.admin.ui.menus import MenuItem as ListingMenuItem
 from wagtail.admin.views import generic
+from wagtail.admin.views.generic.models import CopyViewMixin
 from wagtail.admin.viewsets.model import ModelViewSet
 from wagtail.permission_policies import ModelPermissionPolicy
 from wagtail.permissions import register_permission_policy
@@ -159,6 +160,13 @@ class TournamentEditView(TournamentSaveMixin, generic.EditView):
     pass
 
 
+class TournamentCopyView(CopyViewMixin, TournamentCreateView):
+    """「复制」 (design 14.2, v6.51): the new-tournament form filled from this one."""
+
+    def get_initial_form_instance(self):
+        return services.copy_for_new(super().get_initial_form_instance())
+
+
 class TournamentPermissionPolicy(ModelPermissionPolicy):
     """Design 8.1 (round 115): only a draft never published can be deleted;
     after that a tournament is cancelled, so registrations and their logs stay."""
@@ -188,10 +196,10 @@ class TournamentViewSet(ModelViewSet):
     icon = "date"
     menu_label = "赛事"
     add_to_admin_menu = False
-    copy_view_enabled = False
     inspect_view_enabled = True
     index_view_class = TournamentIndexView
     add_view_class = TournamentCreateView
+    copy_view_class = TournamentCopyView
     edit_view_class = TournamentEditView
     delete_view_class = TournamentDeleteView
     list_display = [

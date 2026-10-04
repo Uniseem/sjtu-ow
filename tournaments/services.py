@@ -372,3 +372,29 @@ def assign_tournament_permissions() -> list[str]:
         group.permissions.add(*permissions)
         granted.append(group.name)
     return granted
+
+
+# 「复制」 (design 14.2, v6.51): what a copy takes over. Only these, so the
+# status, registrations, reminders and notices of the old one never come
+# along; a field added to the form later is left blank until decided here.
+COPIED_FIELDS = (
+    "title",
+    "summary",
+    "description",
+    "cover",
+    "registration_mode",
+    "roster_min",
+    "roster_max",
+    "sjtu_only",
+    "auto_approve",
+    "participant_contact",
+)
+COPIED_TIMES = ("starts_at", "registration_opens_at", "registration_closes_at")
+
+
+def copy_for_new(tournament, now=None):
+    """A new, unsaved tournament from this one, its times whole weeks later
+    (last year's lands on the same weekday)."""
+    from core.services import copy_ahead
+
+    return copy_ahead(tournament, COPIED_FIELDS, COPIED_TIMES, now)

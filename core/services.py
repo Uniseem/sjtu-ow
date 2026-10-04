@@ -1,12 +1,14 @@
 """Site-wide business logic.
 
-So far: 「通知全体成员」, the activity notices (design 10.4, v6.19). Email
-itself lives in core.mail and core.letters, prerendering in core.prerender.
+So far: 「通知全体成员」, the activity notices (design 10.4, v6.19), and how
+far a copied scrim or tournament moves (14.2, v6.51). Email itself lives in
+core.mail and core.letters, prerendering in core.prerender.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 
 from django.core import signing
 from django.db import IntegrityError, transaction
@@ -217,3 +219,33 @@ def _moment(value) -> str:
     from django.utils.timezone import localtime
 
     return f"{localtime(value):%Y-%m-%d %H:%M}"
+
+
+WEEK = timedelta(weeks=1)
+
+
+def weeks_ahead(times, now=None) -> int:
+    """「复制」 a scrim or tournament (design 14.2, v6.51): how many whole weeks
+    its times move so the earliest lies ahead. At least one, so a weekly scrim
+    copied before it is played lands on the week after."""
+    from django.utils import timezone
+
+    filled = [moment for moment in times if moment is not None]
+    if not filled:
+        return 1
+    now = now or timezone.now()
+    earliest = min(filled)
+    if earliest + WEEK > now:
+        return 1
+    return (now - earliest) // WEEK + 1
+
+
+def copy_ahead(original, copied, times, now=None):
+    """A new, unsaved instance of ``original``'s model holding only its
+    ``copied`` fields and its ``times`` moved whole weeks ahead."""
+    shift = WEEK * weeks_ahead([getattr(original, name) for name in times], now)
+    values = {name: getattr(original, name) for name in copied}
+    for name in times:
+        moment = getattr(original, name)
+        values[name] = moment + shift if moment is not None else None
+    return type(original)(**values)
