@@ -7,7 +7,7 @@ from wagtail.admin.panels import Panel, TitleFieldPanel
 
 class SubmissionGuidePanel(Panel):
     """「投稿须知」 at the top of the editor, for people whose articles are
-    reviewed before they go out (content.permissions.submits_for_review).
+    written by plain members (content.permissions.plain_writer).
     The Wagtail editor is a lot for a first-time writer: where the body is,
     how to add pictures, which button submits, what the other tabs are."""
 
@@ -15,9 +15,9 @@ class SubmissionGuidePanel(Panel):
         template_name = "content/admin/submission_guide.html"
 
         def is_shown(self):
-            from content.permissions import submits_for_review
+            from content.permissions import plain_writer
 
-            return submits_for_review(self.request.user)
+            return plain_writer(self.request.user)
 
 
 class TitlePanel(TitleFieldPanel):

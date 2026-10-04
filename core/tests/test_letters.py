@@ -184,12 +184,6 @@ def test_text_only_mail_is_framed_once_with_its_own_footer():
     assert "甲，你好：" in card and "祝好！" in card
 
 
-def test_wagtail_notifications_greet_and_close_like_ours():
-    text = BY_KEY["wagtail-approved"].text
-    assert text.startswith("投稿人甲，你好：")
-    assert "祝好！" in text
-
-
 # --- the specimen page --------------------------------------------------------------
 
 

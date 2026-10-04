@@ -30,7 +30,7 @@ SECTIONS = (
         "review",
         "审核",
         "tasks",
-        ("registrations", "submissions", "moderation", "avatars", "comments"),
+        ("registrations", "moderation", "avatars", "comments"),
     ),
     ("data", "数据", "table", ("activity",)),
     (
@@ -53,7 +53,6 @@ TAB_LABELS = {
     "teams": "战队",
     "member_groups": "成员分组",
     "registrations": "报名",
-    "submissions": "稿件",
     "moderation": "内容",
     "avatars": "头像",
     "comments": "评论",
@@ -98,8 +97,6 @@ PREFIXES = (
     ("settings/", "site_settings"),
     ("collections/", "collections"),
     ("reports/site-history/", "history"),
-    ("reports/workflow/", "submissions"),
-    ("reports/workflow_tasks/", "submissions"),
     ("manual/", "manual"),
     ("pages/", "pages"),
 )
@@ -177,16 +174,6 @@ def _item_key(item) -> str:
     return key_for_path(getattr(item, "url", "") or "")
 
 
-def can_approve_submissions(user) -> bool:
-    from wagtail.models import GroupApprovalTask
-
-    return user.is_superuser or (
-        GroupApprovalTask.objects.filter(
-            active=True, groups__in=user.groups.all()
-        ).exists()
-    )
-
-
 def build(request, menu_items) -> tuple[list[Section], list]:
     """This person's sections, and any menu item that belongs to none (kept
     in the sidebar as it was, so nothing new goes missing)."""
@@ -198,12 +185,6 @@ def build(request, menu_items) -> tuple[list[Section], list]:
             leftovers.append(item)
         elif key not in tabs:
             tabs[key] = Tab(key, TAB_LABELS[key], item.url)
-    # Not a menu item before (Wagtail's 报告 stay out of the menu): the
-    # submissions waiting for review, for whoever may approve them.
-    if can_approve_submissions(request.user):
-        tabs["submissions"] = Tab(
-            "submissions", TAB_LABELS["submissions"], _admin("reports/workflow/")
-        )
     people = [tabs.pop(key) for key in PEOPLE if key in tabs]
     if people:
         tabs["people"] = Tab(
@@ -270,8 +251,6 @@ def count_review_tabs(user, section: Section) -> None:
 
     counters = {
         "registrations": admin_todo.pending_registrations,
-        "submissions": lambda: admin_todo.waiting_submissions(user),
-        "avatars": admin_todo.pending_avatars,
     }
     for tab in section.tabs:
         if tab.key in counters:

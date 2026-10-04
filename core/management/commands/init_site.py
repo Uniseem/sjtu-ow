@@ -11,13 +11,13 @@ from comments.services import assign_comment_permissions
 from content.services import (
     assign_content_permissions,
     ensure_article_categories,
-    ensure_content_workflow,
     ensure_default_avatar_collection,
     ensure_default_cover_collection,
     ensure_page_tree,
     ensure_submission_image_collection,
     ensure_user_avatar_collection,
     remove_wagtail_stock_groups,
+    retire_content_workflow,
     retire_wagtail_stock_workflow,
     sync_default_site_from_site_url,
 )
@@ -108,15 +108,15 @@ class Command(BaseCommand):
         collection = ensure_user_avatar_collection()
         self.stdout.write(self.style.SUCCESS(f"已确保图片集合：{collection.name}"))
 
-        workflow = ensure_content_workflow()
-        self.stdout.write(
-            self.style.SUCCESS(f"已确保工作流：{workflow.name}（绑定到文章栏目）")
-        )
+        if retire_content_workflow():
+            self.stdout.write(
+                self.style.SUCCESS("已停用「内容审核」工作流：投稿直接发布（v6.73）")
+            )
 
         assign_content_permissions()
         self.stdout.write(
             self.style.SUCCESS(
-                "已分配内容权限：投稿者可新建稿件并上传投稿图片（赛事、内战管理员也能传）；"
+                "已分配内容权限：投稿者可新建并直接发布自己的稿件、上传投稿图片（赛事、内战管理员也能传）；"
                 "内容编辑可审核发布；认证作者可直接发布。"
             )
         )

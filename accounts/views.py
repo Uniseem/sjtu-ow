@@ -26,12 +26,10 @@ from accounts.services import (
     deletion_blocked_reason,
     deletion_blockers,
     max_game_accounts,
-    pending_avatar,
     personal_data,
     profile_gaps,
     remove_avatar,
     submit_avatar,
-    withdraw_avatar,
 )
 from core.ratelimit import over_limit
 
@@ -86,7 +84,6 @@ def _avatar_context(request, avatar_form=None) -> dict:
     )
     return {
         "avatar_form": avatar_form or AvatarForm(),
-        "avatar_pending": pending_avatar(user),
         "avatar_turned_down": turned_down,
         "avatar_can_upload": can_use(user, Feature.AVATAR_UPLOAD),
         "avatar_denied": feature_denied_message(),
@@ -120,7 +117,7 @@ def me_profile(request):
 @login_required
 @require_POST
 def me_avatar_upload(request):
-    """Upload a face; it shows once a reviewer approves it (v6.11)."""
+    """Upload a face; it shows at once (design-details 2.3, v6.73)."""
     form = AvatarForm(request.POST, request.FILES)
     if form.is_valid():
         try:
@@ -128,17 +125,9 @@ def me_avatar_upload(request):
         except AvatarUploadError as error:
             form.add_error("file", str(error))
         else:
-            messages.success(request, "头像已上传，审核通过后会换上。")
+            messages.success(request, "头像已换上。")
             return redirect("me_profile")
     return _profile_page(request, avatar_form=form)
-
-
-@login_required
-@require_POST
-def me_avatar_withdraw(request):
-    if withdraw_avatar(request.user):
-        messages.success(request, "已撤回待审核的头像。")
-    return redirect("me_profile")
 
 
 @login_required

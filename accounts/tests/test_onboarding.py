@@ -122,7 +122,8 @@ def test_submitters_get_the_guide_and_editors_do_not(site, client):
     client.force_login(_user("writer124@example.com", "投稿者"))
     html = client.get(url).content.decode()
     assert "data-submission-guide" in html
-    assert "提交给内容审核" in html
+    assert "点底部的「发布」就上线了" in html  # v6.73: no review
+    assert "提交给内容审核" not in html
     for number, group in enumerate(("内容编辑", "认证作者")):
         client.force_login(_user(f"staff{number}124@example.com", group, "投稿者"))
         assert "data-submission-guide" not in client.get(url).content.decode()

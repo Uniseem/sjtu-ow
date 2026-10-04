@@ -115,16 +115,16 @@ def _closed_scrim(title="待分队内战"):
 
 
 @pytest.mark.django_db
-def test_content_editors_see_what_waits_for_review(site, client):
+def test_nothing_of_the_trusted_waits_on_the_list(site, client):
+    """v6.72–v6.73: AI findings come by mail, faces and articles go out at
+    once, so none of them is work on the dashboard any more."""
     _flagged()
     member = player("face118@example.com", "换头像的人")
-    AvatarSubmission.objects.create(user=member)
+    AvatarSubmission.objects.create(user=member)  # one left from before
     client.force_login(_staff("editor118@example.com", "内容编辑"))
     todo = _todo(client)
-    # v6.72: AI findings come by mail and are no longer work on the list.
-    assert "内容等待复核" not in todo
-    assert "1 张头像等待审核" in todo
-    assert "报名" not in todo
+    for gone in ("内容等待复核", "头像等待审核", "稿件等待审核", "报名"):
+        assert gone not in todo
 
 
 @pytest.mark.django_db
@@ -165,28 +165,6 @@ def test_superusers_see_failed_static_pages(site, client):
     todo = _todo(client)
     assert "1 个静态页面生成失败" in todo
     assert "?status=failed" in todo
-
-
-@pytest.mark.django_db
-def test_editors_see_submissions_waiting_for_them(site, client):
-    from content.models import ArticleCategory, ArticleIndexPage, ArticlePage
-
-    news = ArticleIndexPage.objects.get(slug="news")
-    author = _staff("writer118@example.com", GROUP_SUBMITTER)
-    page = ArticlePage(
-        title="待审稿件118",
-        slug="waiting-118",
-        category=ArticleCategory.objects.filter(allow_submission=True).first(),
-        author=author,
-        owner=author,
-        summary="摘要",
-        body="正文",
-    )
-    news.add_child(instance=page)
-    page.save_revision(user=author)
-    page.get_workflow().start(page, author)
-    client.force_login(_staff("approver118@example.com", "内容编辑"))
-    assert "1 篇稿件等待审核" in _todo(client)
 
 
 @pytest.mark.django_db

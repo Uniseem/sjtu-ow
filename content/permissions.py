@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from wagtail.models import PagePermissionTester
+
 from accounts.services import (
     GROUP_AUTHOR,
     GROUP_CONTENT,
@@ -53,10 +55,11 @@ def sees_only_own_drafts(user) -> bool:
     return GROUP_CONTENT not in _group_names(user)
 
 
-def submits_for_review(user) -> bool:
-    """Whose articles go through the 内容审核 workflow rather than straight
-    out: everyone but superusers, content editors and verified authors.
-    They get the 「投稿须知」 in the editor (round 124)."""
+def plain_writer(user) -> bool:
+    """Members who write without an editor's say: everyone but superusers,
+    content editors and verified authors. They get the 「投稿须知」 in the
+    editor (round 124) and no 「推荐」 tab (v6.25). Until v6.73 their articles
+    went through the 内容审核 workflow; now they publish them themselves."""
     if user is None or not getattr(user, "is_authenticated", False):
         return False
     if getattr(user, "is_superuser", False):
@@ -70,3 +73,24 @@ def user_can_edit_author(user) -> bool:
     if getattr(user, "is_superuser", False):
         return True
     return GROUP_CONTENT in _group_names(user)
+
+
+class OwnArticlesPermissionTester(PagePermissionTester):
+    """Members publish their own articles (design 5.4.1, v6.73), and Wagtail
+    gives 发布 for the whole section: its publish and unpublish checks do not
+    ask whose page it is, so anyone with it could take down anyone's article
+    (verified authors could, before v6.73). Here only those who may edit
+    every article (content editors, superusers) act on other people's."""
+
+    def _theirs(self) -> bool:
+        return (
+            self.user.is_superuser
+            or "change" in self.permissions
+            or self.page.owner_id == self.user.pk
+        )
+
+    def can_publish(self):
+        return super().can_publish() and self._theirs()
+
+    def can_unpublish(self):
+        return super().can_unpublish() and self._theirs()

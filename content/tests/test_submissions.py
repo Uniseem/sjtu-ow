@@ -165,25 +165,101 @@ def test_submit_entry_shows_reasons_then_redirects(client, site_ready):
 
 
 @pytest.mark.django_db
-def test_submitter_cannot_publish_and_editor_approval_goes_live(site_ready):
+def test_members_publish_their_own_articles_straight_away(client, site_ready):
+    """v6.73 (round 195): everyone is trusted; no 内容审核 workflow."""
     news = site_ready
     submitter = _verify(_user(email="s@example.com", nickname="投稿甲"))
-    editor = _verify(_user(email="e@example.com", nickname="编辑甲"))
-    editor.groups.add(Group.objects.get(name=GROUP_CONTENT))
     guide = ArticleCategory.objects.get(slug="guide")
-    page = _article(news, guide, submitter, title="待审稿", slug="pending-one")
-    assert news.permissions_for_user(submitter).can_add_subpage()
-    assert page.permissions_for_user(submitter).can_publish() is False
-    workflow = page.get_workflow()
-    assert workflow is not None
-    workflow.start(page, submitter)
-    page.refresh_from_db()
-    assert page.live is False
-    state = page.current_workflow_state
-    assert state is not None
-    state.current_task_state.approve(user=editor)
+    page = _article(news, guide, submitter, title="直接发布", slug="straight-out")
+    assert page.get_workflow() is None
+    assert page.permissions_for_user(submitter).can_publish()
+    client.force_login(submitter)
+    client.post(
+        reverse("wagtailadmin_pages:edit", args=[page.pk]),
+        {
+            "title": "直接发布",
+            "category": guide.pk,
+            "summary": "摘要",
+            "body": "正文",
+            "action-publish": "action-publish",
+        },
+    )
     page.refresh_from_db()
     assert page.live is True
+    assert page.permissions_for_user(submitter).can_unpublish()
+
+
+@pytest.mark.django_db
+def test_nobody_takes_down_someone_elses_article_but_editors(client, site_ready):
+    """Wagtail gives 发布 for the whole section and does not ask whose page
+    it is; the article's tester does (v6.73). Verified authors could take
+    down anyone's article before."""
+    from accounts.services import GROUP_AUTHOR
+
+    news = site_ready
+    owner = _verify(_user(email="own195@example.com", nickname="作者195"))
+    guide = ArticleCategory.objects.get(slug="guide")
+    page = _article(news, guide, owner, title="别人的文章", slug="theirs", live=True)
+    member = _verify(_user(email="member195@example.com", nickname="成员195"))
+    author = _verify(_user(email="author195@example.com", nickname="认证195"))
+    author.groups.add(Group.objects.get(name=GROUP_AUTHOR))
+    editor = _verify(_user(email="editor195@example.com", nickname="编辑195"))
+    editor.groups.add(Group.objects.get(name=GROUP_CONTENT))
+
+    for other in (member, author):
+        tester = page.permissions_for_user(User.objects.get(pk=other.pk))
+        assert not tester.can_unpublish() and not tester.can_publish()
+        client.force_login(other)
+        client.post(reverse("wagtailadmin_pages:unpublish", args=[page.pk]))
+        page.refresh_from_db()
+        assert page.live, other.nickname
+    # Through a plain Page, as the explorer and bulk actions see it.
+    from wagtail.models import Page
+
+    plain = Page.objects.get(pk=page.pk)
+    assert not plain.permissions_for_user(member).can_unpublish()
+
+    client.force_login(editor)
+    client.post(reverse("wagtailadmin_pages:unpublish", args=[page.pk]))
+    page.refresh_from_db()
+    assert not page.live
+
+
+@pytest.mark.django_db
+def test_init_site_retires_the_review_workflow_left_from_before(site_ready):
+    """A database from before v6.73 (or restored from one): init_site takes
+    the 内容审核 workflow off the sections and cancels reviews in progress."""
+    from wagtail.models import (
+        GroupApprovalTask,
+        Workflow,
+        WorkflowPage,
+        WorkflowState,
+        WorkflowTask,
+    )
+
+    from content.services import retire_content_workflow
+
+    news = site_ready
+    workflow = Workflow.objects.create(name="内容审核", active=True)
+    task = GroupApprovalTask.objects.create(name="内容编辑审核", active=True)
+    task.groups.add(Group.objects.get(name=GROUP_CONTENT))
+    WorkflowTask.objects.create(workflow=workflow, task=task, sort_order=0)
+    WorkflowPage.objects.create(page=news, workflow=workflow)
+    submitter = _verify(_user(email="old195@example.com", nickname="旧稿"))
+    guide = ArticleCategory.objects.get(slug="guide")
+    page = _article(news, guide, submitter, title="审核中的稿", slug="in-review")
+    workflow.start(page, submitter)
+    assert page.workflow_in_progress
+
+    call_command("init_site", verbosity=0)
+    workflow.refresh_from_db()
+    assert not workflow.active
+    assert not GroupApprovalTask.objects.get(pk=task.pk).active
+    assert not WorkflowPage.objects.filter(page=news).exists()
+    assert not WorkflowState.objects.filter(status="in_progress").exists()
+    page.refresh_from_db()
+    assert not page.live and page.get_workflow() is None
+    assert retire_content_workflow() is False  # nothing left to do
 
 
 @pytest.mark.django_db
@@ -279,7 +355,7 @@ def test_submitter_explorer_shows_live_and_own_only(client, site_ready):
 
 
 @pytest.mark.django_db
-def test_submitter_image_collection_and_no_publish_permission(site_ready):
+def test_submitter_image_collection_and_publish_permission(site_ready):
     submitter = _verify(_user(email="img@example.com"))
     collection = Collection.objects.get(name=SUBMISSION_IMAGE_COLLECTION)
     perms = GroupCollectionPermission.objects.filter(
@@ -292,7 +368,7 @@ def test_submitter_image_collection_and_no_publish_permission(site_ready):
     news = site_ready
     guide = ArticleCategory.objects.get(slug="guide")
     page = _article(news, guide, submitter, title="权限页", slug="perm-page")
-    assert page.permissions_for_user(submitter).can_publish() is False
+    assert page.permissions_for_user(submitter).can_publish()  # v6.73
 
 
 @pytest.mark.django_db
@@ -352,33 +428,6 @@ def test_image_upload_limits():
 
     assert settings.WAGTAILIMAGES_MAX_UPLOAD_SIZE == 5 * 1024 * 1024
     assert set(get_allowed_image_extensions()) == {"jpg", "jpeg", "png", "webp"}
-
-
-@pytest.mark.django_db(transaction=True)
-def test_workflow_submission_sends_queued_mail(settings):
-    from django.core import mail
-    from django_tasks_db.models import DBTaskResult
-
-    from core.tasks import deliver_queued_email
-
-    settings.EMAIL_BACKEND = "core.mail.QueuedEmailBackend"
-    settings.EMAIL_DELIVERY_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-    call_command("init_site", verbosity=0)
-    news = ArticleIndexPage.objects.get(slug="news")
-    submitter = _verify(_user(email="mail-s@example.com", nickname="投稿邮"))
-    editor = _verify(_user(email="mail-e@example.com", nickname="编辑邮"))
-    editor.groups.add(Group.objects.get(name=GROUP_CONTENT))
-    guide = ArticleCategory.objects.get(slug="guide")
-    page = _article(news, guide, submitter, title="邮件审核稿", slug="mail-moderation")
-    page.get_workflow().start(page, submitter)
-    mail_tasks = DBTaskResult.objects.filter(task_path__contains="deliver_queued_email")
-    assert mail_tasks.exists()
-    for row in mail_tasks:
-        payload = row.args_kwargs["args"][0]
-        deliver_queued_email.call(payload)
-    assert mail.outbox
-    blob = "\n".join(f"{message.subject}\n{message.body}" for message in mail.outbox)
-    assert "邮件审核稿" in blob or "投稿邮" in blob or "编辑邮" in blob
 
 
 @pytest.mark.django_db

@@ -7,7 +7,7 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from accounts import services
-from accounts.models import AvatarSubmission, User
+from accounts.models import User
 from accounts.ranks import decode_rank
 from accounts.tests.test_avatar_upload import _picture, person
 
@@ -51,22 +51,9 @@ def test_scores_outside_the_table_are_refused(score):
 
 
 @pytest.mark.django_db
-def test_a_picture_that_vanished_cannot_be_approved(editor):
-    submission = services.submit_avatar(person("上传者179"), _picture())
-    submission.image.delete()  # say, from the image library
-    with pytest.raises(services.AvatarReviewError, match="不见了"):
-        services.approve_avatar(submission.pk, editor)
-    assert AvatarSubmission.objects.get(pk=submission.pk).status == "pending"
-
-
-@pytest.mark.django_db
 def test_only_the_face_in_use_can_be_taken_down(editor):
     owner = person("换过头像179")
-    first = services.approve_avatar(
-        services.submit_avatar(owner, _picture()).pk, editor
-    )
-    services.approve_avatar(
-        services.submit_avatar(owner, _picture(colour=(0, 0, 200))).pk, editor
-    )
+    first = services.submit_avatar(owner, _picture())
+    services.submit_avatar(owner, _picture(colour=(0, 0, 200)))  # on at once (v6.73)
     with pytest.raises(services.AvatarReviewError, match="没在用"):
         services.take_down_avatar(first.pk, editor, "porn")

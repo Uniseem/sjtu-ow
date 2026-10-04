@@ -443,7 +443,6 @@ CONFIRMED = [
     ("templates/me/teams.html", "application_cancel"),
     ("templates/me/teams.html", "alumnus_remove"),
     ("templates/me/profile.html", "me_avatar_remove"),
-    ("templates/me/profile.html", "me_avatar_withdraw"),
     ("templates/me/registrations.html", "tournament_individual_cancel"),
     ("teams/templates/teams/manage.html", "captain_transfer"),
     ("teams/templates/teams/manage.html", "member_remove"),

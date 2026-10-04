@@ -21,20 +21,20 @@ from moderation.admin_views import _breadcrumbs, reviewer_required
 from moderation.models import Category
 
 PAGE_SIZE = 24
+# v6.73: uploads show at once, so the page lists the faces in use (newest
+# first) to take down; 未通过 is what was refused before v6.73.
 TABS = (
-    AvatarSubmission.Status.PENDING,
     AvatarSubmission.Status.APPROVED,
-    AvatarSubmission.Status.REJECTED,
     AvatarSubmission.Status.TAKEN_DOWN,
+    AvatarSubmission.Status.REJECTED,
 )
 
 
 @reviewer_required
 def avatar_review(request):
-    status = request.GET.get("status", AvatarSubmission.Status.PENDING)
+    status = request.GET.get("status", AvatarSubmission.Status.APPROVED)
     if status not in TABS:
-        status = AvatarSubmission.Status.PENDING
-    oldest_first = status == AvatarSubmission.Status.PENDING
+        status = AvatarSubmission.Status.APPROVED
     queryset = (
         AvatarSubmission.objects.filter(status=status)
         .select_related("user", "user__avatar", "image", "reviewed_by")
@@ -50,7 +50,7 @@ def avatar_review(request):
                 ),
             )
         )
-        .order_by("created_at" if oldest_first else "-reviewed_at", "pk")
+        .order_by("-created_at", "-pk")
     )
     page = Paginator(queryset, PAGE_SIZE).get_page(request.GET.get("page"))
     counts = dict(
@@ -67,14 +67,14 @@ def avatar_review(request):
         request,
         "moderation/avatars.html",
         {
-            "page_title": "头像审核",
+            "page_title": "头像",
             "header_icon": "user",
             "items": page,
             "status": status,
             "status_label": AvatarSubmission.Status(status).label,
             "tabs": tabs,
             "reasons": Category.choices,
-            "breadcrumbs_items": _breadcrumbs({"url": "", "label": "头像审核"}),
+            "breadcrumbs_items": _breadcrumbs({"url": "", "label": "头像"}),
         },
     )
 
@@ -89,13 +89,7 @@ def avatar_review_action(request, pk):
     if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
         back = reverse("avatar_review")
     try:
-        if action == "approve":
-            who = services.approve_avatar(pk, request.user).user.nickname
-            messages.success(request, f"已通过，{who} 的头像已换上。")
-        elif action == "reject":
-            who = services.reject_avatar(pk, request.user, reason, note).user.nickname
-            messages.success(request, f"已拒绝，图片已删除，并发信告诉了 {who}。")
-        elif action == "take_down":
+        if action == "take_down":
             submission = services.take_down_avatar(pk, request.user, reason, note)
             who = submission.user.nickname
             messages.success(request, f"已撤下，{who} 现在用默认头像，已发信说明原因。")

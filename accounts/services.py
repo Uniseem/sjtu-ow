@@ -655,15 +655,6 @@ class AvatarReviewError(Exception):
     """Why a review action cannot be done; the message is for the reviewer."""
 
 
-def pending_avatar(user):
-    """The picture this person is waiting on, if any."""
-    return (
-        user.avatar_submissions.filter(status=AvatarSubmission.Status.PENDING)
-        .select_related("image")
-        .first()
-    )
-
-
 def uploaded_face_ids(user) -> set[int]:
     """Pictures that came to this person through the upload: theirs to
     delete. Faces put on the demo by script are not among them."""
@@ -689,12 +680,13 @@ def _set_face(user, image_id) -> None:
 
 
 def submit_avatar(user, uploaded) -> AvatarSubmission:
-    """Process an upload and put it in the review queue; whatever the person
-    was waiting on before is withdrawn. Their face does not change yet."""
+    """Process an upload and make it the face at once (design-details 2.3,
+    v6.73: everyone is trusted; an admin can take it down). The person's
+    earlier uploaded face is deleted."""
     from django.db import transaction
+    from django.utils import timezone
 
     from accounts.images import AvatarError, create_face_image
-    from accounts.notifications import avatars_waiting_soon
     from core.ratelimit import over_limit
 
     if not can_use(user, Feature.AVATAR_UPLOAD):
@@ -706,32 +698,18 @@ def submit_avatar(user, uploaded) -> AvatarSubmission:
     except AvatarError as error:
         raise AvatarUploadError(str(error)) from error
     with transaction.atomic():
-        earlier = list(
-            AvatarSubmission.objects.filter(
-                user=user, status=AvatarSubmission.Status.PENDING
-            )
+        old = user.avatar_id
+        owned = old in uploaded_face_ids(user)
+        submission = AvatarSubmission.objects.create(
+            user=user,
+            image=image,
+            status=AvatarSubmission.Status.APPROVED,
+            reviewed_at=timezone.now(),
         )
-        for old in earlier:
-            old.status = AvatarSubmission.Status.WITHDRAWN
-            old.save(update_fields=["status"])
-        _delete_images(old.image_id for old in earlier)
-        submission = AvatarSubmission.objects.create(user=user, image=image)
-    avatars_waiting_soon()
+        _set_face(user, image.pk)
+        if old and owned:
+            _delete_images([old])
     return submission
-
-
-def withdraw_avatar(user) -> bool:
-    """Take back the picture waiting for review."""
-    from django.db import transaction
-
-    with transaction.atomic():
-        submission = pending_avatar(user)
-        if submission is None:
-            return False
-        submission.status = AvatarSubmission.Status.WITHDRAWN
-        submission.save(update_fields=["status"])
-        _delete_images([submission.image_id])
-    return True
 
 
 def remove_avatar(user) -> bool:
@@ -774,46 +752,12 @@ def _locked(submission_id, status):
     return submission
 
 
-def approve_avatar(submission_id, reviewer) -> AvatarSubmission:
-    """The picture becomes the face; an earlier uploaded face is deleted."""
-    from django.db import transaction
-
-    with transaction.atomic():
-        submission = _locked(submission_id, AvatarSubmission.Status.PENDING)
-        if submission.image_id is None:
-            raise AvatarReviewError("这张头像的图片不见了，没法通过。")
-        user = submission.user
-        old = user.avatar_id
-        owned = old in uploaded_face_ids(user)
-        _decided(submission, AvatarSubmission.Status.APPROVED, reviewer)
-        _set_face(user, submission.image_id)
-        if old and owned:
-            _delete_images([old])
-    return submission
-
-
 def _check_reason(reason) -> str:
     from moderation.models import Category
 
     if reason not in Category.values:
         raise AvatarReviewError("请选一个原因。")
     return reason
-
-
-def reject_avatar(submission_id, reviewer, reason, note="") -> AvatarSubmission:
-    """Not shown; the picture is deleted and the person told why."""
-    from django.db import transaction
-
-    from accounts.notifications import avatar_rejected
-
-    reason = _check_reason(reason)
-    with transaction.atomic():
-        submission = _locked(submission_id, AvatarSubmission.Status.PENDING)
-        image_id = submission.image_id
-        _decided(submission, AvatarSubmission.Status.REJECTED, reviewer, reason, note)
-        _delete_images([image_id])
-        transaction.on_commit(lambda: avatar_rejected(submission))
-    return submission
 
 
 def take_down_avatar(submission_id, reviewer, reason, note="") -> AvatarSubmission:

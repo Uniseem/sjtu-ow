@@ -377,6 +377,12 @@ class ArticlePage(SeoPageMixin, Page):
     def get_share_image(self):
         return self.cover
 
+    def permissions_for_user(self, user):
+        """Only one's own to publish or take down (design 5.4.1, v6.73)."""
+        from content.permissions import OwnArticlesPermissionTester
+
+        return OwnArticlesPermissionTester(user, self)
+
     @cached_property
     def facts(self):
         """Words and reading time, for cards and the head (design-details 6.3)."""

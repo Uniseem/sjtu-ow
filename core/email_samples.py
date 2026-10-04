@@ -131,31 +131,6 @@ def _account(key, title, to, prefix, **context) -> Sample:
     return Sample(key, "账号", title, to, subject, text, html)
 
 
-def _wagtail() -> Sample:
-    """Wagtail's own text in our greeting and closing; the HTML is the frame
-    core.mail puts around any text-only message."""
-    context = {
-        "page": SimpleNamespace(
-            get_admin_display_title=lambda: "新生杯将于 10 月 10 日开放报名",
-            full_url=letters.site_url("/news/freshman-cup/"),
-        ),
-        "workflow": SimpleNamespace(name="内容审核"),
-        "user": SimpleNamespace(nickname="投稿人甲", get_username=lambda: "author"),
-    }
-    prefix = "wagtailadmin/notifications/workflow_state_approved"
-    subject = " ".join(render_to_string(f"{prefix}_subject.txt", context).split())
-    text = render_to_string(f"{prefix}.txt", context).strip()
-    return Sample(
-        "wagtail-approved",
-        "投稿",
-        "投稿审核结果（Wagtail 自带）",
-        "投稿人",
-        subject,
-        text,
-        letters.wrap_text(text, subject),
-    )
-
-
 def samples() -> list[Sample]:
     from accounts import notifications as faces
     from content import notifications as articles
@@ -485,26 +460,6 @@ def samples() -> list[Sample]:
             "队长甲",
         ),
         _letter(
-            "avatars-waiting",
-            "审核",
-            "有头像待审核",
-            "内容编辑、超级管理员",
-            faces.avatars_waiting_letter(
-                [_avatar("pending", "porn"), _avatar("pending", "porn")]
-            ),
-            "编辑甲",
-        ),
-        _letter(
-            "avatar-rejected",
-            "账号",
-            "头像未通过",
-            "上传的人",
-            faces.avatar_rejected_letter(
-                _avatar("rejected", "impersonation", "图里有社团的标志，像官方账号。")
-            ),
-            "小天使",
-        ),
-        _letter(
             "avatar-taken-down",
             "账号",
             "头像被撤下",
@@ -512,7 +467,6 @@ def samples() -> list[Sample]:
             faces.avatar_taken_down_letter(_avatar("taken_down", "porn")),
             "小天使",
         ),
-        _wagtail(),
     ]
 
 

@@ -76,7 +76,7 @@ def register_moderation_menu_item():
 @hooks.register("register_community_menu_item")
 def register_avatar_review_menu_item():
     return ReviewerMenuItem(
-        "头像审核",
+        "头像",
         reverse("avatar_review"),
         icon_name="user",
         order=60,

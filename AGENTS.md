@@ -64,7 +64,7 @@ bash scripts/remote-check.sh run uv run python handoff/rounds/NNN-名字/mutate.
 bash scripts/remote-check.sh attach           # 本机这边断了，接着看最近一次
 ```
 
-**登录后的页面截图**（146 起）：`bash scripts/remote-check.sh run uv run python scripts/screens.py 375`（宽度可换，比如 1280）。在测试机上用临时数据库建一套测试数据（成员、队长、战队、个人赛、整队赛、内战），起开发服务器，在服务器里直接给测试用户生成会话（不输入任何密码），用无头 Chromium 截个人中心、战队、赛事、内战等页面的整页图到 `/tmp/sjtu-ow-screens/out/`，再 `scp "[2a0e:6a80:3:9c7::]:/tmp/sjtu-ow-screens/out/*.png" 本机目录` 拿回来看。测试机上装了 `chromium` 和 `fonts-noto-cjk`；截图里文件选择框写「Choose File」是无头浏览器的语言，不是网站的问题。要加页面就改脚本里的 `PAGES`
+**登录后的页面截图**（146 起）：`bash scripts/remote-check.sh run uv run python scripts/screens.py 375`（宽度可换，比如 1280）。在测试机上用临时数据库建一套测试数据（成员、队长、战队、个人赛、整队赛、内战），起开发服务器，在服务器里直接给测试用户生成会话（不输入任何密码），用无头 Chromium 截个人中心、战队、赛事、内战等页面的整页图到 `/tmp/sjtu-ow-screens/out/`，再 `scp "sjtu-ow-test:/tmp/sjtu-ow-screens/out/*.png" 本机目录` 拿回来看（`sjtu-ow-test` 是本机 SSH 别名，见「测试机与部署」）。测试机上装了 `chromium` 和 `fonts-noto-cjk`；截图里文件选择框写「Choose File」是无头浏览器的语言，不是网站的问题。要加页面就改脚本里的 `PAGES`
 
 **在真浏览器里走一遍新人的第一晚**（168 起）：`bash scripts/remote-check.sh run uv run python scripts/journey.py`。同样在测试机上建临时站点（用 `screens.py` 的种子数据），起开发服务器和 worker，用无头 Chromium 真的填注册表单（只在这个临时站点上用测试值）、从 worker 打到控制台的邮件里读验证码、验证、加游戏 ID 和联系方式、报内战、申请战队，最后看首页「我的安排」。浏览器报的错误、未捕获的异常、内容安全策略的拦截都打印出来并算失败，有一步没走通就退出码 1。测试直接调 Django 看不到的东西（脚本被拦、按钮没反应、区块没填上）靠它发现；改了这几个页面的表单或脚本后跑一次。**`journey.py pages`**（169 起）把项目自己的每个地址以访客、成员、站长（后台只用站长）在浏览器里打开一遍，报出浏览器报错和 500 的页面；后台拖拽编队、拖拽分队这类脚本多的页面只有它看得到。改了前端脚本或后台页面后跑一次。**`journey.py admin`**（170 起）走干部那一晚：再报 10 个人，在分队页勾满 10 人、生成分队、用卡片按钮把一人移到缓冲区再移回、保存；在队伍编排页用卡片按钮把 3 个散人编进新队伍、起名、保存。改了 `static/js/scrim-split.js`、`tournament-teams.js` 或这两个页面后跑一次
 
@@ -80,10 +80,23 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 |---|---|
 | 机器（128 核对） | Debian 13，4 核 AMD EPYC 9275F，19 GB 内存，Docker 已装；146 装了 `chromium`、`fonts-noto-cjk`（截图用）。出 IPv4（GitHub、PyPI）走 Cloudflare WARP（`warp-svc`）。还跑着 Komari 监控探针（`komari-agent`） |
 | 权限 | **整台机器归本项目用**，资源随便用；`warp-svc` 和 `komari-agent` 别停（前者断了就连不上 GitHub） |
-| 登录 | SSH 密钥。登录用户和密钥在开发者本机的 `~/.ssh/config`（`Host 2a0e:6a80:3:9c7:: sjtu-ow-test`），**不写进仓库**（仓库是公开的）。`scp` 要给 IPv6 地址加方括号，`remote-check.sh` 自己处理 |
+| 登录 | SSH 密钥。**本机没有 IPv6 时走用户的端口转发 `189.24.110.12:2222`**（2026-10-05 起，见下）。登录用户和密钥在开发者本机的 `~/.ssh/config`，**不写进仓库**（仓库是公开的）。`remote-check.sh` 默认连 SSH 别名 `sjtu-ow-test`；直连 IPv6 时 `CHECK_HOST=2a0e:6a80:3:9c7::`，`scp` 要给 IPv6 地址加方括号，脚本自己处理 |
 | 检查目录 | `/srv/sjtu-ow-check/`：`uv/`（uv 二进制，从 GitHub 发布页下载、核对过 sha256，缓存也在这里）、`repo/`（从 GitHub 克隆，每次检查切到传过来的快照）、`shards/1…4`（pytest 分片用的 worktree，各有自己的 `.venv` 和测试库）、`runs/`（每次检查的脚本、日志、退出码，留最近 30 次）、`lock`。Docker 里留一个 `sjtu-ow:check` 镜像，每次构建后删掉上一个 |
 | 怎么用 | 本机 `bash scripts/remote-check.sh`，见「常用命令」。整组检查（含 `docker build`）约 1 分半，pytest 分 4 片、每片 40 秒左右 |
 | 以后要部署测试站 | 照 README「生产 / 测试环境启动」：部署目录 `/srv/sjtu-ow`、Compose 项目名 `sjtu-ow-test`、每条命令带 `--env-file .env`。要 HTTPS 得有一个解析到这个 IPv6 地址的域名 |
+
+**连测试机走端口转发**（用户 2026-10-05：「测试机因为是 v6 连不上，所以我改用另一台机进行了端口转发。使用 189.24.110.12:2222 可进行 ssh 连接」）：开发者本机没有 IPv6，184–195 一直连不上测试机，检查都在本机跑。现在 `189.24.110.12` 的 2222 端口转到测试机的 22。`189.24.110.12` 是用户自己的机器（也是正式站域名的反向代理 `anylocate.cc`），**只有 2222 是转发，22 端口是那台机器自己的，别去连、别动**。本机 `~/.ssh/config` 这样配（用户和密钥照原来测试机那条）：
+
+```
+Host sjtu-ow-test
+    HostName 189.24.110.12
+    Port 2222
+    User <登录用户>
+    IdentityFile <密钥>
+    HostKeyAlias 2a0e:6a80:3:9c7::
+```
+
+`HostKeyAlias` 让 SSH 用测试机原来的主机密钥核对（2026-10-05 核过，经转发拿到的 ED25519 指纹和直连 IPv6 时记下的一样：`SHA256:m6BeQ0v27W6tSBnKSM0kMmJ4FSFJyT4g1uUGUwecsO0`），转发那头要是换成了别的机器会报警。`bash scripts/remote-check.sh` 不用改参数；`scp` 拿截图写 `scp "sjtu-ow-test:/tmp/sjtu-ow-screens/out/*.png" 本机目录`。
 
 **原来的测试机 `185.99.135.224`**（2026-09-18 起）重装过、没有 Docker，128 在上面搭过一次，换机器后把 `/srv/sjtu-ow-check` 删了，现在不用。上面有别人的东西（Komari 探针、`/opt` 和 `/root` 下的 Flutter、Android、FlClash 工具链），再上去也只动自己建的目录，不做全局清理。
 

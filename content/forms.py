@@ -4,7 +4,7 @@ from wagtail.admin.forms import WagtailAdminPageForm
 
 from content.permissions import (
     is_submitter_only,
-    submits_for_review,
+    plain_writer,
     user_can_edit_author,
 )
 
@@ -39,7 +39,7 @@ class ArticlePageForm(WagtailAdminPageForm):
             self.fields["category"].queryset = ArticleCategory.objects.filter(
                 allow_submission=True
             )
-        if submits_for_review(user):
+        if plain_writer(user):
             for name in EDITOR_ONLY_FIELDS:
                 self.fields.pop(name, None)
 

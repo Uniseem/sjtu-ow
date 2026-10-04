@@ -10,7 +10,6 @@ from wagtail.admin.menu import MenuItem
 from wagtail.admin.ui.components import Component
 from wagtail.admin.ui.menus.pages import PageMenuItem
 from wagtail.admin.ui.tables import BooleanColumn
-from wagtail.models import WorkflowState
 from wagtail.permission_policies import ModelPermissionPolicy
 from wagtail.permission_policies.pages import PagePermissionPolicy
 from wagtail.permissions import register_permission_policy
@@ -101,27 +100,12 @@ class SubmitterHomePanel(Component):
         pages = (
             ArticlePage.objects.filter(owner=request.user)
             .select_related("category")
-            # One query for every row's review state (round 119).
-            .prefetch_workflow_states()
             .order_by("-latest_revision_created_at", "-path")
         )
         rows = []
         for page in pages:
-            workflow_state = page.current_workflow_state
-            if page.live:
-                status = "已发布"
-            elif (
-                workflow_state is not None
-                and workflow_state.status == WorkflowState.STATUS_IN_PROGRESS
-            ):
-                status = "审核中"
-            elif (
-                workflow_state is not None
-                and workflow_state.status == WorkflowState.STATUS_NEEDS_CHANGES
-            ):
-                status = "需修改"
-            else:
-                status = "草稿"
+            # v6.73: no review any more, so only these two.
+            status = "已发布" if page.live else "草稿"
             rows.append(
                 {
                     "title": page.get_admin_display_title(),

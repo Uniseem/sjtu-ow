@@ -17,11 +17,13 @@
 # flowing, keepalives on), taking the job down with them. One job at a time:
 # a second one waits for the lock. The exit code is the job's.
 #
-# CHECK_HOST picks the machine (default 2a0e:6a80:3:9c7::, the test machine
-# since 128; the login user comes from your SSH config).
+# CHECK_HOST picks the machine: default the SSH alias sjtu-ow-test, which
+# your SSH config points at the test machine (2a0e:6a80:3:9c7::, IPv6 only)
+# through the user's port forward 189.24.110.12:2222 (2026-10-05); the login
+# user and key come from that config, never from the repository.
 set -euo pipefail
 
-host=${CHECK_HOST:-2a0e:6a80:3:9c7::}
+host=${CHECK_HOST:-sjtu-ow-test}
 # scp wants an IPv6 address in brackets.
 case $host in *:*) copy_to="[$host]" ;; *) copy_to=$host ;; esac
 base=${CHECK_DIR:-/srv/sjtu-ow-check}

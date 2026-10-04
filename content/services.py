@@ -1,4 +1,4 @@
-"""Idempotent site bootstrap for categories, page tree, workflows, and media."""
+"""Idempotent site bootstrap for categories, page tree, permissions, and media."""
 
 from __future__ import annotations
 
@@ -17,7 +17,6 @@ from wagtail.models import (
     Site,
     Workflow,
     WorkflowPage,
-    WorkflowTask,
 )
 
 from accounts.services import (
@@ -324,38 +323,36 @@ def ensure_user_avatar_collection() -> Collection:
     return root.add_child(name=USER_AVATAR_COLLECTION)
 
 
-def ensure_content_workflow() -> Workflow:
-    workflow, _created = Workflow.objects.get_or_create(
-        name=CONTENT_WORKFLOW_NAME,
-        defaults={"active": True},
-    )
-    if not workflow.active:
-        workflow.active = True
+def retire_content_workflow() -> bool:
+    """v6.73 (design 5.4.4): articles go out without review. The 内容审核
+    workflow comes off the article sections and is switched off (kept on
+    record); articles in review go back to drafts for their authors to
+    publish. Returns whether anything changed. Migration content/0008 did
+    it once; init_site repeats it for databases restored from before."""
+    from wagtail.models import WorkflowState
+
+    changed = False
+    bound = WorkflowPage.objects.filter(page__in=ArticleIndexPage.objects.values("pk"))
+    if bound.exists():
+        bound.delete()
+        changed = True
+    for state in WorkflowState.objects.filter(
+        status=WorkflowState.STATUS_IN_PROGRESS,
+        workflow__name=CONTENT_WORKFLOW_NAME,
+    ):
+        state.status = WorkflowState.STATUS_CANCELLED
+        state.save(update_fields=["status"])
+        state.task_states.filter(status="in_progress").update(status="cancelled")
+        changed = True
+    for workflow in Workflow.objects.filter(name=CONTENT_WORKFLOW_NAME, active=True):
+        workflow.active = False
         workflow.save(update_fields=["active"])
-
-    task = GroupApprovalTask.objects.filter(name=CONTENT_WORKFLOW_TASK_NAME).first()
-    if task is None:
-        task = GroupApprovalTask.objects.create(
-            name=CONTENT_WORKFLOW_TASK_NAME,
-            active=True,
-        )
-    elif not task.active:
-        task.active = True
-        task.save(update_fields=["active"])
-
-    content_group, _ = Group.objects.get_or_create(name=GROUP_CONTENT)
-    task.groups.add(content_group)
-    WorkflowTask.objects.get_or_create(
-        workflow=workflow,
-        task=task,
-        defaults={"sort_order": 0},
-    )
-    for index in ArticleIndexPage.objects.all():
-        WorkflowPage.objects.update_or_create(
-            page=index,
-            defaults={"workflow": workflow},
-        )
-    return workflow
+        changed = True
+    if GroupApprovalTask.objects.filter(
+        name=CONTENT_WORKFLOW_TASK_NAME, active=True
+    ).update(active=False):
+        changed = True
+    return changed
 
 
 CATEGORY_PERMISSIONS = (
@@ -394,7 +391,9 @@ def assign_content_permissions() -> None:
             ("add_page", "change_page", "publish_page", "lock_page", "unlock_page"),
         )
     for index in ArticleIndexPage.objects.all():
-        _grant_page_perms(groups[GROUP_SUBMITTER], index, ("add_page",))
+        # v6.73: members publish their own (5.4.1; the article's permission
+        # tester keeps them off other people's).
+        _grant_page_perms(groups[GROUP_SUBMITTER], index, ("add_page", "publish_page"))
         _grant_page_perms(
             groups[GROUP_AUTHOR],
             index,

@@ -339,7 +339,7 @@ def test_each_section_has_its_tabs_in_order(site, client):
     )
     assert _strip(client, "/admin/comments/") == (
         "review",
-        ["报名", "稿件", "内容", "头像", "评论"],
+        ["报名", "内容", "头像", "评论"],
         "评论",
     )
     assert _strip(client, "/admin/settings/fonts/") == (
@@ -381,7 +381,7 @@ def test_each_role_sees_only_its_sections_and_tabs(site, client):
                     "content",
                     ["文章", "分类", "网站页面", "图片"],
                 ),
-                "/admin/moderation/": ("review", ["稿件", "内容", "头像", "评论"]),
+                "/admin/moderation/": ("review", ["内容", "头像", "评论"]),
                 reverse("wagtailsnippets_members_membergroup:list"): ("members", []),
             },
         ),
@@ -443,7 +443,6 @@ def test_every_page_lights_its_own_section(site, client):
             "全站设置",
         ),
         "/admin/reports/site-history/": ("settings", "操作记录"),
-        "/admin/reports/workflow/": ("review", "稿件"),
     }.items():
         found = _strip(client, url)
         assert (found[0], found[2]) == (key, current), url
@@ -480,17 +479,19 @@ def test_the_strip_opens_the_content_column(site, client):
 
 @pytest.mark.django_db
 def test_review_tabs_count_what_waits(site, client):
-    from accounts.models import AvatarSubmission
+    """Only registrations wait for anyone (v6.72–v6.73)."""
+    from tournaments.tests.test_review_admin import registration as make_registration
 
     client.force_login(_user("count193@example.com", superuser=True))
     html = client.get("/admin/comments/").content.decode()
     strip = SECTION_TABS.search(html).group(2)
     assert "a-tabs__count" not in strip
-    AvatarSubmission.objects.create(user=_user("face193@example.com"))
+    make_registration.__wrapped__(None)
     strip = SECTION_TABS.search(client.get("/admin/comments/").content.decode()).group(
         2
     )
-    assert re.search(r'>头像<span class="a-tabs__count">1</span></a>', strip)
+    assert re.search(r'>报名<span class="a-tabs__count">1</span></a>', strip)
+    assert strip.count("a-tabs__count") == 1
     other = SECTION_TABS.search(
         client.get("/admin/tournaments/").content.decode()
     ).group(2)

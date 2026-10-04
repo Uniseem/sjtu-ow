@@ -1,9 +1,9 @@
 """Members upload their own face (design-details 2.3, v6.11, round 114).
 
-The picture is squared and saved again as WebP; it waits for a reviewer and
-the person keeps their old face until it is approved. Rejected, withdrawn,
-replaced and taken-down pictures are deleted; the person is told why; the
-reviewers get one reminder for a batch of uploads.
+The picture is squared and saved again as WebP and shows at once (v6.73,
+round 195: everyone is trusted; until then it waited for a reviewer). An
+admin can take a face down, and the person is told why; replaced and
+taken-down pictures are deleted.
 """
 
 from io import BytesIO
@@ -158,52 +158,40 @@ def test_the_form_refuses_big_files_and_other_types():
 
 
 @pytest.mark.django_db
-def test_an_upload_waits_for_review_and_changes_nothing_in_public(client, member):
+def test_an_upload_shows_at_once(client, member):
+    """v6.73: no review; the new face is up and its pages are regenerated."""
     client.force_login(member)
-    response = _upload(client)
+    with mock.patch("accounts.signals.refresh_nickname_pages") as refresh:
+        response = _upload(client)
     assert response.status_code == 302
     submission = AvatarSubmission.objects.get(user=member)
-    assert submission.status == AvatarSubmission.Status.PENDING
+    assert submission.status == AvatarSubmission.Status.APPROVED
+    assert submission.reviewed_by is None and submission.reviewed_at is not None
     member.refresh_from_db()
-    assert member.avatar_id is None
-    thumb = submission.image.get_rendition("fill-176x176").url
-    assert thumb not in client.get("/members/").content.decode()
+    assert member.avatar_id == submission.image_id
+    assert refresh.call_count == 1
     page = client.get(reverse("me_profile")).content.decode()
-    assert thumb in page and "审核中" in page
+    assert "审核" not in page
 
 
 @pytest.mark.django_db
-def test_a_new_upload_replaces_the_one_waiting(client, member):
+def test_a_new_upload_replaces_the_face_and_deletes_the_old_upload(client, member):
     client.force_login(member)
     _upload(client)
     first = AvatarSubmission.objects.get(user=member)
     _upload(client, _picture(colour=(10, 120, 30)))
-    first.refresh_from_db()
-    assert first.status == AvatarSubmission.Status.WITHDRAWN
-    assert first.image_id is None  # deleted
-    assert AvatarSubmission.objects.filter(user=member, status="pending").count() == 1
+    member.refresh_from_db()
+    second = AvatarSubmission.objects.exclude(pk=first.pk).get(user=member)
+    assert member.avatar_id == second.image_id
+    assert not _image_exists(first.image_id)  # theirs, so deleted
 
 
 @pytest.mark.django_db
-def test_withdrawing_deletes_the_picture(client, member):
+def test_the_default_face_comes_back_at_once(client, member):
     client.force_login(member)
     _upload(client)
-    submission = AvatarSubmission.objects.get(user=member)
-    image_id = submission.image_id
-    client.post(reverse("me_avatar_withdraw"))
-    submission.refresh_from_db()
-    assert submission.status == AvatarSubmission.Status.WITHDRAWN
-    assert not _image_exists(image_id)
-
-
-@pytest.mark.django_db
-def test_the_default_face_comes_back_at_once(client, member, editor):
-    from accounts import services
-
-    services.approve_avatar(services.submit_avatar(member, _picture()).pk, editor)
     member.refresh_from_db()
     uploaded = member.avatar_id
-    client.force_login(member)
     client.post(reverse("me_avatar_remove"))
     member.refresh_from_db()
     assert member.avatar_id is None
@@ -220,6 +208,17 @@ def test_a_face_put_there_by_script_is_not_deleted(client, site):
     client.post(reverse("me_avatar_remove"))
     user.refresh_from_db()
     assert user.avatar_id is None
+    assert _image_exists(scripted)
+
+
+@pytest.mark.django_db
+def test_an_upload_keeps_a_scripted_face_it_replaces(client, site):
+    from core.tests.test_chapter15_audit import make_user
+
+    user = make_user(8)
+    scripted = user.avatar_id
+    client.force_login(user)
+    _upload(client)
     assert _image_exists(scripted)
 
 
@@ -254,58 +253,16 @@ def test_uploading_needs_a_post(client, member):
     assert client.get(reverse("me_avatar_upload")).status_code == 405
 
 
-# --- reviewing -----------------------------------------------------------------------
-
-
 @pytest.mark.django_db
-def test_approving_puts_the_face_up_and_regenerates_its_pages(member, editor):
-    from accounts import services
-
-    services.approve_avatar(services.submit_avatar(member, _picture()).pk, editor)
-    old = member.__class__.objects.get(pk=member.pk).avatar_id
-    second = services.submit_avatar(member, _picture(colour=(0, 0, 200)))
-    with mock.patch("accounts.signals.refresh_nickname_pages") as refresh:
-        services.approve_avatar(second.pk, editor)
-    member.refresh_from_db()
-    assert member.avatar_id == second.image_id
-    assert refresh.call_count == 1
-    assert not _image_exists(old)  # the uploaded face it replaced
-    second.refresh_from_db()
-    assert second.status == AvatarSubmission.Status.APPROVED
-    assert second.reviewed_by == editor
-
-
-@pytest.mark.django_db
-def test_approving_keeps_a_scripted_face_it_replaces(editor, site):
-    from accounts import services
-    from core.tests.test_chapter15_audit import make_user
-
-    user = make_user(8)
-    scripted = user.avatar_id
-    services.approve_avatar(services.submit_avatar(user, _picture()).pk, editor)
-    assert _image_exists(scripted)
-
-
-@pytest.mark.django_db
-def test_rejecting_deletes_the_picture_and_tells_the_person(
-    member, editor, django_capture_on_commit_callbacks
-):
-    from accounts import services
-
-    submission = services.submit_avatar(member, _picture())
-    image_id = submission.image_id
+def test_nobody_is_mailed_about_an_upload(client, member, editor):
+    """Until v6.73 the reviewers got a reminder for each batch."""
     mail.outbox.clear()
-    with django_capture_on_commit_callbacks(execute=True):
-        services.reject_avatar(submission.pk, editor, "impersonation", "有社团标志")
-    submission.refresh_from_db()
-    assert submission.status == AvatarSubmission.Status.REJECTED
-    assert submission.reason == "impersonation"
-    assert not _image_exists(image_id)
-    member.refresh_from_db()
-    assert member.avatar_id is None
-    sent = [m for m in mail.outbox if member.email in m.to]
-    assert len(sent) == 1
-    assert "冒充官方" in sent[0].body and "有社团标志" in sent[0].body
+    client.force_login(member)
+    _upload(client)
+    assert mail.outbox == []
+
+
+# --- taking down ---------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -313,7 +270,6 @@ def test_taking_down_a_face_in_use(member, editor, django_capture_on_commit_call
     from accounts import services
 
     submission = services.submit_avatar(member, _picture())
-    services.approve_avatar(submission.pk, editor)
     image_id = submission.image_id
     mail.outbox.clear()
     with (
@@ -327,61 +283,78 @@ def test_taking_down_a_face_in_use(member, editor, django_capture_on_commit_call
     assert not _image_exists(image_id)
     submission.refresh_from_db()
     assert submission.status == AvatarSubmission.Status.TAKEN_DOWN
-    assert any("撤下" in m.subject for m in mail.outbox if member.email in m.to)
+    assert submission.reviewed_by == editor
+    letters = [m for m in mail.outbox if member.email in m.to]
+    assert any("撤下" in m.subject for m in letters)
+    assert "审核通过后" not in letters[0].body
 
 
 @pytest.mark.django_db
-def test_a_decision_needs_a_reason_and_happens_once(member, editor):
+def test_taking_down_needs_a_reason_and_happens_once(member, editor):
     from accounts import services
 
     submission = services.submit_avatar(member, _picture())
     with pytest.raises(services.AvatarReviewError, match="原因"):
-        services.reject_avatar(submission.pk, editor, "")
-    services.approve_avatar(submission.pk, editor)
+        services.take_down_avatar(submission.pk, editor, "")
+    services.take_down_avatar(submission.pk, editor, "porn")
     with pytest.raises(services.AvatarReviewError, match="处理过"):
-        services.approve_avatar(submission.pk, editor)
+        services.take_down_avatar(submission.pk, editor, "porn")
 
 
 @pytest.mark.django_db
-def test_only_reviewers_open_the_review_page(client, member, editor):
+def test_the_page_lists_the_faces_in_use_newest_first(client, member, editor):
     from accounts import services
 
-    submission = services.submit_avatar(member, _picture())
+    older = services.submit_avatar(person("先传的人"), _picture())
+    newer = services.submit_avatar(member, _picture(colour=(0, 0, 200)))
     client.force_login(editor)
     page = client.get(reverse("avatar_review"))
     assert page.status_code == 200
-    assert submission.image.get_rendition("fill-240x240").url in page.content.decode()
-
-    manager = person("赛事管理员丙")
-    manager.groups.add(
-        Group.objects.get(name="赛事管理员")
-    )  # in the admin, not a reviewer
-    client.force_login(manager)
-    assert client.get(reverse("avatar_review")).status_code != 200
-    client.post(
-        reverse("avatar_review_action", args=[submission.pk]), {"action": "approve"}
-    )
-    submission.refresh_from_db()
-    assert submission.status == AvatarSubmission.Status.PENDING
+    html = page.content.decode()
+    first = newer.image.get_rendition("fill-240x240").url
+    second = older.image.get_rendition("fill-240x240").url
+    assert html.index(first) < html.index(second)
+    assert "通过" not in html.replace("未通过", "").replace("已通过", "")
 
 
 @pytest.mark.django_db
-def test_a_reviewer_approves_from_the_page(client, member, editor):
+def test_only_reviewers_open_the_page_and_take_down(client, member, editor):
+    from accounts import services
+
+    submission = services.submit_avatar(member, _picture())
+    manager = person("赛事管理员丙")
+    manager.groups.add(Group.objects.get(name="赛事管理员"))  # in the admin
+    client.force_login(manager)
+    assert client.get(reverse("avatar_review")).status_code != 200
+    client.post(
+        reverse("avatar_review_action", args=[submission.pk]),
+        {"action": "take_down", "reason": "porn"},
+    )
+    submission.refresh_from_db()
+    assert submission.status == AvatarSubmission.Status.APPROVED
+
+
+@pytest.mark.django_db
+def test_a_reviewer_takes_down_from_the_page(client, member, editor):
     from accounts import services
 
     submission = services.submit_avatar(member, _picture())
     client.force_login(editor)
     response = client.post(
         reverse("avatar_review_action", args=[submission.pk]),
-        {"action": "approve", "next": "//evil.example.com/"},
+        {"action": "take_down", "reason": "porn", "next": "//evil.example.com/"},
     )
     assert response.url == reverse("avatar_review")  # never off the site
     member.refresh_from_db()
-    assert member.avatar_id == submission.image_id
+    assert member.avatar_id is None
+    for gone in ("approve", "reject"):
+        client.post(
+            reverse("avatar_review_action", args=[submission.pk]), {"action": gone}
+        )
 
 
 @pytest.mark.django_db
-def test_the_review_page_costs_the_same_however_many_wait(client, editor):
+def test_the_review_page_costs_the_same_however_many_there_are(client, editor):
     from accounts import services
     from core.tests.test_chapter15_audit import assert_no_n_plus_one
 
@@ -389,57 +362,10 @@ def test_the_review_page_costs_the_same_however_many_wait(client, editor):
 
     def seed(count):
         for index in range(count):
-            uploader = person(f"排队{AvatarSubmission.objects.count()}-{index}")
+            uploader = person(f"头像{AvatarSubmission.objects.count()}-{index}")
             services.submit_avatar(uploader, _picture())
 
     assert_no_n_plus_one(client, reverse("avatar_review"), seed)
-
-
-# --- telling people ------------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_reviewers_get_one_reminder_for_a_batch(
-    member, editor, django_capture_on_commit_callbacks
-):
-    from accounts import notifications, services
-
-    with (
-        mock.patch("accounts.tasks.notify_avatars_waiting") as task,
-        django_capture_on_commit_callbacks(execute=True),
-    ):
-        services.submit_avatar(member, _picture())
-        services.submit_avatar(person("另一个上传者"), _picture())
-    assert task.using.call_count == 1  # the second upload rides on the first
-    run_after = task.using.call_args.kwargs["run_after"]
-    from django.utils import timezone
-
-    assert 9 * 60 < (run_after - timezone.now()).total_seconds() <= 10 * 60
-    mail.outbox.clear()
-    assert notifications.send_avatars_waiting() == 2
-    assert len(mail.outbox) == 1
-    letter = mail.outbox[0]
-    assert editor.email in letter.to
-    assert "上传者" in letter.body and "另一个上传者" in letter.body
-
-
-@pytest.mark.django_db
-def test_the_reminder_lets_the_next_upload_ask_again(
-    member, editor, django_capture_on_commit_callbacks
-):
-    from accounts import notifications, services
-    from accounts.tasks import notify_avatars_waiting
-
-    real = notify_avatars_waiting
-    with (
-        mock.patch("accounts.tasks.notify_avatars_waiting") as task,
-        django_capture_on_commit_callbacks(execute=True),
-    ):
-        services.submit_avatar(member, _picture())
-        real.call()  # the reminder goes out
-        services.submit_avatar(member, _picture(colour=(1, 2, 3)))
-    assert task.using.call_count == 2
-    assert cache.get(notifications.WAITING_KEY)
 
 
 # --- leaving -------------------------------------------------------------------------
@@ -449,12 +375,13 @@ def test_the_reminder_lets_the_next_upload_ask_again(
 def test_deleting_the_account_deletes_every_uploaded_picture(member, editor):
     from accounts import services
 
-    approved = services.submit_avatar(member, _picture())
-    services.approve_avatar(approved.pk, editor)
-    waiting = services.submit_avatar(member, _picture(colour=(9, 9, 9)))
-    ids = [approved.image_id, waiting.image_id]
+    first = services.submit_avatar(member, _picture())
+    taken = services.submit_avatar(member, _picture(colour=(9, 9, 9)))
+    services.take_down_avatar(taken.pk, editor, "porn")
+    current = services.submit_avatar(member, _picture(colour=(1, 9, 1)))
+    ids = [first.image_id, current.image_id]
     services.delete_account(member)
-    assert not any(_image_exists(pk) for pk in ids)
+    assert not any(_image_exists(pk) for pk in ids if pk)
     assert not AvatarSubmission.objects.filter(user=member).exists()
 
 
@@ -462,10 +389,10 @@ def test_deleting_the_account_deletes_every_uploaded_picture(member, editor):
 def test_the_export_lists_the_uploads(member, editor):
     from accounts import services
 
-    services.reject_avatar(
+    services.take_down_avatar(
         services.submit_avatar(member, _picture()).pk, editor, "porn", "不合适"
     )
     uploads = services.personal_data(member)["avatar_uploads"]
-    assert uploads[0]["status"] == "未通过"
+    assert uploads[0]["status"] == "已撤下"
     assert uploads[0]["reason"] == "色情低俗"
     assert "reviewed_by" not in uploads[0]

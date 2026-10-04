@@ -33,25 +33,6 @@ class Todo:
 # The counts are shared with the 审核 tabs (core.admin_sections, v6.71).
 
 
-def pending_avatars() -> int:
-    from accounts.models import AvatarSubmission
-
-    return AvatarSubmission.objects.filter(
-        status=AvatarSubmission.Status.PENDING
-    ).count()
-
-
-def waiting_submissions(user) -> int:
-    """Article submissions whose current step this person may approve."""
-    from wagtail.models import GroupApprovalTask, TaskState
-
-    states = TaskState.objects.filter(status=TaskState.STATUS_IN_PROGRESS)
-    if not user.is_superuser:
-        tasks = GroupApprovalTask.objects.filter(groups__in=user.groups.all())
-        states = states.filter(task__in=tasks)
-    return states.values("workflow_state").distinct().count()
-
-
 def pending_registrations() -> int:
     from tournaments.models import Registration, RegistrationStatus, TournamentStatus
 
@@ -60,23 +41,6 @@ def pending_registrations() -> int:
         .exclude(tournament__status=TournamentStatus.CANCELLED)
         .count()
     )
-
-
-def _review_rows(user) -> list[Todo]:
-    from moderation.admin_views import can_review
-
-    if not can_review(user):
-        return []
-    # AI findings are a record, not work (5.5.4, v6.72): they come by mail.
-    avatars = pending_avatars()
-    return [Todo(f"{avatars} 张头像等待审核", reverse("avatar_review"), avatars)]
-
-
-def _submission_rows(user) -> list[Todo]:
-    count = waiting_submissions(user)
-    return [
-        Todo(f"{count} 篇稿件等待审核", reverse("wagtailadmin_reports:workflow"), count)
-    ]
 
 
 def _tournament_rows(user) -> list[Todo]:
@@ -313,7 +277,6 @@ def _site_rows(user) -> list[Todo]:
 def has_duties(user) -> bool:
     """Whether this person handles any of the queues above; others (say a
     verified author) get no panel rather than a permanently empty one."""
-    from wagtail.models import GroupApprovalTask
 
     from moderation.admin_views import can_review
     from scrims import services as scrim_services
@@ -324,20 +287,13 @@ def has_duties(user) -> bool:
         or can_review(user)
         or tournament_services.can_manage(user)
         or scrim_services.can_manage(user)
-        or GroupApprovalTask.objects.filter(
-            active=True, groups__in=user.groups.all()
-        ).exists()
     )
 
 
 def todo_rows(user) -> list[Todo]:
-    rows = (
-        _review_rows(user)
-        + _submission_rows(user)
-        + _tournament_rows(user)
-        + _scrim_rows(user)
-        + _site_rows(user)
-    )
+    # v6.72–v6.73: AI findings come by mail, faces and articles go out at
+    # once; nothing of theirs waits here any more.
+    rows = _tournament_rows(user) + _scrim_rows(user) + _site_rows(user)
     return [row for row in rows if row.count]
 
 
