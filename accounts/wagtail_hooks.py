@@ -15,7 +15,6 @@ from wagtail.permissions import register_permission_policy
 
 from accounts.admin_users import USERS_MENU_HOOK
 from accounts.models import FeatureGroupRestriction, FeatureUserRule, User
-from accounts.services import GROUP_CONTENT
 from core.converters import as_id
 
 # The admin account page is open to every admin user, which through 投稿者 is
@@ -177,24 +176,6 @@ def register_users_menu():
         icon_name="user",
         order=8000,
     )
-
-
-# Wagtail's own reports and help are for superusers and content editors
-# (design 14.1). The report pages filter by Wagtail's object permissions on
-# their own, so another role opening one by URL only sees its own objects.
-EDITOR_ONLY_MENUS = frozenset({"reports", "help"})
-
-
-@hooks.register("construct_main_menu")
-def hide_reports_and_help(request, menu_items):
-    user = request.user
-    if user.is_superuser or user.groups.filter(name=GROUP_CONTENT).exists():
-        return
-    menu_items[:] = [
-        item
-        for item in menu_items
-        if getattr(item, "name", "") not in EDITOR_ONLY_MENUS
-    ]
 
 
 # --- the user list's bulk actions (design 3.7, v6.58) -----------------------------

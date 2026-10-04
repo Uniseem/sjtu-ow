@@ -141,7 +141,7 @@ class ScrimViewSet(ModelViewSet):
     model = Scrim
     name = "scrims"
     icon = "group"
-    menu_label = "内战活动"
+    menu_label = "内战"
     add_to_admin_menu = False
     inspect_view_enabled = True
     index_view_class = ScrimIndexView
@@ -181,7 +181,7 @@ class ScrimMenuItem(MenuItem):
 @hooks.register("register_community_menu_item")
 def register_scrim_menu_item():
     return ScrimMenuItem(
-        "内战活动",
+        "内战",
         reverse("scrims:index"),
         icon_name="group",
         order=30,

@@ -1,7 +1,10 @@
+from django.templatetags.static import static
 from django.urls import path, reverse
+from django.utils.html import format_html
 from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 
+from core.admin_home import WelcomePanel
 from core.admin_setup import SetupPanel
 from core.admin_todo import TodoPanel, has_duties
 from core.fonts import admin_views
@@ -137,14 +140,39 @@ def register_typography_menu_item():
 
 @hooks.register("construct_homepage_panels")
 def add_todo_panel(request, panels):
-    """「待办」 first on the dashboard for the staff who handle queues
-    (findings #24, round 118). Submitter-only users get their own panel
-    from content.wagtail_hooks, which runs later and replaces the list."""
+    """The dashboard (design 14.1, v6.67): the greeting with quick actions,
+    「待办」 for the staff who handle queues (findings #24, round 118) and
+    「上线清单」 for the owner (round 122). Wagtail's own panels are left out.
+    Submitter-only users get their own panel from content.wagtail_hooks,
+    which runs later and replaces the list."""
+    own = [WelcomePanel()]
     if has_duties(request.user):
-        panels.insert(0, TodoPanel())
-    # 「上线清单」 (round 122): what only the owner can set up.
+        own.append(TodoPanel())
     if request.user.is_superuser:
-        panels.insert(1, SetupPanel())
+        own.append(SetupPanel())
+    panels[:] = own
+
+
+@hooks.register("insert_global_admin_css")
+def admin_look():
+    """The admin in the site's colours, type and shapes (14.1, v6.67)."""
+    return format_html('<link rel="stylesheet" href="{}">', static("css/admin.css"))
+
+
+@hooks.register("construct_main_menu", order=900)
+def arrange_main_menu(request, menu_items):
+    """In the order of the work (14.1, v6.67); before the submitters' filter
+    in content.wagtail_hooks (order 1000)."""
+    from core.admin_home import arrange_main_menu as arrange
+
+    arrange(request, menu_items)
+
+
+@hooks.register("construct_settings_menu")
+def arrange_settings_menu(request, menu_items):
+    from core.admin_home import arrange_settings_menu as arrange
+
+    arrange(request, menu_items)
 
 
 @hooks.register("register_log_actions")

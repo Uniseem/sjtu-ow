@@ -1,32 +1,33 @@
-<section class="w-panel" aria-labelledby="site-setup-heading">
-  <h2 class="w-panel__heading" id="site-setup-heading">上线清单</h2>
+<section class="a-block" aria-labelledby="site-setup-heading">
+  <h2 id="site-setup-heading">上线清单 <small>只有超级管理员看得到</small></h2>
   {% if not open_required and not open_optional %}
-    <p class="help">都完成了。</p>
+    <p>都完成了。</p>
   {% else %}
-    <p class="help">只有超级管理员能看到。{% if open_required %}<strong>还有 {{ open_required|length }} 项必做</strong>，{% endif %}{% if open_optional %}{{ open_optional|length }} 项建议做。{% endif %}</p>
+    <p>{% if open_required %}<strong>还有 {{ open_required|length }} 项必做</strong>{% if open_optional %}，{% endif %}{% endif %}{% if open_optional %}{{ open_optional|length }} 项建议做{% endif %}。</p>
     {% if open_required %}
-      <h3>必做</h3>
-      <ul class="site-setup" data-setup="required">
+      <ul class="a-checks site-setup w-mt-4" data-setup="required">
         {% for check in open_required %}
-          <li><strong>{% if check.url %}<a href="{{ check.url }}">{{ check.label }}</a>{% else %}{{ check.label }}{% endif %}</strong>：{{ check.detail }}</li>
+          <li><span class="a-tag a-tag--must">必做</span><span><strong>{% if check.url %}<a href="{{ check.url }}">{{ check.label }}</a>{% else %}{{ check.label }}{% endif %}</strong>：{{ check.detail }}</span></li>
         {% endfor %}
       </ul>
     {% endif %}
     {% if open_optional %}
-      <h3>建议</h3>
-      <ul class="site-setup" data-setup="optional">
-        {% for check in open_optional %}
-          <li><strong>{% if check.url %}<a href="{{ check.url }}">{{ check.label }}</a>{% else %}{{ check.label }}{% endif %}</strong>：{{ check.detail }}</li>
-        {% endfor %}
-      </ul>
+      <details{% if not open_required %} open{% endif %}>
+        <summary>建议做的 {{ open_optional|length }} 项</summary>
+        <ul class="a-checks site-setup w-mt-3" data-setup="optional">
+          {% for check in open_optional %}
+            <li><span class="a-tag">建议</span><span><strong>{% if check.url %}<a href="{{ check.url }}">{{ check.label }}</a>{% else %}{{ check.label }}{% endif %}</strong>：{{ check.detail }}</span></li>
+          {% endfor %}
+        </ul>
+      </details>
     {% endif %}
   {% endif %}
   {% if done %}
     <details>
       <summary>已完成 {{ done|length }} 项</summary>
-      <ul class="site-setup" data-setup="done">
+      <ul class="a-checks site-setup w-mt-3" data-setup="done">
         {% for check in done %}
-          <li>{{ check.label }}：{{ check.detail }}</li>
+          <li><span class="a-tag">已完成</span><span>{{ check.label }}：{{ check.detail }}</span></li>
         {% endfor %}
       </ul>
     </details>

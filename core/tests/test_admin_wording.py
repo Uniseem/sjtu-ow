@@ -166,11 +166,10 @@ def test_a_broken_po_file_is_refused_not_half_read(po, reason):
 def test_the_admin_has_no_wagtail_english_left(site, client):
     client.force_login(_user("root117@example.com", superuser=True))
     home = client.get("/admin/").content.decode()
+    # v6.67 (round 189): the dashboard's page search, site summary and the
+    # help menu (快捷键) are gone; nothing English came back with the change.
     assert "Search all pages" not in home
-    assert "搜索全部页面" in home
-    assert re.search(r"\d+ 个页面", home)
     assert "Shortcuts" not in home
-    assert "快捷键" in home
     assert "账号" in home
     assert "帐号" not in home
     root = Page.objects.get(depth=1)
@@ -271,56 +270,99 @@ def test_the_static_pages_list_speaks_chinese_filters_and_pages(site, client):
 
 @pytest.mark.django_db
 def test_the_menu_follows_the_design_order(site, client):
+    """Design 14.1 (v6.67, round 189): in the order of the work, the frequent
+    things on the first level; 「社区」 is split up."""
     client.force_login(_user("menu117@example.com", superuser=True))
     menu = _menu(client)
     tops = list(dict.fromkeys(item.split(" / ")[0] for item in menu))
-    wanted = [
-        "页面",
-        "图片",
-        "社区",
-        "成员分组",
+    assert [top for top in tops if top not in ("搜索", "账号")] == [
+        "首页",
+        "文章",
         "文章分类",
-        "用户",
-        "报告",
-        "设置",
-        "帮助",
-    ]
-    assert [top for top in tops if top in wanted] == wanted
-    community = [item.split(" / ")[1] for item in menu if item.startswith("社区 / ")]
-    assert community == [
+        "评论",
         "赛事",
         "报名审核",
-        "内战活动",
+        "内战",
         "战队",
+        "成员分组",
         "内容审核",
         "头像审核",
-        "评论",
+        "图片",
         "活动数据",
+        "网站页面",
+        "用户",
+        "设置",
+        "后台手册",
     ]
     assert "用户 / 用户" in menu
     assert "用户 / 用户组" in menu
     assert any(item.startswith("用户 / 功能权限 / ") for item in menu)
-    assert not any(
-        item.startswith(("设置 / 用户", "设置 / 组", "设置 / 功能权限"))
-        for item in menu
-    )
+    settings = [item.split(" / ", 1)[1] for item in menu if item.startswith("设置 / ")]
+    assert settings == [
+        "全站设置",
+        "字体库",
+        "排版设置",
+        "静态页面",
+        "图片集合",
+        "操作记录",
+    ]
 
 
 @pytest.mark.django_db
-def test_reports_and_help_are_for_superusers_and_content_editors(site, client):
-    for number, (groups, shown) in enumerate(
+def test_each_role_sees_only_its_own_work(site, client):
+    for number, (groups, wanted) in enumerate(
         (
-            (("内容编辑",), True),
-            (("赛事管理员", GROUP_SUBMITTER), False),
-            (("内战管理员", GROUP_SUBMITTER), False),
-            (("认证作者", GROUP_SUBMITTER), False),
+            (
+                ("内容编辑", GROUP_SUBMITTER),
+                [
+                    "首页",
+                    "文章",
+                    "文章分类",
+                    "评论",
+                    "成员分组",
+                    "内容审核",
+                    "头像审核",
+                    "图片",
+                    "活动数据",
+                    "网站页面",
+                    "后台手册",
+                ],
+            ),
+            (
+                ("赛事管理员", GROUP_SUBMITTER),
+                ["首页", "文章", "赛事", "报名审核", "图片", "活动数据", "后台手册"],
+            ),
+            (
+                ("内战管理员", GROUP_SUBMITTER),
+                ["首页", "文章", "内战", "图片", "活动数据", "后台手册"],
+            ),
+            (("认证作者", GROUP_SUBMITTER), ["首页", "文章", "图片", "后台手册"]),
         )
     ):
-        user = _user(f"role{number}-117@example.com", *groups)
-        client.force_login(user)
-        tops = {item.split(" / ")[0] for item in _menu(client)}
-        assert ("报告" in tops) is shown, groups
-        assert ("帮助" in tops) is shown, groups
+        client.force_login(_user(f"role{number}-189@example.com", *groups))
+        tops = list(dict.fromkeys(item.split(" / ")[0] for item in _menu(client)))
+        assert [top for top in tops if top not in ("搜索", "账号")] == wanted, groups
+        client.logout()
+
+
+@pytest.mark.django_db
+def test_wagtails_unused_entries_stay_out_of_every_menu(site, client):
+    """文档, 报告, 帮助 and the settings the club never touches (14.1, v6.67).
+    Until round 189 the editors saw 报告 and 帮助."""
+    for number, (groups, superuser) in enumerate(((("内容编辑",), False), ((), True))):
+        client.force_login(
+            _user(f"hidden{number}-189@example.com", *groups, superuser=superuser)
+        )
+        menu = _menu(client)
+        tops = {item.split(" / ")[0] for item in menu}
+        assert not tops & {"文档", "报告", "帮助", "社区", "页面"}, tops
+        for gone in (
+            "设置 / 站点",
+            "设置 / 重定向",
+            "设置 / 工作流",
+            "设置 / 工作流任务",
+        ):
+            assert gone not in menu
         client.logout()
 
 

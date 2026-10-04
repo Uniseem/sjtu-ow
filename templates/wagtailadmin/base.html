@@ -1,0 +1,11 @@
+{% extends "wagtailadmin/base.html" %}
+{% comment %}
+  The sidebar's mark (design 14.1, v6.67): the site's red square with the
+  white chevron (13.2.8) and 「管理后台」, not Wagtail's bird.
+{% endcomment %}
+{% block branding_logo %}
+  <span class="a-brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="9" fill="#9b3a33"/><path d="M8 21.5l8-8 8 8" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>管理后台</span>
+  </span>
+{% endblock %}
