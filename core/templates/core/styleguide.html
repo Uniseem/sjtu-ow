@@ -223,6 +223,18 @@
       </div>
       <div class="mt-8">{% include "components/empty_state.html" with title="还没有战队" message="第一支战队可以由你来建。" action_url="#sg-feedback" action_label="创建战队" %}</div>
       <nav class="c-pager" aria-label="分页示例"><span class="c-btn c-btn--secondary c-btn--sm" aria-disabled="true">{% include "components/icon.html" with name="arrow-left" %}上一页</span><span class="c-pager__pos"><strong>1</strong> / 7</span><a class="c-btn c-btn--secondary c-btn--sm" href="#sg-feedback">下一页{% include "components/icon.html" with name="arrow-right" %}</a></nav>
+      {# 右键菜单 (v6.65): the real one is built by js/contextmenu.js at the pointer; right-click anywhere here to see it. #}
+      <div class="c-ctxmenu static mt-8 w-max" role="presentation">
+        <span class="c-ctxmenu__item"><span>在新标签页打开</span></span>
+        <span class="c-ctxmenu__item"><span>复制链接</span></span>
+        <hr>
+        <span class="c-ctxmenu__item"><span>后退</span><kbd>Alt+←</kbd></span>
+        <span class="c-ctxmenu__item"><span>前进</span><kbd>Alt+→</kbd></span>
+        <span class="c-ctxmenu__item"><span>刷新</span><kbd>F5</kbd></span>
+        <hr>
+        <span class="c-ctxmenu__item"><span>复制本页链接</span></span>
+        <p class="c-ctxmenu__foot">按住 Shift 再右键：浏览器自带的菜单</p>
+      </div>
     </section>
 
     <section aria-labelledby="sg-prose">

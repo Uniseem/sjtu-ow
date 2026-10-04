@@ -942,6 +942,75 @@
     color: currentColor;
   }
 
+  /* Right-click menu (13.2.6, v6.65): js/contextmenu.js builds it at the
+     pointer; it looks like the account menu's panel. */
+  .c-ctxmenu {
+    position: fixed;
+    z-index: 70;
+    display: grid;
+    min-width: 13rem;
+    max-width: 18rem;
+    padding: 0.375rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-float);
+  }
+
+  .c-ctxmenu hr {
+    margin: 0.375rem 0;
+    border-top: 2px solid var(--color-bg);
+  }
+
+  .c-ctxmenu__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .c-ctxmenu__item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-ctxmenu__item:hover,
+  .c-ctxmenu__item:focus-visible {
+    outline: none;
+    background-color: var(--color-surface-2);
+  }
+
+  .c-ctxmenu__item kbd {
+    color: var(--color-fg-2);
+    font-family: inherit;
+    font-size: 0.875rem;
+  }
+
+  .c-ctxmenu__foot {
+    margin-top: 0.25rem;
+    padding: 0.375rem 0.75rem 0.25rem;
+    border-top: 2px solid var(--color-bg);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .c-ctxmenu-toast {
+    position: fixed;
+    z-index: 71;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-fg);
+    color: var(--color-bg);
+    font-size: 0.875rem;
+    pointer-events: none;
+  }
+
   /* A place's own moving scene comes twice (13.2.5, v5.1), by day and at
      night; only the current mode's is shown. */
   .c-scene--light {

@@ -31,6 +31,54 @@
     }
   }
 
+  // The masthead's <details> dropdowns (design 13.2.6, v6.65): a click
+  // outside, Esc, or opening another one closes them, so only one is ever
+  // open. They still open and close by their own button without this. The
+  // account menu is swapped in after load, hence one listener on document.
+  var DROPDOWNS = "details.c-menu, details.c-theme, details.c-drawer";
+
+  function closeDropdowns(except) {
+    var open = document.querySelectorAll(DROPDOWNS);
+    for (var d = 0; d < open.length; d += 1) {
+      if (open[d] !== except && open[d].open) {
+        open[d].open = false;
+      }
+    }
+  }
+
+  // "toggle" does not bubble, but a capturing listener still sees it.
+  document.addEventListener(
+    "toggle",
+    function (event) {
+      var target = event.target;
+      if (target.matches && target.matches(DROPDOWNS) && target.open) {
+        closeDropdowns(target);
+      }
+    },
+    true
+  );
+
+  document.addEventListener("click", function (event) {
+    var inside = event.target.closest && event.target.closest(DROPDOWNS);
+    closeDropdowns(inside);
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape") {
+      return;
+    }
+    var open = document.querySelector(
+      "details.c-menu[open], details.c-theme[open], details.c-drawer[open]"
+    );
+    if (open) {
+      open.open = false;
+      var summary = open.querySelector("summary");
+      if (summary) {
+        summary.focus();
+      }
+    }
+  });
+
   // Forms that delete, cancel or email people ask first (round 115). Inline
   // onsubmit is blocked by the site's CSP, so the question lives in the
   // form's data-confirm; HTMX forms use hx-confirm instead.
