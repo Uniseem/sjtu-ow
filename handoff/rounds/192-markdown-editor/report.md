@@ -162,3 +162,9 @@ preview: 200 <h2>测</h2>
 - `b23.tv` 短链第一次渲染时要联网查一次（预渲染或预览时），查不到就当普通链接
 - `journey.py pages` 没跑（测试机连不上，本机没有 Chromium）
 - 栏目介绍（`ArticleIndexPage.intro`）还是 Draftail 富文本，不在本轮范围
+
+## 推送后补的（同一轮，用户 10-04：「先把文档什么更新一下然后 push 吧」）
+
+- `handoff/REVIEW-GUIDE.md` 加「192 正文改成 Markdown」一节：手写 HTML 块的转义、预览进 innerHTML、上传接口、迁移依赖应用代码、正文里写死的图片地址、编辑页没在 `journey.py pages` 里跑过
+- `AGENTS.md` 目录表的 `content/` 一行写上 Markdown 相关的几个文件
+- 后台手册（`core/admin_manual.py`）：赛事管理员、内战管理员、内容编辑、认证作者各一句「用 Markdown 写、点「?」看写法、图片拖进来或粘贴」。只改了文字，`core/tests/test_admin_manual.py` 等 27 条通过，提交前又跑了全量

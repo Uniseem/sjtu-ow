@@ -16,7 +16,7 @@
 | 路径 | 内容 |
 |---|---|
 | `accounts/` | 用户、游戏 ID、段位、联系方式、功能权限（`permissions.can_use`） |
-| `content/` | 页面类型、文章分类、投稿、B 站嵌入、sitemap / robots |
+| `content/` | 页面类型、文章分类、投稿、B 站嵌入、sitemap / robots；正文的 Markdown 渲染（`markdown.py`）、后台编辑器（`widgets.py`、`markdown_views.py`）、旧内容转换（`legacy_body.py`，迁移要用） |
 | `core/` | 全站设置、邮件、字体、预渲染、健康检查、备份恢复与运维命令 |
 | `teams/` | 战队 |
 | `members/` | 成员展示、成员分组（066 轮代替了原来的组队大厅） |
