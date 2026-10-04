@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 from django.core import mail
 from django.urls import reverse
@@ -416,23 +418,62 @@ def test_me_teams_lists_membership_and_applications(client, team, applicant, cap
 
 @pytest.mark.django_db
 def test_create_is_rate_limited(client, captain):
-    client.force_login(captain)
+    """Round 181: until then the fourth team was refused by the captain cap
+    (3), so the daily limit itself was never reached. Raise the cap first."""
     from django.core.cache import cache
 
+    from teams.views import CREATE_LIMIT
+
+    site = SiteSettings.load()
+    site.team_max_captained = CREATE_LIMIT + 2
+    site.save()
+    client.force_login(captain)
     cache.clear()
-    for index in range(services.max_captained()):
-        response = client.post(
+    for index in range(CREATE_LIMIT):
+        client.post(
             reverse("team_create"),
             {"name": f"限流队{index}", "description": "", "is_recruiting": "on"},
-            follow=True,
         )
-        assert response.status_code == 200
+    assert Team.objects.filter(name__startswith="限流队").count() == CREATE_LIMIT
     response = client.post(
         reverse("team_create"),
         {"name": "第四支", "description": "", "is_recruiting": "on"},
         follow=True,
     )
     assert Team.objects.filter(name="第四支").count() == 0
+    assert "今天创建的战队太多了" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_applications_are_rate_limited(client, applicant):
+    """Round 181: 20 a day; the guard sits before can_apply would be asked."""
+    from django.core.cache import cache
+
+    from teams.views import APPLY_LIMIT, DAY
+
+    cache.clear()
+    with mock.patch("teams.views.over_limit", return_value=True) as limited:
+        captain = _user("busy-cap@example.com", "忙队长")
+        team = services.create_team(user=captain, name="热门战队")
+        client.force_login(applicant)
+        response = client.post(
+            reverse("team_apply", args=[team.pk]), {"role_tank": "on"}, follow=True
+        )
+    assert limited.call_args.args[1:] == (APPLY_LIMIT, DAY)
+    assert not team.applications.exists()
+    assert "今天的入队申请太多了" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_taken_name_is_marked_on_the_name_field(client, captain, team):
+    other = _user("second-cap@example.com", "另一个队长")
+    client.force_login(other)
+    response = client.post(
+        reverse("team_create"),
+        {"name": team.name.upper(), "description": "", "is_recruiting": "on"},
+    )
+    assert response.status_code == 200
+    assert response.context["form"].errors["name"] == [services.NAME_TAKEN]
 
 
 @pytest.mark.django_db

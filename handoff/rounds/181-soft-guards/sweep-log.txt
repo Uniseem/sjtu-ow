@@ -1,0 +1,32 @@
+日志：2a0e:6a80:3:9c7:::/srv/sjtu-ow-check/runs/20261004-155235-656e931.log
+测试机 kvm17243： cc40dd8 180: 队长停用后，他还在招募的战队自动改成暂不招募（设计 v6.62） + 工作区改动
+基线（并行负载下，未变异）：
+  w0: exit=0 1690 passed, 2 deselected in 178.53s (0:02:58) []
+  w1: exit=0 1690 passed, 2 deselected in 175.83s (0:02:55) []
+  w2: exit=0 1690 passed, 2 deselected in 179.39s (0:02:59) []
+[1/26] ✓ accounts/admin_users.py:41 SiteUserEditForm.clean  if stopping and not (cleaned.get("deactivation_note") or "").st
+[2/26] ✓ accounts/admin_users.py:72 UserEditView.save_instance  if teams
+[3/26] ✗ accounts/views.py:159 me_game_accounts  if at_limit
+[4/26] ✗ accounts/views.py:181 me_game_accounts  if form and at_limit
+[5/26] ✓ accounts/views.py:241 me_game_account_delete  if blocked
+[6/26] ✓ accounts/views.py:375 me_export  if over_limit(f"me-export:{request.user.pk}", EXPORTS_PER_HOUR,
+[7/26] ✓ comments/wagtail_hooks.py:55 CommentEditView.get_form_class.CommentAdminForm.clean  if problem
+[8/26] ✓ content/wagtail_hooks.py:58 ArticleCategoryDeleteView.dispatch  if count
+[9/26] ✗ core/fonts/admin_views.py:318 font_face_download  if not face.slices
+[10/26] ✓ core/fonts/admin_views.py:341 font_face_delete  if services.is_face_in_use(face)
+[11/26] ✓ core/fonts/admin_views.py:387 typography  if request.method == "POST"
+[12/26] ✗ core/prerender_admin.py:65 prerender_rebuild  if not prerender.is_enabled()
+[13/26] ✗ moderation/admin_views.py:172 moderation_action  if action not in ACTIONS
+[14/26] ✗ moderation/admin_views.py:212 moderation_scan  if not services.is_enabled()
+[15/26] ✓ moderation/admin_views.py:214 moderation_scan  if not cache.add(SCAN_LOCK_KEY, request.user.pk, wait + SCAN_LO
+[16/26] ✓ scrims/wagtail_hooks.py:134 ScrimDeleteView.dispatch  if not services.can_delete(self.object)
+[17/26] ✗ teams/views.py:106 team_create  if over_limit(f"team_create:{request.user.pk}", CREATE_LIMIT, D
+[18/26] ✗ teams/views.py:146 _show_team_error  if str(exc) == services.NAME_TAKEN
+[19/26] ✗ teams/views.py:158 team_apply  if not allowed
+[20/26] ✗ teams/views.py:160 team_apply  if over_limit(f"team_apply:{request.user.pk}", APPLY_LIMIT, DAY
+[21/26] ✓ tournaments/registration_views.py:41 register  if not teams
+[22/26] ✓ tournaments/wagtail_hooks.py:61 TournamentAdminForm.clean  if warning
+[23/26] ✓ tournaments/wagtail_hooks.py:65 TournamentAdminForm.clean  if "auto_approve" in self.changed_data and services.has_registr
+[24/26] ✓ tournaments/wagtail_hooks.py:69 TournamentAdminForm.clean  if "registration_mode" in self.changed_data and services.has_en
+[25/26] ✗ tournaments/wagtail_hooks.py:149 TournamentSaveMixin.save_instance  if warning
+[26/26] ✓ tournaments/wagtail_hooks.py:187 TournamentDeleteView.dispatch  if not services.can_delete(self.object)
