@@ -1,6 +1,8 @@
 """Article category snippet, submitter admin chrome, and page explorer filter."""
 
+from django.contrib import messages
 from django.db.models import Q
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.functional import cached_property
 from wagtail import hooks
@@ -9,8 +11,12 @@ from wagtail.admin.ui.components import Component
 from wagtail.admin.ui.menus.pages import PageMenuItem
 from wagtail.admin.ui.tables import BooleanColumn
 from wagtail.models import WorkflowState
+from wagtail.permission_policies import ModelPermissionPolicy
 from wagtail.permission_policies.pages import PagePermissionPolicy
+from wagtail.permissions import register_permission_policy
 from wagtail.snippets.models import register_snippet
+from wagtail.snippets.views.snippets import DeleteView as SnippetDeleteView
+from wagtail.snippets.views.snippets import IndexView as SnippetIndexView
 from wagtail.snippets.views.snippets import SnippetViewSet
 
 from content.models import ArticleCategory, ArticlePage
@@ -18,6 +24,46 @@ from content.permissions import is_submitter_only, sees_only_own_drafts
 from content.services import article_create_admin_url
 
 SUBMITTER_MENU_ALLOWLIST = frozenset({"images", "home"})
+
+
+class ArticleCategoryPermissionPolicy(ModelPermissionPolicy):
+    """Design 5.3 (v6.59): a category articles still use cannot be deleted;
+    they hold it with PROTECT and the delete ended in a server error. Bulk
+    delete asks this per category, so it skips those too."""
+
+    def user_has_permission_for_instance(self, user, action, instance):
+        if action == "delete" and instance.articles.exists():
+            return False
+        return super().user_has_permission_for_instance(user, action, instance)
+
+
+register_permission_policy(
+    ArticleCategory, ArticleCategoryPermissionPolicy(ArticleCategory)
+)
+
+
+class ArticleCategoryIndexView(SnippetIndexView):
+    def get_delete_url(self, instance):
+        # The list asks only the model-level permission (as scrims, 115).
+        if instance.articles.exists():
+            return None
+        return super().get_delete_url(instance)
+
+
+class ArticleCategoryDeleteView(SnippetDeleteView):
+    """The address typed or kept from before: say why, instead of a 500."""
+
+    def dispatch(self, request, *args, **kwargs):
+        count = self.object.articles.count()
+        if count:
+            messages.error(
+                request,
+                f"还有 {count} 篇文章在「{self.object.name}」里，"
+                "先把它们改到别的分类再删。",
+            )
+            edit = ArticleCategory.snippet_viewset.get_url_name("edit")
+            return redirect(edit, self.object.pk)
+        return super().dispatch(request, *args, **kwargs)
 
 
 class ArticleCategoryViewSet(SnippetViewSet):
@@ -38,6 +84,8 @@ class ArticleCategoryViewSet(SnippetViewSet):
     search_fields = ["name", "slug"]
     ordering = ["sort_order", "name"]
     copy_view_enabled = False
+    index_view_class = ArticleCategoryIndexView
+    delete_view_class = ArticleCategoryDeleteView
 
 
 register_snippet(ArticleCategoryViewSet)
