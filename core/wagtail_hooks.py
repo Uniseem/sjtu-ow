@@ -176,3 +176,26 @@ def register_manual_menu_item():
     return ManualMenuItem(
         "后台手册", reverse("admin_manual"), icon_name="help", order=990
     )
+
+
+class ActivityMenuItem(MenuItem):
+    """「活动数据」 for the officers (design 14.2, v6.53)."""
+
+    def is_shown(self, request):
+        from core.activity import can_view
+
+        return can_view(request.user)
+
+
+@hooks.register("register_admin_urls")
+def register_activity_url():
+    from core.activity import activity_view
+
+    return [path("activity/", activity_view, name="admin_activity")]
+
+
+@hooks.register("register_community_menu_item")
+def register_activity_menu_item():
+    return ActivityMenuItem(
+        "活动数据", reverse("admin_activity"), icon_name="table", order=90
+    )

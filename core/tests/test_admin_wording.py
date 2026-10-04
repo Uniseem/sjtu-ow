@@ -281,6 +281,7 @@ def test_the_menu_follows_the_design_order(site, client):
         "内容审核",
         "头像审核",
         "评论",
+        "活动数据",
     ]
     assert "用户 / 用户" in menu
     assert "用户 / 用户组" in menu

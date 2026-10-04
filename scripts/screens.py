@@ -49,6 +49,7 @@ PAGES = [
     ("mail-tournament-reminder", "member", "/_styleguide/emails/tournament-reminder/"),
     ("mail-tournament-moved", "member", "/_styleguide/emails/tournament-moved/"),
     ("mail-member-left", "member", "/_styleguide/emails/member-left/"),
+    ("admin-activity", "officer", "/admin/activity/"),
 ]
 
 
@@ -127,6 +128,9 @@ def seed() -> dict:
     member = person("member@screens.test", "截图队员", "Member#5123")
     captain = person("captain@screens.test", "截图队长", "Captain#7001")
     mate = person("mate@screens.test", "截图队友", "Mate#7002")
+    # For admin pages (round 162): a superuser, signed in like the others.
+    officer = person("officer@screens.test", "截图站长", "Officer#7003")
+    User.objects.filter(pk=officer.pk).update(is_superuser=True, is_staff=True)
 
     team = team_services.create_team(
         user=captain, name="截图战队", description="每周二、四晚上训练。"
@@ -185,7 +189,7 @@ def seed() -> dict:
     )
 
     sessions = {}
-    for name, user in (("member", member), ("captain", captain)):
+    for name, user in (("member", member), ("captain", captain), ("officer", officer)):
         client = Client()
         client.force_login(user)
         sessions[name] = client.cookies["sessionid"].value
