@@ -114,7 +114,7 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 
 **仓库的 `deploy/Caddyfile` 改了之后**，`Caddyfile.vps` 要跟着重新生成：它就是仓库那份在 `admin off` 下面插上一行说的 `servers` 块（105 用 `awk` 插入、`diff` 核对；120 起块里是两行：`trusted_proxies static private_ranges 100.96.0.0/12`、`trusted_proxies_strict`）；然后 `caddy validate`、`$C restart proxy`。升级后用 `docker images | grep sjtu-ow` 看一眼镜像时间：105 有一次 `build -q` 什么都没构建也没报错，容器跑的还是旧镜像
 
-这台机器上还跑着 WordPress、HedgeDoc、FileCodeBox、相册和几个监控进程，规矩和测试机一样：只动 `/srv/sjtu-ow` 和 `sjtu-ow` 这个 Compose 项目，不做全局清理。**磁盘**（183）：158 GB 用了八成，`/healthz` 的磁盘检查（剩余要大于 20%）因此报 503、`web` 容器显示 unhealthy，网站本身正常。Docker 构建缓存 19.5 GB，其中 15.6 GB 是本项目每次升级攒的、4 GB 是别的项目的；`buildx prune --filter id=…` 单条删不动（条目互为父子），整体 `docker builder prune` 是全局清理，要用户点头升级照 README「生产 / 测试环境启动」，命令换成上面那条，升级后全量 `prerender`。
+这台机器上还跑着 WordPress、HedgeDoc、FileCodeBox、相册和几个监控进程，规矩和测试机一样：只动 `/srv/sjtu-ow` 和 `sjtu-ow` 这个 Compose 项目，不做全局清理。**磁盘**（183、186）：158 GB 的盘上面还有别的服务，183 时只剩 19%，`/healthz` 的磁盘检查（剩余要大于 20%）报 503。大头是 Docker 构建缓存：本项目每次升级 `docker compose build` 留下约 200 MB（70 多次构建攒了 15.6 GB），另一个项目 4 GB。186 经用户同意跑了 `docker builder prune -af`（全局，清掉 19.8 GB），剩余回到 31%。以后升级多了还会涨，`docker buildx du` 看大小，再清要用户点头。升级照 README「生产 / 测试环境启动」，命令换成上面那条，升级后全量 `prerender`。
 
 ## 硬规则
 
