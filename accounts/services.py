@@ -353,12 +353,65 @@ def delete_account(user) -> None:
         ).delete()
 
 
+# Every column that points at a person, and where 「导出个人信息」 puts it
+# (round 172; comments, likes and feature rules had been left out since 072).
+# A test lists the columns again: a new one must be added to one of the two.
+EXPORTED = {
+    "accounts.AvatarSubmission.user": "avatar_uploads",
+    "accounts.ContactMethod.user": "contact_methods",
+    "accounts.FeatureUserRule.user": "feature_rules",
+    "accounts.GameAccount.user": "game_accounts",
+    "comments.Comment.author": "comments",
+    "comments.CommentLike.user": "comment_likes",
+    "content.ArticlePage.author": "articles",
+    "members.MemberGroupMembership.user": "member_groups",
+    "scrims.ScrimSignup.user": "scrim_signups",
+    "teams.TeamAlumnus.user": "team_alumni",
+    "teams.TeamApplication.applicant": "team_applications",
+    "teams.TeamMembership.user": "teams",
+    "tournaments.IndividualSignup.user": "individual_signups",
+    "tournaments.RegistrationMember.user": "tournament_registrations",
+}
+STAFF_ACTION = "记的是谁做了这个操作（管理员、队长），不是关于这个人的资料"
+WAGTAIL_PAGE = "Wagtail 内部的页面所有者和锁定人；文章按作者导出"
+NOT_EXPORTED = {
+    "accounts.AvatarSubmission.reviewed_by": STAFF_ACTION,
+    "accounts.FeatureGroupRestriction.updated_by": STAFF_ACTION,
+    "accounts.FeatureUserRule.updated_by": STAFF_ACTION,
+    "comments.Comment.reply_to_user": "别人回复这个人的评论，是别人写的内容",
+    "content.ArticleIndexPage.locked_by": WAGTAIL_PAGE,
+    "content.ArticleIndexPage.owner": WAGTAIL_PAGE,
+    "content.ArticlePage.locked_by": WAGTAIL_PAGE,
+    "content.ArticlePage.owner": WAGTAIL_PAGE,
+    "content.HomePage.locked_by": WAGTAIL_PAGE,
+    "content.HomePage.owner": WAGTAIL_PAGE,
+    "content.StandardPage.locked_by": WAGTAIL_PAGE,
+    "content.StandardPage.owner": WAGTAIL_PAGE,
+    "core.Broadcast.sent_by": STAFF_ACTION,
+    "core.FontFamily.created_by": STAFF_ACTION,
+    "moderation.ModerationItem.author": (
+        "AI 审核的内部复核记录（设计 5.5）；"
+        "送审的内容本身在昵称、宣言、文章、评论里已导出"
+    ),
+    "moderation.ModerationItem.reviewed_by": STAFF_ACTION,
+    "scrims.Scrim.created_by": STAFF_ACTION,
+    "teams.TeamApplication.decided_by": STAFF_ACTION,
+    "tournaments.Registration.submitted_by": (
+        STAFF_ACTION + "；本人在名单里的那条按 tournament_registrations 导出"
+    ),
+    "tournaments.RegistrationStatusLog.actor_user": STAFF_ACTION,
+    "tournaments.Tournament.created_by": STAFF_ACTION,
+}
+
+
 def personal_data(user) -> dict:
     """Everything the site holds about the user, for download (design 3.8).
 
     Only the user's own data: no teammates' contacts, no admin records.
     """
+    from accounts.models import FeatureUserRule
     from accounts.roles import ROLE_LABELS, parse_roles
+    from comments.models import Comment, CommentLike
     from content.models import ArticlePage
     from members.models import MemberGroupMembership
     from scrims.models import ScrimSignup
@@ -492,6 +545,34 @@ def personal_data(user) -> dict:
         "articles": [
             {"title": page.title, "url": page.get_url()}
             for page in ArticlePage.objects.filter(author=user)
+        ],
+        "comments": [
+            {
+                "article": comment.page.title,
+                "body": comment.body,
+                "created_at": when(comment.created_at),
+                "edited_at": when(comment.edited_at),
+                "state": "作者已删除"
+                if comment.is_deleted
+                else ("已隐藏" if comment.is_hidden else "公开"),
+            }
+            for comment in Comment.objects.filter(author=user)
+            .select_related("page")
+            .order_by("created_at")
+        ],
+        "comment_likes": [
+            {"article": like.comment.page.title, "liked_at": when(like.created_at)}
+            for like in CommentLike.objects.filter(user=user)
+            .select_related("comment__page")
+            .order_by("created_at")
+        ],
+        "feature_rules": [
+            {
+                "feature": rule.get_feature_display(),
+                "allowed": rule.allowed,
+                "reason": rule.note,
+            }
+            for rule in FeatureUserRule.objects.filter(user=user)
         ],
     }
 
