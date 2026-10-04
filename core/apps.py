@@ -17,6 +17,7 @@ class CoreConfig(AppConfig):
 
         register("account", template_slot("slots/account.html"))
         register("messages", template_slot("slots/messages.html"))
+        register("footer-account", template_slot("slots/footer_account.html"))
         # Design 5.2 (v6.48): 「我的安排」 on the homepage.
         from core.agenda import my_agenda_slot
 

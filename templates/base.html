@@ -123,12 +123,7 @@
               <a href="/scrims/">内战</a>
               <a href="{% url 'submit' %}">我要投稿</a>
             </nav>
-            <nav class="c-footer__col font-nav" aria-label="账号">
-              <h2 class="c-eyebrow">账号</h2>
-              <a href="{% url 'me_profile' %}">个人中心</a>
-              <a href="{% url 'account_login' %}">登录</a>
-              <a href="{% url 'account_signup' %}">注册</a>
-            </nav>
+            {% include "slots/footer_account.html" %}
             <nav class="c-footer__col font-nav" aria-label="关于本站">
               <h2 class="c-eyebrow">关于</h2>
               <a href="/about/">关于我们</a>
