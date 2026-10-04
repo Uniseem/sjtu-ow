@@ -63,8 +63,10 @@ def test_upcoming_scrims_start_soonest_first(db):
 
 
 @pytest.mark.django_db
-def test_the_homepage_says_so_when_there_are_none(client, homepage):
-    assert "最近没有内战" in client.get("/").content.decode("utf-8")
+def test_the_homepage_shows_no_list_when_there_are_none(client, homepage):
+    """v6.68 (round 190): nothing in the list's place, not a sentence."""
+    html = client.get("/").content.decode("utf-8")
+    assert 'data-next-up="scrim"' not in html and "最近没有内战" not in html
 
 
 @pytest.mark.django_db

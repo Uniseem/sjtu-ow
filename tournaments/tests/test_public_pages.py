@@ -99,12 +99,12 @@ def _card(client):
 
 
 @pytest.mark.django_db
-def test_the_homepage_says_so_when_there_is_no_tournament(client, homepage):
-    """v6.66 (round 188): an empty card in the same place, not nothing."""
+def test_the_homepage_leaves_the_card_out_when_there_is_no_tournament(client, homepage):
+    """v6.68 (round 190): no card at all, not an empty one."""
     _tournament("草稿赛事", opens=-DAY, closes=DAY, status=TournamentStatus.DRAFT)
     _tournament("取消的赛事", opens=-DAY, closes=DAY, status=TournamentStatus.CANCELLED)
     card = _card(client)
-    assert 'data-next-up="no-tournament"' in card and "还没有赛事" in card
+    assert "c-feature" not in card and "还没有赛事" not in card
 
 
 @pytest.mark.django_db

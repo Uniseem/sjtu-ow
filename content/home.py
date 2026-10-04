@@ -121,11 +121,6 @@ def scrim_rows(scrims, limit: int = SCRIM_ROW_COUNT) -> list[ScrimRow]:
     ]
 
 
-def blanks(items, size: int) -> range:
-    """Empty places that keep a homepage block its size (design 5.2, v6.66)."""
-    return range(max(0, size - len(items)))
-
-
 @dataclass
 class Age:
     years: int
@@ -208,12 +203,8 @@ def homepage(pinned) -> dict:
         "age": community_age(site.founded_on),
         "feature": feature_tournament(home_tournaments()),
         "scrim_rows": rows,
-        "scrim_blanks": blanks(rows, SCRIM_ROW_COUNT),
         "news": news,
-        "news_blanks": blanks(news, LATEST_ARTICLE_COUNT),
         "pinned_ids": {article.pk for article in pinned},
         "notices": notice_rows,
-        "notice_blanks": blanks(notice_rows, NOTICE_COUNT),
         "home_teams": home_teams,
-        "team_blanks": blanks(home_teams, HOME_TEAM_COUNT),
     }

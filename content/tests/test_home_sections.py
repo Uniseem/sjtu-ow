@@ -269,14 +269,15 @@ def test_upcoming_shows_the_open_tournament_and_scrim_signups(client, site):
 
 
 @pytest.mark.django_db
-def test_an_empty_agenda_keeps_both_places(client, site):
-    """v6.66 (round 188): the two columns stay; each says it is empty."""
+def test_an_empty_agenda_keeps_its_place_and_shows_nothing(client, site):
+    """v6.68 (round 190): the two columns stay; nothing stands in for what is
+    missing — no empty card, no empty rows, no 「还没有……」."""
     html = _main(client.get("/"))
     start = html.index('aria-labelledby="home-upcoming"')
     upcoming = html[start : html.index("</section>", start)]
     assert 'class="c-upcoming c-upcoming--two"' in upcoming
-    assert 'data-next-up="no-tournament"' in upcoming and "还没有赛事" in upcoming
-    assert 'data-next-up="no-scrim"' in upcoming and "最近没有内战" in upcoming
+    assert "data-next-up" not in upcoming
+    assert "还没有" not in upcoming and "最近没有内战" not in upcoming
 
 
 # --- 资讯 and 公告 ---
@@ -313,50 +314,37 @@ def _block(html, start_marker, end_marker):
 
 
 @pytest.mark.django_db
-def test_every_block_keeps_its_places_when_there_is_little(client, site):
-    """v6.66 (round 188): 「还有资讯和公告等，也固定下大小和条数」. One of
-    each, and the rest of each block is empty places of the same size."""
+def test_every_block_shows_only_what_there_is(client, site):
+    """v6.66 locked the places and the most of each; v6.68 (round 190): no
+    empty stand-ins, the rest of a block is the page's ground. The fixed
+    columns stay, so one card keeps one column's size."""
     _, news, author, category = site
     _article(news, category, author, title="唯一的文章", slug="only")
     notice = ArticleCategory.objects.get(slug="notice")
     _article(news, notice, author, title="唯一的公告", slug="only-notice")
     make_scrim(title="唯一的内战", starts_at=timezone.now() + timedelta(days=20))
     html = _main(client.get("/"))
+    assert "--empty" not in html and "data-home-empty" not in html
 
     upcoming = _block(html, 'aria-labelledby="home-upcoming"', "</section>")
-    assert upcoming.count('data-next-up="scrim"') == 1
-    assert upcoming.count("c-row c-row--empty") == home_data.SCRIM_ROW_COUNT - 1
-    assert "最近没有内战" not in upcoming
+    assert upcoming.count('class="c-row"') == 1
+    assert 'class="c-upcoming c-upcoming--two"' in upcoming
 
     grid = _block(html, 'class="c-media-grid c-media-grid--two"', "<aside")
     assert grid.count('<article class="c-media">') == 2  # the article, the notice
-    assert grid.count("c-media c-media--empty") == home_data.LATEST_ARTICLE_COUNT - 2
-    assert "还没有文章" not in grid
-
     notices = _block(html, 'aria-labelledby="home-notices"', "</aside>")
-    assert notices.count("c-row c-row--empty") == home_data.NOTICE_COUNT - 1
-    assert "还没有公告" not in notices
+    assert notices.count('class="c-row"') == 1
 
     teams = _block(html, 'aria-labelledby="home-teams"', "</section>")
-    assert (
-        teams.count("c-teams__item c-teams__item--empty") == home_data.HOME_TEAM_COUNT
-    )
-    assert 'data-home-empty="teams"' in teams and "还没有战队" in teams
-    assert "全部战队" in teams
+    assert "全部战队" in teams and "c-teams" not in teams
+    for words in ("还没有文章", "还没有公告", "还没有战队", "最近没有内战"):
+        assert words not in html, words
 
-
-@pytest.mark.django_db
-def test_an_empty_homepage_says_so_in_the_first_place_of_each(client, site):
-    html = _main(client.get("/"))
-    grid = _block(html, 'class="c-media-grid c-media-grid--two"', "<aside")
-    assert grid.count("c-media c-media--empty") == home_data.LATEST_ARTICLE_COUNT
-    assert 'data-home-empty="news"' in grid and grid.count("还没有文章") == 1
-    notices = _block(html, 'aria-labelledby="home-notices"', "</aside>")
-    assert notices.count("c-row c-row--empty") == home_data.NOTICE_COUNT
-    assert notices.count("还没有公告") == 1
-    upcoming = _block(html, 'aria-labelledby="home-upcoming"', "</section>")
-    assert upcoming.count("c-row c-row--empty") == home_data.SCRIM_ROW_COUNT
-    assert upcoming.count("最近没有内战") == 1
+    captain = player("cap190@example.com", "唯一的队长")
+    team_services.create_team(user=captain, name="唯一的战队")
+    teams = _block(_main(client.get("/")), 'aria-labelledby="home-teams"', "</section>")
+    assert 'class="c-teams c-teams--six"' in teams
+    assert teams.count('class="c-teams__item') == 1
 
 
 @pytest.mark.django_db
@@ -570,3 +558,19 @@ def test_the_feature_card_says_when_they_play(client, site):
     _tournament("带比赛时间的赛事", starts_at=starts)
     html = _main(client.get("/"))
     assert f"· {timezone.localtime(starts):%m.%d} 比赛 ·" in html
+
+
+def test_the_scrims_keep_the_right_column_without_a_tournament():
+    """v6.68 (round 190): with no card beside it the list would flow into the
+    first column; it is pinned to the second on wide screens."""
+    from pathlib import Path
+
+    from django.conf import settings
+
+    css = (Path(settings.BASE_DIR) / "assets" / "css" / "input.css").read_text(
+        encoding="utf-8"
+    )
+    rule = css[css.index(".c-upcoming--two > .c-rows {") :]
+    assert "grid-column: 2;" in rule[: rule.index("}")]
+    card = css[css.index(".c-upcoming--two > .c-feature {") :]
+    assert "grid-column: 1;" in card[: card.index("}")]
