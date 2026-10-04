@@ -219,8 +219,8 @@ def test_home_uses_pinned_articles_when_present(client):
     # Round 065 (design 5.2): the older pinned article leads, the latest follows.
     assert html.index("置顶一篇") < html.index("最新一篇")
     # Round 056: the tournament and scrim blocks used to say "即将开放";
-    # v3.0 (round 082) has one 近期安排 card that says when it is empty.
-    assert "最近没有安排" in html
+    # since v6.66 (round 188) each says so in its own place.
+    assert "还没有赛事" in html and "最近没有内战" in html
     assert latest.title == "最新一篇"
 
 

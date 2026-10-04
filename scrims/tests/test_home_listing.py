@@ -32,23 +32,25 @@ def _in(days, **kwargs):
 
 
 @pytest.mark.django_db
-def test_the_homepage_lists_the_next_seven_days(client, homepage):
+def test_the_homepage_lists_the_next_five_however_far_off(client, homepage):
+    """v6.66 (round 188): until then only the next 7 days, so the user's
+    scrim posted further ahead never reached the homepage."""
     _in(2, title="后天的内战")
-    _in(6.9, title="快满七天的内战")
-    _in(7.1, title="超过七天的内战")
+    _in(30, title="一个月后的内战")
+    for day in (40, 41, 42):
+        _in(day, title=f"{day}天后的内战")
+    _in(50, title="第六场内战")
     _in(-0.1, title="已经开始的内战")
     _in(2, title="草稿内战", status=ScrimStatus.DRAFT)
     _in(2, title="取消的内战", status=ScrimStatus.CANCELLED)
 
     html = client.get("/").content.decode("utf-8")
-    # 近期 keeps the 7-day window (design 5.2); nothing else on the homepage
-    # lists scrims further out.
     start = html.index('aria-labelledby="home-upcoming"')
     next_up = html[start : html.index("</section>", start)]
 
-    assert "后天的内战" in next_up
-    assert "快满七天的内战" in next_up
-    for hidden in ("超过七天的内战", "已经开始的内战", "草稿内战", "取消的内战"):
+    assert next_up.count('data-next-up="scrim"') == 5
+    assert next_up.index("后天的内战") < next_up.index("一个月后的内战")
+    for hidden in ("第六场内战", "已经开始的内战", "草稿内战", "取消的内战"):
         assert hidden not in html, hidden
     assert "后续里程碑" not in html
 
@@ -62,7 +64,7 @@ def test_upcoming_scrims_start_soonest_first(db):
 
 @pytest.mark.django_db
 def test_the_homepage_says_so_when_there_are_none(client, homepage):
-    assert "最近没有安排" in client.get("/").content.decode("utf-8")
+    assert "最近没有内战" in client.get("/").content.decode("utf-8")
 
 
 @pytest.mark.django_db
@@ -73,10 +75,11 @@ def test_publishing_a_scrim_refreshes_the_homepage(prerender_on):
 
 
 @pytest.mark.django_db
-def test_the_homepage_is_refreshed_as_the_scrim_enters_the_window_and_starts(
+def test_the_homepage_is_refreshed_when_the_scrim_closes_and_starts(
     prerender_on, django_capture_on_commit_callbacks
 ):
-    """Entering the 7-day window and starting both change the block."""
+    """Sign-up closing changes its status there and starting takes it off.
+    Until round 188 also when it entered the 7-day window."""
     from django_tasks_db.models import DBTaskResult
 
     scrim = _in(10, status=ScrimStatus.DRAFT)
@@ -88,11 +91,10 @@ def test_the_homepage_is_refreshed_as_the_scrim_enters_the_window_and_starts(
         for row in DBTaskResult.objects.filter(task_path="core.tasks.prerender_page")
         if row.args_kwargs["args"] == ["/"]
     }
-    # Besides the immediate refresh that publishing itself asks for.
-    assert {
-        scrim.starts_at - timedelta(days=services.HOME_SCRIM_DAYS),
-        scrim.starts_at,
-    } <= home_runs
+    # Besides the refresh that publishing itself asks for (a few seconds out).
+    soon = timezone.now() + timedelta(minutes=1)
+    later = {moment for moment in home_runs if moment > soon}
+    assert later == {scrim.signup_deadline, scrim.starts_at}
 
 
 @pytest.mark.django_db

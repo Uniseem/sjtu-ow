@@ -234,14 +234,15 @@ def test_the_feature_is_the_tournament_that_closes_soonest(site):
 
 
 @pytest.mark.django_db
-def test_scrim_rows_keep_the_first_four_by_start(site):
+def test_scrim_rows_keep_the_first_five_by_start(site):
+    """v6.66 (round 188): five, not four."""
     now = timezone.now()
     scrims = [
         make_scrim(title=f"内战{day}", starts_at=now + timedelta(days=day))
-        for day in (5, 1, 3, 2, 4)
+        for day in (5, 1, 6, 3, 2, 4)
     ]
     rows = home_data.scrim_rows(scrims)
-    assert [row.scrim.title for row in rows] == ["内战1", "内战2", "内战3", "内战4"]
+    assert [row.scrim.title for row in rows] == [f"内战{day}" for day in range(1, 6)]
     assert all(row.capacity == row.scrim.players_needed for row in rows)
 
 
@@ -268,8 +269,14 @@ def test_upcoming_shows_the_open_tournament_and_scrim_signups(client, site):
 
 
 @pytest.mark.django_db
-def test_an_empty_agenda_says_so(client, site):
-    assert "最近没有安排" in _main(client.get("/"))
+def test_an_empty_agenda_keeps_both_places(client, site):
+    """v6.66 (round 188): the two columns stay; each says it is empty."""
+    html = _main(client.get("/"))
+    start = html.index('aria-labelledby="home-upcoming"')
+    upcoming = html[start : html.index("</section>", start)]
+    assert 'class="c-upcoming c-upcoming--two"' in upcoming
+    assert 'data-next-up="no-tournament"' in upcoming and "还没有赛事" in upcoming
+    assert 'data-next-up="no-scrim"' in upcoming and "最近没有内战" in upcoming
 
 
 # --- 资讯 and 公告 ---
@@ -293,10 +300,63 @@ def test_the_news_block_is_four_picture_cards_newest_first(client, site):
     for index in range(7):
         _article(news, category, author, title=f"文章{index}", slug=f"a{index}")
     html = _main(client.get("/"))
-    start = html.index('class="c-media-grid"')
+    start = html.index('class="c-media-grid c-media-grid--two"')
     grid = html[start : html.index('aria-labelledby="home-notices"')]
     assert grid.count('<article class="c-media">') == home_data.LATEST_ARTICLE_COUNT
     assert grid.index("文章6") < grid.index("文章5")
+    assert "c-media--empty" not in grid  # all four places taken
+
+
+def _block(html, start_marker, end_marker):
+    start = html.index(start_marker)
+    return html[start : html.index(end_marker, start)]
+
+
+@pytest.mark.django_db
+def test_every_block_keeps_its_places_when_there_is_little(client, site):
+    """v6.66 (round 188): 「还有资讯和公告等，也固定下大小和条数」. One of
+    each, and the rest of each block is empty places of the same size."""
+    _, news, author, category = site
+    _article(news, category, author, title="唯一的文章", slug="only")
+    notice = ArticleCategory.objects.get(slug="notice")
+    _article(news, notice, author, title="唯一的公告", slug="only-notice")
+    make_scrim(title="唯一的内战", starts_at=timezone.now() + timedelta(days=20))
+    html = _main(client.get("/"))
+
+    upcoming = _block(html, 'aria-labelledby="home-upcoming"', "</section>")
+    assert upcoming.count('data-next-up="scrim"') == 1
+    assert upcoming.count("c-row c-row--empty") == home_data.SCRIM_ROW_COUNT - 1
+    assert "最近没有内战" not in upcoming
+
+    grid = _block(html, 'class="c-media-grid c-media-grid--two"', "<aside")
+    assert grid.count('<article class="c-media">') == 2  # the article, the notice
+    assert grid.count("c-media c-media--empty") == home_data.LATEST_ARTICLE_COUNT - 2
+    assert "还没有文章" not in grid
+
+    notices = _block(html, 'aria-labelledby="home-notices"', "</aside>")
+    assert notices.count("c-row c-row--empty") == home_data.NOTICE_COUNT - 1
+    assert "还没有公告" not in notices
+
+    teams = _block(html, 'aria-labelledby="home-teams"', "</section>")
+    assert (
+        teams.count("c-teams__item c-teams__item--empty") == home_data.HOME_TEAM_COUNT
+    )
+    assert 'data-home-empty="teams"' in teams and "还没有战队" in teams
+    assert "全部战队" in teams
+
+
+@pytest.mark.django_db
+def test_an_empty_homepage_says_so_in_the_first_place_of_each(client, site):
+    html = _main(client.get("/"))
+    grid = _block(html, 'class="c-media-grid c-media-grid--two"', "<aside")
+    assert grid.count("c-media c-media--empty") == home_data.LATEST_ARTICLE_COUNT
+    assert 'data-home-empty="news"' in grid and grid.count("还没有文章") == 1
+    notices = _block(html, 'aria-labelledby="home-notices"', "</aside>")
+    assert notices.count("c-row c-row--empty") == home_data.NOTICE_COUNT
+    assert notices.count("还没有公告") == 1
+    upcoming = _block(html, 'aria-labelledby="home-upcoming"', "</section>")
+    assert upcoming.count("c-row c-row--empty") == home_data.SCRIM_ROW_COUNT
+    assert upcoming.count("最近没有内战") == 1
 
 
 @pytest.mark.django_db

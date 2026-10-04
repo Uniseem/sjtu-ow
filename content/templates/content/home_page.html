@@ -41,37 +41,54 @@
       <a href="/scrims/" class="c-btn c-btn--quiet">全部内战{% include "components/icon.html" with name="arrow-right" %}</a>
     </div>
     {% include "slots/agenda.html" %}
-    {% if feature or scrim_rows %}
-      <div class="c-upcoming{% if feature and scrim_rows %} c-upcoming--two{% endif %}">
-        {% if feature %}
-          <article class="c-feature" data-next-up="tournament">
-            {% if feature.tournament.cover %}{% image feature.tournament.cover fill-1280x720-c50 class="c-feature__img" alt="" %}{% else %}{% cover_fallback feature.tournament "fill-1280x720-c50" "c-feature__img" %}{% endif %}
-            <div class="c-feature__body">
-              <span class="c-status c-status--live">报名中</span>
-              <h3 class="c-feature__title"><a href="{{ feature.tournament.get_absolute_url }}" class="c-stretch">{{ feature.tournament.title }}</a></h3>
-              <p class="c-feature__facts">{{ feature.tournament.get_registration_mode_display }} · 报名截止 {{ feature.tournament.registration_closes_at|ow_md }} {{ feature.tournament.registration_closes_at|ow_time }}{% if feature.tournament.starts_at %} · {{ feature.tournament.starts_at|ow_md }} 比赛{% endif %} · {% if feature.tournament.takes_individuals %}已编成{% else %}已通过{% endif %} {{ feature.approved }} 队</p>
+    {% comment %}近期 (design 5.2, v6.66): always the big card on the left and the scrims on the right; whichever is missing says so in its place.{% endcomment %}
+    <div class="c-upcoming c-upcoming--two">
+      {% if feature %}
+        {% with t=feature.tournament phase=feature.phase %}
+        <article class="c-feature" data-next-up="tournament" data-phase="{{ phase }}">
+          {% if t.cover %}{% image t.cover fill-1280x720-c50 class="c-feature__img" alt="" %}{% else %}{% cover_fallback t "fill-1280x720-c50" "c-feature__img" %}{% endif %}
+          <div class="c-feature__body">
+            {% if phase == "open" %}<span class="c-status c-status--live">报名中</span>{% elif phase == "upcoming" %}<span class="c-status c-status--info">即将开始报名</span>{% elif phase == "finished" %}<span class="c-status">已结束</span>{% else %}<span class="c-status">报名已截止</span>{% endif %}
+            <h3 class="c-feature__title"><a href="{{ t.get_absolute_url }}" class="c-stretch">{{ t.title }}</a></h3>
+            <p class="c-feature__facts">{{ t.get_registration_mode_display }}{% if phase == "open" %} · 报名截止 {{ t.registration_closes_at|ow_md }} {{ t.registration_closes_at|ow_time }}{% elif phase == "upcoming" %} · {{ t.registration_opens_at|ow_md }} {{ t.registration_opens_at|ow_time }} 开放报名{% endif %}{% if t.starts_at %}{% if phase == "finished" %} · {{ t.starts_at|ow_date }}{% else %} · {{ t.starts_at|ow_md }} 比赛{% endif %}{% endif %}{% if phase != "upcoming" %} · {% if t.takes_individuals %}已编成{% else %}已通过{% endif %} {{ feature.approved }} 队{% endif %}</p>
+          </div>
+        </article>
+        {% endwith %}
+      {% else %}
+        <div class="c-feature c-feature--empty" data-next-up="no-tournament">
+          <div class="c-feature__body">
+            <p class="c-feature__title">还没有赛事</p>
+            <p class="c-feature__facts">发布后会出现在这里。去<a href="/tournaments/" class="c-link">赛事</a>看看。</p>
+          </div>
+        </div>
+      {% endif %}
+      <ol class="c-rows">
+        {% for row in scrim_rows %}
+          <li class="c-row" data-next-up="scrim">
+            <span class="c-date"><small>{{ row.scrim.starts_at|date:"n" }}月</small><b>{{ row.scrim.starts_at|date:"d" }}</b></span>
+            <div class="c-row__main">
+              <h3 class="c-row__title"><a href="{% url 'scrim_detail' row.scrim.pk %}" class="c-stretch">{{ row.scrim.title }}</a></h3>
+              <p class="c-row__meta">{{ row.scrim.starts_at|ow_weekday }} {{ row.scrim.starts_at|ow_time }} · 已报 {{ row.count }} / {{ row.capacity }}</p>
+              {% include "components/seats.html" with taken=row.count total=row.capacity %}
             </div>
-          </article>
-        {% endif %}
-        {% if scrim_rows %}
-          <ol class="c-rows">
-            {% for row in scrim_rows %}
-              <li class="c-row" data-next-up="scrim">
-                <span class="c-date"><small>{{ row.scrim.starts_at|date:"n" }}月</small><b>{{ row.scrim.starts_at|date:"d" }}</b></span>
-                <div class="c-row__main">
-                  <h3 class="c-row__title"><a href="{% url 'scrim_detail' row.scrim.pk %}" class="c-stretch">{{ row.scrim.title }}</a></h3>
-                  <p class="c-row__meta">{{ row.scrim.starts_at|ow_weekday }} {{ row.scrim.starts_at|ow_time }} · 已报 {{ row.count }} / {{ row.capacity }}</p>
-                  {% include "components/seats.html" with taken=row.count total=row.capacity %}
-                </div>
-                {% if row.scrim.signup_open %}<span class="c-status c-status--live">报名中</span>{% else %}<span class="c-status">报名已截止</span>{% endif %}
-              </li>
-            {% endfor %}
-          </ol>
-        {% endif %}
-      </div>
-    {% else %}
-      <p class="c-empty">最近没有安排。去<a href="/tournaments/" class="c-link">赛事</a>或<a href="/scrims/" class="c-link">内战</a>看看以前的活动。</p>
-    {% endif %}
+            {% if row.scrim.signup_open %}<span class="c-status c-status--live">报名中</span>{% else %}<span class="c-status">报名已截止</span>{% endif %}
+          </li>
+        {% endfor %}
+        {% for _ in scrim_blanks %}
+          {% if forloop.first and not scrim_rows %}
+            <li class="c-row c-row--empty" data-next-up="no-scrim">
+              <span class="c-date invisible" aria-hidden="true"><small>月</small><b>00</b></span>
+              <p class="c-row__main">最近没有内战。去<a href="/scrims/" class="c-link">内战</a>看看以前的活动。</p>
+            </li>
+          {% else %}
+            <li class="c-row c-row--empty" aria-hidden="true">
+              <span class="c-date invisible"><small>月</small><b>00</b></span>
+              <span class="c-row__main invisible"><span class="c-row__title">占位</span><span class="c-row__meta">占位</span><span class="c-seats"><i></i></span></span>
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ol>
+    </div>
   </section>
 
   <section class="l-container c-homegrid" aria-label="资讯与公告">
@@ -80,15 +97,17 @@
         <h2 id="home-news">资讯</h2>
         <a href="/news/" class="c-btn c-btn--quiet">全部资讯{% include "components/icon.html" with name="arrow-right" %}</a>
       </div>
-      {% if news %}
-        <div class="c-media-grid">
-          {% for article in news %}
-            {% if article.pk in pinned_ids %}{% include "components/post_card.html" with pinned=True %}{% else %}{% include "components/post_card.html" %}{% endif %}
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="c-empty">还没有文章。</p>
-      {% endif %}
+      <div class="c-media-grid c-media-grid--two">
+        {% for article in news %}
+          {% if article.pk in pinned_ids %}{% include "components/post_card.html" with pinned=True %}{% else %}{% include "components/post_card.html" %}{% endif %}
+        {% endfor %}
+        {% for _ in news_blanks %}
+          <div class="c-media c-media--empty"{% if not forloop.first or news %} aria-hidden="true"{% else %} data-home-empty="news"{% endif %}>
+            <div class="c-media__pic">{% if forloop.first and not news %}还没有文章{% endif %}</div>
+            <div class="invisible" aria-hidden="true"><p class="c-media__meta">占位</p><p class="c-media__title">占位<br>占位</p><p class="c-media__byline">占位</p></div>
+          </div>
+        {% endfor %}
+      </div>
     </div>
 
     <aside class="min-w-0" aria-labelledby="home-notices">
@@ -96,34 +115,46 @@
         <h2 id="home-notices">公告</h2>
         <a href="/news/?category=notice" class="c-btn c-btn--quiet">全部公告{% include "components/icon.html" with name="arrow-right" %}</a>
       </div>
-      {% if notices %}
-        <ol class="c-rows">
-          {% for article in notices %}
-            <li class="c-row">
-              <time class="c-date" datetime="{{ article.first_published_at|date:'c' }}"><small>{{ article.first_published_at|date:"n" }}月</small><b>{{ article.first_published_at|date:"d" }}</b></time>
-              <div class="c-row__main">
-                <h3 class="c-row__title"><a href="{% pageurl article %}" class="c-stretch">{{ article.title }}</a></h3>
-              </div>
+      <ol class="c-rows">
+        {% for article in notices %}
+          <li class="c-row">
+            <time class="c-date" datetime="{{ article.first_published_at|date:'c' }}"><small>{{ article.first_published_at|date:"n" }}月</small><b>{{ article.first_published_at|date:"d" }}</b></time>
+            <div class="c-row__main">
+              <h3 class="c-row__title"><a href="{% pageurl article %}" class="c-stretch">{{ article.title }}</a></h3>
+            </div>
+          </li>
+        {% endfor %}
+        {% for _ in notice_blanks %}
+          {% if forloop.first and not notices %}
+            <li class="c-row c-row--empty" data-home-empty="notices">
+              <span class="c-date invisible" aria-hidden="true"><small>月</small><b>00</b></span>
+              <p class="c-row__main">还没有公告。</p>
             </li>
-          {% endfor %}
-        </ol>
-      {% else %}
-        <p class="c-empty">还没有公告。</p>
-      {% endif %}
+          {% else %}
+            <li class="c-row c-row--empty" aria-hidden="true">
+              <span class="c-date invisible"><small>月</small><b>00</b></span>
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ol>
     </aside>
   </section>
 
-  {% if home_teams %}
-    <section class="l-container l-section" aria-labelledby="home-teams">
-      <div class="c-sectionhead">
-        <h2 id="home-teams">战队</h2>
-        <a href="/teams/" class="c-btn c-btn--quiet">全部 {{ team_count }} 支战队{% include "components/icon.html" with name="arrow-right" %}</a>
-      </div>
-      <ul class="c-teams">
-        {% for team in home_teams %}
-          {% include "components/team_tile.html" with members=team.member_count %}
-        {% endfor %}
-      </ul>
-    </section>
-  {% endif %}
+  <section class="l-container l-section" aria-labelledby="home-teams">
+    <div class="c-sectionhead">
+      <h2 id="home-teams">战队</h2>
+      <a href="/teams/" class="c-btn c-btn--quiet">{% if team_count %}全部 {{ team_count }} 支战队{% else %}全部战队{% endif %}{% include "components/icon.html" with name="arrow-right" %}</a>
+    </div>
+    <ul class="c-teams c-teams--six">
+      {% for team in home_teams %}
+        {% include "components/team_tile.html" with members=team.member_count %}
+      {% endfor %}
+      {% for _ in team_blanks %}
+        <li class="c-teams__item c-teams__item--empty"{% if not forloop.first or home_teams %} aria-hidden="true"{% else %} data-home-empty="teams"{% endif %}>
+          <span class="c-teams__logo">{% if forloop.first and not home_teams %}还没有战队{% endif %}</span>
+          <span class="c-teams__body invisible" aria-hidden="true"><span class="c-teams__name">占位</span><span class="c-teams__meta">占位</span></span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
 {% endblock %}

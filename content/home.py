@@ -1,7 +1,7 @@
 """Data for the homepage (design 5.2, v4.0 in round 086).
 
-Top to bottom: the hero picture, the figures row, 近期 (the open tournament
-and this week's scrims), 资讯 with 公告 beside it, then 战队.
+Top to bottom: the hero picture, the figures row, 近期 (the latest tournament
+and the next scrims, v6.66), 资讯 with 公告 beside it, then 战队.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from datetime import date
 from django.utils import timezone
 
 LATEST_ARTICLE_COUNT = 4
-SCRIM_ROW_COUNT = 4
+SCRIM_ROW_COUNT = 5
 NOTICE_COUNT = 5
 NOTICE_CATEGORIES = ("notice", "event-notice")
 HOME_TEAM_COUNT = 6
@@ -50,20 +50,55 @@ def notices(limit: int = NOTICE_COUNT):
 
 @dataclass
 class Feature:
-    """The open tournament that closes soonest, with its approved teams."""
+    """近期's big card: the latest tournament, its phase and approved teams."""
 
     tournament: object
     approved: int = 0
+    phase: str = "open"
 
 
-def feature_tournament(tournaments) -> Feature | None:
-    """近期's big card (design 5.2): only the one closing soonest, or nothing."""
+def _when(tournament):
+    return tournament.starts_at or tournament.registration_opens_at
+
+
+def feature_tournament(tournaments, now=None) -> Feature | None:
+    """近期's big card (design 5.2, v6.66): the latest tournament. One taking
+    registrations (closing soonest), else the next one not yet over (the
+    soonest), else the one that ended last; nothing only when there is none.
+    Until round 188 the card showed only while registration was open."""
     from tournaments.services import approved_counts
 
-    if not tournaments:
+    now = now or timezone.now()
+    by_phase = {}
+    for item in tournaments:
+        by_phase.setdefault(item.phase(now), []).append(item)
+    if by_phase.get("open"):
+        chosen = min(by_phase["open"], key=lambda item: item.registration_closes_at)
+    elif by_phase.get("upcoming") or by_phase.get("closed"):
+        ahead = by_phase.get("upcoming", []) + by_phase.get("closed", [])
+        chosen = min(ahead, key=_when)
+    elif by_phase.get("finished"):
+        chosen = max(by_phase["finished"], key=_when)
+    else:
         return None
-    first = min(tournaments, key=lambda item: item.registration_closes_at)
-    return Feature(first, approved_counts([first]).get(first.pk, 0))
+    return Feature(
+        chosen, approved_counts([chosen]).get(chosen.pk, 0), chosen.phase(now)
+    )
+
+
+def home_tournaments():
+    """The ones feature_tournament chooses from: everything published, and
+    the finished one that ended last (older ones can never be chosen)."""
+    from tournaments.models import Tournament, TournamentStatus
+
+    published = Tournament.objects.filter(status=TournamentStatus.PUBLISHED)
+    last = (
+        Tournament.objects.filter(status=TournamentStatus.FINISHED)
+        .order_by("-starts_at", "-registration_opens_at")
+        .first()
+    )
+    found = list(published.select_related("cover"))
+    return found + ([last] if last else [])
 
 
 @dataclass
@@ -76,7 +111,7 @@ class ScrimRow:
 
 
 def scrim_rows(scrims, limit: int = SCRIM_ROW_COUNT) -> list[ScrimRow]:
-    """This week's scrims, earliest first, with sign-ups / needed (design 5.2)."""
+    """The next scrims, earliest first, with sign-ups / needed (design 5.2)."""
     from scrims.services import signup_totals
 
     chosen = sorted(scrims, key=lambda item: item.starts_at)[:limit]
@@ -84,6 +119,11 @@ def scrim_rows(scrims, limit: int = SCRIM_ROW_COUNT) -> list[ScrimRow]:
     return [
         ScrimRow(item, totals.get(item.pk, 0), item.players_needed) for item in chosen
     ]
+
+
+def blanks(items, size: int) -> range:
+    """Empty places that keep a homepage block its size (design 5.2, v6.66)."""
+    return range(max(0, size - len(items)))
 
 
 @dataclass
@@ -153,9 +193,12 @@ def homepage(pinned) -> dict:
     """Everything home_page.html needs, in one place."""
     from core.models import SiteSettings
     from scrims.services import upcoming_scrims
-    from tournaments.services import open_tournaments
 
     site = SiteSettings.load()
+    rows = scrim_rows(upcoming_scrims())
+    news = news_list(pinned)
+    notice_rows = notices()
+    home_teams = teams()
     return {
         "hero_image": site.hero_image,
         "qq_group_url": site.qq_group_url,
@@ -163,10 +206,14 @@ def homepage(pinned) -> dict:
         "team_count": team_count(),
         "scrims_held": scrims_held(),
         "age": community_age(site.founded_on),
-        "feature": feature_tournament(open_tournaments()),
-        "scrim_rows": scrim_rows(upcoming_scrims()),
-        "news": news_list(pinned),
+        "feature": feature_tournament(home_tournaments()),
+        "scrim_rows": rows,
+        "scrim_blanks": blanks(rows, SCRIM_ROW_COUNT),
+        "news": news,
+        "news_blanks": blanks(news, LATEST_ARTICLE_COUNT),
         "pinned_ids": {article.pk for article in pinned},
-        "notices": notices(),
-        "home_teams": teams(),
+        "notices": notice_rows,
+        "notice_blanks": blanks(notice_rows, NOTICE_COUNT),
+        "home_teams": home_teams,
+        "team_blanks": blanks(home_teams, HOME_TEAM_COUNT),
     }

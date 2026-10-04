@@ -22,8 +22,9 @@ from scrims.models import (
 
 logger = logging.getLogger(__name__)
 
-# Appendix C: the homepage shows scrims starting within the next 7 days.
-HOME_SCRIM_DAYS = 7
+# Appendix C (v6.66): the homepage lists the next five scrims, however far
+# off; until round 188 only the next 7 days, so one posted early never showed.
+HOME_SCRIM_COUNT = 5
 
 
 class ScrimError(Exception):
@@ -64,15 +65,14 @@ def signup_totals(scrims) -> dict:
     return {row["scrim_id"]: row["n"] for row in rows}
 
 
-def upcoming_scrims(now=None, days=HOME_SCRIM_DAYS):
-    """Published scrims starting within ``days``, earliest first (design 5.1)."""
+def upcoming_scrims(now=None, limit=HOME_SCRIM_COUNT):
+    """The next published scrims not yet started, earliest first (design 5.2)."""
     now = now or timezone.now()
     return list(
         Scrim.objects.filter(
             status=ScrimStatus.PUBLISHED,
             starts_at__gte=now,
-            starts_at__lte=now + timedelta(days=days),
-        ).order_by("starts_at")
+        ).order_by("starts_at")[:limit]
     )
 
 
@@ -384,7 +384,7 @@ def _refresh_pages(scrim) -> None:
     from core import prerender
 
     prerender.request_page("/scrims/", kind="scrim_index")
-    # The homepage lists the next 7 days of scrims (design 13.13.4).
+    # The homepage lists the next scrims (design 13.13.4).
     prerender.request_page("/", kind="home")
     schedule_home_refresh(scrim)
     if scrim.is_public:
@@ -396,9 +396,10 @@ def _refresh_pages(scrim) -> None:
 def schedule_home_refresh(scrim) -> None:
     """Regenerate the pages whose content turns with the clock (design 13.13.4).
 
-    The homepage when the scrim enters the 7-day window. Since round 076 the
-    list, detail and homepage tickets also say 「报名中」, so all three again
-    when sign-up closes and when the scrim starts.
+    Since round 076 the list, detail and homepage tickets say 「报名中」, so
+    all three when sign-up closes and when the scrim starts (it then leaves the
+    homepage). Until round 188 also the homepage when the scrim entered its
+    7-day window; the homepage no longer has one.
     Stale tasks are harmless: they only regenerate the page from current data.
     """
     from core import prerender
@@ -408,8 +409,7 @@ def schedule_home_refresh(scrim) -> None:
         return
     now = timezone.now()
     status_pages = ["/", "/scrims/", f"/scrims/{scrim.pk}/"]
-    runs = [(scrim.starts_at - timedelta(days=HOME_SCRIM_DAYS), ["/"])]
-    runs += [(scrim.signup_deadline, status_pages), (scrim.starts_at, status_pages)]
+    runs = [(scrim.signup_deadline, status_pages), (scrim.starts_at, status_pages)]
 
     def enqueue():
         seen = set()

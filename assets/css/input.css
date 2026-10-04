@@ -3479,6 +3479,72 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* 近期 with no tournament (design 5.2, v6.66): the card's place and size,
+     a quiet surface instead of a picture, so the layout does not move. */
+  .c-feature--empty {
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+    text-align: center;
+  }
+
+  .c-feature--empty::after {
+    display: none;
+  }
+
+  .c-feature--empty .c-feature__title {
+    margin-top: 0;
+  }
+
+  .c-feature--empty .c-feature__facts {
+    color: var(--color-fg-2);
+  }
+
+  /* Homepage places kept when there is less to show (design 5.2, v6.66):
+     same size as the real thing, a plain surface, the first one saying
+     why when there is nothing at all. Their insides are invisible copies
+     of a real row or card, so the height matches. */
+  .c-rows > .c-row--empty,
+  .c-rows > .c-row--empty:hover {
+    background-color: color-mix(in oklab, var(--color-surface) 55%, transparent);
+  }
+
+  .c-row--empty > .c-row__main {
+    color: var(--color-fg-2);
+  }
+
+  .c-row--empty .c-row__title,
+  .c-row--empty .c-row__meta,
+  .c-row--empty .c-seats {
+    display: block;
+  }
+
+  .c-media--empty .c-media__pic,
+  .c-teams__item--empty .c-teams__logo {
+    display: grid;
+    place-items: center;
+    background-color: color-mix(in oklab, var(--color-surface) 55%, transparent);
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  .c-teams__item--empty {
+    background-color: color-mix(in oklab, var(--color-surface) 55%, transparent);
+  }
+
+  @media (min-width: 640px) {
+    .c-media-grid--two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-teams--six {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
   /* List rows: a date block, the title and one line of facts. v6.0: a
      Material 3 grouped list — each row its own tile, a few pixels of the page
      between them, the group's outer corners round, the inner ones tight. */

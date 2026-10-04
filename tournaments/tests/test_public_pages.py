@@ -6,6 +6,7 @@ a later milestone". Design 13.13.4's table of regeneration events was also
 only half done: approving a registration refreshed nothing at all.
 """
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -19,6 +20,9 @@ from tournaments.tests.test_state_table import _force, admin_user
 
 APPROVED = RegistrationStatus.APPROVED
 PENDING = RegistrationStatus.PENDING
+
+
+DAY = timedelta(days=1)
 
 
 def _tournament(title, *, opens, closes, status=TournamentStatus.PUBLISHED):
@@ -66,8 +70,8 @@ def test_the_homepage_lists_tournaments_open_for_registration(client, homepage):
     _tournament("取消的赛事", opens=-day, closes=day, status=TournamentStatus.CANCELLED)
 
     html = client.get("/").content.decode("utf-8")
-    # 近期 (design 5.2) shows only what is open now; the homepage has no
-    # block for what opens soon.
+    # 近期 (design 5.2): one open now wins over the rest (v6.66 shows the
+    # others only when nothing is open).
     start = html.index('aria-labelledby="home-upcoming"')
     next_up = html[start : html.index("</section>", start)]
 
@@ -86,10 +90,78 @@ def test_open_tournaments_close_soonest_first():
     assert services.open_tournaments() == [sooner, later]
 
 
-@pytest.mark.django_db
-def test_the_homepage_says_so_when_nothing_is_open(client, homepage):
+def _card(client):
     html = client.get("/").content.decode("utf-8")
-    assert "最近没有安排" in html
+    start = html.index('aria-labelledby="home-upcoming"')
+    upcoming = html[start : html.index("</section>", start)]
+    match = re.search(r'<article class="c-feature".*?</article>', upcoming, re.S)
+    return match.group(0) if match else upcoming
+
+
+@pytest.mark.django_db
+def test_the_homepage_says_so_when_there_is_no_tournament(client, homepage):
+    """v6.66 (round 188): an empty card in the same place, not nothing."""
+    _tournament("草稿赛事", opens=-DAY, closes=DAY, status=TournamentStatus.DRAFT)
+    _tournament("取消的赛事", opens=-DAY, closes=DAY, status=TournamentStatus.CANCELLED)
+    card = _card(client)
+    assert 'data-next-up="no-tournament"' in card and "还没有赛事" in card
+
+
+@pytest.mark.django_db
+def test_without_one_open_the_next_one_not_over_is_shown(client, homepage):
+    """v6.66 (round 188): until then the card vanished once registration
+    closed. The soonest of those still ahead, with its phase."""
+    _tournament(
+        "最近结束的赛事",
+        opens=-9 * DAY,
+        closes=-8 * DAY,
+        status=TournamentStatus.FINISHED,
+    )
+    later = _tournament("下个月开放报名", opens=30 * DAY, closes=40 * DAY)
+    later.starts_at = timezone.now() + 45 * DAY
+    later.save(update_fields=["starts_at"])
+    closed = _tournament("报名已截止的赛事", opens=-3 * DAY, closes=-DAY)
+    closed.starts_at = timezone.now() + 2 * DAY
+    closed.save(update_fields=["starts_at"])
+
+    card = _card(client)
+    assert "报名已截止的赛事" in card and 'data-phase="closed"' in card
+    assert ">报名已截止</span>" in card
+
+    closed.delete()
+    card = _card(client)
+    assert "下个月开放报名" in card and ">即将开始报名</span>" in card
+    assert "开放报名" in card and "已通过" not in card
+
+
+@pytest.mark.django_db
+def test_when_all_are_over_the_last_one_is_shown(client, homepage):
+    old = _tournament(
+        "去年的赛事",
+        opens=-400 * DAY,
+        closes=-390 * DAY,
+        status=TournamentStatus.FINISHED,
+    )
+    old.starts_at = timezone.now() - 380 * DAY
+    old.save(update_fields=["starts_at"])
+    last = _tournament(
+        "上个月的赛事",
+        opens=-40 * DAY,
+        closes=-35 * DAY,
+        status=TournamentStatus.FINISHED,
+    )
+    last.starts_at = timezone.now() - 30 * DAY
+    last.save(update_fields=["starts_at"])
+
+    card = _card(client)
+    assert "上个月的赛事" in card and ">已结束</span>" in card
+    assert "去年的赛事" not in card
+
+    # The chooser itself, given both (the homepage only passes the last).
+    from content.home import feature_tournament
+
+    assert feature_tournament([old, last]).tournament == last
+    assert feature_tournament([last, old]).phase == "finished"
 
 
 # --- team page -----------------------------------------------------------------
