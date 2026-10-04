@@ -32,6 +32,7 @@ OUT = WORK / "out"
 # (file name, who is signed in, path). Paths use {team}, {cup}, {teamcup},
 # {scrim} and {member}.
 PAGES = [
+    ("home-member", "member", "/"),
     ("me-profile", "member", "/me/"),
     ("me-registrations", "member", "/me/registrations/"),
     ("me-teams", "member", "/me/teams/"),

@@ -191,6 +191,11 @@ class HomePage(SeoPageMixin, Page):
         from content import home
 
         context.update(home.homepage(pinned))
+        # Design 5.2 (v6.48): empty for the static page, filled when Django
+        # renders it for a signed-in member.
+        from core.agenda import agenda_context
+
+        context.update(agenda_context(request))
         return context
 
     class Meta:

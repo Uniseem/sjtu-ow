@@ -40,6 +40,7 @@
       <h2 id="home-upcoming">近期</h2>
       <a href="/scrims/" class="c-btn c-btn--quiet">全部内战{% include "components/icon.html" with name="arrow-right" %}</a>
     </div>
+    {% include "slots/agenda.html" %}
     {% if feature or scrim_rows %}
       <div class="c-upcoming{% if feature and scrim_rows %} c-upcoming--two{% endif %}">
         {% if feature %}

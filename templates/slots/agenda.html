@@ -1,0 +1,24 @@
+{% load ow %}
+{% comment %}「我的安排」 (design 5.2, v6.48): empty on the static homepage, filled for a signed-in member.{% endcomment %}
+<div id="slot-my-agenda" data-slot="my-agenda"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% if request.user.is_authenticated %}
+    <div class="c-panel mb-8" data-my-agenda>
+      <h3 class="mb-3 font-semibold">我的安排</h3>
+      {% if agenda_items %}
+        <ol class="c-rows">
+          {% for item in agenda_items %}
+            <li class="c-row px-0" data-agenda-item>
+              {% if item.when %}<span class="c-date"><small>{{ item.when|date:"n" }}月</small><b>{{ item.when|date:"d" }}</b></span>{% else %}<span class="c-date"><small>时间</small><b>未定</b></span>{% endif %}
+              <div class="c-row__main">
+                <p class="c-row__title"><a href="{{ item.url }}" class="c-stretch">{{ item.title }}</a></p>
+                <p class="c-row__meta">{{ item.kind }}{% if item.when %} · {{ item.when|ow_weekday }} {{ item.when|ow_time }}{% else %} · 时间未定{% endif %} · {{ item.note }}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="text-fg-2" data-agenda-empty>接下来没有报名的活动。看看<a href="/tournaments/" class="c-link">赛事</a>和<a href="/scrims/" class="c-link">内战</a>。</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
