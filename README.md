@@ -435,6 +435,8 @@ uv run python manage.py optimize_db        # PRAGMA optimize + WAL 检查点
 
 完整的 cron 时间表见 `deploy/crontab.example`。
 
+**定时发布不用 cron**（158 起，设计 16.5）：编辑页右侧「状态」面板「设置计划」里填的上线时间、过期时间，由 worker 每 30 秒检查一次，到点执行 Wagtail 的 `publish_scheduled`，静态页跟着更新。worker 没在跑就不会上线（后台首页的待办会提醒 worker 停了）。158 以前没有任何进程执行它，之前计划好、已经过了时间的页面在升级后的半分钟内一起上线或撤下。
+
 ## 健康检查
 
 `GET /healthz` 在以下全部通过时返回 200，否则 503：

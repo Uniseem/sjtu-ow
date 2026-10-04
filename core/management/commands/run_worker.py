@@ -6,7 +6,8 @@ from core.worker import start_heartbeat_thread
 class Command(DBWorkerCommand):
     help = (
         "Run the database task worker and write a heartbeat to the cache "
-        "every 30 seconds (design 16.6)."
+        "every 30 seconds (design 16.6); on the same beat, publish pages whose "
+        "scheduled time has come (16.5)."
     )
 
     def handle(self, *args, **options):

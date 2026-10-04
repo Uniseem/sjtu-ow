@@ -30,6 +30,8 @@ def write_worker_heartbeat() -> None:
 
 
 def _heartbeat_loop() -> None:
+    from content.services import publish_due_pages
+
     while not _stop.is_set():
         try:
             write_worker_heartbeat()
@@ -37,11 +39,19 @@ def _heartbeat_loop() -> None:
             logger.exception("Failed to write worker heartbeat")
         finally:
             close_old_connections()
+        # Scheduled publishing rides on the same beat (design 16.5, v6.50).
+        try:
+            publish_due_pages()
+        except Exception:
+            logger.exception("Failed to publish scheduled pages")
+        finally:
+            close_old_connections()
         _stop.wait(WORKER_HEARTBEAT_INTERVAL_SECONDS)
 
 
 def start_heartbeat_thread() -> None:
-    """Start a daemon thread that writes the shared cache key every 30 seconds."""
+    """Start a daemon thread that writes the shared cache key every 30 seconds
+    and publishes pages whose scheduled time has come."""
     global _thread
     if _thread is not None and _thread.is_alive():
         return

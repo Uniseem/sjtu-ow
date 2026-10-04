@@ -412,3 +412,26 @@ def assign_content_permissions() -> None:
             root,
             ("add_image", "change_image", "choose_image", "delete_image"),
         )
+
+
+def publish_due_pages(now=None) -> bool:
+    """Scheduled publishing (design 12.5, 16.5, v6.50). Wagtail keeps the
+    times set under 「设置计划」 but only its ``publish_scheduled`` command
+    acts on them, and until v6.50 nothing ran it. The worker calls this every
+    30 seconds: two queries when nothing is due, the command when something
+    is. Going live or expiring sends Wagtail's own signals, which bring the
+    static pages up to date (content.signals)."""
+    from io import StringIO
+
+    from django.core.management import call_command
+    from django.utils import timezone
+    from wagtail.models import Revision
+
+    now = now or timezone.now()
+    due = (
+        Revision.objects.filter(approved_go_live_at__lt=now).exists()
+        or Page.objects.filter(live=True, expire_at__lt=now).exists()
+    )
+    if due:
+        call_command("publish_scheduled", stdout=StringIO())
+    return due
