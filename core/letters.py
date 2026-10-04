@@ -144,6 +144,8 @@ def people(recipients) -> list[tuple[str, str]]:
                 bare.append(recipient)
             continue
         address = getattr(recipient, "email", "")
+        if address.endswith(".invalid"):
+            continue  # a deleted account (accounts.services.delete_account)
         if address and address not in found:
             found[address] = getattr(recipient, "nickname", "") or ""
     if bare:

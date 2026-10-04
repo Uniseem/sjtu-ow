@@ -213,6 +213,9 @@ def apply_to_team(*, team, user, roles, message="") -> TeamApplication:
     return application
 
 
+GONE_NOTE = "申请人的账号已注销或停用"
+
+
 def approve_application(*, application, actor) -> TeamApplication:
     """Approve inside one write transaction, re-checking the limits (7.3)."""
     with transaction.atomic():
@@ -224,8 +227,17 @@ def approve_application(*, application, actor) -> TeamApplication:
             raise TeamError("这条申请已经处理过了。")
         if team.is_disbanded:
             raise TeamError("战队已解散。")
+        gone = not application.applicant.is_active
         already_member = is_member(team, application.applicant)
-        if already_member:
+        if gone:
+            # Round 173: a deleted or disabled account cannot join; close it
+            # here and say so once the transaction is done.
+            application.status = ApplicationStatus.CANCELLED
+            application.decided_by = actor
+            application.decided_at = timezone.now()
+            application.decision_note = GONE_NOTE
+            application.save()
+        elif already_member:
             # Close the stale application. Raising inside this block would roll
             # the cancellation back and leave it pending for ever (round 059).
             application.status = ApplicationStatus.CANCELLED
@@ -245,6 +257,8 @@ def approve_application(*, application, actor) -> TeamApplication:
             application.decided_at = timezone.now()
             application.save()
             transaction.on_commit(lambda: _after_approval(application, team, actor))
+    if gone:
+        raise TeamError("申请人的账号已注销或停用，这条申请已关闭。")
     if already_member:
         raise TeamError("申请人已经是这支战队的成员了。")
     return application
@@ -313,6 +327,7 @@ def remind_captains(now=None) -> int:
             created_at__lt=cutoff,
             captain_reminded_at__isnull=True,
             team__disbanded_at__isnull=True,
+            applicant__is_active=True,
         )
         .select_related("team", "applicant")
         .order_by("team_id", "created_at")
@@ -343,7 +358,8 @@ def close_stale_applications(now=None) -> int:
         application.decided_at = now or timezone.now()
         application.decision_note = STALE_NOTE
         application.save(update_fields=["status", "decided_at", "decision_note"])
-        notifications.application_expired(application)
+        if application.applicant.is_active:
+            notifications.application_expired(application)
         closed += 1
     return closed
 
@@ -520,7 +536,9 @@ def pending_applications(team):
     from accounts.services import with_avatars
 
     return with_avatars(
-        TeamApplication.objects.filter(team=team, status=ApplicationStatus.PENDING)
+        TeamApplication.objects.filter(
+            team=team, status=ApplicationStatus.PENDING, applicant__is_active=True
+        )
         .select_related("applicant")
         .order_by("created_at"),
         "applicant__",

@@ -300,6 +300,49 @@ def _leave_adhoc_teams(user) -> None:
         leave(registration=entry.registration, user=user, enforce_deadline=False)
 
 
+# What deleting an account does with every column that points at a person
+# (round 173). A test lists the columns again: a new one must be decided here.
+KEPT_ACTION = "保留：操作人记录，名字显示「已注销用户」"
+KEPT_PAGE = "保留：Wagtail 页面的所有者和锁定人"
+ON_DELETION = {
+    "accounts.AvatarSubmission.user": "删除，连图片（forget_uploaded_faces）",
+    "accounts.AvatarSubmission.reviewed_by": KEPT_ACTION,
+    "accounts.ContactMethod.user": "删除",
+    "accounts.FeatureGroupRestriction.updated_by": KEPT_ACTION,
+    "accounts.FeatureUserRule.user": "删除",
+    "accounts.FeatureUserRule.updated_by": KEPT_ACTION,
+    "accounts.GameAccount.user": "删除（报名先撤掉，报名引用它）",
+    "comments.Comment.author": "保留，署名显示「已注销用户」，和文章一样",
+    "comments.Comment.reply_to_user": "保留，显示「@已注销用户」",
+    "comments.CommentLike.user": "保留，只算在赞数里",
+    "content.ArticleIndexPage.locked_by": KEPT_PAGE,
+    "content.ArticleIndexPage.owner": KEPT_PAGE,
+    "content.ArticlePage.author": "保留，署名显示「已注销用户」（3.8）",
+    "content.ArticlePage.locked_by": KEPT_PAGE,
+    "content.ArticlePage.owner": KEPT_PAGE,
+    "content.HomePage.locked_by": KEPT_PAGE,
+    "content.HomePage.owner": KEPT_PAGE,
+    "content.StandardPage.locked_by": KEPT_PAGE,
+    "content.StandardPage.owner": KEPT_PAGE,
+    "core.Broadcast.sent_by": KEPT_ACTION,
+    "core.FontFamily.created_by": KEPT_ACTION,
+    "members.MemberGroupMembership.user": "删除",
+    "moderation.ModerationItem.author": "昵称、宣言的送审记录删除，其余跟着内容保留",
+    "moderation.ModerationItem.reviewed_by": KEPT_ACTION,
+    "scrims.Scrim.created_by": KEPT_ACTION,
+    "scrims.ScrimSignup.user": "删除（remove_signups_of）",
+    "teams.TeamAlumnus.user": "保留，退役记录显示「已注销用户」",
+    "teams.TeamApplication.applicant": "等待中的撤回（leave_all_teams），处理过的保留",
+    "teams.TeamApplication.decided_by": KEPT_ACTION,
+    "teams.TeamMembership.user": "删除（leave_all_teams；队长要先转让或解散）",
+    "tournaments.IndividualSignup.user": "删除，临时队伍先退出（_leave_adhoc_teams）",
+    "tournaments.Registration.submitted_by": KEPT_ACTION,
+    "tournaments.RegistrationMember.user": "保留：名单快照（3.8）",
+    "tournaments.RegistrationStatusLog.actor_user": KEPT_ACTION,
+    "tournaments.Tournament.created_by": KEPT_ACTION,
+}
+
+
 def delete_account(user) -> None:
     """Anonymise the account in place (design 3.8). Users are never deleted.
 
