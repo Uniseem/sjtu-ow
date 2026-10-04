@@ -7,6 +7,7 @@ from wagtail.admin.panels import FieldPanel
 from wagtail.admin.ui.tables import Column
 from wagtail.admin.views import account as wagtail_account
 from wagtail.admin.views import generic
+from wagtail.admin.views.bulk_action.registry import bulk_action_registry
 from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
 from wagtail.admin.widgets.button import Button
 from wagtail.permission_policies.base import BasePermissionPolicy
@@ -194,3 +195,29 @@ def hide_reports_and_help(request, menu_items):
         for item in menu_items
         if getattr(item, "name", "") not in EDITOR_ONLY_MENUS
     ]
+
+
+# --- the user list's bulk actions (design 3.7, v6.58) -----------------------------
+
+# Wagtail's own: 「删除」 deletes people outright (users are only ever
+# anonymised, 3.8) and 「设置启用状态」 switches accounts off without the
+# reason the edit page asks for or cancelling their applications (3.7).
+USER_BULK_ACTIONS_OFF = ("delete", "set_active_state")
+
+
+def _without_user_bulk_actions(scan):
+    """The registry fills itself the first time a list page asks, after every
+    app's hooks are in; drop the two from what it found."""
+
+    def scan_then_drop():
+        scan()
+        for_users = bulk_action_registry.actions.get(User._meta.app_label, {})
+        for action_type in USER_BULK_ACTIONS_OFF:
+            for_users.get(User._meta.model_name, {}).pop(action_type, None)
+
+    return scan_then_drop
+
+
+bulk_action_registry._scan_for_bulk_actions = _without_user_bulk_actions(
+    bulk_action_registry._scan_for_bulk_actions
+)
