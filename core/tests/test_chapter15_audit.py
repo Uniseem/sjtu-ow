@@ -818,8 +818,8 @@ def test_moderation_site_settings_match_appendix_c():
     assert site.moderation_model == "deepseek-v4.1-flash"
     assert site.moderation_daily_limit == 2000
     assert site.moderation_image_enabled is False  # 图片审核默认关闭
-    # 高风险立即发邮件，中低风险每日汇总
-    assert site.moderation_high_risk_notify == "immediate"
+    # v6.72: patrol alerts go to the superusers until an address is set.
+    assert site.moderation_alert_email == ""
 
 
 @pytest.mark.django_db

@@ -67,6 +67,8 @@ class ModerationItem(models.Model):
         related_name="moderation_items",
     )
     excerpt = models.TextField("内容快照")
+    # v6.72: a long piece, whole, until the patrol has read it (5.5.3).
+    full_text = models.TextField("整篇正文（待巡查）", blank=True)
     text_hash = models.CharField("内容哈希", max_length=64)
     risk = models.CharField(
         "风险等级",

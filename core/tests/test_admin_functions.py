@@ -7,7 +7,7 @@ contacts, and 「账号已停用」 wherever a roster or signup keeps such a per
 """
 
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -121,8 +121,8 @@ def test_content_editors_see_what_waits_for_review(site, client):
     AvatarSubmission.objects.create(user=member)
     client.force_login(_staff("editor118@example.com", "内容编辑"))
     todo = _todo(client)
-    assert "1 条内容等待复核" in todo
-    assert reverse("moderation_index") in todo
+    # v6.72: AI findings come by mail and are no longer work on the list.
+    assert "内容等待复核" not in todo
     assert "1 张头像等待审核" in todo
     assert "报名" not in todo
 
@@ -216,50 +216,14 @@ def test_the_review_list_filters_by_time(site, client):
 
 
 @pytest.mark.django_db
-def test_the_full_scan_runs_in_the_background_once_at_a_time(
-    site, client, django_capture_on_commit_callbacks
-):
-    client.force_login(_staff("scanner118@example.com", "内容编辑"))
-    with (
-        mock.patch("moderation.admin_views.services.is_enabled", return_value=True),
-        mock.patch("moderation.admin_views.scan_existing_content") as task,
-    ):
-        with django_capture_on_commit_callbacks(execute=True):
-            first = client.post(reverse("moderation_scan"), follow=True)
-        assert task.using.return_value.enqueue.call_count == 1
-        assert "全量扫描" in first.content.decode()
-        with django_capture_on_commit_callbacks(execute=True):
-            second = client.post(reverse("moderation_scan"), follow=True)
-        assert task.using.return_value.enqueue.call_count == 1
-        assert "全量扫描已经排上或正在进行" in second.content.decode()
-
-
-def test_the_full_scan_waits_for_the_off_peak_hours():
-    from zoneinfo import ZoneInfo
-
-    from moderation.tasks import scan_start
-
-    beijing = ZoneInfo("Asia/Shanghai")
-    afternoon = datetime(2026, 10, 3, 15, 0, tzinfo=beijing)
-    assert timezone.localtime(scan_start(afternoon)).replace(tzinfo=None) == (
-        datetime(2026, 10, 4, 0, 30)
-    )
-    small_hours = datetime(2026, 10, 4, 0, 10, tzinfo=beijing)
-    assert timezone.localtime(scan_start(small_hours)).replace(tzinfo=None) == (
-        datetime(2026, 10, 4, 0, 30)
-    )
-    night = datetime(2026, 10, 4, 3, 0, tzinfo=beijing)
-    assert scan_start(night) == night
-
-
-@pytest.mark.django_db
-def test_the_scan_task_releases_its_lock(site):
-    from moderation.tasks import SCAN_LOCK_KEY, scan_existing_content
-
-    cache.set(SCAN_LOCK_KEY, 1, 60)
-    with mock.patch("moderation.integrations.scan_existing", return_value=0):
-        scan_existing_content.call()
-    assert cache.get(SCAN_LOCK_KEY) is None
+def test_the_record_page_has_no_scan_button_and_says_how_alerts_come(site, client):
+    """v6.72 (round 194): incremental patrol instead of a night-time full
+    scan from a button; findings come by mail."""
+    client.force_login(_staff("scanner194@example.com", "内容编辑"))
+    html = client.get(reverse("moderation_index")).content.decode()
+    assert "全量扫描" not in html
+    assert "每 30 分钟巡查一次" in html
+    assert "<title>巡查记录" in html
 
 
 @pytest.mark.django_db

@@ -50,10 +50,6 @@ class SiteSettings(BaseGenericSetting):
         STARTTLS = "starttls", "STARTTLS"
         SSL = "ssl", "SSL"
 
-    class HighRiskNotify(models.TextChoices):
-        IMMEDIATE = "immediate", "立即"
-        DAILY = "daily", "每日汇总"
-
     smtp_host = models.CharField("SMTP 服务器", max_length=255, blank=True)
     smtp_port = models.PositiveIntegerField("SMTP 端口", default=465)
     smtp_security = models.CharField(
@@ -243,12 +239,11 @@ class SiteSettings(BaseGenericSetting):
         default=False,
         help_text="开启后投稿里的图片也送审，费用更高。",
     )
-    moderation_high_risk_notify = models.CharField(
-        "高风险内容通知",
-        max_length=16,
-        choices=HighRiskNotify.choices,
-        default=HighRiskNotify.IMMEDIATE,
-        help_text="AI 判为高风险的内容什么时候邮件通知管理员。",
+    moderation_alert_email = models.EmailField(
+        "巡查提醒发到",
+        blank=True,
+        help_text="AI 每 30 分钟巡查一次，发现可能不妥的内容就给这个邮箱发信。"
+        "空着就发给所有超级管理员。",
     )
     font_css_path = models.CharField(
         "字体样式表地址",
@@ -313,7 +308,7 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("moderation_model"),
                 FieldPanel("moderation_daily_limit"),
                 FieldPanel("moderation_image_enabled"),
-                FieldPanel("moderation_high_risk_notify"),
+                FieldPanel("moderation_alert_email"),
             ],
             heading="AI 审核",
         ),

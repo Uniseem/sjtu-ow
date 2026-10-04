@@ -29,7 +29,6 @@ SHORT_TYPES = {
     TargetType.TEAM_NAME,
     TargetType.COMMENT,
 }
-BATCH_DELAY_SECONDS = 10
 # Peak price, USD per million tokens (design 5.5.3).
 INPUT_PRICE = 0.3
 OUTPUT_PRICE = 1.2
@@ -92,9 +91,9 @@ def submit(
     url: str = "",
     author=None,
 ) -> ModerationItem | None:
-    """Queue one piece of content. Returns the record, or None if skipped."""
-    from moderation.tasks import review_item, review_short_items
-
+    """Put one piece of content on record for the next patrol (5.5.3,
+    v6.72): nothing is sent to the AI here. Returns the record, or None if
+    skipped."""
     text = (text or "").strip()
     if not text or not is_enabled():
         return None
@@ -111,20 +110,11 @@ def submit(
             "author": author if getattr(author, "pk", None) else None,
             "risk": Risk.UNKNOWN,
             "model": "",
+            # A long piece waits here whole until the patrol reads it (5.5.3:
+            # 不截断内容); then only the excerpt stays.
+            "full_text": "" if target_type in SHORT_TYPES else text,
         },
     )
-    if not created:
-        return item  # same text on the same target: already on record
-
-    if target_type in SHORT_TYPES:
-        run_after = timezone.now() + timedelta(seconds=BATCH_DELAY_SECONDS)
-        transaction.on_commit(
-            lambda: review_short_items.using(run_after=run_after).enqueue()
-        )
-    else:
-        # The row only keeps an excerpt; the task carries the whole text so a
-        # long article is reviewed in full (design 5.5.3: 不截断内容).
-        transaction.on_commit(lambda: review_item.enqueue(item.pk, text))
     return item
 
 
@@ -187,6 +177,7 @@ def record(
     item.input_tokens = int(input_tokens or 0)
     item.output_tokens = int(output_tokens or 0)
     item.checked_at = timezone.now()
+    item.full_text = ""
     if item.risk == Risk.NONE:
         # Nothing for a human to look at; keep the row for statistics only.
         item.status = ModerationItem.Status.OK
@@ -201,12 +192,9 @@ def record(
             "output_tokens",
             "checked_at",
             "status",
+            "full_text",
         ]
     )
-    if item.risk == Risk.HIGH:
-        from moderation.notifications import notify_high_risk
-
-        notify_high_risk(item)
 
 
 def copy_recent_verdict(item: ModerationItem) -> bool:
@@ -271,12 +259,13 @@ def pending_short_items(limit: int = MAX_BATCH):
     )
 
 
-def pending_long_items(limit: int = 50):
-    return list(
+def pending_long_items(limit: int | None = 50):
+    queryset = (
         ModerationItem.objects.filter(checked_at__isnull=True)
         .exclude(target_type__in=list(SHORT_TYPES))
-        .order_by("created_at")[:limit]
+        .order_by("created_at")
     )
+    return list(queryset if limit is None else queryset[:limit])
 
 
 MODERATION_PERMISSIONS = ("view_moderationitem", "change_moderationitem")

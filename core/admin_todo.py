@@ -33,16 +33,6 @@ class Todo:
 # The counts are shared with the 审核 tabs (core.admin_sections, v6.71).
 
 
-def flagged_content() -> int:
-    from moderation.models import ModerationItem, Risk
-
-    return (
-        ModerationItem.objects.exclude(risk=Risk.NONE)
-        .filter(status=ModerationItem.Status.PENDING, checked_at__isnull=False)
-        .count()
-    )
-
-
 def pending_avatars() -> int:
     from accounts.models import AvatarSubmission
 
@@ -77,12 +67,9 @@ def _review_rows(user) -> list[Todo]:
 
     if not can_review(user):
         return []
-    flagged = flagged_content()
+    # AI findings are a record, not work (5.5.4, v6.72): they come by mail.
     avatars = pending_avatars()
-    return [
-        Todo(f"{flagged} 条内容等待复核", reverse("moderation_index"), flagged),
-        Todo(f"{avatars} 张头像等待审核", reverse("avatar_review"), avatars),
-    ]
+    return [Todo(f"{avatars} 张头像等待审核", reverse("avatar_review"), avatars)]
 
 
 def _submission_rows(user) -> list[Todo]:

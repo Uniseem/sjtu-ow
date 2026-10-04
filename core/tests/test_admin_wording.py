@@ -480,26 +480,17 @@ def test_the_strip_opens_the_content_column(site, client):
 
 @pytest.mark.django_db
 def test_review_tabs_count_what_waits(site, client):
-    from moderation.models import ModerationItem, Risk
+    from accounts.models import AvatarSubmission
 
     client.force_login(_user("count193@example.com", superuser=True))
     html = client.get("/admin/comments/").content.decode()
     strip = SECTION_TABS.search(html).group(2)
     assert "a-tabs__count" not in strip
-    ModerationItem.objects.create(
-        target_type="nickname",
-        target_id=1,
-        field="nickname",
-        excerpt="待复核",
-        text_hash="193",
-        risk=Risk.HIGH,
-        status=ModerationItem.Status.PENDING,
-        checked_at=timezone.now(),
-    )
+    AvatarSubmission.objects.create(user=_user("face193@example.com"))
     strip = SECTION_TABS.search(client.get("/admin/comments/").content.decode()).group(
         2
     )
-    assert re.search(r'>内容<span class="a-tabs__count">1</span></a>', strip)
+    assert re.search(r'>头像<span class="a-tabs__count">1</span></a>', strip)
     other = SECTION_TABS.search(
         client.get("/admin/tournaments/").content.decode()
     ).group(2)

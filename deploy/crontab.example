@@ -28,8 +28,8 @@ DC=docker compose -p sjtu-ow -f /srv/sjtu-ow/deploy/docker-compose.yml --env-fil
 # 每周日 04:30 SQLite PRAGMA optimize
 30 4 * * 0 $DC exec -T web python manage.py optimize_db
 
-# 每天 09:30 AI 审核的每日汇总邮件
-30 9 * * * $DC exec -T web python manage.py moderate_scan --digest
+# AI 审核（194 起）是 worker 每 30 分钟自己巡查、有可疑内容就发信，不用 cron；
+# 原来 09:30 的 moderate_scan --digest（每日汇总）已经去掉。
 
 # 恢复：
 #   python manage.py restore --list-s3                 列出对象存储里的备份

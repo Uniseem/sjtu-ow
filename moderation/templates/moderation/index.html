@@ -1,10 +1,10 @@
 {% extends "wagtailadmin/generic/base.html" %}
 
-{% block titletag %}内容审核{% endblock %}
+{% block titletag %}巡查记录{% endblock %}
 
 {% block main_content %}
   {% if disabled_reason %}
-    <p class="help-block help-warning">AI 审核没有在运行：{{ disabled_reason }}已有记录仍可复核。</p>
+    <p class="help-block help-warning">AI 审核没有在运行：{{ disabled_reason }}已有记录仍可查看。</p>
   {% endif %}
   {% if configured %}
     <form method="post" action="{% url 'moderation_try' %}" class="w-mb-4">
@@ -19,6 +19,7 @@
     本月调用 {{ month.calls }} 次、送审 {{ month.items }} 条，估算花费 ${{ month.cost|floatformat:4 }}。
     <strong>AI 只做判断，不会改动任何内容。</strong>
   </p>
+  <p class="help-block">AI 每 30 分钟巡查一次新写或改过的内容，觉得可能不妥的会发信提醒（收件人在「设置 → 全站设置 → AI 审核」里填，没填发给超级管理员）。网站默认信任所有人，这里的记录是给你查的，标不标处理结果都行。</p>
 
   <form method="get" class="w-mb-4">
     <label>状态
@@ -56,12 +57,6 @@
     <button type="submit" class="button button-secondary">筛选</button>
   </form>
 
-  <form method="post" action="{% url 'moderation_scan' %}" class="w-mb-4"
-        onsubmit="return window.confirm('把现有的昵称、个人宣言、文章和页面、战队、评论全部送审一遍？在夜间 0:30–8:30 进行（价格低一半），送过的内容不会重复送，每日上限照常。')">
-    {% csrf_token %}
-    <button type="submit" class="button button-secondary" {% if not enabled or scan_running %}disabled{% endif %}>全量扫描</button>
-    <span class="help">{% if scan_running %}全量扫描已经排上或正在进行。{% else %}刚上线或调整了判断标准之后用：把现有内容全部送审一遍，在夜间 0:30–8:30 后台进行。{% endif %}</span>
-  </form>
 
   <table class="listing">
     <thead>

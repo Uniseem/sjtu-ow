@@ -34,15 +34,6 @@ def test_an_unknown_handling_is_refused_not_a_crash(site, client):  # noqa: F811
 
 
 @pytest.mark.django_db
-def test_no_full_scan_while_moderation_is_off(site, client):  # noqa: F811
-    client.force_login(_staff("scan181@example.com", "内容编辑"))
-    with mock.patch("moderation.admin_views.scan_existing_content") as task:
-        response = client.post(reverse("moderation_scan"))
-    assert task.using.return_value.enqueue.call_count == 0
-    assert any("AI 审核当前是关闭的" in message for message in _said(response))
-
-
-@pytest.mark.django_db
 def test_rebuilding_says_so_while_prerendering_is_off(site, client, settings):  # noqa: F811
     settings.PRERENDER_ENABLED = False
     client.force_login(_staff("root181@example.com", superuser=True))

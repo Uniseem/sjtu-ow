@@ -274,35 +274,69 @@ def test_daily_limit_blocks_further_calls(moderation_on):
     assert usage.calls == 1
 
 
-# --- the task path -------------------------------------------------------------
+# --- the patrol (design 5.5.3, 5.5.4, v6.72) -----------------------------------
+
+
+def _superuser(email):
+    return User.objects.create_superuser(
+        email=email,
+        password="Correct-Horse-Battery-1",
+        nickname="超管",
+        agreed_terms_at=timezone.now(),
+        agreed_cross_border_at=timezone.now(),
+    )
 
 
 @pytest.mark.django_db
-def test_review_task_records_the_verdict(moderation_on):
-    from moderation.tasks import review_item
+def test_saving_puts_content_on_record_without_calling_the_ai(moderation_on):
+    """v6.72: the AI is asked on the patrol's rounds, not when content is saved."""
+    with (
+        patch("moderation.providers.get_provider") as get_provider,
+        patch("moderation.patrol.enqueue_if_due"),
+    ):
+        item = services.submit(
+            target_type=TargetType.ARTICLE,
+            target_id=7,
+            field="content",
+            text="长" * 2500,
+        )
+        nickname = services.submit(
+            target_type=TargetType.NICKNAME, target_id=1, field="nickname", text="昵称"
+        )
+    assert get_provider.call_count == 0
+    assert item.checked_at is None and nickname.checked_at is None
+    assert len(item.excerpt) == 2000 and item.full_text == "长" * 2500
+    assert nickname.full_text == ""
+
+
+@pytest.mark.django_db
+def test_a_patrol_reads_long_pieces_whole_and_then_forgets_them(moderation_on):
+    from moderation import patrol
 
     item = services.submit(
         target_type=TargetType.ARTICLE,
         target_id=7,
         field="content",
-        text="这是一篇正常的攻略。",
+        text="这是一篇正常的攻略。" * 300,
         url="/news/x/",
     )
     fake = _verdicts(1, risk=Risk.NONE)
     with patch("moderation.providers.get_provider") as get_provider:
         get_provider.return_value.review.return_value = fake
-        review_item.func(item.pk, "这是一篇正常的攻略。")
+        assert patrol.review_pending() == 1
+        chunks = get_provider.return_value.review.call_args[0][0]
+    assert "".join(chunks).count("攻略") == 300  # the whole text, not the excerpt
     item.refresh_from_db()
     assert item.risk == Risk.NONE
-    assert item.status == ModerationItem.Status.OK  # 无风险不进待复核列表
+    assert item.status == ModerationItem.Status.OK
     assert item.checked_at is not None
-    usage = ModerationUsage.objects.get(date=timezone.localdate())
-    assert usage.calls == 1
+    assert item.full_text == ""  # only the excerpt stays
+    assert ModerationUsage.objects.get(date=timezone.localdate()).calls == 1
 
 
 @pytest.mark.django_db
-def test_batched_short_items(moderation_on):
-    from moderation.tasks import review_short_items
+def test_a_patrol_batches_short_items(moderation_on):
+    from moderation import patrol
 
     for index in range(3):
         services.submit(
@@ -314,77 +348,123 @@ def test_batched_short_items(moderation_on):
     fake = _verdicts(3, risk=Risk.LOW, reason="轻微")
     with patch("moderation.providers.get_provider") as get_provider:
         get_provider.return_value.review.return_value = fake
-        review_short_items.func()
+        assert patrol.review_pending() == 3
         assert get_provider.return_value.review.call_count == 1
-        texts = get_provider.return_value.review.call_args[0][0]
-        assert len(texts) == 3
+        assert len(get_provider.return_value.review.call_args[0][0]) == 3
     assert ModerationItem.objects.filter(risk=Risk.LOW).count() == 3
 
 
 @pytest.mark.django_db
-def test_high_risk_sends_an_email_immediately(moderation_on):
-    admin = User.objects.create_superuser(
-        email="admin-mod@example.com",
-        password="Correct-Horse-Battery-1",
-        nickname="超管",
-        agreed_terms_at=timezone.now(),
-        agreed_cross_border_at=timezone.now(),
-    )
-    assert admin.email
-    item = services.submit(
-        target_type=TargetType.ARTICLE,
-        target_id=9,
-        field="content",
-        text="代打代练联系我",
-    )
-    mail.outbox.clear()
-    services.record(
-        item,
-        risk=Risk.HIGH,
-        categories=[Category.GAME_TRADE],
-        reason="代打交易",
-        quote="代打代练",
-        model="m",
-    )
-    assert len(mail.outbox) == 1
-    assert "高风险" in mail.outbox[0].subject
-    assert "admin-mod@example.com" in mail.outbox[0].recipients()
-    item.refresh_from_db()
-    assert item.notified_at is not None
+def test_a_patrol_stops_at_the_daily_cap(moderation_on):
+    from moderation import patrol
 
-    # A second pass over the same item must not mail again.
+    moderation_on.moderation_daily_limit = 1
+    moderation_on.save()
+    services.note_usage(calls=1, items=1, input_tokens=1, output_tokens=1)
+    services.submit(target_type=TargetType.ARTICLE, target_id=3, field="c", text="正文")
+    with patch("moderation.providers.get_provider") as get_provider:
+        assert patrol.review_pending() == 0
+    assert get_provider.call_count == 0
+    assert ModerationItem.objects.filter(checked_at__isnull=True).count() == 1
+
+
+@pytest.mark.django_db
+def test_one_letter_lists_what_a_patrol_found(moderation_on):
+    from moderation import patrol
+
+    _superuser("admin-mod@example.com")
+    _superuser("second-admin@example.com")
+    for index, text in enumerate(("代打代练联系我", "普通内容", "加群领福利")):
+        services.submit(
+            target_type=TargetType.ARTICLE, target_id=index + 1, field="c", text=text
+        )
+
+    def judge(texts, model=None):
+        # The superusers' own nicknames are patrolled too; answer by content.
+        if "代打" in texts[0]:
+            return _verdicts(1, risk=Risk.HIGH, reason="代打交易")
+        if "加群" in texts[0]:
+            return _verdicts(1, risk=Risk.LOW, reason="引流")
+        return _verdicts(len(texts), risk=Risk.NONE)
+
     mail.outbox.clear()
-    services.record(
-        item,
-        risk=Risk.HIGH,
-        categories=[Category.GAME_TRADE],
-        reason="代打交易",
-        quote="代打代练",
-        model="m",
-    )
+    with patch("moderation.providers.get_provider") as get_provider:
+        get_provider.return_value.review.side_effect = judge
+        reviewed, alerted = patrol.run()
+    assert reviewed >= 3 and alerted == 2
+    # One letter to each address (core.letters sends them one by one).
+    assert sorted(message.recipients()[0] for message in mail.outbox) == [
+        "admin-mod@example.com",
+        "second-admin@example.com",
+    ]
+    letter = mail.outbox[0]
+    assert "AI 巡查发现 2 条可能不妥的内容" in letter.subject
+    body = letter.body
+    assert "代打交易" in body and "引流" in body and "普通内容" not in body
+    assert "没有自动隐藏" in body
+
+    # Told once: the next round with nothing new sends nothing.
+    mail.outbox.clear()
+    with patch("moderation.providers.get_provider"):
+        assert patrol.run() == (0, 0)
     assert mail.outbox == []
 
 
 @pytest.mark.django_db
-def test_digest_covers_pending_items(moderation_on):
-    User.objects.create_superuser(
-        email="digest-admin@example.com",
-        password="Correct-Horse-Battery-1",
-        nickname="超管",
-        agreed_terms_at=timezone.now(),
-        agreed_cross_border_at=timezone.now(),
-    )
+def test_the_letter_goes_to_the_address_set_in_the_settings(moderation_on):
+    from moderation import patrol
+
+    _superuser("boss@example.com")
+    moderation_on.moderation_alert_email = "patrol@example.com"
+    moderation_on.save()
     item = services.submit(
-        target_type=TargetType.ARTICLE, target_id=11, field="content", text="可疑内容"
+        target_type=TargetType.ARTICLE, target_id=11, field="c", text="可疑内容"
     )
     services.record(
         item, risk=Risk.MEDIUM, categories=[], reason="可疑", quote="", model="m"
     )
     mail.outbox.clear()
-    from moderation.notifications import send_digest
+    with patch("moderation.patrol.review_pending", return_value=0):
+        assert patrol.run() == (0, 1)
+    assert [message.recipients() for message in mail.outbox] == [["patrol@example.com"]]
 
-    assert send_digest() >= 1
-    assert "每日汇总" in mail.outbox[0].subject
+
+@pytest.mark.django_db
+def test_unreadable_is_not_a_finding_and_nothing_is_mailed_on_its_own(moderation_on):
+    """「无法判定」 is no finding; and a verdict alone mails nobody (until
+    v6.72 a high risk was mailed the moment it was recorded)."""
+    from moderation import patrol
+
+    _superuser("quiet@example.com")
+    item = services.submit(
+        target_type=TargetType.ARTICLE, target_id=12, field="c", text="看不懂"
+    )
+    mail.outbox.clear()
+    services.record(
+        item, risk=Risk.HIGH, categories=[], reason="高", quote="", model="m"
+    )
+    assert mail.outbox == []
+    unknown = services.submit(
+        target_type=TargetType.ARTICLE, target_id=13, field="c", text="黑话"
+    )
+    services.record(
+        unknown, risk=Risk.UNKNOWN, categories=[], reason="?", quote="", model="m"
+    )
+    assert list(patrol.doubtful_unsent()) == [item]
+
+
+@pytest.mark.django_db
+def test_the_worker_queues_a_patrol_at_most_every_half_hour():
+    from django.core.cache import cache
+
+    from moderation import patrol
+
+    cache.delete(patrol.PATROL_KEY)
+    with patch("moderation.tasks.patrol") as task:
+        assert patrol.enqueue_if_due() is True
+        assert patrol.enqueue_if_due() is False
+        assert task.enqueue.call_count == 1
+    cache.delete(patrol.PATROL_KEY)
 
 
 # --- the admin -----------------------------------------------------------------
@@ -465,27 +545,14 @@ def test_handling_records_the_decision_without_touching_content(client, moderati
 
 
 @pytest.mark.django_db
-def test_high_risk_mail_goes_out_one_by_one(moderation_on):
-    for index in range(2):
-        User.objects.create_superuser(
-            email=f"admin{index}-solo@example.com",
-            password="Correct-Horse-Battery-1",
-            nickname=f"超管{index}",
-            agreed_terms_at=timezone.now(),
-            agreed_cross_border_at=timezone.now(),
-        )
-    item = services.submit(
-        target_type=TargetType.ARTICLE, target_id=31, field="content", text="卖号广告"
-    )
-    mail.outbox.clear()
-    services.record(
-        item,
-        risk=Risk.HIGH,
-        categories=[Category.GAME_TRADE],
-        reason="卖号",
-        quote="卖号",
-        model="m",
-    )
-    assert len(mail.outbox) == 2
-    for message in mail.outbox:
-        assert len(message.recipients()) == 1
+def test_the_workers_beat_queues_the_patrol():
+    """The beat runs every 30 seconds; the patrol itself keeps to 30 minutes."""
+    from core.worker import beat
+
+    with (
+        patch("core.worker.write_worker_heartbeat"),
+        patch("content.services.publish_due_pages") as publish,
+        patch("moderation.patrol.enqueue_if_due") as patrol_due,
+    ):
+        beat()
+    assert publish.call_count == 1 and patrol_due.call_count == 1

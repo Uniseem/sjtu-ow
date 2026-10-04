@@ -29,23 +29,31 @@ def write_worker_heartbeat() -> None:
     )
 
 
-def _heartbeat_loop() -> None:
+def beat() -> None:
+    """One tick of the worker's beat: the heartbeat, then the jobs that ride
+    on it. Each is on its own, so one failing does not stop the others."""
     from content.services import publish_due_pages
+    from moderation.patrol import enqueue_if_due
 
+    jobs = (
+        (write_worker_heartbeat, "write worker heartbeat"),
+        # Scheduled publishing (design 16.5, v6.50).
+        (publish_due_pages, "publish scheduled pages"),
+        # The AI patrol (design 5.5.3, v6.72): queued once per 30 minutes.
+        (enqueue_if_due, "queue the AI patrol"),
+    )
+    for job, what in jobs:
+        try:
+            job()
+        except Exception:
+            logger.exception("Failed to %s", what)
+        finally:
+            close_old_connections()
+
+
+def _heartbeat_loop() -> None:
     while not _stop.is_set():
-        try:
-            write_worker_heartbeat()
-        except Exception:
-            logger.exception("Failed to write worker heartbeat")
-        finally:
-            close_old_connections()
-        # Scheduled publishing rides on the same beat (design 16.5, v6.50).
-        try:
-            publish_due_pages()
-        except Exception:
-            logger.exception("Failed to publish scheduled pages")
-        finally:
-            close_old_connections()
+        beat()
         _stop.wait(WORKER_HEARTBEAT_INTERVAL_SECONDS)
 
 

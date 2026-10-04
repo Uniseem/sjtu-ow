@@ -11,7 +11,6 @@ from moderation.admin_views import (
     moderation_ask_author,
     moderation_detail,
     moderation_index,
-    moderation_scan,
     moderation_try,
 )
 from moderation.avatar_admin import avatar_review, avatar_review_action
@@ -21,7 +20,6 @@ from moderation.avatar_admin import avatar_review, avatar_review_action
 def register_moderation_urls():
     return [
         path("moderation/", moderation_index, name="moderation_index"),
-        path("moderation/scan/", moderation_scan, name="moderation_scan"),
         path("moderation/try/", moderation_try, name="moderation_try"),
         path("moderation/<id:pk>/", moderation_detail, name="moderation_detail"),
         path(

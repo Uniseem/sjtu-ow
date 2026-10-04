@@ -397,9 +397,9 @@ python manage.py remove_stale_contenttypes --include-stale-apps --noinput
 
 ## AI 内容审核
 
-站内内容（昵称、稿件、已发布的文章和普通页面）由 worker 送到大模型过一遍，疑似有问题的进后台「审核 → 内容」由管理员判断。
+站内内容（昵称、个人宣言、战队、文章和页面、赛事和内战说明、评论）由 AI **增量巡查**（194 起，设计 5.5）：保存时只记一笔，worker 每 30 分钟把新写或改过的送到大模型；有 AI 觉得可能不妥的，就发**一封**信列出来，发给「设置 → 全站设置 → AI 审核 → 巡查提醒发到」填的邮箱，**没填发给所有超级管理员**。网站默认信任所有人，什么都不自动隐藏；后台「审核 → 内容」是巡查记录，标不标处理结果都行。
 
-**AI 只有读取权限**：请求里不带任何工具、不带身份信息，模型唯一的产出是一条待复核记录；退回稿件、清空战队简介、停用账号等处置全部由管理员在对应功能里执行。
+**AI 只有读取权限**：请求里不带任何工具、不带身份信息，模型唯一的产出是一条巡查记录；退回稿件、清空战队简介、停用账号等处置全部由管理员在对应功能里执行。
 
 - 默认接 DeepSeek 的 OpenAI 兼容接口，模型在「设置 → 全站设置」里改（默认 `deepseek-v4.1-flash`）。
 - 环境变量：`MODERATION_API_KEY`、`MODERATION_BASE_URL`（自建或聚合平台时填）、`MODERATION_EXTRA_BODY`（一段 JSON，比如关闭思考模式的参数，原样并进请求体）、`MODERATION_TIMEOUT`、`MODERATION_MAX_OUTPUT_TOKENS`。
@@ -408,17 +408,11 @@ python manage.py remove_stale_contenttypes --include-stale-apps --noinput
 - 省钱措施：短内容一次最多合并 20 条、相同文本 30 天内不重复送审、每天调用上限（默认 2000）、后台显示本月调用次数和估算花费。
 
 ```bash
-uv run python manage.py moderate_scan               # 全量扫描现有内容（立即执行；后台「审核 → 内容」的按钮排到夜间）
+uv run python manage.py moderate_scan               # 刚开 AI 时：把现有内容记进待看列表，之后的巡查按每天上限慢慢看完
 uv run python manage.py moderate_scan --what pages --limit 50
-uv run python manage.py moderate_scan --digest      # 发送每日汇总邮件
 ```
 
-宿主机 cron（每天一封汇总）：
-
-```
-CRON_TZ=Asia/Shanghai
-30 9 * * * docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py moderate_scan --digest
-```
+巡查由 worker 自己定时做（`moderation/patrol.py`，每 30 分钟最多一次），不用宿主机 cron。194 以前的 `moderate_scan --digest`（每天一封汇总）去掉了，旧的 cron 里有这一行的要删掉。
 
 ## 正文的写法（192 起）
 

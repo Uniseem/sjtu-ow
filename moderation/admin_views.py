@@ -10,10 +10,8 @@ from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -23,12 +21,6 @@ from wagtail.models import ModelLogEntry
 
 from moderation import services
 from moderation.models import Category, ModerationItem, Risk, TargetType
-from moderation.tasks import (
-    SCAN_LOCK_KEY,
-    SCAN_LOCK_SECONDS,
-    scan_existing_content,
-    scan_start,
-)
 
 PAGE_SIZE = 25
 ACTIONS = {
@@ -100,7 +92,7 @@ def moderation_index(request):
         request,
         "moderation/index.html",
         {
-            "page_title": "内容审核",
+            "page_title": "巡查记录",
             "header_icon": "view",
             "items": page,
             "status": status,
@@ -110,7 +102,6 @@ def moderation_index(request):
             "since_choices": [
                 (value, label) for value, (label, _days) in SINCE.items()
             ],
-            "scan_running": cache.get(SCAN_LOCK_KEY) is not None,
             "statuses": ModerationItem.Status.choices,
             "risks": Risk.choices,
             "target_types": TargetType.choices,
@@ -121,7 +112,7 @@ def moderation_index(request):
             "usage": usage,
             "quota_left": services.quota_left(),
             "month": month,
-            "breadcrumbs_items": _breadcrumbs({"url": "", "label": "内容审核"}),
+            "breadcrumbs_items": _breadcrumbs({"url": "", "label": "巡查记录"}),
         },
     )
 
@@ -197,35 +188,6 @@ def moderation_action(request, pk):
     )
     untouched = "" if "清空" in label else "内容本身没有被改动。"
     messages.success(request, f"已记录：{label}。{untouched}")
-    return redirect("moderation_index")
-
-
-@reviewer_required
-@require_POST
-def moderation_scan(request):
-    """「全量扫描」 (design 5.5.4): queue every existing piece of content in
-    the background, in the off-peak hours (5.5.3). One at a time; repeats
-    are cheap because text already on record is not sent again."""
-    now = timezone.now()
-    start = scan_start(now)
-    wait = max(0, int((start - now).total_seconds()))
-    if not services.is_enabled():
-        messages.error(request, "AI 审核当前是关闭的，没有发起扫描。")
-    elif not cache.add(SCAN_LOCK_KEY, request.user.pk, wait + SCAN_LOCK_SECONDS):
-        messages.warning(request, "全量扫描已经排上或正在进行，稍后刷新列表看结果。")
-    else:
-        transaction.on_commit(
-            lambda: scan_existing_content.using(run_after=start).enqueue()
-        )
-        when = "现在就开始"
-        if wait >= 60:
-            moment = timezone.localtime(start)
-            when = f"将在 {moment:%m 月 %d 日 %H:%M} 开始（夜间价格低一半）"
-        messages.success(
-            request,
-            f"全量扫描{when}：昵称、个人宣言、文章和页面、战队、评论都会送审，"
-            "在后台进行，结果陆续出现在列表里。送过的内容不会重复送，每日上限照常。",
-        )
     return redirect("moderation_index")
 
 

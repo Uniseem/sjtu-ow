@@ -94,6 +94,7 @@ def _flagged(pk, risk, kind, excerpt):
         reason="评论里有针对其他用户的辱骂。",
         quote="",
         excerpt=excerpt,
+        url=f"/news/sample-{pk}/",
     )
 
 
@@ -458,20 +459,12 @@ def samples() -> list[Sample]:
             "小天使",
         ),
         _letter(
-            "high-risk",
+            "patrol",
             "审核",
-            "AI 审核发现高风险内容",
-            "内容编辑、超级管理员",
-            moderation.high_risk_letter(flagged[0]),
-            "编辑甲",
-        ),
-        _letter(
-            "digest",
-            "审核",
-            "AI 审核每日汇总",
-            "内容编辑、超级管理员",
-            moderation.digest_letter(flagged),
-            "编辑甲",
+            "AI 巡查发现可能不妥的内容（v6.72）",
+            "「巡查提醒发到」填的邮箱，没填是全部超级管理员",
+            moderation.patrol_letter(flagged),
+            "站长",
         ),
         _letter(
             "ask-author",

@@ -271,7 +271,6 @@ def count_review_tabs(user, section: Section) -> None:
     counters = {
         "registrations": admin_todo.pending_registrations,
         "submissions": lambda: admin_todo.waiting_submissions(user),
-        "moderation": admin_todo.flagged_content,
         "avatars": admin_todo.pending_avatars,
     }
     for tab in section.tabs:
