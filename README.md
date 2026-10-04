@@ -162,6 +162,45 @@ uv run python manage.py init_site
 
 跑完它会列出接下来要做的事。**之后登录后台，首页有一块「上线清单」**（只有超级管理员看得到，122 起）：必做的是邮件（SMTP，注册要验证邮箱，没配就没人能注册）和用户协议、隐私政策里的【】；建议做的是 AI 审核、异地备份、给社团干部分配内容编辑等角色、关于我们、站点简介 / QQ 群 / 首屏图、默认封面和头像图库、关掉测试环境横幅。每项写着缺什么、点进去就是要改的地方。
 
+### 演示站转正式站（182 起）
+
+演示站库里是演示数据（`demo.example.com` 的账号、战队、文章、评论、图片），真成员注册前要换成干净的库。182 在测试机上用演示站的真实备份恢复出一个站点，再照下面的步骤转换，**39 秒走完**。`$C` 是演示站那条 Compose 命令（`AGENTS.md`「第二台」）。
+
+```bash
+cd /srv/sjtu-ow
+# 1. 最后一份演示站备份，拷出备份卷：backup 只留 14 天，卷里那份到时会被删
+$C exec -T web python manage.py backup
+mkdir -p /root/sjtu-ow-backups
+LAST=$($C exec -T web sh -c 'ls -t /app/backups/sjtu-ow-*.tar.gz | head -1' | tr -d '\r')
+$C cp "web:$LAST" /root/sjtu-ow-backups/demo-final.tar.gz
+
+# 2. 停 web 和 worker，清空数据库、上传文件、静态页（卷是挂载点，只能清内容）
+$C stop web worker
+$C run --rm --no-deps web sh -c '
+  rm -f /app/data/db.sqlite3 /app/data/db.sqlite3-wal /app/data/db.sqlite3-shm
+  find /app/media -mindepth 1 -delete
+  find /app/prerendered -mindepth 1 -delete'
+
+# 3. 新库
+$C run --rm --no-deps web python manage.py migrate --noinput
+$C run --rm --no-deps web python manage.py createcachetable
+$C run --rm --no-deps web python manage.py init_site
+
+# 4. 去掉测试环境标记（横幅、禁止收录），重建容器让环境变量生效
+sed -i '/^TEST_ENVIRONMENT=/d' .env
+$C up -d --force-recreate
+$C exec -T web python manage.py prerender
+
+# 5. 管理员（自己输入密码），然后登录后台照「上线清单」填 SMTP、协议、关于我们
+$C exec web python manage.py createsuperuser
+```
+
+检查：首页、资讯、战队、注册页 200；`/robots.txt` 只挡 `/admin/`、`/me/`、`/accounts/` 这些，不再是 `Disallow: /`；首页没有「测试环境」；用户、战队、文章、图片都是 0。首页各区块显示「还没有文章」「最近没有安排」，数字是 0。
+
+后悔了要回到演示数据：`$C cp /root/sjtu-ow-backups/demo-final.tar.gz web:/app/backups/`，照「备份与恢复」恢复（停 web、worker，`restore … --yes`，启动，`prerender`），`.env` 加回 `TEST_ENVIRONMENT=1`。
+
+**恢复演练**（182，在测试机上）：从零克隆、构建、启动一个新站约 3 分钟（大部分是构建镜像）；把演示站当天 226 MB 的备份拷进去、停服务、恢复、补迁移、启动、全量生成，**34 秒**，用户、战队、文章、评论、图片数量和演示站一致。备份比代码旧时 `restore` 会列出差几个迁移，照提示 `migrate`。传输看线路：经国内中转 226 MB 用了 3 分钟。真正恢复时要用密码管理工具里原来的 `FIELD_ENCRYPTION_KEY`，演练用的是新密钥加 `--skip-key-check`（演示站没存加密内容）。
+
 ## 注销账号与导出个人信息
 
 个人中心「账号安全」页（`/me/security/`）有两个入口（设计 3.8）：
