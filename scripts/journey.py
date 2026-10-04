@@ -11,6 +11,13 @@ ID and a contact, signs up for the scrim, applies to the team and looks for
 the scrim under 「我的安排」 on the homepage. Every console error, uncaught
 exception and CSP report on the way is printed and counts as a failure.
 Exits 1 if any step fails. Needs ``chromium`` (installed on the test machine).
+
+    bash scripts/remote-check.sh run uv run python scripts/journey.py pages
+
+opens every page the project's own apps define, as a visitor, a member and
+a superuser (admin pages as the superuser only), and reports each one where
+the browser saw an error or the page answered 500. Covers the admin's
+script-heavy pages (drag-and-drop teams) that no test can run.
 """
 
 from __future__ import annotations
@@ -38,7 +45,12 @@ EMAIL, NICKNAME, PASSWORD = "newbie@journey.test", "新来的", "Journey-Test-Pa
 
 
 class Watching(screens.DevTools):
-    """Keeps the browser's own messages: exceptions, error logs, CSP."""
+    """Keeps the browser's own messages: exceptions, error logs, CSP, and the
+    status of each page loaded. A 404 or 405 page reports its own address as
+    a failed load; that is the page answering, not an error on it."""
+
+    page_url = ""
+    statuses: dict[str, int] = {}
 
     def _receive(self):
         message = super()._receive()
@@ -47,11 +59,20 @@ class Watching(screens.DevTools):
             EVENTS.append(("exception", params["exceptionDetails"].get("text", "")))
         elif method == "Log.entryAdded" and params["entry"].get("level") == "error":
             entry = params["entry"]
-            EVENTS.append(("error", f"{entry.get('text', '')} {entry.get('url', '')}"))
+            if not (
+                entry.get("source") == "network" and entry.get("url") == self.page_url
+            ):
+                EVENTS.append(
+                    ("error", f"{entry.get('text', '')} {entry.get('url', '')}")
+                )
         elif method == "Runtime.consoleAPICalled" and params.get("type") == "error":
-            EVENTS.append(
-                ("console", str(params.get("args", [{}])[0].get("value", "")))
-            )
+            words = [
+                str(arg.get("value", arg.get("description", arg.get("type", ""))))
+                for arg in params.get("args", [])
+            ]
+            EVENTS.append(("console", " ".join(words)))
+        elif method == "Network.responseReceived" and params.get("type") == "Document":
+            self.statuses[params["response"]["url"]] = params["response"]["status"]
         return message
 
 
@@ -194,6 +215,111 @@ def journey(tools, base, data) -> list[str]:
     return failed
 
 
+PROJECT = (
+    "accounts.",
+    "comments.",
+    "content.",
+    "core.",
+    "members.",
+    "moderation.",
+    "scrims.",
+    "search.",
+    "teams.",
+    "tournaments.",
+)
+EXTRA = ["/", "/news/", "/admin/", "/admin/pages/", "/accounts/login/"]
+
+
+def list_routes() -> list[str]:
+    """Inside Django (``journey.py routes``): the project's own addresses."""
+    import django
+
+    django.setup()
+    from django.urls import URLPattern, URLResolver, get_resolver
+
+    found = []
+
+    def walk(patterns, prefix):
+        for pattern in patterns:
+            if isinstance(pattern, URLResolver):
+                walk(pattern.url_patterns, prefix + str(pattern.pattern))
+            elif isinstance(pattern, URLPattern):
+                module = getattr(pattern.callback, "__module__", "")
+                if module.startswith(PROJECT) and "(?P" not in prefix + str(
+                    pattern.pattern
+                ):
+                    found.append(prefix + str(pattern.pattern))
+
+    walk(get_resolver().url_patterns, "")
+    return found
+
+
+def fill(route: str, data: dict) -> str:
+    route = route.lstrip("^").rstrip("$")
+    bare = route.removeprefix("admin/")
+    ids = {
+        "teams": data["team"],
+        "tournaments": data["cup"],
+        "scrims": data["scrim"],
+        "members": data["member"],
+    }
+    for prefix, value in ids.items():
+        if bare.startswith(prefix + "/"):
+            route = re.sub(r"<id:\w+>", str(value), route, count=1)
+    return "/" + re.sub(r"<[^>]+>", "1", route)
+
+
+def sweep(tools, base, data, routes) -> list[str]:
+    """Every page, in the browser, as the people who would open it."""
+    urls = sorted({fill(route, data) for route in routes} | set(EXTRA))
+    urls = [
+        url
+        for url in urls
+        if not url.endswith((".ics", ".csv", ".xml", ".txt"))
+        and not url.startswith("/_fragments/")  # pieces of pages, not pages
+    ]
+    sessions = {"访客": None, "成员": data["sessions"]["member"]}
+    sessions["站长"] = data["sessions"]["officer"]
+    bad = []
+    for who, session in sessions.items():
+        tools.send("Network.clearBrowserCookies")
+        if session:
+            tools.send(
+                "Network.setCookie",
+                {
+                    "name": "sessionid",
+                    "value": session,
+                    "domain": "127.0.0.1",
+                    "path": "/",
+                },
+            )
+        for url in urls:
+            if url.startswith("/admin/") and who != "站长":
+                continue
+            EVENTS.clear()
+            tools.page_url = base + url
+            tools.send("Page.navigate", {"url": base + url})
+            time.sleep(1.5)
+            tools.send("Runtime.evaluate", {"expression": "1"})
+            status = tools.statuses.get(base + url, 0)
+            if 400 <= status < 500:
+                # A page that answers 403/404/405 (forms that only take a
+                # POST, say) shows the browser's own error page and logs it
+                # as a failed load. Scripts and CSP still count.
+                EVENTS[:] = [
+                    event
+                    for event in EVENTS
+                    if not event[1].startswith("Failed to load resource")
+                ]
+            if EVENTS or status >= 500:
+                bad.append(url)
+                print(f"BAD {who} {status} {url}")
+                for kind, text in EVENTS:
+                    print(f"    浏览器报告 {kind}: {text[:200]}")
+    print(f"看了 {len(urls)} 个地址，{len(bad)} 处有问题")
+    return bad
+
+
 def main() -> int:
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True)
@@ -249,9 +375,21 @@ def main() -> int:
         targets = json.load(urllib.request.urlopen(f"http://127.0.0.1:{debug}/json"))
         page = next(t for t in targets if t.get("type") == "page")
         tools = Watching(page["webSocketDebuggerUrl"])
-        for domain in ("Page", "Runtime", "Log"):
+        for domain in ("Page", "Runtime", "Log", "Network"):
             tools.send(f"{domain}.enable")
-        failed = journey(tools, base, data)
+        if "pages" in sys.argv[1:]:
+            listed = subprocess.run(
+                [sys.executable, __file__, "routes"],
+                cwd=ROOT,
+                env=env,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            routes = json.loads(listed.stdout.strip().splitlines()[-1])
+            failed = sweep(tools, base, data, routes)
+        else:
+            failed = journey(tools, base, data)
     finally:
         for process in (browser, worker, server):
             process.terminate()
@@ -265,4 +403,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if sys.argv[1:2] == ["routes"]:
+        sys.path.insert(0, str(ROOT))
+        print(json.dumps(list_routes()))
+    else:
+        raise SystemExit(main())

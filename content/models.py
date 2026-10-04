@@ -14,7 +14,7 @@ from wagtail.models import Orderable, Page
 
 from content.blocks import ARTICLE_BODY_BLOCKS
 from content.forms import ArticlePageForm
-from content.panels import SubmissionGuidePanel
+from content.panels import SubmissionGuidePanel, TitlePanel
 from content.seo import build_seo
 from moderation.panels import ModerationVerdictPanel
 
@@ -363,7 +363,8 @@ class ArticlePage(SeoPageMixin, Page):
         ModerationVerdictPanel(heading="AI 审核"),
         # Round 124: for people whose articles go through review.
         SubmissionGuidePanel(heading="投稿须知"),
-        *Page.content_panels,
+        # Page.content_panels is just the title; this one copes without a slug.
+        TitlePanel("title"),
         FieldPanel("category"),
         FieldPanel("cover"),
         FieldPanel("summary"),

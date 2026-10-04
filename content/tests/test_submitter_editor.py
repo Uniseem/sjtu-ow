@@ -92,3 +92,22 @@ def test_reserved_and_taken_addresses_step_aside(news, client):
     assert ArticlePage.objects.get(title="admin").slug == "admin-article"
     _save(client, _add_url(news), title="Admin")
     assert ArticlePage.objects.get(title="Admin").slug == "admin-article-2"
+
+
+@pytest.mark.django_db
+def test_the_title_syncs_to_a_slug_only_when_there_is_one(news, client):
+    """Round 169: without a slug field Wagtail still attached its w-sync
+    controller with an empty selector, an error in every submitter's editor."""
+    import re
+
+    def title_input(user):
+        client.force_login(user)
+        html = client.get(_add_url(news)).content.decode()
+        return re.search(r'<input[^>]*name="title"[^>]*>', html).group(0)
+
+    writer = title_input(_user("w169@example.com", "投稿者"))
+    assert "w-sync" not in writer
+    assert "data-w-sync-target-value" not in writer
+    editor = title_input(_user("e169@example.com", "内容编辑", "投稿者"))
+    assert 'data-w-sync-target-value="#id_slug"' in editor
+    assert "w-sync" in editor
