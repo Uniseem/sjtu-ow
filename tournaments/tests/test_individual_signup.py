@@ -597,11 +597,9 @@ def test_the_export_lists_the_pool_entry(solo):
 
 @pytest.mark.django_db
 def test_the_admin_form_has_the_switch():
-    from tournaments.wagtail_hooks import TournamentViewSet
+    from backoffice.forms import TournamentForm
 
-    form_class = TournamentViewSet().get_form_class(for_update=True)
-
-    assert "registration_mode" in form_class.base_fields
+    assert "registration_mode" in TournamentForm.base_fields
 
 
 @pytest.mark.django_db

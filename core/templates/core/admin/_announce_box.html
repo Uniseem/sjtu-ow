@@ -3,13 +3,15 @@
   default: a mass email should be a decision, not a leftover tick.
 {% endcomment %}
 {% if announce %}
-  <fieldset class="w-mb-4">
-    <legend>活动通知</legend>
+  <fieldset class="b-fieldset">
+    <legend class="b-fieldset__legend">活动通知</legend>
     {% if announce.problem %}
-      <p class="help-block help-warning">发布后不能马上通知全体成员：{{ announce.problem }}</p>
+      <div class="c-notice c-notice--warn">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">发布后不能马上通知全体成员：{{ announce.problem }}</div></div>
     {% else %}
-      <label><input type="checkbox" name="announce" value="1"> 发布后同时通知全体成员（{{ announce.count }} 人）</label>
-      <p class="help">发给开着「活动通知」的成员，每场只能发一次。不勾也可以之后在列表的「更多」里发，发之前能看到信的样子。</p>
+      <div class="c-field">
+        <label class="c-check"><input type="checkbox" name="announce" value="1"><span>发布后同时通知全体成员（{{ announce.count }} 人）</span></label>
+        <div class="c-field__help">发给开着「活动通知」的成员，每场只能发一次。不勾也可以之后在列表的「更多」里发，发之前能看到信的样子。</div>
+      </div>
     {% endif %}
   </fieldset>
 {% endif %}

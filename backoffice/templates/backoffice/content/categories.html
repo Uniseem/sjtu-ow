@@ -1,0 +1,37 @@
+{% extends "backoffice/base.html" %}
+
+{% block actions %}
+  {% if can_add %}<a class="c-btn c-btn--primary c-btn--sm" href="{% url 'backoffice:category_new' %}">{% include "components/icon.html" with name="plus" %}新建分类</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if categories %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th>名称</th><th>网址片段</th><th class="is-num">排序</th><th>开放投稿</th><th class="is-num">文章</th><th><span class="sr-only">操作</span></th></tr></thead>
+      <tbody>
+        {% for item in categories %}
+          <tr data-category-row="{{ item.pk }}">
+            <td><a class="b-title" href="{% url 'backoffice:category_edit' item.pk %}">{{ item.name }}</a></td>
+            <td data-label="网址片段"><span class="b-mono">{{ item.slug }}</span></td>
+            <td data-label="排序" class="is-num">{{ item.sort_order }}</td>
+            <td data-label="开放投稿">{% if item.allow_submission %}是{% else %}否{% endif %}</td>
+            <td data-label="文章" class="is-num">{{ item.article_count }}</td>
+            <td>
+              <div class="b-rowacts">
+                <a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'backoffice:category_edit' item.pk %}">编辑</a>
+                {% if can_delete and not item.article_count %}
+                  <form method="post" action="{% url 'backoffice:category_delete' item.pk %}" data-confirm="删除分类「{{ item.name }}」？">
+                    {% csrf_token %}<button type="submit" class="c-btn c-btn--quiet c-btn--sm" data-delete-category>删除</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    {% url 'backoffice:category_new' as new_url %}
+    {% include "components/empty_state.html" with title="还没有分类" message="写文章要先选分类。" action_url=new_url action_label="新建分类" %}
+  {% endif %}
+{% endblock %}

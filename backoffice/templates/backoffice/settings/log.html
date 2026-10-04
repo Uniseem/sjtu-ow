@@ -1,0 +1,32 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <form method="get" class="b-filters">
+    <select name="action" class="c-input" aria-label="动作" data-autosubmit>
+      {% for value, label in form.fields.action.choices %}<option value="{{ value }}"{% if value == form.action.value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <label class="b-count" for="id_since">从</label>
+    <input type="date" name="since" id="id_since" value="{{ form.since.value|default:'' }}" class="c-input">
+    <label class="b-count" for="id_until">到</label>
+    <input type="date" name="until" id="id_until" value="{{ form.until.value|default:'' }}" class="c-input">
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+  </form>
+  {% if entries %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th>时间</th><th>谁</th><th>做了什么</th><th>对象</th></tr></thead>
+      <tbody>
+        {% for entry in entries %}
+          <tr>
+            <td>{{ entry.timestamp|date:"Y.m.d H:i:s" }}</td>
+            <td data-label="谁">{{ entry.user }}</td>
+            <td data-label="做了什么">{{ entry.action }}</td>
+            <td data-label="对象">{{ entry.label }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "components/pagination.html" %}
+  {% else %}
+    {% include "components/empty_state.html" with title="没有记录" message="换个时间段或动作试试。" %}
+  {% endif %}
+{% endblock %}

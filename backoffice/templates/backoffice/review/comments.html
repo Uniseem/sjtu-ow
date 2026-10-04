@@ -1,0 +1,47 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <form method="get" class="b-filters" role="search">
+    <input type="search" name="q" value="{{ query }}" maxlength="50" placeholder="搜评论内容" class="c-input" aria-label="搜评论">
+    <select name="show" class="c-input" aria-label="哪些评论" data-autosubmit>
+      <option value="">全部评论</option>
+      <option value="hidden"{% if shown == "hidden" %} selected{% endif %}>只看隐藏的</option>
+      <option value="pinned"{% if shown == "pinned" %} selected{% endif %}>只看置顶的</option>
+    </select>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+  </form>
+  <p class="b-section__text">评论只能隐藏和置顶，不能删除或改字。每篇文章只能置顶一条顶层评论。</p>
+  {% if page_obj %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th>评论</th><th>作者</th><th>文章</th><th>时间</th><th>状态</th><th><span class="sr-only">操作</span></th></tr></thead>
+      <tbody>
+        {% for comment in page_obj %}
+          <tr data-comment-row="{{ comment.pk }}">
+            <td>{{ comment.body|truncatechars:200 }}</td>
+            <td data-label="作者">{{ comment.author.nickname }}</td>
+            <td data-label="文章">{{ comment.page.title }}</td>
+            <td data-label="时间">{{ comment.created_at|date:"Y.m.d H:i" }}</td>
+            <td data-label="状态">{% if comment.is_hidden %}已隐藏{% elif comment.is_pinned %}置顶{% else %}—{% endif %}</td>
+            <td>
+              <div class="b-rowacts">
+                {% if comment.is_hidden %}
+                  <form method="post" action="{% url 'comments:action' comment.pk 'unhide' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}"><button type="submit" class="c-btn c-btn--quiet c-btn--sm">恢复</button></form>
+                {% else %}
+                  <form method="post" action="{% url 'comments:action' comment.pk 'hide' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}"><button type="submit" class="c-btn c-btn--quiet c-btn--sm">隐藏</button></form>
+                  {% if comment.is_pinned %}
+                    <form method="post" action="{% url 'comments:action' comment.pk 'unpin' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}"><button type="submit" class="c-btn c-btn--quiet c-btn--sm">取消置顶</button></form>
+                  {% elif comment.is_top_level %}
+                    <form method="post" action="{% url 'comments:action' comment.pk 'pin' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}"><button type="submit" class="c-btn c-btn--quiet c-btn--sm">置顶</button></form>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "components/pagination.html" %}
+  {% else %}
+    {% include "components/empty_state.html" with title="没有评论" message="换个筛选条件试试。" %}
+  {% endif %}
+{% endblock %}

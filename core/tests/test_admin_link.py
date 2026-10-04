@@ -11,7 +11,7 @@ from django.urls import reverse
 from accounts.models import User
 from accounts.tests.test_onboarding import _user
 
-ADMIN = reverse("wagtailadmin_home")
+ADMIN = reverse("backoffice:home")
 
 
 @pytest.fixture

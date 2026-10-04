@@ -243,7 +243,9 @@ def test_cancelling_removes_the_static_page(manager, settings, tmp_path):
 def test_admin_needs_the_permission(client, manager):
     plain = _user("nostaff@example.com", "路人戊")
     client.force_login(plain)
-    # No admin access at all: Wagtail bounces to the login page.
+    # Signed in without the right: refused (signed out: the sign-in page).
+    assert client.get("/admin/tournaments/").status_code == 403
+    client.logout()
     assert client.get("/admin/tournaments/").status_code == 302
 
     client.force_login(manager)
@@ -289,10 +291,13 @@ def test_content_editors_cannot_manage_tournaments(client, manager):
     client.force_login(editor)
 
     # Can reach the admin, but not the tournament area.
-    assert client.get(reverse("wagtailadmin_home")).status_code == 200
-    assert client.get("/admin/tournaments/", follow=True).redirect_chain
+    assert client.get(reverse("backoffice:home")).status_code == 200
+    assert client.get("/admin/tournaments/").status_code == 403
     assert services.can_manage(editor) is False
 
     tournament = _tournament()
     action = reverse("tournament_action", args=[tournament.pk, "publish"])
-    assert client.get(action, follow=True).redirect_chain
+    assert client.get(action).status_code == 403
+    assert (
+        client.get(reverse("tournaments:edit", args=[tournament.pk])).status_code == 403
+    )

@@ -37,15 +37,24 @@ class RequestIDMiddleware:
 
 
 class WagtailAdminCSPMiddleware:
-    """Relax CSP for the Wagtail admin path (design 15.2) before headers are written."""
+    """The admin policy (design 15.2) for the back office and Wagtail's admin
+    underneath it, and Wagtail's admin for superusers only (docs/admin.md 2):
+    everyone else is sent to the back office."""
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        wagtail = getattr(settings, "WAGTAIL_ADMIN_PREFIX", "/wagtail/")
+        if request.path.startswith(wagtail):
+            user = getattr(request, "user", None)
+            if user is not None and user.is_authenticated and not user.is_superuser:
+                from django.shortcuts import redirect
+
+                return redirect(getattr(settings, "ADMIN_URL_PREFIX", "/admin/"))
         response = self.get_response(request)
         prefix = getattr(settings, "ADMIN_URL_PREFIX", "/admin/")
-        if request.path.startswith(prefix):
+        if request.path.startswith((prefix, wagtail)):
             response._csp_config = ADMIN_CSP
         return response
 

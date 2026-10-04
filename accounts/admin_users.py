@@ -1,4 +1,6 @@
-"""The admin's user screens (design 14.2 用户, 3.7; round 115).
+"""Wagtail's user screens under /wagtail/, for superusers (design 3.7; round
+115). Since v7.0 users are edited in the back office (backoffice.views.
+members); these stay so the fallback admin keeps the same rules.
 
 Wagtail's own screens ask for 名/姓 and know nothing of this site's people.
 Here the account tab has the email, the nickname, 是否来自交大 and, for a
@@ -101,13 +103,7 @@ class UserDeleteView(wagtail_users.DeleteView):
         raise PermissionDenied("用户不做删除（设计 3.7），要停用请取消「启用」。")
 
 
-# Users, groups and feature permissions sit in their own 「用户」 menu, not
-# under 「设置」 (design 14.1, round 117; accounts.wagtail_hooks.users_menu).
-USERS_MENU_HOOK = "register_users_menu_item"
-
-
 class SiteUserViewSet(wagtail_users.UserViewSet):
-    menu_hook = USERS_MENU_HOOK
     index_view_class = UserIndexView
     add_view_class = UserCreateView
     edit_view_class = UserEditView
@@ -120,5 +116,4 @@ class SiteUserViewSet(wagtail_users.UserViewSet):
 
 
 class SiteGroupViewSet(GroupViewSet):
-    menu_hook = USERS_MENU_HOOK
     menu_label = "用户组"

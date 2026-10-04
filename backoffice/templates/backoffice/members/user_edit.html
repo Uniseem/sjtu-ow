@@ -1,0 +1,61 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <div class="b-split">
+    <div class="b-form">
+      <form method="post" class="b-form" novalidate>
+        {% csrf_token %}
+        <div class="b-fieldset">{% include "backoffice/parts/fields.html" %}</div>
+        <div class="b-actions"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
+      </form>
+
+      <section class="b-section" data-user-rules>
+        <h2 class="b-section__title">功能规则</h2>
+        <p class="b-section__text">只对这个人：单独禁止某项功能（比如评论），或者在他所在的组关掉时单独允许。</p>
+        {% if rules %}
+          <ul class="b-list">
+            {% for rule in rules %}
+              <li>
+                <span><strong>{{ rule.get_feature_display }}</strong>：{% if rule.allowed %}单独允许{% else %}单独禁止{% endif %}{% if rule.note %}<span class="b-sub">{{ rule.note }}</span>{% endif %}</span>
+                <form method="post" action="{% url 'backoffice:user_rule_delete' rule.pk %}" data-confirm="删掉这条规则？">
+                  {% csrf_token %}<button type="submit" class="c-btn c-btn--quiet c-btn--sm">删除</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        <form method="post" action="{% url 'backoffice:user_rule_add' person.pk %}" class="b-filters">
+          {% csrf_token %}
+          {{ rule_form.feature }}
+          {{ rule_form.allowed }}
+          <input type="text" name="note" maxlength="200" placeholder="原因（只有管理员看得到）" class="c-input" aria-label="原因">
+          <button type="submit" class="c-btn c-btn--secondary c-btn--sm">加一条</button>
+        </form>
+      </section>
+    </div>
+
+    <aside class="b-aside" aria-label="这个人在网站上">
+      <section class="b-section">
+        <h2 class="b-section__title">账号</h2>
+        <dl class="b-kv">
+          <dt>邮箱</dt><dd>{{ person.email }}{% if not profile.verified %}<span class="b-sub">还没验证</span>{% endif %}</dd>
+          <dt>注册</dt><dd>{{ person.date_joined|date:"Y.m.d H:i" }}</dd>
+          <dt>最后登录</dt><dd>{{ person.last_login|date:"Y.m.d H:i"|default:"—" }}</dd>
+          {% if person.is_superuser %}<dt>身份</dt><dd>超级管理员</dd>{% endif %}
+          {% if person.deactivation_note and not person.is_active %}<dt>停用原因</dt><dd>{{ person.deactivation_note }}</dd>{% endif %}
+        </dl>
+        <a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'member_detail' person.pk %}" target="_blank" rel="noopener">成员页{% include "components/icon.html" with name="external" class="size-4" %}</a>
+      </section>
+      <section class="b-section">
+        <h2 class="b-section__title">游戏和战队</h2>
+        <dl class="b-kv">
+          <dt>游戏 ID</dt><dd>{% for tag, ranks in profile.game_accounts %}{{ tag }}（{{ ranks }}）{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</dd>
+          <dt>战队</dt><dd>{% for team, role in profile.teams %}{{ team.name }}（{{ role }}）{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</dd>
+          {% if profile.contacts is not None %}
+            <dt>联系方式</dt><dd>{% for label, value in profile.contacts %}{{ label }} {{ value }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</dd>
+          {% endif %}
+        </dl>
+      </section>
+    </aside>
+  </div>
+{% endblock %}

@@ -89,10 +89,11 @@ def _admin_data(tournament, **changes):
 
 
 def _admin_form(tournament, **changes):
-    from tournaments.wagtail_hooks import TournamentViewSet
+    from backoffice.forms import TournamentForm
 
-    form_class = TournamentViewSet().get_form_class(for_update=True)
-    return form_class(_admin_data(tournament, **changes), instance=tournament)
+    return TournamentForm(
+        _admin_data(tournament, **changes), instance=tournament, user=_admin()
+    )
 
 
 # --- the field ---------------------------------------------------------------------
@@ -331,14 +332,13 @@ def test_members_hear_when_entered_and_a_sync_tells_only_the_new(
 
 @pytest.mark.django_db
 def test_the_team_board_is_offered_only_where_people_sign_up_alone():
-    from tournaments.wagtail_hooks import TournamentIndexView
+    from backoffice.views.events import tournament_items
 
-    view = TournamentIndexView()
     alone = _tournament(title="编队")
     teams = _tournament(title="不编队", registration_mode="team")
 
     def labels(tournament):
-        return [button.label for button in view.get_list_more_buttons(tournament)]
+        return [item.label for item in tournament_items(tournament)]
 
     assert "队伍编排" in labels(alone)
     assert "队伍编排" not in labels(teams)

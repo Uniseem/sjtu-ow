@@ -50,6 +50,18 @@ PAGES = [
     ("mail-tournament-moved", "member", "/_styleguide/emails/tournament-moved/"),
     ("mail-member-left", "member", "/_styleguide/emails/member-left/"),
     ("admin-activity", "officer", "/admin/activity/"),
+    # The back office (round 196).
+    ("admin-home", "officer", "/admin/"),
+    ("admin-articles", "officer", "/admin/articles/"),
+    ("admin-article", "officer", "/admin/articles/{article}/"),
+    ("admin-article-member", "member", "/admin/articles/new/"),
+    ("admin-tournaments", "officer", "/admin/tournaments/"),
+    ("admin-tournament", "officer", "/admin/tournaments/edit/{cup}/"),
+    ("admin-split", "officer", "/admin/scrims/{scrim}/split/"),
+    ("admin-users", "officer", "/admin/users/"),
+    ("admin-user", "officer", "/admin/users/{member}/"),
+    ("admin-images", "officer", "/admin/images/"),
+    ("admin-settings", "officer", "/admin/settings/site/"),
 ]
 
 
@@ -188,6 +200,47 @@ def seed() -> dict:
         roles=[Role.SUPPORT],
     )
 
+    # For the back office's pages (round 196): an article, a category, a
+    # plain page and a member group to open.
+    from content.models import (
+        ArticleCategory,
+        ArticleIndexPage,
+        ArticlePage,
+        StandardPage,
+    )
+    from members.models import MemberGroup, MemberGroupMembership
+
+    category = ArticleCategory.objects.order_by("pk").first()
+    article = ArticlePage(
+        title="截图攻略",
+        slug="screens-guide",
+        category=category,
+        author=member,
+        owner=member,
+        summary="新人入门。",
+        body="## 第一步\n\n先加一个游戏 ID。",
+    )
+    ArticleIndexPage.objects.get(slug="news").add_child(instance=article)
+    article.save_revision(user=member).publish()
+    # A picture in 投稿图片, for the picture dialog (journey.py admin).
+    from io import BytesIO
+
+    from django.core.files.base import ContentFile
+    from PIL import Image as PILImage
+    from wagtail.images import get_image_model
+
+    from content.services import ensure_submission_image_collection
+
+    buffer = BytesIO()
+    PILImage.new("RGB", (64, 48), (155, 58, 51)).save(buffer, "PNG")
+    get_image_model().objects.create(
+        title="截图封面",
+        file=ContentFile(buffer.getvalue(), name="screens-cover.png"),
+        collection=ensure_submission_image_collection(),
+    )
+    group = MemberGroup.objects.create(name="截图干部")
+    MemberGroupMembership.objects.create(group=group, user=officer, title="社长")
+
     sessions = {}
     for name, user in (("member", member), ("captain", captain), ("officer", officer)):
         client = Client()
@@ -200,6 +253,10 @@ def seed() -> dict:
         "teamcup": teamcup.pk,
         "scrim": scrim.pk,
         "member": member.pk,
+        "article": article.pk,
+        "about": StandardPage.objects.get(slug="about").pk,
+        "category": category.pk,
+        "group": group.pk,
     }
 
 

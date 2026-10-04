@@ -75,7 +75,7 @@ def registration(site):
 def test_only_tournament_managers_get_in(client, registration, manager):
     plain = _player("review-plain@example.com", "路人")
     client.force_login(plain)
-    assert client.get(reverse("registration_review_index")).status_code == 302
+    assert client.get(reverse("registration_review_index")).status_code == 403
 
     client.force_login(manager)
     response = client.get(reverse("registration_review_index"))
@@ -135,9 +135,8 @@ def test_contacts_need_the_permission(client, registration, manager, site):
     editor.groups.add(Group.objects.get(name="内容编辑"))
     client.force_login(editor)
     # Content editors cannot manage tournaments at all.
-    assert client.get(
-        reverse("registration_review_detail", args=[registration.pk]), follow=True
-    ).redirect_chain
+    detail = reverse("registration_review_detail", args=[registration.pk])
+    assert client.get(detail).status_code == 403
 
 
 @pytest.mark.django_db
@@ -245,11 +244,11 @@ def test_the_tournament_list_leads_straight_to_its_waiting_registrations(
         f"{reverse('registration_review_index')}"
         f"?tournament={registration.tournament_id}&amp;status=pending"
     )
-    assert f'<a href="{url}">1 份</a>' in html
+    assert f'<a class="c-link" href="{url}" data-pending>1 份</a>' in html
     assert "审核报名" in html
     review = client.get(url.replace("&amp;", "&")).content.decode()
     assert "审核战队" in review
 
     reg.approve(registration=registration, actor=manager)
     html = client.get(reverse("tournaments:index")).content.decode()
-    assert f'<a href="{url}">' not in html
+    assert "data-pending" not in html

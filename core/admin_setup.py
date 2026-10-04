@@ -14,7 +14,6 @@ from dataclasses import dataclass
 
 from django.conf import settings
 from django.urls import reverse
-from wagtail.admin.ui.components import Component
 
 LEGAL_SLUGS = (("terms", "用户协议"), ("privacy", "隐私政策"))
 
@@ -28,8 +27,8 @@ class Check:
     required: bool = True
 
 
-def _settings_url(site) -> str:
-    return reverse("wagtailsettings:edit", args=["core", "sitesettings", site.pk])
+def _settings_url(site=None) -> str:
+    return reverse("backoffice:site_settings")
 
 
 def _page_text(page) -> str:
@@ -98,7 +97,7 @@ def _legal() -> list[Check]:
                 title,
                 bool(text.strip()) and not blanks,
                 detail,
-                reverse("wagtailadmin_pages:edit", args=[page.pk]),
+                reverse("backoffice:page_edit", args=[page.pk]),
             )
         )
     return checks
@@ -115,7 +114,7 @@ def _about() -> Check:
         "已填写。"
         if text.strip()
         else "还是空的。页脚每页都链到它，写几句社团介绍和联系方式。",
-        reverse("wagtailadmin_pages:edit", args=[page.pk]) if page else "",
+        reverse("backoffice:page_edit", args=[page.pk]) if page else "",
         required=False,
     )
 
@@ -182,7 +181,7 @@ def _pictures() -> Check:
         + "」「".join(missing)
         + "」图库是空的，没有封面、头像的地方会显示占位图。"
         "在「图片」里上传到这两个集合（可以建子文件夹）。",
-        reverse("wagtailimages:index"),
+        reverse("backoffice:images"),
         required=False,
     )
 
@@ -200,9 +199,9 @@ def _roles() -> Check:
         "已有人负责。"
         if done
         else "还没有人在「内容编辑」组。查看巡查记录、撤下头像、隐藏评论"
-        "都只有超级管理员能做。在「用户」里给社团干部加上这个组"
+        "都只有超级管理员能做。在「成员 → 用户与权限」里给社团干部勾上这个角色"
         "（赛事、内战管理员同理）。",
-        reverse("wagtailusers_groups:index"),
+        reverse("backoffice:users"),
         required=False,
     )
 
@@ -235,21 +234,3 @@ def setup_checks() -> list[Check]:
         _pictures(),
         _test_banner(),
     ]
-
-
-class SetupPanel(Component):
-    name = "site_setup"
-    template_name = "core/admin/setup_panel.html"
-    order = 20
-
-    def get_context_data(self, parent_context):
-        checks = setup_checks()
-        open_required = [check for check in checks if check.required and not check.done]
-        open_optional = [
-            check for check in checks if not check.required and not check.done
-        ]
-        return {
-            "open_required": open_required,
-            "open_optional": open_optional,
-            "done": [check for check in checks if check.done],
-        }

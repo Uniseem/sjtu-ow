@@ -1,85 +1,57 @@
-{% extends "wagtailadmin/generic/base.html" %}
+{% extends "backoffice/base.html" %}
 
-{% block titletag %}巡查记录{% endblock %}
-
-{% block main_content %}
-  {% if disabled_reason %}
-    <p class="help-block help-warning">AI 审核没有在运行：{{ disabled_reason }}已有记录仍可查看。</p>
-  {% endif %}
+{% block actions %}
   {% if configured %}
-    <form method="post" action="{% url 'moderation_try' %}" class="w-mb-4">
-      {% csrf_token %}
-      <button type="submit" class="button button-secondary button-small">试一下</button>
-      <span class="help">发一句测试内容给 AI，看密钥和模型能不能用（算一次调用，不留记录）。</span>
+    <form method="post" action="{% url 'moderation_try' %}">
+      {% csrf_token %}<button type="submit" class="c-btn c-btn--secondary c-btn--sm" title="发一句测试内容给 AI，看密钥和模型能不能用（算一次调用，不留记录）">试一下</button>
     </form>
   {% endif %}
+{% endblock %}
 
-  <p class="help-block">
-    模型 <code>{{ model }}</code>；今天已调用 {{ usage.calls }} 次、送审 {{ usage.items }} 条，剩余额度 {{ quota_left }}；
-    本月调用 {{ month.calls }} 次、送审 {{ month.items }} 条，估算花费 ${{ month.cost|floatformat:4 }}。
-    <strong>AI 只做判断，不会改动任何内容。</strong>
-  </p>
-  <p class="help-block">AI 每 30 分钟巡查一次新写或改过的内容，觉得可能不妥的会发信提醒（收件人在「设置 → 全站设置 → AI 审核」里填，没填发给超级管理员）。网站默认信任所有人，这里的记录是给你查的，标不标处理结果都行。</p>
+{% block content %}
+  {% if disabled_reason %}
+    <div class="c-notice c-notice--warn">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">AI 审核没有在运行：{{ disabled_reason }}已有记录仍可查看。</div></div>
+  {% endif %}
 
-  <form method="get" class="w-mb-4">
-    <label>状态
-      <select name="status">
-        <option value="">全部</option>
-        {% for value, label in statuses %}
-          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>风险
-      <select name="risk">
-        <option value="">全部</option>
-        {% for value, label in risks %}
-          <option value="{{ value }}" {% if risk == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>类型
-      <select name="target_type">
-        <option value="">全部</option>
-        {% for value, label in target_types %}
-          <option value="{{ value }}" {% if target_type == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>提交时间
-      <select name="since">
-        <option value="">全部</option>
-        {% for value, label in since_choices %}
-          <option value="{{ value }}" {% if since == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit" class="button button-secondary">筛选</button>
+  <section class="b-section">
+    <p class="b-section__text">AI 每 30 分钟巡查一次新写或改过的内容，觉得可能不妥的会发信提醒（收件人在「设置 → 全站设置 → AI 审核」里填，没填发给超级管理员）。网站默认信任所有人，这里的记录是给你查的，标不标处理结果都行。<strong>AI 只做判断，不会改动任何内容。</strong></p>
+    <p class="b-sub">模型 <span class="b-mono">{{ model }}</span>；今天已调用 {{ usage.calls }} 次、送审 {{ usage.items }} 条，剩余额度 {{ quota_left }}；本月调用 {{ month.calls }} 次、送审 {{ month.items }} 条，估算花费 ${{ month.cost|floatformat:4 }}。</p>
+  </section>
+
+  <form method="get" class="b-filters">
+    <select name="status" class="c-input" aria-label="状态" data-autosubmit>
+      <option value="">全部状态</option>
+      {% for value, label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="risk" class="c-input" aria-label="风险" data-autosubmit>
+      <option value="">全部风险</option>
+      {% for value, label in risks %}<option value="{{ value }}" {% if risk == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="target_type" class="c-input" aria-label="类型" data-autosubmit>
+      <option value="">全部类型</option>
+      {% for value, label in target_types %}<option value="{{ value }}" {% if target_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="since" class="c-input" aria-label="提交时间" data-autosubmit>
+      <option value="">全部时间</option>
+      {% for value, label in since_choices %}<option value="{{ value }}" {% if since == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
   </form>
 
-
-  <table class="listing">
+  <table class="c-table c-table--stack">
     <thead>
-      <tr>
-        <th>内容</th>
-        <th>风险</th>
-        <th>类别</th>
-        <th>类型</th>
-        <th>作者</th>
-        <th>时间</th>
-        <th>状态</th>
-      </tr>
+      <tr><th>内容</th><th>风险</th><th>类别</th><th>类型</th><th>作者</th><th>时间</th><th>状态</th></tr>
     </thead>
     <tbody>
       {% for item in items %}
         <tr>
-          <td><a href="{% url 'moderation_detail' item.pk %}">{{ item.excerpt|truncatechars:60 }}</a></td>
-          <td>{{ item.get_risk_display }}</td>
-          <td>{{ item.category_labels|join:"、"|default:"—" }}</td>
-          <td>{{ item.get_target_type_display }}</td>
-          <td>{{ item.author.nickname|default:"—" }}</td>
-          <td>{{ item.created_at }}</td>
-          <td>{{ item.get_status_display }}</td>
+          <td><a class="b-title" href="{% url 'moderation_detail' item.pk %}">{{ item.excerpt|truncatechars:60 }}</a></td>
+          <td data-label="风险">{{ item.get_risk_display }}</td>
+          <td data-label="类别">{{ item.category_labels|join:"、"|default:"—" }}</td>
+          <td data-label="类型">{{ item.get_target_type_display }}</td>
+          <td data-label="作者">{{ item.author.nickname|default:"—" }}</td>
+          <td data-label="时间">{{ item.created_at|date:"Y.m.d H:i" }}</td>
+          <td data-label="状态">{{ item.get_status_display }}</td>
         </tr>
       {% empty %}
         <tr><td colspan="7">没有符合条件的记录。</td></tr>

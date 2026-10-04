@@ -1,0 +1,13 @@
+{% comment %}A form drawn in its groups (form.fieldsets), each a b-fieldset; hidden fields and the form's own errors first.{% endcomment %}
+{% if form.non_field_errors %}
+  <div class="c-notice c-notice--error" role="alert">{% include "components/icon.html" with name="x-circle" %}<div class="c-notice__body">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div></div>
+{% endif %}
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+{% for legend, fields in form.fieldsets %}
+  <fieldset class="b-fieldset">
+    <legend class="b-fieldset__legend">{{ legend }}</legend>
+    {% for field in fields %}
+      {% include "components/form_field.html" with field=field %}
+    {% endfor %}
+  </fieldset>
+{% endfor %}

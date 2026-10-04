@@ -1,0 +1,34 @@
+{% extends "backoffice/base.html" %}
+
+{% block actions %}
+  {% if request.user.is_superuser %}<a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'backoffice:collections' %}">集合</a>{% endif %}
+  {% if can_upload %}<a class="c-btn c-btn--primary c-btn--sm" href="{% url 'backoffice:image_upload' %}">{% include "components/icon.html" with name="plus" %}上传图片</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+  <form method="get" class="b-filters" role="search">
+    <input type="search" name="q" value="{{ query }}" maxlength="50" placeholder="搜标题" class="c-input" aria-label="搜标题">
+    <select name="collection" class="c-input" aria-label="集合" data-autosubmit>
+      <option value="">全部集合</option>
+      {% for item in collections %}<option value="{{ item.pk }}"{% if item.pk == collection %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+    <span class="b-count">{{ page_obj.paginator.count }} 张</span>
+  </form>
+  {% if cells %}
+    <ul class="b-grid">
+      {% for image, thumb in cells %}
+        <li>
+          <a class="b-grid__item" href="{% url 'backoffice:image_edit' image.pk %}">
+            <span class="b-grid__pic">{% if thumb %}<img src="{{ thumb }}" alt="" loading="lazy">{% endif %}</span>
+            <span class="b-grid__name">{{ image.title }}</span>
+            <span class="b-grid__meta">{{ image.collection.name }} · {{ image.width }}×{{ image.height }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    {% include "components/pagination.html" %}
+  {% else %}
+    {% include "components/empty_state.html" with title="没有图片" message="换个筛选条件，或者上传几张。" %}
+  {% endif %}
+{% endblock %}

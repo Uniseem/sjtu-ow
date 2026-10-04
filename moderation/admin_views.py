@@ -57,7 +57,7 @@ def reviewer_required(view):
 
 
 def _breadcrumbs(*items):
-    crumbs = [{"url": reverse("wagtailadmin_home"), "label": "首页"}]
+    crumbs = [{"url": reverse("backoffice:home"), "label": "首页"}]
     crumbs.extend(items)
     return crumbs
 
@@ -93,7 +93,6 @@ def moderation_index(request):
         "moderation/index.html",
         {
             "page_title": "巡查记录",
-            "header_icon": "view",
             "items": page,
             "status": status,
             "risk": risk,
@@ -135,7 +134,6 @@ def moderation_detail(request, pk):
         "moderation/detail.html",
         {
             "page_title": "复核内容",
-            "header_icon": "view",
             "item": item,
             "categories": item.category_labels(),
             "author_flags": author_flags,

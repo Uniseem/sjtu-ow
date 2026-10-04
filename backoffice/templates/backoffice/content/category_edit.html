@@ -1,0 +1,27 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <div class="{% if category %}b-split{% else %}b-single{% endif %}">
+    <form method="post" class="b-form" novalidate>
+      {% csrf_token %}
+      <div class="b-fieldset">{% include "backoffice/parts/fields.html" %}</div>
+      <div class="b-actions">
+        <button type="submit" class="c-btn c-btn--primary">保存</button>
+        <a class="c-btn c-btn--secondary" href="{{ back_url }}">不改了</a>
+      </div>
+    </form>
+    {% if category %}
+      <aside class="b-aside">
+        <section class="b-section">
+          <h2 class="b-section__title">这个分类</h2>
+          <p class="b-section__text">{% if in_use %}有 {{ in_use }} 篇文章在这个分类里，要删先把它们改到别的分类。{% else %}没有文章在用。{% endif %}</p>
+          {% if can_delete %}
+            <form method="post" action="{% url 'backoffice:category_delete' category.pk %}" data-confirm="删除分类「{{ category.name }}」？">
+              {% csrf_token %}<button type="submit" class="c-btn c-btn--danger c-btn--sm">删除分类</button>
+            </form>
+          {% endif %}
+        </section>
+      </aside>
+    {% endif %}
+  </div>
+{% endblock %}

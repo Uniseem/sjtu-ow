@@ -1,0 +1,79 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <div class="{% if article %}b-split{% else %}b-single{% endif %}">
+    <form method="post" class="b-form" novalidate>
+      {% csrf_token %}
+      {% if guide %}
+        <div class="c-notice c-notice--info" data-submission-guide>
+          {% include "components/icon.html" with name="info" %}
+          <div class="c-notice__body">
+            <ul class="list-disc pl-5">
+              <li>填好标题、选分类，摘要写一两句，会显示在文章列表和分享卡片上。</li>
+              <li>正文用 Markdown 写，工具栏有加粗、标题、列表、链接这些按钮，点最右边的「?」看写法。图片点图片按钮、拖进来或直接粘贴就会上传，单独一行的图片方括号里写图注；B 站视频把链接单独贴一行。点眼睛图标看排出来的样子。</li>
+              <li>写到一半可以点底部的「保存草稿」，以后在后台首页「我的文章」里接着写。</li>
+              <li>写完点底部的「发布」就上线了，不用等审核。发布后 AI 会定时检查，有问题管理员会联系你或者撤下。改已发布的文章，改完再点一次「发布」。</li>
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+      {% include "backoffice/parts/fieldsets.html" %}
+      <div class="b-formbar">
+        {% if can_publish %}<button type="submit" name="publish" value="1" class="c-btn c-btn--primary">发布</button>{% endif %}
+        <button type="submit" name="save" value="1" class="c-btn c-btn--secondary">保存草稿</button>
+        {% if article %}<a class="c-btn c-btn--quiet" href="{% url 'backoffice:article_preview' article.pk %}" target="_blank" rel="noopener">预览草稿</a>{% endif %}
+        {% if article.has_unpublished_changes and article.live %}<span class="b-formbar__note">有改动还没发布</span>{% endif %}
+      </div>
+    </form>
+
+    {% if article %}
+      <aside class="b-aside" aria-label="这篇文章">
+        <section class="b-section">
+          <h2 class="b-section__title">状态</h2>
+          <dl class="b-kv">
+            <dt>状态</dt><dd>{% include "components/status_badge.html" with label=status.0 kind=status.1 %}</dd>
+            <dt>作者</dt><dd>{{ article.author.nickname }}</dd>
+            {% if article.first_published_at %}<dt>首次发布</dt><dd>{{ article.first_published_at|date:"Y.m.d H:i" }}</dd>{% endif %}
+            {% if article.last_published_at %}<dt>最后发布</dt><dd>{{ article.last_published_at|date:"Y.m.d H:i" }}</dd>{% endif %}
+            {% if article.go_live_at and not article.live %}<dt>定时上线</dt><dd>{{ article.go_live_at|date:"Y.m.d H:i" }}</dd>{% endif %}
+            {% if article.expire_at %}<dt>定时下线</dt><dd>{{ article.expire_at|date:"Y.m.d H:i" }}</dd>{% endif %}
+          </dl>
+          <div class="b-actions">
+            {% if url %}<a class="c-btn c-btn--secondary c-btn--sm" href="{{ url }}" target="_blank" rel="noopener">看文章{% include "components/icon.html" with name="external" class="size-4" %}</a>{% endif %}
+            {% if can_announce %}<a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'announce' 'article' article.pk %}">{% if article.live %}通知全体成员{% else %}上线时通知全体成员{% endif %}</a>{% endif %}
+          </div>
+          {% if can_unpublish or can_delete %}
+            <div class="b-actions">
+              {% if can_unpublish %}
+                <form method="post" action="{% url 'backoffice:article_unpublish' article.pk %}" data-confirm="撤下这篇文章？撤下后变回草稿，访客看不到。">
+                  {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+                  <button type="submit" class="c-btn c-btn--secondary c-btn--sm">撤下</button>
+                </form>
+              {% endif %}
+              {% if can_delete %}
+                <form method="post" action="{% url 'backoffice:article_delete' article.pk %}" data-confirm="删除这篇文章？删除后不能恢复。">
+                  {% csrf_token %}
+                  <button type="submit" class="c-btn c-btn--danger c-btn--sm">删除</button>
+                </form>
+              {% endif %}
+            </div>
+          {% endif %}
+        </section>
+        {% if verdict %}
+          <section class="b-section" data-ai-verdict>
+            <h2 class="b-section__title">AI 巡查</h2>
+            {% if verdict.checked_at %}
+              <p><strong>AI 判断：{{ verdict.get_risk_display }}</strong>{% if verdict.category_labels %}（{{ verdict.category_labels|join:"、" }}）{% endif %}</p>
+              <p class="b-sub">{{ verdict.checked_at|date:"Y.m.d H:i" }} · <a class="c-link" href="{% url 'moderation_detail' verdict.pk %}">巡查详情</a></p>
+              {% if verdict.reason %}<p class="b-section__text">理由：{{ verdict.reason }}</p>{% endif %}
+              {% if verdict.quote %}<p class="b-section__text">引用原文：{{ verdict.quote }}</p>{% endif %}
+              <p class="b-sub">只是参考；AI 不会改动文章。</p>
+            {% else %}
+              <p class="b-section__text">AI 还没巡查到这篇，下一轮巡查后这里会显示它的判断。</p>
+            {% endif %}
+          </section>
+        {% endif %}
+      </aside>
+    {% endif %}
+  </div>
+{% endblock %}

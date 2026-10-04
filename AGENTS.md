@@ -8,7 +8,7 @@
 
 1. **`handoff/STATUS.md`**：现在做到哪、下一步做什么、在等谁。**进度只写在这一个地方**
 2. **`handoff/README.md`**：一轮工作怎么做，`request` / `report` / `review` 三份文件怎么写
-3. **`docs/design.md` 里和本轮有关的章节**：设计依据。3400 多行，按目录找章节读，不用通读。**前台每一页、每个部件的细节**（显示什么、缺了怎么办、太长太多怎么办、谁能看到）在 `docs/design-details.md`，和 13.2 节一起是设计依据（092 起）
+3. **`docs/design.md` 里和本轮有关的章节**：设计依据。3400 多行，按目录找章节读，不用通读。**前台每一页、每个部件的细节**（显示什么、缺了怎么办、太长太多怎么办、谁能看到）在 `docs/design-details.md`，和 13.2 节一起是设计依据（092 起）。**后台**（v7.0、196 起自己写的）的设计依据是 `docs/admin.md`；重写前 Wagtail 后台的结构和规则在 `docs/admin-inventory.md`
 4. 按需读：`README.md`（怎么运行、怎么运维）、`handoff/REVIEW-GUIDE.md`（做独立复核时）、`handoff/rounds/<轮次>/`（某个功能当初为什么这样做）
 
 ## 目录
@@ -17,6 +17,7 @@
 |---|---|
 | `accounts/` | 用户、游戏 ID、段位、联系方式、功能权限（`permissions.can_use`） |
 | `content/` | 页面类型、文章分类、投稿、B 站嵌入、sitemap / robots；正文的 Markdown 渲染（`markdown.py`）、后台编辑器（`widgets.py`、`markdown_views.py`）、旧内容转换（`legacy_body.py`，迁移要用） |
+| `backoffice/` | 后台（196 起自己写的，`/admin/`）：网址、进门和权限、大类和标签、表单、各页面视图和模板（设计 `docs/admin.md`）。Wagtail 的管理界面挪到 `/wagtail/`，只给超管应急 |
 | `core/` | 全站设置、邮件、字体、预渲染、健康检查、备份恢复与运维命令 |
 | `teams/` | 战队 |
 | `members/` | 成员展示、成员分组（066 轮代替了原来的组队大厅） |
@@ -160,6 +161,7 @@ Host sjtu-ow-test
 - **在 `web` 里跑通不等于 `worker` 能跑**：两个容器用同一个镜像，但挂的卷不一样。053 起全量预渲染都是 `exec web` 跑的，worker 缺静态卷、事件触发的生成全部失败，11 轮没人发现（064）。验证 worker 做的事（预渲染、邮件），要在服务器上触发一次、看结果
 - **删应用之前先看迁移依赖**：`tournaments/0004` 依赖 `integrations/0001`。lfg 是叶子应用可以整个删（066），`integrations` 不行，067 只删代码，包和迁移文件留作墓碑，新迁移删表。以后要删应用先 `grep -rn "<app>" */migrations/`
 - **Windows 上跑测试要设 `PYTHONUTF8=1`**：几条测试用 `read_text()` 不带编码读中文文件，系统默认 GBK 会解码失败；`tailwind build` 也会打印一条 `UnicodeDecodeError`，但 CSS 照样生成。测试里比较路径要用 `as_posix()`，`str(path)` 在 Windows 上是反斜杠（080）。CI 是 Linux，没这个问题（067）
+- **后台也是自己写的**（196 起，`docs/admin.md`）：`/admin/` 是 `backoffice/` 的页面，`/wagtail/` 是 Wagtail 的管理界面、只放超管进（`core.middleware.WagtailAdminCSPMiddleware` 把别人送回 `/admin/`）。新后台视图一律用 `backoffice.nav.placed(大类, 标签)` 包上，它就是门（没登录跳登录页、没 `access_admin` 给 403），漏了会被 `test_every_back_office_address_goes_through_the_door` 拦下；Wagtail 以前在后台里把 `PermissionDenied` 变成「跳回首页」，新后台直接 403，测试里断言 403。改了 `backoffice/` 的模板或脚本，跑一次 `journey.py pages` 和 `journey.py admin`（后者会在新后台写文章、用对话框选封面、发布）。Markdown 编辑器的工具栏图标在新后台里来自 `backoffice/templates/backoffice/parts/editor_icons.html`，`markdown-editor.js` 加新按钮时那里也要画一个，否则按钮是空的
 - **前台组件是自己写的**（074 起，设计 13.2）：`assets/css/input.css` 里的 `c-*` 组件和 `l-*` 布局，模板只用语义颜色（`text-fg-2`、`border-rule`）。**Tailwind 自带的色板关掉了**，`bg-orange-500` 这种类不会生成；077 起不再加载 daisyUI，模板里写 `btn`、`badge` 之类会被测试拦下。新组件先写进设计 13.2.7，再加到样张页 `/_styleguide/`
 - **Linux 容器里截图看不到苹方和 DIN**：只有文泉驿，截出来和访客看到的差很多。074 从 Google Fonts 的仓库下载 Noto Sans SC、Barlow，用 fontconfig 在扫描时注册成 `PingFang SC`、`DIN Condensed`（配置在 074 报告末尾）。`runserver --noreload` 不会重新读模板，改了模板要重启
 - **表格放在网格或弹性布局里会被拉高**（074）：行高被撑开到和旁边一栏一样。`c-table` 已经设了 `align-self: start`，自己写的表格也要注意
@@ -188,7 +190,7 @@ Host sjtu-ow-test
 - **量查询数时，数据要覆盖页面上的每一类内容**（163）：临时探测给搜索只放了战队，结论「平的」；正式守卫放了文章才发现每篇多两次查询。`core/tests/test_chapter15_audit.py` 的 `assert_no_n_plus_one` 比 3 份和 10 份数据
 - **Wagtail 自带的复制页拿原对象预填表单**（159）：表单提交到新建地址时没事，但直接提交回复制地址的话，状态、发布时间这些不在表单里的字段会一起带进新的一条。本站的内战、赛事复制改成只照抄列出的字段新建对象（`core.services.copy_ahead`），别的模型要开复制也照这样做
 - **编号一律过一道关**（166、167）：地址里写 `<id:pk>` 不写 `<int:pk>`（最多 18 位，有测试拦 `<int:`）；从表单或查询参数里取的编号用 `core.converters.as_id()`，不是编号就是 None。直接把 `request.POST.get(...)` 交给 `pk=` 的话，「abc」是 `ValueError`，20 位数字查一对一外键（Wagtail 页面）是 `OverflowError`，都是 500。`core/tests/test_garbage_input.py` 把全站地址乱填一遍，新加的页面出 500 它会红
-- **Wagtail 的标题面板在表单里没有 slug 字段时会留一个空选择器**（169）：它照样挂上 `w-sync` 控制器，`data-w-sync-target-value` 是空的，浏览器里报「Error connecting controller」。投稿者的表单去掉了 slug（130），所以文章页用自己的 `content.panels.TitlePanel`。以后去掉别的页面的 slug 也要换这个面板
+- **Wagtail 的标题面板在表单里没有 slug 字段时会留一个空选择器**（169）：它照样挂上 `w-sync` 控制器，`data-w-sync-target-value` 是空的，浏览器里报「Error connecting controller」。196 起写文章用新后台自己的表单，Wagtail 的编辑器只给超管（他们的表单总有 slug），当时的 `content.panels.TitlePanel` 删了；以后要是又让别人进 `/wagtail/` 编辑页面，这个坑还在
 - **用了 `account/_form.html` 就别再自己写 `form.non_field_errors`**（168）：这个共用的表单片段已经显示整表单的错误，战队的申请、新建、管理页又写了一遍，同一句话显示两次。有测试拦
 - **`querydict_from_html` 的两个坑**（159）：没写 `value` 的勾选框读出来是空字符串，Django 会当成没勾（浏览器发的是 `on`，测试里按 `checked` 改回 `on`）；Django 在 `<textarea>` 后面加一个换行，读出来的值开头多一个换行，比较前 `strip()`
 - **别用一个短词断言页面里「没有」某样东西**（175）：`"cdn" not in html.lower()` 会碰上页面里的 CSRF 令牌、内容安全策略随机串，偶尔就红（171 的 CI 这样红过一次）。断言具体的结构，比如没有 `src="https://…"` 的 `<script>`

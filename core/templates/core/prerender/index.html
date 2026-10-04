@@ -1,59 +1,47 @@
-{% extends "wagtailadmin/generic/base.html" %}
+{% extends "backoffice/base.html" %}
 
-{% block titletag %}静态页面{% endblock %}
+{% block actions %}
+  <form method="post" action="{% url 'core_prerender_rebuild' %}">
+    {% csrf_token %}<button type="submit" class="c-btn c-btn--primary c-btn--sm">全部重新生成</button>
+  </form>
+  <form method="post" action="{% url 'core_prerender_clear' %}" data-confirm="清空全部静态文件？清空后所有页面临时由 Django 实时渲染，直到重新生成。">
+    {% csrf_token %}<button type="submit" class="c-btn c-btn--danger c-btn--sm">清空全部静态文件</button>
+  </form>
+{% endblock %}
 
-{% block main_content %}
+{% block content %}
   {% if not enabled %}
-    <p class="help-block help-warning">预渲染当前是关闭的（环境变量 <code>PRERENDER_ENABLED</code>），页面全部由 Django 实时渲染。</p>
+    <div class="c-notice c-notice--warn">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">预渲染当前是关闭的（环境变量 <span class="b-mono">PRERENDER_ENABLED</span>），页面全部由 Django 实时渲染。</div></div>
   {% endif %}
 
-  <dl>
-    <dt>已生成</dt><dd>{{ ready_count }} 个页面</dd>
-    <dt>最近生成时间</dt><dd>{{ latest|default:"—" }}</dd>
-    <dt>失败</dt><dd>{{ failed_count }} 个</dd>
-    <dt>磁盘占用</dt><dd>{{ disk_bytes|filesizeformat }}（{{ root }}）</dd>
-  </dl>
-
-  <p>
-    <form method="post" action="{% url 'core_prerender_rebuild' %}" class="w-inline">
-      {% csrf_token %}
-      <button type="submit" class="button button-primary">全部重新生成</button>
-    </form>
-    <form method="post" action="{% url 'core_prerender_clear' %}" class="w-inline" onsubmit="return window.confirm('清空全部静态文件？清空后所有页面临时由 Django 实时渲染，直到重新生成。')">
-      {% csrf_token %}
-      <button type="submit" class="button serious">清空全部静态文件</button>
-    </form>
-  </p>
+  <section class="b-section">
+    <dl class="b-kv">
+      <dt>已生成</dt><dd>{{ ready_count }} 个页面</dd>
+      <dt>最近生成时间</dt><dd>{{ latest|date:"Y.m.d H:i"|default:"—" }}</dd>
+      <dt>失败</dt><dd>{{ failed_count }} 个</dd>
+      <dt>磁盘占用</dt><dd>{{ disk_bytes|filesizeformat }}（{{ root }}）</dd>
+    </dl>
+  </section>
 
   {% include "core/admin/_tabs.html" with tabs=statuses current=status %}
 
-  <table class="listing">
+  <table class="c-table c-table--stack">
     <thead>
-      <tr>
-        <th>路径</th>
-        <th>类型</th>
-        <th>状态</th>
-        <th>大小</th>
-        <th>最近生成</th>
-        <th>操作</th>
-      </tr>
+      <tr><th>路径</th><th>类型</th><th>状态</th><th class="is-num">大小</th><th>最近生成</th><th><span class="sr-only">操作</span></th></tr>
     </thead>
     <tbody>
       {% for record in records %}
         <tr>
-          <td><a href="{{ record.path }}">{{ record.path }}</a></td>
-          <td>{{ record.kind_label }}</td>
+          <td><a class="b-title b-mono" href="{{ record.path }}" target="_blank" rel="noopener">{{ record.path }}</a></td>
+          <td data-label="类型">{{ record.kind_label }}</td>
+          <td data-label="状态">{{ record.get_status_display }}{% if record.error %}<span class="b-sub split-problem">{{ record.error }}</span>{% endif %}</td>
+          <td data-label="大小" class="is-num">{{ record.bytes|filesizeformat }}</td>
+          <td data-label="最近生成">{{ record.generated_at|date:"Y.m.d H:i"|default:"—" }}</td>
           <td>
-            {{ record.get_status_display }}
-            {% if record.error %}<br><span class="help-block help-critical">{{ record.error }}</span>{% endif %}
-          </td>
-          <td>{{ record.bytes|filesizeformat }}</td>
-          <td>{{ record.generated_at|default:"—" }}</td>
-          <td>
-            <form method="post" action="{% url 'core_prerender_rebuild' %}" class="w-inline">
+            <form method="post" action="{% url 'core_prerender_rebuild' %}" class="b-rowacts">
               {% csrf_token %}
               <input type="hidden" name="path" value="{{ record.path }}">
-              <button type="submit" class="button button-small button-secondary">重新生成</button>
+              <button type="submit" class="c-btn c-btn--quiet c-btn--sm">重新生成</button>
             </form>
           </td>
         </tr>

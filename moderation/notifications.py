@@ -133,8 +133,10 @@ def revise_url(item) -> str:
         return site_url(reverse("team_manage", args=[item.target_id]))
     if kind == "application_message":
         return site_url(reverse("me_teams"))
-    if kind in ("article", "page"):
-        return admin + reverse("wagtailadmin_pages:edit", args=[item.target_id])
+    if kind == "article":
+        return admin + reverse("backoffice:article_edit", args=[item.target_id])
+    if kind == "page":
+        return admin + reverse("backoffice:page_edit", args=[item.target_id])
     if kind == "tournament_description":
         return admin + reverse("tournaments:edit", args=[item.target_id])
     if kind == "scrim_description":

@@ -78,13 +78,22 @@ def test_wagtails_colours_point_at_the_tokens():
 
 @pytest.mark.django_db
 def test_every_admin_page_loads_the_look_and_the_sites_mark(site, client):
+    """v7.0: the back office is the site's own page (app.css, b-brand); the
+    Wagtail admin under /wagtail/ keeps admin.css and the site's mark."""
     client.force_login(_user("look189@example.com", superuser=True))
     for path in ("/admin/", "/admin/tournaments/", "/admin/images/"):
         html = client.get(path).content.decode()
         assert re.search(
+            r'<link rel="stylesheet" href="/static/css/app[^"]*\.css', html
+        ), path
+        assert "/static/css/admin" not in html, path
+        assert 'class="b-brand"' in html and "管理后台" in html, path
+    for path in ("/wagtail/", "/wagtail/images/"):
+        html = client.get(path).content.decode()
+        assert re.search(
             r'<link rel="stylesheet" href="/static/css/admin[^"]*\.css">', html
         ), path
-        assert 'class="a-brand"' in html and "管理后台" in html, path
+        assert 'class="a-brand"' in html and "底层后台" in html, path
 
 
 @pytest.mark.django_db
@@ -97,14 +106,13 @@ def test_the_first_page_greets_and_offers_the_usual_work(site, client):
     client.force_login(owner)
     html = client.get("/admin/").content.decode()
     assert f"你好，{owner.nickname}" in html and "超级管理员" in html
-    actions = re.findall(r'class="button[^"]*"[^>]*data-home-action>([^<]+)<', html)
+    actions = re.findall(r'class="c-btn[^"]*"[^>]*data-home-action>([^<]+)<', html)
     assert actions == ["写文章", "新建赛事", "新建内战", "打开网站"]
-    # Wagtail's header and its own panels are gone (14.1, v6.67).
-    assert "w-summary" not in html and "account-summary" not in html
-    assert 'role="search"' not in html.split('id="main"', 1)[1]
-    assert html.count('class="a-block"') == 2  # 待办, 上线清单
+    # Nothing of Wagtail's dashboard (docs/admin.md 4.1).
     main = html.split('id="main"', 1)[1]
-    assert 'class="w-panel' not in main and "最近的编辑" not in main
+    assert 'class="w-' not in main and "最近的编辑" not in main
+    for block in ("data-todo", "data-my-articles", "data-setup-list"):
+        assert block in main, block
 
 
 @pytest.mark.django_db

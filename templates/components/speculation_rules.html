@@ -5,5 +5,5 @@
   JSON, not script: the policy allows it with 'inline-speculation-rules'.
 {% endcomment %}
 <script type="speculationrules">
-{"prerender": [{"where": {"and": [{"href_matches": "/*"}, {"not": {"href_matches": ["/admin/*", "/accounts/*", "/me/*", "/_fragments/*", "/_styleguide/*"]}}, {"not": {"selector_matches": "[download], [target], [data-no-prerender]"}}]}, "eagerness": "moderate"}]}
+{"prerender": [{"where": {"and": [{"href_matches": "/*"}, {"not": {"href_matches": ["/admin/*", "/wagtail/*", "/accounts/*", "/me/*", "/_fragments/*", "/_styleguide/*"]}}, {"not": {"selector_matches": "[download], [target], [data-no-prerender]"}}]}, "eagerness": "moderate"}]}
 </script>

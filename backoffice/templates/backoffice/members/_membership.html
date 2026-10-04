@@ -1,0 +1,19 @@
+<div class="b-filters" data-membership-row>
+  {% for hidden in row.hidden_fields %}{{ hidden }}{% endfor %}
+  <div class="c-field{% if row.user.errors %} is-invalid{% endif %}">
+    <label class="c-field__label" for="{{ row.user.id_for_label }}">成员</label>
+    {{ row.user }}
+    {% if row.user.errors %}<p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ row.user.errors.0 }}</span></p>{% endif %}
+  </div>
+  <div class="c-field{% if row.title.errors %} is-invalid{% endif %}">
+    <label class="c-field__label" for="{{ row.title.id_for_label }}">职务</label>
+    {{ row.title }}
+    {% if row.title.errors %}<p class="c-field__error" role="alert">{% include "components/icon.html" with name="alert" %}<span>{{ row.title.errors.0 }}</span></p>{% endif %}
+  </div>
+  <div class="c-field">
+    <label class="c-field__label" for="{{ row.ORDER.id_for_label }}">组内顺序</label>
+    {{ row.ORDER }}
+  </div>
+  {% if row.DELETE %}<label class="c-check">{{ row.DELETE }}删除</label>{% endif %}
+  {% for error in row.non_field_errors %}<p class="c-field__error" role="alert">{{ error }}</p>{% endfor %}
+</div>

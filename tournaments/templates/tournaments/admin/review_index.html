@@ -1,61 +1,55 @@
-{% extends "wagtailadmin/generic/base.html" %}
+{% extends "backoffice/base.html" %}
 
-{% block titletag %}报名审核{% endblock %}
+{% block actions %}
+  <a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'registration_review_export' %}?status={{ status }}&amp;tournament={{ tournament_id }}">{% include "components/icon.html" with name="download" %}导出 CSV</a>
+{% endblock %}
 
-{% block main_content %}
-  <form method="get" class="w-mb-4">
-    <label>赛事
-      <select name="tournament">
-        <option value="">全部赛事</option>
-        {% for item in tournaments %}
-          <option value="{{ item.pk }}" {% if tournament_id == item.pk|stringformat:"s" %}selected{% endif %}>{{ item.title }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>状态
-      <select name="status">
-        <option value="">全部</option>
-        {% for value, label in statuses %}
-          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit" class="button button-secondary">筛选</button>
-    <a class="button button-secondary" href="{% url 'registration_review_export' %}?status={{ status }}&amp;tournament={{ tournament_id }}">导出 CSV</a>
+{% block content %}
+  <form method="get" class="b-filters">
+    <select name="tournament" class="c-input" aria-label="赛事" data-autosubmit>
+      <option value="">全部赛事</option>
+      {% for item in tournaments %}
+        <option value="{{ item.pk }}" {% if tournament_id == item.pk|stringformat:"s" %}selected{% endif %}>{{ item.title }}</option>
+      {% endfor %}
+    </select>
+    <select name="status" class="c-input" aria-label="状态" data-autosubmit>
+      <option value="">全部状态</option>
+      {% for value, label in statuses %}
+        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
   </form>
 
-  <form method="post" action="{% url 'registration_review_bulk' %}">
+  <form method="post" action="{% url 'registration_review_bulk' %}" class="b-form">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-    <table class="listing">
+    <table class="c-table c-table--stack">
       <thead>
         <tr>
-          <th></th>
-          <th>赛事</th>
-          <th>战队</th>
-          <th>人数</th>
-          <th>状态</th>
-          <th>名单版本</th>
-          <th>提交时间</th>
+          <th><label class="c-check"><input type="checkbox" data-select-all="registration" aria-label="全选"></label></th>
+          <th>战队</th><th>赛事</th><th class="is-num">人数</th><th>状态</th><th class="is-num">名单版本</th><th>提交时间</th>
         </tr>
       </thead>
       <tbody>
         {% for registration in registrations %}
           <tr>
-            <td><input type="checkbox" name="registration" value="{{ registration.pk }}"></td>
-            <td>{{ registration.tournament.title }}</td>
-            <td><a href="{% url 'registration_review_detail' registration.pk %}">{{ registration.team_name }}</a>{% if registration.deactivated %}<br><span class="help-block help-warning">名单里有 {{ registration.deactivated }} 个账号已停用</span>{% endif %}</td>
-            <td>{{ registration.members.count }}</td>
-            <td>{{ registration.get_status_display }}</td>
-            <td>{{ registration.roster_version }}</td>
-            <td>{{ registration.submitted_at }}</td>
+            <td><label class="c-check"><input type="checkbox" name="registration" value="{{ registration.pk }}" aria-label="选中 {{ registration.team_name }}"></label></td>
+            <td data-label="战队"><a class="b-title" href="{% url 'registration_review_detail' registration.pk %}">{{ registration.team_name }}</a>{% if registration.deactivated %}<span class="b-sub split-problem">名单里有 {{ registration.deactivated }} 个账号已停用</span>{% endif %}</td>
+            <td data-label="赛事">{{ registration.tournament.title }}</td>
+            <td data-label="人数" class="is-num">{{ registration.members.count }}</td>
+            <td data-label="状态">{{ registration.get_status_display }}</td>
+            <td data-label="名单版本" class="is-num">{{ registration.roster_version }}</td>
+            <td data-label="提交时间">{{ registration.submitted_at|date:"Y.m.d H:i" }}</td>
           </tr>
         {% empty %}
           <tr><td colspan="7">没有符合条件的报名。</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    <p><button type="submit" class="button button-primary">批量通过所选</button></p>
+    {% if registrations %}
+      <div class="b-actions"><button type="submit" class="c-btn c-btn--primary">批量通过所选</button></div>
+    {% endif %}
   </form>
 
   {% include "core/admin/_pager.html" with page=registrations %}

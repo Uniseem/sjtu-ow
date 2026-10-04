@@ -1,34 +1,33 @@
-{% extends "wagtailadmin/generic/base.html" %}
+{% extends "backoffice/base.html" %}
 {% load static %}
 
-{% block titletag %}{{ tournament.title }} · 队伍编排{% endblock %}
+{% block page_heading %}队伍编排：{{ tournament.title }}{% endblock %}
 
-{% block main_content %}
-  <dl>
-    <dt>每队人数</dt><dd>{{ roster_min }}–{{ roster_max }} 人</dd>
-    <dt>个人报名</dt><dd>{{ pool_total }} 人，其中散人池 {{ bench|length }} 人</dd>
-    <dt>报名截止</dt><dd>{{ tournament.registration_closes_at }}</dd>
-  </dl>
+{% block content %}
+  <section class="b-section">
+    <dl class="b-kv">
+      <dt>每队人数</dt><dd>{{ roster_min }}–{{ roster_max }} 人</dd>
+      <dt>个人报名</dt><dd>{{ pool_total }} 人，其中散人池 {{ bench|length }} 人</dd>
+      <dt>报名截止</dt><dd>{{ tournament.registration_closes_at|date:"Y.m.d H:i" }}</dd>
+    </dl>
+  </section>
 
   {% if not tournament.takes_individuals %}
-    <div class="messages"><ul><li class="warning">这项赛事是整队报名，不收个人报名。已有的临时队伍仍可以在这里调整。</li></ul></div>
+    <div class="c-notice c-notice--warn">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">这项赛事是整队报名，不收个人报名。已有的临时队伍仍可以在这里调整。</div></div>
   {% endif %}
 
-  <form method="post" data-teams-form data-roster-max="{{ roster_max }}" data-roster-min="{{ roster_min }}">
+  <form method="post" data-teams-form data-roster-max="{{ roster_max }}" data-roster-min="{{ roster_min }}" class="b-form">
     {% csrf_token %}
-    <p class="help-block" data-drag-help hidden>
-      把散人拖进队伍，或者用卡片上的按钮移动。<strong>队伍满员时不能直接拖进去</strong>，先把要换下来的人拖回散人池。
-      人数低于下限的队伍标红，但仍然可以保存。保存后新编入的人会收到邮件。
-    </p>
+    <div class="c-notice c-notice--info" data-drag-help hidden>{% include "components/icon.html" with name="info" %}<div class="c-notice__body">把散人拖进队伍，或者用卡片上的按钮移动。<strong>队伍满员时不能直接拖进去</strong>，先把要换下来的人拖回散人池。人数低于下限的队伍标红，但仍然可以保存。保存后新编入的人会收到邮件。</div></div>
     <noscript>
-      <div class="messages"><ul><li class="error">这个页面的拖拽需要 JavaScript；没有的话请用每张卡片上的按钮。</li></ul></div>
+      <div class="c-notice c-notice--error"><div class="c-notice__body">这个页面的拖拽需要 JavaScript；没有的话请用每张卡片上的按钮。</div></div>
     </noscript>
 
     <div class="split-teams">
       {% for zone in zones %}
         <div class="split-team" data-team-panel="{{ zone.key }}">
-          <h3>
-            <label>队名 <input type="text" name="name-{{ zone.key }}" value="{{ zone.name }}" maxlength="16" required class="split-name"></label>
+          <h3 class="b-section__title">
+            <label>队名 <input type="text" name="name-{{ zone.key }}" value="{{ zone.name }}" maxlength="16" required class="c-input split-name"></label>
           </h3>
           {% if zone.problems %}
             <p class="split-problem" data-team-problem="{{ zone.key }}">{{ zone.problems|join:"、" }}</p>
@@ -39,8 +38,8 @@
         </div>
       {% endfor %}
       <div class="split-team" data-team-panel="{{ new_key }}">
-        <h3>
-          <label>新队伍 <input type="text" name="name-{{ new_key }}" value="" maxlength="16" placeholder="拖人进来后填队名" class="split-name"></label>
+        <h3 class="b-section__title">
+          <label>新队伍 <input type="text" name="name-{{ new_key }}" value="" maxlength="16" placeholder="拖人进来后填队名" class="c-input split-name"></label>
         </h3>
         <p class="split-problem" data-team-problem="{{ new_key }}" hidden></p>
         {% include "tournaments/admin/_zone.html" with key=new_key label="名单（保存后成为一支新队伍）" members=None capacity=roster_max minimum=roster_min %}
@@ -49,42 +48,38 @@
 
     <div class="split-buffer">
       {% include "tournaments/admin/_zone.html" with key="" label="散人池（等待编队）" members=bench capacity=0 minimum=0 %}
-      <p class="help-block">留在这里的人还没有队伍。标着「已在战队名单中」的人不能编入。</p>
+      <p class="b-sub">留在这里的人还没有队伍。标着「已在战队名单中」的人不能编入。</p>
     </div>
 
-    <p>
-      <button type="submit" name="action" value="save" class="button button-primary">保存编队</button>
-    </p>
+    <div class="b-formbar">
+      <button type="submit" name="action" value="save" class="c-btn c-btn--primary">保存编队</button>
+    </div>
   </form>
 
   {% if zones %}
-    <h2>解散队伍</h2>
-    <p class="help-block">解散后成员回到散人池，并收到邮件。</p>
-    <ul>
-      {% for zone in zones %}
-        <li>
-          <form method="post" class="split-dissolve" onsubmit="return window.confirm('解散这支临时队伍？成员回到散人池并收到邮件。')">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="dissolve">
-            <input type="hidden" name="registration" value="{{ zone.registration.pk }}">
-            {{ zone.name }}（{{ zone.members|length }} 人）
-            <button type="submit" class="button button-small serious">解散</button>
-            <a class="button button-small button-secondary" href="{% url 'registration_review_detail' zone.registration.pk %}">报名详情</a>
-          </form>
-        </li>
-      {% endfor %}
-    </ul>
+    <section class="b-section">
+      <h2 class="b-section__title">解散队伍</h2>
+      <p class="b-section__text">解散后成员回到散人池，并收到邮件。</p>
+      <ul class="b-list">
+        {% for zone in zones %}
+          <li>
+            <form method="post" class="split-dissolve" data-confirm="解散这支临时队伍？成员回到散人池并收到邮件。">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="dissolve">
+              <input type="hidden" name="registration" value="{{ zone.registration.pk }}">
+              {{ zone.name }}（{{ zone.members|length }} 人）
+              <button type="submit" class="c-btn c-btn--danger c-btn--sm">解散</button>
+              <a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'registration_review_detail' zone.registration.pk %}">报名详情</a>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
   {% endif %}
-
-  <p><a class="button button-secondary" href="{% url 'tournaments:index' %}">返回</a></p>
-{% endblock %}
-
-{% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/scrim-split.css' %}">
-  <link rel="stylesheet" href="{% static 'css/tournament-teams.css' %}">
 {% endblock %}
 
 {% block extra_js %}
+  {{ block.super }}
   <script src="{% static 'vendor/Sortable.min.js' %}" defer></script>
   <script src="{% static 'js/tournament-teams.js' %}" defer></script>
 {% endblock %}

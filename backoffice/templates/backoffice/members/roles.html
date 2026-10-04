@@ -1,0 +1,34 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <p class="b-section__text">谁在哪个角色里，在「用户」里编辑那个人。角色本身能做什么是固定的（设计 4.1）；细粒度的权限在 Wagtail 底层后台的用户组里，平时不用动。</p>
+  {% for group, summary in groups %}
+    <section class="b-section" data-role="{{ group.name }}">
+      <div class="c-panel__head">
+        <h2 class="b-section__title">{{ group.name }}</h2>
+        <a class="c-link" href="{% url 'backoffice:users' %}?role={{ group.name|urlencode }}">{{ group.people }} 人 →</a>
+      </div>
+      <p class="b-section__text">{{ summary }}</p>
+      {% if group.feature_restrictions.all %}
+        <ul class="b-list">
+          {% for restriction in group.feature_restrictions.all %}
+            <li>
+              <span>关掉了<strong>{{ restriction.get_feature_display }}</strong>{% if restriction.note %}<span class="b-sub">{{ restriction.note }}</span>{% endif %}</span>
+              <form method="post" action="{% url 'backoffice:role_restriction_delete' restriction.pk %}" data-confirm="重新打开这项功能？">
+                {% csrf_token %}<button type="submit" class="c-btn c-btn--quiet c-btn--sm">重新打开</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      <form method="post" action="{% url 'backoffice:role_restriction_add' group.pk %}" class="b-filters">
+        {% csrf_token %}
+        <select name="feature" class="c-input" aria-label="功能" required>
+          {% for value, label in restriction_form.fields.feature.choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+        <input type="text" name="note" maxlength="200" placeholder="原因" class="c-input" aria-label="原因">
+        <button type="submit" class="c-btn c-btn--secondary c-btn--sm">对这组关掉</button>
+      </form>
+    </section>
+  {% endfor %}
+{% endblock %}

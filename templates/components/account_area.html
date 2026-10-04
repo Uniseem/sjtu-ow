@@ -7,7 +7,7 @@
       {% include "components/icon.html" with name="chevron-down" class="size-4 text-fg-2" %}
     </summary>
     <div class="c-menu__panel">
-      {% if user|runs_admin %}<a href="{% url 'wagtailadmin_home' %}" data-admin-link>管理后台</a>
+      {% if user|runs_admin %}<a href="{% url 'backoffice:home' %}" data-admin-link>管理后台</a>
       <hr>{% endif %}
       <a href="{% url 'me_profile' %}">个人中心</a>
       <a href="{% url 'me_registrations' %}">我的报名</a>

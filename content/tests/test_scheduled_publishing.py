@@ -136,4 +136,5 @@ def test_the_admin_manual_says_where_the_schedule_is(site_tree):
     editor = text(role_user("c158@example.com", "内容编辑", "投稿者"))
     author = text(role_user("a158@example.com", "认证作者", "投稿者"))
     for steps in (editor, author):
-        assert "「状态」面板" in steps and "「设置计划」" in steps
+        # v7.0: the back office's article form has the group for it.
+        assert "「网址和发布时间」" in steps and "定时上线" in steps

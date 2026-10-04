@@ -1,56 +1,56 @@
-{% extends "wagtailadmin/generic/base.html" %}
+{% extends "backoffice/base.html" %}
 
-{% block titletag %}活动数据{% endblock %}
-
-{% block main_content %}
+{% block content %}
   {% comment %}Design 14.2 (v6.53): what the club did in a stretch of time, for the annual review and handover.{% endcomment %}
-  <p class="help">只数已发布和已结束的内战、赛事，草稿和已取消的不算；人数按在用、验证过邮箱的成员去重。这里是活动数据，网站不做访问统计。</p>
+  <p class="b-section__text">只数已发布和已结束的内战、赛事，草稿和已取消的不算；人数按在用、验证过邮箱的成员去重。这里是活动数据，网站不做访问统计。</p>
 
-  <form method="get" class="w-mb-8" data-activity-period>
-    <p>
-      {% for label, preset in presets %}<a href="?start={{ preset.start|date:'Y-m-d' }}&amp;end={{ preset.end|date:'Y-m-d' }}" class="button button-small button-secondary">{{ label }}</a> {% endfor %}
-    </p>
-    <p>
-      <label>从 <input type="date" name="start" value="{{ period.start|date:'Y-m-d' }}" required></label>
-      <label>到 <input type="date" name="end" value="{{ period.end|date:'Y-m-d' }}" required></label>
-      <button type="submit" class="button button-small">查看</button>
-    </p>
+  <form method="get" class="b-filters" data-activity-period>
+    {% for label, preset in presets %}<a href="?start={{ preset.start|date:'Y-m-d' }}&amp;end={{ preset.end|date:'Y-m-d' }}" class="c-btn c-btn--secondary c-btn--sm">{{ label }}</a>{% endfor %}
+    <label class="b-count" for="activity-start">从</label>
+    <input type="date" id="activity-start" name="start" value="{{ period.start|date:'Y-m-d' }}" required class="c-input">
+    <label class="b-count" for="activity-end">到</label>
+    <input type="date" id="activity-end" name="end" value="{{ period.end|date:'Y-m-d' }}" required class="c-input">
+    <button type="submit" class="c-btn c-btn--primary c-btn--sm">查看</button>
   </form>
 
-  {% if error %}<p class="help-block help-warning" data-activity-error>{{ error }}</p>{% endif %}
+  {% if error %}<div class="c-notice c-notice--warn" data-activity-error>{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">{{ error }}</div></div>{% endif %}
 
-  <h2>{{ period.start|date:"Y 年 n 月 j 日" }} – {{ period.end|date:"Y 年 n 月 j 日" }}</h2>
-  <table class="listing w-mb-12" data-activity-totals>
-    <tbody>
-      <tr><th scope="row">新成员</th><td>{{ totals.members }} 人（其中交大 {{ totals.sjtu_members }} 人）</td></tr>
-      <tr><th scope="row">内战</th><td>{{ totals.scrims }} 场 · 报名 {{ totals.scrim_signups }} 人次 · 上场 {{ totals.scrim_players }} 人次 · 参与 {{ totals.scrim_people }} 人</td></tr>
-      <tr><th scope="row">赛事</th><td>{{ totals.tournaments }} 项 · 通过 {{ totals.tournament_teams }} 支队伍 · 参赛 {{ totals.tournament_people }} 人</td></tr>
-      <tr><th scope="row">文章</th><td>发布 {{ totals.articles }} 篇 · 评论 {{ totals.comments }} 条</td></tr>
-      <tr><th scope="row">战队</th><td>新建 {{ totals.teams }} 支</td></tr>
-    </tbody>
-  </table>
+  <section class="b-section">
+    <h2 class="b-section__title">{{ period.start|date:"Y 年 n 月 j 日" }} – {{ period.end|date:"Y 年 n 月 j 日" }}</h2>
+    <dl class="b-kv" data-activity-totals>
+      <dt>新成员</dt><dd>{{ totals.members }} 人（其中交大 {{ totals.sjtu_members }} 人）</dd>
+      <dt>内战</dt><dd>{{ totals.scrims }} 场 · 报名 {{ totals.scrim_signups }} 人次 · 上场 {{ totals.scrim_players }} 人次 · 参与 {{ totals.scrim_people }} 人</dd>
+      <dt>赛事</dt><dd>{{ totals.tournaments }} 项 · 通过 {{ totals.tournament_teams }} 支队伍 · 参赛 {{ totals.tournament_people }} 人</dd>
+      <dt>文章</dt><dd>发布 {{ totals.articles }} 篇 · 评论 {{ totals.comments }} 条</dd>
+      <dt>战队</dt><dd>新建 {{ totals.teams }} 支</dd>
+    </dl>
+  </section>
 
-  <h2>逐场</h2>
-  {% if rows %}
-    <p><a href="?start={{ period.start|date:'Y-m-d' }}&amp;end={{ period.end|date:'Y-m-d' }}&amp;format=csv" class="button button-small button-secondary" data-activity-csv>下载 CSV</a></p>
-    <table class="listing" data-activity-events>
-      <thead>
-        <tr><th>日期</th><th>类型</th><th>标题</th><th>状态</th><th>报名人次或队伍</th><th>上场或参赛人数</th></tr>
-      </thead>
-      <tbody>
-        {% for row in rows %}
-          <tr data-activity-event>
-            <td>{{ row.when|date:"Y-m-d H:i" }}</td>
-            <td>{{ row.kind }}</td>
-            <td><a href="{{ row.url }}">{{ row.title }}</a></td>
-            <td>{{ row.status }}</td>
-            <td>{{ row.entries }}</td>
-            <td>{{ row.players }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p data-activity-empty>这段时间没有内战和赛事。</p>
-  {% endif %}
+  <section class="b-form">
+    <div class="c-panel__head">
+      <h2 class="b-section__title">逐场</h2>
+      {% if rows %}<a href="?start={{ period.start|date:'Y-m-d' }}&amp;end={{ period.end|date:'Y-m-d' }}&amp;format=csv" class="c-btn c-btn--secondary c-btn--sm" data-activity-csv>{% include "components/icon.html" with name="download" %}下载 CSV</a>{% endif %}
+    </div>
+    {% if rows %}
+      <table class="c-table c-table--stack" data-activity-events>
+        <thead>
+          <tr><th>标题</th><th>日期</th><th>类型</th><th>状态</th><th class="is-num">报名人次或队伍</th><th class="is-num">上场或参赛人数</th></tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr data-activity-event>
+              <td><a class="b-title" href="{{ row.url }}">{{ row.title }}</a></td>
+              <td data-label="日期">{{ row.when|date:"Y-m-d H:i" }}</td>
+              <td data-label="类型">{{ row.kind }}</td>
+              <td data-label="状态">{{ row.status }}</td>
+              <td data-label="报名人次或队伍" class="is-num">{{ row.entries }}</td>
+              <td data-label="上场或参赛人数" class="is-num">{{ row.players }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="b-section__text" data-activity-empty>这段时间没有内战和赛事。</p>
+    {% endif %}
+  </section>
 {% endblock %}

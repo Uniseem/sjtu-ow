@@ -1,86 +1,9 @@
-"""Admin URLs and menu for content moderation (design 5.5.4, 14)."""
+"""The moderation entries in the action log (design 14.4). The pages are the
+back office's since v7.0 (docs/admin.md 4.5)."""
 
-from django.urls import path, reverse
 from wagtail import hooks
-from wagtail.admin.menu import Menu, MenuItem, SubmenuMenuItem
 
-from moderation.admin_views import (
-    HANDLE_LOG_ACTION,
-    can_review,
-    moderation_action,
-    moderation_ask_author,
-    moderation_detail,
-    moderation_index,
-    moderation_try,
-)
-from moderation.avatar_admin import avatar_review, avatar_review_action
-
-
-@hooks.register("register_admin_urls")
-def register_moderation_urls():
-    return [
-        path("moderation/", moderation_index, name="moderation_index"),
-        path("moderation/try/", moderation_try, name="moderation_try"),
-        path("moderation/<id:pk>/", moderation_detail, name="moderation_detail"),
-        path(
-            "moderation/<id:pk>/action/",
-            moderation_action,
-            name="moderation_action",
-        ),
-        path(
-            "moderation/<id:pk>/ask-author/",
-            moderation_ask_author,
-            name="moderation_ask_author",
-        ),
-        # design-details 2.3 (v6.11)
-        path("avatars/", avatar_review, name="avatar_review"),
-        path(
-            "avatars/<id:pk>/action/",
-            avatar_review_action,
-            name="avatar_review_action",
-        ),
-    ]
-
-
-class ReviewerMenuItem(MenuItem):
-    def is_shown(self, request):
-        return can_review(request.user)
-
-
-community_menu = Menu(
-    register_hook_name="register_community_menu_item",
-    construct_hook_name="construct_community_menu",
-)
-
-
-@hooks.register("register_admin_menu_item")
-def register_community_menu():
-    return SubmenuMenuItem(
-        "社区",
-        community_menu,
-        icon_name="group",
-        order=310,
-    )
-
-
-@hooks.register("register_community_menu_item")
-def register_moderation_menu_item():
-    return ReviewerMenuItem(
-        "内容审核",
-        reverse("moderation_index"),
-        icon_name="view",
-        order=50,
-    )
-
-
-@hooks.register("register_community_menu_item")
-def register_avatar_review_menu_item():
-    return ReviewerMenuItem(
-        "头像",
-        reverse("avatar_review"),
-        icon_name="user",
-        order=60,
-    )
+from moderation.admin_views import HANDLE_LOG_ACTION
 
 
 @hooks.register("register_log_actions")

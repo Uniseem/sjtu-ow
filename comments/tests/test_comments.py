@@ -457,7 +457,7 @@ def test_content_editors_open_the_admin_list_and_others_do_not(
     manager.groups.add(Group.objects.get(name="赛事管理员"))
     client.force_login(manager)
     response = client.get(reverse("comments:index"))
-    assert response.status_code == 302
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db

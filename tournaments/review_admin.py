@@ -93,14 +93,13 @@ def review_index(request):
         "tournaments/admin/review_index.html",
         {
             "page_title": "报名审核",
-            "header_icon": "tasks",
             "registrations": page,
             "status": status,
             "tournament_id": tournament_id,
             "statuses": RegistrationStatus.choices,
             "tournaments": Tournament.objects.order_by("-registration_opens_at"),
             "breadcrumbs_items": [
-                {"url": reverse("wagtailadmin_home"), "label": "首页"},
+                {"url": reverse("backoffice:home"), "label": "首页"},
                 {"url": "", "label": "报名审核"},
             ],
         },
@@ -137,7 +136,6 @@ def review_detail(request, pk):
         "tournaments/admin/review_detail.html",
         {
             "page_title": f"{registration.team_name} · {registration.tournament.title}",
-            "header_icon": "tasks",
             "registration": registration,
             "is_adhoc": registration.team_id is None,
             "rows": rows,
@@ -149,7 +147,7 @@ def review_detail(request, pk):
             "logs": registration.logs.select_related("actor_user"),
             "actions": local_actions(registration),
             "breadcrumbs_items": [
-                {"url": reverse("wagtailadmin_home"), "label": "首页"},
+                {"url": reverse("backoffice:home"), "label": "首页"},
                 {"url": reverse("registration_review_index"), "label": "报名审核"},
                 {"url": "", "label": registration.team_name},
             ],

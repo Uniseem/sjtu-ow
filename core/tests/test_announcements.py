@@ -353,9 +353,9 @@ def test_content_editors_announce_an_article(
     editor = _member("editor123@example.com", "内容编辑")
     member = _member("reader123@example.com")
     page = _article(editor)
-    explore = reverse("wagtailadmin_explore", args=[page.get_parent().pk])
+    explore = reverse("backoffice:articles")
     announce = reverse("announce", args=["article", page.pk])
-    edit = reverse("wagtailadmin_pages:edit", args=[page.pk])
+    edit = reverse("backoffice:article_edit", args=[page.pk])
     client.force_login(editor)
     assert announce in client.get(explore).content.decode()
     assert announce in client.get(edit).content.decode()
@@ -378,7 +378,7 @@ def test_drafts_and_other_roles_cannot_announce_articles(site, client):
     page.unpublish()
     announce = reverse("announce", args=["article", page.pk])
     client.force_login(editor)
-    explore = reverse("wagtailadmin_explore", args=[page.get_parent().pk])
+    explore = reverse("backoffice:articles")
     assert announce not in client.get(explore).content.decode()
     with pytest.raises(services.AnnouncementError, match="发布之后"):
         services.announce(kind="article", obj=page, actor=editor)
@@ -390,10 +390,10 @@ def test_drafts_and_other_roles_cannot_announce_articles(site, client):
     client.force_login(_member("writer123@example.com", "投稿者"))
     listing = client.get(explore)
     assert listing.status_code == 200
-    assert live.title in listing.content.decode()
     assert (
         reverse("announce", args=["article", live.pk]) not in listing.content.decode()
     )
+    assert client.get(reverse("announce", args=["article", live.pk])).status_code == 403
 
 
 # --- planned articles (v6.54) --------------------------------------------
@@ -431,7 +431,7 @@ def test_a_planned_article_is_announced_when_it_goes_live(
     member = _member("reader165@example.com")
     go_live_at = timezone.now() + timedelta(hours=3)
     page = _planned(editor, go_live_at)
-    explore = reverse("wagtailadmin_explore", args=[page.get_parent().pk])
+    explore = reverse("backoffice:articles")
     announce = reverse("announce", args=["article", page.pk])
     client.force_login(editor)
     listing = client.get(explore).content.decode()

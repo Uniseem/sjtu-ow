@@ -1,31 +1,34 @@
-{% extends "wagtailadmin/generic/base.html" %}
+{% extends "backoffice/base.html" %}
 
-{% block titletag %}指定队长{% endblock %}
-
-{% block main_content %}
-  <p class="help-block">用于队长账号被停用等情况。被指定的人如果还不是成员，会先加入战队。</p>
-  <p>当前成员：
-    {% for membership in memberships %}
-      {{ membership.user.nickname }}{% if membership.is_captain %}（队长）{% endif %}{% if not forloop.last %}、{% endif %}
-    {% empty %}（无）{% endfor %}
-  </p>
-  <form method="get" class="w-mb-4">
-    <label for="q">按昵称或邮箱找人</label>
-    <input type="search" id="q" name="q" value="{{ query }}" placeholder="昵称或邮箱">
-    <button type="submit" class="button button-secondary">搜索</button>
-    <p class="help-block">列出最多 50 个已启用的账号{% if query %}（匹配「{{ query }}」）{% endif %}。</p>
-  </form>
-  <form method="post">
-    {% csrf_token %}
-    <label for="user">新队长</label>
-    <select id="user" name="user">
-      {% for candidate in candidates %}
-        <option value="{{ candidate.pk }}">{{ candidate.nickname }}（{{ candidate.email }}）</option>
-      {% endfor %}
-    </select>
-    <p>
-      <button type="submit" class="button button-primary">指定为队长</button>
-      <a class="button button-secondary" href="{% url 'teams:index' %}">返回</a>
+{% block content %}
+  <section class="b-section">
+    <p class="b-section__text">用于队长账号被停用等情况。被指定的人如果还不是成员，会先加入战队。</p>
+    <p class="b-section__text">当前成员：
+      {% for membership in memberships %}
+        {{ membership.user.nickname }}{% if membership.is_captain %}（队长）{% endif %}{% if not forloop.last %}、{% endif %}
+      {% empty %}（无）{% endfor %}
     </p>
+    <form method="get" class="b-filters" role="search">
+      <input type="search" id="q" name="q" value="{{ query }}" placeholder="按昵称或邮箱找人" class="c-input" aria-label="按昵称或邮箱找人">
+      <button type="submit" class="c-btn c-btn--secondary c-btn--sm">搜索</button>
+      <span class="b-count">列出最多 50 个已启用的账号{% if query %}（匹配「{{ query }}」）{% endif %}</span>
+    </form>
+  </section>
+  <form method="post" class="b-form">
+    {% csrf_token %}
+    <div class="b-fieldset">
+      <div class="c-field">
+        <label class="c-field__label" for="user">新队长</label>
+        <select id="user" name="user">
+          {% for candidate in candidates %}
+            <option value="{{ candidate.pk }}">{{ candidate.nickname }}（{{ candidate.email }}）</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="b-actions">
+      <button type="submit" class="c-btn c-btn--primary">指定为队长</button>
+      <a class="c-btn c-btn--secondary" href="{% url 'teams:index' %}">返回</a>
+    </div>
   </form>
 {% endblock %}

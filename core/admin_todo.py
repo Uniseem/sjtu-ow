@@ -1,8 +1,9 @@
-"""「待办」 on the admin dashboard (findings #24, round 118).
+"""「待办」 on the back office's first page (findings #24, round 118; docs/
+admin.md 4.1).
 
 Each staff role sees how many things wait for it and where to handle them;
-rows with nothing waiting are left out. Pure submitters keep their own
-「我的投稿」 panel (design 14.3) and never see this one.
+rows with nothing waiting are left out. People who handle none of these
+(say a plain member) get no block at all.
 """
 
 from __future__ import annotations
@@ -11,7 +12,6 @@ from dataclasses import dataclass
 
 from django.urls import reverse
 from django.utils import timezone
-from wagtail.admin.ui.components import Component
 
 FINISH_NUDGE_AFTER = timezone.timedelta(days=3)
 MAIL_LOOKBACK = timezone.timedelta(days=7)
@@ -30,7 +30,7 @@ class Todo:
     count: int = 1
 
 
-# The counts are shared with the 审核 tabs (core.admin_sections, v6.71).
+# The count is shared with the 审核 → 报名 tab (backoffice.nav).
 
 
 def pending_registrations() -> int:
@@ -254,7 +254,7 @@ def _site_rows(user) -> list[Todo]:
         rows.append(
             Todo(
                 f"AI 审核最近 24 小时有 {calls} 次调用失败（{why}），"
-                "检查密钥和接口，在内容审核页点「试一下」",
+                "检查密钥和接口，在「审核 → 内容」页点「试一下」",
                 reverse("moderation_index"),
                 calls,
             )
@@ -295,13 +295,3 @@ def todo_rows(user) -> list[Todo]:
     # once; nothing of theirs waits here any more.
     rows = _tournament_rows(user) + _scrim_rows(user) + _site_rows(user)
     return [row for row in rows if row.count]
-
-
-class TodoPanel(Component):
-    name = "site_todo"
-    template_name = "core/admin/todo_panel.html"
-    order = 10
-
-    def get_context_data(self, parent_context):
-        request = parent_context["request"]
-        return {"rows": todo_rows(request.user)}

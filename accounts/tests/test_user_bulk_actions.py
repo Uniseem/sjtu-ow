@@ -1,6 +1,7 @@
 """Round 174: the admin's user list cannot delete people or switch them off
 in bulk (design 3.7, v6.58). Before, Wagtail's bulk 「删除」 deleted a user
-outright."""
+outright. Since v7.0 that list is Wagtail's own admin under /wagtail/, for
+superusers; the back office's user list has no bulk actions at all."""
 
 import pytest
 from django.core.management import call_command
@@ -23,10 +24,12 @@ def root_and_member(db):
 def test_only_assigning_roles_is_left(client, root_and_member):
     root, _member = root_and_member
     client.force_login(root)
-    html = client.get("/admin/users/").content.decode()
-    assert "/admin/bulk/accounts/user/assign_role/" in html
-    assert "/admin/bulk/accounts/user/delete/" not in html
-    assert "/admin/bulk/accounts/user/set_active_state/" not in html
+    html = client.get("/wagtail/users/").content.decode()
+    assert "/wagtail/bulk/accounts/user/assign_role/" in html
+    assert "/wagtail/bulk/accounts/user/delete/" not in html
+    assert "/wagtail/bulk/accounts/user/set_active_state/" not in html
+    ours = client.get("/admin/users/").content.decode()
+    assert "/bulk/" not in ours
 
 
 def test_the_addresses_do_nothing(client, root_and_member):
@@ -36,7 +39,7 @@ def test_the_addresses_do_nothing(client, root_and_member):
         ("delete", {}),
         ("set_active_state", {"mark_as_active": "False"}),
     ):
-        url = f"/admin/bulk/accounts/user/{action}/?id={member.pk}"
+        url = f"/wagtail/bulk/accounts/user/{action}/?id={member.pk}"
         assert client.get(url).status_code == 404
         assert client.post(url, data).status_code == 404
     member = User.objects.get(pk=member.pk)  # still there

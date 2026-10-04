@@ -406,7 +406,7 @@ def test_auto_approve_is_locked_once_anyone_has_registered(make):
     Round 067 found the old 「审核模式」 lock was enforced only by the API;
     the admin form never checked. The form is what locks it now.
     """
-    from tournaments.wagtail_hooks import TournamentAdminForm, TournamentViewSet
+    from backoffice.forms import TournamentForm
 
     registration, *_ = make(PENDING)
     tournament = registration.tournament
@@ -427,9 +427,7 @@ def test_auto_approve_is_locked_once_anyone_has_registered(make):
         "auto_approve": True,
     }
 
-    form_class = TournamentViewSet().get_form_class(for_update=True)
-    assert issubclass(form_class, TournamentAdminForm)  # the lock is wired in
-    form = form_class(data, instance=tournament)
+    form = TournamentForm(data, instance=tournament, user=admin_user())
 
     assert not form.is_valid()
     assert "auto_approve" in form.errors
@@ -438,7 +436,7 @@ def test_auto_approve_is_locked_once_anyone_has_registered(make):
 
 @pytest.mark.django_db
 def test_auto_approve_can_change_while_nobody_has_registered(db):
-    from tournaments.wagtail_hooks import TournamentAdminForm, TournamentViewSet
+    from backoffice.forms import TournamentForm
 
     now = timezone.now()
     tournament = Tournament.objects.create(
@@ -466,8 +464,6 @@ def test_auto_approve_can_change_while_nobody_has_registered(db):
         "auto_approve": True,
     }
 
-    form_class = TournamentViewSet().get_form_class(for_update=True)
-    assert issubclass(form_class, TournamentAdminForm)  # the lock is wired in
-    form = form_class(data, instance=tournament)
+    form = TournamentForm(data, instance=tournament, user=admin_user())
 
     assert form.is_valid(), form.errors

@@ -272,7 +272,6 @@ def activity_view(request):
         "core/admin/activity.html",
         {
             "page_title": "活动数据",
-            "header_icon": "table",
             "period": period,
             "error": error,
             "presets": presets,

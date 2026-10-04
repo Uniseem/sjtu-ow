@@ -101,6 +101,7 @@ def test_pages_ask_the_browser_to_prepare_public_links(client, site):
     )
     for prefix in (
         "/admin/*",
+        "/wagtail/*",
         "/accounts/*",
         "/me/*",
         "/_fragments/*",

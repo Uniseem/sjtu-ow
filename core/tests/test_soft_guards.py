@@ -93,7 +93,7 @@ def test_editing_a_tournament_the_teams_outgrew_warns(site, client):  # noqa: F8
     client.force_login(manager)
     url = reverse("tournaments:edit", args=[tournament.pk])
     page = client.get(url).content.decode()
-    data = querydict_from_html(page, form_id="w-editor-form")
+    data = querydict_from_html(page, form_index=0)
     data["title"] = "改了名字的赛事"
     response = client.post(url, data)
     assert response.status_code == 302, response.content.decode()[:2000]

@@ -1,0 +1,49 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <section class="b-section" data-site-part="pins">
+    <div class="c-panel__head">
+      <h2 class="b-section__title">首页的置顶文章</h2>
+      <a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'backoffice:home_pins' %}">改置顶</a>
+    </div>
+    {% if pinned %}
+      <ol class="b-list">
+        {% for article in pinned %}<li>{{ forloop.counter }}. {{ article.title }}{% if not article.live %}<span class="b-sub">已撤下，首页不显示</span>{% endif %}</li>{% endfor %}
+      </ol>
+    {% else %}
+      <p class="b-section__text">没有置顶文章，首页按发布时间排。</p>
+    {% endif %}
+  </section>
+
+  {% if index %}
+    <section class="b-section" data-site-part="intro">
+      <div class="c-panel__head">
+        <h2 class="b-section__title">资讯栏目的介绍</h2>
+        <a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'backoffice:index_intro' %}">改介绍</a>
+      </div>
+      <p class="b-section__text">{{ index.intro|truncatechars:120|default:"还没写介绍。" }}</p>
+    </section>
+  {% endif %}
+
+  <section class="b-form" data-site-part="pages">
+    <h2 class="b-section__title">页面</h2>
+    {% if plain %}
+      <table class="c-table c-table--stack">
+        <thead><tr><th>页面</th><th>地址</th><th>状态</th><th>最后改动</th><th><span class="sr-only">操作</span></th></tr></thead>
+        <tbody>
+          {% for page, status in plain %}
+            <tr>
+              <td><a class="b-title" href="{% url 'backoffice:page_edit' page.pk %}">{{ page.draft_title|default:page.title }}</a></td>
+              <td data-label="地址"><span class="b-mono">/{{ page.slug }}/</span></td>
+              <td data-label="状态">{% include "components/status_badge.html" with label=status.0 kind=status.1 %}</td>
+              <td data-label="最后改动">{{ page.latest_revision_created_at|date:"Y.m.d H:i"|default:"—" }}</td>
+              <td><div class="b-rowacts"><a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'backoffice:page_edit' page.pk %}">编辑</a></div></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      {% include "components/empty_state.html" with title="还没有页面" message="运行 init_site 建好关于我们和两份协议。" %}
+    {% endif %}
+  </section>
+{% endblock %}

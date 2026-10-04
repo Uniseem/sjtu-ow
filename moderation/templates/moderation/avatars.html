@@ -1,19 +1,12 @@
-{% extends "wagtailadmin/generic/base.html" %}
-{% load static wagtailimages_tags %}
+{% extends "backoffice/base.html" %}
+{% load wagtailimages_tags %}
 
-{% block titletag %}头像{% endblock %}
-
-{% block extra_css %}
-  {{ block.super }}
-  <link rel="stylesheet" href="{% static 'css/avatar-review.css' %}">
-{% endblock %}
-
-{% block main_content %}
+{% block content %}
   {% comment %}
     Uploaded faces (design-details 2.3, design 14.2; v6.11). Since v6.73 a
     face shows as soon as it is uploaded; here an admin takes one down.
   {% endcomment %}
-  <p class="help-block">成员上传的头像马上就换上（网站默认信任所有人），这里按上传时间列出，最新的在前；看到不合适的就撤下，图片会删掉，并发信告诉本人原因。图片已经在服务器上裁成正方形，看到的就是显示的样子。</p>
+  <p class="b-section__text">成员上传的头像马上就换上（网站默认信任所有人），这里按上传时间列出，最新的在前；看到不合适的就撤下，图片会删掉，并发信告诉本人原因。图片已经在服务器上裁成正方形，看到的就是显示的样子。</p>
 
   {% include "core/admin/_tabs.html" with tabs=tabs current=status %}
 
@@ -21,37 +14,34 @@
     {% for item in items %}
       <li class="avatar-review__item">
         <div class="avatar-review__picture">
-          {% if item.image %}{% image item.image fill-240x240 alt="" loading="lazy" %}{% else %}<span>图片已删除</span>{% endif %}
+          {% if item.image %}{% image item.image fill-240x240 alt="" loading="lazy" %}{% else %}<span class="b-sub">图片已删除</span>{% endif %}
         </div>
         <div class="avatar-review__body">
           <p><strong>{{ item.user.nickname }}</strong>{% if not item.user.is_active %}（账号已停用）{% endif %}</p>
-          <p>{{ item.created_at|date:"Y.m.d H:i" }} 上传{% if item.turned_down %} · 之前被撤下 {{ item.turned_down }} 次{% endif %}</p>
+          <p class="b-sub">{{ item.created_at|date:"Y.m.d H:i" }} 上传{% if item.turned_down %} · 之前被撤下 {{ item.turned_down }} 次{% endif %}</p>
           {% if item.reviewed_by %}
-            <p>{{ item.get_status_display }}：{{ item.reviewed_by.nickname|default:"—" }}，{{ item.reviewed_at|date:"Y.m.d H:i" }}{% if item.reason %}；原因：{{ item.get_reason_display }}{% endif %}{% if item.note %}（{{ item.note }}）{% endif %}</p>
+            <p class="b-sub">{{ item.get_status_display }}：{{ item.reviewed_by.nickname|default:"—" }}，{{ item.reviewed_at|date:"Y.m.d H:i" }}{% if item.reason %}；原因：{{ item.get_reason_display }}{% endif %}{% if item.note %}（{{ item.note }}）{% endif %}</p>
           {% endif %}
-          {% if item.status == "approved" and item.user.avatar_id and item.user.avatar_id == item.image_id %}<p>正在使用</p>{% endif %}
+          {% if item.status == "approved" and item.user.avatar_id and item.user.avatar_id == item.image_id %}<p class="b-sub">正在使用</p>{% endif %}
 
           {% if item.status == "approved" and item.image_id and item.user.avatar_id == item.image_id %}
             <form method="post" action="{% url 'avatar_review_action' item.pk %}" class="avatar-review__form">
               {% csrf_token %}
               <input type="hidden" name="next" value="{{ request.get_full_path }}">
-              <label>原因
-                <select name="reason" required>
-                  <option value="">请选择</option>
-                  {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                </select>
-              </label>
-              <label>说明（可不填）<input type="text" name="note" maxlength="200"></label>
-              <button type="submit" name="action" value="take_down" class="button button-secondary no">撤下</button>
+              <select name="reason" required class="c-input" aria-label="撤下的原因">
+                <option value="">撤下的原因</option>
+                {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+              </select>
+              <input type="text" name="note" maxlength="200" class="c-input" placeholder="说明（可不填）" aria-label="说明">
+              <button type="submit" name="action" value="take_down" class="c-btn c-btn--danger c-btn--sm">撤下</button>
             </form>
           {% endif %}
         </div>
       </li>
     {% empty %}
-      <li>没有{{ status_label }}的头像。</li>
+      <li class="b-section__text">没有{{ status_label }}的头像。</li>
     {% endfor %}
   </ul>
 
   {% include "core/admin/_pager.html" with page=items %}
-
 {% endblock %}

@@ -525,7 +525,7 @@ def admin_user(db):
 @pytest.mark.django_db
 def test_team_admin_is_superuser_only(client, team, captain, admin_user):
     client.force_login(captain)
-    assert client.get("/admin/teams/").status_code == 302
+    assert client.get("/admin/teams/").status_code == 403
 
     client.force_login(admin_user)
     response = client.get("/admin/teams/")

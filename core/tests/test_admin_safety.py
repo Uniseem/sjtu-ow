@@ -17,7 +17,7 @@ import pytest
 from allauth.account.models import EmailAddress
 from django.conf import settings as django_settings
 from django.contrib.auth.models import Group
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 
 from accounts.models import User
@@ -154,7 +154,11 @@ def test_members_cannot_change_their_login_email_in_the_admin(client, site):
     sync_submitter_group(member)
     assert member.groups.filter(name="投稿者").exists()
     client.force_login(member)
-    page = client.get("/admin/account/").content.decode()
+    # v7.0: Wagtail's account page is under /wagtail/, for superusers only.
+    response = client.get("/wagtail/account/")
+    assert response.status_code == 302 and response["Location"] == "/admin/"
+    client.force_login(_superuser())
+    page = client.get("/wagtail/account/").content.decode()
     assert 'name="name_email-email"' not in page
     assert 'name="name_email-first_name"' not in page
     assert 'name="avatar-avatar"' not in page
@@ -172,7 +176,7 @@ def test_the_user_page_has_the_sites_fields_not_first_and_last_name(client, site
     member = _player("edited115@example.com", "被编辑的人")
     client.force_login(admin)
     page = client.get(
-        reverse("wagtailusers_users:edit", args=[member.pk])
+        reverse("backoffice:user_edit", args=[member.pk])
     ).content.decode()
     assert 'name="nickname"' in page and 'name="is_sjtu"' in page
     assert 'name="first_name"' not in page
@@ -193,15 +197,15 @@ def test_stopping_an_account_needs_a_reason_and_cancels_its_applications(client,
         team=team, user=member, roles={"tank": True}
     )
     client.force_login(admin)
-    url = reverse("wagtailusers_users:edit", args=[member.pk])
-    form = {"email": member.email, "nickname": member.nickname, "is_sjtu": "on"}
+    url = reverse("backoffice:user_edit", args=[member.pk])
+    form = {"nickname": member.nickname, "is_sjtu": "on", "is_active": "on"}
     client.post(url, form)  # still active: saves without a reason
     member.refresh_from_db()
     assert member.is_active
     client.post(url, {**form, "is_active": ""})  # stopping without a reason
     member.refresh_from_db()
     assert member.is_active
-    client.post(url, {**form, "deactivation_note": "冒用他人游戏 ID"})
+    client.post(url, {**form, "is_active": "", "deactivation_note": "冒用他人游戏 ID"})
     member.refresh_from_db()
     application.refresh_from_db()
     assert not member.is_active
@@ -214,6 +218,13 @@ def test_users_are_not_added_or_deleted_in_the_admin(client, site):
     admin = _superuser()
     member = _player("kept115@example.com", "不删的人")
     client.force_login(admin)
+    # The back office has no address for either (docs/admin.md 4.4) ...
+    for name in ("backoffice:user_new", "backoffice:user_delete"):
+        with pytest.raises(NoReverseMatch):
+            reverse(name, args=[] if name.endswith("new") else [member.pk])
+    listing = client.get(reverse("backoffice:users")).content.decode()
+    assert "新建" not in listing and "删除" not in listing
+    # ... and Wagtail's own screens under /wagtail/ refuse them.
     assert client.get(reverse("wagtailusers_users:add")).status_code != 200
     client.post(reverse("wagtailusers_users:delete", args=[member.pk]))
     assert User.objects.filter(pk=member.pk).exists()
@@ -362,8 +373,12 @@ def test_teams_are_not_added_or_deleted_in_the_admin(client, site):
     captain = _player("teamcap115@example.com", "老队长")
     team = team_services.create_team(user=captain, name="不能删的队")
     client.force_login(_superuser())
-    assert client.get(reverse("teams:add")).status_code != 200
-    client.post(reverse("teams:delete", args=[team.pk]))
+    # docs/admin.md 4.4: no 新建, no 删除 — there is no address for either.
+    for name in ("teams:add", "teams:delete"):
+        with pytest.raises(NoReverseMatch):
+            reverse(name, args=[team.pk] if name.endswith("delete") else [])
+    listing = client.get(reverse("teams:index")).content.decode()
+    assert "新建" not in listing and "删除" not in listing
     assert Team.objects.filter(pk=team.pk).exists()
 
 
@@ -429,11 +444,15 @@ def test_comments_are_hidden_or_pinned_not_added_or_deleted(client, site):
         body="开头二十个字只是标题里会出现的部分而已，后面这一句才是只有全文才有的结尾",
     )
     client.force_login(_superuser())
-    assert client.get(reverse("comments:add")).status_code != 200
-    client.post(reverse("comments:delete", args=[comment.pk]))
+    for name in ("comments:add", "comments:delete", "comments:edit"):
+        with pytest.raises(NoReverseMatch):
+            reverse(name, args=[comment.pk] if name != "comments:add" else [])
+    # Deleting is not one of the list's actions either.
+    response = client.post(reverse("comments:action", args=[comment.pk, "delete"]))
+    assert response.status_code == 403
     assert Comment.objects.filter(pk=comment.pk).exists()
-    edit = client.get(reverse("comments:edit", args=[comment.pk])).content.decode()
-    assert "只有全文才有的结尾" in edit and "评论的人" in edit  # past the title
+    listing = client.get(reverse("comments:index")).content.decode()
+    assert "只有全文才有的结尾" in listing and "评论的人" in listing  # past the title
 
 
 # --- 11. asking before acting -----------------------------------------------------
@@ -494,8 +513,15 @@ def test_the_site_script_asks_the_forms_question():
     ],
 )
 def test_admin_forms_that_take_something_away_ask_first(path):
+    """The back office asks through data-confirm (static/js/backoffice.js)."""
     text = (Path(django_settings.BASE_DIR) / path).read_text(encoding="utf-8")
-    assert 'onsubmit="return window.confirm(' in text
+    assert "data-confirm=" in text
+    assert "onsubmit=" not in text  # no inline script (docs/admin.md 2)
+    script = (
+        Path(django_settings.BASE_DIR) / "static" / "js" / "backoffice.js"
+    ).read_text(encoding="utf-8")
+    assert 'getAttribute("data-confirm")' in script
+    assert "window.confirm(message)" in script
 
 
 @pytest.fixture(autouse=True)

@@ -150,7 +150,7 @@ def test_what_the_renderer_emits_has_its_styles(settings):
     )
     for rule in (".c-prose__table {", ".c-prose__video {", ".c-prose pre {"):
         assert rule in site, rule
-    admin = (settings.BASE_DIR / "static" / "css" / "admin.css").read_text(
+    editor = (settings.BASE_DIR / "static" / "css" / "markdown-editor.css").read_text(
         encoding="utf-8"
     )
     for rule in (
@@ -159,7 +159,12 @@ def test_what_the_renderer_emits_has_its_styles(settings):
         ".md-field .md-preview blockquote footer {",
         ".md-help {",
     ):
-        assert rule in admin, rule
+        assert rule in editor, rule
+    # The widget brings it, after EasyMDE's own sheet (v7.0).
+    from content.widgets import MarkdownEditor
+
+    css = MarkdownEditor().media._css["all"]
+    assert css == ["vendor/easymde/easymde.min.css", "css/markdown-editor.css"]
 
 
 # --- where the body is read -------------------------------------------------
@@ -291,8 +296,10 @@ def test_every_body_and_description_gets_the_editor(client, site):
 
     terms = StandardPage.objects.get(slug="terms")
     for url in (
-        reverse("wagtailadmin_pages:edit", args=[article.pk]),
-        reverse("wagtailadmin_pages:edit", args=[terms.pk]),
+        reverse("backoffice:article_edit", args=[article.pk]),
+        reverse("backoffice:article_new"),
+        reverse("backoffice:page_edit", args=[terms.pk]),
+        reverse("backoffice:index_intro"),
         reverse("tournaments:edit", args=[tournament.pk]),
         reverse("scrims:edit", args=[scrim.pk]),
     ):

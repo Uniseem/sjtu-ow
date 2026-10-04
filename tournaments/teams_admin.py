@@ -21,7 +21,7 @@ NEW_TEAM = "new"
 
 def _breadcrumbs(tournament):
     return [
-        {"url": reverse("wagtailadmin_home"), "label": "首页"},
+        {"url": reverse("backoffice:home"), "label": "首页"},
         {"url": reverse("tournaments:index"), "label": "赛事"},
         {"url": "", "label": f"{tournament.title} · 队伍编排"},
     ]
@@ -66,7 +66,6 @@ def page_context(request, tournament):
     move_targets.append({"key": NEW_TEAM, "label": "新队伍"})
     return {
         "page_title": f"{tournament.title} · 队伍编排",
-        "header_icon": "group",
         "tournament": tournament,
         "pool_total": len(pool),
         "bench": bench,

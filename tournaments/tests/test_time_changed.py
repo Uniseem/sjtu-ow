@@ -95,9 +95,7 @@ def test_saving_in_the_admin_sends_it(make, client, django_capture_on_commit_cal
     )
     client.force_login(admin)
     url = reverse("tournaments:edit", args=[tournament.pk])
-    data = querydict_from_html(
-        client.get(url).content.decode(), form_id="w-editor-form"
-    )
+    data = querydict_from_html(client.get(url).content.decode(), form_index=0)
     later = timezone.localtime(timezone.now() + timedelta(days=5))
     data["starts_at"] = f"{later:%Y-%m-%d %H:%M}"
     mail.outbox.clear()

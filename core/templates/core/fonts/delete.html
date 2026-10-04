@@ -1,20 +1,17 @@
-{% extends "wagtailadmin/generic/base.html" %}
+{% extends "backoffice/base.html" %}
 
-{% block titletag %}删除字体{% endblock %}
-
-{% block main_content %}
-  {% if blocked_regions %}
-    <p class="help-block help-critical">
-      「{{ family.name }}」正在被排版区域使用（{{ blocked_regions|join:"、" }}），不能删除。
-      请先在排版设置里把这些区域换成其他字体。
-    </p>
-    <p><a class="button button-secondary" href="{% url 'core_typography' %}">前往排版设置</a></p>
-  {% else %}
-    <p>确定删除字体「{{ family.name }}」吗？原始文件和全部分片都会一起删除，无法恢复。</p>
-    <form method="post">
-      {% csrf_token %}
-      <button type="submit" class="button serious">确认删除</button>
-      <a class="button button-secondary" href="{% url 'core_font_detail' family.pk %}">取消</a>
-    </form>
-  {% endif %}
+{% block content %}
+  <section class="b-section">
+    {% if blocked_regions %}
+      <div class="c-notice c-notice--error">{% include "components/icon.html" with name="x-circle" %}<div class="c-notice__body">「{{ family.name }}」正在被排版区域使用（{{ blocked_regions|join:"、" }}），不能删除。请先在排版设置里把这些区域换成其他字体。</div></div>
+      <div class="b-actions"><a class="c-btn c-btn--secondary" href="{% url 'core_typography' %}">前往排版设置</a></div>
+    {% else %}
+      <p class="b-section__text">确定删除字体「{{ family.name }}」吗？原始文件和全部分片都会一起删除，无法恢复。</p>
+      <form method="post" class="b-actions">
+        {% csrf_token %}
+        <button type="submit" class="c-btn c-btn--danger">确认删除</button>
+        <a class="c-btn c-btn--secondary" href="{% url 'core_font_detail' family.pk %}">取消</a>
+      </form>
+    {% endif %}
+  </section>
 {% endblock %}

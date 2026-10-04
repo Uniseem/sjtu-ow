@@ -22,17 +22,19 @@ def site(db):
 
 
 def _minute(moment):
-    return f"{timezone.localtime(moment):%Y-%m-%d %H:%M}"
+    """As the browser's date-and-time box holds it (backoffice.widgets)."""
+    return f"{timezone.localtime(moment):%Y-%m-%dT%H:%M}"
 
 
 def _copy_form(client, url):
-    """The copy page's form, and where it is sent. The helper reads a ticked
-    box without a value as "", which Django takes for unticked; a browser
-    sends "on"."""
+    """The copy page's form, and where it is sent (itself when the form names
+    no address). The helper reads a ticked box without a value as "", which
+    Django takes for unticked; a browser sends "on"."""
     html = client.get(url).content.decode()
-    form = re.search(r'<form[^>]*id="w-editor-form"[^>]*>', html).group(0)
-    action = re.search(r'action="([^"]+)"', form).group(1)
-    data = querydict_from_html(html, form_id="w-editor-form")
+    form = re.search(r'<form method="post" class="b-form"[^>]*>', html).group(0)
+    named = re.search(r'action="([^"]+)"', form)
+    action = named.group(1) if named else url
+    data = querydict_from_html(html, form_index=0)
     for box in re.findall(r'<input[^>]*type="checkbox"[^>]*>', html):
         name = re.search(r'name="([^"]+)"', box)
         if name and " checked" in box and data.get(name.group(1)) == "":
@@ -67,7 +69,8 @@ def test_a_weekly_scrim_is_copied_to_next_week(site, client):
     client.force_login(manager)
 
     action, data = _copy_form(client, reverse("scrims:copy", args=[old.pk]))
-    assert action == reverse("scrims:add")  # never back onto the old one
+    # Posting the copy makes a new scrim; the old one is never the instance.
+    assert action == reverse("scrims:copy", args=[old.pk])
     assert data["title"] == old.title and data["description"].strip() == old.description
     assert data["format"] == ScrimFormat.OPEN_6V6 and data["sjtu_only"] == "on"
     week = timedelta(weeks=1)
@@ -106,7 +109,7 @@ def test_last_years_tournament_lands_this_year(site, client):
     client.force_login(admin)
 
     action, data = _copy_form(client, reverse("tournaments:copy", args=[old.pk]))
-    assert action == reverse("tournaments:add")
+    assert action == reverse("tournaments:copy", args=[old.pk])
     shift = timedelta(weeks=55)  # 380 days is 54 weeks and 2 days
     assert data["registration_opens_at"] == _minute(opens + shift)
     assert data["starts_at"] == _minute(opens + timedelta(days=20) + shift)
@@ -153,15 +156,10 @@ def test_copy_is_in_the_menu_for_those_who_may_add(site, client):
 def test_every_form_field_is_copied_or_moved(db):
     """A field added to the form later must be decided: copied, moved, or left
     blank on purpose (then this list changes too)."""
+    from backoffice.forms import ScrimForm, TournamentForm
     from scrims import services as scrims
-    from scrims.wagtail_hooks import ScrimViewSet
     from tournaments import services as tournaments
-    from tournaments.wagtail_hooks import TournamentViewSet
 
-    for viewset, services in (
-        (ScrimViewSet(), scrims),
-        (TournamentViewSet(), tournaments),
-    ):
-        form = viewset.get_edit_handler().get_form_class()
+    for form, services in ((ScrimForm, scrims), (TournamentForm, tournaments)):
         decided = set(services.COPIED_FIELDS) | set(services.COPIED_TIMES)
-        assert set(form.base_fields) == decided, viewset.name
+        assert set(form.base_fields) == decided, form.__name__

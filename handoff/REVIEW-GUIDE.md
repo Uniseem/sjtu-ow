@@ -167,6 +167,22 @@ v3.0 在 2026-09-26 晚上整体作废（设计 13.2 开头、`STATUS.md` 第 18
 | **正文里的图片是写死的地址** | 192 | 插入的是缩略图 `/media/images/…`，图片库删了这张图正文就坏图，Wagtail 的「被引用」提示也不再知道这层关系 |
 | **后台编辑页在浏览器里** | 192 | 只在本机内置浏览器看过文章、赛事两页没有新报错；测试机恢复后跑一次 `journey.py pages`，网站页面、内战编辑页也要看 |
 
+## 196 后台推翻重写：最值得复核的地方
+
+后台从 Wagtail 的管理界面换成本站自己的视图和模板（`backoffice/`，设计 `docs/admin.md`，重写前的规则清单 `docs/admin-inventory.md`）。规则大多还是各应用 `services.py` 和 Wagtail 的页面权限在管，新写的是「收表单、调服务、显示结果」这一层，最容易漏的是门和权限。
+
+| 查什么 | 出处 | 怎么验 |
+|---|---|---|
+| **每个后台网址都有门** | `backoffice/nav.py` 的 `placed`、`backoffice/urls.py` | `test_every_back_office_address_goes_through_the_door` 只看 `/admin/` 下的网址有没有 `backoffice_place`。`announce` 是例外（按种类自己套 `placed`），看一眼它确实套了。用一个没验证邮箱的账号（没有 `access_admin`）随便敲几个后台地址，应该都是 403 |
+| **页面自己的权限** | `backoffice/views/*.py` 每个视图开头的 `_allowed` / `_superuser` / `_moderator`、`tournaments.admin_views` 等的 `manager_required` | `placed` 只管能不能进后台。用赛事管理员试网站页面、分类、用户、全站设置，用内容编辑试赛事和用户，都应该 403；变异测试把这些一处处删过（`handoff/rounds/196-backoffice/mutate.py`） |
+| **文章的发布和撤下** | `backoffice/views/articles.py` | 发布、撤下、删除都交给 Wagtail 的页面动作，它们自己按 `OwnArticlesPermissionTester` 判权限；视图前面又判一次。新建时先 `add_child` 再存修订、记 `wagtail.create`，照 Wagtail 自己的 CreateView。值得看：定时上线的文章、有草稿的已发布文章，在列表和状态栏里显示得对不对 |
+| **表单里的字段增减** | `backoffice/forms.py` 的 `ArticleForm` | 照原来 `content.forms.ArticlePageForm` 的规则重写了一遍（作者只给编辑、投稿者只能选开放投稿的分类、普通成员没有网址和定时）。原来的类还在，只服务 `/wagtail/` 的超管，两份逻辑要是有一天又分叉，以新后台为准 |
+| **网址片段** | `ArticleForm.save` | Wagtail 的 `full_clean` 会在不知道父页面时自己按标题填 slug；表单在保存时按自己的规则（避开保留字和同级）重算，普通成员的表单没有 slug 时保留原来的。新建时的唯一性校验靠 `clean_slug` 和 `Page.clean`，后者在 `add_child` 里才知道父页面 |
+| **图片权限** | `backoffice/views/images.py`、`backoffice/widgets.py` | 列表和对话框用 Wagtail 的集合权限；表单里的图片字段只收能选的图，外加这一条原来已经用着的图（别人选的封面，不然编辑一下就报错）。上传走 Wagtail 自己的图片表单 |
+| **时间框只到分钟** | `backoffice/forms.py` 的 `KeepSeconds` | 存着带秒的时间（复制出来的、脚本建的），表单原样保存时保留原值，不然会误发「时间改了」。只看「只是秒被截掉」这一种情况；真改了分钟照常 |
+| **底层后台** | `core/middleware.py` | `/wagtail/` 对非超管跳回 `/admin/`，这个判断在中间件里、在 Wagtail 自己的视图之前。超管在那里还能做新后台不做的事（用户组权限、修订、重定向），也能绕过新后台的表单规则——这是有意的 |
+| **没在浏览器里看过的** | | `journey.py pages` 打开了 163 个地址，`journey.py admin` 走了分队、编队、写文章选封面发布。没走过的：成员分组加一行（`data-formset-add`）、图片页一次传多张、对话框里的翻页和上传失败的提示、排版设置的实时预览在新骨架里的样子 |
+
 ## 081 起 v3.0（Material 3）：最值得复核的地方
 
 v2.0 当天被否，081 换成 Material 3（设计 v3.0）。**上面「074–079」一节的组件和视觉判断大多已经不成立**（直角、切角、深色页头、编号），只有预渲染、占位区域、内战状态刷新那几条还有效。081 保留了全部类名、只重写样式，所以全站一次性换了样子，但各页的版式要到 082–085 才改。

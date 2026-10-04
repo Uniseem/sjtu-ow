@@ -115,10 +115,7 @@ def test_the_team_notice_links_to_adding_a_game_id(site, client):
 
 @pytest.mark.django_db
 def test_submitters_get_the_guide_and_editors_do_not(site, client):
-    from content.models import ArticleIndexPage
-
-    news = ArticleIndexPage.objects.get(slug="news")
-    url = reverse("wagtailadmin_pages:add", args=["content", "articlepage", news.pk])
+    url = reverse("backoffice:article_new")
     client.force_login(_user("writer124@example.com", "投稿者"))
     html = client.get(url).content.decode()
     assert "data-submission-guide" in html

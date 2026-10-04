@@ -56,7 +56,7 @@ def _staff(email, *groups, superuser=False):
 
 def _todo(client):
     html = client.get("/admin/").content.decode()
-    start = html.find('id="site-todo-heading"')
+    start = html.find('id="todo-heading"')
     if start < 0:
         return None
     return html[start : html.find("</section>", start)]
@@ -349,7 +349,7 @@ def test_split_page_marks_deactivated_accounts(site, client):
     User.objects.filter(pk=signups[0].user_id).update(is_active=False)
     client.force_login(_staff("marker118@example.com", "内战管理员"))
     page = client.get(reverse("scrim_split", args=[scrim.pk])).content.decode()
-    assert "<td>分队0（账号已停用）</td>" in page
+    assert '<td data-label="昵称">分队0（账号已停用）</td>' in page
     assert 'split-card-name">分队0（账号已停用）' in page
     assert "分队1（账号已停用）" not in page
 
@@ -440,8 +440,6 @@ def _mail_task(attempt, *, status="FAILED", days_ago=1, error="ok"):
 @pytest.mark.django_db
 def test_the_owner_hears_about_mail_that_never_went_out(site, client):
     """Round 150 (design 14.1, v6.43)."""
-    from core.models import SiteSettings
-
     _mail_task(3, error="smtplib.SMTPAuthenticationError: (535, b'auth failed')")
     _mail_task(1)  # a retry is still coming
     _mail_task(3, days_ago=10)  # too long ago
@@ -450,10 +448,7 @@ def test_the_owner_hears_about_mail_that_never_went_out(site, client):
     todo = _todo(client)
     assert "最近 7 天有 1 封邮件重试后仍没发出去" in todo
     assert "SMTPAuthenticationError: (535" in todo
-    settings_url = reverse(
-        "wagtailsettings:edit", args=["core", "sitesettings", SiteSettings.load().pk]
-    )
-    assert settings_url in todo
+    assert reverse("backoffice:site_settings") in todo
     client.force_login(_staff("editor150@example.com", "内容编辑"))
     assert "邮件重试后仍没发出去" not in _todo(client)
 

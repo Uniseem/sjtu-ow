@@ -46,7 +46,7 @@ def superuser_required(view):
 
 
 def _breadcrumbs(*items):
-    crumbs = [{"url": reverse("wagtailadmin_home"), "label": "首页"}]
+    crumbs = [{"url": reverse("backoffice:home"), "label": "首页"}]
     crumbs.extend(items)
     return crumbs
 
@@ -63,7 +63,6 @@ def font_index(request):
         "core/fonts/index.html",
         {
             "page_title": "字体库",
-            "header_icon": "doc-full",
             "rows": rows,
             "sample_text": services.SAMPLE_TEXT,
             "breadcrumbs_items": _breadcrumbs({"url": "", "label": "字体库"}),
@@ -94,7 +93,6 @@ def font_add(request):
         "core/fonts/add.html",
         {
             "page_title": "添加字体",
-            "header_icon": "plus",
             "upload_form": upload_form,
             "url_form": url_form,
             "google_form": google_form,
@@ -154,7 +152,6 @@ def _create_from_url(request, form):
             "core/fonts/add.html",
             {
                 "page_title": "添加字体",
-                "header_icon": "plus",
                 "upload_form": FontUploadForm(prefix="upload"),
                 "url_form": form,
                 "google_form": GoogleFontForm(prefix="google"),
@@ -189,7 +186,6 @@ def _create_from_google(request, form):
             "core/fonts/add.html",
             {
                 "page_title": "添加字体",
-                "header_icon": "plus",
                 "upload_form": FontUploadForm(prefix="upload"),
                 "url_form": FontUrlForm(prefix="url"),
                 "google_form": form,
@@ -240,7 +236,6 @@ def font_detail(request, pk):
         "core/fonts/detail.html",
         {
             "page_title": family.name,
-            "header_icon": "doc-full",
             "family": family,
             "faces": family.faces.all(),
             "disk_bytes": services.family_disk_bytes(family),
@@ -291,7 +286,6 @@ def font_delete(request, pk):
         "core/fonts/delete.html",
         {
             "page_title": f"删除「{family.name}」",
-            "header_icon": "bin",
             "family": family,
             "blocked_regions": [labels[region] for region in used_by],
             "breadcrumbs_items": _breadcrumbs(
@@ -425,7 +419,6 @@ def typography(request):
         "core/fonts/typography.html",
         {
             "page_title": "排版设置",
-            "header_icon": "doc-full",
             "formset": formset,
             "region_rows": region_rows,
             "sample_text": services.SAMPLE_TEXT,

@@ -47,7 +47,7 @@ def _user(email, *groups, superuser=False):
 
 def _panel(client):
     html = client.get("/admin/").content.decode()
-    start = html.find('id="site-setup-heading"')
+    start = html.find('id="setup-heading"')
     if start < 0:
         return None
     return html[start : html.find("</section>", start)]

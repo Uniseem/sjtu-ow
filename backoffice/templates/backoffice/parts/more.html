@@ -1,0 +1,11 @@
+{% comment %}「更多」 on a row: a <details> menu of links (items: label, url, danger).{% endcomment %}
+{% if items %}
+  <details class="b-more c-menu">
+    <summary aria-label="更多操作">更多{% include "components/icon.html" with name="chevron-down" class="size-4" %}</summary>
+    <div class="c-menu__panel">
+      {% for item in items %}
+        <a href="{{ item.url }}"{% if item.danger %} class="is-danger"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+    </div>
+  </details>
+{% endif %}

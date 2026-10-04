@@ -46,7 +46,7 @@ def test_the_upstream_left_no_enum_values_or_fields():
 
 @pytest.mark.django_db
 def test_the_wagtail_admin_api_works_without_our_drf_settings(client):
-    """Wagtail's page explorer calls /admin/api/main/pages/ through Django
+    """Wagtail's page explorer calls /wagtail/api/main/pages/ through Django
     REST framework. The REST_FRAMEWORK settings left with the open API; the
     admin API must keep working on DRF's defaults (design 2.2)."""
     from django.contrib.auth import get_user_model
@@ -56,7 +56,7 @@ def test_the_wagtail_admin_api_works_without_our_drf_settings(client):
     )
     client.force_login(root)
 
-    response = client.get("/admin/api/main/pages/")
+    response = client.get("/wagtail/api/main/pages/")
 
     assert response.status_code == 200
     assert "meta" in response.json()

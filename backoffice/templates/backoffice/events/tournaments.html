@@ -1,0 +1,46 @@
+{% extends "backoffice/base.html" %}
+
+{% block actions %}
+  <a class="c-btn c-btn--primary c-btn--sm" href="{% url 'tournaments:add' %}">{% include "components/icon.html" with name="plus" %}新建赛事</a>
+{% endblock %}
+
+{% block content %}
+  <form method="get" class="b-filters" role="search">
+    <input type="search" name="q" value="{{ query }}" maxlength="50" placeholder="搜标题、简介" class="c-input" aria-label="搜赛事">
+    <select name="status" class="c-input" aria-label="状态" data-autosubmit>
+      <option value="">全部状态</option>
+      {% for value, label in statuses %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="mode" class="c-input" aria-label="报名方式" data-autosubmit>
+      <option value="">全部报名方式</option>
+      {% for value, label in modes %}<option value="{{ value }}"{% if value == mode %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+  </form>
+  {% if rows %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th>赛事</th><th>状态</th><th>报名开始</th><th>报名截止</th><th>待审核</th><th><span class="sr-only">操作</span></th></tr></thead>
+      <tbody>
+        {% for tournament, items, pending_url in rows %}
+          <tr data-tournament-row="{{ tournament.pk }}">
+            <td><a class="b-title" href="{% url 'tournaments:edit' tournament.pk %}">{{ tournament.title }}</a><span class="b-sub">{{ tournament.get_registration_mode_display }}</span></td>
+            <td data-label="状态">{{ tournament.get_status_display }}</td>
+            <td data-label="报名开始">{{ tournament.registration_opens_at|date:"Y.m.d H:i" }}</td>
+            <td data-label="报名截止">{{ tournament.registration_closes_at|date:"Y.m.d H:i" }}</td>
+            <td data-label="待审核">{% if tournament.pending %}<a class="c-link" href="{{ pending_url }}" data-pending>{{ tournament.pending }} 份</a>{% else %}—{% endif %}</td>
+            <td>
+              <div class="b-rowacts">
+                <a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'tournaments:edit' tournament.pk %}">编辑</a>
+                {% include "backoffice/parts/more.html" %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "components/pagination.html" %}
+  {% else %}
+    {% url 'tournaments:add' as new_url %}
+    {% include "components/empty_state.html" with title="没有赛事" message="换个筛选条件，或者新建一项。" action_url=new_url action_label="新建赛事" %}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <div class="{% if item %}b-split{% else %}b-single{% endif %}">
+    <form method="post" class="b-form" novalidate>
+      {% csrf_token %}
+      {% if copied_from %}
+        <div class="c-notice c-notice--info">{% include "components/icon.html" with name="copy" %}<div class="c-notice__body">从「{{ copied_from.title }}」复制：内容和规则照抄，时间按整周挪到将来。检查一遍再保存；保存后是一份新的草稿。</div></div>
+      {% endif %}
+      {% include "backoffice/parts/fieldsets.html" %}
+      <div class="b-formbar">
+        <button type="submit" class="c-btn c-btn--primary">保存</button>
+        <a class="c-btn c-btn--secondary" href="{{ back_url }}">不改了</a>
+        {% if not item %}<span class="b-formbar__note">保存后是草稿，发布在列表或编辑页的「更多」里。</span>{% endif %}
+      </div>
+    </form>
+    {% if item %}
+      <aside class="b-aside">
+        <section class="b-section">
+          <h2 class="b-section__title">状态</h2>
+          <dl class="b-kv">
+            <dt>状态</dt><dd>{{ item.get_status_display }}</dd>
+            {% if kind == "tournament" %}
+              {% if item.published_at %}<dt>首次发布</dt><dd>{{ item.published_at|date:"Y.m.d H:i" }}</dd>{% endif %}
+              <dt>报名</dt><dd>{{ item.registrations.count }} 份</dd>
+            {% else %}
+              <dt>报名</dt><dd>{{ item.signups.count }} 人</dd>
+              {% if item.teams_generated_at %}<dt>分队</dt><dd>{{ item.teams_generated_at|date:"Y.m.d H:i" }}</dd>{% endif %}
+            {% endif %}
+            {% if item.created_by %}<dt>建立人</dt><dd>{{ item.created_by.nickname }}</dd>{% endif %}
+          </dl>
+          {% if item.status != "draft" %}
+            <a class="c-btn c-btn--secondary c-btn--sm" href="{{ public_url }}" target="_blank" rel="noopener">看活动页{% include "components/icon.html" with name="external" class="size-4" %}</a>
+          {% endif %}
+        </section>
+        {% if items %}
+          <section class="b-section">
+            <h2 class="b-section__title">接下来</h2>
+            <ul class="b-list">
+              {% for entry in items %}<li><a class="{% if entry.danger %}c-btn c-btn--quiet c-btn--sm is-danger{% else %}c-btn c-btn--quiet c-btn--sm{% endif %}" href="{{ entry.url }}">{{ entry.label }}</a></li>{% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+      </aside>
+    {% endif %}
+  </div>
+{% endblock %}

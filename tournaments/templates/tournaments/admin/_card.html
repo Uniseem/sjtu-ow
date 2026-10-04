@@ -1,14 +1,14 @@
 <li class="split-card{% if entry.conflict %} is-blocked{% endif %}" data-card data-signup="{{ entry.pk }}"{% if entry.conflict %} data-blocked="1"{% endif %}>
   <span class="split-card-name">{{ entry.user.nickname }}{% if not entry.user.is_active %}（账号已停用）{% endif %}</span>
-  <code class="split-card-tag">{{ entry.game_account.battletag|default:"游戏 ID 已删除" }}</code>
+  <span class="split-card-tag b-mono">{{ entry.game_account.battletag|default:"游戏 ID 已删除" }}</span>
   {% if not entry.user.is_sjtu %}<span class="split-card-flag">校外</span>{% endif %}
   <span class="split-card-roles">{% for _role, text in entry.rank_pairs %}{{ text }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>
   {% if entry.conflict %}<span class="split-card-blocked">{{ entry.conflict }}</span>{% endif %}
   <span class="split-card-moves">
     {% for target in move_targets %}
-      <button type="button" class="button button-small" data-move="{{ target.key }}">{{ target.label }}</button>
+      <button type="button" class="c-btn c-btn--secondary c-btn--sm" data-move="{{ target.key }}">{{ target.label }}</button>
     {% endfor %}
-    <button type="button" class="button button-small" data-move="">散人池</button>
+    <button type="button" class="c-btn c-btn--secondary c-btn--sm" data-move="">散人池</button>
   </span>
   <input type="hidden" name="team-{{ entry.pk }}" value="{% if entry.registration_id %}r{{ entry.registration_id }}{% endif %}" data-card-team>
 </li>

@@ -1,19 +1,19 @@
-{% extends "wagtailadmin/generic/base.html" %}
+{% extends "backoffice/base.html" %}
 
-{% block titletag %}后台手册{% endblock %}
-
-{% block main_content %}
+{% block content %}
   {% comment %}Design 14.1 (v6.47): only the parts for your roles.{% endcomment %}
-  <p class="help">下面只列和你的身份有关的部分。每一步写了做什么、在哪儿、会发生什么。</p>
-  <nav aria-label="目录" class="w-mb-8">
-    {% for part, steps in parts %}<a href="#manual-{{ part.key }}" class="button button-small button-secondary">{{ part.title }}</a> {% endfor %}
-  </nav>
+  <p class="b-section__text">下面只列和你的身份有关的部分。每一步写了做什么、在哪儿、会发生什么。</p>
+  {% if parts|length > 1 %}
+    <nav aria-label="目录" class="b-chips">
+      {% for part, steps in parts %}<a href="#manual-{{ part.key }}">{{ part.title }}</a>{% endfor %}
+    </nav>
+  {% endif %}
   {% for part, steps in parts %}
-    <section id="manual-{{ part.key }}" class="w-mb-12" data-manual-part="{{ part.key }}">
-      <h2>{{ part.title }}</h2>
-      <ol>
+    <section id="manual-{{ part.key }}" class="b-section" data-manual-part="{{ part.key }}">
+      <h2 class="b-section__title">{{ part.title }}</h2>
+      <ol class="b-steps">
         {% for text, url, label in steps %}
-          <li class="w-mb-4">{{ text }}{% if url %} <a href="{{ url }}">{{ label }} →</a>{% endif %}</li>
+          <li>{{ text }}{% if url %} <a class="c-link" href="{{ url }}">{{ label }} →</a>{% endif %}</li>
         {% endfor %}
       </ol>
     </section>

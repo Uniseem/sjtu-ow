@@ -1,0 +1,33 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <div class="b-split">
+    <form method="post" class="b-form" novalidate>
+      {% csrf_token %}
+      <div class="b-fieldset">
+        {% if preview %}<span class="b-grid__pic"><img src="{{ preview }}" alt="" loading="lazy"></span>{% endif %}
+        {% include "backoffice/parts/fields.html" %}
+      </div>
+      <div class="b-actions">
+        <button type="submit" class="c-btn c-btn--primary">保存</button>
+        <a class="c-btn c-btn--secondary" href="{{ back_url }}">不改了</a>
+      </div>
+    </form>
+    <aside class="b-aside">
+      <section class="b-section">
+        <h2 class="b-section__title">这张图</h2>
+        <dl class="b-kv">
+          <dt>尺寸</dt><dd>{{ image.width }}×{{ image.height }}</dd>
+          <dt>上传</dt><dd>{{ image.created_at|date:"Y.m.d H:i" }}</dd>
+          {% if image.uploaded_by_user %}<dt>上传人</dt><dd>{{ image.uploaded_by_user.nickname }}</dd>{% endif %}
+          <dt>原图</dt><dd><a class="c-link" href="{{ image.file.url }}" target="_blank" rel="noopener">打开</a></dd>
+        </dl>
+        {% if can_delete %}
+          <form method="post" action="{% url 'backoffice:image_delete' image.pk %}" data-confirm="删除这张图片？用到它的文章、横幅会变成默认图。">
+            {% csrf_token %}<button type="submit" class="c-btn c-btn--danger c-btn--sm">删除图片</button>
+          </form>
+        {% endif %}
+      </section>
+    </aside>
+  </div>
+{% endblock %}

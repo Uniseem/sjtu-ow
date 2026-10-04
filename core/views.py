@@ -4,14 +4,12 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
-from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from core.health import run_health_checks
 from core.mail import SMTPNotConfigured, send_test_email
 from core.middleware import OW_FLASH_COOKIE, OW_LOGGED_IN_COOKIE
-from core.models import SiteSettings
 from core.ratelimit import client_ip, over_limit
 from core.slots import render_requested
 
@@ -108,7 +106,6 @@ def send_site_test_email(request):
     """Send a synchronous test message to the current admin (design 3.6)."""
     if not request.user.has_perm("core.change_sitesettings"):
         raise PermissionDenied
-    settings_obj = SiteSettings.load(request)
     try:
         send_test_email(request.user.email)
         messages.success(request, f"测试邮件已发送到 {request.user.email}。")
@@ -116,12 +113,7 @@ def send_site_test_email(request):
         messages.error(request, str(exc))
     except Exception as exc:  # noqa: BLE001 — show the SMTP error in the admin
         messages.error(request, f"发送失败：{exc}")
-    return redirect(
-        reverse(
-            "wagtailsettings:edit",
-            args=["core", "sitesettings", settings_obj.pk],
-        )
-    )
+    return redirect("backoffice:site_settings")
 
 
 @require_POST
@@ -131,17 +123,11 @@ def try_offsite_backup(request):
 
     if not request.user.has_perm("core.change_sitesettings"):
         raise PermissionDenied
-    settings_obj = SiteSettings.load(request)
     try:
         messages.success(request, offsite.probe())
     except offsite.OffsiteError as exc:
         messages.error(request, f"测试没通过：{exc}")
-    return redirect(
-        reverse(
-            "wagtailsettings:edit",
-            args=["core", "sitesettings", settings_obj.pk],
-        )
-    )
+    return redirect("backoffice:site_settings")
 
 
 CALENDAR_RATE_LIMIT = 30

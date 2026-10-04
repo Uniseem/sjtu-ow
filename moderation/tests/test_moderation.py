@@ -473,7 +473,10 @@ def test_the_worker_queues_a_patrol_at_most_every_half_hour():
 @pytest.mark.django_db
 def test_review_queue_needs_permission(client, moderation_on):
     client.force_login(_user("nobody@example.com", "路人"))
-    assert client.get(reverse("moderation_index")).status_code == 302
+    assert client.get(reverse("moderation_index")).status_code == 403
+    client.logout()
+    signed_out = client.get(reverse("moderation_index"))
+    assert signed_out.status_code == 302 and "/accounts/login/" in signed_out.url
 
 
 @pytest.mark.django_db

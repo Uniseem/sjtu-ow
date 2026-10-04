@@ -1,0 +1,41 @@
+{% comment %}The back office's top bar (docs/admin.md 3): the mark, the sections this person may open, the site and the account.{% endcomment %}
+<header class="b-top">
+  <div class="b-top__bar">
+    <a href="{% url 'backoffice:home' %}" class="b-brand" aria-label="管理后台首页">
+      <svg class="b-brand__mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="9" class="fill-primary"/><path d="M8 21.5l8-8 8 8" fill="none" class="stroke-white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>管理后台</span>
+    </a>
+    <nav class="b-nav" aria-label="后台大类">
+      {% for link in bo.sections %}
+        <a class="b-nav__link" href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.label }}</a>
+      {% endfor %}
+    </nav>
+    <div class="b-account">
+      <a class="b-top__site" href="/" target="_blank" rel="noopener">{% include "components/icon.html" with name="external" class="size-4" %}<span>打开网站</span></a>
+      <details class="c-theme" data-theme-menu hidden>
+        <summary class="c-iconbtn" aria-label="颜色模式" title="颜色模式">
+          <span class="c-theme__light">{% include "components/icon.html" with name="sun" %}</span>
+          <span class="c-theme__dark">{% include "components/icon.html" with name="moon" %}</span>
+        </summary>
+        <div class="c-menu__panel" role="group" aria-label="颜色模式">
+          <button type="button" data-theme-choice="system" aria-pressed="false">{% include "components/icon.html" with name="monitor" %}跟随系统</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">{% include "components/icon.html" with name="sun" %}浅色</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">{% include "components/icon.html" with name="moon" %}深色</button>
+        </div>
+      </details>
+      <details class="c-menu">
+        <summary aria-label="账号菜单：{{ request.user.nickname }}">
+          {% include "components/avatar.html" with person=request.user size="sm" plain=True %}
+          <span class="b-account__name">{{ request.user.nickname }}</span>
+          {% include "components/icon.html" with name="chevron-down" class="size-4" %}
+        </summary>
+        <div class="c-menu__panel">
+          <a href="{% url 'me_profile' %}">个人中心</a>
+          {% if request.user.is_superuser %}<a href="{% url 'wagtailadmin_home' %}">Wagtail 底层后台</a>{% endif %}
+          <hr>
+          <a href="{% url 'account_logout' %}">退出</a>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>

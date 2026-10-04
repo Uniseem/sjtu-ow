@@ -1,0 +1,12 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <section class="b-section">
+    <p class="b-section__text">删除后{{ what }}就没有了，不能恢复。</p>
+    <form method="post" class="b-actions">
+      {% csrf_token %}
+      <button type="submit" class="c-btn c-btn--danger">删除</button>
+      <a class="c-btn c-btn--secondary" href="{{ back_url }}">不删了</a>
+    </form>
+  </section>
+{% endblock %}

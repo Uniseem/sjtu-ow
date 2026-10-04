@@ -1,0 +1,43 @@
+{% extends "backoffice/base.html" %}
+
+{% block actions %}
+  <a class="c-btn c-btn--primary c-btn--sm" href="{% url 'scrims:add' %}">{% include "components/icon.html" with name="plus" %}新建内战</a>
+{% endblock %}
+
+{% block content %}
+  <form method="get" class="b-filters" role="search">
+    <input type="search" name="q" value="{{ query }}" maxlength="50" placeholder="搜标题、说明" class="c-input" aria-label="搜内战">
+    <select name="status" class="c-input" aria-label="状态" data-autosubmit>
+      <option value="">全部状态</option>
+      {% for value, label in statuses %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+  </form>
+  {% if rows %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th>内战</th><th>状态</th><th>规格</th><th>开始</th><th>报名截止</th><th class="is-num">报名</th><th><span class="sr-only">操作</span></th></tr></thead>
+      <tbody>
+        {% for scrim, items in rows %}
+          <tr data-scrim-row="{{ scrim.pk }}">
+            <td><a class="b-title" href="{% url 'scrims:edit' scrim.pk %}">{{ scrim.title }}</a></td>
+            <td data-label="状态">{{ scrim.get_status_display }}</td>
+            <td data-label="规格">{{ scrim.get_format_display }}</td>
+            <td data-label="开始">{{ scrim.starts_at|date:"Y.m.d H:i" }}</td>
+            <td data-label="报名截止">{{ scrim.signup_deadline|date:"Y.m.d H:i" }}</td>
+            <td data-label="报名" class="is-num">{{ scrim.signup_total }}</td>
+            <td>
+              <div class="b-rowacts">
+                <a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'scrims:edit' scrim.pk %}">编辑</a>
+                {% include "backoffice/parts/more.html" %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "components/pagination.html" %}
+  {% else %}
+    {% url 'scrims:add' as new_url %}
+    {% include "components/empty_state.html" with title="没有内战" message="换个筛选条件，或者新建一场。" action_url=new_url action_label="新建内战" %}
+  {% endif %}
+{% endblock %}

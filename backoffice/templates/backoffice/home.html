@@ -1,0 +1,96 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_heading %}你好，{{ nickname }}{% endblock %}
+
+{% block actions %}
+  {% for action in actions %}
+    <a href="{{ action.url }}" class="c-btn {% if action.primary %}c-btn--primary{% else %}c-btn--secondary{% endif %} c-btn--sm"{% if action.url == "/" %} target="_blank" rel="noopener"{% endif %} data-home-action>{{ action.label }}</a>
+  {% endfor %}
+{% endblock %}
+
+{% block content %}
+  {% if roles %}<p class="b-hello__roles">{{ roles|join:"、" }}</p>{% endif %}
+
+  {% if has_duties %}
+    <section class="b-form" aria-labelledby="todo-heading" data-todo>
+      <h2 id="todo-heading" class="b-section__title">待办{% if todo %} <span class="b-count">{{ todo|length }} 件</span>{% endif %}</h2>
+      {% if todo %}
+        <div class="b-cards">
+          {% for row in todo %}
+            {% if row.url %}
+              <a class="b-card" href="{{ row.url }}" data-todo-row>
+                {% if row.count > 1 %}<span class="b-card__count">{{ row.count }}</span>{% endif %}
+                <span class="b-card__text">{{ row.text }}</span>
+                <span class="b-card__go">去处理 →</span>
+              </a>
+            {% else %}
+              <div class="b-card" data-todo-row>
+                {% if row.count > 1 %}<span class="b-card__count">{{ row.count }}</span>{% endif %}
+                <span class="b-card__text">{{ row.text }}</span>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="b-section__text">暂时没有待办。</p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="b-section" aria-labelledby="mine-heading" data-my-articles>
+    <div class="c-panel__head">
+      <h2 id="mine-heading" class="b-section__title">我的文章</h2>
+      <a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'backoffice:articles' %}?mine=1">全部 →</a>
+    </div>
+    {% if articles %}
+      <ul class="b-list">
+        {% for page, status in articles %}
+          <li>
+            <a class="b-title" href="{% url 'backoffice:article_edit' page.pk %}">{{ page.draft_title|default:page.title }}</a>
+            {% include "components/status_badge.html" with label=status.0 kind=status.1 %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="b-section__text">还没写过文章。{% for action in actions %}{% if action.label == "写文章" %}<a class="c-link" href="{{ action.url }}">写一篇</a>{% endif %}{% endfor %}</p>
+    {% endif %}
+  </section>
+
+  {% if setup %}
+    <section class="b-section" aria-labelledby="setup-heading" data-setup-list>
+      <h2 id="setup-heading" class="b-section__title">上线清单 <span class="b-count">只有超级管理员看得到</span></h2>
+      {% if not setup.required and not setup.optional %}
+        <p class="b-section__text">都完成了。</p>
+      {% else %}
+        <p class="b-section__text">{% if setup.required %}<strong>还有 {{ setup.required|length }} 项必做</strong>{% if setup.optional %}，{% endif %}{% endif %}{% if setup.optional %}{{ setup.optional|length }} 项建议做{% endif %}。</p>
+        {% if setup.required %}
+          <ul class="b-list b-checks" data-setup="required">
+            {% for check in setup.required %}
+              <li><span class="c-tag c-tag--accent">必做</span><span><strong>{% if check.url %}<a class="c-link" href="{{ check.url }}">{{ check.label }}</a>{% else %}{{ check.label }}{% endif %}</strong>：{{ check.detail }}</span></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if setup.optional %}
+          <details{% if not setup.required %} open{% endif %}>
+            <summary class="c-link">建议做的 {{ setup.optional|length }} 项</summary>
+            <ul class="b-list b-checks mt-3" data-setup="optional">
+              {% for check in setup.optional %}
+                <li><span class="c-tag">建议</span><span><strong>{% if check.url %}<a class="c-link" href="{{ check.url }}">{{ check.label }}</a>{% else %}{{ check.label }}{% endif %}</strong>：{{ check.detail }}</span></li>
+              {% endfor %}
+            </ul>
+          </details>
+        {% endif %}
+      {% endif %}
+      {% if setup.done %}
+        <details>
+          <summary class="c-link">已完成 {{ setup.done|length }} 项</summary>
+          <ul class="b-list b-checks mt-3" data-setup="done">
+            {% for check in setup.done %}
+              <li><span class="c-tag">已完成</span><span>{{ check.label }}：{{ check.detail }}</span></li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

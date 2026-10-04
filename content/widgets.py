@@ -33,6 +33,6 @@ class MarkdownEditor(forms.Textarea):
     @property
     def media(self):
         return forms.Media(
-            css={"all": ["vendor/easymde/easymde.min.css"]},
+            css={"all": ["vendor/easymde/easymde.min.css", "css/markdown-editor.css"]},
             js=["vendor/easymde/easymde.min.js", "js/markdown-editor.js"],
         )

@@ -20,6 +20,7 @@ SITE_URL = env("SITE_URL", "http://localhost:8000")
 INSTALLED_APPS = [
     "accounts",
     "core",
+    "backoffice",
     "content",
     "teams",
     "members",
@@ -92,6 +93,7 @@ TEMPLATES = [
                 "core.context_processors.site_environment",
                 "core.context_processors.cover_pool",
                 "core.context_processors.avatar_pool",
+                "backoffice.context.navigation",
             ],
         },
     },
@@ -286,6 +288,8 @@ WAGTAIL_SITE_NAME = "上海交通大学守望先锋社区"
 WAGTAILADMIN_BASE_URL = SITE_URL
 WAGTAILADMIN_LOGIN_URL = "account_login"
 ADMIN_URL_PREFIX = "/admin/"
+# Wagtail's own admin, kept for superusers only (docs/admin.md 2).
+WAGTAIL_ADMIN_PREFIX = "/wagtail/"
 WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
 # Every verified member can open /admin/account/ (through 投稿者). Changing
 # the login email there skipped design 3.4's verification (round 115).

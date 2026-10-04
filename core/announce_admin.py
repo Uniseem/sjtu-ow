@@ -7,7 +7,6 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 
 from core import services
 from core.letters import text_of
@@ -44,7 +43,6 @@ def announce_view(request, kind, pk):
         "core/admin/announce.html",
         {
             "page_title": "通知全体成员",
-            "header_icon": "mail",
             "obj": obj,
             "subject": letter.subject,
             "preview": text_of(letter, request.user.nickname),
@@ -53,10 +51,6 @@ def announce_view(request, kind, pk):
             "problem": services.announcement_problem(kind, obj),
             "going_live_at": services.going_live_at(kind, obj),
             "back_url": entry.back_url(obj),
-            "breadcrumbs_items": [
-                {"url": reverse("wagtailadmin_home"), "label": "首页"},
-                {"url": entry.back_url(obj), "label": entry.label},
-                {"url": "", "label": "通知全体成员"},
-            ],
+            "back_label": entry.label,
         },
     )

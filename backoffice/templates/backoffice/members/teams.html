@@ -1,0 +1,35 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <form method="get" class="b-filters" role="search">
+    <input type="search" name="q" value="{{ query }}" maxlength="50" placeholder="搜队名" class="c-input" aria-label="搜队名">
+    <label class="c-check"><input type="checkbox" name="captain" value="gone"{% if captain == "gone" %} checked{% endif %} data-autosubmit>只看队长已停用的</label>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+  </form>
+  <p class="b-section__text">战队由队长在网站上建，结束时解散；后台只改资料、指定队长和解散。</p>
+  {% if rows %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th>队名</th><th>队长</th><th class="is-num">人数</th><th>招募</th><th>状态</th><th><span class="sr-only">操作</span></th></tr></thead>
+      <tbody>
+        {% for team, state in rows %}
+          <tr data-team-row="{{ team.pk }}">
+            <td><a class="b-title" href="{% url 'teams:edit' team.pk %}">{{ team.name }}</a></td>
+            <td data-label="队长">{% for membership in team.memberships.all %}{% if membership.role == "captain" %}{{ membership.user.nickname }}{% endif %}{% endfor %}</td>
+            <td data-label="人数" class="is-num">{{ team.memberships.all|length }}</td>
+            <td data-label="招募">{% if team.is_recruiting and not team.is_disbanded %}招募中{% else %}—{% endif %}</td>
+            <td data-label="状态">{% include "components/status_badge.html" with label=state.0 kind=state.1 %}</td>
+            <td>
+              <div class="b-rowacts">
+                <a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'teams:edit' team.pk %}">编辑</a>
+                {% if not team.is_disbanded %}<a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'team_assign_captain' team.pk %}">指定队长</a>{% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "components/pagination.html" %}
+  {% else %}
+    {% include "components/empty_state.html" with title="没有战队" message="换个筛选条件试试。" %}
+  {% endif %}
+{% endblock %}

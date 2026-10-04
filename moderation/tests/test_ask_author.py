@@ -149,7 +149,10 @@ def test_each_kind_of_content_has_somewhere_to_fix_it():
     assert url("nickname").endswith("/me/")
     assert url("team_name").endswith("/teams/5/manage/")
     assert url("team_description").endswith("/teams/5/manage/")
-    assert url("article").endswith("/admin/pages/5/edit/")
+    assert url("article").endswith("/admin/articles/5/")
+    assert url("page").endswith("/admin/pages/5/")
+    assert url("tournament_description").endswith("/admin/tournaments/edit/5/")
+    assert url("scrim_description").endswith("/admin/scrims/edit/5/")
     assert url("comment", "/news/a/#comment-9").endswith("/news/a/#comment-9")
     assert url("image") == ""
 

@@ -4828,4 +4828,1083 @@
     border: 1px solid var(--color-line);
     border-radius: var(--radius-sm);
   }
+
+  /* ---- 后台 (docs/admin.md 3, 5; v7.0) ------------------------------------------- */
+
+  /* The back office is a page of this site: the same tokens, type and
+     components. b-* is its own layout; forms, tables, buttons, tabs and
+     notices are the c-* ones. */
+  .b-body {
+    min-height: 100vh;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  /* The top bar: the night band of 13.2.6, in both modes. */
+  .b-top {
+    --color-bg: var(--color-night);
+    --color-surface: var(--color-night-surface);
+    --color-surface-2: var(--color-night-2);
+    --color-control: var(--color-night-control);
+    --color-fg: var(--color-night-fg);
+    --color-fg-2: var(--color-night-fg-2);
+    --color-fg-3: var(--color-night-fg-3);
+    --color-primary-text: var(--color-night-primary-text);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background-color: var(--color-night);
+    color: var(--color-fg);
+  }
+
+  .b-top__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 1.5rem;
+    max-width: var(--container-page);
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  .b-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: 3.5rem;
+    color: var(--color-fg);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .b-brand__mark {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .b-nav {
+    display: flex;
+    order: 3;
+    gap: 0.25rem;
+    width: 100%;
+    margin-inline: -0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .b-nav__link {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 0.75rem;
+    color: var(--color-fg-2);
+    font-family: var(--font-nav);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 150ms var(--ease-standard);
+  }
+
+  .b-nav__link:hover {
+    color: var(--color-fg);
+  }
+
+  .b-nav__link[aria-current="page"] {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .b-nav__link[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0;
+    left: 0.75rem;
+    height: 3px;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-accent);
+  }
+
+  .b-account {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+  }
+
+  .b-account__name {
+    display: none;
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .b-top__site {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    padding-inline: 0.5rem;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .b-top__site:hover {
+    color: var(--color-fg);
+  }
+
+  .b-top__site span {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .b-top__bar {
+      padding-inline: 1.5rem;
+    }
+
+    .b-account__name,
+    .b-top__site span {
+      display: inline;
+    }
+  }
+
+  /* Wide enough: the sections sit in the bar itself. */
+  @media (min-width: 1024px) {
+    .b-top__bar {
+      flex-wrap: nowrap;
+      padding-inline: 2.5rem;
+    }
+
+    .b-nav {
+      order: 0;
+      width: auto;
+      margin-inline: 0;
+    }
+
+    .b-nav__link {
+      min-height: 3.5rem;
+    }
+  }
+
+  /* The page head: the section, the title and its main action, the tabs. */
+  .b-head {
+    background-color: var(--color-surface);
+  }
+
+  .b-head__inner {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 1.25rem 1rem 0;
+  }
+
+  .b-head__kicker,
+  .b-head__back {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .b-head__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2rem;
+  }
+
+  .b-head__back:hover {
+    color: var(--color-fg);
+  }
+
+  .b-head__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .b-head__title {
+    min-width: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .b-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .b-head__actions:empty {
+    display: none;
+  }
+
+  .b-tabs,
+  .b-subtabs {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .b-tabs a,
+  .b-subtabs a {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    color: var(--color-fg-2);
+    font-family: var(--font-nav);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .b-tabs a:hover,
+  .b-subtabs a:hover {
+    color: var(--color-fg);
+  }
+
+  .b-tabs a[aria-current="page"] {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .b-tabs a[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-accent);
+  }
+
+  /* The second row (用户与权限): small filled chips under the head. */
+  .b-subtabs {
+    gap: 0.5rem;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 1rem 1rem 0;
+  }
+
+  .b-subtabs a {
+    min-height: 2.25rem;
+    padding-inline: 0.875rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface);
+    font-size: 0.875rem;
+  }
+
+  .b-subtabs a[aria-current="page"] {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+    font-weight: 600;
+  }
+
+  /* Status chips above a list (core/admin/_tabs.html). */
+  .b-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .b-chips a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.25rem;
+    padding-inline: 0.875rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .b-chips a:hover {
+    color: var(--color-fg);
+  }
+
+  .b-chips a[aria-current] {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+    font-weight: 600;
+  }
+
+  .b-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  @media (min-width: 640px) {
+    .b-head__inner,
+    .b-main,
+    .b-subtabs {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .b-head__inner,
+    .b-main,
+    .b-subtabs {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  .b-messages {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  /* Edit pages: the form, and the item's state beside it. */
+  .b-split {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .b-split {
+      grid-template-columns: minmax(0, 1fr) 22rem;
+      align-items: start;
+    }
+
+    .b-aside {
+      position: sticky;
+      top: 4.5rem;
+    }
+  }
+
+  .b-aside {
+    display: grid;
+    gap: 1rem;
+  }
+
+  /* A new item has no state yet: the form alone, as wide as the split's. */
+  .b-single {
+    max-width: calc(80rem - 22rem - 1.5rem);
+  }
+
+  /* Buttons and small forms in a column keep their own width. */
+  .b-section > .c-btn,
+  .b-section > form,
+  .b-form > .c-btn {
+    align-self: flex-start;
+  }
+
+  .b-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  @media (min-width: 640px) {
+    .b-section {
+      padding: 1.5rem;
+    }
+  }
+
+  .b-section__title {
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .b-section__text {
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  /* A group of fields in a long form. */
+  .b-fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  @media (min-width: 640px) {
+    .b-fieldset {
+      padding: 1.5rem;
+    }
+  }
+
+  .b-fieldset__legend {
+    float: left;
+    width: 100%;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .b-fieldset__legend + * {
+    clear: both;
+  }
+
+  .b-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* The buttons under a long form stay in reach. */
+  .b-formbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-float);
+  }
+
+  .b-formbar__note {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  /* Filters above a list: one line of small controls, wrapping on phones. */
+  .b-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .b-filters .c-input {
+    width: auto;
+    min-width: 9rem;
+    min-height: 2.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .b-filters input[type="search"].c-input {
+    flex: 1 1 14rem;
+  }
+
+  .b-filters .c-check {
+    min-height: 2.5rem;
+  }
+
+  .b-count {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  /* A table cell's second line: who, when, where. */
+  .b-sub {
+    display: block;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .b-title {
+    font-weight: 600;
+  }
+
+  a.b-title:hover {
+    color: var(--color-primary-text);
+  }
+
+  /* What a row can do: links, then the rest in a <details> menu. */
+  .b-rowacts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem 0.75rem;
+  }
+
+  .b-rowacts form {
+    display: inline;
+  }
+
+  /* A row of buttons under a form or a question. */
+  .b-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .b-actions form {
+    display: inline;
+  }
+
+  .b-more {
+    position: relative;
+  }
+
+  .b-more > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2.25rem;
+    padding-inline: 0.5rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .b-more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .b-more > summary:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+  }
+
+  .b-more .c-menu__panel {
+    min-width: 11rem;
+  }
+
+  .b-more .c-menu__panel button {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .b-more .c-menu__panel button:hover {
+    background-color: var(--color-surface-2);
+  }
+
+  .b-more .is-danger {
+    color: var(--color-primary-text);
+  }
+
+  /* 名称：值 in the side column. */
+  .b-kv {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.5rem 1rem;
+    font-size: 0.9375rem;
+  }
+
+  .b-kv dt {
+    color: var(--color-fg-2);
+  }
+
+  .b-kv dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .b-list {
+    display: grid;
+    gap: 3px;
+  }
+
+  .b-list > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-bg);
+  }
+
+  /* Numbered steps (后台手册). */
+  .b-steps {
+    display: grid;
+    gap: 0.875rem;
+    padding-left: 1.5rem;
+    list-style: decimal;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+  }
+
+  .b-steps li::marker {
+    color: var(--color-fg-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The dashboard's cards. */
+  .b-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .b-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  a.b-card:hover {
+    background-color: color-mix(in oklab, var(--color-surface) 94%, var(--color-fg));
+  }
+
+  .b-card__count {
+    color: var(--color-primary-text);
+    font-family: var(--font-figure);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .b-card__text {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .b-card__go {
+    margin-top: auto;
+    color: var(--color-primary-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* The picture library. */
+  .b-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .b-grid__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    text-align: left;
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  .b-grid__item:hover {
+    background-color: color-mix(in oklab, var(--color-surface) 94%, var(--color-fg));
+  }
+
+  button.b-grid__item {
+    cursor: pointer;
+  }
+
+  .b-grid__pic {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .b-grid__pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .b-grid__name {
+    overflow: hidden;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .b-grid__meta {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  /* The picture field: what is chosen, 选择, 清除. */
+  .b-picker {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .b-picker__preview {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 8rem;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .b-picker__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .b-picker__body {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .b-picker__title {
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .b-picker__actions {
+    display: flex;
+    gap: 1rem;
+  }
+
+  /* The picture dialog (a native <dialog>). */
+  .b-dialog {
+    width: min(64rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    margin: auto;
+    padding: 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    box-shadow: var(--shadow-float);
+  }
+
+  .b-dialog::backdrop {
+    background-color: color-mix(in oklab, var(--color-night) 55%, transparent);
+  }
+
+  .b-dialog__head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem 0.75rem 1.25rem;
+    background-color: var(--color-surface);
+  }
+
+  .b-dialog__head h2 {
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .b-dialog__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  /* The dashboard greeting. */
+  .b-hello {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .b-hello__roles {
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  /* The setup list: a mark and a sentence per item. */
+  .b-checks > li {
+    justify-content: flex-start;
+  }
+
+  .b-checks .is-done {
+    color: var(--color-ok);
+  }
+
+  .b-checks .is-open {
+    color: var(--color-warn);
+  }
+
+  .b-mono {
+    font-family: var(--font-code);
+    font-size: 0.875rem;
+  }
+
+  /* A letter shown before it is sent. */
+  .b-letter {
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  /* ---- Drag boards: scrim split and tournament teams (design 9.5, 8.8.2) ---- */
+
+  .split-teams {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .split-team {
+    flex: 1 1 22rem;
+    min-width: 0;
+  }
+
+  .split-buffer {
+    margin-top: 1rem;
+  }
+
+  .split-problem,
+  .split-warn {
+    color: var(--color-primary-text);
+    font-weight: 600;
+  }
+
+  .split-zone {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface);
+  }
+
+  .split-zone.is-over,
+  .split-zone.is-under {
+    border-color: var(--color-primary);
+  }
+
+  .split-zone.is-over .split-count,
+  .split-zone.is-under .split-count {
+    color: var(--color-primary-text);
+    font-weight: 700;
+  }
+
+  .split-zone-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem;
+    font-weight: 700;
+  }
+
+  .split-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .split-list {
+    display: grid;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+  }
+
+  .split-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg);
+    cursor: grab;
+  }
+
+  .split-card.is-dragging {
+    opacity: 0.4;
+  }
+
+  .split-card.is-blocked {
+    background-color: var(--color-surface-2);
+    cursor: not-allowed;
+  }
+
+  .split-card-name {
+    font-weight: 600;
+  }
+
+  .split-card-rank {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .split-card-roles,
+  .split-card-blocked {
+    flex-basis: 100%;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .split-card-blocked {
+    color: var(--color-primary-text);
+  }
+
+  .split-card-flag {
+    padding: 0 0.375rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-surface-2);
+    font-size: 0.875rem;
+  }
+
+  .split-card-moves {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .split-name {
+    max-width: 12rem;
+    margin-left: 0.5rem;
+  }
+
+  .split-dissolve {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.25rem 0;
+  }
+
+  .split-copy {
+    width: 100%;
+    font-family: var(--font-code);
+  }
+
+  /* ---- Uploaded faces (design-details 2.3) ---- */
+
+  .avatar-review {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .avatar-review__item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  .avatar-review__picture {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 7.5rem;
+    height: 7.5rem;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .avatar-review__picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-review__body {
+    display: grid;
+    align-content: start;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .avatar-review__form {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  /* ---- 排版设置 (design 13.12.3): the settings and a live preview ---- */
+
+  .typography-row {
+    padding-block: 0.5rem 1rem;
+  }
+
+  .typography-row + .typography-row {
+    border-top: 2px solid var(--color-bg);
+  }
+
+  .typography-row .fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .typography-row .fields > * {
+    min-width: 9rem;
+  }
+
+  #typography-preview {
+    --font-body: var(--font-fallback);
+    --font-code: var(--font-mono-fallback);
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    font-family: var(--font-body);
+    font-weight: var(--font-body-weight, 400);
+    font-size: var(--font-body-size, 1rem);
+    line-height: var(--font-body-line-height, 1.6);
+    letter-spacing: var(--font-body-letter-spacing, normal);
+  }
+
+  #typography-preview .p-h1 { font-family: var(--font-h1, var(--font-body)); font-weight: var(--font-h1-weight, 700); font-size: var(--font-h1-size, 2rem); line-height: var(--font-h1-line-height, 1.3); letter-spacing: var(--font-h1-letter-spacing, normal); margin: 0 0 0.5rem; }
+  #typography-preview .p-h2 { font-family: var(--font-h2, var(--font-body)); font-weight: var(--font-h2-weight, 600); font-size: var(--font-h2-size, 1.5rem); line-height: var(--font-h2-line-height, 1.3); letter-spacing: var(--font-h2-letter-spacing, normal); margin: 1rem 0 0.5rem; }
+  #typography-preview .p-h3 { font-family: var(--font-h3, var(--font-body)); font-weight: var(--font-h3-weight, 600); font-size: var(--font-h3-size, 1.25rem); line-height: var(--font-h3-line-height, 1.3); letter-spacing: var(--font-h3-letter-spacing, normal); margin: 1rem 0 0.5rem; }
+  #typography-preview .p-h4 { font-family: var(--font-h4, var(--font-body)); font-weight: var(--font-h4-weight, 600); font-size: var(--font-h4-size, 1.125rem); line-height: var(--font-h4-line-height, 1.3); letter-spacing: var(--font-h4-letter-spacing, normal); margin: 1rem 0 0.5rem; }
+  #typography-preview .p-nav { font-family: var(--font-nav, var(--font-body)); font-weight: var(--font-nav-weight, 400); font-size: var(--font-nav-size, 1rem); letter-spacing: var(--font-nav-letter-spacing, normal); display: flex; gap: 1rem; }
+  #typography-preview .p-button { font-family: var(--font-button, var(--font-body)); font-weight: var(--font-button-weight, 400); font-size: var(--font-button-size, 1rem); letter-spacing: var(--font-button-letter-spacing, normal); padding: 0.375rem 1rem; border-radius: var(--radius-full); background-color: var(--color-surface-2); }
+  #typography-preview .p-numeric { font-family: var(--font-numeric, var(--font-body)); font-weight: var(--font-numeric-weight, 400); font-size: var(--font-numeric-size, 1rem); letter-spacing: var(--font-numeric-letter-spacing, normal); font-variant-numeric: tabular-nums; }
+  #typography-preview .p-code { font-family: var(--font-code, var(--font-mono-fallback)); font-weight: var(--font-code-weight, 400); font-size: var(--font-code-size, 1rem); letter-spacing: var(--font-code-letter-spacing, normal); }
+
+  @media (min-width: 1200px) {
+    .typography-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(20rem, 30rem);
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .typography-aside {
+      position: sticky;
+      top: 4.5rem;
+    }
+  }
 }

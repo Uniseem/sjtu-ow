@@ -204,7 +204,7 @@ def test_the_periods():
 def test_officers_see_it_and_can_take_the_table_away(march, client):
     manager = _user("s162@example.com", "内战管理员", "投稿者")
     client.force_login(manager)
-    menu = client.get(reverse("wagtailadmin_home")).content.decode()
+    menu = client.get(reverse("backoffice:home")).content.decode()
     assert reverse("admin_activity") in menu
 
     page = client.get(
@@ -213,7 +213,7 @@ def test_officers_see_it_and_can_take_the_table_away(march, client):
     html = page.content.decode()
     assert page.status_code == 200
     assert html.count("<tr data-activity-event>") == 4
-    assert "内战</th><td>2 场 · 报名 3 人次 · 上场 2 人次 · 参与 2 人" in html
+    assert "<dt>内战</dt><dd>2 场 · 报名 3 人次 · 上场 2 人次 · 参与 2 人</dd>" in html
 
     download = client.get(
         reverse("admin_activity"),
@@ -234,5 +234,5 @@ def test_writers_do_not(site, client):
     ):
         client.force_login(user)
         assert client.get(reverse("admin_activity")).status_code != 200
-        menu = client.get(reverse("wagtailadmin_home")).content.decode()
+        menu = client.get(reverse("backoffice:home")).content.decode()
         assert reverse("admin_activity") not in menu

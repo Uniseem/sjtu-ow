@@ -1,0 +1,28 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <div class="b-split">
+    <form method="post" class="b-form" novalidate>
+      {% csrf_token %}
+      <div class="b-fieldset">
+        {% include "backoffice/parts/fields.html" %}
+      </div>
+      <div class="b-formbar">
+        <button type="submit" name="publish" value="1" class="c-btn c-btn--primary">发布</button>
+        <button type="submit" name="save" value="1" class="c-btn c-btn--secondary">保存草稿</button>
+        <a class="c-btn c-btn--quiet" href="{% url 'backoffice:page_preview' item.pk %}" target="_blank" rel="noopener">预览草稿</a>
+      </div>
+    </form>
+    <aside class="b-aside" aria-label="这个页面">
+      <section class="b-section">
+        <h2 class="b-section__title">状态</h2>
+        <dl class="b-kv">
+          <dt>状态</dt><dd>{% include "components/status_badge.html" with label=status.0 kind=status.1 %}</dd>
+          <dt>地址</dt><dd class="b-mono">/{{ item.slug }}/</dd>
+          {% if item.last_published_at %}<dt>最后发布</dt><dd>{{ item.last_published_at|date:"Y.m.d H:i" }}</dd>{% endif %}
+        </dl>
+        {% if url %}<div class="b-actions"><a class="c-btn c-btn--secondary c-btn--sm" href="{{ url }}" target="_blank" rel="noopener">打开页面{% include "components/icon.html" with name="external" class="size-4" %}</a></div>{% endif %}
+      </section>
+    </aside>
+  </div>
+{% endblock %}

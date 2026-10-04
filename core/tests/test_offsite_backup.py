@@ -359,17 +359,17 @@ def test_the_settings_page_button(client, monkeypatch, settings, configured):
     )
     client.force_login(admin)
 
-    edit = reverse("wagtailsettings:edit", args=["core", "sitesettings", configured.pk])
+    edit = reverse("backoffice:site_settings")
+    assert configured.pk
     assert reverse("core_try_offsite") in client.get(edit).content.decode()
     page = client.post(reverse("core_try_offsite"), follow=True).content.decode()
     assert "写入和删除都成功" in page
 
-    # Into the admin, but not a site settings person: Wagtail sends them home.
+    # Into the admin, but not a site settings person: refused.
     fake.calls.clear()
     client.force_login(_user("editor133@example.com", "内容编辑"))
     response = client.post(reverse("core_try_offsite"))
-    assert response.status_code == 302
-    assert response.url == reverse("wagtailadmin_home")
+    assert response.status_code == 403
     assert fake.calls == []
 
 

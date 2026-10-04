@@ -1,0 +1,26 @@
+{% extends "backoffice/base.html" %}
+
+{% block actions %}
+  {% if can_add %}<a class="c-btn c-btn--primary c-btn--sm" href="{% url 'backoffice:member_group_new' %}">{% include "components/icon.html" with name="plus" %}新建分组</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+  <p class="b-section__text">成员展示页上的分组，比如「社团干部」。组里的人照样在「全部成员」里。</p>
+  {% if groups %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th>名称</th><th>显示</th><th class="is-num">人数</th><th class="is-num">排序</th></tr></thead>
+      <tbody>
+        {% for group in groups %}
+          <tr>
+            <td><a class="b-title" href="{% url 'backoffice:member_group_edit' group.pk %}">{{ group.name }}</a>{% if group.description %}<span class="b-sub">{{ group.description }}</span>{% endif %}</td>
+            <td data-label="显示">{% if group.is_visible %}显示{% else %}不显示{% endif %}</td>
+            <td data-label="人数" class="is-num">{{ group.people }}</td>
+            <td data-label="排序" class="is-num">{{ group.sort_order }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    {% include "components/empty_state.html" with title="还没有分组" message="成员展示页只显示「全部成员」。" %}
+  {% endif %}
+{% endblock %}

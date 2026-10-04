@@ -1,0 +1,37 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <div class="b-split">
+    <form method="post" class="b-form" novalidate>
+      {% csrf_token %}
+      <div class="b-fieldset">{% include "backoffice/parts/fields.html" %}</div>
+      <div class="b-actions">
+        <button type="submit" class="c-btn c-btn--primary">保存</button>
+        <a class="c-btn c-btn--secondary" href="{{ back_url }}">不改了</a>
+      </div>
+    </form>
+    <aside class="b-aside">
+      <section class="b-section">
+        <h2 class="b-section__title">状态</h2>
+        <dl class="b-kv">
+          <dt>状态</dt><dd>{% include "components/status_badge.html" with label=state.0 kind=state.1 %}</dd>
+          <dt>成立</dt><dd>{{ team.created_at|date:"Y.m.d" }}</dd>
+          {% if team.disbanded_at %}<dt>解散</dt><dd>{{ team.disbanded_at|date:"Y.m.d" }}</dd>{% endif %}
+        </dl>
+        <a class="c-btn c-btn--secondary c-btn--sm" href="{{ team.get_absolute_url }}" target="_blank" rel="noopener">战队主页{% include "components/icon.html" with name="external" class="size-4" %}</a>
+        {% if not team.is_disbanded %}
+          <div class="b-actions">
+            <a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'team_assign_captain' team.pk %}">指定队长</a>
+            <a class="c-btn c-btn--danger c-btn--sm" href="{% url 'team_admin_disband' team.pk %}">解散战队</a>
+          </div>
+        {% endif %}
+      </section>
+      <section class="b-section">
+        <h2 class="b-section__title">成员</h2>
+        <ul class="b-list">
+          {% for membership in memberships %}<li><span>{{ membership.user.nickname }}</span><span class="b-sub">{{ membership.get_role_display }}</span></li>{% empty %}<li>没有成员</li>{% endfor %}
+        </ul>
+      </section>
+    </aside>
+  </div>
+{% endblock %}

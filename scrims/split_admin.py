@@ -14,7 +14,7 @@ from scrims.models import ROLE_REQUIREMENTS, Role, Scrim
 
 def breadcrumbs(scrim):
     return [
-        {"url": reverse("wagtailadmin_home"), "label": "首页"},
+        {"url": reverse("backoffice:home"), "label": "首页"},
         {"url": reverse("scrims:index"), "label": "内战"},
         {"url": "", "label": f"{scrim.title} · 分队"},
     ]
@@ -105,7 +105,6 @@ def page_context(request, scrim):
     total_b = services.team_total(rows["b"])
     return {
         "page_title": f"{scrim.title} · 分队",
-        "header_icon": "group",
         "scrim": scrim,
         "signups": signups,
         "order": order,

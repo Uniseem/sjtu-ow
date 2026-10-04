@@ -6,7 +6,10 @@ from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
 
 urlpatterns = [
-    path("admin/", include(wagtailadmin_urls)),
+    # The back office (docs/admin.md, v7.0); Wagtail's own admin is the
+    # superusers' fallback underneath it.
+    path("admin/", include("backoffice.urls")),
+    path("wagtail/", include(wagtailadmin_urls)),
     path("accounts/", include("allauth.urls")),
     path("documents/", include(wagtaildocs_urls)),
     path("", include("accounts.urls")),

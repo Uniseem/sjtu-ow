@@ -1,3 +1,4 @@
+import re
 from io import BytesIO
 
 import pytest
@@ -21,10 +22,6 @@ from content.services import SUBMISSION_IMAGE_COLLECTION, article_create_admin_u
 
 VALID_PASSWORD = "Correct-Horse-Battery-1"
 BV_URL = "https://www.bilibili.com/video/BV1xx411c7mD"
-
-
-def _follow(client, url):
-    return client.get(url, follow=True)
 
 
 def _user(email="player@example.com", nickname="投稿同学", **kwargs):
@@ -174,16 +171,17 @@ def test_members_publish_their_own_articles_straight_away(client, site_ready):
     assert page.get_workflow() is None
     assert page.permissions_for_user(submitter).can_publish()
     client.force_login(submitter)
-    client.post(
-        reverse("wagtailadmin_pages:edit", args=[page.pk]),
+    response = client.post(
+        reverse("backoffice:article_edit", args=[page.pk]),
         {
             "title": "直接发布",
             "category": guide.pk,
             "summary": "摘要",
             "body": "正文",
-            "action-publish": "action-publish",
+            "publish": "1",
         },
     )
+    assert response.status_code == 302
     page.refresh_from_db()
     assert page.live is True
     assert page.permissions_for_user(submitter).can_unpublish()
@@ -210,7 +208,8 @@ def test_nobody_takes_down_someone_elses_article_but_editors(client, site_ready)
         tester = page.permissions_for_user(User.objects.get(pk=other.pk))
         assert not tester.can_unpublish() and not tester.can_publish()
         client.force_login(other)
-        client.post(reverse("wagtailadmin_pages:unpublish", args=[page.pk]))
+        response = client.post(reverse("backoffice:article_unpublish", args=[page.pk]))
+        assert response.status_code == 403, other.nickname
         page.refresh_from_db()
         assert page.live, other.nickname
     # Through a plain Page, as the explorer and bulk actions see it.
@@ -220,7 +219,7 @@ def test_nobody_takes_down_someone_elses_article_but_editors(client, site_ready)
     assert not plain.permissions_for_user(member).can_unpublish()
 
     client.force_login(editor)
-    client.post(reverse("wagtailadmin_pages:unpublish", args=[page.pk]))
+    client.post(reverse("backoffice:article_unpublish", args=[page.pk]))
     page.refresh_from_db()
     assert not page.live
 
@@ -267,12 +266,11 @@ def test_submitter_category_and_author_fields(site_ready):
     submitter = _verify(_user(email="s2@example.com"))
     editor = _verify(_user(email="e2@example.com", nickname="编辑乙"))
     editor.groups.add(Group.objects.get(name=GROUP_CONTENT))
-    form_class = ArticlePage.get_edit_handler().get_form_class()
+    from backoffice.forms import ArticleForm
+
     news = site_ready
-    submitter_form = form_class(
-        instance=ArticlePage(owner=submitter),
-        parent_page=news,
-        for_user=submitter,
+    submitter_form = ArticleForm(
+        instance=ArticlePage(owner=submitter), parent=news, user=submitter
     )
     assert "author" not in submitter_form.fields
     slugs = set(
@@ -281,10 +279,8 @@ def test_submitter_category_and_author_fields(site_ready):
     assert "notice" not in slugs
     assert "guide" in slugs
 
-    editor_form = form_class(
-        instance=ArticlePage(owner=editor),
-        parent_page=news,
-        for_user=editor,
+    editor_form = ArticleForm(
+        instance=ArticlePage(owner=editor), parent=news, user=editor
     )
     assert "author" in editor_form.fields
     editor_slugs = set(
@@ -299,37 +295,32 @@ def test_submitter_admin_menu_and_restricted_urls(client, site_ready):
     assert is_submitter_only(submitter)
     client.force_login(submitter)
 
-    home = client.get(reverse("wagtailadmin_home"))
+    home = client.get(reverse("backoffice:home"))
     assert home.status_code == 200
     html = home.content.decode("utf-8")
-    assert "我的投稿" in html
-    assert "新建投稿" in html
-    assert "w-summary" not in html
-    assert "功能权限" not in html
-    assert 'name="settings"' not in html
-    assert 'name="users"' not in html
+    assert "我的文章" in html
+    assert "写文章" in html
+    tops = re.findall(r'class="b-nav__link"[^>]*>([^<]+)</a>', html)
+    assert tops == ["首页", "内容"]
 
-    pages = client.get("/admin/pages/")
-    assert pages.status_code in {200, 302}
+    # Everything else is refused, typed address or not (docs/admin.md 1.4).
+    for name in (
+        "backoffice:site_settings",
+        "backoffice:users",
+        "backoffice:roles",
+        "backoffice:pages",
+        "backoffice:categories",
+        "tournaments:index",
+        "scrims:index",
+        "comments:index",
+    ):
+        assert client.get(reverse(name)).status_code == 403, name
+    # Wagtail's own admin is the superusers' only.
+    fallback = client.get("/wagtail/pages/")
+    assert fallback.status_code == 302 and fallback["Location"] == "/admin/"
 
-    settings_page = _follow(
-        client, reverse("wagtailsettings:edit", args=["core", "sitesettings"])
-    )
-    assert "SMTP 服务器" not in settings_page.content.decode("utf-8")
-    assert settings_page.redirect_chain
-
-    users_page = _follow(client, "/admin/users/")
-    assert users_page.redirect_chain
-
-    feature_page = _follow(client, reverse("feature_group_restrictions:index"))
-    assert feature_page.redirect_chain
-
-    # The tournaments admin exists since M4; a submitter must be bounced out.
-    tournaments_page = _follow(client, "/admin/tournaments/")
-    assert tournaments_page.redirect_chain
-
-    images = client.get(reverse("wagtailimages:index"))
-    assert images.status_code == 200
+    assert client.get(reverse("backoffice:images")).status_code == 200
+    assert client.get(reverse("backoffice:articles")).status_code == 200
 
 
 @pytest.mark.django_db
@@ -345,12 +336,15 @@ def test_submitter_explorer_shows_live_and_own_only(client, site_ready):
     )
 
     client.force_login(owner)
-    listing = client.get(reverse("wagtailadmin_explore", args=[news.pk]))
+    listing = client.get(reverse("backoffice:articles"))
     assert listing.status_code == 200
     body = listing.content.decode("utf-8")
     assert "我的草稿" in body
-    assert "已发布别人" in body
+    # v7.0: plain members list their own; others' have nothing to do here.
+    assert "已发布别人" not in body
     assert "别人草稿" not in body
+    other_edit = client.get(reverse("backoffice:article_edit", args=[other_draft.pk]))
+    assert other_edit.status_code == 403
     _ = (own_draft.pk, other_draft.pk, live.pk)
 
 

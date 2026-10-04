@@ -227,13 +227,9 @@ def first_article_index() -> ArticleIndexPage | None:
 def article_create_admin_url() -> str | None:
     from django.urls import reverse
 
-    index = first_article_index()
-    if index is None:
+    if first_article_index() is None:
         return None
-    return reverse(
-        "wagtailadmin_pages:add",
-        args=["content", "articlepage", index.pk],
-    )
+    return reverse("backoffice:article_new")
 
 
 def _page_permission(codename: str) -> Permission:

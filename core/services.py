@@ -77,8 +77,8 @@ def kinds() -> dict[str, Kind]:
             user_can_edit_author,
             ArticlePage,
             lambda obj: bool(obj.live),
-            lambda obj: reverse("wagtailadmin_explore", args=[obj.get_parent().pk]),
-            "页面",
+            lambda obj: reverse("backoffice:articles"),
+            "文章",
         ),
     }
 

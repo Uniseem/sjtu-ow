@@ -569,10 +569,7 @@ def test_admin_pages_are_superuser_only(client, media_root):
     services.ensure_typography_rules()
     client.force_login(_staff_user())
     for name in ("core_font_index", "core_font_add", "core_typography"):
-        # Wagtail turns PermissionDenied inside the admin into a redirect home.
-        response = client.get(reverse(name))
-        assert response.status_code == 302
-        assert response.url == "/admin/"
+        assert client.get(reverse(name)).status_code == 403
 
     client.force_login(_superuser())
     for name in ("core_font_index", "core_font_add", "core_typography"):

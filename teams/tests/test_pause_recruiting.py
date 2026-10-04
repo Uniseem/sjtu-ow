@@ -72,11 +72,12 @@ def test_the_admin_is_told_the_teams_were_paused(client, site):  # noqa: F811
     team = services.create_team(user=captain, name="被暂停的队")
     client.force_login(admin)
     response = client.post(
-        reverse("wagtailusers_users:edit", args=[captain.pk]),
+        reverse("backoffice:user_edit", args=[captain.pk]),
         {
             "email": captain.email,
             "nickname": captain.nickname,
             "is_sjtu": "on",
+            "is_active": "",
             "deactivation_note": "测试停用",
         },
     )

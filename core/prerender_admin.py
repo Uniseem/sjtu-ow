@@ -40,7 +40,6 @@ def prerender_index(request):
         "core/prerender/index.html",
         {
             "page_title": "静态页面",
-            "header_icon": "doc-full",
             "enabled": prerender.is_enabled(),
             "records": page,
             "status": status,
@@ -51,7 +50,7 @@ def prerender_index(request):
             "disk_bytes": prerender.disk_usage(),
             "root": str(prerender.root()),
             "breadcrumbs_items": [
-                {"url": reverse("wagtailadmin_home"), "label": "首页"},
+                {"url": reverse("backoffice:home"), "label": "首页"},
                 {"url": "", "label": "静态页面"},
             ],
         },

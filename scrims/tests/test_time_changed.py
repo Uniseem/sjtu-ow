@@ -73,9 +73,7 @@ def test_saving_in_the_admin_sends_it(client, django_capture_on_commit_callbacks
     )
     client.force_login(admin)
     url = reverse("scrims:edit", args=[scrim.pk])
-    data = querydict_from_html(
-        client.get(url).content.decode(), form_id="w-editor-form"
-    )
+    data = querydict_from_html(client.get(url).content.decode(), form_index=0)
     later = timezone.localtime(timezone.now() + timedelta(days=4))
     data["starts_at"] = f"{later:%Y-%m-%d %H:%M}"
     mail.outbox.clear()

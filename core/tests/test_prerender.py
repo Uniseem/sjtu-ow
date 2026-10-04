@@ -302,7 +302,7 @@ def test_logged_in_requests_do_not_queue_pages(client, prerender_root, site_tree
 @pytest.mark.django_db
 def test_prerender_admin_is_superuser_only(client, prerender_root, site_tree):
     client.force_login(_user("notadmin@example.com"))
-    assert client.get(reverse("core_prerender_index")).status_code == 302
+    assert client.get(reverse("core_prerender_index")).status_code == 403
 
     admin = User.objects.create_superuser(
         email="admin-prerender@example.com",

@@ -411,3 +411,19 @@ def try_connection():
         f"AI 审核能用：模型 {result.model or model} 把测试内容判为"
         f"「{label}」，用了 {used} 个 token。"
     )
+
+
+def latest_verdict(page):
+    """The newest review record for this page's text, or None: the AI's
+    read beside the article for people who review content (design 5.5.1)."""
+    from moderation.integrations import page_target_type
+    from moderation.models import ModerationItem
+
+    target_type = page_target_type(page)
+    if not target_type or not page.pk:
+        return None
+    return (
+        ModerationItem.objects.filter(target_type=target_type, target_id=page.pk)
+        .order_by("-created_at", "-pk")
+        .first()
+    )

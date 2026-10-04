@@ -513,35 +513,41 @@ def test_the_interactive_section_has_no_alpine_or_inline_handlers(
 
 
 @pytest.mark.django_db
-def test_the_admin_form_moves_the_pin_and_refuses_replies(
+def test_the_admin_list_moves_the_pin_and_refuses_replies(
     client, article, reader, editor
 ):
+    """docs/admin.md 4.5: 置顶 straight from the list, with pin_problem's
+    rules and one pin per article."""
     first = _comment(article, reader, "先置顶")
     second = _comment(article, reader, "后置顶")
     reply = _comment(article, reader, "回复", parent=first)
     services.pin(comment=first, actor=editor)
     client.force_login(editor)
 
-    moved = client.post(reverse("comments:edit", args=[second.pk]), {"is_pinned": "on"})
+    moved = client.post(reverse("comments:action", args=[second.pk, "pin"]))
     assert moved.status_code == 302
     first.refresh_from_db()
     second.refresh_from_db()
     assert second.is_pinned and not first.is_pinned
 
     refused = client.post(
-        reverse("comments:edit", args=[reply.pk]), {"is_pinned": "on"}
+        reverse("comments:action", args=[reply.pk, "pin"]), follow=True
     )
-    assert refused.status_code == 200
     assert "只能置顶顶层评论" in refused.content.decode()
     reply.refresh_from_db()
     assert not reply.is_pinned
+    listing = client.get(reverse("comments:index")).content.decode()
+    assert reverse("comments:action", args=[reply.pk, "pin"]) not in listing
 
-    both = client.post(
-        reverse("comments:edit", args=[second.pk]),
-        {"is_pinned": "on", "is_hidden": "on"},
+    client.post(reverse("comments:action", args=[second.pk, "hide"]))
+    second.refresh_from_db()
+    assert second.is_hidden and not second.is_pinned
+    hidden = client.post(
+        reverse("comments:action", args=[second.pk, "pin"]), follow=True
     )
-    assert both.status_code == 200
-    assert "不能置顶" in both.content.decode()
+    assert "不能置顶" in hidden.content.decode()
+    second.refresh_from_db()
+    assert not second.is_pinned
 
 
 # --- regeneration ---

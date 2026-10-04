@@ -161,7 +161,7 @@ def test_the_member_picker_shows_nickname_and_email():
 
 @pytest.fixture
 def admin_url():
-    return reverse("wagtailsnippets_members_membergroup:list")
+    return reverse("backoffice:member_groups")
 
 
 def _staff(group_name):
@@ -181,9 +181,7 @@ def test_content_editors_manage_member_groups(client, admin_url):
 def test_other_admins_do_not(client, admin_url):
     call_command("init_site", verbosity=0)
     client.force_login(_staff("赛事管理员"))
-    response = client.get(admin_url)
-    assert response.status_code == 302
-    assert response.url == reverse("wagtailadmin_home")
+    assert client.get(admin_url).status_code == 403
 
 
 # --- regeneration -------------------------------------------------------------
@@ -303,19 +301,18 @@ def _form(name, rows):
         "description": "",
         "is_visible": "on",
         "sort_order": "0",
-        "memberships-TOTAL_FORMS": str(len(rows)),
-        "memberships-INITIAL_FORMS": "0",
-        "memberships-MIN_NUM_FORMS": "0",
-        "memberships-MAX_NUM_FORMS": "1000",
+        "members-TOTAL_FORMS": str(len(rows)),
+        "members-INITIAL_FORMS": "0",
+        "members-MIN_NUM_FORMS": "0",
+        "members-MAX_NUM_FORMS": "1000",
     }
     for index, (user, title) in enumerate(rows):
         data.update(
             {
-                f"memberships-{index}-user": str(user.pk),
-                f"memberships-{index}-title": title,
-                f"memberships-{index}-ORDER": str(index + 1),
-                f"memberships-{index}-DELETE": "",
-                f"memberships-{index}-id": "",
+                f"members-{index}-user": str(user.pk),
+                f"members-{index}-title": title,
+                f"members-{index}-ORDER": str(index + 1),
+                f"members-{index}-id": "",
             }
         )
     return data
@@ -333,7 +330,7 @@ def admin_client(client):
 @pytest.mark.django_db
 def test_an_admin_creates_a_group_with_members(admin_client):
     leader, member = person("社长同学"), person("组员同学")
-    url = reverse("wagtailsnippets_members_membergroup:add")
+    url = reverse("backoffice:member_group_new")
     response = admin_client.post(
         url, _form("社团干部", [(leader, "社长"), (member, "")])
     )
@@ -348,7 +345,7 @@ def test_an_admin_creates_a_group_with_members(admin_client):
 @pytest.mark.django_db
 def test_the_admin_form_refuses_someone_who_has_not_joined(admin_client):
     stranger = person("没验证", verified=False)
-    url = reverse("wagtailsnippets_members_membergroup:add")
+    url = reverse("backoffice:member_group_new")
     response = admin_client.post(url, _form("干部", [(stranger, "")]))
     assert response.status_code == 200
     assert not MemberGroup.objects.exists()
@@ -357,7 +354,7 @@ def test_the_admin_form_refuses_someone_who_has_not_joined(admin_client):
 @pytest.mark.django_db
 def test_the_admin_form_refuses_the_same_person_twice(admin_client):
     someone = person("重复")
-    url = reverse("wagtailsnippets_members_membergroup:add")
+    url = reverse("backoffice:member_group_new")
     response = admin_client.post(url, _form("干部", [(someone, ""), (someone, "")]))
     assert response.status_code == 200
     assert not MemberGroup.objects.exists()

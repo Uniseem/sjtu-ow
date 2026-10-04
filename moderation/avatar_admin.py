@@ -68,7 +68,6 @@ def avatar_review(request):
         "moderation/avatars.html",
         {
             "page_title": "头像",
-            "header_icon": "user",
             "items": page,
             "status": status,
             "status_label": AvatarSubmission.Status(status).label,

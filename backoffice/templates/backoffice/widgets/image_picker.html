@@ -1,0 +1,13 @@
+<div class="b-picker" data-image-picker data-chooser-url="{{ widget.chooser_url }}">
+  <input type="hidden" name="{{ widget.name }}" value="{{ widget.image.pk|default:'' }}" id="{{ widget.attrs.id }}" data-image-picker-input>
+  <div class="b-picker__preview" data-image-picker-preview>
+    {% if widget.thumb %}<img src="{{ widget.thumb }}" alt="" loading="lazy">{% endif %}
+  </div>
+  <div class="b-picker__body">
+    <p class="b-picker__title" data-image-picker-title>{% if widget.image %}{{ widget.image.title }}{% else %}没有选图片{% endif %}</p>
+    <div class="b-picker__actions">
+      <button type="button" class="c-btn c-btn--secondary c-btn--sm" data-image-picker-choose>选择</button>
+      <button type="button" class="c-btn c-btn--quiet c-btn--sm" data-image-picker-clear{% if not widget.image %} hidden{% endif %}>清除</button>
+    </div>
+  </div>
+</div>

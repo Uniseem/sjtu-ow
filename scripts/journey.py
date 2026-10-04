@@ -224,6 +224,7 @@ def journey(tools, base, data) -> list[str]:
 
 PROJECT = (
     "accounts.",
+    "backoffice.",
     "comments.",
     "content.",
     "core.",
@@ -234,7 +235,7 @@ PROJECT = (
     "teams.",
     "tournaments.",
 )
-EXTRA = ["/", "/news/", "/admin/", "/admin/pages/", "/accounts/login/"]
+EXTRA = ["/", "/news/", "/admin/", "/wagtail/", "/wagtail/pages/", "/accounts/login/"]
 
 
 def list_routes() -> list[str]:
@@ -269,6 +270,12 @@ def fill(route: str, data: dict) -> str:
         "tournaments": data["cup"],
         "scrims": data["scrim"],
         "members": data["member"],
+        # The back office's own (v7.0): real rows, so the pages open.
+        "articles": data["article"],
+        "pages": data["about"],
+        "categories": data["category"],
+        "member-groups": data["group"],
+        "users": data["member"],
     }
     for prefix, value in ids.items():
         if bare.startswith(prefix + "/"):
@@ -301,7 +308,7 @@ def sweep(tools, base, data, routes) -> list[str]:
                 },
             )
         for url in urls:
-            if url.startswith("/admin/") and who != "站长":
+            if url.startswith(("/admin/", "/wagtail/")) and who != "站长":
                 continue
             EVENTS.clear()
             tools.page_url = base + url
@@ -470,6 +477,40 @@ def officers(tools, base, data) -> list[str]:
     press("button[name=action][value=save]")
     step("保存编队", says("已保存：新建 1 支"))
     step("新队伍出现在页面上", says("浏览器编的队"))
+
+    # The back office's article form (round 196): the Markdown editor with
+    # its own toolbar icons, the picture dialog, publishing.
+    go("/admin/articles/new/")
+    started = js("""(() => {
+        document.querySelector('#id_title').value = '浏览器写的文章';
+        const category = document.querySelector('#id_category');
+        category.value = category.options[1].value;
+        const editor = document.querySelector('.CodeMirror');
+        if (!editor) return 'no editor';
+        editor.CodeMirror.setValue('## 小标题\\n\\n浏览器里写的正文。');
+        return String(document.querySelectorAll('.editor-toolbar button use').length);
+    })()""")
+    step("编辑器起来了，工具栏有图标", started not in (None, "no editor", "0"), started)
+    drawn = js("""(() => {
+        const use = document.querySelector('.editor-toolbar button use');
+        const id = use && use.getAttribute('href').slice(1);
+        const icon = id && document.getElementById(id);
+        return !!(icon && icon.querySelector('path'));
+    })()""")
+    step("工具栏图标画得出来", bool(drawn))
+    js("""document.querySelector('#id_cover').closest('[data-image-picker]')
+        .querySelector('[data-image-picker-choose]').click()""")
+    time.sleep(2)
+    picked = js("""(() => {
+        const picture = document.querySelector('[data-pick-image]');
+        if (!picture) return 'no picture';
+        picture.click();
+        return document.querySelector('#id_cover').value;
+    })()""")
+    step("对话框里选了封面", bool(picked) and picked.isdigit(), str(picked))
+    press("button[name=publish]")
+    step("文章发布了", says("已发布"))
+    step("封面留在文章上", bool(js("document.querySelector('#id_cover').value")))
 
     tools.send("Runtime.evaluate", {"expression": "1"})
     for kind, text in EVENTS:

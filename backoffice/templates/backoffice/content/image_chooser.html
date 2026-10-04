@@ -1,0 +1,42 @@
+{% comment %}The inside of the picture dialog (static/js/backoffice.js loads it; no page around it).{% endcomment %}
+<form method="get" action="{% url 'backoffice:image_chooser' %}" class="b-filters" role="search">
+  <input type="search" name="q" value="{{ query }}" maxlength="50" placeholder="搜标题" class="c-input" aria-label="搜标题">
+  <select name="collection" class="c-input" aria-label="集合">
+    <option value="">全部集合</option>
+    {% for item in collections %}<option value="{{ item.pk }}"{% if item.pk == collection %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+  </select>
+  <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+</form>
+{% if upload_to %}
+  <form method="post" action="{% url 'backoffice:image_chooser_upload' %}" enctype="multipart/form-data" class="b-filters">
+    {% csrf_token %}
+    <select name="collection" class="c-input" aria-label="放进集合">
+      {% for item in upload_to %}<option value="{{ item.pk }}">{{ item.name }}</option>{% endfor %}
+    </select>
+    <span class="c-field"><input type="file" name="file" accept=".jpg,.jpeg,.png,.webp" required aria-label="选一张图片"></span>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">上传并选用</button>
+    <span class="b-count" data-upload-status role="status"></span>
+  </form>
+{% endif %}
+{% if cells %}
+  <ul class="b-grid">
+    {% for image, thumb in cells %}
+      <li>
+        <button type="button" class="b-grid__item" data-pick-image="{{ image.pk }}" data-title="{{ image.title }}" data-thumb="{{ thumb }}">
+          <span class="b-grid__pic">{% if thumb %}<img src="{{ thumb }}" alt="" loading="lazy">{% endif %}</span>
+          <span class="b-grid__name">{{ image.title }}</span>
+          <span class="b-grid__meta">{{ image.collection.name }}</span>
+        </button>
+      </li>
+    {% endfor %}
+  </ul>
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="c-pager" aria-label="分页">
+      {% if page_obj.has_previous %}<a class="c-btn c-btn--secondary c-btn--sm" data-chooser-nav href="{% url 'backoffice:image_chooser' %}?{% if extra_query %}{{ extra_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">上一页</a>{% endif %}
+      <span class="c-pager__pos"><strong>{{ page_obj.number }}</strong> / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a class="c-btn c-btn--secondary c-btn--sm" data-chooser-nav href="{% url 'backoffice:image_chooser' %}?{% if extra_query %}{{ extra_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">下一页</a>{% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <p class="b-section__text">没有能选的图片。{% if upload_to %}上传一张吧。{% endif %}</p>
+{% endif %}

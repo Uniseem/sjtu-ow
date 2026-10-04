@@ -9,14 +9,11 @@ from django.db import models
 from django.utils.functional import cached_property
 from modelcluster.fields import ParentalKey
 from wagtail.admin.panels import FieldPanel, InlinePanel
-from wagtail.fields import RichTextField
 from wagtail.models import Orderable, Page
 
 from content.forms import ArticlePageForm
-from content.panels import SubmissionGuidePanel, TitlePanel
 from content.seo import build_seo
 from content.widgets import MarkdownEditor
-from moderation.panels import ModerationVerdictPanel
 
 ARTICLES_PER_PAGE = 12
 MAX_PINNED_ARTICLES = 3
@@ -28,6 +25,7 @@ RELATED_ARTICLE_COUNT = 3
 RESERVED_CHILD_SLUGS = frozenset(
     {
         "admin",
+        "wagtail",
         "accounts",
         "comments",
         "documents",
@@ -206,17 +204,14 @@ class HomePage(SeoPageMixin, Page):
 
 
 class ArticleIndexPage(SeoPageMixin, ReservedSlugMixin, Page):
-    intro = RichTextField(
-        "栏目介绍",
-        blank=True,
-        features=["bold", "italic", "link"],
-    )
+    # Markdown, as bodies (v7.0; rich text until then).
+    intro = models.TextField("栏目介绍", blank=True)
 
     parent_page_types = ["content.HomePage"]
     subpage_types = ["content.ArticlePage"]
 
     content_panels = Page.content_panels + [
-        FieldPanel("intro"),
+        FieldPanel("intro", widget=MarkdownEditor),
     ]
 
     def get_context(self, request, *args, **kwargs):
@@ -358,13 +353,9 @@ class ArticlePage(SeoPageMixin, Page):
 
     base_form_class = ArticlePageForm
 
-    content_panels = [
-        # Design 5.5.1: the AI's read, for the editor reviewing (round 119).
-        ModerationVerdictPanel(heading="AI 审核"),
-        # Round 124: for people whose articles go through review.
-        SubmissionGuidePanel(heading="投稿须知"),
-        # Page.content_panels is just the title; this one copes without a slug.
-        TitlePanel("title"),
+    # Only for Wagtail's own editor under /wagtail/ (superusers); the back
+    # office has its own form (backoffice.forms.ArticleForm, v7.0).
+    content_panels = Page.content_panels + [
         FieldPanel("category"),
         FieldPanel("cover"),
         FieldPanel("summary"),

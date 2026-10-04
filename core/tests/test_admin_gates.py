@@ -32,11 +32,9 @@ def editor(db):
 
 
 def _refused(response) -> bool:
-    """Wagtail turns PermissionDenied inside the admin into a redirect home."""
-    return response.status_code == 403 or (
-        response.status_code == 302
-        and response["Location"] == reverse("wagtailadmin_home")
-    )
+    """The back office answers a page someone may not open with 403 (v7.0;
+    Wagtail used to redirect home with a message)."""
+    return response.status_code == 403
 
 
 @pytest.fixture
@@ -54,7 +52,7 @@ def team(db):
 @pytest.mark.django_db
 def test_the_editor_can_enter_the_admin(client, editor):
     client.force_login(editor)
-    assert client.get(reverse("wagtailadmin_home")).status_code == 200
+    assert client.get(reverse("backoffice:home")).status_code == 200
 
 
 @pytest.mark.django_db

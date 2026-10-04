@@ -35,19 +35,20 @@ def test_each_role_gets_its_parts(site):
 def test_the_page_and_its_menu(site, client):
     manager = _user("tm154@example.com", "赛事管理员", "投稿者")
     client.force_login(manager)
-    home = client.get(reverse("wagtailadmin_home")).content.decode()
+    home = client.get(reverse("backoffice:home")).content.decode()
     assert reverse("admin_manual") in home
     page = client.get(reverse("admin_manual")).content.decode()
     assert 'data-manual-part="tournaments"' in page
     assert 'data-manual-part="content"' not in page
     # The step's own link, not the one in the side menu.
-    assert f'<a href="{reverse("registration_review_index")}">报名审核 →</a>' in page
+    review = reverse("registration_review_index")
+    assert f'<a class="c-link" href="{review}">报名审核 →</a>' in page
 
     writer = _user("w154b@example.com", "投稿者")
     client.force_login(writer)
     assert (
         reverse("admin_manual")
-        not in client.get(reverse("wagtailadmin_home")).content.decode()
+        not in client.get(reverse("backoffice:home")).content.decode()
     )
     response = client.get(reverse("admin_manual"))
     assert response.status_code in (302, 403)

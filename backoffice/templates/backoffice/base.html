@@ -1,0 +1,66 @@
+{% load static tailwind_cli backoffice %}<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}{{ page_title }}{% endblock %} · 管理后台</title>
+    <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="48x48">
+    <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+    <script src="{% static 'js/theme.js' %}"></script>
+    {% tailwind_css %}
+    {% if font_css_url %}<link rel="stylesheet" href="{{ font_css_url }}">{% endif %}
+    {% block extra_head %}{% if form %}{{ form.media.css }}{% endif %}{% endblock %}
+  </head>
+  <body class="b-body" data-backoffice data-section="{{ bo.place.section }}" data-tab="{{ bo.place.tab|default:'' }}">
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-surface focus:px-4 focus:py-2">跳到正文</a>
+    {% include "backoffice/parts/top.html" %}
+    {% block head %}
+      {% with crumb=breadcrumbs_items|parent_crumb %}
+        <div class="b-head">
+          <div class="b-head__inner">
+            {% if back_url %}
+              <a class="b-head__back" href="{{ back_url }}">{% include "components/icon.html" with name="arrow-left" class="size-4" %}{{ back_label|default:"返回" }}</a>
+            {% elif crumb %}
+              <a class="b-head__back" href="{{ crumb.url }}">{% include "components/icon.html" with name="arrow-left" class="size-4" %}{{ crumb.label }}</a>
+            {% elif bo.section %}
+              <p class="b-head__kicker">{{ bo.section.label }}</p>
+            {% endif %}
+            <div class="b-head__row">
+              <h1 class="b-head__title">{% block page_heading %}{{ page_title }}{% endblock %}</h1>
+              <div class="b-head__actions">{% block actions %}{% endblock %}</div>
+            </div>
+            {% if bo.tabs and not back_url and not crumb %}
+              <nav class="b-tabs" aria-label="{{ bo.section.label }}">
+                {% for tab in bo.tabs %}
+                  <a href="{{ tab.url }}"{% if tab.current %} aria-current="page"{% endif %}>{{ tab.label }}{% if tab.count %}<span class="c-tabs__count">{{ tab.count }}</span>{% endif %}</a>
+                {% endfor %}
+              </nav>
+            {% endif %}
+          </div>
+        </div>
+        {% if bo.subtabs and not back_url and not crumb %}
+          <nav class="b-subtabs" aria-label="用户与权限">
+            {% for tab in bo.subtabs %}
+              <a href="{{ tab.url }}"{% if tab.current %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+            {% endfor %}
+          </nav>
+        {% endif %}
+      {% endwith %}
+    {% endblock %}
+    <main id="main" class="b-main">
+      {% include "backoffice/parts/messages.html" %}
+      {% block content %}{% endblock %}
+    </main>
+    <dialog class="b-dialog" data-image-dialog aria-label="选择图片">
+      <div class="b-dialog__head">
+        <h2>选择图片</h2>
+        <button type="button" class="c-iconbtn" data-dialog-close aria-label="关闭">{% include "components/icon.html" with name="close" %}</button>
+      </div>
+      <div class="b-dialog__body" data-image-dialog-body></div>
+    </dialog>
+    {% include "backoffice/parts/editor_icons.html" %}
+    <script src="{% static 'js/backoffice.js' %}"></script>
+    {% block extra_js %}{% if form %}{{ form.media.js }}{% endif %}{% endblock %}
+  </body>
+</html>

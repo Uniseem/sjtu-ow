@@ -1,0 +1,43 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <form method="get" class="b-filters" role="search">
+    <input type="search" name="q" value="{{ query }}" maxlength="50" placeholder="搜昵称或邮箱" class="c-input" aria-label="搜用户">
+    <select name="role" class="c-input" aria-label="角色" data-autosubmit>
+      <option value="">全部角色</option>
+      {% for name in roles %}<option value="{{ name }}"{% if name == role %} selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    <select name="state" class="c-input" aria-label="状态" data-autosubmit>
+      <option value="">在用和已停用</option>
+      <option value="active"{% if state == "active" %} selected{% endif %}>在用</option>
+      <option value="stopped"{% if state == "stopped" %} selected{% endif %}>已停用</option>
+    </select>
+    <select name="sjtu" class="c-input" aria-label="是否交大" data-autosubmit>
+      <option value="">交大和校外</option>
+      <option value="1"{% if sjtu == "1" %} selected{% endif %}>交大</option>
+      <option value="0"{% if sjtu == "0" %} selected{% endif %}>校外</option>
+    </select>
+    <button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+    <span class="b-count">{{ page_obj.paginator.count }} 人</span>
+  </form>
+  {% if page_obj %}
+    <table class="c-table c-table--stack">
+      <thead><tr><th>昵称</th><th>邮箱</th><th>交大</th><th>角色</th><th>状态</th><th>注册</th></tr></thead>
+      <tbody>
+        {% for person in page_obj %}
+          <tr data-user-row="{{ person.pk }}">
+            <td><a class="b-title" href="{% url 'backoffice:user_edit' person.pk %}">{{ person.nickname|default:"（没有昵称）" }}</a>{% if person.is_superuser %}<span class="b-sub">超级管理员</span>{% endif %}</td>
+            <td data-label="邮箱">{{ person.email }}</td>
+            <td data-label="交大">{% if person.is_sjtu %}是{% else %}否{% endif %}</td>
+            <td data-label="角色">{% for group in person.groups.all %}{% if group.name != "交大用户" and group.name != "校外用户" %}<span class="c-tag">{{ group.name }}</span> {% endif %}{% empty %}—{% endfor %}</td>
+            <td data-label="状态">{% if person.is_active %}{% include "components/status_badge.html" with label="在用" kind="ok" %}{% else %}{% include "components/status_badge.html" with label="已停用" kind="off" %}{% endif %}</td>
+            <td data-label="注册">{{ person.date_joined|date:"Y.m.d" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "components/pagination.html" %}
+  {% else %}
+    {% include "components/empty_state.html" with title="没有这样的用户" message="换个筛选条件试试。" %}
+  {% endif %}
+{% endblock %}

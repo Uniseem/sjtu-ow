@@ -106,9 +106,12 @@ def test_tournament_buttons_are_on_record(site, client):
         reverse("tournament_cancel", args=[tournament.pk]), {"reason": "场地没了"}
     )
     assert _logged(tournament, "tournaments.cancel").get().data["reason"] == "场地没了"
-    history = client.get(reverse("tournaments:history", args=[tournament.pk]))
-    assert "发布了赛事" in history.content.decode()
     assert log_registry.get_action_label("tournaments.publish") == "发布赛事"
+    # The back office's 「操作记录」 (docs/admin.md 4.6) names the action.
+    client.force_login(_staff("log-root119@example.com", superuser=True))
+    history = client.get(reverse("backoffice:log") + "?action=tournaments.publish")
+    assert "发布赛事" in history.content.decode()
+    assert "记录杯" in history.content.decode()
 
 
 @pytest.mark.django_db
@@ -183,7 +186,7 @@ def test_editors_see_the_ai_read_on_a_submission(site, client):
         quote="你们都是菜鸟",
         checked_at=timezone.now(),
     )
-    edit = reverse("wagtailadmin_pages:edit", args=[page.pk])
+    edit = reverse("backoffice:article_edit", args=[page.pk])
     client.force_login(_staff("ai-editor119@example.com", "内容编辑"))
     html = client.get(edit).content.decode()
     assert "AI 判断：中" in html
@@ -199,9 +202,9 @@ def test_editors_see_the_ai_read_on_a_submission(site, client):
 def test_a_submission_still_under_review_says_so(site, client):
     author = _staff("ai-wait-author119@example.com", GROUP_SUBMITTER)
     page = _article(author, title="AI 还没看完")
-    edit = reverse("wagtailadmin_pages:edit", args=[page.pk])
+    edit = reverse("backoffice:article_edit", args=[page.pk])
     client.force_login(_staff("ai-wait-editor119@example.com", "内容编辑"))
-    assert "AI 审核" not in client.get(edit).content.decode()
+    assert "data-ai-verdict" not in client.get(edit).content.decode()
     ModerationItem.objects.create(
         target_type=TargetType.ARTICLE,
         target_id=page.pk,
@@ -209,7 +212,7 @@ def test_a_submission_still_under_review_says_so(site, client):
         excerpt="正文",
         text_hash="ai-wait-119",
     )
-    assert "AI 还在看这篇稿件" in client.get(edit).content.decode()
+    assert "AI 还没巡查到这篇" in client.get(edit).content.decode()
 
 
 # --- the typography preview (design 13.12) -----------------------------
@@ -226,10 +229,11 @@ def test_the_typography_preview_sits_beside_the_form(site, client):
     assert layout.index('class="typography-aside"') < layout.index(
         'id="typography-preview"'
     )
-    css = Path(django_settings.BASE_DIR, "static/css/typography-admin.css").read_text(
+    css = Path(django_settings.BASE_DIR, "assets/css/input.css").read_text(
         encoding="utf-8"
     )
-    wide = css[css.index("@media (min-width: 75em)") :]
+    start = css.index("  @media (min-width: 1200px) {\n    .typography-layout {")
+    wide = css[start : css.index("\n  }\n", start)]
     assert "grid-template-columns" in wide
     assert "position: sticky" in wide
 
@@ -238,9 +242,8 @@ def test_the_typography_preview_sits_beside_the_form(site, client):
 
 
 def _tournament_form(user, **data):
-    from tournaments.wagtail_hooks import TournamentViewSet
+    from backoffice.forms import TournamentForm
 
-    form_class = TournamentViewSet().get_edit_handler().get_form_class()
     now = timezone.now()
     values = {
         "title": "下限杯",
@@ -252,7 +255,7 @@ def _tournament_form(user, **data):
         "roster_max": "6",
     }
     values.update(data)
-    form = form_class(data=values, instance=Tournament(), for_user=user)
+    form = TournamentForm(data=values, instance=Tournament(), user=user)
     form.is_valid()
     return form
 
@@ -300,11 +303,11 @@ def test_feature_rule_lists_do_not_query_per_row(site, client):
             )
 
     add_rules(2, 0)
-    users_few = _queries(client, reverse("feature_user_rules:index"))
-    groups_few = _queries(client, reverse("feature_group_restrictions:index"))
+    users_few = _queries(client, reverse("backoffice:users"))
+    groups_few = _queries(client, reverse("backoffice:roles"))
     add_rules(8, 2)
-    assert _queries(client, reverse("feature_user_rules:index")) == users_few
-    assert _queries(client, reverse("feature_group_restrictions:index")) == groups_few
+    assert _queries(client, reverse("backoffice:users")) == users_few
+    assert _queries(client, reverse("backoffice:roles")) == groups_few
 
 
 @pytest.mark.django_db

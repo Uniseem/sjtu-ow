@@ -1,0 +1,40 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <table class="c-table c-table--stack">
+    <thead><tr><th>集合</th><th class="is-num">图片</th><th><span class="sr-only">操作</span></th></tr></thead>
+    <tbody>
+      {% for item in collections %}
+        <tr>
+          <td>{% if item.depth > 1 %}{{ item.indent }}{{ item.name }}{% else %}（根）{% endif %}</td>
+          <td data-label="图片" class="is-num">{{ item.image_count }}</td>
+          <td>
+            {% if item.depth > 1 %}
+              <div class="b-rowacts">
+                <form method="post" action="{% url 'backoffice:collection_rename' item.pk %}" class="b-filters">
+                  {% csrf_token %}
+                  <input type="text" name="name" value="{{ item.name }}" maxlength="255" class="c-input" aria-label="新名称">
+                  <button type="submit" class="c-btn c-btn--quiet c-btn--sm">改名</button>
+                </form>
+                {% if not item.image_count %}
+                  <form method="post" action="{% url 'backoffice:collection_delete' item.pk %}" data-confirm="删除集合「{{ item.name }}」？">
+                    {% csrf_token %}<button type="submit" class="c-btn c-btn--quiet c-btn--sm">删除</button>
+                  </form>
+                {% endif %}
+              </div>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" class="b-form" novalidate>
+    {% csrf_token %}
+    <div class="b-fieldset">
+      <h2 class="b-section__title">新建集合</h2>
+      <p class="b-section__text">「默认封面」「默认头像」可以分子文件夹：把新集合放在它们下面，里面的图也算。</p>
+      {% include "backoffice/parts/fields.html" %}
+    </div>
+    <div class="b-actions"><button type="submit" class="c-btn c-btn--primary">建好</button></div>
+  </form>
+{% endblock %}

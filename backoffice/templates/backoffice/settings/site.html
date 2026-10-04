@@ -1,0 +1,34 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+  <div class="b-split">
+    <form method="post" class="b-form" novalidate>
+      {% csrf_token %}
+      {% include "backoffice/parts/fieldsets.html" %}
+      <div class="b-formbar">
+        <button type="submit" class="c-btn c-btn--primary">保存</button>
+        <span class="b-formbar__note">首页、横幅这些页面会跟着重新生成。</span>
+      </div>
+    </form>
+    <aside class="b-aside">
+      <section class="b-section">
+        <h2 class="b-section__title">检查</h2>
+        <form method="post" action="{% url 'core_send_test_email' %}" class="b-form">
+          {% csrf_token %}
+          <button type="submit" class="c-btn c-btn--secondary c-btn--sm">发送测试邮件</button>
+          <p class="b-sub">发给你自己的邮箱，用于检查 SMTP 配置。发送失败时会显示原因。</p>
+        </form>
+        <form method="post" action="{% url 'core_try_offsite' %}" class="b-form">
+          {% csrf_token %}
+          <button type="submit" class="c-btn c-btn--secondary c-btn--sm">测试对象存储</button>
+          <p class="b-sub">用已保存的异地备份设置往存储桶里写一个小文件再删掉，看能不能连上、有没有权限。改了设置要先保存；「备份上传到对象存储」没打开也能测。</p>
+        </form>
+      </section>
+      <section class="b-section">
+        <h2 class="b-section__title">Wagtail 底层后台（应急用）</h2>
+        <p class="b-section__text">新后台不做的事：用户组的细粒度权限、页面的修订历史、重定向。平时用不到。</p>
+        <a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'wagtailadmin_home' %}" data-wagtail-link>打开底层后台 →</a>
+      </section>
+    </aside>
+  </div>
+{% endblock %}

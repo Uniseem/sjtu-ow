@@ -34,8 +34,7 @@
                         {% block extra_fields %}{% endblock extra_fields %}
                         {% if request.user.is_superuser %}
                             <li>
-                                <a href="{% url 'feature_user_rules:index' %}?user={{ user.pk }}" class="button">查看功能规则</a>
-                                <a href="{% url 'feature_user_rules:add' %}?user={{ user.pk }}" class="button">添加功能规则</a>
+                                <a href="{% url 'backoffice:user_edit' user.pk %}" class="button">到新后台改角色和功能规则</a>
                             </li>
                         {% endif %}
                         {% if form.password1 %}

@@ -1,0 +1,10 @@
+{% comment %}A form's fields in order, or only `names` when given (a list of field names), with the form's own errors first.{% endcomment %}
+{% if form.non_field_errors and not skip_errors %}
+  <div class="c-notice c-notice--error" role="alert">{% include "components/icon.html" with name="x-circle" %}<div class="c-notice__body">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div></div>
+{% endif %}
+{% for field in form.hidden_fields %}{% if not names %}{{ field }}{% endif %}{% endfor %}
+{% for field in form.visible_fields %}
+  {% if not names or field.name in names %}
+    {% include "components/form_field.html" with field=field %}
+  {% endif %}
+{% endfor %}
