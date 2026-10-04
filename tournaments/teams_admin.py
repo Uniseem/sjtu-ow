@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from core import admin_log
+from core.converters import as_id
 from tournaments import registration as registration_service
 from tournaments.models import Registration, Tournament
 from tournaments.review_admin import reviewer_required
@@ -140,7 +141,7 @@ def board_view(request, pk):
             elif action == "dissolve":
                 registration = get_object_or_404(
                     Registration,
-                    pk=request.POST.get("registration"),
+                    pk=as_id(request.POST.get("registration")),
                     tournament=tournament,
                 )
                 registration_service.dissolve(

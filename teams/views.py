@@ -11,6 +11,7 @@ from django.views.decorators.http import require_GET, require_POST
 from accounts.models import User
 from accounts.services import profile_gaps, with_avatars
 from content.seo import absolute_uri, build_seo
+from core.converters import as_id
 from core.ratelimit import over_limit
 from teams import services
 from teams.forms import ApplicationForm, RejectForm, TeamForm
@@ -308,7 +309,7 @@ def team_leave(request, pk):
 @require_POST
 def member_remove(request, pk):
     team = get_object_or_404(Team, pk=pk)
-    member = get_object_or_404(User, pk=request.POST.get("user"))
+    member = get_object_or_404(User, pk=as_id(request.POST.get("user")))
     try:
         services.remove_member(team=team, actor=request.user, member_user=member)
     except services.TeamError as exc:
@@ -340,7 +341,7 @@ def alumnus_remove(request, pk, alumnus_pk):
 @require_POST
 def captain_transfer(request, pk):
     team = get_object_or_404(Team, pk=pk)
-    member = get_object_or_404(User, pk=request.POST.get("user"))
+    member = get_object_or_404(User, pk=as_id(request.POST.get("user")))
     try:
         services.transfer_captain(team=team, actor=request.user, new_captain=member)
     except services.TeamError as exc:

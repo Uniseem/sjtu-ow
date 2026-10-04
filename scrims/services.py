@@ -8,6 +8,7 @@ from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from core.converters import as_id
 from scrims.models import (
     FINISHED_VISIBLE_DAYS,
     RANK_FIELDS,
@@ -146,7 +147,7 @@ def role_problems(*, scrim, account, roles):
 
 
 def _resolve_account(user, account_id):
-    account = user.game_accounts.filter(pk=account_id).first()
+    account = user.game_accounts.filter(pk=as_id(account_id)).first()
     if account is None:
         raise ScrimError("请选择你自己的游戏 ID")
     return account
@@ -514,7 +515,7 @@ def all_signups(scrim, *, order="created"):
 @transaction.atomic
 def set_selection(*, scrim, signup_ids):
     """Tick the players who are actually showing up tonight."""
-    wanted = {int(value) for value in signup_ids}
+    wanted = {as_id(value) for value in signup_ids} - {None}
     for signup in scrim.signups.all():
         should = signup.pk in wanted
         if signup.is_selected != should:

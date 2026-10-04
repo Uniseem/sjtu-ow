@@ -1,6 +1,8 @@
-"""Path converters (round 166)."""
+"""Path converters (round 166) and ids from forms (round 167)."""
 
 from __future__ import annotations
+
+import re
 
 
 class IdConverter:
@@ -18,3 +20,14 @@ class IdConverter:
 
     def to_url(self, value) -> str:
         return str(value)
+
+
+def as_id(value) -> int | None:
+    """An id taken from a form or a query string, or None when it is not one
+    (round 167): the same rule as <id:…> in addresses. Handing "abc" to a
+    primary-key lookup raises ValueError, and twenty digits through a foreign
+    key raise OverflowError; both were 500s."""
+    text = str(value if value is not None else "").strip()
+    if not re.fullmatch(IdConverter.regex, text):
+        return None
+    return int(text)

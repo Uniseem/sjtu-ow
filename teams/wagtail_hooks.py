@@ -22,6 +22,7 @@ from wagtail.permissions import register_permission_policy
 from accounts.models import User
 from accounts.roles import ROLE_CHOICES, join_roles, parse_roles
 from core import admin_log
+from core.converters import as_id
 from teams import services
 from teams.models import Team
 
@@ -171,7 +172,7 @@ def admin_assign_captain(request, pk):
         )
     candidates = candidates[:50]
     if request.method == "POST":
-        user = get_object_or_404(User, pk=request.POST.get("user"))
+        user = get_object_or_404(User, pk=as_id(request.POST.get("user")))
         try:
             services.assign_captain(team=team, actor=request.user, new_captain=user)
         except services.TeamError as exc:

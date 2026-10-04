@@ -18,6 +18,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from wagtail.log_actions import log as wagtail_log
 
+from core.converters import as_id
 from tournaments import registration as registration_service
 from tournaments import services
 from tournaments.models import Registration, RegistrationStatus, Tournament
@@ -78,8 +79,8 @@ def _filtered(request):
     tournament_id = request.GET.get("tournament", "")
     if status:
         queryset = queryset.filter(status=status)
-    if tournament_id:
-        queryset = queryset.filter(tournament_id=tournament_id)
+    if as_id(tournament_id) is not None:
+        queryset = queryset.filter(tournament_id=as_id(tournament_id))
     return queryset, status, tournament_id
 
 
@@ -188,7 +189,7 @@ def review_bulk_approve(request):
     ids = request.POST.getlist("registration")
     approved = 0
     for pk in ids:
-        registration = Registration.objects.filter(pk=pk).first()
+        registration = Registration.objects.filter(pk=as_id(pk)).first()
         if registration is None:
             continue
         try:
@@ -272,8 +273,9 @@ def _log_export(request, queryset, show_contacts, tournament_id, status):
     tournament whose roster was exported.
     """
     tournament_ids = list(queryset.values_list("tournament_id", flat=True).distinct())
-    if tournament_id and int(tournament_id) not in tournament_ids:
-        tournament_ids.append(int(tournament_id))
+    asked = as_id(tournament_id)
+    if asked is not None and asked not in tournament_ids:
+        tournament_ids.append(asked)
     tournaments = list(Tournament.objects.filter(pk__in=tournament_ids))
     detail = (
         f"导出报名 CSV：状态={status or '全部'}，{queryset.count()} 条"

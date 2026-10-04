@@ -15,6 +15,7 @@ from wagtail.permissions import register_permission_policy
 from accounts.admin_users import USERS_MENU_HOOK
 from accounts.models import FeatureGroupRestriction, FeatureUserRule, User
 from accounts.services import GROUP_CONTENT
+from core.converters import as_id
 
 # The admin account page is open to every admin user, which through 投稿者 is
 # every verified member (round 115). Its name panel asks for 名/姓 (the site
@@ -61,8 +62,8 @@ class FeatureEditView(StampUpdatedByMixin, generic.EditView):
 class FeatureUserRuleCreateView(FeatureCreateView):
     def get_initial(self):
         initial = super().get_initial()
-        user_id = self.request.GET.get("user")
-        if user_id:
+        user_id = as_id(self.request.GET.get("user"))
+        if user_id is not None:
             initial["user"] = user_id
         return initial
 
@@ -76,8 +77,8 @@ class FeatureGroupRestrictionIndexView(generic.IndexView):
 class FeatureUserRuleIndexView(generic.IndexView):
     def get_base_queryset(self):
         qs = super().get_base_queryset().select_related("user", "updated_by")
-        user_id = self.request.GET.get("user")
-        if user_id:
+        user_id = as_id(self.request.GET.get("user"))
+        if user_id is not None:
             qs = qs.filter(user_id=user_id)
         return qs
 
