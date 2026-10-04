@@ -1,6 +1,7 @@
 """Tournament administration (design 8.1, 14.2)."""
 
 from django.contrib import messages
+from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
@@ -9,6 +10,7 @@ from wagtail.admin.forms import WagtailAdminModelForm
 from wagtail.admin.menu import MenuItem
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.admin.ui.menus import MenuItem as ListingMenuItem
+from wagtail.admin.ui.tables import Column
 from wagtail.admin.views import generic
 from wagtail.admin.views.generic.models import CopyViewMixin
 from wagtail.admin.viewsets.model import ModelViewSet
@@ -18,7 +20,7 @@ from wagtail.permissions import register_permission_policy
 from content.widgets import MarkdownEditor
 from core import admin_log
 from tournaments import services
-from tournaments.models import Tournament, TournamentStatus
+from tournaments.models import RegistrationStatus, Tournament, TournamentStatus
 
 ACTIONS = {
     "publish": ("发布赛事", services.publish),
@@ -79,7 +81,39 @@ class TournamentAdminForm(WagtailAdminModelForm):
 Tournament.base_form_class = TournamentAdminForm
 
 
+def pending_review_url(tournament) -> str:
+    """This tournament's registrations waiting for review (14.1, v6.71)."""
+    return (
+        reverse("registration_review_index")
+        + f"?tournament={tournament.pk}&status={RegistrationStatus.PENDING}"
+    )
+
+
+class PendingColumn(Column):
+    """「待审核」: how many wait, straight to them (design 14.1, v6.71)."""
+
+    cell_template_name = "tournaments/admin/pending_cell.html"
+
+    def get_cell_context_data(self, instance, parent_context):
+        context = super().get_cell_context_data(instance, parent_context)
+        context["count"] = getattr(instance, "pending_registrations", 0)
+        context["url"] = pending_review_url(instance)
+        return context
+
+
 class TournamentIndexView(generic.IndexView):
+    def get_base_queryset(self):
+        return (
+            super()
+            .get_base_queryset()
+            .annotate(
+                pending_registrations=Count(
+                    "registrations",
+                    filter=Q(registrations__status=RegistrationStatus.PENDING),
+                )
+            )
+        )
+
     def get_delete_url(self, instance):
         # The listing asks only the model-level permission (round 115).
         if not services.can_delete(instance):
@@ -115,6 +149,14 @@ class TournamentIndexView(generic.IndexView):
                     priority=61,
                 )
             )
+        buttons.append(
+            ListingMenuItem(
+                "审核报名",
+                url=pending_review_url(instance),
+                icon_name="tasks",
+                priority=63,
+            )
+        )
         if instance.takes_individuals:
             buttons.append(
                 ListingMenuItem(
@@ -208,6 +250,7 @@ class TournamentViewSet(ModelViewSet):
         "status",
         "registration_opens_at",
         "registration_closes_at",
+        PendingColumn("pending_registrations", label="待审核"),
     ]
     list_filter = ["status", "registration_mode", "auto_approve", "sjtu_only"]
     search_fields = ["title", "summary"]

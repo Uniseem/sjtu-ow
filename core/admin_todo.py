@@ -30,28 +30,28 @@ class Todo:
     count: int = 1
 
 
-def _review_rows(user) -> list[Todo]:
-    from accounts.models import AvatarSubmission
-    from moderation.admin_views import can_review
+# The counts are shared with the 审核 tabs (core.admin_sections, v6.71).
+
+
+def flagged_content() -> int:
     from moderation.models import ModerationItem, Risk
 
-    if not can_review(user):
-        return []
-    flagged = (
+    return (
         ModerationItem.objects.exclude(risk=Risk.NONE)
         .filter(status=ModerationItem.Status.PENDING, checked_at__isnull=False)
         .count()
     )
-    avatars = AvatarSubmission.objects.filter(
+
+
+def pending_avatars() -> int:
+    from accounts.models import AvatarSubmission
+
+    return AvatarSubmission.objects.filter(
         status=AvatarSubmission.Status.PENDING
     ).count()
-    return [
-        Todo(f"{flagged} 条内容等待复核", reverse("moderation_index"), flagged),
-        Todo(f"{avatars} 张头像等待审核", reverse("avatar_review"), avatars),
-    ]
 
 
-def _submission_rows(user) -> list[Todo]:
+def waiting_submissions(user) -> int:
     """Article submissions whose current step this person may approve."""
     from wagtail.models import GroupApprovalTask, TaskState
 
@@ -59,7 +59,34 @@ def _submission_rows(user) -> list[Todo]:
     if not user.is_superuser:
         tasks = GroupApprovalTask.objects.filter(groups__in=user.groups.all())
         states = states.filter(task__in=tasks)
-    count = states.values("workflow_state").distinct().count()
+    return states.values("workflow_state").distinct().count()
+
+
+def pending_registrations() -> int:
+    from tournaments.models import Registration, RegistrationStatus, TournamentStatus
+
+    return (
+        Registration.objects.filter(status=RegistrationStatus.PENDING)
+        .exclude(tournament__status=TournamentStatus.CANCELLED)
+        .count()
+    )
+
+
+def _review_rows(user) -> list[Todo]:
+    from moderation.admin_views import can_review
+
+    if not can_review(user):
+        return []
+    flagged = flagged_content()
+    avatars = pending_avatars()
+    return [
+        Todo(f"{flagged} 条内容等待复核", reverse("moderation_index"), flagged),
+        Todo(f"{avatars} 张头像等待审核", reverse("avatar_review"), avatars),
+    ]
+
+
+def _submission_rows(user) -> list[Todo]:
+    count = waiting_submissions(user)
     return [
         Todo(f"{count} 篇稿件等待审核", reverse("wagtailadmin_reports:workflow"), count)
     ]
@@ -69,19 +96,13 @@ def _tournament_rows(user) -> list[Todo]:
     from tournaments import services as tournament_services
     from tournaments.models import (
         IndividualSignup,
-        Registration,
-        RegistrationStatus,
         Tournament,
         TournamentStatus,
     )
 
     if not tournament_services.can_manage(user):
         return []
-    pending = (
-        Registration.objects.filter(status=RegistrationStatus.PENDING)
-        .exclude(tournament__status=TournamentStatus.CANCELLED)
-        .count()
-    )
+    pending = pending_registrations()
     rows = [
         Todo(
             f"{pending} 份报名等待审核",

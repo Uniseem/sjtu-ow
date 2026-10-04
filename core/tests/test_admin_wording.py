@@ -268,101 +268,258 @@ def test_the_static_pages_list_speaks_chinese_filters_and_pages(site, client):
 # --- menus -------------------------------------------------------------
 
 
-@pytest.mark.django_db
-def test_the_menu_follows_the_design_order(site, client):
-    """Design 14.1 (v6.67, round 189): in the order of the work, the frequent
-    things on the first level; 「社区」 is split up."""
-    client.force_login(_user("menu117@example.com", superuser=True))
-    menu = _menu(client)
-    tops = list(dict.fromkeys(item.split(" / ")[0] for item in menu))
-    assert [top for top in tops if top not in ("搜索", "账号")] == [
-        "首页",
-        "文章",
-        "文章分类",
-        "评论",
-        "赛事",
-        "报名审核",
-        "内战",
-        "战队",
-        "成员分组",
-        "内容审核",
-        "头像审核",
-        "图片",
-        "活动数据",
-        "网站页面",
-        "用户",
-        "设置",
-        "后台手册",
-    ]
-    assert "用户 / 用户" in menu
-    assert "用户 / 用户组" in menu
-    assert any(item.startswith("用户 / 功能权限 / ") for item in menu)
-    settings = [item.split(" / ", 1)[1] for item in menu if item.startswith("设置 / ")]
-    assert settings == [
-        "全站设置",
-        "字体库",
-        "排版设置",
-        "静态页面",
-        "图片集合",
-        "操作记录",
+SECTION_TABS = re.compile(
+    r'<nav class="a-tabs"[^>]*data-admin-section="(\w+)">(.*?)</nav>', re.S
+)
+
+
+def _tops(client, url="/admin/"):
+    menu = _menu(client) if url == "/admin/" else []
+    return [
+        top
+        for top in dict.fromkeys(item.split(" / ")[0] for item in menu)
+        if top not in ("搜索", "账号")
     ]
 
 
-@pytest.mark.django_db
-def test_each_role_sees_only_its_own_work(site, client):
-    for number, (groups, wanted) in enumerate(
-        (
-            (
-                ("内容编辑", GROUP_SUBMITTER),
-                [
-                    "首页",
-                    "文章",
-                    "文章分类",
-                    "评论",
-                    "成员分组",
-                    "内容审核",
-                    "头像审核",
-                    "图片",
-                    "活动数据",
-                    "网站页面",
-                    "后台手册",
-                ],
-            ),
-            (
-                ("赛事管理员", GROUP_SUBMITTER),
-                ["首页", "文章", "赛事", "报名审核", "图片", "活动数据", "后台手册"],
-            ),
-            (
-                ("内战管理员", GROUP_SUBMITTER),
-                ["首页", "文章", "内战", "图片", "活动数据", "后台手册"],
-            ),
-            (("认证作者", GROUP_SUBMITTER), ["首页", "文章", "图片", "后台手册"]),
+def _strip(client, url):
+    """(section key, [tab labels], current tab label) of a page."""
+    html = client.get(url, follow=True).content.decode()
+    found = SECTION_TABS.search(html)
+    if found is None:
+        marker = re.search(r'<span hidden data-admin-section="(\w+)">', html)
+        return (marker.group(1) if marker else None), [], None
+    labels = [
+        re.sub(r"<span.*?</span>", "", label).strip()
+        for label in re.findall(
+            r'<a class="a-tabs__tab"[^>]*>(.*?)</a>', found.group(2)
         )
+    ]
+    current = re.search(
+        r'<a class="a-tabs__tab"[^>]*aria-current="page"[^>]*>(.*?)</a>', found.group(2)
+    )
+    current = (
+        re.sub(r"<span.*?</span>", "", current.group(1)).strip() if current else None
+    )
+    return found.group(1), labels, current
+
+
+@pytest.mark.django_db
+def test_the_sidebar_is_eight_sections_without_submenus(site, client):
+    """Design 14.1 (v6.71, round 193): 「逻辑还是有点繁杂」 — eight plain
+    links; until then 17 items and two submenus (v6.67)."""
+    client.force_login(_user("menu193@example.com", superuser=True))
+    menu = _menu(client)
+    assert _tops(client) == [
+        "首页",
+        "内容",
+        "活动",
+        "成员",
+        "审核",
+        "数据",
+        "设置",
+        "手册",
+    ]
+    assert not [item for item in menu if " / " in item and not item.startswith("账号")]
+
+
+@pytest.mark.django_db
+def test_each_section_has_its_tabs_in_order(site, client):
+    client.force_login(_user("tabs193@example.com", superuser=True))
+    assert _strip(client, reverse("wagtailimages:index")) == (
+        "content",
+        ["文章", "分类", "网站页面", "图片"],
+        "图片",
+    )
+    assert _strip(client, "/admin/tournaments/") == ("events", ["赛事", "内战"], "赛事")
+    assert _strip(client, "/admin/teams/") == (
+        "members",
+        ["用户与权限", "战队", "成员分组"],
+        "战队",
+    )
+    assert _strip(client, "/admin/comments/") == (
+        "review",
+        ["报名", "稿件", "内容", "头像", "评论"],
+        "评论",
+    )
+    assert _strip(client, "/admin/settings/fonts/") == (
+        "settings",
+        ["全站设置", "字体库", "排版设置", "静态页面", "图片集合", "操作记录"],
+        "字体库",
+    )
+    for url, key in (
+        ("/admin/", "home"),
+        ("/admin/activity/", "data"),
+        ("/admin/manual/", "manual"),
     ):
-        client.force_login(_user(f"role{number}-189@example.com", *groups))
-        tops = list(dict.fromkeys(item.split(" / ")[0] for item in _menu(client)))
-        assert [top for top in tops if top not in ("搜索", "账号")] == wanted, groups
+        assert _strip(client, url) == (key, [], None), url
+    users = client.get("/admin/users/").content.decode()
+    subtabs = re.search(r'<nav class="a-subtabs"[^>]*>(.*?)</nav>', users, re.S).group(
+        1
+    )
+    assert re.findall(r">([^<>]+)</a>", subtabs) == [
+        "用户",
+        "用户组",
+        "用户组功能限制",
+        "用户功能规则",
+    ]
+    assert 'aria-current="page">用户</a>' in subtabs
+
+
+@pytest.mark.django_db
+def test_each_role_sees_only_its_sections_and_tabs(site, client):
+    """Who sees what is still each page's own permission (14.1)."""
+    from scrims.tests.test_scrims import make_scrim
+
+    scrim = make_scrim()
+    cases = (
+        (
+            ("内容编辑", GROUP_SUBMITTER),
+            ["首页", "内容", "成员", "审核", "数据", "手册"],
+            {
+                reverse("wagtailimages:index"): (
+                    "content",
+                    ["文章", "分类", "网站页面", "图片"],
+                ),
+                "/admin/moderation/": ("review", ["稿件", "内容", "头像", "评论"]),
+                reverse("wagtailsnippets_members_membergroup:list"): ("members", []),
+            },
+        ),
+        (
+            ("赛事管理员", GROUP_SUBMITTER),
+            ["首页", "内容", "活动", "审核", "数据", "手册"],
+            {
+                reverse("wagtailimages:index"): ("content", ["文章", "图片"]),
+                "/admin/tournaments/": ("events", []),
+                "/admin/registrations/": ("review", []),
+            },
+        ),
+        (
+            ("内战管理员", GROUP_SUBMITTER),
+            ["首页", "内容", "活动", "数据", "手册"],
+            {f"/admin/scrims/edit/{scrim.pk}/": ("events", [])},
+        ),
+        (("认证作者", GROUP_SUBMITTER), ["首页", "内容", "手册"], {}),
+        (
+            (GROUP_SUBMITTER,),
+            ["首页", "内容"],
+            {reverse("wagtailimages:index"): ("content", [])},
+        ),
+    )
+    for number, (groups, wanted, pages) in enumerate(cases):
+        client.force_login(_user(f"role{number}-193@example.com", *groups))
+        assert _tops(client) == wanted, groups
+        for url, (key, tabs) in pages.items():
+            assert _strip(client, url)[:2] == (key, tabs), (groups, url)
         client.logout()
 
 
 @pytest.mark.django_db
+def test_every_page_lights_its_own_section(site, client):
+    """Wagtail lights the item with the longest address prefix, which after
+    merging is 首页 (/admin/) for most pages; the page's section decides."""
+    from scrims.tests.test_scrims import make_scrim
+
+    client.force_login(_user("light193@example.com", superuser=True))
+    news = ArticleIndexPage.objects.get(slug="news")
+    article = ArticlePage(
+        title="高亮193",
+        slug="light-193",
+        category=ArticleCategory.objects.first(),
+        author=User.objects.get(email="light193@example.com"),
+        body="正文",
+    )
+    news.add_child(instance=article)
+    about = Page.objects.get(slug="about")
+    scrim = make_scrim()
+    for url, (key, current) in {
+        f"/admin/pages/{article.pk}/edit/": ("content", "文章"),
+        f"/admin/pages/add/content/articlepage/{news.pk}/": ("content", "文章"),
+        f"/admin/pages/{about.pk}/edit/": ("content", "网站页面"),
+        "/admin/pages/": ("content", "网站页面"),
+        f"/admin/announce/scrim/{scrim.pk}/": ("events", "内战"),
+        "/admin/settings/core/sitesettings/": (
+            "settings",
+            "全站设置",
+        ),
+        "/admin/reports/site-history/": ("settings", "操作记录"),
+        "/admin/reports/workflow/": ("review", "稿件"),
+    }.items():
+        found = _strip(client, url)
+        assert (found[0], found[2]) == (key, current), url
+    assert _strip(client, reverse("wagtailadmin_account"))[0] == "none"
+
+
+def test_the_sidebar_light_follows_the_marker_for_every_section():
+    """The rules in admin.css name every section the menu can draw."""
+    from core.admin_sections import SECTIONS
+
+    css = (django_settings.BASE_DIR / "static" / "css" / "admin.css").read_text(
+        encoding="utf-8"
+    )
+    assert "body:has([data-admin-section]) .sidebar-menu-item--active {" in css
+    for key, *_rest in SECTIONS:
+        assert (
+            f'body:has([data-admin-section="{key}"]) '
+            f'.sidebar-menu-item:has(> a[data-section="{key}"])'
+        ) in css, key
+        assert (
+            f'body:has([data-admin-section="{key}"]) '
+            f'.sidebar-menu-item > a[data-section="{key}"]'
+        ) in css, key
+
+
+@pytest.mark.django_db
+def test_the_strip_opens_the_content_column(site, client):
+    """It goes in where Wagtail's content column opens; if a Wagtail upgrade
+    renames that, the strip would silently vanish."""
+    client.force_login(_user("column193@example.com", superuser=True))
+    html = client.get("/admin/tournaments/").content.decode()
+    assert re.search(r'<div class="content">\s*<nav class="a-tabs"', html)
+
+
+@pytest.mark.django_db
+def test_review_tabs_count_what_waits(site, client):
+    from moderation.models import ModerationItem, Risk
+
+    client.force_login(_user("count193@example.com", superuser=True))
+    html = client.get("/admin/comments/").content.decode()
+    strip = SECTION_TABS.search(html).group(2)
+    assert "a-tabs__count" not in strip
+    ModerationItem.objects.create(
+        target_type="nickname",
+        target_id=1,
+        field="nickname",
+        excerpt="待复核",
+        text_hash="193",
+        risk=Risk.HIGH,
+        status=ModerationItem.Status.PENDING,
+        checked_at=timezone.now(),
+    )
+    strip = SECTION_TABS.search(client.get("/admin/comments/").content.decode()).group(
+        2
+    )
+    assert re.search(r'>内容<span class="a-tabs__count">1</span></a>', strip)
+    other = SECTION_TABS.search(
+        client.get("/admin/tournaments/").content.decode()
+    ).group(2)
+    assert "a-tabs__count" not in other  # counted on 审核 only
+
+
+@pytest.mark.django_db
 def test_wagtails_unused_entries_stay_out_of_every_menu(site, client):
-    """文档, 报告, 帮助 and the settings the club never touches (14.1, v6.67).
-    Until round 189 the editors saw 报告 and 帮助."""
+    """文档, 报告, 帮助 and the settings the club never touches (14.1)."""
     for number, (groups, superuser) in enumerate(((("内容编辑",), False), ((), True))):
         client.force_login(
-            _user(f"hidden{number}-189@example.com", *groups, superuser=superuser)
+            _user(f"hidden{number}-193@example.com", *groups, superuser=superuser)
         )
-        menu = _menu(client)
-        tops = {item.split(" / ")[0] for item in menu}
-        assert not tops & {"文档", "报告", "帮助", "社区", "页面"}, tops
-        for gone in (
-            "设置 / 站点",
-            "设置 / 重定向",
-            "设置 / 工作流",
-            "设置 / 工作流任务",
-        ):
-            assert gone not in menu
+        tops = set(_tops(client))
+        assert not tops & {"文档", "报告", "帮助", "社区", "页面", "用户"}, tops
+        html = client.get("/admin/settings/fonts/").content.decode()
+        found = SECTION_TABS.search(html)
+        labels = found.group(2) if found else ""
+        for gone in ("站点", "重定向", "工作流任务", ">工作流<"):
+            assert gone not in labels
         client.logout()
 
 

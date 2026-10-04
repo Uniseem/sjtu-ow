@@ -1,0 +1,17 @@
+{% comment %}Design 14.1 (v6.71): the pages of this section as tabs. A section with one page has no strip; the marker still tells admin.css which sidebar item to light ("none" lights nothing).{% endcomment %}
+{% if place.section and place.section.tabs|length > 1 %}
+  <nav class="a-tabs" aria-label="{{ place.section.label }}" data-admin-section="{{ place.section.key }}">
+    {% for tab in place.section.tabs %}
+      <a class="a-tabs__tab" href="{{ tab.url }}"{% if tab is place.tab %} aria-current="page"{% endif %}>{{ tab.label }}{% if tab.count %}<span class="a-tabs__count">{{ tab.count }}</span>{% endif %}</a>
+    {% endfor %}
+  </nav>
+  {% if place.tab.children|length > 1 %}
+    <nav class="a-subtabs" aria-label="{{ place.tab.label }}">
+      {% for child in place.tab.children %}
+        <a class="a-subtabs__tab" href="{{ child.url }}"{% if child is place.child %} aria-current="page"{% endif %}>{{ child.label }}</a>
+      {% endfor %}
+    </nav>
+  {% endif %}
+{% else %}
+  <span hidden data-admin-section="{% if place.section %}{{ place.section.key }}{% else %}none{% endif %}"></span>
+{% endif %}

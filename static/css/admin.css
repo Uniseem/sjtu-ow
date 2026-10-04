@@ -222,6 +222,132 @@ select {
   border-radius: var(--sj-radius-sm);
 }
 
+/* --- the sections (design 14.1, v6.71) ----------------------------------------
+   The page says which section it is in (the tab strip, or a hidden marker),
+   and that lights the sidebar. Wagtail's own guess, the item with the longest
+   address prefix, would light 首页 (/admin/) on most pages, so it is
+   switched off wherever a page carries the marker. */
+
+body:has([data-admin-section]) .sidebar-menu-item--active {
+  border-inline-start-color: transparent;
+  background-color: transparent;
+  text-shadow: none;
+}
+
+body:has([data-admin-section]) .sidebar-menu-item--active > a {
+  color: var(--w-color-text-label-menus-default);
+}
+
+body:has([data-admin-section="home"]) .sidebar-menu-item:has(> a[data-section="home"]),
+body:has([data-admin-section="content"]) .sidebar-menu-item:has(> a[data-section="content"]),
+body:has([data-admin-section="events"]) .sidebar-menu-item:has(> a[data-section="events"]),
+body:has([data-admin-section="members"]) .sidebar-menu-item:has(> a[data-section="members"]),
+body:has([data-admin-section="review"]) .sidebar-menu-item:has(> a[data-section="review"]),
+body:has([data-admin-section="data"]) .sidebar-menu-item:has(> a[data-section="data"]),
+body:has([data-admin-section="settings"]) .sidebar-menu-item:has(> a[data-section="settings"]),
+body:has([data-admin-section="manual"]) .sidebar-menu-item:has(> a[data-section="manual"]) {
+  border-inline-start-color: var(--w-color-border-button-outline-default);
+  background-color: var(--w-color-surface-menu-item-active);
+}
+
+body:has([data-admin-section="home"]) .sidebar-menu-item > a[data-section="home"],
+body:has([data-admin-section="content"]) .sidebar-menu-item > a[data-section="content"],
+body:has([data-admin-section="events"]) .sidebar-menu-item > a[data-section="events"],
+body:has([data-admin-section="members"]) .sidebar-menu-item > a[data-section="members"],
+body:has([data-admin-section="review"]) .sidebar-menu-item > a[data-section="review"],
+body:has([data-admin-section="data"]) .sidebar-menu-item > a[data-section="data"],
+body:has([data-admin-section="settings"]) .sidebar-menu-item > a[data-section="settings"],
+body:has([data-admin-section="manual"]) .sidebar-menu-item > a[data-section="manual"] {
+  color: var(--w-color-text-label-menus-active);
+}
+
+/* The tabs along the top of a section's pages. */
+.a-tabs,
+.a-subtabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-inline: 1.25rem;
+  scrollbar-width: none;
+}
+
+.a-tabs {
+  padding-block: 0.875rem 0.5rem;
+  background-color: var(--sj-surface);
+}
+
+.a-subtabs {
+  padding-block: 0.5rem;
+  background-color: var(--sj-surface);
+  box-shadow: inset 0 -1px 0 var(--sj-surface-2);
+}
+
+/* On a phone Wagtail's menu button sits over the top-left corner. */
+@media (max-width: 49.9375em) {
+  .a-tabs {
+    padding-inline-start: 3.75rem;
+  }
+}
+
+@media (min-width: 50em) {
+  .a-tabs,
+  .a-subtabs {
+    padding-inline: 3.125rem;
+  }
+}
+
+.a-tabs__tab,
+.a-subtabs__tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--sj-radius-sm);
+  color: var(--sj-fg-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.a-tabs__tab {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.a-subtabs__tab {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.a-tabs__tab:hover,
+.a-subtabs__tab:hover {
+  background-color: var(--sj-surface-2);
+  color: var(--sj-fg);
+}
+
+.a-tabs__tab[aria-current="page"] {
+  background-color: var(--sj-primary-soft);
+  color: var(--sj-on-primary-soft);
+}
+
+.a-subtabs__tab[aria-current="page"] {
+  background-color: var(--sj-surface-2);
+  color: var(--sj-fg);
+  font-weight: 600;
+}
+
+.a-tabs__count {
+  min-width: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background-color: var(--sj-primary);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
 /* --- the sidebar mark (templates/wagtailadmin/base.html) --------------------- */
 
 .a-brand {

@@ -1,9 +1,10 @@
 """The admin's first page and its menu (design 14.1, v6.67, round 189).
 
 ``WelcomePanel`` says hello and offers the actions this person does most.
-``arrange_main_menu`` and ``arrange_settings_menu`` put the sidebar in the
-order of the work: the frequent things on the first level, Wagtail's entries
-the club has no use for left out (they still open by address).
+``arrange_main_menu`` and ``arrange_settings_menu`` tidy the menu items:
+Wagtail's entries the club has no use for left out (they still open by
+address), 首页 and 文章 added; since v6.71 core.admin_sections then folds
+what is left into the eight sections.
 """
 
 from __future__ import annotations

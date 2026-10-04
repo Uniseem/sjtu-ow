@@ -60,7 +60,7 @@ def _ai(site) -> Check:
     elif not site.moderation_enabled:
         detail = "密钥已设置，但全站设置里「启用 AI 内容审核」关着。"
     else:
-        detail = "在运行。可以在「内容审核」页上点「试一下」确认能连上。"
+        detail = "在运行。可以在「审核 → 内容」页上点「试一下」确认能连上。"
     return Check(
         "AI 内容审核",
         services.is_enabled(),

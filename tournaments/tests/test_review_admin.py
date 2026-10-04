@@ -231,3 +231,25 @@ def test_export_is_logged(client, registration, manager):
     assert entry.user_id == manager.pk
     assert entry.object_id == str(registration.tournament_id)
     assert "含联系方式" in entry.data["detail"]
+
+
+@pytest.mark.django_db
+def test_the_tournament_list_leads_straight_to_its_waiting_registrations(
+    client, registration, manager
+):
+    """Design 14.1 (v6.71): 「赛事页里直接审报名」 — a 待审核 column with the
+    count, linking to this tournament's pending registrations."""
+    client.force_login(manager)
+    html = client.get(reverse("tournaments:index")).content.decode()
+    url = (
+        f"{reverse('registration_review_index')}"
+        f"?tournament={registration.tournament_id}&amp;status=pending"
+    )
+    assert f'<a href="{url}">1 份</a>' in html
+    assert "审核报名" in html
+    review = client.get(url.replace("&amp;", "&")).content.decode()
+    assert "审核战队" in review
+
+    reg.approve(registration=registration, actor=manager)
+    html = client.get(reverse("tournaments:index")).content.decode()
+    assert f'<a href="{url}">' not in html

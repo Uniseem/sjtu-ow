@@ -73,7 +73,7 @@ class UserEditView(wagtail_users.EditView):
                 names = "、".join(f"「{team.name}」" for team in teams)
                 messages.warning(
                     self.request,
-                    f"这个账号是{names}的队长，到「战队」给这些队指定新队长。",
+                    f"这个账号是{names}的队长，到「成员 → 战队」给这些队指定新队长。",
                 )
             if paused:
                 names = "、".join(f"「{team.name}」" for team in paused)

@@ -168,6 +168,15 @@ def arrange_main_menu(request, menu_items):
     arrange(request, menu_items)
 
 
+@hooks.register("construct_main_menu", order=1100)
+def group_into_sections(request, menu_items):
+    """The eight sections (14.1, v6.71), from whatever the two hooks above
+    left this person."""
+    from core.admin_sections import arrange
+
+    arrange(request, menu_items)
+
+
 @hooks.register("construct_settings_menu")
 def arrange_settings_menu(request, menu_items):
     from core.admin_home import arrange_settings_menu as arrange
