@@ -69,7 +69,7 @@
           <tbody>
             {% for membership in memberships %}
               <tr>
-                <td data-label="昵称"><span class="font-semibold">{{ membership.user.nickname }}</span>{% if membership.is_captain %} <span class="c-tag c-tag--strong ml-1">队长</span>{% endif %}</td>
+                <td data-label="昵称"><span class="font-semibold">{{ membership.user.nickname }}</span>{% if membership.is_captain %} <span class="c-tag c-tag--strong ml-1">队长</span>{% endif %}{% if not membership.user.is_active %} <span class="c-tag ml-1" data-account-stopped>账号已停用</span><span class="block text-sm text-fg-2">这个账号被管理员停用了，可以移出、空出名额</span>{% endif %}</td>
                 <td data-label="位置与段位">{% include "components/play_style.html" with profile=membership.user|public_profile %}</td>
                 <td data-label="游戏 ID" class="text-sm">
                   {% for account in membership.user.game_accounts.all %}<span class="font-code">{{ account.battletag }}</span>{% if not forloop.last %}、{% endif %}{% empty %}<span class="text-fg-3">未填写</span>{% endfor %}

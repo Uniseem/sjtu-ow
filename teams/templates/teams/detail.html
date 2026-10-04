@@ -20,7 +20,7 @@
           </p>
           <h1 class="c-stage__title">{{ team.name }}</h1>
           <dl class="c-stage__facts">
-            {% if captain %}<div><dt>队长</dt><dd>{{ captain.nickname }}</dd></div>{% endif %}
+            {% if captain %}<div><dt>队长</dt><dd>{{ captain.nickname }}{% if not captain.is_active %}（账号已停用）{% endif %}</dd></div>{% endif %}
             <div><dt>现役</dt><dd>{{ memberships|length }} / {{ max_members }} 人</dd></div>
             <div><dt>参赛</dt><dd>{{ entries|length }} 次</dd></div>
             <div><dt>成立</dt><dd><time datetime="{{ team.created_at|date:'c' }}">{{ team.created_at|ow_date }}</time></dd></div>
@@ -59,9 +59,12 @@
                   <li class="c-squad__item" data-roster-member>
                     {% include "components/avatar.html" with person=person size="md" %}
                     <div class="c-squad__main">
-                      <p class="c-squad__name">{% with url=person|member_url %}{% if url %}<a href="{{ url }}" class="truncate c-stretch" title="{{ person.nickname }}">{{ person.nickname }}</a>{% else %}<span class="truncate" title="{{ person.nickname }}">{{ person.nickname }}</span>{% endif %}{% endwith %}{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}</p>
-                      {% if person.motto %}<p class="c-squad__motto" title="{{ person.motto }}">“{{ person.motto }}”</p>{% endif %}
-                      {% include "components/play_style.html" with profile=person|public_profile %}
+                      <p class="c-squad__name">{% with url=person|member_url %}{% if url %}<a href="{{ url }}" class="truncate c-stretch" title="{{ person.nickname }}">{{ person.nickname }}</a>{% else %}<span class="truncate" title="{{ person.nickname }}">{{ person.nickname }}</span>{% endif %}{% endwith %}{% if membership.is_captain %}<span class="c-tag c-tag--strong">队长</span>{% endif %}{% if not person.is_active %}<span class="c-tag" data-account-stopped>账号已停用</span>{% endif %}</p>
+                      {% comment %}design-details 5.3 (v6.61): a stopped account keeps its place but shows nothing else about itself (3.7).{% endcomment %}
+                      {% if person.is_active %}
+                        {% if person.motto %}<p class="c-squad__motto" title="{{ person.motto }}">“{{ person.motto }}”</p>{% endif %}
+                        {% include "components/play_style.html" with profile=person|public_profile %}
+                      {% endif %}
                       <p class="c-squad__meta"><time class="font-numeric" datetime="{{ membership.joined_at|date:'c' }}">{{ membership.joined_at|date:"Y.m" }}</time> 入队</p>
                     </div>
                   </li>

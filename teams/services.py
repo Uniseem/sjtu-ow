@@ -171,6 +171,9 @@ def update_team(
     return team
 
 
+CAPTAIN_STOPPED = "这支战队的队长账号已停用，等管理员指定新队长后再申请。"
+
+
 def can_apply(team, user) -> tuple[bool, str]:
     """All the conditions from design 7.3, with the reason to show."""
     from accounts.permissions import can_use, feature_denied_message
@@ -187,6 +190,10 @@ def can_apply(team, user) -> tuple[bool, str]:
         return False, "这支战队暂时不招募。"
     if is_full(team):
         return False, "战队人数已满。"
+    # Design 3.7 (v6.61): the application would wait on someone who cannot
+    # log in, and close itself after 14 days.
+    if teams_without_captain().filter(pk=team.pk).exists():
+        return False, CAPTAIN_STOPPED
     if lacks_game_account(user):
         return False, "请先在个人中心添加至少一个游戏 ID。"
     if TeamApplication.objects.filter(
