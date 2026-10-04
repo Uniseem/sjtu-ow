@@ -9,6 +9,10 @@
     <dt>主题</dt><dd>{{ subject }}</dd>
   </dl>
 
+  {% if going_live_at and not problem %}
+    {% comment %}Design 10.4 (v6.54): a planned article is announced ahead.{% endcomment %}
+    <p class="help-block help-info" data-announce-on-publish>这篇文章 {{ going_live_at|date:"n 月 j 日 H:i" }} 上线，到时自动发出。收信人数按上线那一刻算，现在是 {{ count }} 人。</p>
+  {% endif %}
   {% if problem %}
     <p class="help-block help-warning">{{ problem }}</p>
   {% endif %}
@@ -17,10 +21,14 @@
   <p class="help">每人一封、互相看不到；底部有各自的退订链接。下面是写给你自己的样子。</p>
   <pre class="w-whitespace-pre-wrap">{{ preview }}</pre>
 
-  <form method="post" onsubmit="return window.confirm('给 {{ count }} 人发这封信？同一场只能发一次。')">
+  <form method="post" onsubmit="return window.confirm('{% if going_live_at %}文章上线时发这封信？{% else %}给 {{ count }} 人发这封信？{% endif %}同一场只能发一次。')">
     {% csrf_token %}
     <p>
-      <button type="submit" class="button button-primary" {% if problem or not count %}disabled{% endif %}>发给 {{ count }} 人</button>
+      {% if going_live_at %}
+        <button type="submit" class="button button-primary" {% if problem %}disabled{% endif %}>上线时发</button>
+      {% else %}
+        <button type="submit" class="button button-primary" {% if problem or not count %}disabled{% endif %}>发给 {{ count }} 人</button>
+      {% endif %}
       <a class="button button-secondary" href="{{ back_url }}">返回</a>
     </p>
   </form>

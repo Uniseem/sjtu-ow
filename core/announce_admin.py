@@ -26,11 +26,17 @@ def announce_view(request, kind, pk):
         except services.AnnouncementError as exc:
             messages.error(request, str(exc))
         else:
-            messages.success(
-                request,
-                f"已开始给 {broadcast.recipient_count} 人发「{broadcast.subject}」，"
-                "在后台逐封发出。",
-            )
+            if broadcast.waits_for_publish:
+                messages.success(
+                    request,
+                    f"已安排：文章上线时给开着活动通知的成员发「{broadcast.subject}」。",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"已开始给 {broadcast.recipient_count} 人发"
+                    f"「{broadcast.subject}」，在后台逐封发出。",
+                )
         return redirect(entry.back_url(obj))
     letter = entry.letter(obj, services.unsubscribe_url(request.user))
     return render(
@@ -45,6 +51,7 @@ def announce_view(request, kind, pk):
             "count": services.recipient_count(obj),
             "sjtu_only": getattr(obj, "sjtu_only", False),
             "problem": services.announcement_problem(kind, obj),
+            "going_live_at": services.going_live_at(kind, obj),
             "back_url": entry.back_url(obj),
             "breadcrumbs_items": [
                 {"url": reverse("wagtailadmin_home"), "label": "首页"},

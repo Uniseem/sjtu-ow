@@ -139,15 +139,37 @@ def sent_broadcast(kind: str, obj):
     return Broadcast.objects.filter(kind=kind, object_id=obj.pk).first()
 
 
+def going_live_at(kind: str, obj):
+    """When an article planned under 「设置计划」 goes live (design 10.4,
+    v6.54); None if it is live already, not planned, or not an article."""
+    from core.models import Broadcast
+
+    if kind != Broadcast.Kind.ARTICLE or obj.live:
+        return None
+    planned = (
+        obj.revisions.filter(approved_go_live_at__isnull=False)
+        .order_by("-approved_go_live_at")
+        .first()
+    )
+    return planned.approved_go_live_at if planned else None
+
+
 def announcement_problem(kind: str, obj, *, publishing: bool = False) -> str:
     """Why this cannot go out now; "" when it can. ``publishing``: asked
-    on the publish page, before the status changes."""
+    on the publish page, before the status changes. A planned article can be
+    announced ahead: it goes out when it goes live (v6.54)."""
     from core.mail import SMTPNotConfigured, build_smtp_backend
     from core.models import SiteSettings
 
-    if not publishing and not kinds()[kind].is_live(obj):
+    if (
+        not publishing
+        and not kinds()[kind].is_live(obj)
+        and going_live_at(kind, obj) is None
+    ):
         return "发布之后才能通知全体成员。"
     done = sent_broadcast(kind, obj)
+    if done is not None and done.waits_for_publish:
+        return "已经安排在上线时通知全体成员，同一篇只发一次。"
     if done is not None:
         return (
             f"已经在 {_moment(done.created_at)} 通知过 {done.recipient_count} 人，"
@@ -177,6 +199,8 @@ def announce(*, kind: str, obj, actor):
     problem = announcement_problem(kind, obj)
     if problem:
         raise AnnouncementError(problem)
+    # A planned article: noted now, sent by send_waiting() when it goes live.
+    waiting = going_live_at(kind, obj) is not None
     try:
         with transaction.atomic():
             broadcast = Broadcast.objects.create(
@@ -184,7 +208,8 @@ def announce(*, kind: str, obj, actor):
                 object_id=obj.pk,
                 subject=entry.letter(obj, "").subject,
                 sent_by=actor,
-                recipient_count=recipient_count(obj),
+                recipient_count=0 if waiting else recipient_count(obj),
+                waits_for_publish=waiting,
             )
     except IntegrityError as exc:  # someone else pressed it a moment ago
         raise AnnouncementError("刚刚已经有人发过了，同一场只发一次。") from exc
@@ -193,9 +218,29 @@ def announce(*, kind: str, obj, actor):
         f"{kind}s.announce",
         actor,
         recipients=broadcast.recipient_count,
+        on_publish=waiting,
     )
-    transaction.on_commit(lambda: send_broadcast.enqueue(broadcast.pk))
+    if not waiting:
+        transaction.on_commit(lambda: send_broadcast.enqueue(broadcast.pk))
     return broadcast
+
+
+def send_waiting(kind: str, obj) -> bool:
+    """The article just went live (design 10.4, v6.54): send what was planned
+    for this moment, to whoever has the notices on now."""
+    from core.models import Broadcast
+    from core.tasks import send_broadcast
+
+    waiting = Broadcast.objects.filter(
+        kind=kind, object_id=obj.pk, waits_for_publish=True
+    )
+    if not waiting.update(
+        waits_for_publish=False, recipient_count=recipient_count(obj)
+    ):
+        return False
+    broadcast = Broadcast.objects.get(kind=kind, object_id=obj.pk)
+    transaction.on_commit(lambda: send_broadcast.enqueue(broadcast.pk))
+    return True
 
 
 def deliver(broadcast) -> int:

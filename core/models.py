@@ -649,6 +649,9 @@ class Broadcast(models.Model):
         related_name="+",
     )
     recipient_count = models.PositiveIntegerField("收信人数", default=0)
+    # Design 10.4 (v6.54): planned for an article that is yet to go live. It
+    # goes out, and the count is taken, the moment the article is published.
+    waits_for_publish = models.BooleanField("等上线后发", default=False)
     created_at = models.DateTimeField("时间", auto_now_add=True)
 
     class Meta:

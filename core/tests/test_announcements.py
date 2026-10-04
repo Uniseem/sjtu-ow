@@ -394,3 +394,87 @@ def test_drafts_and_other_roles_cannot_announce_articles(site, client):
     assert (
         reverse("announce", args=["article", live.pk]) not in listing.content.decode()
     )
+
+
+# --- planned articles (v6.54) --------------------------------------------
+
+
+def _planned(author, go_live_at, title="周五招新"):
+    from content.models import ArticleCategory, ArticleIndexPage, ArticlePage
+
+    news = ArticleIndexPage.objects.get(slug="news")
+    page = ArticlePage(
+        title=title,
+        slug=f"planned-{ArticlePage.objects.count()}",
+        category=ArticleCategory.objects.get(slug="notice"),
+        author=author,
+        owner=author,
+        summary="周五晚上八点见。",
+        body=[("paragraph", "<p>正文</p>")],
+        live=False,
+    )
+    news.add_child(instance=page)
+    page.go_live_at = go_live_at
+    page.save_revision().publish()
+    page = ArticlePage.objects.get(pk=page.pk)
+    assert not page.live  # Wagtail only noted the time
+    return page
+
+
+@pytest.mark.django_db
+def test_a_planned_article_is_announced_when_it_goes_live(
+    site, worker, client, mailoutbox, django_capture_on_commit_callbacks
+):
+    from content.services import publish_due_pages
+
+    editor = _member("editor165@example.com", "内容编辑")
+    member = _member("reader165@example.com")
+    go_live_at = timezone.now() + timedelta(hours=3)
+    page = _planned(editor, go_live_at)
+    explore = reverse("wagtailadmin_explore", args=[page.get_parent().pk])
+    announce = reverse("announce", args=["article", page.pk])
+    client.force_login(editor)
+    listing = client.get(explore).content.decode()
+    assert announce in listing and "上线时通知全体成员" in listing
+    preview = client.get(announce).content.decode()
+    assert "data-announce-on-publish" in preview and "上线时发" in preview
+    assert f"{timezone.localtime(go_live_at):%H:%M} 上线" in preview
+
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(announce)
+    assert mailoutbox == []
+    broadcast = Broadcast.objects.get(kind="article", object_id=page.pk)
+    assert broadcast.waits_for_publish and broadcast.recipient_count == 0
+    assert announce not in client.get(explore).content.decode()
+    with pytest.raises(services.AnnouncementError, match="上线时"):
+        services.announce(kind="article", obj=page, actor=editor)
+
+    late = _member("late165@example.com")  # joins before it goes live
+    later = go_live_at + timedelta(seconds=30)
+    with mock.patch("django.utils.timezone.now", return_value=later):
+        with django_capture_on_commit_callbacks(execute=True):
+            assert publish_due_pages()
+    broadcast.refresh_from_db()
+    assert not broadcast.waits_for_publish and broadcast.recipient_count == 3
+    to = sorted(address for message in mailoutbox for address in message.to)
+    assert to == sorted([editor.email, member.email, late.email])
+    assert all(message.subject.endswith("公告：周五招新") for message in mailoutbox)
+
+
+@pytest.mark.django_db
+def test_publishing_a_planned_article_by_hand_sends_it_too(
+    site, worker, mailoutbox, django_capture_on_commit_callbacks
+):
+    editor = _member("editor165b@example.com", "内容编辑")
+    page = _planned(editor, timezone.now() + timedelta(days=2), title="提前上线")
+    with django_capture_on_commit_callbacks(execute=True):
+        services.announce(kind="article", obj=page, actor=editor)
+    assert mailoutbox == []
+    page.go_live_at = None
+    with django_capture_on_commit_callbacks(execute=True):
+        page.save_revision().publish()
+    assert [message.to for message in mailoutbox] == [[editor.email]]
+    # Going live again later sends nothing more.
+    with django_capture_on_commit_callbacks(execute=True):
+        page.save_revision().publish()
+    assert len(mailoutbox) == 1

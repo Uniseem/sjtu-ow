@@ -82,6 +82,10 @@ def on_page_published(sender, instance, **kwargs):
     refresh_listings(kind)
     if kind == "article":
         refresh_related_tournament(instance)
+        # Design 10.4 (v6.54): 「上线时通知全体成员」 goes out now.
+        from core.services import send_waiting
+
+        send_waiting("article", instance)
 
 
 @receiver(page_unpublished)

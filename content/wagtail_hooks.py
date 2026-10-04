@@ -156,16 +156,34 @@ class AnnounceArticleItem(PageMenuItem):
         return reverse("announce", args=["article", self.page.pk])
 
 
+class AnnounceArticleOnPublishItem(AnnounceArticleItem):
+    """The same for an article planned to go live (design 10.4, v6.54)."""
+
+    label = "上线时通知全体成员"
+
+
 def _announce_item(page, user, next_url=None):
+    from django.utils import timezone
+
     from content.permissions import user_can_edit_author
-    from core.services import sent_broadcast
+    from core.services import going_live_at, sent_broadcast
 
     page_class = page.specific_class or type(page)
-    if not (issubclass(page_class, ArticlePage) and page.live):
+    if not issubclass(page_class, ArticlePage):
+        return None
+    # The page's own go_live_at first: no query for the drafts in a listing.
+    planned = (
+        not page.live
+        and page.go_live_at is not None
+        and page.go_live_at > timezone.now()
+        and going_live_at("article", page) is not None
+    )
+    if not (page.live or planned):
         return None
     if not user_can_edit_author(user) or sent_broadcast("article", page):
         return None
-    return AnnounceArticleItem(page=page, next_url=next_url)
+    item_class = AnnounceArticleItem if page.live else AnnounceArticleOnPublishItem
+    return item_class(page=page, next_url=next_url)
 
 
 @hooks.register("register_page_listing_more_buttons")
