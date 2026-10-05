@@ -24,10 +24,12 @@
         <p class="text-sm text-fg-2" role="status">上次上传的头像{% if avatar_turned_down.status == "taken_down" %}被管理员撤下了{% else %}没有通过审核{% endif %}，原因：{{ avatar_turned_down.get_reason_display }}{% if avatar_turned_down.note %}（{{ avatar_turned_down.note }}）{% endif %}。可以换一张再传。</p>
       {% endif %}
       {% if avatar_can_upload %}
-        <form method="post" action="{% url 'me_avatar_upload' %}" enctype="multipart/form-data" class="c-form">
+        {% comment %}Design 13.17 (v7.6): 「上传后自动就保存替换」 — the file goes the moment it is chosen; the button is only there without the script.{% endcomment %}
+        <form method="post" action="{% url 'me_avatar_upload' %}" enctype="multipart/form-data" class="c-form" data-autosubmit-file>
           {% csrf_token %}
           {% include "components/form_field.html" with field=avatar_form.file %}
-          <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">上传</button></div>
+          <p class="c-autosave" data-autosubmit-status hidden role="status">正在上传，传好就换上…</p>
+          <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary" data-autosave-button>上传</button></div>
         </form>
       {% else %}
         <p class="text-sm text-fg-2">{{ avatar_denied }}</p>
@@ -42,10 +44,10 @@
 
   <section aria-labelledby="me-basic">
     {% include "components/section_head.html" with title="资料" heading_id="me-basic" %}
-    <form method="post" action="{% url 'me_profile' %}" class="c-form max-w-xl">
+    <form method="post" action="{% url 'me_profile' %}" class="c-form max-w-xl" data-autosave>
       {% csrf_token %}
       {% include "account/_form.html" %}
-      <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
+      <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button></div>
     </form>
   </section>
 {% endblock %}

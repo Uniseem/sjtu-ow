@@ -15,7 +15,7 @@
 
   {# Design 13.12: the preview sits beside the settings (round 119). #}
   <div class="typography-layout">
-    <form method="post" novalidate id="typography-form" class="b-form">
+    <form method="post" novalidate id="typography-form" class="b-form" data-autosave data-autosave-idle="改了就自动保存，并重新生成字体样式表">
       {% csrf_token %}
       {{ formset.management_form }}
       <div class="b-fieldset">
@@ -34,14 +34,14 @@
         {% endfor %}
       </div>
       <div class="b-formbar">
-        <button type="submit" class="c-btn c-btn--primary">保存并生成样式表</button>
+        <button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存并生成样式表</button>
         <a class="c-btn c-btn--secondary" href="{% url 'core_font_index' %}">返回字体库</a>
       </div>
     </form>
 
     <aside class="typography-aside" aria-labelledby="typography-preview-heading">
       <h2 id="typography-preview-heading" class="b-section__title">实时预览</h2>
-      <p class="b-sub">预览随表单变化，保存后才会应用到前台。</p>
+      <p class="b-sub">预览随表单变化；改动自动保存后，前台一两分钟内跟着更新。</p>
       <div id="typography-preview">
         <div class="p-nav"><span>首页</span><span>资讯</span><span>赛事</span><span>成员</span></div>
         <h1 class="p-h1">{{ sample_text }}</h1>

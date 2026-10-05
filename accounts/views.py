@@ -31,6 +31,7 @@ from accounts.services import (
     remove_avatar,
     submit_avatar,
 )
+from core import autosave
 from core.ratelimit import over_limit
 
 # (url name, label, available, icon). v3.0 marks items with icons, not numbers.
@@ -104,6 +105,13 @@ def _profile_page(request, form=None, avatar_form=None):
 @login_required
 @require_http_methods(["GET", "POST"])
 def me_profile(request):
+    if autosave.wants(request):
+        # Design 13.17 (v7.6): what is fine is kept, what is not says why.
+        form = ProfileForm(request.POST, instance=request.user)
+        saved = autosave.save_valid_fields(form)
+        return autosave.respond(
+            autosave.Outcome(saved=saved, errors=autosave.errors_of(form))
+        )
     if request.method == "POST":
         form = ProfileForm(request.POST, instance=request.user)
         if form.is_valid():
@@ -191,6 +199,12 @@ def me_game_accounts(request):
 @require_http_methods(["GET", "POST"])
 def me_game_account_edit(request, pk: int):
     account = get_object_or_404(GameAccount, pk=pk, user=request.user)
+    if autosave.wants(request):
+        form = GameAccountForm(request.POST, instance=account, user=request.user)
+        saved = autosave.save_valid_fields(form)
+        return autosave.respond(
+            autosave.Outcome(saved=saved, errors=autosave.errors_of(form))
+        )
     if request.method == "POST":
         form = GameAccountForm(request.POST, instance=account, user=request.user)
         if form.is_valid():
@@ -281,6 +295,12 @@ def me_contacts(request):
 @require_http_methods(["GET", "POST"])
 def me_contact_edit(request, pk: int):
     contact = get_object_or_404(ContactMethod, pk=pk, user=request.user)
+    if autosave.wants(request):
+        form = ContactMethodForm(request.POST, instance=contact, user=request.user)
+        saved = autosave.save_valid_fields(form)
+        return autosave.respond(
+            autosave.Outcome(saved=saved, errors=autosave.errors_of(form))
+        )
     if request.method == "POST":
         form = ContactMethodForm(request.POST, instance=contact, user=request.user)
         if form.is_valid():

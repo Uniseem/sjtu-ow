@@ -10,6 +10,7 @@
       action="{{ form_action|default:request.path }}"
       class="c-form"
       hx-post="{{ form_action|default:request.path }}"
+      {% if account %}data-autosave{% endif %}
       {% if account %}
         hx-target="#game-account-{{ account.pk }}"
         hx-swap="outerHTML"
@@ -21,14 +22,15 @@
       {% csrf_token %}
       {% include "account/_form.html" %}
       <div class="flex flex-wrap gap-3">
-        <button type="submit" class="c-btn c-btn--primary">保存</button>
-        <a
+        {# An entry being edited saves itself (design 13.17); 完成 closes it. A new one is added with the button. #}
+        <button type="submit" class="c-btn c-btn--primary">{% if account %}完成{% else %}添加{% endif %}</button>
+        {% if not account %}<a
           href="{% url 'me_game_accounts' %}"
           class="c-btn c-btn--quiet"
           hx-get="{% url 'me_game_accounts' %}"
           hx-target="#game-account-list"
           hx-swap="outerHTML"
-        >取消</a>
+        >取消</a>{% endif %}
       </div>
     </form>
   {% endpartialdef %}

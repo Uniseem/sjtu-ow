@@ -105,23 +105,45 @@ def submit(
         return None
 
     digest = text_hash(text)
-    item, created = ModerationItem.objects.get_or_create(
+    same_place = ModerationItem.objects.filter(
+        target_type=target_type, target_id=target_id or 0, field=field
+    )
+    values = {
+        "excerpt": text[:EXCERPT_CHARS],
+        "url": url,
+        "author": author if getattr(author, "pk", None) else None,
+        # A long piece waits here whole until the patrol reads it (5.5.3:
+        # 不截断内容); then only the excerpt stays.
+        "full_text": "" if target_type in SHORT_TYPES else text,
+    }
+    # Design 13.17 (v7.6): autosave writes every few seconds. What the patrol
+    # has not read yet at this place is replaced by the newest text, so it
+    # reads what is there now, not each half-typed version on the way.
+    waiting = same_place.filter(checked_at__isnull=True).exclude(text_hash=digest)
+    existing = same_place.filter(text_hash=digest).first()
+    if existing is not None:
+        waiting.delete()
+        return existing
+    stale = waiting.order_by("-created_at").first()
+    if stale is not None:
+        waiting.exclude(pk=stale.pk).delete()
+        for name, value in values.items():
+            setattr(stale, name, value)
+        stale.text_hash = digest
+        stale.attempts = 0
+        stale.last_error = ""
+        stale.failed_at = None
+        stale.save()
+        return stale
+    return ModerationItem.objects.create(
         target_type=target_type,
         target_id=target_id or 0,
         field=field,
         text_hash=digest,
-        defaults={
-            "excerpt": text[:EXCERPT_CHARS],
-            "url": url,
-            "author": author if getattr(author, "pk", None) else None,
-            "risk": Risk.UNKNOWN,
-            "model": "",
-            # A long piece waits here whole until the patrol reads it (5.5.3:
-            # 不截断内容); then only the excerpt stays.
-            "full_text": "" if target_type in SHORT_TYPES else text,
-        },
+        risk=Risk.UNKNOWN,
+        model="",
+        **values,
     )
-    return item
 
 
 def used_today() -> ModerationUsage:

@@ -82,6 +82,7 @@ backoffice_patterns = [
     # 成员
     path("users/", members.user_list, name="users"),
     path("users/<id:pk>/", members.user_edit, name="user_edit"),
+    path("users/<id:pk>/active/", members.user_active, name="user_active"),
     path("users/<id:pk>/rules/", members.user_rule_add, name="user_rule_add"),
     path(
         "users/rules/<id:pk>/delete/",

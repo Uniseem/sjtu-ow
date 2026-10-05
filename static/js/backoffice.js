@@ -86,7 +86,10 @@
   }
 
   function choose(picker, id, title, thumb) {
-    picker.querySelector("[data-image-picker-input]").value = id || "";
+    var input = picker.querySelector("[data-image-picker-input]");
+    input.value = id || "";
+    // Autosave (design 13.17) hears a picture chosen or cleared.
+    input.dispatchEvent(new Event("change", { bubbles: true }));
     var preview = picker.querySelector("[data-image-picker-preview]");
     preview.innerHTML = "";
     if (thumb) {

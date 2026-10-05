@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from core import autosave
 from core.fonts import services
 from core.fonts.css import (
     REGION_VARS,
@@ -378,6 +379,18 @@ def typography(request):
     ids = [rule.pk for rule in queryset]
     base_queryset = TypographyRule.objects.filter(pk__in=ids).select_related("family")
 
+    if autosave.wants(request):
+        # Design 13.17 (v7.6): each region is its own row; the ones that are
+        # fine are saved, then the stylesheet is written once.
+        formset = TypographyFormSet(request.POST, queryset=base_queryset)
+        saved, errors = [], {}
+        for form in formset.forms:
+            names = autosave.save_valid_fields(form)
+            saved += [form.add_prefix(name) for name in names]
+            errors.update(autosave.errors_of(form))
+        if saved:
+            regenerate_font_css()
+        return autosave.respond(autosave.Outcome(saved=saved, errors=errors))
     if request.method == "POST":
         formset = TypographyFormSet(request.POST, queryset=base_queryset)
         if formset.is_valid():

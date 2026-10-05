@@ -11,10 +11,10 @@
           <td>
             {% if item.depth > 1 %}
               <div class="b-rowacts">
-                <form method="post" action="{% url 'backoffice:collection_rename' item.pk %}" class="b-filters">
+                <form method="post" action="{% url 'backoffice:collection_rename' item.pk %}" class="b-filters" data-autosave data-autosave-idle="">
                   {% csrf_token %}
-                  <input type="text" name="name" value="{{ item.name }}" maxlength="255" class="c-input" aria-label="新名称">
-                  <button type="submit" class="c-btn c-btn--quiet c-btn--sm">改名</button>
+                  <input type="text" name="name" value="{{ item.name }}" maxlength="255" class="c-input" aria-label="名称（改了就存）">
+                  <button type="submit" class="c-btn c-btn--quiet c-btn--sm" data-autosave-button>改名</button>
                 </form>
                 {% if not item.image_count %}
                   <form method="post" action="{% url 'backoffice:collection_delete' item.pk %}" data-confirm="删除集合「{{ item.name }}」？">

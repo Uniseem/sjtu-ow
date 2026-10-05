@@ -29,6 +29,7 @@ from backoffice.forms import (
 from backoffice.nav import placed
 from backoffice.views.common import paginate, search_text
 from backoffice.widgets import thumbnail
+from core import autosave
 from core.converters import as_id
 
 PER_PAGE = 48
@@ -156,6 +157,16 @@ def image_edit(request, pk):
         user=user,
         initial={"title": image.title, "collection": image.collection_id},
     )
+    if autosave.wants(request):
+        names = autosave.valid_changes(form)
+        for name in names:
+            setattr(image, name, form.cleaned_data[name])
+        if names:
+            image.save(update_fields=names)
+            autosave.log_edit(image, user)
+        return autosave.respond(
+            autosave.Outcome(saved=names, errors=autosave.errors_of(form))
+        )
     if request.method == "POST" and form.is_valid():
         image.title = form.cleaned_data["title"]
         image.collection = form.cleaned_data["collection"]
@@ -283,6 +294,17 @@ def collection_list(request):
 def collection_rename(request, pk):
     collection = get_object_or_404(Collection, pk=pk)
     name = (request.POST.get("name") or "").strip()[:255]
+    if autosave.wants(request):
+        if collection.is_root() or not name:
+            problem = "根集合不能改名。" if collection.is_root() else "名称不能空着。"
+            return autosave.respond(autosave.Outcome(errors={"name": [problem]}))
+        saved = []
+        if name != collection.name:
+            collection.name = name
+            collection.save()
+            autosave.log_edit(collection, request.user)
+            saved = ["name"]
+        return autosave.respond(autosave.Outcome(saved=saved))
     if collection.is_root() or not name:
         messages.error(request, "根集合不能改名，名称也不能空着。")
     else:

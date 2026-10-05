@@ -179,6 +179,43 @@ def journey(tools, base, data) -> list[str]:
     })()""")
     step("加了联系方式", page_says("123456789"))
 
+    # Round 202 (design 13.17): what is edited saves itself; the avatar goes
+    # the moment a picture is chosen (「上传后自动就保存替换」).
+    go("/me/")
+    js("""(() => {
+        const motto = document.querySelector('form[data-autosave] [name=motto]');
+        motto.value = '浏览器里自动保存的宣言';
+        motto.dispatchEvent(new Event('input', {bubbles: true}));
+    })()""")
+    time.sleep(3)
+    status = js("(document.querySelector('[data-autosave-status]') || {}).textContent")
+    step("资料改了就自动保存", "已保存" in (status or ""), status or "")
+    go("/me/")
+    kept = js("document.querySelector('[name=motto]').value")
+    step("刷新以后还在", kept == "浏览器里自动保存的宣言", kept or "")
+
+    from PIL import Image
+
+    picture = WORK / "face.png"
+    Image.new("RGB", (300, 300), (200, 80, 60)).save(picture)
+    js("window.__beforeUpload = true")
+    root = tools.send("DOM.getDocument", {})["root"]["nodeId"]
+    node = tools.send(
+        "DOM.querySelector",
+        {"nodeId": root, "selector": "form[data-autosubmit-file] input[type=file]"},
+    )["nodeId"]
+    tools.send("DOM.setFileInputFiles", {"nodeId": node, "files": [str(picture)]})
+    time.sleep(1.5)
+    if js("window.__beforeUpload === true"):
+        # Chromium did not announce the choice itself: do what a person's
+        # choice does.
+        js(
+            "document.querySelector('form[data-autosubmit-file] input[type=file]')"
+            ".dispatchEvent(new Event('change', {bubbles: true}))"
+        )
+    time.sleep(4)
+    step("头像选好就换上，不用再点", page_says("头像已换上"))
+
     go(f"/scrims/{data['scrim']}/")
     fill_and_submit("""(() => {
         const f = [...document.querySelectorAll('form')]
@@ -477,6 +514,35 @@ def officers(tools, base, data) -> list[str]:
     press("button[name=action][value=save]")
     step("保存编队", says("已保存：新建 1 支"))
     step("新队伍出现在页面上", says("浏览器编的队"))
+
+    # Round 202 (design 13.17): settings save themselves; another button on
+    # the page (an action) waits for what was just typed.
+    go("/admin/settings/site/")
+    typed = js("""(() => {
+        const box = document.querySelector('[data-autosave] [name=site_description]');
+        if (!box) return 'no box';
+        box.value = '浏览器自动保存的简介';
+        box.dispatchEvent(new Event('input', {bubbles: true}));
+        return 'typed';
+    })()""")
+    time.sleep(3)
+    status = js("(document.querySelector('[data-autosave-status]') || {}).textContent")
+    step("全站设置改了就自动保存", "已保存" in (status or ""), f"{typed} {status}")
+    go("/admin/settings/site/")
+    js("""(() => {
+        const box = document.querySelector('[data-autosave] [name=site_description]');
+        box.value = '点按钮之前先存上';
+        box.dispatchEvent(new Event('input', {bubbles: true}));
+        window.__journeyOld = true;
+        document.querySelector('form[action*="send-test-email"] button').click();
+    })()""")
+    for _ in range(20):
+        time.sleep(0.5)
+        if js("!window.__journeyOld && document.readyState === 'complete'"):
+            break
+    go("/admin/settings/site/")
+    flushed = js("document.querySelector('[name=site_description]').value")
+    step("点别的按钮前先存好了刚改的", flushed == "点按钮之前先存上", flushed or "")
 
     # The back office's article form (round 196): the Markdown editor with
     # its own toolbar icons, the picture dialog, publishing.

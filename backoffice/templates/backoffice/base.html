@@ -61,6 +61,7 @@
     </dialog>
     {% include "backoffice/parts/editor_icons.html" %}
     <script src="{% static 'js/backoffice.js' %}"></script>
+    <script src="{% static 'js/autosave.js' %}"></script>
     {% block extra_js %}{% if form %}{{ form.media.js }}{% endif %}{% endblock %}
   </body>
 </html>

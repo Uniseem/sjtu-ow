@@ -3,10 +3,10 @@
 {% block content %}
   <div class="b-split">
     <div class="b-form">
-      <form method="post" class="b-form" novalidate>
+      <form method="post" class="b-form" novalidate data-autosave>
         {% csrf_token %}
         <div class="b-fieldset">{% include "backoffice/parts/fields.html" %}</div>
-        <div class="b-actions"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
+        <div class="b-actions"><button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button></div>
       </form>
 
       <section class="b-section" data-user-rules>
@@ -46,6 +46,26 @@
         </dl>
         <a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'member_detail' person.pk %}" target="_blank" rel="noopener">成员页{% include "components/icon.html" with name="external" class="size-4" %}</a>
       </section>
+      {% if not own_account %}
+        <section class="b-section" data-user-active>
+          <h2 class="b-section__title">账号状态</h2>
+          {% if person.is_active %}
+            <form method="post" action="{% url 'backoffice:user_active' person.pk %}" class="b-form" data-confirm="停用这个账号？不能再登录，待审批的入队申请会取消，当队长的战队会暂停招募。">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="stop">
+              {% include "components/form_field.html" with field=deactivate_form.deactivation_note %}
+              <div class="b-actions"><button type="submit" class="c-btn c-btn--secondary c-btn--sm is-danger">停用账号</button></div>
+            </form>
+          {% else %}
+            <p class="b-section__text">账号已停用，不能登录。</p>
+            <form method="post" action="{% url 'backoffice:user_active' person.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="start">
+              <button type="submit" class="c-btn c-btn--secondary c-btn--sm">重新启用</button>
+            </form>
+          {% endif %}
+        </section>
+      {% endif %}
       <section class="b-section">
         <h2 class="b-section__title">游戏和战队</h2>
         <dl class="b-kv">

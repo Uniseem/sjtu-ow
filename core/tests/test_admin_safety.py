@@ -197,15 +197,17 @@ def test_stopping_an_account_needs_a_reason_and_cancels_its_applications(client,
         team=team, user=member, roles={"tank": True}
     )
     client.force_login(admin)
-    url = reverse("backoffice:user_edit", args=[member.pk])
-    form = {"nickname": member.nickname, "is_sjtu": "on", "is_active": "on"}
-    client.post(url, form)  # still active: saves without a reason
+    client.post(
+        reverse("backoffice:user_edit", args=[member.pk]),
+        {"nickname": member.nickname, "is_sjtu": "on"},
+    )  # editing never stops anyone (v7.6: 停用 is its own button)
     member.refresh_from_db()
     assert member.is_active
-    client.post(url, {**form, "is_active": ""})  # stopping without a reason
+    url = reverse("backoffice:user_active", args=[member.pk])
+    client.post(url, {"action": "stop"})  # stopping without a reason
     member.refresh_from_db()
     assert member.is_active
-    client.post(url, {**form, "is_active": "", "deactivation_note": "冒用他人游戏 ID"})
+    client.post(url, {"action": "stop", "deactivation_note": "冒用他人游戏 ID"})
     member.refresh_from_db()
     application.refresh_from_db()
     assert not member.is_active

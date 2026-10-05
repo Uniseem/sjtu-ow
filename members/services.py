@@ -76,8 +76,10 @@ def showcase() -> dict:
         members[membership.user_id].teams.append(membership.team)
 
     sections = []
-    for group in MemberGroup.objects.filter(is_visible=True).order_by(
-        "sort_order", "name"
+    for group in (
+        MemberGroup.objects.filter(is_visible=True)
+        .exclude(name="")
+        .order_by("sort_order", "name")
     ):
         entries = []
         for membership in group.memberships.select_related("user").order_by(

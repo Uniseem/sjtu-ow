@@ -2218,6 +2218,24 @@
     margin-top: 0.125rem;
   }
 
+  /* 自动保存的状态（design 13.17, v7.6）: one quiet line above the form,
+     drawn by static/js/autosave.js. */
+  .c-autosave {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--color-fg-3);
+  }
+
+  .c-autosave[data-state="saved"] {
+    color: var(--color-ok);
+  }
+
+  .c-autosave[data-state="partial"],
+  .c-autosave[data-state="failed"] {
+    color: var(--color-warn);
+  }
+
   .c-field input[type="text"],
   .c-field input[type="email"],
   .c-field input[type="password"],

@@ -31,6 +31,8 @@ ACTIONS = {
     "tournaments.announce": ("通知全体成员", "发了新赛事通知"),
     "scrims.announce": ("通知全体成员", "发了新内战通知"),
     "articles.announce": ("通知全体成员", "发了新文章通知"),
+    "users.deactivate": ("停用账号", "停用了账号"),
+    "users.reactivate": ("重新启用账号", "重新启用了账号"),
     "tournaments.notify_participants": ("通知报名的人", "给报名的人发了赛事更新"),
     "scrims.notify_participants": ("通知报名的人", "给报名的人发了内战更新"),
 }

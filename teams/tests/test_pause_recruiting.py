@@ -72,14 +72,8 @@ def test_the_admin_is_told_the_teams_were_paused(client, site):  # noqa: F811
     team = services.create_team(user=captain, name="被暂停的队")
     client.force_login(admin)
     response = client.post(
-        reverse("backoffice:user_edit", args=[captain.pk]),
-        {
-            "email": captain.email,
-            "nickname": captain.nickname,
-            "is_sjtu": "on",
-            "is_active": "",
-            "deactivation_note": "测试停用",
-        },
+        reverse("backoffice:user_active", args=[captain.pk]),
+        {"action": "stop", "deactivation_note": "测试停用"},
     )
     said = [str(message) for message in get_messages(response.wsgi_request)]
     assert any("「被暂停的队」已改成暂不招募" in message for message in said), said

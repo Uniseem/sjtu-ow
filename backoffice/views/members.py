@@ -13,6 +13,7 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from wagtail.log_actions import log
@@ -20,6 +21,7 @@ from wagtail.log_actions import log
 from accounts.models import FeatureGroupRestriction, FeatureUserRule, User
 from backoffice.forms import (
     ASSIGNED_ROLES,
+    DeactivateForm,
     GroupRestrictionForm,
     MemberGroupForm,
     TeamForm,
@@ -30,6 +32,7 @@ from backoffice.forms import (
 )
 from backoffice.nav import placed
 from backoffice.views.common import paginate, search_text
+from core import admin_log, autosave
 from members.models import MemberGroup
 from teams import services as team_services
 from teams.models import Team
@@ -120,15 +123,22 @@ def _after_deactivation(request, user) -> None:
 @placed("members", "users", "users")
 def user_edit(request, pk):
     person = get_object_or_404(User, pk=pk)
-    was_active = person.is_active
     form = UserForm(request.POST or None, instance=person, editor=request.user)
+    if autosave.wants(request):
+        saved = autosave.save_valid_fields(form)
+        if "roles" in autosave.valid_changes(form):
+            form.save_roles()
+            saved.append("roles")
+        if saved:
+            autosave.log_edit(form.instance, request.user)
+        return autosave.respond(
+            autosave.Outcome(saved=saved, errors=autosave.errors_of(form))
+        )
     if request.method == "POST" and form.is_valid():
         person = form.save()
         form.save_roles()
-        log(person, "wagtail.edit", user=request.user)
+        autosave.log_edit(person, request.user)
         messages.success(request, f"「{person.nickname}」已保存。")
-        if was_active and not person.is_active:
-            _after_deactivation(request, person)
         return redirect("backoffice:user_edit", person.pk)
     from accounts.services import admin_profile
 
@@ -142,10 +152,43 @@ def user_edit(request, pk):
             "profile": admin_profile(person, viewer=request.user),
             "rules": person.feature_rules.select_related("updated_by"),
             "rule_form": UserRuleForm(user=person),
+            "deactivate_form": DeactivateForm(),
+            "own_account": person.pk == request.user.pk,
             "back_url": reverse("backoffice:users"),
             "back_label": "用户",
         },
     )
+
+
+@placed("members", "users", "users")
+@require_POST
+def user_active(request, pk):
+    """停用 and 启用 (design 3.7; v7.6 a button of their own, 13.17). Nobody
+    switches their own account off from here."""
+    person = get_object_or_404(User, pk=pk)
+    if person.pk == request.user.pk:
+        messages.error(request, "不能在这里停用自己的账号。")
+        return redirect("backoffice:user_edit", person.pk)
+    if request.POST.get("action") == "start":
+        if not person.is_active:
+            person.is_active = True
+            person.save(update_fields=["is_active"])
+            admin_log.record(person, "users.reactivate", request.user)
+            messages.success(request, f"「{person.nickname}」已重新启用。")
+        return redirect("backoffice:user_edit", person.pk)
+    form = DeactivateForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, form.errors["deactivation_note"][0])
+        return redirect("backoffice:user_edit", person.pk)
+    if person.is_active:
+        person.is_active = False
+        person.deactivation_note = form.cleaned_data["deactivation_note"].strip()
+        person.save(update_fields=["is_active", "deactivation_note"])
+        admin_log.record(
+            person, "users.deactivate", request.user, note=person.deactivation_note
+        )
+        _after_deactivation(request, person)
+    return redirect("backoffice:user_edit", person.pk)
 
 
 @placed("members", "users", "users")
@@ -279,9 +322,17 @@ def team_list(request):
 def team_edit(request, pk):
     team = get_object_or_404(Team, pk=pk)
     form = TeamForm(request.POST or None, instance=team, user=request.user)
+    if autosave.wants(request):
+        saved = autosave.save_valid_fields(form)
+        if saved:
+            autosave.log_edit(form.instance, request.user)
+            team_services.on_team_changed(form.instance, author=request.user)
+        return autosave.respond(
+            autosave.Outcome(saved=saved, errors=autosave.errors_of(form))
+        )
     if request.method == "POST" and form.is_valid():
         team = form.save()
-        log(team, "wagtail.edit", user=request.user)
+        autosave.log_edit(team, request.user)
         # As the captain's own edit: pages and the AI patrol follow (7.1).
         team_services.on_team_changed(team, author=request.user)
         messages.success(request, f"战队「{team.name}」已保存。")
@@ -333,6 +384,8 @@ def group_edit(request, pk=None):
         _group_may(request, "add")
     Formset = membership_formset()
     form = MemberGroupForm(request.POST or None, instance=group)
+    if autosave.wants(request):
+        return _group_autosave(request, form, Formset, created=not pk)
     formset = Formset(request.POST or None, instance=group, prefix="members")
     if request.method == "POST" and form.is_valid() and formset.is_valid():
         group = form.save()
@@ -345,7 +398,7 @@ def group_edit(request, pk=None):
         request,
         "backoffice/members/group_edit.html",
         {
-            "page_title": group.name if pk else "新建分组",
+            "page_title": (group.name or "未命名分组") if pk else "新建分组",
             "form": form,
             "formset": formset,
             "group": group if pk else None,
@@ -354,6 +407,44 @@ def group_edit(request, pk=None):
             "back_url": reverse("backoffice:member_groups"),
             "back_label": "成员分组",
         },
+    )
+
+
+def _group_autosave(request, form, Formset, *, created: bool):
+    """Design 13.17 (v7.6): the group exists from the first change (named
+    or not; unnamed ones stay off /members/); its rows are saved once every
+    row is complete, and the list comes back when rows were added or taken
+    out (their ids change)."""
+    saved = autosave.save_valid_fields(form)
+    group = form.instance
+    errors = autosave.errors_of(form)
+    replace = {}
+    if group.pk:
+        formset = Formset(request.POST, instance=group, prefix="members")
+        if formset.is_valid():
+            if formset.has_changed():
+                formset.save_in_order(group)
+                saved.append("members")
+                if formset.new_objects or formset.deleted_objects:
+                    fresh = Formset(instance=group, prefix="members")
+                    replace["[data-memberships]"] = render_to_string(
+                        "backoffice/members/_memberships.html",
+                        {"formset": fresh},
+                        request=request,
+                    )
+        else:
+            for row in formset.forms:
+                errors.update(autosave.errors_of(row))
+            if formset.non_form_errors():
+                errors["__all__"] = list(formset.non_form_errors())
+    location = ""
+    if created and group.pk:
+        log(group, "wagtail.create", user=request.user)
+        location = reverse("backoffice:member_group_edit", args=[group.pk])
+    elif saved:
+        autosave.log_edit(group, request.user)
+    return autosave.respond(
+        autosave.Outcome(saved=saved, errors=errors, location=location, replace=replace)
     )
 
 

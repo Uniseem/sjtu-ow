@@ -2,15 +2,15 @@
 
 {% block content %}
   <div class="b-split">
-    <form method="post" class="b-form" novalidate>
+    <form method="post" class="b-form" novalidate data-autosave>
       {% csrf_token %}
       <div class="b-fieldset">
         {% if preview %}<span class="b-grid__pic"><img src="{{ preview }}" alt="" loading="lazy"></span>{% endif %}
         {% include "backoffice/parts/fields.html" %}
       </div>
       <div class="b-actions">
-        <button type="submit" class="c-btn c-btn--primary">保存</button>
-        <a class="c-btn c-btn--secondary" href="{{ back_url }}">不改了</a>
+        <button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button>
+        <a class="c-btn c-btn--secondary" href="{{ back_url }}">回到图片库</a>
       </div>
     </form>
     <aside class="b-aside">

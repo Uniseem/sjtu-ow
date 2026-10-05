@@ -537,8 +537,11 @@ def test_nobody_switches_their_own_account_off(site, client):
     root = _root()
     client.force_login(root)
     url = reverse("backoffice:user_edit", args=[root.pk])
-    assert 'name="is_active"' not in client.get(url).content.decode()
-    client.post(url, {"nickname": root.nickname, "deactivation_note": "手滑"})
+    assert "data-user-active" not in client.get(url).content.decode()
+    client.post(
+        reverse("backoffice:user_active", args=[root.pk]),
+        {"action": "stop", "deactivation_note": "手滑"},
+    )
     root.refresh_from_db()
     assert root.is_active
 

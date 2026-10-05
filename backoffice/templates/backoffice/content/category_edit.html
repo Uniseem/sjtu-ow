@@ -2,12 +2,12 @@
 
 {% block content %}
   <div class="{% if category %}b-split{% else %}b-single{% endif %}">
-    <form method="post" class="b-form" novalidate>
+    <form method="post" class="b-form" novalidate data-autosave>
       {% csrf_token %}
       <div class="b-fieldset">{% include "backoffice/parts/fields.html" %}</div>
       <div class="b-actions">
-        <button type="submit" class="c-btn c-btn--primary">保存</button>
-        <a class="c-btn c-btn--secondary" href="{{ back_url }}">不改了</a>
+        <button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button>
+        <a class="c-btn c-btn--secondary" href="{{ back_url }}">回到分类列表</a>
       </div>
     </form>
     {% if category %}

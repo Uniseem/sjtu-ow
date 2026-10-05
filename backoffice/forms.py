@@ -135,6 +135,8 @@ class ArticleForm(KeepSeconds, forms.ModelForm):
         self.fields["title"].label = "标题"
         self.fields["title"].help_text = ""
         self.fields["category"].empty_label = "选一个分类"
+        # Unnamed categories (being set up, v7.6) are not offered.
+        self.fields["category"].queryset = ArticleCategory.objects.named()
         self.fields["tournament"].empty_label = "不关联赛事"
         self.fields["cover"] = image_field(
             user,
@@ -154,7 +156,7 @@ class ArticleForm(KeepSeconds, forms.ModelForm):
             self.fields.pop("author")
         if is_submitter_only(user):
             self.fields.pop("comments_enabled")
-            self.fields["category"].queryset = ArticleCategory.objects.filter(
+            self.fields["category"].queryset = ArticleCategory.objects.named().filter(
                 allow_submission=True
             )
         if plain_writer(user):
@@ -278,14 +280,25 @@ class PinnedArticlesForm(forms.Form):
 
 
 class CategoryForm(forms.ModelForm):
+    # Only the address is checked across categories (unique once filled in).
+    autosave_together = ("slug",)
+
     class Meta:
         model = ArticleCategory
         fields = ("name", "slug", "sort_order", "allow_submission")
         help_texts = {
+            "name": "名称或网址片段空着时，网站上不出现这个分类。",
             "slug": "资讯栏目按分类筛选时地址里用的词，只用字母、数字和连字符。",
             "sort_order": "数字小的排在前面。",
             "allow_submission": "关掉后普通成员写文章时不能选这个分类。",
         }
+
+    def clean_slug(self) -> str:
+        slug = (self.cleaned_data.get("slug") or "").strip()
+        taken = ArticleCategory.objects.filter(slug=slug).exclude(pk=self.instance.pk)
+        if slug and taken.exists():
+            raise forms.ValidationError("这个网址片段已经有分类在用了。")
+        return slug
 
 
 # --- pictures (docs/admin.md 4.2) ---------------------------------------------------
@@ -492,20 +505,10 @@ class UserForm(forms.ModelForm):
         widget=forms.CheckboxSelectMultiple,
         help_text="投稿者、交大用户、校外用户由系统按账号情况维护，不在这里改。",
     )
-    deactivation_note = forms.CharField(
-        label="停用原因",
-        required=False,
-        max_length=200,
-        help_text="停用账号时必填，只有管理员能看到（设计 3.7）。",
-    )
 
     class Meta:
         model = User
-        fields = ("nickname", "is_sjtu", "is_active", "deactivation_note")
-        labels = {"is_active": "启用"}
-        help_texts = {
-            "is_active": "取消勾选就是停用：不能再登录，待审批的入队申请会取消。"
-        }
+        fields = ("nickname", "is_sjtu")
 
     def __init__(self, *args, editor=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -517,16 +520,6 @@ class UserForm(forms.ModelForm):
                     "name", flat=True
                 )
             )
-        # Nobody switches their own account off from here.
-        if editor is not None and editor.pk == self.instance.pk:
-            self.fields.pop("is_active")
-
-    def clean(self):
-        cleaned = super().clean()
-        stopping = self.instance.is_active and cleaned.get("is_active") is False
-        if stopping and not (cleaned.get("deactivation_note") or "").strip():
-            self.add_error("deactivation_note", "停用账号要写原因。")
-        return cleaned
 
     def save_roles(self) -> None:
         wanted = set(self.cleaned_data.get("roles") or [])
@@ -535,6 +528,19 @@ class UserForm(forms.ModelForm):
                 self.instance.groups.add(group)
             else:
                 self.instance.groups.remove(group)
+
+
+class DeactivateForm(forms.Form):
+    """停用 is its own button (design 13.17, v7.6): it cannot be undone in
+    its effects (applications cancelled, recruiting paused), so it is not
+    something to save while typing. The reason is for admins only (3.7)."""
+
+    deactivation_note = forms.CharField(
+        label="停用原因",
+        max_length=200,
+        help_text="只有管理员能看到（设计 3.7）。",
+        error_messages={"required": "停用账号要写原因。"},
+    )
 
 
 class UserRuleForm(forms.ModelForm):
@@ -602,6 +608,9 @@ class TeamForm(forms.ModelForm):
         help_text="招募中时显示在战队卡和战队主页上。都不勾表示哪个位置都要。",
     )
 
+    # A clashing name is the only rule across rows; the rest still saves.
+    autosave_together = ("name",)
+
     class Meta:
         model = Team
         fields = ("name", "description", "logo", "is_recruiting", "recruiting_roles")
@@ -616,14 +625,29 @@ class TeamForm(forms.ModelForm):
                 self.instance.recruiting_roles
             )
 
+    def clean_name(self) -> str:
+        """The rule the database keeps for teams still active; the form
+        cannot see it (it names a field the form leaves out), so a clash
+        used to end in a server error."""
+        from teams.services import NAME_TAKEN, name_taken
+
+        name = (self.cleaned_data.get("name") or "").strip()
+        if name and name_taken(name, exclude_pk=self.instance.pk):
+            raise forms.ValidationError(NAME_TAKEN)
+        return name
+
     def clean_recruiting_roles(self) -> str:
         return join_roles(self.cleaned_data.get("recruiting_roles") or [])
 
 
 class MemberGroupForm(forms.ModelForm):
+    # A clashing name is the only rule across rows; the rest still saves.
+    autosave_together = ("name",)
+
     class Meta:
         model = MemberGroup
         fields = ("name", "description", "is_visible", "sort_order")
+        help_texts = {"name": "名称空着时成员展示页上不出现这个分组。"}
 
 
 class MembershipForm(forms.ModelForm):

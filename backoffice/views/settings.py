@@ -7,7 +7,6 @@ from datetime import datetime, time
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.utils import timezone
-from wagtail.log_actions import log
 from wagtail.log_actions import registry as log_registry
 from wagtail.models import ModelLogEntry, PageLogEntry
 
@@ -15,6 +14,7 @@ from accounts.models import User
 from backoffice.forms import LogFilterForm, SiteSettingsForm
 from backoffice.nav import placed
 from backoffice.views.common import paginate
+from core import autosave
 from core.models import SiteSettings
 
 LOG_PER_PAGE = 50
@@ -24,9 +24,16 @@ LOG_PER_PAGE = 50
 def site_settings(request):
     site = SiteSettings.load(request)
     form = SiteSettingsForm(request.POST or None, instance=site, user=request.user)
+    if autosave.wants(request):
+        saved = autosave.save_valid_fields(form)
+        if saved:
+            autosave.log_edit(form.instance, request.user)
+        return autosave.respond(
+            autosave.Outcome(saved=saved, errors=autosave.errors_of(form))
+        )
     if request.method == "POST" and form.is_valid():
         site = form.save()
-        log(site, "wagtail.edit", user=request.user)
+        autosave.log_edit(site, request.user)
         messages.success(request, "全站设置已保存。")
         return redirect("backoffice:site_settings")
     return render(

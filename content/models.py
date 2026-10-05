@@ -54,11 +54,21 @@ RESERVED_CHILD_SLUGS = frozenset(
 )
 
 
+class ArticleCategoryQuerySet(models.QuerySet):
+    def named(self):
+        """What the site shows (design 13.17, v7.6): a category made by
+        autosave stays out of sight until it has a name and an address."""
+        return self.exclude(name="").exclude(slug="")
+
+
 class ArticleCategory(models.Model):
     """Snippet: article category (design 12.5.2)."""
 
-    name = models.CharField("名称", max_length=32)
-    slug = models.SlugField("网址片段", max_length=64, unique=True)
+    name = models.CharField("名称", max_length=32, blank=True)
+    # Unique once filled in; several new ones may wait unnamed (v7.6).
+    slug = models.SlugField("网址片段", max_length=64, blank=True)
+
+    objects = ArticleCategoryQuerySet.as_manager()
     sort_order = models.PositiveIntegerField("排序", default=0)
     allow_submission = models.BooleanField("开放投稿", default=True)
 
@@ -73,9 +83,16 @@ class ArticleCategory(models.Model):
         ordering = ["sort_order", "name"]
         verbose_name = "文章分类"
         verbose_name_plural = "文章分类"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["slug"],
+                condition=~models.Q(slug=""),
+                name="content_category_slug_unique",
+            )
+        ]
 
     def __str__(self):
-        return self.name
+        return self.name or "（未命名分类）"
 
 
 class SeoPageMixin:
@@ -233,7 +250,7 @@ class ArticleIndexPage(SeoPageMixin, ReservedSlugMixin, Page):
         query.pop("page", None)
         context["page_obj"] = page_obj
         context["articles"] = page_obj
-        context["categories"] = ArticleCategory.objects.all()
+        context["categories"] = ArticleCategory.objects.named()
         context["active_category"] = category_slug
         context["extra_query"] = query.urlencode()
         return context

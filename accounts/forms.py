@@ -210,6 +210,9 @@ class GameAccountForm(forms.ModelForm):
 
 
 class ContactMethodForm(forms.ModelForm):
+    # The value is checked against its type (design 3.5).
+    autosave_together = ("type", "value")
+
     class Meta:
         model = ContactMethod
         fields = ["type", "value"]
@@ -270,7 +273,7 @@ class AvatarForm(forms.Form):
         label="上传新头像",
         help_text=(
             "JPG、PNG 或 WebP，不超过 5MB，至少 128×128 像素。会从中间裁成正方形，"
-            "想要别的范围请先自己裁好。上传后马上换上。"
+            "想要别的范围请先自己裁好。选好图片就上传，马上换上。"
         ),
         widget=forms.FileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
     )

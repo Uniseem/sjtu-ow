@@ -9,6 +9,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.db import IntegrityError, connections
 from django.urls import reverse
+from django.utils import timezone
 
 from comments import services
 from comments.models import Comment, CommentLike
@@ -282,8 +283,15 @@ def test_the_author_edits_and_it_is_reviewed_again(
     assert comment.edited_at is not None
     assert comment.like_count == 1
     items = ModerationItem.objects.filter(target_type="comment", target_id=comment.pk)
-    assert items.count() == 2
-    assert items.filter(excerpt="第二版").exists()
+    # v7.6 (design 13.17): the first version had not been read yet, so the
+    # patrol reads what is there now instead.
+    assert list(items.values_list("excerpt", flat=True)) == ["第二版"]
+
+    # Once the patrol has read a version, an edit is a record of its own.
+    items.update(checked_at=timezone.now(), risk="none")
+    with django_capture_on_commit_callbacks(execute=True):
+        services.edit(comment=comment, actor=reader, body="第三版")
+    assert sorted(items.values_list("excerpt", flat=True)) == ["第三版", "第二版"]
 
 
 @pytest.mark.django_db

@@ -137,7 +137,7 @@ def article_list(request):
             "page_obj": page_obj,
             "extra_query": extra_query,
             "query": query,
-            "categories": ArticleCategory.objects.all(),
+            "categories": ArticleCategory.objects.named(),
             "category": category,
             "status": status,
             "status_choices": STATUS_CHOICES,

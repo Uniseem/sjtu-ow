@@ -15,6 +15,7 @@ from wagtail.log_actions import log
 from backoffice.forms import CategoryForm
 from backoffice.nav import placed
 from content.models import ArticleCategory
+from core import autosave
 
 
 def _may(request, action: str) -> None:
@@ -44,9 +45,28 @@ def category_edit(request, pk=None):
     if not pk:
         _may(request, "add")
     form = CategoryForm(request.POST or None, instance=category)
+    if autosave.wants(request):
+        # A new one exists from the first change (design 13.17, v7.6); it
+        # stays off the site until it has a name and an address.
+        saved = autosave.save_valid_fields(form)
+        category = form.instance
+        location = ""
+        if not pk and category.pk:
+            log(category, "wagtail.create", user=request.user)
+            location = reverse("backoffice:category_edit", args=[category.pk])
+        elif saved:
+            autosave.log_edit(category, request.user)
+        return autosave.respond(
+            autosave.Outcome(
+                saved=saved, errors=autosave.errors_of(form), location=location
+            )
+        )
     if request.method == "POST" and form.is_valid():
         category = form.save()
-        log(category, "wagtail.edit" if pk else "wagtail.create", user=request.user)
+        if pk:
+            autosave.log_edit(category, request.user)
+        else:
+            log(category, "wagtail.create", user=request.user)
         messages.success(request, f"分类「{category.name}」已保存。")
         return redirect("backoffice:categories")
     in_use = category.articles.count() if pk else 0
@@ -54,7 +74,7 @@ def category_edit(request, pk=None):
         request,
         "backoffice/content/category_edit.html",
         {
-            "page_title": category.name if pk else "新建分类",
+            "page_title": (category.name or "未命名分类") if pk else "新建分类",
             "form": form,
             "category": category if pk else None,
             "in_use": in_use,

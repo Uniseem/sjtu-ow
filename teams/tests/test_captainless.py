@@ -74,15 +74,9 @@ def test_stopping_a_captain_says_which_teams(client, site):  # noqa: F811
     captain = _player("cap177@example.com", "要停用的队长")
     services.create_team(user=captain, name="被留下的队")
     client.force_login(admin)
-    url = reverse("backoffice:user_edit", args=[captain.pk])
-    form = {
-        "email": captain.email,
-        "nickname": captain.nickname,
-        "is_sjtu": "on",
-        "is_active": "",
-        "deactivation_note": "测试停用",
-    }
-    response = client.post(url, form)
+    # v7.6: 停用 is its own button (design 13.17).
+    url = reverse("backoffice:user_active", args=[captain.pk])
+    response = client.post(url, {"action": "stop", "deactivation_note": "测试停用"})
     captain.refresh_from_db()
     assert not captain.is_active
     said = [str(message) for message in get_messages(response.wsgi_request)]

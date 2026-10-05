@@ -26,7 +26,9 @@ class MemberUserField(models.ForeignKey):
 class MemberGroup(ClusterableModel):
     """An admin-defined group on /members/, such as 「社团干部」."""
 
-    name = models.CharField("名称", max_length=20)
+    # Blank while a new group is being set up (design 13.17, v7.6): it stays
+    # off /members/ until it has a name.
+    name = models.CharField("名称", max_length=20, blank=True)
     description = models.CharField("简介", max_length=200, blank=True)
     is_visible = models.BooleanField(
         "显示",
@@ -51,12 +53,14 @@ class MemberGroup(ClusterableModel):
         ordering = ["sort_order", "name"]
         constraints = [
             models.UniqueConstraint(
-                models.functions.Lower("name"), name="members_group_name_ci_unique"
+                models.functions.Lower("name"),
+                condition=~models.Q(name=""),
+                name="members_group_name_ci_unique",
             ),
         ]
 
     def __str__(self):
-        return self.name
+        return self.name or "（未命名分组）"
 
     def clean(self):
         super().clean()

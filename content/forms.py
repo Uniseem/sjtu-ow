@@ -36,7 +36,7 @@ class ArticlePageForm(WagtailAdminPageForm):
         if "category" in self.fields and is_submitter_only(user):
             from content.models import ArticleCategory
 
-            self.fields["category"].queryset = ArticleCategory.objects.filter(
+            self.fields["category"].queryset = ArticleCategory.objects.named().filter(
                 allow_submission=True
             )
         if plain_writer(user):

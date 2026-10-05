@@ -1,27 +1,13 @@
 {% extends "backoffice/base.html" %}
 
 {% block content %}
-  <form method="post" class="b-form" novalidate>
+  <form method="post" class="b-form" novalidate data-autosave>
     {% csrf_token %}
     <div class="b-fieldset">{% include "backoffice/parts/fields.html" %}</div>
-    <fieldset class="b-fieldset" data-memberships>
-      <legend class="b-fieldset__legend">组里的成员</legend>
-      <p class="b-section__text">只能选已加入的用户（没停用、验证过邮箱）。职务可以不填，多个职务用顿号分开，每个最多 10 字。勾「删除」再保存就从组里去掉。</p>
-      {{ formset.management_form }}
-      {% if formset.non_form_errors %}
-        <div class="c-notice c-notice--error" role="alert">{% include "components/icon.html" with name="x-circle" %}<div class="c-notice__body">{% for error in formset.non_form_errors %}<p>{{ error }}</p>{% endfor %}</div></div>
-      {% endif %}
-      <div id="members-rows" class="b-form">
-        {% for row in formset %}
-          {% include "backoffice/members/_membership.html" with row=row %}
-        {% endfor %}
-      </div>
-      <template id="members-template">{% include "backoffice/members/_membership.html" with row=formset.empty_form %}</template>
-      <div><button type="button" class="c-btn c-btn--secondary c-btn--sm" data-formset-add="members">{% include "components/icon.html" with name="plus" %}再加一个人</button></div>
-    </fieldset>
+    {% include "backoffice/members/_memberships.html" %}
     <div class="b-formbar">
-      <button type="submit" class="c-btn c-btn--primary">保存</button>
-      <a class="c-btn c-btn--secondary" href="{{ back_url }}">不改了</a>
+      <button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button>
+      <a class="c-btn c-btn--secondary" href="{{ back_url }}">回到分组列表</a>
     </div>
   </form>
   {% if can_delete %}

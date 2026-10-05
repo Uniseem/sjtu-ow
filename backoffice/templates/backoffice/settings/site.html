@@ -2,12 +2,12 @@
 
 {% block content %}
   <div class="b-split">
-    <form method="post" class="b-form" novalidate>
+    <form method="post" class="b-form" novalidate data-autosave>
       {% csrf_token %}
       {% include "backoffice/parts/fieldsets.html" %}
       <div class="b-formbar">
-        <button type="submit" class="c-btn c-btn--primary">保存</button>
-        <span class="b-formbar__note">首页、横幅这些页面会跟着重新生成。</span>
+        <button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button>
+        <span class="b-formbar__note">改了就自动保存（密钥离开框时才存）；首页、横幅这些页面会跟着重新生成。</span>
       </div>
     </form>
     <aside class="b-aside">
@@ -22,12 +22,12 @@
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.path }}">
           <button type="submit" class="c-btn c-btn--secondary c-btn--sm" data-try-ai>试一下 AI</button>
-          <p class="b-sub">用已保存的 AI 审核设置发一句测试内容，看密钥、接口地址和模型能不能用（算一次调用，不留记录）。改了设置要先保存；「启用 AI 内容审核」没打开也能试。</p>
+          <p class="b-sub">用已保存的 AI 审核设置发一句测试内容，看密钥、接口地址和模型能不能用（算一次调用，不留记录）。刚改的设置会先存好再试；「启用 AI 内容审核」没打开也能试。</p>
         </form>
         <form method="post" action="{% url 'core_try_offsite' %}" class="b-form">
           {% csrf_token %}
           <button type="submit" class="c-btn c-btn--secondary c-btn--sm">测试对象存储</button>
-          <p class="b-sub">用已保存的异地备份设置往存储桶里写一个小文件再删掉，看能不能连上、有没有权限。改了设置要先保存；「备份上传到对象存储」没打开也能测。</p>
+          <p class="b-sub">用已保存的异地备份设置往存储桶里写一个小文件再删掉，看能不能连上、有没有权限。刚改的设置会先存好再测；「备份上传到对象存储」没打开也能测。</p>
         </form>
       </section>
       <section class="b-section">
