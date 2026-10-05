@@ -37,6 +37,9 @@ class Outcome:
     errors: dict = field(default_factory=dict)
     location: str = ""  # the edit address once something new exists
     replace: dict = field(default_factory=dict)  # CSS selector -> new HTML
+    # Field name -> the value the server gave it (an article's address that
+    # follows its title, v7.9); the page shows it so the next save agrees.
+    values: dict = field(default_factory=dict)
 
 
 def errors_of(form) -> dict[str, list[str]]:
@@ -57,6 +60,7 @@ def respond(outcome: Outcome) -> JsonResponse:
             "errors": outcome.errors,
             "location": outcome.location,
             "replace": outcome.replace,
+            "values": outcome.values,
             "saved_at": timezone.localtime().strftime("%H:%M"),
         }
     )

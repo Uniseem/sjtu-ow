@@ -3,7 +3,8 @@
 Saving and publishing go through Wagtail's revisions and page actions, so
 the permission checks (``OwnArticlesPermissionTester``), the action log and
 the signals behind them (prerendering, the AI patrol, 「上线时通知」) are the
-ones the Wagtail editor used.
+ones the Wagtail editor used. Since v7.9 (design 13.17) changes save
+themselves as a draft (``content.drafts``); 「发布」 is still a button.
 """
 
 from __future__ import annotations
@@ -18,14 +19,15 @@ from django.views.decorators.http import require_POST
 from wagtail.actions.delete_page import DeletePageAction
 from wagtail.actions.publish_page_revision import PublishPageRevisionAction
 from wagtail.actions.unpublish_page import UnpublishPageAction
-from wagtail.log_actions import log
 
 from backoffice.forms import ArticleForm
 from backoffice.nav import placed
 from backoffice.views.common import paginate, safe_next, search_text
+from content.drafts import save_draft, start_article
 from content.models import ArticleCategory, ArticlePage
 from content.permissions import plain_writer, user_can_edit_author
 from content.services import first_article_index
+from core import autosave
 from core.converters import as_id
 
 PER_PAGE = 30
@@ -161,6 +163,94 @@ def _publish(request, revision) -> None:
         messages.success(request, f"「{page.title}」已发布。")
 
 
+def _autosave(request, form, page, parent):
+    """Save what may be saved as a draft (design 13.17, v7.9): the fields
+    that are fine, the rest keep what was stored. A new article is created
+    by its first change, empty title and category included."""
+    user = request.user
+    valid = form.is_valid()
+    draft = form.finish(form.instance)  # the valid fields are applied to it
+    saved = autosave.valid_changes(form)
+    errors = {} if valid else autosave.errors_of(form)
+    outcome = autosave.Outcome(saved=saved, errors=errors)
+    if page is None:
+        page = start_article(parent, draft, user)
+        outcome.location = reverse("backoffice:article_edit", args=[page.pk])
+        outcome.replace["[data-article-preview]"] = (
+            f'<a class="c-btn c-btn--quiet" data-article-preview href="'
+            f'{reverse("backoffice:article_preview", args=[page.pk])}" '
+            'target="_blank" rel="noopener">预览草稿</a>'
+        )
+    elif saved:
+        save_draft(page, draft, user)
+    if "slug" in form.fields and draft.slug != form.initial.get("slug"):
+        outcome.values["slug"] = draft.slug
+    return autosave.respond(outcome)
+
+
+def _form_page(request, form, article):
+    """The page for writing or editing; ``article`` is None for a new one."""
+    user = request.user
+    context = {
+        "page_title": "写文章",
+        "form": form,
+        "article": None,
+        "can_publish": True,
+        "guide": plain_writer(user),
+        "back_url": reverse("backoffice:articles"),
+        "back_label": "文章",
+    }
+    if article is None:
+        return render(request, "backoffice/content/article_edit.html", context)
+    perms = article.permissions_for_user(user)
+    page = ArticlePage.objects.annotate_approved_schedule().get(pk=article.pk)
+    verdict = None
+    from backoffice.access import reviews_content
+
+    if reviews_content(user):
+        from moderation.services import latest_verdict
+
+        verdict = latest_verdict(page)
+    announced = _announced([page]) if user_can_edit_author(user) else {}
+    context.update(
+        {
+            "page_title": page.draft_title or "（无标题）",
+            "article": page,
+            "status": article_status(page),
+            "url": page.get_url(request) if page.live else "",
+            "can_publish": perms.can_publish(),
+            "can_unpublish": perms.can_unpublish(),
+            "can_delete": perms.can_delete(),
+            "can_announce": can_announce(page, user, announced),
+            "announced": times_announced(page, announced),
+            "verdict": verdict,
+        }
+    )
+    return render(request, "backoffice/content/article_edit.html", context)
+
+
+def _submit(request, form, page, parent):
+    """The whole form, without the script or by 「发布」: checked whole,
+    saved as a draft, published if asked and allowed."""
+    user = request.user
+    if not form.is_valid():
+        return _form_page(request, form, page)
+    draft = form.finish(form.instance)
+    if page is None:
+        page = start_article(parent, draft, user)
+        revision = page.latest_revision
+    else:
+        revision = save_draft(page, draft, user)
+    if "publish" in request.POST:
+        if page.permissions_for_user(user).can_publish():
+            _publish(request, revision)
+        else:
+            messages.warning(request, "草稿已保存；你不能发布这篇文章。")
+    else:
+        messages.success(request, "草稿已保存。")
+    return redirect("backoffice:article_edit", page.pk)
+
+
 @placed("content", "articles")
 def article_new(request):
     user = request.user
@@ -175,39 +265,11 @@ def article_new(request):
         user=user,
         parent=parent,
     )
-    if request.method == "POST" and form.is_valid():
-        page = form.save(commit=False)
-        page.live = False
-        parent.add_child(instance=page)
-        revision = page.save_revision(user=user, log_action=False, clean=False)
-        log(
-            instance=page,
-            action="wagtail.create",
-            user=user,
-            revision=revision,
-            content_changed=True,
-        )
-        if "publish" in request.POST:
-            if page.permissions_for_user(user).can_publish():
-                _publish(request, revision)
-            else:
-                messages.warning(request, "草稿已保存；你不能发布这篇文章。")
-        else:
-            messages.success(request, f"「{page.title}」的草稿已保存。")
-        return redirect("backoffice:article_edit", page.pk)
-    return render(
-        request,
-        "backoffice/content/article_edit.html",
-        {
-            "page_title": "写文章",
-            "form": form,
-            "article": None,
-            "can_publish": True,
-            "guide": plain_writer(user),
-            "back_url": reverse("backoffice:articles"),
-            "back_label": "文章",
-        },
-    )
+    if request.method != "POST":
+        return _form_page(request, form, None)
+    if autosave.wants(request):
+        return _autosave(request, form, None, parent)
+    return _submit(request, form, None, parent)
 
 
 def _editable(request, pk):
@@ -222,52 +284,16 @@ def _editable(request, pk):
 def article_edit(request, pk):
     user = request.user
     page, perms = _editable(request, pk)
+    parent = page.get_parent()
     draft = page.get_latest_revision_as_object()
-    form = ArticleForm(
-        request.POST or None, instance=draft, user=user, parent=page.get_parent()
-    )
-    if request.method == "POST" and form.is_valid():
-        publishing = "publish" in request.POST
-        if publishing and not perms.can_publish():
-            raise PermissionDenied("你不能发布这篇文章。")
-        draft = form.save(commit=False)
-        revision = draft.save_revision(
-            user=user, log_action=True, previous_revision=page.latest_revision
-        )
-        if publishing:
-            _publish(request, revision)
-        else:
-            messages.success(request, "草稿已保存。")
-        return redirect("backoffice:article_edit", page.pk)
-    page = ArticlePage.objects.annotate_approved_schedule().get(pk=page.pk)
-    verdict = None
-    from backoffice.access import reviews_content
-
-    if reviews_content(user):
-        from moderation.services import latest_verdict
-
-        verdict = latest_verdict(page)
-    announced = _announced([page]) if user_can_edit_author(user) else {}
-    return render(
-        request,
-        "backoffice/content/article_edit.html",
-        {
-            "page_title": page.draft_title or page.title,
-            "form": form,
-            "article": page,
-            "status": article_status(page),
-            "url": page.get_url(request) if page.live else "",
-            "can_publish": perms.can_publish(),
-            "can_unpublish": perms.can_unpublish(),
-            "can_delete": perms.can_delete(),
-            "can_announce": can_announce(page, user, announced),
-            "announced": times_announced(page, announced),
-            "verdict": verdict,
-            "guide": plain_writer(user),
-            "back_url": reverse("backoffice:articles"),
-            "back_label": "文章",
-        },
-    )
+    form = ArticleForm(request.POST or None, instance=draft, user=user, parent=parent)
+    if request.method != "POST":
+        return _form_page(request, form, page)
+    if "publish" in request.POST and not perms.can_publish():
+        raise PermissionDenied("你不能发布这篇文章。")
+    if autosave.wants(request):
+        return _autosave(request, form, page, parent)
+    return _submit(request, form, page, parent)
 
 
 @placed("content", "articles")

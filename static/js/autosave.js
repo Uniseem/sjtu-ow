@@ -204,6 +204,14 @@
         }
       }
     });
+    // Values the server gave a field (an article's address following its
+    // title, v7.9); not the one being typed in.
+    Object.keys(data.values || {}).forEach(function (name) {
+      var control = form.elements[name];
+      if (control && control.tagName && control !== document.activeElement) {
+        control.value = data.values[name];
+      }
+    });
     this.clearErrors();
     var problems = [];
     var errors = data.errors || {};

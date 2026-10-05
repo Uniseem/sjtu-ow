@@ -602,10 +602,31 @@ def officers(tools, base, data) -> list[str]:
     # The back office's article form (round 196): the Markdown editor with
     # its own toolbar icons, the picture dialog, publishing.
     go("/admin/articles/new/")
+    # Round 205 (design 13.17, v7.9): the first change makes the article, a
+    # draft, with the category still empty; the address becomes its own.
+    js("""(() => {
+        const title = document.querySelector('#id_title');
+        title.value = '浏览器写的文章';
+        title.dispatchEvent(new Event('input', {bubbles: true}));
+    })()""")
+    for _ in range(20):
+        time.sleep(0.5)
+        if js("/^\\/admin\\/articles\\/\\d+\\/$/.test(location.pathname)"):
+            break
+    made = js(
+        "location.pathname + '|' +"
+        " document.querySelector('[data-autosave-status]').textContent"
+    )
+    where = (made or "").split("|")[0]
+    step(
+        "新文章打第一个字就建好（分类还空着）",
+        where not in ("", "/admin/articles/new/") and "已保存" in (made or ""),
+        made or "",
+    )
     started = js("""(() => {
-        document.querySelector('#id_title').value = '浏览器写的文章';
         const category = document.querySelector('#id_category');
         category.value = category.options[1].value;
+        category.dispatchEvent(new Event('change', {bubbles: true}));
         const editor = document.querySelector('.CodeMirror');
         if (!editor) return 'no editor';
         editor.CodeMirror.setValue('## 小标题\\n\\n浏览器里写的正文。');
@@ -629,6 +650,24 @@ def officers(tools, base, data) -> list[str]:
         return document.querySelector('#id_cover').value;
     })()""")
     step("对话框里选了封面", bool(picked) and picked.isdigit(), str(picked))
+    for _ in range(20):
+        time.sleep(0.5)
+        state = "document.querySelector('[data-autosave-status]').dataset.state"
+        if js(state) == "saved":
+            break
+    tools.send("Page.reload", {})
+    time.sleep(2.5)
+    kept = js("""document.querySelector('#id_title').value + '|' +
+        document.querySelector('#id_cover').value + '|' +
+        document.querySelector('.CodeMirror').CodeMirror.getValue().includes('浏览器里写的正文')""")
+    step(
+        "刷新以后草稿还在（标题、封面、正文）",
+        bool(kept)
+        and kept.startswith("浏览器写的文章|")
+        and kept.endswith("|true")
+        and kept.split("|")[1].isdigit(),
+        kept or "",
+    )
     press("button[name=publish]")
     step("文章发布了", says("已发布"))
     step("封面留在文章上", bool(js("document.querySelector('#id_cover').value")))

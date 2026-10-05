@@ -29,7 +29,7 @@
           {% with page=row.page %}
             <tr data-article-row="{{ page.pk }}">
               <td><a class="b-title" href="{% url 'backoffice:article_edit' page.pk %}">{{ page.draft_title|default:page.title }}</a></td>
-              <td data-label="分类">{{ page.category.name }}</td>
+              <td data-label="分类">{{ page.category.name|default:"未选分类" }}</td>
               <td data-label="作者">{{ page.author.nickname }}</td>
               <td data-label="状态">{% include "components/status_badge.html" with label=row.status.0 kind=row.status.1 %}</td>
               <td data-label="最后改动">{{ page.latest_revision_created_at|date:"Y.m.d H:i"|default:"—" }}</td>

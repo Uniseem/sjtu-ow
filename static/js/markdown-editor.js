@@ -247,11 +247,20 @@
       ],
     });
 
-    /* Wagtail's unsaved-changes warning and live preview listen to the form. */
+    /* The form hears typing as typing (autosave waits for a pause, design
+       13.17) and a change once the editor is left, as a plain textarea does;
+       a change per keystroke would save per keystroke (v7.9). Wagtail's
+       unsaved-changes warning and live preview listen to the same events. */
     editor.codemirror.on("change", function () {
       textarea.value = editor.value();
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
-      textarea.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    var before = textarea.value;
+    editor.codemirror.on("blur", function () {
+      if (textarea.value !== before) {
+        before = textarea.value;
+        textarea.dispatchEvent(new Event("change", { bubbles: true }));
+      }
     });
 
     /* Drawn while hidden (a closed tab or panel), CodeMirror measures nothing. */

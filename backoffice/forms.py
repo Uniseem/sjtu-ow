@@ -131,6 +131,7 @@ class ArticleForm(KeepSeconds, forms.ModelForm):
         self.user = user
         self.parent = parent
         self._original_slug = self.instance.slug
+        self._original_title = self.instance.title or ""
         self.fields["title"].label = "标题"
         self.fields["title"].help_text = ""
         self.fields["category"].empty_label = "选一个分类"
@@ -205,19 +206,33 @@ class ArticleForm(KeepSeconds, forms.ModelForm):
             candidate = f"{base}-{number}"
         return candidate
 
-    def save(self, commit=True):
-        page = super().save(commit=False)
-        # Wagtail's full_clean fills an empty slug from the title without
-        # knowing the parent of a new page; ours steps round the reserved
-        # words and the siblings. A plain member's form has no slug and
-        # keeps the one the page already has.
-        keep = "slug" not in self.fields and self._original_slug
-        if not keep and not self.cleaned_data.get("slug"):
+    def _slug_follows(self, page) -> bool:
+        """Whether the address comes from the title this time. Emptied by
+        the editor: yes (「空着就按标题生成」). Never published and still the
+        one made from the title (design 13.17, v7.9): yes, so autosave does
+        not fix it on the first letter typed. Typed by the editor: no."""
+        if "slug" in self.fields and "slug" in self.changed_data:
+            return not self.cleaned_data.get("slug", self._original_slug)
+        if page.first_published_at is not None:
+            return False
+        original = self._original_slug
+        return not original or original == self._free_slug(self._original_title)
+
+    def finish(self, page):
+        """What saving adds, whole or in part (``core.autosave``): the
+        address and who wrote it. Wagtail's full_clean fills an empty slug
+        from the title without knowing the parent of a new page; ours steps
+        round the reserved words and the siblings."""
+        if self._slug_follows(page):
             page.slug = self._free_slug(page.title or "")
         if not page.author_id:
             page.author = page.owner if page.owner_id else self.user
         if not page.owner_id:
             page.owner = self.user
+        return page
+
+    def save(self, commit=True):
+        page = self.finish(super().save(commit=False))
         if commit:
             page.save()
         return page
@@ -248,7 +263,7 @@ class IndexIntroForm(forms.Form):
         label="栏目介绍",
         required=False,
         widget=MarkdownEditor(attrs={"rows": 8}),
-        help_text="显示在资讯栏目顶部。保存后马上生效。",
+        help_text="显示在资讯栏目顶部。点「发布」后生效。",
     )
 
 

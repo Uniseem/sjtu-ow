@@ -264,17 +264,19 @@ def test_pins_are_three_published_articles_at_most_once_each(site, client):
     assert "同一篇文章只能置顶一次" in same.content.decode()
     drafted = client.post(url, {"article_1": draft.pk})
     assert drafted.status_code == 200  # not a choice
-    client.post(url, {"article_1": second.pk, "article_2": first.pk})
+    client.post(url, {"article_1": second.pk, "article_2": first.pk, "publish": "1"})
     home = HomePage.objects.get()
     pinned = [rel.article_id for rel in home.pinned_articles.order_by("sort_order")]
     assert pinned == [second.pk, first.pk]
-    assert not home.has_unpublished_changes  # saved straight to the homepage
+    assert not home.has_unpublished_changes  # 「发布」 (v7.9: drafts until then)
 
 
 @pytest.mark.django_db
 def test_the_news_introduction_is_markdown(site, client):
     client.force_login(_user("intro196@example.com", "内容编辑"))
-    client.post(reverse("backoffice:index_intro"), {"intro": "**新人**先看攻略"})
+    client.post(
+        reverse("backoffice:index_intro"), {"intro": "**新人**先看攻略", "publish": "1"}
+    )
     news = ArticleIndexPage.objects.get(slug="news")
     assert news.intro == "**新人**先看攻略"
     html = client.get(news.url).content.decode()

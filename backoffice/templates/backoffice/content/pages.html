@@ -3,7 +3,7 @@
 {% block content %}
   <section class="b-section" data-site-part="pins">
     <div class="c-panel__head">
-      <h2 class="b-section__title">首页的置顶文章</h2>
+      <h2 class="b-section__title">首页的置顶文章{% if home.has_unpublished_changes %} <span class="b-sub" data-unpublished>有改动还没发布</span>{% endif %}</h2>
       <a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'backoffice:home_pins' %}">改置顶</a>
     </div>
     {% if pinned %}
@@ -18,7 +18,7 @@
   {% if index %}
     <section class="b-section" data-site-part="intro">
       <div class="c-panel__head">
-        <h2 class="b-section__title">资讯栏目的介绍</h2>
+        <h2 class="b-section__title">资讯栏目的介绍{% if index.has_unpublished_changes %} <span class="b-sub" data-unpublished>有改动还没发布</span>{% endif %}</h2>
         <a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'backoffice:index_intro' %}">改介绍</a>
       </div>
       <p class="b-section__text">{{ index.intro|truncatechars:120|default:"还没写介绍。" }}</p>

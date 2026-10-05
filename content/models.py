@@ -263,8 +263,11 @@ class ArticleIndexPage(SeoPageMixin, ReservedSlugMixin, Page):
 class ArticlePage(SeoPageMixin, Page):
     seo_kind = "article"
 
+    # Empty only on a draft (design 13.17, v7.9): a new article exists from
+    # its first change; publishing validates the page whole and needs one.
     category = models.ForeignKey(
         ArticleCategory,
+        null=True,
         on_delete=models.PROTECT,
         related_name="articles",
         verbose_name="分类",

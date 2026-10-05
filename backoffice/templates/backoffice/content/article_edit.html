@@ -2,7 +2,7 @@
 
 {% block content %}
   <div class="{% if article %}b-split{% else %}b-single{% endif %}">
-    <form method="post" class="b-form" novalidate>
+    <form method="post" class="b-form" novalidate data-autosave data-autosave-idle="改了就自动存成草稿，点「发布」才上线">
       {% csrf_token %}
       {% if guide %}
         <div class="c-notice c-notice--info" data-submission-guide>
@@ -11,7 +11,7 @@
             <ul class="list-disc pl-5">
               <li>填好标题、选分类，摘要写一两句，会显示在文章列表和分享卡片上。</li>
               <li>正文用 Markdown 写，工具栏有加粗、标题、列表、链接这些按钮，点最右边的「?」看写法。图片点图片按钮、拖进来或直接粘贴就会上传，单独一行的图片方括号里写图注；B 站视频把链接单独贴一行。点眼睛图标看排出来的样子。</li>
-              <li>写到一半可以点底部的「保存草稿」，以后在后台首页「我的文章」里接着写。</li>
+              <li>写的时候自动存成草稿（表单上方写着「已保存」），以后在后台首页「我的文章」里接着写。</li>
               <li>写完点底部的「发布」就上线了，不用等审核。发布后 AI 会定时检查，有问题管理员会联系你或者撤下。改已发布的文章，改完再点一次「发布」。</li>
             </ul>
           </div>
@@ -20,8 +20,8 @@
       {% include "backoffice/parts/fieldsets.html" %}
       <div class="b-formbar">
         {% if can_publish %}<button type="submit" name="publish" value="1" class="c-btn c-btn--primary">发布</button>{% endif %}
-        <button type="submit" name="save" value="1" class="c-btn c-btn--secondary">保存草稿</button>
-        {% if article %}<a class="c-btn c-btn--quiet" href="{% url 'backoffice:article_preview' article.pk %}" target="_blank" rel="noopener">预览草稿</a>{% endif %}
+        <button type="submit" name="save" value="1" class="c-btn c-btn--secondary" data-autosave-button>保存草稿</button>
+        {% if article %}<a class="c-btn c-btn--quiet" data-article-preview href="{% url 'backoffice:article_preview' article.pk %}" target="_blank" rel="noopener">预览草稿</a>{% else %}<span data-article-preview hidden></span>{% endif %}
         {% if article.has_unpublished_changes and article.live %}<span class="b-formbar__note">有改动还没发布</span>{% endif %}
       </div>
     </form>
