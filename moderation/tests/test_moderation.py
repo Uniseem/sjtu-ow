@@ -327,7 +327,7 @@ def test_a_patrol_reads_long_pieces_whole_and_then_forgets_them(moderation_on):
     fake = _verdicts(1, risk=Risk.NONE)
     with patch("moderation.providers.get_provider") as get_provider:
         get_provider.return_value.review.return_value = fake
-        assert patrol.review_pending() == 1
+        assert patrol.review_pending().reviewed == 1
         chunks = get_provider.return_value.review.call_args[0][0]
     assert "".join(chunks).count("攻略") == 300  # the whole text, not the excerpt
     item.refresh_from_db()
@@ -352,7 +352,7 @@ def test_a_patrol_batches_short_items(moderation_on):
     fake = _verdicts(3, risk=Risk.LOW, reason="轻微")
     with patch("moderation.providers.get_provider") as get_provider:
         get_provider.return_value.review.return_value = fake
-        assert patrol.review_pending() == 3
+        assert patrol.review_pending().reviewed == 3
         assert get_provider.return_value.review.call_count == 1
         assert len(get_provider.return_value.review.call_args[0][0]) == 3
     assert ModerationItem.objects.filter(risk=Risk.LOW).count() == 3
@@ -367,7 +367,7 @@ def test_a_patrol_stops_at_the_daily_cap(moderation_on):
     services.note_usage(calls=1, items=1, input_tokens=1, output_tokens=1)
     services.submit(target_type=TargetType.ARTICLE, target_id=3, field="c", text="正文")
     with patch("moderation.providers.get_provider") as get_provider:
-        assert patrol.review_pending() == 0
+        assert patrol.review_pending().reviewed == 0
     assert get_provider.call_count == 0
     assert ModerationItem.objects.filter(checked_at__isnull=True).count() == 1
 
@@ -428,7 +428,7 @@ def test_the_letter_goes_to_the_address_set_in_the_settings(moderation_on):
         item, risk=Risk.MEDIUM, categories=[], reason="可疑", quote="", model="m"
     )
     mail.outbox.clear()
-    with patch("moderation.patrol.review_pending", return_value=0):
+    with patch("moderation.patrol.review_pending", return_value=patrol.Round()):
         assert patrol.run() == (0, 1)
     assert [message.recipients() for message in mail.outbox] == [["patrol@example.com"]]
 

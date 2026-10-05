@@ -1,7 +1,9 @@
 """Worker tasks for AI moderation (design 5.5.3, v6.72).
 
 One task: the patrol. The worker's beat enqueues it every
-``patrol.PATROL_MINUTES`` (``patrol.enqueue_if_due``). Until v6.72 every save
+``patrol.PATROL_MINUTES`` (``patrol.enqueue_if_due``); a patrol that runs out
+of its minute queues the rest as a follow-up (``patrol.follow_up``, v7.2).
+Until v6.72 every save
 queued its own review, a digest went out each morning and a button queued a
 night-time full scan.
 """

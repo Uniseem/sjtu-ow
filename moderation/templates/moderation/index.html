@@ -15,8 +15,12 @@
 
   <section class="b-section">
     <p class="b-section__text">AI 每 30 分钟巡查一次新写或改过的内容，觉得可能不妥的会发信提醒（收件人在「设置 → 全站设置 → AI 审核」里填，没填发给超级管理员）。网站默认信任所有人，这里的记录是给你查的，标不标处理结果都行。<strong>AI 只做判断，不会改动任何内容。</strong></p>
-    <p class="b-sub">模型 <span class="b-mono">{{ model }}</span>；今天已调用 {{ usage.calls }} 次、送审 {{ usage.items }} 条，剩余额度 {{ quota_left }}；本月调用 {{ month.calls }} 次、送审 {{ month.items }} 条，估算花费 ${{ month.cost|floatformat:4 }}。</p>
+    <p class="b-sub">模型 <span class="b-mono">{{ model }}</span>；今天已调用 {{ usage.calls }} 次、送审 {{ usage.items }} 条，剩余额度 {{ quota_left }}；本月调用 {{ month.calls }} 次、送审 {{ month.items }} 条，估算花费 ${{ month.cost|floatformat:4 }}。{% if waiting %}还有 {{ waiting }} 条等着看。{% endif %}</p>
   </section>
+
+  {% if failed %}
+    <div class="c-notice c-notice--warn">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">有 {{ failed }} 条内容上次没看成：{{ last_error }}{{ last_error_hint }}。它们还算没看过，下次巡查再试；可能是内容本身引起的失败（比如服务商拦截、回答被截断）满 {{ give_up_after }} 次才记成「无法判定」。</div></div>
+  {% endif %}
 
   <form method="get" class="b-filters">
     <select name="status" class="c-input" aria-label="状态" data-autosubmit>

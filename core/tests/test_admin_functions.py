@@ -507,14 +507,37 @@ def test_the_owner_hears_about_missing_or_failed_backups(
 
 @pytest.mark.django_db
 def test_the_owner_hears_when_the_ai_cannot_be_reached(site, client):
-    """Round 153 (design 14.1, v6.46)."""
+    """Round 153 (design 14.1, v6.46); v7.2: content still waiting after a
+    try that did not come back, and the latest reason; gone once read, and
+    while the review is switched off."""
+    from moderation.tests.test_moderation import configure_ai
+
+    ai = configure_ai()
+    ai.moderation_enabled = True
+    ai.save()
     now = timezone.now()
+    waiting = {"checked_at": None, "risk": Risk.UNKNOWN}
+    older = _flagged(
+        **waiting, last_error="调用失败：HTTP 500", failed_at=now - timedelta(hours=3)
+    )
+    _flagged(
+        **waiting, last_error="调用失败：HTTP 401", failed_at=now - timedelta(hours=1)
+    )
+    _flagged(**waiting)  # not tried yet
+    # Read in the end, and a failure recorded as read before v7.2: neither waits.
+    _flagged(last_error="调用失败：HTTP 500", failed_at=now - timedelta(hours=5))
     _flagged(reason="调用失败：HTTP 401", checked_at=now - timedelta(hours=2))
-    _flagged(reason="调用失败：HTTP 500", checked_at=now - timedelta(hours=30))
-    _flagged(reason="疑似广告", checked_at=now - timedelta(hours=1))
     client.force_login(_staff("root153@example.com", superuser=True))
     todo = _todo(client)
-    assert "AI 审核最近 24 小时有 1 次调用失败（HTTP 401）" in todo
-    assert reverse("moderation_index") in todo
+    assert "AI 审核有 2 条内容没看成（调用失败：HTTP 401），下次巡查再试" in todo
+    assert reverse("backoffice:site_settings") in todo
+    older.checked_at = now
+    older.save()
+    assert "AI 审核有 1 条内容没看成" in _todo(client)
+    ai.moderation_enabled = False
+    ai.save()
+    assert "没看成" not in _todo(client)
+    ai.moderation_enabled = True
+    ai.save()
     client.force_login(_staff("editor153@example.com", "内容编辑"))
-    assert "调用失败" not in _todo(client)
+    assert "没看成" not in _todo(client)

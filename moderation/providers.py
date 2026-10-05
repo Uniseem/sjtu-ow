@@ -24,6 +24,10 @@ DEFAULT_TIMEOUT = 30
 DEFAULT_MAX_OUTPUT_TOKENS = 600
 MAX_ATTEMPTS = 3
 RETRY_DELAYS = (1, 3)
+# What the reason of a call that never came back starts with (the hints in
+# 「试一下」 and records from before v7.2 rely on it).
+FAILED_CALL = "调用失败："
+TRUNCATED = "回答被截断"
 
 
 class ProviderError(Exception):
@@ -37,6 +41,8 @@ class Verdict:
     categories: list = field(default_factory=list)
     reason: str = ""
     quote: str = ""
+    # Set when the answer left this one out: not a verdict, try it again.
+    error: str = ""
 
 
 @dataclass
@@ -45,10 +51,18 @@ class ProviderResult:
     model: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
+    # Design 5.5.3 (v7.2): set when the request did not come back with a
+    # usable answer; nothing in it counts as reviewed.
+    error: str = ""
+    # Whether the failure may come from the content sent (HTTP 400, a cut-off
+    # or malformed answer) rather than the network, the service or the
+    # settings; only those count towards giving up on an item.
+    counts: bool = False
 
 
 def unknown_result(count: int, model: str, reason: str) -> ProviderResult:
-    """Everything that is not a clean answer becomes 「无法判定」 (design 5.5.3)."""
+    """A clean 「无法判定」 for every text: the model would not say (design
+    5.5.3: a refusal goes to a person, it is not an error)."""
     return ProviderResult(
         verdicts=[
             Verdict(index=index, risk=Risk.UNKNOWN, reason=reason)
@@ -56,6 +70,33 @@ def unknown_result(count: int, model: str, reason: str) -> ProviderResult:
         ],
         model=model,
     )
+
+
+def failed_result(count: int, model: str, error: str, *, counts: bool):
+    """No usable answer (design 5.5.3, v7.2): the verdicts are placeholders
+    and the result carries why."""
+    result = unknown_result(count, model, error)
+    for verdict in result.verdicts:
+        verdict.error = error
+    result.error = error
+    result.counts = counts
+    return result
+
+
+def http_error(exc: urllib.error.HTTPError) -> str:
+    """「HTTP 400：what the service said」, so the owner sees the provider's
+    own words (a content block, an unknown parameter)."""
+    try:
+        raw = exc.read().decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001 - the status alone still says enough
+        raw = ""
+    try:
+        detail = json.loads(raw).get("error")
+        said = detail.get("message", "") if isinstance(detail, dict) else detail
+    except (ValueError, AttributeError):
+        said = raw
+    said = " ".join(str(said or "").split())[:160]
+    return f"HTTP {exc.code}：{said}" if said else f"HTTP {exc.code}"
 
 
 class OpenAICompatibleProvider:
@@ -119,13 +160,18 @@ class OpenAICompatibleProvider:
     def review(self, texts, model: str) -> ProviderResult:
         payload = self.build_payload(texts, model)
         last_error = ""
+        counts = False
         for attempt in range(MAX_ATTEMPTS):
             try:
                 data = self._post(payload)
             except urllib.error.HTTPError as exc:
-                last_error = f"HTTP {exc.code}"
+                last_error = http_error(exc)
                 if exc.code < 500 and exc.code != 429:
-                    break  # bad request or bad key: retrying will not help
+                    # Bad request or bad key: retrying will not help. Only a
+                    # plain 400 may be about this content (a provider's own
+                    # content block); 401/403/404 are the settings.
+                    counts = exc.code == 400
+                    break
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
                 last_error = str(exc)
             except json.JSONDecodeError as exc:
@@ -135,7 +181,9 @@ class OpenAICompatibleProvider:
             if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(RETRY_DELAYS[min(attempt, len(RETRY_DELAYS) - 1)])
         logger.warning("审核调用失败：%s", last_error)
-        return unknown_result(len(texts), model, f"调用失败：{last_error}")
+        return failed_result(
+            len(texts), model, f"{FAILED_CALL}{last_error}", counts=counts
+        )
 
     def parse(self, data: dict, texts, model: str) -> ProviderResult:
         usage = data.get("usage") or {}
@@ -145,39 +193,53 @@ class OpenAICompatibleProvider:
         content = ""
         if choices:
             content = (choices[0].get("message") or {}).get("content") or ""
-        if not content.strip():
+        if finish == "length":
+            # Cut off at the output limit (thinking left on, or too many
+            # items for 最多输出): half an answer is no answer (v7.2).
+            result = failed_result(
+                len(texts),
+                used_model,
+                f"{TRUNCATED}（finish_reason=length）",
+                counts=True,
+            )
+        elif not content.strip():
             # Refusal or empty answer: not an error, just "cannot tell".
             result = unknown_result(
                 len(texts), used_model, f"模型未给出结论（{finish}）"
             )
         else:
-            try:
-                parsed = json.loads(content)
-                results = parsed["results"]
-                verdicts = [self._verdict(item) for item in results]
-            except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-                result = unknown_result(
-                    len(texts), used_model, f"输出不符合约定结构：{exc}"
-                )
-            else:
-                by_index = {item.index: item for item in verdicts}
-                result = ProviderResult(
-                    verdicts=[
-                        by_index.get(
-                            index,
-                            Verdict(
-                                index=index,
-                                risk=Risk.UNKNOWN,
-                                reason="模型漏掉了这一条",
-                            ),
-                        )
-                        for index in range(len(texts))
-                    ],
-                    model=used_model,
-                )
+            result = self._answer(content, len(texts), used_model)
         result.input_tokens = int(usage.get("prompt_tokens") or 0)
         result.output_tokens = int(usage.get("completion_tokens") or 0)
         return result
+
+    def _answer(self, content: str, count: int, model: str) -> ProviderResult:
+        """The verdicts in a complete answer; one the answer leaves out is to
+        be tried again, and an answer about none of them is no answer."""
+        try:
+            parsed = json.loads(content)
+            results = parsed["results"]
+            verdicts = [self._verdict(item) for item in results]
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            return failed_result(
+                count, model, f"输出不符合约定结构：{exc}", counts=True
+            )
+        by_index = {item.index: item for item in verdicts}
+        if not by_index.keys() & set(range(count)):
+            return failed_result(count, model, "回答里没有任何一条的结论", counts=True)
+        missed = "模型漏掉了这一条"
+        return ProviderResult(
+            verdicts=[
+                by_index.get(
+                    index,
+                    Verdict(
+                        index=index, risk=Risk.UNKNOWN, reason=missed, error=missed
+                    ),
+                )
+                for index in range(count)
+            ],
+            model=model,
+        )
 
     @staticmethod
     def _verdict(item: dict) -> Verdict:

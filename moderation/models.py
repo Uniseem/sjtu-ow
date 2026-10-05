@@ -100,6 +100,11 @@ class ModerationItem(models.Model):
     handling_note = models.CharField("处理说明", max_length=300, blank=True)
     checked_at = models.DateTimeField("审核完成时间", null=True, blank=True)
     notified_at = models.DateTimeField("已通知时间", null=True, blank=True)
+    # Design 5.5.3 (v7.2): a review that did not come back leaves the item
+    # waiting; only failures the content may cause are counted.
+    attempts = models.PositiveSmallIntegerField("算在这条上的失败次数", default=0)
+    last_error = models.CharField("最近一次没看成的原因", max_length=300, blank=True)
+    failed_at = models.DateTimeField("最近一次没看成的时间", null=True, blank=True)
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
 
     class Meta:

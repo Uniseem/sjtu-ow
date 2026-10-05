@@ -89,6 +89,7 @@ def moderation_index(request):
     page = Paginator(queryset, PAGE_SIZE).get_page(request.GET.get("page"))
     usage = services.used_today()
     month = services.month_usage()
+    waiting, failed, last_error = services.waiting()
     return render(
         request,
         "moderation/index.html",
@@ -112,6 +113,11 @@ def moderation_index(request):
             "usage": usage,
             "quota_left": services.quota_left(),
             "month": month,
+            "waiting": waiting,
+            "failed": failed,
+            "last_error": last_error,
+            "last_error_hint": services.try_hint(last_error),
+            "give_up_after": services.GIVE_UP_AFTER,
             "breadcrumbs_items": _breadcrumbs({"url": "", "label": "巡查记录"}),
         },
     )

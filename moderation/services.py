@@ -19,7 +19,13 @@ from moderation.models import ModerationItem, ModerationUsage, Risk, TargetType
 
 logger = logging.getLogger(__name__)
 
-MAX_BATCH = 20  # short items per request (design 5.5.3)
+MAX_BATCH = 20  # short items per request at most (design 5.5.3)
+# One short item's answer (risk, categories, a sentence, a quote) is taken as
+# this many output tokens: a batch is 最多输出 ÷ this (v7.2).
+TOKENS_PER_ITEM = 60
+# Failures the content may cause before an item is given up on (v7.2).
+GIVE_UP_AFTER = 3
+GAVE_UP = "AI 没看成"
 DEDUPE_DAYS = 30
 CHUNK_CHARS = 8000
 EXCERPT_CHARS = 2000
@@ -148,12 +154,21 @@ def estimated_cost(input_tokens: int, output_tokens: int) -> float:
 
 
 def recent_verdict(digest: str, exclude_pk=None):
-    """A verdict for the same text within the dedupe window (design 5.5.3)."""
+    """A verdict for the same text within the dedupe window (design 5.5.3).
+    Never one the AI did not give: a review given up on, or a failed call
+    recorded before v7.2."""
+    from moderation.providers import FAILED_CALL
+
     cutoff = timezone.now() - timedelta(days=DEDUPE_DAYS)
-    query = ModerationItem.objects.filter(
-        text_hash=digest,
-        checked_at__gte=cutoff,
-    ).exclude(pk=exclude_pk)
+    query = (
+        ModerationItem.objects.filter(
+            text_hash=digest,
+            checked_at__gte=cutoff,
+        )
+        .exclude(pk=exclude_pk)
+        .exclude(reason__startswith=GAVE_UP)
+        .exclude(reason__startswith=FAILED_CALL)
+    )
     return query.order_by("-checked_at").first()
 
 
@@ -195,6 +210,31 @@ def record(
             "full_text",
         ]
     )
+
+
+def note_failure(items, error: str, *, counts: bool) -> int:
+    """The review did not come back (design 5.5.3, v7.2): the items stay
+    waiting for the next patrol, the long text kept. A failure the content
+    may cause counts; at GIVE_UP_AFTER the item is put down as 「无法判定」
+    for a person to read. Returns how many were given up on."""
+    now = timezone.now()
+    given_up = 0
+    for item in items:
+        item.attempts += 1 if counts else 0
+        item.last_error = error[:300]
+        item.failed_at = now
+        item.save(update_fields=["attempts", "last_error", "failed_at"])
+        if item.attempts >= GIVE_UP_AFTER:
+            record(
+                item,
+                risk=Risk.UNKNOWN,
+                categories=[],
+                reason=f"{GAVE_UP}（试了 {item.attempts} 次）：{error}",
+                quote="",
+                model=current_model(),
+            )
+            given_up += 1
+    return given_up
 
 
 def copy_recent_verdict(item: ModerationItem) -> bool:
@@ -250,22 +290,41 @@ def worst(verdicts):
     return max(verdicts, key=lambda verdict: RISK_ORDER.get(verdict.risk, 0))
 
 
-def pending_short_items(limit: int = MAX_BATCH):
-    return list(
-        ModerationItem.objects.filter(
-            checked_at__isnull=True,
-            target_type__in=list(SHORT_TYPES),
-        ).order_by("created_at")[:limit]
+def batch_size() -> int:
+    """Short items per request: as many answers as 最多输出 holds (v7.2)."""
+    tokens = site_settings().moderation_max_output_tokens or 0
+    return max(1, min(MAX_BATCH, tokens // TOKENS_PER_ITEM))
+
+
+def pending_short_items(limit: int | None = None):
+    """The next batch: items with no failure counted first (a lost connection
+    is no fault of theirs); one that may have caused a failure goes alone,
+    after them, so a bad text does not hold up others (v7.2)."""
+    waiting = ModerationItem.objects.filter(
+        checked_at__isnull=True,
+        target_type__in=list(SHORT_TYPES),
     )
+    fresh = waiting.filter(attempts=0).order_by("created_at")
+    batch = list(fresh[: limit or batch_size()])
+    return batch or list(waiting.order_by("attempts", "failed_at", "created_at")[:1])
 
 
 def pending_long_items(limit: int | None = 50):
     queryset = (
         ModerationItem.objects.filter(checked_at__isnull=True)
         .exclude(target_type__in=list(SHORT_TYPES))
-        .order_by("created_at")
+        .order_by("attempts", "failed_at", "created_at")
     )
     return list(queryset if limit is None else queryset[:limit])
+
+
+def waiting():
+    """What the patrol has not read yet, and the part whose last try did not
+    come back (the to-do and the review list, v7.2)."""
+    queryset = ModerationItem.objects.filter(checked_at__isnull=True)
+    failed = queryset.filter(failed_at__isnull=False).order_by("-failed_at")
+    last = failed.values_list("last_error", flat=True).first() or ""
+    return queryset.count(), failed.count(), last
 
 
 MODERATION_PERMISSIONS = ("view_moderationitem", "change_moderationitem")
@@ -398,19 +457,29 @@ def try_connection():
     )
     verdict = result.verdicts[0] if result.verdicts else None
     if verdict is None or verdict.risk == Risk.UNKNOWN:
-        reason = verdict.reason if verdict else "没有返回结果"
-        hint = ""
-        if "401" in reason or "403" in reason:
-            hint = "（多半是密钥不对）"
-        elif "404" in reason:
-            hint = "（多半是模型名或服务地址不对）"
-        return False, f"连不上 AI 审核：{reason}{hint}。模型 {model}。"
+        reason = result.error or (verdict.reason if verdict else "没有返回结果")
+        return False, f"连不上 AI 审核：{reason}{try_hint(reason)}。模型 {model}。"
     used = result.input_tokens + result.output_tokens
     label = dict(Risk.choices).get(verdict.risk, verdict.risk)
     return True, (
         f"AI 审核能用：模型 {result.model or model} 把测试内容判为"
         f"「{label}」，用了 {used} 个 token。"
     )
+
+
+def try_hint(reason: str) -> str:
+    """What to change, for the failures an owner can fix in the settings."""
+    from moderation.providers import TRUNCATED
+
+    if "HTTP 401" in reason or "HTTP 403" in reason:
+        return "（多半是密钥不对）"
+    if "HTTP 404" in reason:
+        return "（多半是模型名或服务地址不对）"
+    if TRUNCATED in reason:
+        return "（把「最多输出 token」调大，或者在附加请求参数里关掉思考模式）"
+    if "timed out" in reason.lower():
+        return "（回答要整段生成完才返回：把「超时」调大，或者关掉思考模式）"
+    return ""
 
 
 def latest_verdict(page):
