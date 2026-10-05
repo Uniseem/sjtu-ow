@@ -64,6 +64,8 @@ def tournament_action(request, pk, action):
             "tournament": tournament,
             "action_label": label,
             "announce": _announce_offer(tournament) if action == "publish" else None,
+            # Design 13.17 (v7.10): a draft saved half-filled says what it lacks.
+            "missing": services.missing(tournament) if action == "publish" else [],
             "needs_reason": False,
             **_back(tournament),
         },

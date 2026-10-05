@@ -98,18 +98,7 @@ def save_valid_fields(form) -> list[str]:
         return []
     model = instance._meta.model  # request.user comes wrapped
     stored = model._default_manager.get(pk=instance.pk)
-    concrete, many = [], []
-    for name in names:
-        try:
-            model_field = model._meta.get_field(name)
-        except Exception:  # noqa: BLE001 - a form-only field
-            continue
-        value = form.cleaned_data[name]
-        if model_field.many_to_many:
-            many.append((name, value))
-        else:
-            model_field.save_form_data(stored, value)
-            concrete.append(name)
+    concrete, many = _apply(form, stored, names)
     try:
         with transaction.atomic():
             if concrete:
@@ -120,6 +109,38 @@ def save_valid_fields(form) -> list[str]:
         return []
     form.instance = stored
     return [name for name, _ in many] + concrete
+
+
+def _apply(form, target, names):
+    """Write the named fields' cleaned values onto ``target``; returns the
+    plain fields written and the many-to-many ones left to set after."""
+    model = target._meta.model
+    concrete, many = [], []
+    for name in names:
+        try:
+            model_field = model._meta.get_field(name)
+        except Exception:  # noqa: BLE001 - a form-only field
+            continue
+        value = form.cleaned_data[name]
+        if model_field.many_to_many:
+            many.append((name, value))
+        else:
+            model_field.save_form_data(target, value)
+            concrete.append(name)
+    return concrete, many
+
+
+def new_from_valid_fields(form, fresh):
+    """Something new from its first change (v7.6, v7.10), required fields
+    empty or not: the whole form when it is valid, otherwise ``fresh`` (an
+    unsaved instance as it stood before the form touched it, a copy's
+    fields already in it) with the changed fields that are fine. Returns
+    (unsaved instance, field names); the caller saves it."""
+    if form.is_valid():
+        return form.save(commit=False), list(form.changed_data)
+    names = valid_changes(form)
+    concrete, _many = _apply(form, fresh, names)
+    return fresh, concrete
 
 
 def log_edit(instance, user, action: str = "wagtail.edit", **data) -> None:
@@ -142,4 +163,5 @@ def log_edit(instance, user, action: str = "wagtail.edit", **data) -> None:
         model.objects.filter(pk=recent.pk).update(timestamp=timezone.now())
         return
     extra = {"data": data} if data else {}
-    log(instance, action, user=user, **extra)
+    # An entry needs a label; a draft may not have a name yet (v7.10).
+    log(instance, action, user=user, title=str(instance) or "（未命名）", **extra)

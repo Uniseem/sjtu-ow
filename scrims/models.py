@@ -61,7 +61,8 @@ class Scrim(models.Model):
 
     title = models.CharField("标题", max_length=100)
     description = models.TextField("说明", blank=True)
-    starts_at = models.DateTimeField("开始时间")
+    # Empty only on a draft (design 13.17, v7.10): publishing needs it.
+    starts_at = models.DateTimeField("开始时间", null=True)
     signup_closes_at = models.DateTimeField(
         "报名截止时间",
         null=True,
@@ -130,7 +131,12 @@ class Scrim(models.Model):
 
     def signup_open(self, now=None) -> bool:
         now = now or timezone.now()
-        return self.status == ScrimStatus.PUBLISHED and now <= self.signup_deadline
+        deadline = self.signup_deadline
+        return (
+            self.status == ScrimStatus.PUBLISHED
+            and deadline is not None
+            and now <= deadline
+        )
 
     @property
     def is_public(self) -> bool:

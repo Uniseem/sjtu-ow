@@ -2,16 +2,15 @@
 
 {% block content %}
   <div class="{% if item %}b-split{% else %}b-single{% endif %}">
-    <form method="post" class="b-form" novalidate>
+    <form method="post" class="b-form" novalidate data-autosave>
       {% csrf_token %}
       {% if copied_from %}
-        <div class="c-notice c-notice--info">{% include "components/icon.html" with name="copy" %}<div class="c-notice__body">从「{{ copied_from.title }}」复制：内容和规则照抄，时间按整周挪到将来。检查一遍再保存；保存后是一份新的草稿。</div></div>
+        <div class="c-notice c-notice--info">{% include "components/icon.html" with name="copy" %}<div class="c-notice__body">从「{{ copied_from.title }}」复制：内容和规则照抄，时间按整周挪到将来。改一处就建成一份新的草稿。</div></div>
       {% endif %}
       {% include "backoffice/parts/fieldsets.html" %}
       <div class="b-formbar">
-        <button type="submit" class="c-btn c-btn--primary">保存</button>
-        <a class="c-btn c-btn--secondary" href="{{ back_url }}">不改了</a>
-        {% if not item %}<span class="b-formbar__note">保存后是草稿，发布在列表或编辑页的「更多」里。</span>{% endif %}
+        <button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button>
+        {% if not item %}<span class="b-formbar__note" data-event-next>改一处就建成草稿，必填项空着也存；填好以后在「更多」里发布。</span>{% endif %}
       </div>
     </form>
     {% if item %}

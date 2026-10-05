@@ -184,9 +184,31 @@ def can_manage(user) -> bool:
     )
 
 
+def missing(tournament) -> list[str]:
+    """What a draft still lacks before it can go out (design 13.17, v7.10):
+    autosave keeps whatever was typed, publishing needs these."""
+    gaps = []
+    if not (tournament.title or "").strip():
+        gaps.append("标题")
+    if tournament.registration_opens_at is None:
+        gaps.append("报名开始时间")
+    if tournament.registration_closes_at is None:
+        gaps.append("报名截止时间")
+    if (
+        tournament.registration_opens_at
+        and tournament.registration_closes_at
+        and tournament.registration_opens_at >= tournament.registration_closes_at
+    ):
+        gaps.append("晚于报名开始的报名截止时间")
+    return gaps
+
+
 def publish(*, tournament, actor) -> Tournament:
     if tournament.status == TournamentStatus.CANCELLED:
         raise TournamentError("已取消的赛事不能再发布。")
+    gaps = missing(tournament)
+    if gaps:
+        raise TournamentError(f"还没填好：{'、'.join(gaps)}。填好再发布。")
     tournament.status = TournamentStatus.PUBLISHED
     if tournament.published_at is None:
         tournament.published_at = timezone.now()
@@ -207,6 +229,9 @@ def finish(*, tournament, actor) -> Tournament:
 def cancel(*, tournament, actor, reason="") -> Tournament:
     if tournament.status == TournamentStatus.CANCELLED:
         raise TournamentError("赛事已经取消了。")
+    if tournament.status == TournamentStatus.DRAFT and missing(tournament):
+        # Cancelled is public; a half-filled draft would show its blanks.
+        raise TournamentError("还没填好的草稿不用取消，直接删除。")
     tournament.status = TournamentStatus.CANCELLED
     tournament.save(update_fields=["status", "updated_at"])
     notify_cancelled(tournament, reason)
@@ -249,7 +274,7 @@ def after_change(tournament, actor=None) -> None:
 def schedule_phase_refresh(tournament) -> None:
     """Regenerate when registration opens and when it closes (design 13.13.4)."""
     from core import prerender
-    from core.tasks import prerender_page
+    from core.tasks import enqueue_once, prerender_page
 
     if not prerender.is_enabled() or not tournament.is_listed:
         return
@@ -259,11 +284,9 @@ def schedule_phase_refresh(tournament) -> None:
         tournament.registration_closes_at,
     ):
         if moment and moment > now:
-            prerender_page.using(run_after=moment).enqueue(
-                tournament.get_absolute_url()
-            )
-            prerender_page.using(run_after=moment).enqueue("/tournaments/")
-            prerender_page.using(run_after=moment).enqueue("/")
+            # Once per page and moment, however often it is saved (v7.10).
+            for path in (tournament.get_absolute_url(), "/tournaments/", "/"):
+                enqueue_once(prerender_page, path, run_after=moment)
 
 
 def note_time_change(tournament, old_starts_at) -> bool:
@@ -305,8 +328,13 @@ def schedule_reminder(tournament) -> None:
     """Design 8.1 (v6.24): remind the players a day before it starts.
 
     Re-scheduling is safe: the task re-reads the tournament and checks the
-    time and ``reminder_sent_at``, so an outdated task does nothing.
+    time and ``reminder_sent_at``, so an outdated task does nothing. One
+    waiting task due no later is enough (``enqueue_once``); saved inside the
+    reminder window, it goes out no sooner than ten minutes later
+    (``core.tasks.reminder_due``), so an admin still editing is not mailed
+    out half-way (v7.10).
     """
+    from core.tasks import enqueue_once, reminder_due
     from tournaments.tasks import send_tournament_reminder
 
     if (
@@ -317,13 +345,14 @@ def schedule_reminder(tournament) -> None:
     ):
         return
     run_at = reminder_time(tournament)
+    starts_at = tournament.starts_at
     tournament_id = tournament.pk
 
     def enqueue():
-        if run_at <= timezone.now():
-            send_tournament_reminder.enqueue(tournament_id)
-        else:
-            send_tournament_reminder.using(run_after=run_at).enqueue(tournament_id)
+        due = reminder_due(run_at, starts_at)
+        enqueue_once(
+            send_tournament_reminder, tournament_id, run_after=due, earlier_counts=True
+        )
 
     transaction.on_commit(enqueue)
 

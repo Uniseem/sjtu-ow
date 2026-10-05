@@ -672,6 +672,42 @@ def officers(tools, base, data) -> list[str]:
     step("文章发布了", says("已发布"))
     step("封面留在文章上", bool(js("document.querySelector('#id_cover').value")))
 
+    # Round 206 (design 13.17, v7.10): a new scrim exists from its title, the
+    # start still empty; publishing says what is missing, then goes through.
+    go("/admin/scrims/new/")
+    js("""(() => {
+        const title = document.querySelector('#id_title');
+        title.value = '浏览器建的内战';
+        title.dispatchEvent(new Event('input', {bubbles: true}));
+    })()""")
+    for _ in range(20):
+        time.sleep(0.5)
+        if js("location.pathname.startsWith('/admin/scrims/edit/')"):
+            break
+    scrim_page = js("location.pathname") or ""
+    made = scrim_page.startswith("/admin/scrims/edit/")
+    step("新内战打标题就建好（开始时间还空着）", made, scrim_page)
+    scrim_id = scrim_page.rstrip("/").rsplit("/", 1)[-1]
+    go(f"/admin/scrims/{scrim_id}/publish/")
+    step("发布页写着还缺开始时间", says("还没填好：开始时间"))
+    go(scrim_page)
+    js("""(() => {
+        const start = document.querySelector('#id_starts_at');
+        const when = new Date(Date.now() + 3 * 86400000);
+        const pad = n => String(n).padStart(2, '0');
+        start.value = when.getFullYear() + '-' + pad(when.getMonth() + 1) + '-' +
+            pad(when.getDate()) + 'T20:00';
+        start.dispatchEvent(new Event('change', {bubbles: true}));
+    })()""")
+    for _ in range(20):
+        time.sleep(0.5)
+        state = "document.querySelector('[data-autosave-status]').dataset.state"
+        if js(state) == "saved":
+            break
+    go(f"/admin/scrims/{scrim_id}/publish/")
+    press("main form.b-form button[type=submit]")
+    step("补上开始时间就发布了", says("「浏览器建的内战」已发布"))
+
     tools.send("Runtime.evaluate", {"expression": "1"})
     for kind, text in EVENTS:
         print(f"    浏览器报告 {kind}: {text[:200]}")

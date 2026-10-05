@@ -281,22 +281,39 @@ def finish_time(scrim):
 
 
 def schedule_auto_finish(scrim) -> None:
-    """Re-scheduling is safe: the task re-reads the scrim."""
+    """Re-scheduling is safe: the task re-reads the scrim and comes back
+    later when the start moved, so one waiting no later is enough."""
+    from core.tasks import enqueue_once
     from scrims.tasks import finish_past_scrim
 
+    if scrim.starts_at is None:
+        return
     run_at = finish_time(scrim)
     scrim_id = scrim.pk
 
     def enqueue():
-        finish_past_scrim.using(run_after=run_at).enqueue(scrim_id)
+        enqueue_once(finish_past_scrim, scrim_id, run_after=run_at, earlier_counts=True)
 
     transaction.on_commit(enqueue)
+
+
+def missing(scrim) -> list[str]:
+    """What a draft still lacks before it can go out (design 13.17, v7.10)."""
+    gaps = []
+    if not (scrim.title or "").strip():
+        gaps.append("标题")
+    if scrim.starts_at is None:
+        gaps.append("开始时间")
+    return gaps
 
 
 @transaction.atomic
 def publish(*, scrim, actor=None):
     if scrim.status == ScrimStatus.CANCELLED:
         raise ScrimError("已取消的内战不能再发布。")
+    gaps = missing(scrim)
+    if gaps:
+        raise ScrimError(f"还没填好：{'、'.join(gaps)}。填好再发布。")
     scrim.status = ScrimStatus.PUBLISHED
     fields = ["status", "updated_at"]
     if actor is not None and scrim.created_by is None:
@@ -322,6 +339,9 @@ def cancel_scrim(*, scrim, actor=None):
     """Design 9.1: cancelling mails everyone who signed up."""
     if scrim.status == ScrimStatus.CANCELLED:
         raise ScrimError("这场内战已经取消了。")
+    if scrim.status == ScrimStatus.DRAFT and missing(scrim):
+        # Cancelled is public; a half-filled draft would show its blanks.
+        raise ScrimError("还没填好的草稿不用取消，直接删除。")
     scrim.status = ScrimStatus.CANCELLED
     scrim.save(update_fields=["status", "updated_at"])
     transaction.on_commit(lambda: _notify_cancelled(scrim.pk))
@@ -403,7 +423,7 @@ def schedule_home_refresh(scrim) -> None:
     Stale tasks are harmless: they only regenerate the page from current data.
     """
     from core import prerender
-    from core.tasks import prerender_page
+    from core.tasks import enqueue_once, prerender_page
 
     if not prerender.is_enabled() or scrim.status != ScrimStatus.PUBLISHED:
         return
@@ -412,12 +432,11 @@ def schedule_home_refresh(scrim) -> None:
     runs = [(scrim.signup_deadline, status_pages), (scrim.starts_at, status_pages)]
 
     def enqueue():
-        seen = set()
+        # Once per page and moment, however often it is saved (v7.10).
         for moment, paths in runs:
             for path in paths:
-                if moment > now and (moment, path) not in seen:
-                    seen.add((moment, path))
-                    prerender_page.using(run_after=moment).enqueue(path)
+                if moment and moment > now:
+                    enqueue_once(prerender_page, path, run_after=moment)
 
     transaction.on_commit(enqueue)
 
@@ -474,18 +493,22 @@ def schedule_reminder(scrim) -> None:
     """Design 9.1: remind everyone two hours before it starts.
 
     Re-scheduling is safe: the task re-reads the scrim and checks both the
-    time and ``reminder_sent_at``, so an outdated task does nothing.
+    time and ``reminder_sent_at``, so an outdated task does nothing. One
+    waiting task due no later is enough; saved inside the window, it goes
+    out no sooner than ten minutes later (v7.10, as tournaments).
     """
+    from core.tasks import enqueue_once, reminder_due
     from scrims.tasks import send_scrim_reminder
 
+    if scrim.starts_at is None:
+        return
     run_at = reminder_time(scrim)
+    starts_at = scrim.starts_at
     scrim_id = scrim.pk
 
     def enqueue():
-        if run_at <= timezone.now():
-            send_scrim_reminder.enqueue(scrim_id)
-        else:
-            send_scrim_reminder.using(run_after=run_at).enqueue(scrim_id)
+        due = reminder_due(run_at, starts_at)
+        enqueue_once(send_scrim_reminder, scrim_id, run_after=due, earlier_counts=True)
 
     transaction.on_commit(enqueue)
 
@@ -635,7 +658,11 @@ def copy_text(scrim) -> str:
     from accounts.ranks import format_rank
 
     rows = team_rows(scrim)
-    when = timezone.localtime(scrim.starts_at).strftime("%Y-%m-%d %H:%M")
+    when = (
+        timezone.localtime(scrim.starts_at).strftime("%Y-%m-%d %H:%M")
+        if scrim.starts_at
+        else "时间未定"  # a draft still being filled in (v7.10)
+    )
     lines = [f"【{scrim.title}】{when} · {scrim.get_format_display()}"]
     labels = dict(Role.choices)
     for team, name in (("a", "A 队"), ("b", "B 队")):

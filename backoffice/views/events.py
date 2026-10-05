@@ -3,7 +3,9 @@
 The pages to publish, finish, cancel, form teams and split are the apps'
 own (tournaments.admin_views, scrims.admin_views, the two boards). Saving
 does what the Wagtail views did: 「时间改了」 with the start before this
-save, the creator filled in, the roster warning, ``after_change``.
+save, the creator filled in, the roster warning, ``after_change``. Since
+v7.10 (design 13.17) the forms save themselves; something new exists from
+its first change, required fields empty or not, and publishing checks them.
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from wagtail.log_actions import log
@@ -19,6 +21,7 @@ from wagtail.log_actions import log
 from backoffice.forms import ScrimForm, TournamentForm
 from backoffice.nav import placed
 from backoffice.views.common import paginate, search_text
+from core import autosave
 from scrims import services as scrim_services
 from scrims.models import Scrim, ScrimStatus
 from tournaments import services as tournament_services
@@ -30,6 +33,45 @@ from tournaments.models import (
 )
 
 PER_PAGE = 30
+UNNAMED = {"tournament": "（未命名赛事）", "scrim": "（未命名内战）"}
+
+
+def _autosave(request, form, kind, fresh):
+    """Save what may be saved now (design 13.17, v7.10). New: created from
+    the first change with the fields that are fine (``fresh`` makes the
+    unsaved one as it stood, a copy's fields included). Existing: those
+    fields written over what is stored; 「时间改了」 noted; then the pages
+    and the reminders follow (``after_change``, its tasks once each)."""
+    user = request.user
+    services = tournament_services if kind == "tournament" else scrim_services
+    valid = form.is_valid()
+    outcome = autosave.Outcome(errors={} if valid else autosave.errors_of(form))
+    obj = form.instance
+    if obj.pk is None:
+        obj, outcome.saved = autosave.new_from_valid_fields(form, fresh())
+        if obj.created_by_id is None:
+            obj.created_by = user
+        obj.save()
+        log(obj, "wagtail.create", user=user, title=obj.title or UNNAMED[kind])
+        edit = "tournaments:edit" if kind == "tournament" else "scrims:edit"
+        action = "tournament_action" if kind == "tournament" else "scrim_action"
+        outcome.location = reverse(edit, args=[obj.pk])
+        outcome.replace["[data-event-next]"] = (
+            '<span class="b-formbar__note" data-event-next>已经建成草稿。填好以后'
+            f'<a class="c-link" href="{reverse(action, args=[obj.pk, "publish"])}">'
+            "发布</a>。</span>"
+        )
+        services.after_change(obj, actor=user)
+        return autosave.respond(outcome)
+    old_starts_at = form.initial.get("starts_at")
+    outcome.saved = autosave.save_valid_fields(form)
+    if outcome.saved:
+        obj = form.instance
+        autosave.log_edit(obj, user)
+        if "starts_at" in outcome.saved:
+            services.note_time_change(obj, old_starts_at)
+        services.after_change(obj, actor=user)
+    return autosave.respond(outcome)
 
 
 @dataclass(frozen=True)
@@ -98,7 +140,10 @@ def tournament_items(tournament, sent: dict | None = None) -> list[Item]:
             Item("队伍编排", reverse("tournament_teams_board", args=[tournament.pk]))
         )
     items.append(Item("复制", reverse("tournaments:copy", args=[tournament.pk])))
-    if tournament.status != TournamentStatus.CANCELLED:
+    unfinished = tournament.status == TournamentStatus.DRAFT and bool(
+        tournament_services.missing(tournament)
+    )
+    if tournament.status != TournamentStatus.CANCELLED and not unfinished:
         items.append(
             Item(
                 "取消赛事",
@@ -127,7 +172,10 @@ def scrim_items(scrim, sent: dict | None = None) -> list[Item]:
     if scrim.status != ScrimStatus.DRAFT:
         items.append(Item("分队", reverse("scrim_split", args=[scrim.pk])))
     items.append(Item("复制", reverse("scrims:copy", args=[scrim.pk])))
-    if scrim.status != ScrimStatus.CANCELLED:
+    unfinished = scrim.status == ScrimStatus.DRAFT and bool(
+        scrim_services.missing(scrim)
+    )
+    if scrim.status != ScrimStatus.CANCELLED and not unfinished:
         items.append(
             Item("取消内战", reverse("scrim_cancel", args=[scrim.pk]), danger=True)
         )
@@ -148,7 +196,11 @@ def tournament_list(request):
             "registrations",
             filter=Q(registrations__status=RegistrationStatus.PENDING),
         )
-    ).order_by("-registration_opens_at", "-pk")
+    ).order_by(
+        # A draft without times yet (v7.10) is one being written: on top.
+        F("registration_opens_at").desc(nulls_first=True),
+        "-pk",
+    )
     query = search_text(request)
     if query:
         tournaments = tournaments.filter(
@@ -224,6 +276,8 @@ def tournament_add(request):
     form = TournamentForm(
         request.POST or None, instance=Tournament(), user=request.user
     )
+    if autosave.wants(request):
+        return _autosave(request, form, "tournament", Tournament)
     if request.method == "POST" and form.is_valid():
         tournament = _save_tournament(request, form, created=True)
         return redirect("tournaments:edit", tournament.pk)
@@ -234,12 +288,17 @@ def tournament_add(request):
 def tournament_edit(request, pk):
     tournament = get_object_or_404(Tournament, pk=pk)
     form = TournamentForm(request.POST or None, instance=tournament, user=request.user)
+    if autosave.wants(request):
+        return _autosave(request, form, "tournament", None)
     if request.method == "POST" and form.is_valid():
         _save_tournament(request, form, created=False)
         return redirect("tournaments:edit", tournament.pk)
     tournament.refresh_from_db()
     return _tournament_form_page(
-        request, form, title=tournament.title, tournament=tournament
+        request,
+        form,
+        title=tournament.title or UNNAMED["tournament"],
+        tournament=tournament,
     )
 
 
@@ -252,6 +311,13 @@ def tournament_copy(request, pk):
         instance=tournament_services.copy_for_new(source),
         user=request.user,
     )
+    if autosave.wants(request):
+        return _autosave(
+            request,
+            form,
+            "tournament",
+            lambda: tournament_services.copy_for_new(source),
+        )
     if request.method == "POST" and form.is_valid():
         tournament = _save_tournament(request, form, created=True)
         return redirect("tournaments:edit", tournament.pk)
@@ -291,7 +357,7 @@ def tournament_delete(request, pk):
 @placed("events", "scrims")
 def scrim_list(request):
     scrims = Scrim.objects.annotate(signup_total=Count("signups")).order_by(
-        "-starts_at", "-pk"
+        F("starts_at").desc(nulls_first=True), "-pk"
     )
     query = search_text(request)
     if query:
@@ -352,6 +418,8 @@ def _scrim_form_page(request, form, *, title, scrim=None, copied_from=None):
 @placed("events", "scrims")
 def scrim_add(request):
     form = ScrimForm(request.POST or None, instance=Scrim())
+    if autosave.wants(request):
+        return _autosave(request, form, "scrim", Scrim)
     if request.method == "POST" and form.is_valid():
         scrim = _save_scrim(request, form, created=True)
         return redirect("scrims:edit", scrim.pk)
@@ -362,17 +430,25 @@ def scrim_add(request):
 def scrim_edit(request, pk):
     scrim = get_object_or_404(Scrim, pk=pk)
     form = ScrimForm(request.POST or None, instance=scrim)
+    if autosave.wants(request):
+        return _autosave(request, form, "scrim", None)
     if request.method == "POST" and form.is_valid():
         _save_scrim(request, form, created=False)
         return redirect("scrims:edit", scrim.pk)
     scrim.refresh_from_db()
-    return _scrim_form_page(request, form, title=scrim.title, scrim=scrim)
+    return _scrim_form_page(
+        request, form, title=scrim.title or UNNAMED["scrim"], scrim=scrim
+    )
 
 
 @placed("events", "scrims")
 def scrim_copy(request, pk):
     source = get_object_or_404(Scrim, pk=pk)
     form = ScrimForm(request.POST or None, instance=scrim_services.copy_for_new(source))
+    if autosave.wants(request):
+        return _autosave(
+            request, form, "scrim", lambda: scrim_services.copy_for_new(source)
+        )
     if request.method == "POST" and form.is_valid():
         scrim = _save_scrim(request, form, created=True)
         return redirect("scrims:edit", scrim.pk)

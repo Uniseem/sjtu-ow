@@ -14,6 +14,53 @@ logger = logging.getLogger(__name__)
 
 # Initial send, then three retries (design 10.1 / appendix C).
 MAIL_RETRY_DELAYS = (60, 300, 1800)
+# Saved inside a reminder's window, the reminder still waits this long, so
+# the admin's edits are done before anyone is mailed (design 13.17, v7.10).
+REMINDER_GRACE = timedelta(minutes=10)
+
+
+def reminder_due(run_at, starts_at):
+    """When to send a reminder arranged now: its own time, but no sooner than
+    ``REMINDER_GRACE`` from now, unless that is already past the start (then
+    at once, as before; a late reminder is better than none)."""
+    now = timezone.now()
+    due = max(run_at, now + REMINDER_GRACE)
+    return due if due < starts_at else max(run_at, now)
+
+
+def enqueue_once(task_obj, *args, run_after=None, earlier_counts=False):
+    """Enqueue unless the same task with the same arguments already waits
+    (design 13.17, v7.10): autosave saves a tournament or scrim many times
+    a minute, and each save used to arrange its reminders again.
+
+    ``earlier_counts``: a waiting one due no later than ``run_after`` will
+    do, because the task re-reads its object and reschedules itself when
+    it comes too early (the reminders, the scrim's auto-finish). Otherwise
+    only one due at the same moment counts (a page refresh runs once).
+    Returns the new result, or None when one was already waiting."""
+    from django_tasks_db.models import DBTaskResult, get_date_max
+
+    wanted = {"args": list(args), "kwargs": {}}
+    waiting = DBTaskResult.objects.filter(
+        status="READY", task_path=task_obj.module_path
+    ).values_list("args_kwargs", "run_after")
+    soonest = get_date_max()
+    for args_kwargs, due in waiting:
+        if args_kwargs != wanted:
+            continue
+        # No run_after is stored as the far future and means "as soon as possible".
+        at_once = due == soonest
+        if run_after is None:
+            if at_once:
+                return None
+            continue
+        if due == run_after:
+            return None
+        if earlier_counts and (at_once or due <= run_after):
+            return None
+    if run_after is None:
+        return task_obj.enqueue(*args)
+    return task_obj.using(run_after=run_after).enqueue(*args)
 
 
 @task

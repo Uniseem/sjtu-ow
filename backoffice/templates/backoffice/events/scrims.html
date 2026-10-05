@@ -19,7 +19,7 @@
       <tbody>
         {% for scrim, items in rows %}
           <tr data-scrim-row="{{ scrim.pk }}">
-            <td><a class="b-title" href="{% url 'scrims:edit' scrim.pk %}">{{ scrim.title }}</a></td>
+            <td><a class="b-title" href="{% url 'scrims:edit' scrim.pk %}">{{ scrim.title|default:"（未命名内战）" }}</a></td>
             <td data-label="状态">{{ scrim.get_status_display }}</td>
             <td data-label="规格">{{ scrim.get_format_display }}</td>
             <td data-label="开始">{{ scrim.starts_at|date:"Y.m.d H:i" }}</td>

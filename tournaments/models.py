@@ -38,8 +38,10 @@ class Tournament(models.Model):
         related_name="+",
     )
     starts_at = models.DateTimeField("比赛时间", null=True, blank=True)
-    registration_opens_at = models.DateTimeField("报名开始时间")
-    registration_closes_at = models.DateTimeField("报名截止时间")
+    # Empty only on a draft (design 13.17, v7.10): a new tournament exists
+    # from its first change; publishing needs both (services.missing).
+    registration_opens_at = models.DateTimeField("报名开始时间", null=True)
+    registration_closes_at = models.DateTimeField("报名截止时间", null=True)
     roster_min = models.PositiveSmallIntegerField("参赛人数下限", default=5)
     roster_max = models.PositiveSmallIntegerField("参赛人数上限", default=6)
     sjtu_only = models.BooleanField("仅限交大", default=False)
@@ -140,6 +142,8 @@ class Tournament(models.Model):
             return "finished"
         if self.status == TournamentStatus.CANCELLED:
             return "cancelled"
+        if self.registration_opens_at is None or self.registration_closes_at is None:
+            return "upcoming"  # a draft still being filled in (v7.10)
         if now < self.registration_opens_at:
             return "upcoming"
         if now <= self.registration_closes_at:

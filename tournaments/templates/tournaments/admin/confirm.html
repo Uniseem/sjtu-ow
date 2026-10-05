@@ -17,9 +17,13 @@
         </div>
       {% endif %}
     </section>
-    {% include "core/admin/_announce_box.html" %}
+    {% if missing %}
+      <div class="c-notice c-notice--warn" data-publish-missing>{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">还没填好：{{ missing|join:"、" }}。<a class="c-link" href="{% url 'tournaments:edit' tournament.pk %}">去填</a>，填好再发布。</div></div>
+    {% else %}
+      {% include "core/admin/_announce_box.html" %}
+    {% endif %}
     <div class="b-actions">
-      <button type="submit" class="c-btn {% if needs_reason %}c-btn--danger{% else %}c-btn--primary{% endif %}">{{ action_label }}</button>
+      <button type="submit" class="c-btn {% if needs_reason %}c-btn--danger{% else %}c-btn--primary{% endif %}"{% if missing %} disabled{% endif %}>{{ action_label }}</button>
       <a class="c-btn c-btn--secondary" href="{% url 'tournaments:index' %}">返回</a>
     </div>
   </form>

@@ -23,7 +23,7 @@
       <tbody>
         {% for tournament, items, pending_url in rows %}
           <tr data-tournament-row="{{ tournament.pk }}">
-            <td><a class="b-title" href="{% url 'tournaments:edit' tournament.pk %}">{{ tournament.title }}</a><span class="b-sub">{{ tournament.get_registration_mode_display }}</span></td>
+            <td><a class="b-title" href="{% url 'tournaments:edit' tournament.pk %}">{{ tournament.title|default:"（未命名赛事）" }}</a><span class="b-sub">{{ tournament.get_registration_mode_display }}</span></td>
             <td data-label="状态">{{ tournament.get_status_display }}</td>
             <td data-label="报名开始">{{ tournament.registration_opens_at|date:"Y.m.d H:i" }}</td>
             <td data-label="报名截止">{{ tournament.registration_closes_at|date:"Y.m.d H:i" }}</td>

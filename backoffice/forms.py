@@ -431,11 +431,33 @@ class TournamentForm(KeepSeconds, forms.ModelForm):
         )
 
     fieldsets = ArticleForm.fieldsets
+    # Rules across fields that still end up on the form itself (a database
+    # constraint): these are left out of an autosave together (v7.10).
+    autosave_together = (
+        "registration_opens_at",
+        "registration_closes_at",
+        "roster_min",
+        "roster_max",
+    )
 
     def clean(self):
         from tournaments import services
 
         cleaned = super().clean()
+        # The two rules across fields land on one field each, so autosave
+        # leaves only that one unsaved (design 13.17, v7.10); the database
+        # constraints behind them are then not checked again.
+        opens = cleaned.get("registration_opens_at")
+        closes = cleaned.get("registration_closes_at")
+        if opens and closes and opens >= closes:
+            self.add_error("registration_closes_at", "报名截止时间要晚于报名开始时间。")
+        low, high = cleaned.get("roster_min"), cleaned.get("roster_max")
+        if low is not None and low < 1:
+            self.add_error("roster_min", "人数下限至少是 1。")
+        elif high is not None and high > 20:
+            self.add_error("roster_max", "人数上限最多是 20。")
+        elif low and high and low > high:
+            self.add_error("roster_max", "人数上限不能小于下限。")
         # Round 119: on the field before saving; only when these change, so
         # lowering the site cap later does not block unrelated edits.
         touched = {"roster_min", "registration_mode"} & set(self.changed_data)

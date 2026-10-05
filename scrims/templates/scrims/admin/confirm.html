@@ -15,9 +15,13 @@
         <p class="b-section__text">取消后内战从列表中消失，详情页仍可访问并显示「已取消」。取消后问你要不要给已报名的人发信。</p>
       {% endif %}
     </section>
-    {% include "core/admin/_announce_box.html" %}
+    {% if missing %}
+      <div class="c-notice c-notice--warn" data-publish-missing>{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">还没填好：{{ missing|join:"、" }}。<a class="c-link" href="{% url 'scrims:edit' scrim.pk %}">去填</a>，填好再发布。</div></div>
+    {% else %}
+      {% include "core/admin/_announce_box.html" %}
+    {% endif %}
     <div class="b-actions">
-      <button type="submit" class="c-btn {% if action_label == '取消内战' %}c-btn--danger{% else %}c-btn--primary{% endif %}">{{ action_label }}</button>
+      <button type="submit" class="c-btn {% if action_label == '取消内战' %}c-btn--danger{% else %}c-btn--primary{% endif %}"{% if missing %} disabled{% endif %}>{{ action_label }}</button>
       <a class="c-btn c-btn--secondary" href="{% url 'scrims:index' %}">返回</a>
     </div>
   </form>

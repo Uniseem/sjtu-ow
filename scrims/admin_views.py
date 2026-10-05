@@ -64,6 +64,8 @@ def scrim_action(request, pk, action):
             "scrim": scrim,
             "action_label": label,
             "announce": _announce_offer(scrim) if action == "publish" else None,
+            # Design 13.17 (v7.10): a draft saved half-filled says what it lacks.
+            "missing": services.missing(scrim) if action == "publish" else [],
             **_back(scrim),
         },
     )
