@@ -20,11 +20,18 @@ from moderation.models import (
 from moderation.providers import OpenAICompatibleProvider, ProviderResult, Verdict
 
 
-@pytest.fixture
-def moderation_on(db, settings):
-    settings.MODERATION_API_KEY = "test-key"
-    settings.MODERATION_BASE_URL = "http://127.0.0.1:1/v1"
+def configure_ai(key="test-key", base_url=""):
+    """全站设置 → AI 审核 filled in (design 5.5.3, v7.1)."""
     site = SiteSettings.load()
+    site.moderation_api_key = key
+    site.moderation_base_url = base_url
+    site.save()
+    return site
+
+
+@pytest.fixture
+def moderation_on(db):
+    site = configure_ai("test-key", "http://127.0.0.1:1/v1")
     site.moderation_enabled = True
     site.moderation_model = "deepseek-v4.1-flash"
     site.moderation_daily_limit = 2000
@@ -180,9 +187,8 @@ def test_missing_verdict_for_an_item_is_unknown():
 
 
 @pytest.mark.django_db
-def test_nothing_is_submitted_when_moderation_is_off(db, settings):
-    settings.MODERATION_API_KEY = "test-key"
-    site = SiteSettings.load()
+def test_nothing_is_submitted_when_moderation_is_off(db):
+    site = configure_ai()
     site.moderation_enabled = False
     site.save()
     user = _user()
@@ -191,10 +197,8 @@ def test_nothing_is_submitted_when_moderation_is_off(db, settings):
 
 
 @pytest.mark.django_db
-def test_nothing_is_submitted_without_an_api_key(db, settings):
-    settings.MODERATION_API_KEY = ""
-    settings.MODERATION_BASE_URL = ""
-    site = SiteSettings.load()
+def test_nothing_is_submitted_without_an_api_key(db):
+    site = configure_ai("", "")
     site.moderation_enabled = True
     site.save()
     user = _user("nokey@example.com", "没有密钥")

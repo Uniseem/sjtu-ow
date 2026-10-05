@@ -211,10 +211,11 @@ def test_roster_min_warning(manager):
 def test_changes_queue_prerender_and_moderation(manager, settings, tmp_path):
     from core.models import PrerenderedPage
     from moderation.models import ModerationItem
+    from moderation.tests.test_moderation import configure_ai
 
+    configure_ai()
     settings.PRERENDER_ENABLED = True
     settings.PRERENDER_ROOT = tmp_path
-    settings.MODERATION_API_KEY = "test-key"
     tournament = _tournament(description="欢迎报名，详情见群公告。")
     services.after_change(tournament, actor=manager)
     paths = set(PrerenderedPage.objects.values_list("path", flat=True))

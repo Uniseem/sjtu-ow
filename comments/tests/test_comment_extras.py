@@ -267,7 +267,9 @@ def test_hiding_or_deleting_a_pinned_comment_unpins_it(article, reader, editor):
 def test_the_author_edits_and_it_is_reviewed_again(
     article, reader, settings, django_capture_on_commit_callbacks
 ):
-    settings.MODERATION_API_KEY = "test-key"
+    from moderation.tests.test_moderation import configure_ai
+
+    configure_ai()
     with django_capture_on_commit_callbacks(execute=True):
         comment = _comment(article, reader, "第一版")
     services.toggle_like(comment=comment, user=person("点赞者"))

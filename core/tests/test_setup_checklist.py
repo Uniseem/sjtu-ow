@@ -95,11 +95,14 @@ def test_the_agreements_need_their_blanks_filled(site):
 
 
 @pytest.mark.django_db
-def test_ai_says_whether_the_key_or_the_switch_is_missing(site, settings):
-    settings.MODERATION_API_KEY = ""
-    settings.MODERATION_BASE_URL = ""
-    assert "MODERATION_API_KEY" in _check("AI 内容审核").detail
-    settings.MODERATION_API_KEY = "sk-test"
+def test_ai_says_whether_the_key_or_the_switch_is_missing(site):
+    from moderation.tests.test_moderation import configure_ai
+
+    configure_ai("", "")
+    missing = _check("AI 内容审核")
+    assert "还没有填接口密钥" in missing.detail
+    assert missing.url == reverse("backoffice:site_settings")  # where to fill it
+    configure_ai("sk-test")
     row = SiteSettings.load()
     row.moderation_enabled = False
     row.save()
@@ -170,8 +173,10 @@ def _result(risk, reason="", tokens=(120, 30)):
 
 
 @pytest.mark.django_db
-def test_trying_the_ai_reports_success_and_counts_the_call(site, client, settings):
-    settings.MODERATION_API_KEY = "sk-test"
+def test_trying_the_ai_reports_success_and_counts_the_call(site, client):
+    from moderation.tests.test_moderation import configure_ai
+
+    configure_ai("sk-test")
     client.force_login(_user("try122@example.com", "内容编辑"))
     page = client.get(reverse("moderation_index")).content.decode()
     assert "试一下" in page
@@ -185,8 +190,10 @@ def test_trying_the_ai_reports_success_and_counts_the_call(site, client, setting
 
 
 @pytest.mark.django_db
-def test_a_bad_key_says_so(site, client, settings):
-    settings.MODERATION_API_KEY = "sk-wrong"
+def test_a_bad_key_says_so(site, client):
+    from moderation.tests.test_moderation import configure_ai
+
+    configure_ai("sk-wrong")
     client.force_login(_user("try122b@example.com", "内容编辑"))
     provider = mock.Mock()
     provider.review.return_value = _result(Risk.UNKNOWN, "调用失败：HTTP 401", (0, 0))
@@ -198,12 +205,11 @@ def test_a_bad_key_says_so(site, client, settings):
 
 
 @pytest.mark.django_db
-def test_without_a_key_the_page_says_why_and_offers_no_try(site, client, settings):
-    settings.MODERATION_API_KEY = ""
-    settings.MODERATION_BASE_URL = ""
+def test_without_a_key_the_page_says_why_and_offers_no_try(site, client):
     client.force_login(_user("try122c@example.com", "内容编辑"))
     page = client.get(reverse("moderation_index")).content.decode()
-    assert "MODERATION_API_KEY" in page
+    assert "还没有填接口密钥" in page and "全站设置" in page
+    assert ".env" not in page
     assert 'action="/admin/moderation/try/"' not in page
     response = client.post(reverse("moderation_try"), follow=True)
-    assert "MODERATION_API_KEY" in response.content.decode()
+    assert "还没有填接口密钥" in response.content.decode()

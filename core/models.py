@@ -221,7 +221,7 @@ class SiteSettings(BaseGenericSetting):
     moderation_enabled = models.BooleanField(
         "启用 AI 内容审核",
         default=True,
-        help_text="关掉后新内容不再送审。没有配置 MODERATION_API_KEY 时本来就不送审。",
+        help_text="关掉后新内容不再送审。没有填接口密钥（或接口地址）时本来就不送审。",
     )
     moderation_model = models.CharField(
         "审核模型",
@@ -244,6 +244,33 @@ class SiteSettings(BaseGenericSetting):
         blank=True,
         help_text="AI 每 30 分钟巡查一次，发现可能不妥的内容就给这个邮箱发信。"
         "空着就发给所有超级管理员。",
+    )
+    # Design 5.5.3 (v7.1): the provider is configured here, not in .env.
+    moderation_api_key = EncryptedTextField(
+        "接口密钥",
+        blank=True,
+        help_text="服务商给的 API Key，加密存储。留空表示不修改已保存的密钥。",
+    )
+    moderation_base_url = models.URLField(
+        "接口地址",
+        blank=True,
+        help_text="空着用 DeepSeek（https://api.deepseek.com/v1）。换服务商、用聚合平台"
+        "或自建服务时填它的 OpenAI 兼容地址，一般以 /v1 结尾。",
+    )
+    moderation_extra_body = models.JSONField(
+        "附加请求参数",
+        default=dict,
+        blank=True,
+        help_text="一段 JSON，原样并进每次请求，比如关闭思考模式的参数"
+        "（各家写法不一样，照服务商的文档填）。不知道就空着。",
+    )
+    moderation_timeout = models.PositiveIntegerField(
+        "超时（秒）", default=30, help_text="一次调用最多等多久。"
+    )
+    moderation_max_output_tokens = models.PositiveIntegerField(
+        "最多输出 token",
+        default=600,
+        help_text="一次调用最多让模型写多少，几百就够。",
     )
     font_css_path = models.CharField(
         "字体样式表地址",
@@ -309,6 +336,11 @@ class SiteSettings(BaseGenericSetting):
                 FieldPanel("moderation_daily_limit"),
                 FieldPanel("moderation_image_enabled"),
                 FieldPanel("moderation_alert_email"),
+                FieldPanel("moderation_api_key"),
+                FieldPanel("moderation_base_url"),
+                FieldPanel("moderation_extra_body"),
+                FieldPanel("moderation_timeout"),
+                FieldPanel("moderation_max_output_tokens"),
             ],
             heading="AI 审核",
         ),

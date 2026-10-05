@@ -14,8 +14,6 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 
-from django.conf import settings
-
 from moderation.models import Risk
 from moderation.prompts import RESULT_SCHEMA, SYSTEM_PROMPT, build_user_message
 
@@ -63,10 +61,20 @@ def unknown_result(count: int, model: str, reason: str) -> ProviderResult:
 class OpenAICompatibleProvider:
     """Chat-completions with JSON-schema output; works for DeepSeek and friends."""
 
-    def __init__(self, *, base_url="", api_key="", timeout=DEFAULT_TIMEOUT):
+    def __init__(
+        self,
+        *,
+        base_url="",
+        api_key="",
+        timeout=DEFAULT_TIMEOUT,
+        max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
+        extra_body=None,
+    ):
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
+        self.max_output_tokens = max_output_tokens
+        self.extra_body = dict(extra_body or {})
 
     def build_payload(self, texts, model: str) -> dict:
         payload = {
@@ -76,9 +84,7 @@ class OpenAICompatibleProvider:
                 {"role": "user", "content": build_user_message(texts)},
             ],
             "temperature": 0,
-            "max_tokens": getattr(
-                settings, "MODERATION_MAX_OUTPUT_TOKENS", DEFAULT_MAX_OUTPUT_TOKENS
-            ),
+            "max_tokens": self.max_output_tokens,
             "stream": False,
             "response_format": {
                 "type": "json_schema",
@@ -91,7 +97,7 @@ class OpenAICompatibleProvider:
         }
         # Provider-specific switches (for example turning thinking off) without
         # touching this file; the exact key differs per provider.
-        payload.update(getattr(settings, "MODERATION_EXTRA_BODY", {}) or {})
+        payload.update(self.extra_body)
         # Never send tools: a model with tools would no longer be read-only.
         payload.pop("tools", None)
         payload.pop("tool_choice", None)
@@ -189,9 +195,16 @@ class OpenAICompatibleProvider:
 
 
 def get_provider():
-    """The provider used for this call; swapping it is a settings change."""
+    """The provider used for this call, from 全站设置 → AI 审核 (design 5.5.3,
+    v7.1); read each time, so a change applies from the next patrol on."""
+    from core.models import SiteSettings
+
+    site = SiteSettings.load()
     return OpenAICompatibleProvider(
-        base_url=getattr(settings, "MODERATION_BASE_URL", ""),
-        api_key=getattr(settings, "MODERATION_API_KEY", ""),
-        timeout=getattr(settings, "MODERATION_TIMEOUT", DEFAULT_TIMEOUT),
+        base_url=site.moderation_base_url,
+        api_key=site.moderation_api_key,
+        timeout=site.moderation_timeout or DEFAULT_TIMEOUT,
+        max_output_tokens=site.moderation_max_output_tokens
+        or DEFAULT_MAX_OUTPUT_TOKENS,
+        extra_body=site.moderation_extra_body,
     )

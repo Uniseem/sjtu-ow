@@ -135,7 +135,9 @@ def test_a_parent_from_another_article_or_a_hidden_one_is_refused(
 def test_every_comment_is_sent_for_review(
     article, reader, django_capture_on_commit_callbacks, settings
 ):
-    settings.MODERATION_API_KEY = "test-key"
+    from moderation.tests.test_moderation import configure_ai
+
+    configure_ai()
     with django_capture_on_commit_callbacks(execute=True):
         comment = _comment(article, reader, "疑似广告")
 

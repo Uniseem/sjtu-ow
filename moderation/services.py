@@ -41,13 +41,13 @@ def site_settings():
 
 
 def is_configured() -> bool:
-    """A key (or a self-hosted base URL) has to be set before we call anything."""
-    from django.conf import settings
-
-    return bool(
-        getattr(settings, "MODERATION_API_KEY", "")
-        or getattr(settings, "MODERATION_BASE_URL", "")
-    )
+    """A key (or a self-hosted base URL) has to be set before we call anything;
+    both are in 全站设置 → AI 审核 (design 5.5.3, v7.1)."""
+    try:
+        site = site_settings()
+    except Exception:  # noqa: BLE001 — settings row may not exist yet
+        return False
+    return bool(site.moderation_api_key or site.moderation_base_url)
 
 
 def is_enabled() -> bool:
@@ -372,8 +372,8 @@ def disabled_reason() -> str:
     """Why nothing is being reviewed, in words the owner can act on."""
     if not is_configured():
         return (
-            "服务器没有设置环境变量 MODERATION_API_KEY（或自建服务的 "
-            "MODERATION_BASE_URL），AI 审核不会运行。写进 .env 后重启 web 和 worker。"
+            "还没有填接口密钥（自建服务可以只填接口地址），AI 审核不会运行。"
+            "在「设置 → 全站设置 → AI 审核」里填好、保存，下一次巡查就会用上。"
         )
     if not is_enabled():
         return "全站设置里「启用 AI 内容审核」关着，新内容不会送审。"
@@ -427,3 +427,24 @@ def latest_verdict(page):
         .order_by("-created_at", "-pk")
         .first()
     )
+
+
+# --- the provider settings (design 5.5.3, v7.1) ----------------------------------
+
+# Keys the 附加请求参数 may not carry: they would replace the request itself or
+# hand the model tools (5.5.3 「不给模型任何工具」).
+EXTRA_BODY_FORBIDDEN = ("messages", "tools", "tool_choice")
+
+
+def clean_extra_body(value) -> dict:
+    """What 全站设置 stores as 附加请求参数, or ValueError saying why not."""
+    if value in (None, "", {}):
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(
+            '要写成一个 JSON 对象，比如 {"thinking": {"type": "disabled"}}。'
+        )
+    taken = [key for key in EXTRA_BODY_FORBIDDEN if key in value]
+    if taken:
+        raise ValueError(f"不能包含 {'、'.join(taken)}：它们会改掉请求本身。")
+    return value

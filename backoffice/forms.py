@@ -723,10 +723,15 @@ SITE_FIELDSETS = (
         "AI 审核",
         (
             "moderation_enabled",
+            "moderation_api_key",
+            "moderation_base_url",
             "moderation_model",
+            "moderation_alert_email",
             "moderation_daily_limit",
             "moderation_image_enabled",
-            "moderation_alert_email",
+            "moderation_extra_body",
+            "moderation_timeout",
+            "moderation_max_output_tokens",
         ),
     ),
     (
@@ -754,8 +759,8 @@ SITE_IMAGES = (
 
 
 class SiteSettingsForm(forms.ModelForm):
-    """Every setting in one page; the two stored secrets are never shown and
-    a blank box keeps them (core.forms.SECRET_FIELDS)."""
+    """Every setting in one page; the stored secrets (SMTP, object storage, the
+    AI's key) are never shown and a blank box keeps them (core.forms)."""
 
     FIELDSETS = SITE_FIELDSETS
 
@@ -765,6 +770,7 @@ class SiteSettingsForm(forms.ModelForm):
         widgets = {
             "founded_on": DateLocal,
             "site_description": forms.Textarea(attrs={"rows": 3}),
+            "moderation_extra_body": forms.Textarea(attrs={"rows": 3}),
         }
 
     def __init__(self, *args, user, **kwargs):
@@ -780,22 +786,33 @@ class SiteSettingsForm(forms.ModelForm):
                 current=getattr(self.instance, f"{name}_id", None),
             )
         for name, (label, help_text) in SECRET_FIELDS.items():
-            self.fields[name] = _secret_field(label, help_text)
+            stored = bool(self.instance.pk and getattr(self.instance, name))
+            self.fields[name] = _secret_field(
+                label, help_text + ("现在：已保存。" if stored else "现在：还没有。")
+            )
             self.initial[name] = ""
 
     fieldsets = ArticleForm.fieldsets
 
-    def _kept(self, name):
-        raw = (self.cleaned_data.get(name) or "").strip()
-        if raw:
-            return raw
-        return getattr(self.instance, name) if self.instance.pk else ""
-
     def clean_smtp_password(self):
-        return self._kept("smtp_password")
+        from core.forms import kept_secret
+
+        return kept_secret(self, "smtp_password")
 
     def clean_backup_s3_secret_access_key(self):
-        return self._kept("backup_s3_secret_access_key")
+        from core.forms import kept_secret
+
+        return kept_secret(self, "backup_s3_secret_access_key")
+
+    def clean_moderation_api_key(self):
+        from core.forms import kept_secret
+
+        return kept_secret(self, "moderation_api_key")
+
+    def clean_moderation_extra_body(self):
+        from core.forms import cleaned_extra_body
+
+        return cleaned_extra_body(self)
 
 
 # --- the log (docs/admin.md 4.6) ----------------------------------------------

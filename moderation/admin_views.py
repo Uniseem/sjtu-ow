@@ -15,6 +15,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from wagtail.log_actions import log as wagtail_log
 from wagtail.models import ModelLogEntry
@@ -215,4 +216,10 @@ def moderation_try(request):
     """「试一下」 (round 122): one sample through the AI, to check the key."""
     ok, message = services.try_connection()
     (messages.success if ok else messages.error)(request, message)
+    # From the site settings page (v7.1) it goes back there.
+    back = request.POST.get("next") or ""
+    if back and url_has_allowed_host_and_scheme(
+        back, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(back)
     return redirect("moderation_index")

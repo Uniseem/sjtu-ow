@@ -139,7 +139,7 @@ Host sjtu-ow-test
 5. **不扩大本轮范围，不新增依赖。** 顺带发现的问题写进报告，留给下一轮；确实要加依赖，先停下来问，并确认它的许可证：MIT、BSD、Apache 可以，**GPL、AGPL 不行**（和本项目的 PolyForm Strict 许可证冲突，设计 17.8）
 6. **分层**（设计 17.3）：业务逻辑写在各应用的 `services.py`；状态字段只能通过 service 函数改；邮件用 `transaction.on_commit` 入队；功能权限统一走 `accounts.permissions.can_use()`
 7. **新加的每条规则都要有「拆掉它就会红」的测试。** 039–042 轮的变异测试发现，绿灯的测试经常根本没测到它该测的东西。写完测试，把对应的检查改坏跑一遍，确认会红，再改回来。批量检查可以用 `handoff/rounds/181-soft-guards/mutate_guards.py`（042 那份加上了 `comments`、`search`，181 起 `--soft` 只跑「`messages.error` / `add_error`」式的软拒绝；全部 254 个硬拒绝 3 个并行约 70 分钟，在测试机上单独开一个工作树后台跑，别占 `remote-check.sh` 的锁；软拒绝 26 个约 20 分钟，可以直接 `remote-check.sh run`）
-8. **不提交**：`data/`、`backups/`、`media/`、`.env`、`static/css/app.css`（编译产物）。**密钥**（`DJANGO_SECRET_KEY`、`FIELD_ENCRYPTION_KEY`、`BACKUP_ENCRYPTION_KEY`、`MODERATION_API_KEY`）只放环境变量，不进数据库、不进仓库
+8. **不提交**：`data/`、`backups/`、`media/`、`.env`、`static/css/app.css`（编译产物）。**密钥**（`DJANGO_SECRET_KEY`、`FIELD_ENCRYPTION_KEY`、`BACKUP_ENCRYPTION_KEY`）只放环境变量，不进数据库、不进仓库。站长在后台填的密钥（SMTP 密码、对象存储密钥、AI 审核的接口密钥，后者 197 起由用户决定从环境变量搬进后台）用 `core.fields.EncryptedTextField` 加密存储、表单不回显（`core.forms.SECRET_FIELDS`），同样不进仓库
 9. **提交身份**用仓库本地 git 配置里的 `Uniseem`（GitHub noreply 邮箱），不要用个人姓名或邮箱提交，也不要改这项配置
 10. **开发库**：不要一次性杀掉多个 worker 或其他写 SQLite 的进程（025 轮这样把开发库写坏过），一个一个 `kill -TERM`；不要直接删数据库文件，先移到别处
 
@@ -194,8 +194,8 @@ Host sjtu-ow-test
 - **用了 `account/_form.html` 就别再自己写 `form.non_field_errors`**（168）：这个共用的表单片段已经显示整表单的错误，战队的申请、新建、管理页又写了一遍，同一句话显示两次。有测试拦
 - **`querydict_from_html` 的两个坑**（159）：没写 `value` 的勾选框读出来是空字符串，Django 会当成没勾（浏览器发的是 `on`，测试里按 `checked` 改回 `on`）；Django 在 `<textarea>` 后面加一个换行，读出来的值开头多一个换行，比较前 `strip()`
 - **别用一个短词断言页面里「没有」某样东西**（175）：`"cdn" not in html.lower()` 会碰上页面里的 CSRF 令牌、内容安全策略随机串，偶尔就红（171 的 CI 这样红过一次）。断言具体的结构，比如没有 `src="https://…"` 的 `<script>`
-- **正文和说明是 Markdown**（192 起，设计 5.2）：渲染只走 `content/markdown.py`，别在别处再写一个；测试里建文章直接写 `body="正文"`，不再是 `[("paragraph", …)]`。`content/legacy_body.py` 和 `content/blocks.py` 是迁移要用的，不能删。后台编辑器 EasyMDE 的样式表是表单资源，排在 `admin.css` 后面，`admin.css` 里覆盖它的规则前面都加了 `.md-field` 提高优先级，新加的也要加
-- **后台侧栏只有八个大类**（193 起，设计 14.1）：`core/admin_sections.py` 按网址前缀（`PREFIXES`）判断一页属于哪个标签，标签条带着 `data-admin-section`，`admin.css` 靠它高亮侧栏（Wagtail 自己按「网址前缀最长的菜单项」高亮，合并后会全落到「首页」）。新加的后台页面要登记前缀；新加的菜单项要在 `_item_key` 里认得出来，否则会单独挂在侧栏最后。标签条是在 Wagtail 的 `<div class="content">` 后面插进去的，Wagtail 升级改了这个标记，`test_the_strip_opens_the_content_column` 会红
+- **正文和说明是 Markdown**（192 起，设计 5.2）：渲染只走 `content/markdown.py`，别在别处再写一个；测试里建文章直接写 `body="正文"`，不再是 `[("paragraph", …)]`。`content/legacy_body.py` 和 `content/blocks.py` 是迁移要用的，不能删。后台编辑器 EasyMDE 的样式表是表单资源；覆盖它的规则在 `static/css/markdown-editor.css`（196 起由控件带上，排在 EasyMDE 的后面），前面都加了 `.md-field` 提高优先级，新加的也要加
+- **后台的八个大类**（193 起，196 重写）：193 那版靠 `core/admin_sections.py` 按网址前缀往 Wagtail 的界面里插标签条，196 整个删了；现在大类和标签在 `backoffice/nav.py`，视图用 `placed()` 自己声明在哪（见上面「后台也是自己写的」）
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
 ## 改了什么，就更新哪份文档

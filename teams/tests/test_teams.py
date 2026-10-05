@@ -479,8 +479,9 @@ def test_a_taken_name_is_marked_on_the_name_field(client, captain, team):
 @pytest.mark.django_db
 def test_team_changes_queue_moderation_and_prerender(team, settings, tmp_path):
     from moderation.models import ModerationItem
+    from moderation.tests.test_moderation import configure_ai
 
-    settings.MODERATION_API_KEY = "test-key"
+    configure_ai()
     settings.PRERENDER_ENABLED = True
     settings.PRERENDER_ROOT = tmp_path
     from core.models import PrerenderedPage

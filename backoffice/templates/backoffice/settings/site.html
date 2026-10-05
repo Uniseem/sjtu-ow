@@ -18,6 +18,12 @@
           <button type="submit" class="c-btn c-btn--secondary c-btn--sm">发送测试邮件</button>
           <p class="b-sub">发给你自己的邮箱，用于检查 SMTP 配置。发送失败时会显示原因。</p>
         </form>
+        <form method="post" action="{% url 'moderation_try' %}" class="b-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button type="submit" class="c-btn c-btn--secondary c-btn--sm" data-try-ai>试一下 AI</button>
+          <p class="b-sub">用已保存的 AI 审核设置发一句测试内容，看密钥、接口地址和模型能不能用（算一次调用，不留记录）。改了设置要先保存；「启用 AI 内容审核」没打开也能试。</p>
+        </form>
         <form method="post" action="{% url 'core_try_offsite' %}" class="b-form">
           {% csrf_token %}
           <button type="submit" class="c-btn c-btn--secondary c-btn--sm">测试对象存储</button>

@@ -53,18 +53,18 @@ def _ai(site) -> Check:
 
     if not services.is_configured():
         detail = (
-            "服务器没有设置环境变量 MODERATION_API_KEY（或自建服务的 "
-            "MODERATION_BASE_URL），AI 审核不会运行。写进 .env 后重启 web 和 worker。"
+            "还没有填接口密钥（自建服务可以只填接口地址），AI 审核不会运行。"
+            "在全站设置的「AI 审核」里填好，再点「试一下 AI」确认能连上。"
         )
     elif not site.moderation_enabled:
         detail = "密钥已设置，但全站设置里「启用 AI 内容审核」关着。"
     else:
-        detail = "在运行。可以在「审核 → 内容」页上点「试一下」确认能连上。"
+        detail = "在运行。可以在全站设置页上点「试一下 AI」确认能连上。"
     return Check(
         "AI 内容审核",
         services.is_enabled(),
         detail,
-        reverse("moderation_index"),
+        _settings_url(site),
         required=False,
     )
 
