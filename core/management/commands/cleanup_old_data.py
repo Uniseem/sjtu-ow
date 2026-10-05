@@ -1,7 +1,8 @@
 """Delete data past its retention window (design 16.5, 每天 04:00).
 
 Retention comes from design 15.5 / 16.5: finished task records 30 days,
-handled moderation records 180 days, plus expired sessions. API call logs and
+handled moderation records 180 days, plus expired sessions; since round 204
+the letters actions wrote (design 10.5) after 30 days too. API call logs and
 webhook deliveries went with the open API in round 067. Since round 141 it
 also closes team applications no captain answered in 14 days (design 7.3).
 """
@@ -57,6 +58,19 @@ class Command(BaseCommand):
         yield (
             f"已处理的 AI 审核记录（{MODERATION_DAYS} 天前）",
             self.handled_moderation(now),
+        )
+        yield (f"做完事写的信（{TASK_DAYS} 天前）", self.held_letters(now))
+
+    @staticmethod
+    def held_letters(now):
+        """Design 10.5 (v7.8): sent, not sent or void after 7 days; the
+        addresses on them go after the same 30 days as task records."""
+        from django.utils import timezone as tz
+
+        from core.models import HeldLetter
+
+        return HeldLetter.objects.filter(
+            created_at__lt=now - tz.timedelta(days=TASK_DAYS)
         )
 
     @staticmethod

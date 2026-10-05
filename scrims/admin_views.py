@@ -79,9 +79,7 @@ def scrim_cancel(request, pk):
             messages.error(request, str(exc))
         else:
             admin_log.record(scrim, "scrims.cancel", request.user)
-            messages.success(
-                request, f"「{scrim.title}」已取消，已报名的人会收到邮件。"
-            )
+            messages.success(request, f"「{scrim.title}」已取消。")
         return redirect("scrims:index")
     return render(
         request,

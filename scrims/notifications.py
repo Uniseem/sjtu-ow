@@ -15,6 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.letters import Letter, send, site_url
+from core.outbox import hold
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def scrim_cancelled_letter(scrim) -> Letter:
 
 def scrim_cancelled(scrim) -> int:
     """Design 9.1: tell everyone who signed up."""
-    return send(scrim_cancelled_letter(scrim), _recipients(scrim), fail_silently=True)
+    return hold(scrim_cancelled_letter(scrim), _recipients(scrim), fail_silently=True)
 
 
 def participants(scrim) -> list:

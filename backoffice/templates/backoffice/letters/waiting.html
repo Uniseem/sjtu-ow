@@ -1,0 +1,25 @@
+{% extends "backoffice/base.html" %}
+{% comment %}Design 10.5 (v7.8): one's actions whose letters wait for a choice.{% endcomment %}
+
+{% block page_heading %}还没发的信{% endblock %}
+
+{% block content %}
+  <section class="b-section">
+    <p class="b-section__text">做完事以后没决定发不发的信，等满 7 天作废。</p>
+    {% if batches %}
+      <ul class="b-list" data-held-batches>
+        {% for item in batches %}
+          <li>
+            <div>
+              <strong>{{ item.subjects|join:"；" }}</strong>
+              <div class="b-section__text">{{ item.at|date:"n 月 j 日 H:i" }} · {{ item.people }} 人</div>
+            </div>
+            <a class="c-btn c-btn--secondary c-btn--sm" href="{{ item.url }}">看信</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="b-section__text">没有等着发的信。</p>
+    {% endif %}
+  </section>
+{% endblock %}

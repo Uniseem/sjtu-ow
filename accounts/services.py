@@ -347,6 +347,7 @@ ON_DELETION = {
     "content.StandardPage.owner": KEPT_PAGE,
     "core.Broadcast.sent_by": KEPT_ACTION,
     "core.FontFamily.created_by": KEPT_ACTION,
+    "core.HeldLetter.actor": "删除：做完事还没发、发过的信都删（设计 10.5）",
     "members.MemberGroupMembership.user": "删除",
     "moderation.ModerationItem.author": "昵称、宣言的送审记录删除，其余跟着内容保留",
     "moderation.ModerationItem.reviewed_by": KEPT_ACTION,
@@ -373,6 +374,7 @@ def delete_account(user) -> None:
     from allauth.account.models import EmailAddress
     from django.db import transaction
 
+    from core.models import HeldLetter
     from members.models import MemberGroupMembership
     from moderation.models import ModerationItem, TargetType
     from scrims.services import remove_signups_of
@@ -391,6 +393,7 @@ def delete_account(user) -> None:
         user.contact_methods.all().delete()
         EmailAddress.objects.filter(user=user).delete()
         FeatureUserRule.objects.filter(user=user).delete()
+        HeldLetter.objects.filter(actor=user).delete()  # design 10.5
         user.email = f"deleted-{user.pk}@deleted.invalid"
         user.nickname = DELETED_NICKNAME
         user.avatar = None  # design-details 2.3
@@ -453,6 +456,7 @@ NOT_EXPORTED = {
     "content.StandardPage.owner": WAGTAIL_PAGE,
     "core.Broadcast.sent_by": STAFF_ACTION,
     "core.FontFamily.created_by": STAFF_ACTION,
+    "core.HeldLetter.actor": "做完事要发给别人的信（设计 10.5），写给别人的内容",
     "moderation.ModerationItem.author": (
         "AI 审核的内部复核记录（设计 5.5）；"
         "送审的内容本身在昵称、宣言、文章、评论里已导出"

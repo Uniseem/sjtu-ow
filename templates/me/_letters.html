@@ -1,0 +1,9 @@
+{% load ow %}
+{% waiting_letters as held %}
+{% if held %}
+  {% comment %}Design 10.5 (v7.8): letters an action wrote that nobody sent or dropped yet.{% endcomment %}
+  <div class="c-notice c-notice--info" role="status" data-held-reminder>
+    {% include "components/icon.html" with name="info" %}
+    <div class="c-notice__body">有 {{ held }} 件事的信还没决定发不发。<a href="{% url 'letters_waiting' %}" class="c-link">去看看</a></div>
+  </div>
+{% endif %}

@@ -16,6 +16,7 @@ from backoffice.views import (
     events,
     home,
     images,
+    letters,
     members,
     pages,
     settings,
@@ -34,6 +35,9 @@ from tournaments import review_admin, teams_admin
 
 backoffice_patterns = [
     path("", home.home, name="home"),
+    # Design 10.5 (v7.8): letters an action wrote, sent or not.
+    path("letters/", letters.letters_waiting, name="letters"),
+    path("letters/<uuid:batch>/", letters.letters_confirm, name="letters_confirm"),
     # 内容
     path("articles/", articles.article_list, name="articles"),
     path("articles/new/", articles.article_new, name="article_new"),

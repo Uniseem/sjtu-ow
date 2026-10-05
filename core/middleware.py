@@ -153,3 +153,22 @@ class PrerenderMissMiddleware:
         kind = targets.get(prerender.normalize_path(path))
         if kind and not prerender.file_for(path).exists():
             prerender.request_page(path, kind=kind)
+
+
+class HeldLettersMiddleware:
+    """Letters a signed-in person's action writes wait for them (design 10.5,
+    v7.8): the action's redirect goes on to 「发信」 first. ``core.outbox``."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if request.method != "POST" or not (user and user.is_authenticated):
+            return self.get_response(request)
+        from core import outbox
+
+        actor = getattr(user, "_wrapped", user)  # the user, not the lazy proxy
+        with outbox.asking(actor) as batch:
+            response = self.get_response(request)
+        return outbox.settle(request, response, batch)

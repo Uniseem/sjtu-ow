@@ -10,9 +10,9 @@
         <dt>报名时间</dt><dd>{{ tournament.registration_opens_at|date:"Y.m.d H:i" }} 至 {{ tournament.registration_closes_at|date:"Y.m.d H:i" }}</dd>
       </dl>
       {% if needs_reason %}
-        <p class="b-section__text">取消后赛事从列表中消失，详情页仍可访问并显示「已取消」。已报名的队长会收到邮件。</p>
+        <p class="b-section__text">取消后赛事从列表中消失，详情页仍可访问并显示「已取消」。取消后问你要不要给已报名的队长发信。</p>
         <div class="c-field">
-          <label class="c-field__label" for="reason">说明（会写进通知邮件）</label>
+          <label class="c-field__label" for="reason">说明（发信的话会写进信里）</label>
           <input type="text" id="reason" name="reason" maxlength="300">
         </div>
       {% endif %}

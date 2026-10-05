@@ -704,3 +704,43 @@ class Broadcast(models.Model):
 
     def __str__(self):
         return self.subject
+
+
+class HeldLetter(models.Model):
+    """A letter someone's action wrote, waiting for them to say send or not
+    (design 10.5, v7.8). Written down whole at that moment: what it says and
+    who gets it, so what they look at is what goes out. One action's letters
+    share a ``batch``; the 「发信」 page shows that batch."""
+
+    class State(models.TextChoices):
+        WAITING = "waiting", "等着"
+        SENT = "sent", "发了"
+        SKIPPED = "skipped", "没发"
+
+    batch = models.UUIDField("哪件事", db_index=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="做事的人",
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    letter = models.JSONField("信")
+    # [[address, name], …] at the moment of the action.
+    recipients = models.JSONField("收信人")
+    # Where the action would have gone; the 「发信」 page goes there after.
+    back = models.CharField("回到", max_length=500, blank=True)
+    # Asked in the back office's look rather than the site's.
+    in_back_office = models.BooleanField("在后台", default=False)
+    state = models.CharField(
+        "状态", max_length=10, choices=State.choices, default=State.WAITING
+    )
+    created_at = models.DateTimeField("时间", auto_now_add=True)
+    decided_at = models.DateTimeField("决定时间", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "待发的信"
+        verbose_name_plural = "待发的信"
+        ordering = ["created_at", "pk"]
+
+    def __str__(self):
+        return self.letter.get("subject", "")

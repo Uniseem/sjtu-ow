@@ -91,7 +91,7 @@ def avatar_review_action(request, pk):
         if action == "take_down":
             submission = services.take_down_avatar(pk, request.user, reason, note)
             who = submission.user.nickname
-            messages.success(request, f"已撤下，{who} 现在用默认头像，已发信说明原因。")
+            messages.success(request, f"已撤下，{who} 现在用默认头像。")
         else:
             messages.error(request, "未知的处理方式。")
     except services.AvatarReviewError as error:

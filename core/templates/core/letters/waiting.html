@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}还没发的信 · 上海交通大学守望先锋社区{% endblock %}
+
+{% block content %}
+  {% comment %}Design 10.5 (v7.8): actions whose letters wait for a choice.{% endcomment %}
+  <header class="c-pagehead">
+    <div class="l-container l-container--narrow">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>还没发的信</span></nav>
+      <h1>还没发的信</h1>
+      <p class="c-pagehead__lede">做完事以后没决定发不发的信。等满 7 天作废。</p>
+    </div>
+  </header>
+
+  <div class="l-container l-container--narrow pt-8 pb-16 lg:pb-24">
+    {% if batches %}
+      <ul class="flex flex-col gap-4" data-held-batches>
+        {% for item in batches %}
+          <li class="c-panel flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="font-semibold">{{ item.subjects|join:"；" }}</p>
+              <p class="text-sm text-fg-2">{{ item.at|date:"n 月 j 日 H:i" }} · {{ item.people }} 人</p>
+            </div>
+            <a class="c-btn c-btn--secondary" href="{{ item.url }}">看信</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with title="没有等着发的信" message="做完事要发的信都处理过了。" %}
+    {% endif %}
+  </div>
+{% endblock %}

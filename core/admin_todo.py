@@ -270,10 +270,25 @@ def _site_rows(user) -> list[Todo]:
     return rows
 
 
+def _letter_rows(user) -> list[Todo]:
+    """Design 10.5 (v7.8): one's own actions whose letters wait for a choice."""
+    from core.outbox import waiting_count
+
+    count = waiting_count(user)
+    return [
+        Todo(
+            f"有 {count} 件事的信还没决定发不发",
+            reverse("backoffice:letters"),
+            count,
+        )
+    ]
+
+
 def has_duties(user) -> bool:
     """Whether this person handles any of the queues above; others (say a
     verified author) get no panel rather than a permanently empty one."""
 
+    from core.outbox import waiting_count
     from moderation.admin_views import can_review
     from scrims import services as scrim_services
     from tournaments import services as tournament_services
@@ -283,11 +298,17 @@ def has_duties(user) -> bool:
         or can_review(user)
         or tournament_services.can_manage(user)
         or scrim_services.can_manage(user)
+        or waiting_count(user)
     )
 
 
 def todo_rows(user) -> list[Todo]:
     # v6.72–v6.73: AI findings come by mail, faces and articles go out at
     # once; nothing of theirs waits here any more.
-    rows = _tournament_rows(user) + _scrim_rows(user) + _site_rows(user)
+    rows = (
+        _letter_rows(user)
+        + _tournament_rows(user)
+        + _scrim_rows(user)
+        + _site_rows(user)
+    )
     return [row for row in rows if row.count]

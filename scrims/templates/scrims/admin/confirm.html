@@ -12,7 +12,7 @@
         <dt>已报名</dt><dd>{{ scrim.signups.count }} 人</dd>
       </dl>
       {% if action_label == "取消内战" %}
-        <p class="b-section__text">取消后内战从列表中消失，详情页仍可访问并显示「已取消」。已报名的人会收到邮件。</p>
+        <p class="b-section__text">取消后内战从列表中消失，详情页仍可访问并显示「已取消」。取消后问你要不要给已报名的人发信。</p>
       {% endif %}
     </section>
     {% include "core/admin/_announce_box.html" %}

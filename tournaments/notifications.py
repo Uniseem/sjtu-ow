@@ -7,6 +7,7 @@ sends it (see teams.notifications).
 from __future__ import annotations
 
 from core.letters import Letter, send, site_url
+from core.outbox import hold
 
 
 def tournament_cancelled_letter(tournament, reason="") -> Letter:
@@ -21,7 +22,7 @@ def tournament_cancelled_letter(tournament, reason="") -> Letter:
 
 
 def tournament_cancelled(tournament, captain, reason="") -> None:
-    send(tournament_cancelled_letter(tournament, reason), [captain])
+    hold(tournament_cancelled_letter(tournament, reason), [captain])
 
 
 def contact_fact(tournament) -> list:

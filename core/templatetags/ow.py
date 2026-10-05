@@ -307,3 +307,12 @@ def readable_url(url) -> str:
             return match.group(0)
 
     return _ESCAPED_TEXT.sub(decode, str(url or ""))
+
+
+@register.simple_tag(takes_context=True)
+def waiting_letters(context) -> int:
+    """How many of this person's actions have letters waiting (design 10.5)."""
+    from core.outbox import waiting_count
+
+    request = context.get("request")
+    return waiting_count(request.user) if request is not None else 0

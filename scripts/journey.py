@@ -247,6 +247,21 @@ def journey(tools, base, data) -> list[str]:
         )
     )
     step("申请了战队", applied, detail)
+    # Round 204 (design 10.5): the letter to the captain waits for 「发信」.
+    asked = js(
+        "location.pathname.startsWith('/letters/') + '|' +"
+        " document.querySelectorAll('[data-held-letter]').length"
+    )
+    step("申请后问要不要给队长发信", asked == "true|1", asked or "")
+    fill_and_submit("""(() => {
+        document.querySelector('[data-held-letters]').setAttribute('data-journey', '1');
+    })()""")
+    step(
+        "点了发信，回到战队页",
+        page_says("信已经排队发出，共 1 人")
+        and js("location.pathname") == f"/teams/{data['team']}/",
+        js("location.pathname") or "",
+    )
 
     go("/")
     agenda = js("(document.querySelector('[data-my-agenda]') || {}).innerText || ''")
@@ -513,6 +528,19 @@ def officers(tools, base, data) -> list[str]:
     step("三个散人移进新队伍", placed == 3, str(placed))
     press("button[name=action][value=save]")
     step("保存编队", says("已保存：新建 1 支"))
+    # Round 204 (design 10.5): asked before the three hear they are placed.
+    asked = js(
+        "location.pathname.startsWith('/admin/letters/') + '|' +"
+        " document.querySelectorAll('[data-held-letter]').length + '|' +"
+        " (document.querySelector('[data-held-letter]') || {}).innerText"
+    )
+    step(
+        "编完问要不要给编进的人发信",
+        bool(asked) and asked.startswith("true|1|") and "3 人" in asked,
+        " ".join((asked or "").split())[:120],
+    )
+    press("button[name=skip]")
+    step("选了都不发，回到编队页", says("这次没有发信"))
     step("新队伍出现在页面上", says("浏览器编的队"))
 
     # Round 202 (design 13.17): settings save themselves; another button on

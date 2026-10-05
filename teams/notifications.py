@@ -8,6 +8,7 @@ specimen page (/_styleguide/emails/) renders the builders with sample data.
 from __future__ import annotations
 
 from core.letters import Letter, send, site_url
+from core.outbox import hold
 
 
 def _manage(team) -> str:
@@ -34,7 +35,7 @@ def application_submitted(application) -> None:
     captain = application.team.captain()
     if captain is None:
         return
-    send(application_submitted_letter(application), [captain])
+    hold(application_submitted_letter(application), [captain])
 
 
 def application_decided_letter(application) -> Letter:
@@ -61,7 +62,7 @@ def application_decided_letter(application) -> Letter:
 
 
 def application_decided(application) -> None:
-    send(application_decided_letter(application), [application.applicant])
+    hold(application_decided_letter(application), [application.applicant])
 
 
 def applications_waiting_letter(team, applications) -> Letter:
@@ -119,7 +120,7 @@ def member_removed_letter(team) -> Letter:
 
 
 def member_removed(team, user) -> None:
-    send(member_removed_letter(team), [user])
+    hold(member_removed_letter(team), [user])
 
 
 def member_left_letter(team, user, entries=()) -> Letter:
@@ -160,7 +161,7 @@ def member_left(team, user) -> None:
     captain = team.captain()
     if captain is None:
         return
-    send(member_left_letter(team, user, entries_still_listing(team, user)), [captain])
+    hold(member_left_letter(team, user, entries_still_listing(team, user)), [captain])
 
 
 def captain_changed_letter(team) -> Letter:
@@ -174,7 +175,7 @@ def captain_changed_letter(team) -> Letter:
 
 
 def captain_changed(team, new_captain) -> None:
-    send(captain_changed_letter(team), [new_captain])
+    hold(captain_changed_letter(team), [new_captain])
 
 
 def team_disbanded_letter(team) -> Letter:
@@ -187,4 +188,4 @@ def team_disbanded_letter(team) -> Letter:
 
 
 def team_disbanded(team, members) -> None:
-    send(team_disbanded_letter(team), members)
+    hold(team_disbanded_letter(team), members)

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from django.urls import reverse
 
-from core.letters import Letter, send, site_url
+from core.letters import Letter, site_url
+from core.outbox import hold
 
 
 def _profile_url() -> str:
@@ -40,4 +41,4 @@ def avatar_taken_down_letter(submission) -> Letter:
 
 
 def avatar_taken_down(submission) -> None:
-    send(avatar_taken_down_letter(submission), [submission.user])
+    hold(avatar_taken_down_letter(submission), [submission.user])

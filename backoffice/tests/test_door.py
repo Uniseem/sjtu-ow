@@ -5,6 +5,7 @@ that decides whether the tab is drawn), or stricter when the page says so;
 the view is not even called for anyone else.
 """
 
+import uuid
 from unittest import mock
 
 import pytest
@@ -35,7 +36,12 @@ STRICTER = {
     "images/collections/<id:pk>/rename/": access.is_superuser,
     "images/collections/<id:pk>/delete/": access.is_superuser,
 }
-FILLER = {"pk": 999999999, "action": "nothing", "kind": "nothing"}
+FILLER = {
+    "pk": 999999999,
+    "action": "nothing",
+    "kind": "nothing",
+    "batch": uuid.UUID(int=0),  # 「发信」 (design 10.5)
+}
 
 
 @pytest.fixture

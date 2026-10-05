@@ -83,10 +83,7 @@ def tournament_cancel(request, pk):
             admin_log.record(
                 tournament, "tournaments.cancel", request.user, reason=reason
             )
-            messages.success(
-                request,
-                f"「{tournament.title}」已取消，已报名的队长会收到邮件。",
-            )
+            messages.success(request, f"「{tournament.title}」已取消。")
         return redirect("tournaments:index")
     return render(
         request,

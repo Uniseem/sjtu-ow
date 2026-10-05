@@ -66,6 +66,7 @@ MIDDLEWARE = [
     "core.middleware.LoggedInHintCookieMiddleware",
     "core.middleware.PrerenderMissMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "core.middleware.HeldLettersMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "core.middleware.WagtailAdminCSPMiddleware",

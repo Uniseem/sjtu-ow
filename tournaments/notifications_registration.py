@@ -8,7 +8,8 @@ suffix sends it (see teams.notifications).
 
 from __future__ import annotations
 
-from core.letters import Letter, send, site_url
+from core.letters import Letter, site_url
+from core.outbox import hold
 from tournaments.models import RegistrationAction, RegistrationStatus
 
 SUBMIT_SUBJECTS = {
@@ -75,7 +76,7 @@ def registration_submitted_letter(registration, action) -> Letter:
 
 
 def registration_submitted(registration, action) -> None:
-    send(registration_submitted_letter(registration, action), recipients(registration))
+    hold(registration_submitted_letter(registration, action), recipients(registration))
 
 
 def team_member_entered_letter(registration, row) -> Letter:
@@ -104,7 +105,7 @@ def team_member_entered_letter(registration, row) -> Letter:
 def team_members_entered(registration, rows) -> None:
     """One message each, since the game ID differs."""
     for row in rows:
-        send(team_member_entered_letter(registration, row), [row.user])
+        hold(team_member_entered_letter(registration, row), [row.user])
 
 
 def registration_status_changed_letter(registration, note="") -> Letter:
@@ -137,7 +138,7 @@ def registration_status_changed_letter(registration, note="") -> Letter:
 
 
 def registration_status_changed(registration, note="") -> None:
-    send(
+    hold(
         registration_status_changed_letter(registration, note),
         recipients(registration),
     )
@@ -171,7 +172,7 @@ def adhoc_team_formed_letter(registration) -> Letter:
 
 def adhoc_team_formed(registration, users) -> None:
     """Each newly placed member hears which team they are on."""
-    send(adhoc_team_formed_letter(registration), users)
+    hold(adhoc_team_formed_letter(registration), users)
 
 
 def adhoc_members_returned_letter(tournament, team_name, *, dissolved=False) -> Letter:
@@ -191,7 +192,7 @@ def adhoc_members_returned_letter(tournament, team_name, *, dissolved=False) -> 
 
 def adhoc_members_returned(tournament, team_name, users, *, dissolved=False) -> None:
     """Admins moved these people back to the pool, or dissolved the team."""
-    send(
+    hold(
         adhoc_members_returned_letter(tournament, team_name, dissolved=dissolved),
         users,
     )
@@ -224,7 +225,7 @@ def adhoc_member_left(registration, user, *, dissolved=False) -> None:
     from core.mail import emails_for_groups
     from tournaments.services import MANAGER_GROUP
 
-    send(
+    hold(
         adhoc_member_left_letter(registration, user, dissolved=dissolved),
         emails_for_groups([MANAGER_GROUP]),
     )

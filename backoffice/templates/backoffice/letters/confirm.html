@@ -1,0 +1,31 @@
+{% extends "backoffice/base.html" %}
+{% comment %}
+  「发信」 (design 10.5, v7.8): the action is done; these are the letters it
+  wrote. Ticked ones go out, the rest do not; then back where it was going.
+{% endcomment %}
+
+{% block page_heading %}要不要发信{% endblock %}
+
+{% block content %}
+  <p class="b-section__text">刚才的操作已经完成。它要发下面这些信：勾上的发出去，不勾的不发。</p>
+  <form method="post" class="b-form" data-held-letters>
+    {% csrf_token %}
+    {% for letter in letters %}
+      <section class="b-section" data-held-letter="{{ letter.pk }}">
+        <label class="c-check font-semibold"><input type="checkbox" name="send" value="{{ letter.pk }}" checked>发这封信</label>
+        <dl class="b-kv">
+          <dt>发给</dt><dd>{{ letter.who }}{% if letter.count > 1 %}（{{ letter.count }} 人，每人一封）{% endif %}</dd>
+          <dt>主题</dt><dd>{{ letter.subject }}</dd>
+        </dl>
+        <details{% if forloop.first %} open{% endif %}>
+          <summary class="cursor-pointer text-fg-2">信的样子</summary>
+          <iframe class="c-mailframe mt-3" src="{{ letter.preview }}" title="「{{ letter.subject }}」的样子" loading="lazy"></iframe>
+        </details>
+      </section>
+    {% endfor %}
+    <div class="b-actions">
+      <button type="submit" class="c-btn c-btn--primary">发出勾选的信</button>
+      <button type="submit" name="skip" value="1" class="c-btn c-btn--secondary">都不发</button>
+    </div>
+  </form>
+{% endblock %}

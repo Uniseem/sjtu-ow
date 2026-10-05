@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core import styleguide, views
+from core import held_views, styleguide, views
 
 urlpatterns = [
     path("", views.home, name="home"),
@@ -15,6 +15,14 @@ urlpatterns = [
         name="announcements_unsubscribe",
     ),
     path("calendar/<str:token>.ics", views.calendar_feed, name="calendar_feed"),
+    # Design 10.5 (v7.8): the letters an action wrote wait for 「发信」.
+    path("letters/", held_views.letters_waiting, name="letters_waiting"),
+    path("letters/<uuid:batch>/", held_views.letters_confirm, name="letters_confirm"),
+    path(
+        "letters/<uuid:batch>/<id:pk>/",
+        held_views.letters_preview,
+        name="letters_preview",
+    ),
     path("_styleguide/", styleguide.styleguide, name="styleguide"),
     path(
         "_styleguide/emails/",

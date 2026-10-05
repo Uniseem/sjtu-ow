@@ -58,7 +58,7 @@
             {% endfor %}
           </ul>
         {% else %}
-          {% include "components/empty_state.html" with title="暂时没有待审批的申请" message="有人申请加入时会发邮件告诉你。" %}
+          {% include "components/empty_state.html" with title="暂时没有待审批的申请" message="有人申请加入时会出现在这里。" %}
         {% endif %}
       </section>
 
@@ -82,7 +82,7 @@
                         <input type="hidden" name="user" value="{{ membership.user.pk }}">
                         <button type="submit" class="c-btn c-btn--secondary c-btn--sm">转让队长</button>
                       </form>
-                      <form method="post" action="{% url 'member_remove' team.pk %}" data-confirm="把这名成员移出战队？对方会收到邮件。">
+                      <form method="post" action="{% url 'member_remove' team.pk %}" data-confirm="把这名成员移出战队？">
                         {% csrf_token %}
                         <input type="hidden" name="user" value="{{ membership.user.pk }}">
                         <button type="submit" class="c-btn c-btn--danger c-btn--sm">移除</button>
@@ -143,7 +143,7 @@
               <ul class="mt-3 list-disc pl-5">{% for reason in disband_blockers %}<li>{{ reason }}</li>{% endfor %}</ul>
               <button type="button" class="c-btn c-btn--danger mt-4" disabled>暂时不能解散</button>
             {% else %}
-              <form method="post" action="{% url 'team_disband' team.pk %}" class="mt-4" data-confirm="确定解散战队？解散后不能恢复，全体成员会收到邮件。">
+              <form method="post" action="{% url 'team_disband' team.pk %}" class="mt-4" data-confirm="确定解散战队？解散后不能恢复。">
                 {% csrf_token %}
                 <button type="submit" class="c-btn c-btn--danger">解散战队</button>
               </form>

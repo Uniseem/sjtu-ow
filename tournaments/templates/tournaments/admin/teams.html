@@ -18,7 +18,7 @@
 
   <form method="post" data-teams-form data-roster-max="{{ roster_max }}" data-roster-min="{{ roster_min }}" class="b-form">
     {% csrf_token %}
-    <div class="c-notice c-notice--info" data-drag-help hidden>{% include "components/icon.html" with name="info" %}<div class="c-notice__body">把散人拖进队伍，或者用卡片上的按钮移动。<strong>队伍满员时不能直接拖进去</strong>，先把要换下来的人拖回散人池。人数低于下限的队伍标红，但仍然可以保存。保存后新编入的人会收到邮件。</div></div>
+    <div class="c-notice c-notice--info" data-drag-help hidden>{% include "components/icon.html" with name="info" %}<div class="c-notice__body">把散人拖进队伍，或者用卡片上的按钮移动。<strong>队伍满员时不能直接拖进去</strong>，先把要换下来的人拖回散人池。人数低于下限的队伍标红，但仍然可以保存。保存后问你要不要给新编入的人发信。</div></div>
     <noscript>
       <div class="c-notice c-notice--error"><div class="c-notice__body">这个页面的拖拽需要 JavaScript；没有的话请用每张卡片上的按钮。</div></div>
     </noscript>
@@ -59,11 +59,11 @@
   {% if zones %}
     <section class="b-section">
       <h2 class="b-section__title">解散队伍</h2>
-      <p class="b-section__text">解散后成员回到散人池，并收到邮件。</p>
+      <p class="b-section__text">解散后成员回到散人池，再问你要不要发信告诉他们。</p>
       <ul class="b-list">
         {% for zone in zones %}
           <li>
-            <form method="post" class="split-dissolve" data-confirm="解散这支临时队伍？成员回到散人池并收到邮件。">
+            <form method="post" class="split-dissolve" data-confirm="解散这支临时队伍？成员回到散人池。">
               {% csrf_token %}
               <input type="hidden" name="action" value="dissolve">
               <input type="hidden" name="registration" value="{{ zone.registration.pk }}">

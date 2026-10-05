@@ -72,6 +72,11 @@ PAGES = [
     ("admin-team", "officer", "/admin/teams/edit/{team}/"),
     ("admin-image-collections", "officer", "/admin/images/collections/"),
     ("admin-typography", "officer", "/admin/settings/typography/"),
+    # 「发信」 (round 204, design 10.5).
+    ("letters-confirm", "member", "/letters/{front_letters}/"),
+    ("letters-waiting", "member", "/letters/"),
+    ("admin-letters-confirm", "officer", "/admin/letters/{back_letters}/"),
+    ("admin-letters-waiting", "officer", "/admin/letters/"),
 ]
 
 
@@ -251,6 +256,23 @@ def seed() -> dict:
     group = MemberGroup.objects.create(name="截图干部")
     MemberGroupMembership.objects.create(group=group, user=officer, title="社长")
 
+    # Letters waiting for 「发信」 (round 204, design 10.5): the member left
+    # the team, the officer cancelled the scrim.
+    from core import outbox
+    from core.models import HeldLetter
+    from scrims import notifications as scrim_mail
+    from teams import notifications as team_mail
+
+    with outbox.asking(member) as front:
+        outbox.hold(team_mail.member_left_letter(team, member), [captain])
+    with outbox.asking(officer) as back:
+        outbox.hold(scrim_mail.scrim_cancelled_letter(scrim), [member, captain])
+        outbox.hold(team_mail.captain_changed_letter(team), [captain])
+    HeldLetter.objects.filter(batch=front.key).update(back=f"/teams/{team.pk}/")
+    HeldLetter.objects.filter(batch=back.key).update(
+        back="/admin/scrims/", in_back_office=True
+    )
+
     sessions = {}
     for name, user in (("member", member), ("captain", captain), ("officer", officer)):
         client = Client()
@@ -267,6 +289,8 @@ def seed() -> dict:
         "about": StandardPage.objects.get(slug="about").pk,
         "category": category.pk,
         "group": group.pk,
+        "front_letters": str(front.key),
+        "back_letters": str(back.key),
     }
 
 
