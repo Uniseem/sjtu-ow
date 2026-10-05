@@ -11,7 +11,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -114,22 +113,11 @@ def scrim_items(scrim) -> list[Item]:
     return items
 
 
-def _tournament_manager(request) -> None:
-    if not tournament_services.can_manage(request.user):
-        raise PermissionDenied("需要赛事管理权限。")
-
-
-def _scrim_manager(request) -> None:
-    if not scrim_services.can_manage(request.user):
-        raise PermissionDenied("需要内战管理权限。")
-
-
 # --- tournaments --------------------------------------------------------------
 
 
 @placed("events", "tournaments")
 def tournament_list(request):
-    _tournament_manager(request)
     tournaments = Tournament.objects.annotate(
         pending=Count(
             "registrations",
@@ -201,7 +189,6 @@ def _tournament_form_page(request, form, *, title, tournament=None, copied_from=
 
 @placed("events", "tournaments")
 def tournament_add(request):
-    _tournament_manager(request)
     form = TournamentForm(
         request.POST or None, instance=Tournament(), user=request.user
     )
@@ -213,7 +200,6 @@ def tournament_add(request):
 
 @placed("events", "tournaments")
 def tournament_edit(request, pk):
-    _tournament_manager(request)
     tournament = get_object_or_404(Tournament, pk=pk)
     form = TournamentForm(request.POST or None, instance=tournament, user=request.user)
     if request.method == "POST" and form.is_valid():
@@ -228,7 +214,6 @@ def tournament_edit(request, pk):
 @placed("events", "tournaments")
 def tournament_copy(request, pk):
     """「复制」 (design 14.2, v6.51): the listed fields, times whole weeks on."""
-    _tournament_manager(request)
     source = get_object_or_404(Tournament, pk=pk)
     form = TournamentForm(
         request.POST or None,
@@ -246,7 +231,6 @@ def tournament_copy(request, pk):
 @placed("events", "tournaments")
 def tournament_delete(request, pk):
     """Only a draft never published (round 115); the rest are cancelled."""
-    _tournament_manager(request)
     tournament = get_object_or_404(Tournament, pk=pk)
     if not tournament_services.can_delete(tournament):
         messages.error(request, "发布过的赛事不能删除，只能取消。")
@@ -274,7 +258,6 @@ def tournament_delete(request, pk):
 
 @placed("events", "scrims")
 def scrim_list(request):
-    _scrim_manager(request)
     scrims = Scrim.objects.annotate(signup_total=Count("signups")).order_by(
         "-starts_at", "-pk"
     )
@@ -335,7 +318,6 @@ def _scrim_form_page(request, form, *, title, scrim=None, copied_from=None):
 
 @placed("events", "scrims")
 def scrim_add(request):
-    _scrim_manager(request)
     form = ScrimForm(request.POST or None, instance=Scrim())
     if request.method == "POST" and form.is_valid():
         scrim = _save_scrim(request, form, created=True)
@@ -345,7 +327,6 @@ def scrim_add(request):
 
 @placed("events", "scrims")
 def scrim_edit(request, pk):
-    _scrim_manager(request)
     scrim = get_object_or_404(Scrim, pk=pk)
     form = ScrimForm(request.POST or None, instance=scrim)
     if request.method == "POST" and form.is_valid():
@@ -357,7 +338,6 @@ def scrim_edit(request, pk):
 
 @placed("events", "scrims")
 def scrim_copy(request, pk):
-    _scrim_manager(request)
     source = get_object_or_404(Scrim, pk=pk)
     form = ScrimForm(request.POST or None, instance=scrim_services.copy_for_new(source))
     if request.method == "POST" and form.is_valid():
@@ -371,7 +351,6 @@ def scrim_copy(request, pk):
 @placed("events", "scrims")
 def scrim_delete(request, pk):
     """Only a draft nobody signed up for (round 115)."""
-    _scrim_manager(request)
     scrim = get_object_or_404(Scrim, pk=pk)
     if not scrim_services.can_delete(scrim):
         messages.error(request, "发布过或有人报名的内战不能删除，只能取消。")

@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime, time
 
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from wagtail.log_actions import log
@@ -21,14 +20,8 @@ from core.models import SiteSettings
 LOG_PER_PAGE = 50
 
 
-def _superuser(request) -> None:
-    if not request.user.is_superuser:
-        raise PermissionDenied("这一页只有超级管理员能用。")
-
-
 @placed("settings", "site")
 def site_settings(request):
-    _superuser(request)
     site = SiteSettings.load(request)
     form = SiteSettingsForm(request.POST or None, instance=site, user=request.user)
     if request.method == "POST" and form.is_valid():
@@ -50,7 +43,6 @@ def _day_start(day):
 @placed("settings", "log")
 def action_log(request):
     """Every entry, the pages' and the models', newest first."""
-    _superuser(request)
     form = LogFilterForm(request.GET or None)
     entries = []
     filters = {}

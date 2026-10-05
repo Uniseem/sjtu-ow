@@ -18,7 +18,6 @@ from django.views.decorators.http import require_POST
 from wagtail.log_actions import log
 
 from accounts.models import FeatureGroupRestriction, FeatureUserRule, User
-from backoffice import access
 from backoffice.forms import (
     ASSIGNED_ROLES,
     GroupRestrictionForm,
@@ -56,17 +55,11 @@ ROLE_SUMMARIES = {
 ROLE_ORDER = (*ASSIGNED_ROLES, "投稿者", "交大用户", "校外用户")
 
 
-def _superuser(request) -> None:
-    if not request.user.is_superuser:
-        raise PermissionDenied("这一页只有超级管理员能用。")
-
-
 # --- users --------------------------------------------------------------------
 
 
 @placed("members", "users", "users")
 def user_list(request):
-    _superuser(request)
     users = User.objects.prefetch_related(
         Prefetch("groups", queryset=Group.objects.order_by("name"))
     ).order_by("-date_joined", "-pk")
@@ -126,7 +119,6 @@ def _after_deactivation(request, user) -> None:
 
 @placed("members", "users", "users")
 def user_edit(request, pk):
-    _superuser(request)
     person = get_object_or_404(User, pk=pk)
     was_active = person.is_active
     form = UserForm(request.POST or None, instance=person, editor=request.user)
@@ -159,7 +151,6 @@ def user_edit(request, pk):
 @placed("members", "users", "users")
 @require_POST
 def user_rule_add(request, pk):
-    _superuser(request)
     person = get_object_or_404(User, pk=pk)
     form = UserRuleForm(request.POST, user=person)
     if form.is_valid():
@@ -177,7 +168,6 @@ def user_rule_add(request, pk):
 @placed("members", "users", "users")
 @require_POST
 def user_rule_delete(request, pk):
-    _superuser(request)
     rule = get_object_or_404(FeatureUserRule, pk=pk)
     log(rule, "wagtail.delete", user=request.user)
     rule.delete()
@@ -190,7 +180,6 @@ def user_rule_delete(request, pk):
 
 @placed("members", "users", "roles")
 def role_list(request):
-    _superuser(request)
     groups = Group.objects.annotate(
         people=Count("user", filter=Q(user__is_active=True))
     ).prefetch_related(
@@ -222,7 +211,6 @@ def role_list(request):
 @placed("members", "users", "roles")
 @require_POST
 def role_restriction_add(request, pk):
-    _superuser(request)
     group = get_object_or_404(Group, pk=pk)
     form = GroupRestrictionForm(request.POST, group=group)
     if form.is_valid():
@@ -242,7 +230,6 @@ def role_restriction_add(request, pk):
 @placed("members", "users", "roles")
 @require_POST
 def role_restriction_delete(request, pk):
-    _superuser(request)
     restriction = get_object_or_404(FeatureGroupRestriction, pk=pk)
     log(restriction, "wagtail.delete", user=request.user)
     restriction.delete()
@@ -263,7 +250,6 @@ def team_state(team, stuck: set[int]) -> tuple[str, str]:
 
 @placed("members", "teams")
 def team_list(request):
-    _superuser(request)
     teams = Team.objects.prefetch_related("memberships__user").order_by(
         "disbanded_at", "-created_at"
     )
@@ -291,7 +277,6 @@ def team_list(request):
 
 @placed("members", "teams")
 def team_edit(request, pk):
-    _superuser(request)
     team = get_object_or_404(Team, pk=pk)
     form = TeamForm(request.POST or None, instance=team, user=request.user)
     if request.method == "POST" and form.is_valid():
@@ -321,16 +306,14 @@ def team_edit(request, pk):
 # --- member groups ------------------------------------------------------------
 
 
-def _group_editor(request, action: str = "change") -> None:
-    if not access.edits_member_groups(request.user):
-        raise PermissionDenied("成员分组只有内容编辑能改。")
+def _group_may(request, action: str) -> None:
+    """New and delete need more than the tab (change): placed checked that."""
     if not request.user.has_perm(f"members.{action}_membergroup"):
         raise PermissionDenied("没有这项分组权限。")
 
 
 @placed("members", "groups")
 def group_list(request):
-    _group_editor(request)
     groups = MemberGroup.objects.annotate(people=Count("memberships"))
     return render(
         request,
@@ -346,7 +329,8 @@ def group_list(request):
 @placed("members", "groups")
 def group_edit(request, pk=None):
     group = get_object_or_404(MemberGroup, pk=pk) if pk else MemberGroup()
-    _group_editor(request, "change" if pk else "add")
+    if not pk:
+        _group_may(request, "add")
     Formset = membership_formset()
     form = MemberGroupForm(request.POST or None, instance=group)
     formset = Formset(request.POST or None, instance=group, prefix="members")
@@ -376,7 +360,7 @@ def group_edit(request, pk=None):
 @placed("members", "groups")
 @require_POST
 def group_delete(request, pk):
-    _group_editor(request, "delete")
+    _group_may(request, "delete")
     group = get_object_or_404(MemberGroup, pk=pk)
     name = group.name
     log(group, "wagtail.delete", user=request.user)

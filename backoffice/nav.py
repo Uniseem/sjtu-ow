@@ -3,8 +3,10 @@
 Each view says where it belongs with ``placed(section, tab)``; nothing is
 guessed from the address. ``placed`` is also the door: a visitor who is not
 signed in goes to the sign-in page, someone without ``access_admin`` gets a
-403, so every back-office address is closed the same way whether or not its
-own view checks a narrower permission after it.
+403, and so does someone the tab is not for (v7.3: the tab's ``allowed``, the
+same function that decides whether its link is drawn). A page stricter than
+its tab says so with ``allowed=``; the view itself checks only what is finer
+than a page (this article, that collection).
 """
 
 from __future__ import annotations
@@ -213,11 +215,26 @@ class Navigation:
         ]
 
 
-def placed(section: str, tab: str | None = None, subtab: str | None = None):
-    """Put a view in the back office: the door, then where it sits."""
+def tab_for(section: str, tab: str) -> Tab:
+    for item in BY_KEY[section].tabs:
+        if item.key == tab:
+            return item
+    raise ValueError(f"「{BY_KEY[section].label}」里没有这个标签：{tab}")
+
+
+def placed(
+    section: str,
+    tab: str | None = None,
+    subtab: str | None = None,
+    *,
+    allowed: Callable | None = None,
+):
+    """Put a view in the back office: the door, this page's permission (the
+    tab's unless ``allowed`` says stricter), then where it sits."""
 
     if section not in BY_KEY:
         raise ValueError(f"没有这个大类：{section}")
+    gate = allowed or (tab_for(section, tab).allowed if tab else access.can_enter)
 
     def decorate(view):
         @wraps(view)
@@ -227,10 +244,13 @@ def placed(section: str, tab: str | None = None, subtab: str | None = None):
                 return redirect_to_login(request.get_full_path())
             if not access.can_enter(request.user):
                 raise PermissionDenied("没有进入后台的权限。")
+            if not gate(request.user):
+                raise PermissionDenied("没有打开这一页的权限。")
             request.backoffice_place = Place(section, tab, subtab)
             return view(request, *args, **kwargs)
 
         wrapper.backoffice_place = Place(section, tab, subtab)
+        wrapper.backoffice_gate = gate
         return wrapper
 
     return decorate

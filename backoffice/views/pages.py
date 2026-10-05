@@ -9,7 +9,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from wagtail.actions.publish_page_revision import PublishPageRevisionAction
 
-from backoffice import access
 from backoffice.forms import IndexIntroForm, PinnedArticlesForm, StandardPageForm
 from backoffice.nav import placed
 from backoffice.views.articles import article_status
@@ -25,11 +24,6 @@ from content.models import (
 FIXED_SLUGS = ("about", "terms", "privacy")
 
 
-def _allowed(request) -> None:
-    if not access.edits_site_pages(request.user):
-        raise PermissionDenied("网站页面只有内容编辑和超级管理员能改。")
-
-
 def _save_and_publish(request, draft, previous) -> None:
     revision = draft.save_revision(
         user=request.user, log_action=True, previous_revision=previous
@@ -39,7 +33,6 @@ def _save_and_publish(request, draft, previous) -> None:
 
 @placed("content", "pages")
 def page_list(request):
-    _allowed(request)
     plain = list(StandardPage.objects.annotate_approved_schedule().order_by("path"))
     plain.sort(
         key=lambda page: (
@@ -68,7 +61,6 @@ def page_list(request):
 
 @placed("content", "pages")
 def page_edit(request, pk):
-    _allowed(request)
     page = get_object_or_404(StandardPage, pk=pk)
     if not page.permissions_for_user(request.user).can_edit():
         raise PermissionDenied("你不能改这个页面。")
@@ -105,7 +97,6 @@ def page_edit(request, pk):
 
 @placed("content", "pages")
 def page_preview(request, pk):
-    _allowed(request)
     page = get_object_or_404(StandardPage, pk=pk)
     draft = page.get_latest_revision_as_object()
     return draft.serve_preview(request, draft.default_preview_mode)
@@ -115,7 +106,6 @@ def page_preview(request, pk):
 def home_pins(request):
     """At most three, from the published articles, saved straight to the
     homepage (docs/admin.md 4.2)."""
-    _allowed(request)
     home = get_object_or_404(HomePage)
     current = [rel.article for rel in home.pinned_articles.select_related("article")]
     initial = {f"article_{n}": a.pk for n, a in enumerate(current, start=1)}
@@ -150,7 +140,6 @@ def home_pins(request):
 
 @placed("content", "pages")
 def index_intro(request):
-    _allowed(request)
     index = ArticleIndexPage.objects.order_by("path").first()
     if index is None:
         return redirect("backoffice:pages")

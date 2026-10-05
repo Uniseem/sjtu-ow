@@ -23,14 +23,8 @@ ACTIONS = {
 }
 
 
-def _moderator(request) -> None:
-    if not services.can_moderate(request.user):
-        raise PermissionDenied("需要管理评论的权限。")
-
-
 @placed("review", "comments")
 def comment_list(request):
-    _moderator(request)
     comments = Comment.objects.select_related("author", "page").order_by(
         "-created_at", "-pk"
     )
@@ -60,7 +54,6 @@ def comment_list(request):
 @placed("review", "comments")
 @require_POST
 def comment_action(request, pk, action):
-    _moderator(request)
     if action not in ACTIONS:
         raise PermissionDenied("没有这个操作。")
     comment = get_object_or_404(Comment, pk=pk)

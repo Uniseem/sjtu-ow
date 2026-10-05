@@ -36,11 +36,6 @@ CHOOSER_PER_PAGE = 24
 GRID_SPEC = "max-320x240"
 
 
-def _allowed(request) -> None:
-    if not access.uses_images(request.user):
-        raise PermissionDenied("你没有使用图片库的权限。")
-
-
 def _visible(user, actions=("choose", "change")):
     Image = get_image_model()
     if user.is_superuser:
@@ -74,7 +69,6 @@ def _collections(user):
 
 @placed("content", "images")
 def image_list(request):
-    _allowed(request)
     user = request.user
     images, query, collection = _filtered(request, _visible(user))
     page_obj, extra_query = paginate(
@@ -118,7 +112,6 @@ def _upload_one(request, upload, collection):
 
 @placed("content", "images")
 def image_upload(request):
-    _allowed(request)
     form = ImageUploadForm(request.POST or None, user=request.user)
     if not form.fields["collection"].queryset.exists():
         raise PermissionDenied("你没有往任何集合里加图片的权限。")
@@ -154,7 +147,6 @@ def image_upload(request):
 
 @placed("content", "images")
 def image_edit(request, pk):
-    _allowed(request)
     image = get_object_or_404(get_image_model(), pk=pk)
     user = request.user
     if not image_policy().user_has_permission_for_instance(user, "change", image):
@@ -191,7 +183,6 @@ def image_edit(request, pk):
 @placed("content", "images")
 @require_POST
 def image_delete(request, pk):
-    _allowed(request)
     image = get_object_or_404(get_image_model(), pk=pk)
     if not image_policy().user_has_permission_for_instance(
         request.user, "delete", image
@@ -255,14 +246,8 @@ def image_chooser_upload(request):
 # --- collections (superusers) -------------------------------------------------
 
 
-def _superuser(request) -> None:
-    if not request.user.is_superuser:
-        raise PermissionDenied("集合只有超级管理员能改。")
-
-
-@placed("content", "images")
+@placed("content", "images", allowed=access.is_superuser)
 def collection_list(request):
-    _superuser(request)
     counts = dict(
         get_image_model()
         .objects.values_list("collection_id")
@@ -293,10 +278,9 @@ def collection_list(request):
     )
 
 
-@placed("content", "images")
+@placed("content", "images", allowed=access.is_superuser)
 @require_POST
 def collection_rename(request, pk):
-    _superuser(request)
     collection = get_object_or_404(Collection, pk=pk)
     name = (request.POST.get("name") or "").strip()[:255]
     if collection.is_root() or not name:
@@ -309,10 +293,9 @@ def collection_rename(request, pk):
     return redirect("backoffice:collections")
 
 
-@placed("content", "images")
+@placed("content", "images", allowed=access.is_superuser)
 @require_POST
 def collection_delete(request, pk):
-    _superuser(request)
     collection = get_object_or_404(Collection, pk=pk)
     if collection.is_root():
         messages.error(request, "根集合不能删除。")

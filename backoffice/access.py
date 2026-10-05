@@ -2,8 +2,9 @@
 
 ``can_enter`` is the door: Wagtail's ``access_admin`` permission, which every
 verified member has through 投稿者, each staff role and superusers. The rest
-say who may use one tab; the views ask the same functions again, so a typed
-address is refused as well as the link being left out.
+say who may use one tab: ``nav.placed`` asks the same function at the door of
+every page in it (v7.3), so a typed address is refused as well as the link
+being left out.
 """
 
 from __future__ import annotations
