@@ -79,7 +79,9 @@ def test_the_pages_letters_and_settings_say_sjtu_ow(client):
     assert '<span class="c-brand__name">SJTU-OW</span>' in html
     assert re.search(r"<title>[^<]*SJTU-OW</title>", html)
     assert 'property="og:site_name" content="SJTU-OW"' in html
-    assert 'class="c-hero__title"><span>SJTU-</span><span>OW</span>' in html
+    # The hero's big words stay two lines of Chinese (v7.13, the user's word).
+    hero = "<span>上海交通大学</span><span>守望先锋社区</span>"
+    assert f'class="c-hero__title">{hero}' in html
     assert "SJTU-OW 是上海交通大学守望先锋玩家的社团网站" in html  # says what it is
     text, letter_html = render(Letter(subject="主题", lead="正文"), "某人")
     assert "\nSJTU-OW\n" in text and ">SJTU-OW</a>" in letter_html

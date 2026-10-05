@@ -3391,16 +3391,19 @@
     }
   }
 
-  /* The site's name on one line, SJTU-OW (v7.12; two lines of Chinese
-     before, 上海交通大学 over 守望先锋社区). */
+  /* Two lines, 上海交通大学 over 守望先锋社区 (v7.13: back from the one-line
+     SJTU-OW of v7.12, at the user's word). */
   .c-hero__title {
     font-size: 2.5rem;
     line-height: 1.15;
     letter-spacing: 0.04em;
-    white-space: nowrap;
   }
 
-  /* OW in Overwatch orange (v5.0 coloured the second line). */
+  .c-hero__title span {
+    display: block;
+  }
+
+  /* 守望先锋社区 in Overwatch orange (v5.0). */
   .c-hero__title span + span {
     color: var(--color-accent-display);
   }

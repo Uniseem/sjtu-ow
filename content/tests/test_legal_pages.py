@@ -67,9 +67,14 @@ def test_an_edited_page_is_not_overwritten_without_force(pages, tmp_path):
 
 def test_the_privacy_draft_names_every_processor_the_site_uses(settings):
     """Design 15.3: the policy must name who processes the data."""
-    text = (settings.BASE_DIR / "content" / "legal" / "privacy.md").read_text()
-    for processor in ("DeepSeek", "Cloudflare", "发信服务商"):
+    text = (settings.BASE_DIR / "content" / "legal" / "privacy.md").read_text(
+        encoding="utf-8"
+    )
+    # Round 209: the ones actually in use (the AI check, the mail service,
+    # the server and the forwarding server in front of it).
+    for processor in ("DeepSeek", "网易 126 邮箱", "Contabo", "ZgoCloud", "Cloudflare"):
         assert processor in text
+    assert "【" not in text  # nothing left for the club to fill in
     # Design 3.8: the rights the policy promises exist on the site.
     for right in ("导出我的个人信息", "注销"):
         assert right in text

@@ -80,10 +80,14 @@ def test_mail_is_a_must_until_smtp_is_set(site, client):
 
 @pytest.mark.django_db
 def test_the_agreements_need_their_blanks_filled(site):
+    # The drafts have had their blanks filled since round 209; a page that
+    # still has some is what the check is for.
+    page = StandardPage.objects.get(slug="terms")
+    page.body = "本站由【运营方名称】运营。"
+    page.save_revision().publish()
     terms = _check("用户协议")
     assert not terms.done
     assert "处【】" in terms.detail
-    page = StandardPage.objects.get(slug="terms")
     page.body = "一、账号：由守望先锋社团运营。"
     page.save_revision().publish()
     assert _check("用户协议").done
