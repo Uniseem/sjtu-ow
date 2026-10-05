@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Prefetch, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -28,12 +29,14 @@ from backoffice.forms import (
     UserForm,
     UserRuleForm,
     assignable_groups,
-    membership_formset,
+    person_label,
 )
 from backoffice.nav import placed
 from backoffice.views.common import paginate, search_text
 from core import admin_log, autosave
-from members.models import MemberGroup
+from core.converters import as_id
+from members import services as member_services
+from members.models import MemberGroup, MemberGroupMembership
 from teams import services as team_services
 from teams.models import Team
 
@@ -382,17 +385,16 @@ def group_edit(request, pk=None):
     group = get_object_or_404(MemberGroup, pk=pk) if pk else MemberGroup()
     if not pk:
         _group_may(request, "add")
-    Formset = membership_formset()
     form = MemberGroupForm(request.POST or None, instance=group)
     if autosave.wants(request):
-        return _group_autosave(request, form, Formset, created=not pk)
-    formset = Formset(request.POST or None, instance=group, prefix="members")
-    if request.method == "POST" and form.is_valid() and formset.is_valid():
+        return _group_autosave(request, form, created=not pk)
+    if request.method == "POST" and form.is_valid():
         group = form.save()
-        formset.instance = group
-        formset.save_in_order(group)
-        log(group, "wagtail.edit" if pk else "wagtail.create", user=request.user)
-        messages.success(request, f"分组「{group.name}」已保存。")
+        if pk:
+            autosave.log_edit(group, request.user)
+        else:
+            log(group, "wagtail.create", user=request.user)
+        messages.success(request, f"分组「{group.name or '未命名分组'}」已保存。")
         return redirect("backoffice:member_group_edit", group.pk)
     return render(
         request,
@@ -400,8 +402,8 @@ def group_edit(request, pk=None):
         {
             "page_title": (group.name or "未命名分组") if pk else "新建分组",
             "form": form,
-            "formset": formset,
             "group": group if pk else None,
+            **_people_context(request, group if pk else None),
             "can_delete": bool(pk)
             and request.user.has_perm("members.delete_membergroup"),
             "back_url": reverse("backoffice:member_groups"),
@@ -410,42 +412,144 @@ def group_edit(request, pk=None):
     )
 
 
-def _group_autosave(request, form, Formset, *, created: bool):
-    """Design 13.17 (v7.6): the group exists from the first change (named
-    or not; unnamed ones stay off /members/); its rows are saved once every
-    row is complete, and the list comes back when rows were added or taken
-    out (their ids change)."""
+def _people_context(request, group) -> dict:
+    """组里的成员 (docs/admin.md 4.4, v7.7): who is in, and whom the search
+    box found (?q= also works without the script)."""
+    query = (request.GET.get("q") or "").strip()[:50]
+    if group is None:
+        return {"memberships": [], "query": "", "found": []}
+    return {
+        "memberships": list(
+            group.memberships.select_related("user").order_by("sort_order", "pk")
+        ),
+        "query": query,
+        "found": member_services.search_people(group, query),
+    }
+
+
+def _people_html(request, group, problem: str = "") -> str:
+    return render_to_string(
+        "backoffice/members/_people.html",
+        {"group": group, "problem": problem, **_people_context(request, group)},
+        request=request,
+    )
+
+
+def _group_autosave(request, form, *, created: bool):
+    """Design 13.17 (v7.6): the group exists from the first change (named or
+    not; unnamed ones stay off /members/). A new one brings its people block
+    along at once (v7.7), so people can be added without reloading."""
     saved = autosave.save_valid_fields(form)
     group = form.instance
-    errors = autosave.errors_of(form)
-    replace = {}
-    if group.pk:
-        formset = Formset(request.POST, instance=group, prefix="members")
-        if formset.is_valid():
-            if formset.has_changed():
-                formset.save_in_order(group)
-                saved.append("members")
-                if formset.new_objects or formset.deleted_objects:
-                    fresh = Formset(instance=group, prefix="members")
-                    replace["[data-memberships]"] = render_to_string(
-                        "backoffice/members/_memberships.html",
-                        {"formset": fresh},
-                        request=request,
-                    )
-        else:
-            for row in formset.forms:
-                errors.update(autosave.errors_of(row))
-            if formset.non_form_errors():
-                errors["__all__"] = list(formset.non_form_errors())
     location = ""
+    replace = {}
     if created and group.pk:
         log(group, "wagtail.create", user=request.user)
         location = reverse("backoffice:member_group_edit", args=[group.pk])
+        replace["[data-memberships]"] = _people_html(request, group)
     elif saved:
         autosave.log_edit(group, request.user)
     return autosave.respond(
-        autosave.Outcome(saved=saved, errors=errors, location=location, replace=replace)
+        autosave.Outcome(
+            saved=saved,
+            errors=autosave.errors_of(form),
+            location=location,
+            replace=replace,
+        )
     )
+
+
+def _people_done(request, group, problem: str = "", note: str = ""):
+    """After adding, moving or taking out someone: the block comes back
+    whole for the script; without it, back to the page with a message."""
+    if "application/json" in request.headers.get("Accept", ""):
+        return JsonResponse(
+            {
+                "ok": not problem,
+                "problem": problem,
+                "replace": {
+                    "[data-memberships]": _people_html(request, group, problem)
+                },
+            }
+        )
+    if problem:
+        messages.error(request, problem)
+    elif note:
+        messages.success(request, note)
+    return redirect("backoffice:member_group_edit", group.pk)
+
+
+@placed("members", "groups")
+def group_people(request, pk):
+    """搜人 for the search box: joined people not in the group yet."""
+    group = get_object_or_404(MemberGroup, pk=pk)
+    found = member_services.search_people(group, request.GET.get("q", "")[:50])
+    return JsonResponse(
+        {
+            "results": [
+                {"id": person.pk, "label": person_label(person)} for person in found
+            ]
+        }
+    )
+
+
+@placed("members", "groups")
+@require_POST
+def group_member_add(request, pk):
+    group = get_object_or_404(MemberGroup, pk=pk)
+    person = User.objects.filter(pk=as_id(request.POST.get("user"))).first()
+    if person is None:
+        return _people_done(request, group, "没有找到这个人。")
+    try:
+        member_services.add_member(group, person)
+    except member_services.MembershipError as exc:
+        return _people_done(request, group, str(exc))
+    autosave.log_edit(group, request.user)
+    return _people_done(request, group, note=f"已把「{person.nickname}」加进分组。")
+
+
+def _membership(pk):
+    return get_object_or_404(
+        MemberGroupMembership.objects.select_related("group"), pk=pk
+    )
+
+
+@placed("members", "groups")
+@require_POST
+def group_member_remove(request, pk):
+    membership = _membership(pk)
+    group, name = membership.group, membership.user.nickname
+    member_services.remove_member(membership)
+    autosave.log_edit(group, request.user)
+    return _people_done(request, group, note=f"已把「{name}」移出分组。")
+
+
+@placed("members", "groups")
+@require_POST
+def group_member_move(request, pk):
+    membership = _membership(pk)
+    step = -1 if request.POST.get("direction") == "up" else 1
+    member_services.move_member(membership, step)
+    autosave.log_edit(membership.group, request.user)
+    return _people_done(request, membership.group)
+
+
+@placed("members", "groups")
+@require_POST
+def group_member_title(request, pk):
+    """职务, one person at a time; saves itself (design 13.17)."""
+    membership = _membership(pk)
+    try:
+        member_services.set_title(membership, request.POST.get("title", ""))
+    except member_services.MembershipError as exc:
+        if autosave.wants(request):
+            return autosave.respond(autosave.Outcome(errors={"title": [str(exc)]}))
+        messages.error(request, str(exc))
+        return redirect("backoffice:member_group_edit", membership.group_id)
+    autosave.log_edit(membership.group, request.user)
+    if autosave.wants(request):
+        return autosave.respond(autosave.Outcome(saved=["title"]))
+    return redirect("backoffice:member_group_edit", membership.group_id)
 
 
 @placed("members", "groups")

@@ -5224,6 +5224,12 @@
     align-self: flex-start;
   }
 
+  /* A search or filter line in a section takes the width it is given
+     (the people search of member groups, v7.7). */
+  .b-section > .b-filters {
+    align-self: stretch;
+  }
+
   .b-section {
     display: flex;
     flex-direction: column;
@@ -5452,6 +5458,28 @@
     padding: 0.75rem 1rem;
     border-radius: var(--radius-xs);
     background-color: var(--color-bg);
+  }
+
+  /* The people in a member group (docs/admin.md 4.4, v7.7): who, their
+     post (saves itself), then up, down, out. */
+  .b-people__who {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 12rem;
+  }
+
+  .b-people__title {
+    display: flex;
+    flex: 1 1 14rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+  }
+
+  .b-people__title .c-input {
+    flex: 1 1 10rem;
+    min-height: 2.5rem;
   }
 
   /* Numbered steps (后台手册). */

@@ -1,6 +1,6 @@
 // The back office's few behaviours (docs/admin.md 2): the picture dialog,
-// select-all, filters that submit themselves, confirmations, and adding a
-// row to a list of forms. Everything works without it except the picture
+// select-all, filters that submit themselves, confirmations, buttons that
+// change a block in place and the people search of member groups. Everything works without it except the picture
 // dialog, which needs it.
 (function () {
   "use strict";
@@ -35,24 +35,147 @@
     }
   });
 
-  // --- a row more in a list of forms (member groups) ------------------------------
+  // --- buttons that change a block in place (member groups, v7.7) ------------------
+  //
+  // A form with data-inline posts without leaving the page; the server sends
+  // the block back (JSON {replace: {selector: html}}) and it is swapped in,
+  // its own autosave forms set up again. Without this script the same forms
+  // post and come back to the page.
 
-  document.addEventListener("click", function (event) {
-    var button = event.target.closest && event.target.closest("[data-formset-add]");
-    if (!button) {
+  function csrfToken() {
+    var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : "";
+  }
+
+  function swapBlocks(data, focusSelector) {
+    Object.keys(data.replace || {}).forEach(function (selector) {
+      var old = document.querySelector(selector);
+      if (!old) {
+        return;
+      }
+      old.outerHTML = data.replace[selector];
+      var fresh = document.querySelector(selector);
+      if (fresh && window.owAutosave) {
+        window.owAutosave.setUp(fresh);
+      }
+      var focus = fresh && focusSelector && fresh.querySelector(focusSelector);
+      if (focus) {
+        focus.focus();
+      }
+    });
+  }
+
+  function sendInline(form, focusSelector) {
+    var buttons = form.querySelectorAll("button");
+    for (var i = 0; i < buttons.length; i += 1) {
+      buttons[i].disabled = true;
+    }
+    window
+      .fetch(form.getAttribute("action"), {
+        method: "POST",
+        body: new FormData(form),
+        credentials: "same-origin",
+        headers: { Accept: "application/json", "X-CSRFToken": csrfToken() },
+      })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
+      })
+      .then(function (data) {
+        swapBlocks(data, focusSelector);
+      })
+      .catch(function () {
+        form.submit();
+      });
+  }
+
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (event.defaultPrevented || !form.hasAttribute) {
       return;
     }
-    var prefix = button.getAttribute("data-formset-add");
-    var template = document.getElementById(prefix + "-template");
-    var total = document.getElementById("id_" + prefix + "-TOTAL_FORMS");
-    var list = document.getElementById(prefix + "-rows");
-    if (!template || !total || !list) {
+    if (form.hasAttribute("data-inline")) {
+      event.preventDefault();
+      sendInline(form, '[data-person-search] [name="q"]');
+    } else if (form.hasAttribute("data-person-search")) {
+      event.preventDefault();
+      searchPeople(form);
+    }
+  });
+
+  // --- 搜人, as you type (member groups, v7.7) --------------------------------------
+
+  var searchTimer = null;
+
+  function searchPeople(form) {
+    var box = form.querySelector('[name="q"]');
+    var results = form.parentElement.querySelector("[data-person-results]");
+    var query = box.value.trim();
+    if (!results) {
       return;
     }
-    var index = parseInt(total.value, 10) || 0;
-    var html = template.innerHTML.replace(/__prefix__/g, String(index));
-    list.insertAdjacentHTML("beforeend", html);
-    total.value = String(index + 1);
+    if (!query) {
+      results.innerHTML = "";
+      return;
+    }
+    window
+      .fetch(form.getAttribute("data-search-url") + "?q=" + encodeURIComponent(query), {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (data) {
+        if (box.value.trim() !== query) {
+          return; // typed on meanwhile; a newer search follows
+        }
+        results.innerHTML = "";
+        if (!data.results.length) {
+          var none = document.createElement("li");
+          var text = document.createElement("span");
+          text.textContent = "没有找到「" + query + "」：只列已加入、还不在组里的人。";
+          none.appendChild(text);
+          results.appendChild(none);
+          return;
+        }
+        data.results.forEach(function (person) {
+          var row = document.createElement("li");
+          var name = document.createElement("span");
+          name.textContent = person.label;
+          var add = document.createElement("form");
+          add.method = "post";
+          add.action = form.getAttribute("data-add-url");
+          add.setAttribute("data-inline", "");
+          var user = document.createElement("input");
+          user.type = "hidden";
+          user.name = "user";
+          user.value = person.id;
+          var button = document.createElement("button");
+          button.type = "submit";
+          button.className = "c-btn c-btn--secondary c-btn--sm";
+          button.textContent = "加入";
+          add.appendChild(user);
+          add.appendChild(button);
+          row.appendChild(name);
+          row.appendChild(add);
+          results.appendChild(row);
+        });
+      });
+  }
+
+  document.addEventListener("input", function (event) {
+    var box = event.target;
+    var form = box.form;
+    if (!form || !form.hasAttribute("data-person-search") || box.name !== "q") {
+      return;
+    }
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(function () {
+      searchPeople(form);
+    }, 250);
   });
 
   // --- the picture dialog ---------------------------------------------------------

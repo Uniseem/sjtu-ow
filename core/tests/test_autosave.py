@@ -114,6 +114,7 @@ def test_the_avatar_goes_as_soon_as_it_is_chosen(site, client):
     avatar = avatar[: avatar.index("</form>")]
     assert "data-autosubmit-file" in html.split(reverse("me_avatar_upload"))[1][:200]
     assert "data-autosave-button" in avatar and "data-autosubmit-status" in avatar
+    assert "c-field__req" not in avatar  # choosing is the upload, not a must-fill box
     profile = html[html.index('action="' + reverse("me_profile") + '"') :]
     assert "data-autosave" in profile[: profile.index(">")]
 
@@ -223,6 +224,9 @@ def test_a_new_category_exists_from_the_first_change_and_hides_unnamed(site, cli
     unnamed = ArticleCategory.objects.filter(name="")
     assert unnamed.count() == 2  # several may wait unnamed
     created = unnamed.get(sort_order=9)
+    listing = client.get(reverse("backoffice:categories")).content.decode()
+    link = reverse("backoffice:category_edit", args=[created.pk])
+    assert f'href="{link}">（未命名分类）</a>' in listing
     assert first["location"] == reverse("backoffice:category_edit", args=[created.pk])
     assert second["location"] != first["location"]
     assert created not in ArticleCategory.objects.named()
@@ -242,47 +246,22 @@ def test_a_new_category_exists_from_the_first_change_and_hides_unnamed(site, cli
 
 
 @pytest.mark.django_db
-def test_a_new_member_group_and_its_rows(site, client):
-    editor = _user("groups202@example.com", GROUP_CONTENT)
-    joined = _user("joined202@example.com")
-    client.force_login(editor)
+def test_a_new_member_group_exists_at_once_with_its_people_block(site, client):
+    client.force_login(_user("groups202@example.com", GROUP_CONTENT))
     url = reverse("backoffice:member_group_new")
-    management = {
-        "members-TOTAL_FORMS": "1",
-        "members-INITIAL_FORMS": "0",
-        "members-MIN_NUM_FORMS": "0",
-        "members-MAX_NUM_FORMS": "1000",
-    }
-    base = {
-        "name": "",
-        "description": "空名分组的简介",
-        "is_visible": "on",
-        "sort_order": "0",
-    }
-    answer = _save(
-        client, url, {**base, **management, "members-0-user": "", "members-0-title": ""}
-    )
+    page = client.get(url).content.decode()
+    assert "分组建好以后就能在这里加人" in page
+    base = {"name": "", "description": "空名分组的简介", "is_visible": "on"}
+    answer = _save(client, url, {**base, "sort_order": "0"})
     group = MemberGroup.objects.get(name="")
     assert answer["location"] == reverse(
         "backoffice:member_group_edit", args=[group.pk]
     )
+    # The people block arrives with it: search and add without reloading.
+    block = answer["replace"]["[data-memberships]"]
+    people = reverse("backoffice:member_group_people", args=[group.pk])
+    assert "data-person-search" in block and people in block
     assert "空名分组的简介" not in client.get("/members/").content.decode()
-    edit = answer["location"]
-    # A row without a person is not saved and says so.
-    answer = _save(client, edit, {**base, **management, "members-0-title": "社长"})
-    assert "members-0-user" in answer["errors"] and not group.memberships.exists()
-    answer = _save(
-        client,
-        edit,
-        {
-            **base,
-            **management,
-            "members-0-user": str(joined.pk),
-            "members-0-title": "社长",
-        },
-    )
-    assert group.memberships.get().user == joined
-    assert "[data-memberships]" in answer["replace"]  # new ids on the page
 
 
 @pytest.mark.django_db

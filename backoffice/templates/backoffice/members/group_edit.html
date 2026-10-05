@@ -1,18 +1,19 @@
 {% extends "backoffice/base.html" %}
 
 {% block content %}
-  <form method="post" class="b-form" novalidate data-autosave>
-    {% csrf_token %}
-    <div class="b-fieldset">{% include "backoffice/parts/fields.html" %}</div>
-    {% include "backoffice/members/_memberships.html" %}
-    <div class="b-formbar">
-      <button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button>
-      <a class="c-btn c-btn--secondary" href="{{ back_url }}">回到分组列表</a>
-    </div>
-  </form>
-  {% if can_delete %}
-    <form method="post" action="{% url 'backoffice:member_group_delete' group.pk %}" data-confirm="删除分组「{{ group.name }}」？组里的人不受影响。">
-      {% csrf_token %}<button type="submit" class="c-btn c-btn--danger c-btn--sm">删除分组</button>
+  <div class="b-form">
+    <form method="post" class="b-form" novalidate data-autosave>
+      {% csrf_token %}
+      <div class="b-fieldset">{% include "backoffice/parts/fields.html" %}</div>
+      <div class="b-formbar">
+        <button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button>
+      </div>
     </form>
-  {% endif %}
+    {% include "backoffice/members/_people.html" %}
+    {% if can_delete %}
+      <form method="post" action="{% url 'backoffice:member_group_delete' group.pk %}" data-confirm="删除分组「{{ group }}」？组里的人不受影响。">
+        {% csrf_token %}<button type="submit" class="c-btn c-btn--danger c-btn--sm">删除分组</button>
+      </form>
+    {% endif %}
+  </div>
 {% endblock %}

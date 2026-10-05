@@ -544,6 +544,33 @@ def officers(tools, base, data) -> list[str]:
     flushed = js("document.querySelector('[name=site_description]').value")
     step("点别的按钮前先存好了刚改的", flushed == "点按钮之前先存上", flushed or "")
 
+    # Round 203: a member group's people — search, one click to add, the
+    # post saves itself, and it is all still there after a reload.
+    go(f"/admin/member-groups/{data['group']}/")
+    js("""(() => {
+        const box = document.querySelector('[data-person-search] [name=q]');
+        box.value = '截图队';
+        box.dispatchEvent(new Event('input', {bubbles: true}));
+    })()""")
+    time.sleep(2)
+    found = js("document.querySelectorAll('[data-person-results] form').length")
+    step("搜得到人", (found or 0) > 0, str(found))
+    js("document.querySelector('[data-person-results] form button').click()")
+    time.sleep(2)
+    people = js("document.querySelectorAll('[data-membership]').length")
+    step("点一下就加进组里", people == 2, str(people))
+    js("""(() => {
+        const rows = document.querySelectorAll('[data-membership]');
+        const box = rows[rows.length - 1].querySelector('[name=title]');
+        box.value = '浏览器加的职务';
+        box.dispatchEvent(new Event('input', {bubbles: true}));
+    })()""")
+    time.sleep(3)
+    go(f"/admin/member-groups/{data['group']}/")
+    kept = js("""[...document.querySelectorAll('[data-membership] [name=title]')]
+        .map(box => box.value).join('|')""")
+    step("职务改了就存，刷新还在", "浏览器加的职务" in (kept or ""), kept or "")
+
     # The back office's article form (round 196): the Markdown editor with
     # its own toolbar icons, the picture dialog, publishing.
     go("/admin/articles/new/")

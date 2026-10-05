@@ -11,7 +11,6 @@ from __future__ import annotations
 from django import forms
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-from django.forms import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -31,7 +30,7 @@ from content.models import ArticleCategory, ArticlePage, StandardPage
 from content.permissions import is_submitter_only, plain_writer, user_can_edit_author
 from content.widgets import MarkdownEditor
 from core.models import SiteSettings
-from members.models import MemberGroup, MemberGroupMembership
+from members.models import MemberGroup
 from scrims.models import Scrim
 from teams.models import Team
 from tournaments.models import Tournament
@@ -54,7 +53,7 @@ class KeepSeconds:
         super()._post_clean()
 
 
-def _person_label(user) -> str:
+def person_label(user) -> str:
     return f"{user.nickname}（{user.email}）"
 
 
@@ -62,7 +61,7 @@ class PersonChoiceField(forms.ModelChoiceField):
     """Nicknames repeat; pick 「昵称（邮箱）」."""
 
     def label_from_instance(self, obj):
-        return _person_label(obj)
+        return person_label(obj)
 
 
 # --- articles (docs/admin.md 4.2) ------------------------------------------------
@@ -648,53 +647,6 @@ class MemberGroupForm(forms.ModelForm):
         model = MemberGroup
         fields = ("name", "description", "is_visible", "sort_order")
         help_texts = {"name": "名称空着时成员展示页上不出现这个分组。"}
-
-
-class MembershipForm(forms.ModelForm):
-    class Meta:
-        model = MemberGroupMembership
-        fields = ("user", "title")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["user"].queryset = User.objects.filter(is_active=True).order_by(
-            "nickname"
-        )
-        self.fields["title"].help_text = ""
-
-
-class MembershipFormSet(BaseInlineFormSet):
-    """组里的成员, one row each; 组内顺序 is Django's ORDER field (the model's
-    sort_order is not editable), written back by ``save_in_order``."""
-
-    def add_fields(self, form, index):
-        super().add_fields(form, index)
-        if "ORDER" in form.fields:
-            form.fields["ORDER"].label = "组内顺序"
-            form.fields["ORDER"].required = False
-
-    def save_in_order(self, group) -> None:
-        self.save(commit=False)
-        for membership in self.deleted_objects:
-            membership.delete()
-        for number, form in enumerate(self.ordered_forms):
-            membership = form.instance
-            membership.group = group
-            membership.sort_order = number
-            membership.save()
-
-
-def membership_formset():
-    return inlineformset_factory(
-        MemberGroup,
-        MemberGroupMembership,
-        form=MembershipForm,
-        formset=MembershipFormSet,
-        fk_name="group",
-        extra=1,
-        can_delete=True,
-        can_order=True,
-    )
 
 
 # --- site settings (docs/admin.md 4.6) ------------------------------------------------

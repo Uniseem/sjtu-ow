@@ -108,6 +108,31 @@ backoffice_patterns = [
         members.group_delete,
         name="member_group_delete",
     ),
+    path(
+        "member-groups/<id:pk>/people/",
+        members.group_people,
+        name="member_group_people",
+    ),
+    path(
+        "member-groups/<id:pk>/people/add/",
+        members.group_member_add,
+        name="member_group_member_add",
+    ),
+    path(
+        "member-groups/people/<id:pk>/remove/",
+        members.group_member_remove,
+        name="member_group_member_remove",
+    ),
+    path(
+        "member-groups/people/<id:pk>/move/",
+        members.group_member_move,
+        name="member_group_member_move",
+    ),
+    path(
+        "member-groups/people/<id:pk>/title/",
+        members.group_member_title,
+        name="member_group_member_title",
+    ),
     # 设置
     path("settings/site/", settings.site_settings, name="site_settings"),
     path("log/", settings.action_log, name="log"),

@@ -12,7 +12,7 @@
       <tbody>
         {% for group in groups %}
           <tr>
-            <td><a class="b-title" href="{% url 'backoffice:member_group_edit' group.pk %}">{{ group.name }}</a>{% if group.description %}<span class="b-sub">{{ group.description }}</span>{% endif %}</td>
+            <td><a class="b-title" href="{% url 'backoffice:member_group_edit' group.pk %}">{{ group.name|default:"（未命名分组）" }}</a>{% if not group.name %}<span class="b-sub">名称空着，成员展示页上不显示</span>{% elif group.description %}<span class="b-sub">{{ group.description }}</span>{% endif %}</td>
             <td data-label="显示">{% if group.is_visible %}显示{% else %}不显示{% endif %}</td>
             <td data-label="人数" class="is-num">{{ group.people }}</td>
             <td data-label="排序" class="is-num">{{ group.sort_order }}</td>

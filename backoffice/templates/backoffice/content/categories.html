@@ -11,7 +11,7 @@
       <tbody>
         {% for item in categories %}
           <tr data-category-row="{{ item.pk }}">
-            <td><a class="b-title" href="{% url 'backoffice:category_edit' item.pk %}">{{ item.name }}</a></td>
+            <td><a class="b-title" href="{% url 'backoffice:category_edit' item.pk %}">{{ item.name|default:"（未命名分类）" }}</a>{% if not item.name or not item.slug %}<span class="b-sub">名称或网址片段空着，网站上不显示</span>{% endif %}</td>
             <td data-label="网址片段"><span class="b-mono">{{ item.slug }}</span></td>
             <td data-label="排序" class="is-num">{{ item.sort_order }}</td>
             <td data-label="开放投稿">{% if item.allow_submission %}是{% else %}否{% endif %}</td>

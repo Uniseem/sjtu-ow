@@ -276,12 +276,17 @@ class AvatarForm(forms.Form):
             "想要别的范围请先自己裁好。选好图片就上传，马上换上。"
         ),
         widget=forms.FileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
+        # Not marked as required (round 203): choosing a picture is the
+        # upload itself, not a box to fill before saving something else.
+        required=False,
     )
 
     def clean_file(self):
         from accounts.images import AVATAR_EXTENSIONS, AVATAR_MAX_BYTES, AVATAR_TYPES
 
-        uploaded = self.cleaned_data["file"]
+        uploaded = self.cleaned_data.get("file")
+        if not uploaded:
+            raise ValidationError("先选一张图片。")
         if uploaded.size > AVATAR_MAX_BYTES:
             raise ValidationError("头像不能超过 5MB。")
         name = (uploaded.name or "").lower()

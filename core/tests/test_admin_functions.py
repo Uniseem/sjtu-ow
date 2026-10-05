@@ -65,7 +65,9 @@ def _todo(client):
 def _flagged(**extra):
     values = {
         "target_type": TargetType.NICKNAME,
-        "target_id": 1,
+        # Far from any user id: a user saved in the test puts their own
+        # nickname on record at (nickname, their id), replacing what waits there.
+        "target_id": 900000 + ModerationItem.objects.count(),
         "field": "nickname",
         "excerpt": "可疑的昵称",
         "text_hash": f"hash-{ModerationItem.objects.count()}",

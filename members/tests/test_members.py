@@ -292,30 +292,7 @@ def test_the_lfg_board_is_gone(client, settings):
     assert 'href="/members/"' in home
 
 
-# --- the admin form, end to end -----------------------------------------------
-
-
-def _form(name, rows):
-    data = {
-        "name": name,
-        "description": "",
-        "is_visible": "on",
-        "sort_order": "0",
-        "members-TOTAL_FORMS": str(len(rows)),
-        "members-INITIAL_FORMS": "0",
-        "members-MIN_NUM_FORMS": "0",
-        "members-MAX_NUM_FORMS": "1000",
-    }
-    for index, (user, title) in enumerate(rows):
-        data.update(
-            {
-                f"members-{index}-user": str(user.pk),
-                f"members-{index}-title": title,
-                f"members-{index}-ORDER": str(index + 1),
-                f"members-{index}-id": "",
-            }
-        )
-    return data
+# --- the admin, end to end (docs/admin.md 4.4; v7.7 round 203) -----------------
 
 
 @pytest.fixture
@@ -327,34 +304,119 @@ def admin_client(client):
     return client
 
 
+JSON = {"HTTP_ACCEPT": "application/json"}
+
+
+def _group(name="社团干部"):
+    return MemberGroup.objects.create(name=name)
+
+
 @pytest.mark.django_db
-def test_an_admin_creates_a_group_with_members(admin_client):
+def test_an_admin_finds_people_and_adds_them_with_one_click(admin_client):
+    group = _group()
     leader, member = person("社长同学"), person("组员同学")
-    url = reverse("backoffice:member_group_new")
-    response = admin_client.post(
-        url, _form("社团干部", [(leader, "社长"), (member, "")])
-    )
-    assert response.status_code == 302, response.content.decode()[:500]
-    group = MemberGroup.objects.get(name="社团干部")
+    person("没验证的社长", verified=False)
+    found = admin_client.get(
+        reverse("backoffice:member_group_people", args=[group.pk]), {"q": "社长"}
+    ).json()["results"]
+    assert [row["id"] for row in found] == [leader.pk]  # joined people only
+    assert found[0]["label"].startswith("社长同学（")
+    add = reverse("backoffice:member_group_member_add", args=[group.pk])
+    answer = admin_client.post(add, {"user": leader.pk}, **JSON).json()
+    assert "社长同学" in answer["replace"]["[data-memberships]"]
+    admin_client.post(add, {"user": member.pk}, **JSON)
     rows = list(
-        group.memberships.order_by("sort_order").values_list("user__nickname", "title")
+        group.memberships.order_by("sort_order").values_list(
+            "user__nickname", flat=True
+        )
     )
-    assert rows == [("社长同学", "社长"), ("组员同学", "")]
+    assert rows == ["社长同学", "组员同学"]  # each one at the end
+    # Someone already in is not listed again, nor added twice.
+    again = admin_client.get(
+        reverse("backoffice:member_group_people", args=[group.pk]), {"q": "同学"}
+    ).json()["results"]
+    assert again == []
+    twice = admin_client.post(add, {"user": member.pk}, **JSON).json()
+    assert twice["ok"] is False and "已经在这个分组里了" in twice["problem"]
+    assert group.memberships.count() == 2
 
 
 @pytest.mark.django_db
-def test_the_admin_form_refuses_someone_who_has_not_joined(admin_client):
+def test_people_are_reordered_given_posts_and_taken_out(admin_client):
+    group = _group()
+    first, second = person("甲同学"), person("乙同学")
+    add = reverse("backoffice:member_group_member_add", args=[group.pk])
+    admin_client.post(add, {"user": first.pk}, **JSON)
+    admin_client.post(add, {"user": second.pk}, **JSON)
+    lower = group.memberships.get(user=second)
+    moved = admin_client.post(
+        reverse("backoffice:member_group_member_move", args=[lower.pk]),
+        {"direction": "up"},
+        **JSON,
+    ).json()
+    block = moved["replace"]["[data-memberships]"]  # the page gets the new order
+    assert block.index("乙同学") < block.index("甲同学")
+    order = list(
+        group.memberships.order_by("sort_order").values_list("user", flat=True)
+    )
+    assert order == [second.pk, first.pk]
+    title = reverse("backoffice:member_group_member_title", args=[lower.pk])
+    saved = admin_client.post(
+        title, {"title": "社长、主播"}, HTTP_X_AUTOSAVE="1"
+    ).json()
+    assert saved["ok"] and group.memberships.get(user=second).title == "社长、主播"
+    refused = admin_client.post(
+        title, {"title": "一个特别特别长的职务名称"}, HTTP_X_AUTOSAVE="1"
+    ).json()
+    assert "title" in refused["errors"]
+    assert group.memberships.get(user=second).title == "社长、主播"
+    admin_client.post(
+        reverse("backoffice:member_group_member_remove", args=[lower.pk]), **JSON
+    )
+    assert list(group.memberships.values_list("user", flat=True)) == [first.pk]
+
+
+@pytest.mark.django_db
+def test_without_the_script_everything_still_works(admin_client):
+    """A plain search on the page, plain buttons that come back to it."""
+    group = _group()
+    someone = person("没脚本的人")
+    edit = reverse("backoffice:member_group_edit", args=[group.pk])
+    page = admin_client.get(edit, {"q": "没脚本"}).content.decode()
+    assert "没脚本的人" in page and "data-person-search" in page
+    response = admin_client.post(
+        reverse("backoffice:member_group_member_add", args=[group.pk]),
+        {"user": someone.pk},
+    )
+    assert response.status_code == 302 and response.url == edit
+    membership = group.memberships.get()
+    response = admin_client.post(
+        reverse("backoffice:member_group_member_title", args=[membership.pk]),
+        {"title": "组长"},
+    )
+    assert response.status_code == 302
+    membership.refresh_from_db()
+    assert membership.title == "组长"
+
+
+@pytest.mark.django_db
+def test_someone_who_has_not_joined_cannot_be_added(admin_client):
+    group = _group()
     stranger = person("没验证", verified=False)
-    url = reverse("backoffice:member_group_new")
-    response = admin_client.post(url, _form("干部", [(stranger, "")]))
-    assert response.status_code == 200
-    assert not MemberGroup.objects.exists()
+    answer = admin_client.post(
+        reverse("backoffice:member_group_member_add", args=[group.pk]),
+        {"user": stranger.pk},
+        **JSON,
+    ).json()
+    assert answer["ok"] is False and "已加入" in answer["problem"]
+    assert not group.memberships.exists()
 
 
 @pytest.mark.django_db
-def test_the_admin_form_refuses_the_same_person_twice(admin_client):
-    someone = person("重复")
-    url = reverse("backoffice:member_group_new")
-    response = admin_client.post(url, _form("干部", [(someone, ""), (someone, "")]))
-    assert response.status_code == 200
-    assert not MemberGroup.objects.exists()
+def test_an_unnamed_group_can_be_opened_again(admin_client):
+    """「没法再次进入管理」: its link used to be empty (round 203)."""
+    group = MemberGroup.objects.create(name="")
+    page = admin_client.get(reverse("backoffice:member_groups")).content.decode()
+    link = reverse("backoffice:member_group_edit", args=[group.pk])
+    assert f'href="{link}">（未命名分组）</a>' in page
+    assert "成员展示页上不显示" in page

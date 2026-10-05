@@ -85,7 +85,22 @@
     var buttons = form.querySelectorAll("[data-autosave-button]");
     for (var i = 0; i < buttons.length; i += 1) {
       buttons[i].hidden = true;
+      hideEmptyBar(buttons[i]);
     }
+  }
+
+  // The button's bar goes too when it holds nothing else (round 203).
+  function hideEmptyBar(button) {
+    var bar = button.parentElement;
+    if (!bar || !bar.matches(".b-formbar, .b-actions, .c-formbar")) {
+      return;
+    }
+    for (var i = 0; i < bar.children.length; i += 1) {
+      if (!bar.children[i].hidden) {
+        return;
+      }
+    }
+    bar.hidden = true;
   }
 
   Saver.prototype.show = function (state, text) {
@@ -253,6 +268,7 @@
     var uploads = (root || document).querySelectorAll("form[data-autosubmit-file] [data-autosave-button]");
     for (var u = 0; u < uploads.length; u += 1) {
       uploads[u].hidden = true;
+      hideEmptyBar(uploads[u]);
     }
     var forms = (root || document).querySelectorAll("form[data-autosave]");
     for (var i = 0; i < forms.length; i += 1) {

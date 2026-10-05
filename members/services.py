@@ -204,3 +204,80 @@ def assign_member_permissions() -> list[str]:
         group.permissions.add(*permissions)
         granted.append(group.name)
     return granted
+
+
+# --- the people in a group, from the back office (docs/admin.md 4.4, v7.7) -----
+
+SEARCH_LIMIT = 10
+
+
+class MembershipError(Exception):
+    pass
+
+
+def search_people(group, query: str, limit: int = SEARCH_LIMIT) -> list:
+    """Joined people whose nickname or email has ``query`` in it and who are
+    not in the group yet: what 「搜昵称或邮箱」 lists (round 203)."""
+    from django.db.models import Q
+
+    query = (query or "").strip()
+    if not query:
+        return []
+    people = joined_users().filter(
+        Q(nickname__icontains=query) | Q(email__icontains=query)
+    )
+    if group is not None and group.pk:
+        people = people.exclude(member_groups__group=group)
+    return list(people.order_by("nickname", "pk")[:limit])
+
+
+def add_member(group, user):
+    """At the end of the group (design 6.2: only joined people, once each)."""
+    from django.db import transaction
+    from django.db.models import Max
+
+    from members.models import MemberGroupMembership
+
+    if not is_joined(user):
+        raise MembershipError("只能加已加入的用户：账号没有停用，并且验证过邮箱。")
+    with transaction.atomic():
+        if group.memberships.filter(user=user).exists():
+            raise MembershipError(f"「{user.nickname}」已经在这个分组里了。")
+        last = group.memberships.aggregate(top=Max("sort_order"))["top"]
+        return MemberGroupMembership.objects.create(
+            group=group, user=user, sort_order=0 if last is None else last + 1
+        )
+
+
+def remove_member(membership) -> None:
+    membership.delete()
+
+
+def move_member(membership, step: int) -> bool:
+    """One place up (-1) or down (+1); the group's order is renumbered from
+    0 so gaps left by removed people close. False at either end."""
+    from django.db import transaction
+
+    rows = list(membership.group.memberships.order_by("sort_order", "pk"))
+    index = next(i for i, row in enumerate(rows) if row.pk == membership.pk)
+    other = index + step
+    if not 0 <= other < len(rows):
+        return False
+    rows[index], rows[other] = rows[other], rows[index]
+    with transaction.atomic():
+        for number, row in enumerate(rows):
+            if row.sort_order != number:
+                row.sort_order = number
+                row.save(update_fields=["sort_order"])
+    return True
+
+
+def set_title(membership, title: str) -> None:
+    """职务: at most 20 characters, each post at most 10 (design-details 4.3)."""
+    title = (title or "").strip()
+    if len(title) > 20 or any(len(post) > 10 for post in split_titles(title)):
+        raise MembershipError(
+            "每个职务最多 10 字，多个职务用顿号分开，合起来最多 20 字。"
+        )
+    membership.title = title
+    membership.save(update_fields=["title"])

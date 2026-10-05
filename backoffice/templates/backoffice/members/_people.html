@@ -1,0 +1,63 @@
+{% comment %}
+  组里的成员 (docs/admin.md 4.4, v7.7): a search box that adds people with one
+  click, then one row per person — 职务 saves itself, up, down, out. The whole
+  block comes back after every change (static/js/backoffice.js); without the
+  script the search is a plain search and the buttons plain buttons.
+{% endcomment %}
+<section class="b-section" data-memberships>
+  <h2 class="b-section__title">组里的成员{% if group %}（{{ memberships|length }} 人）{% endif %}</h2>
+  {% if not group %}
+    <p class="b-section__text">先填上面任意一项，分组建好以后就能在这里加人。</p>
+  {% else %}
+    <p class="b-section__text">按这个顺序显示在成员展示页上。只能加已加入的用户（没停用、验证过邮箱）。职务可以不填，多个职务用顿号分开，每个最多 10 字，改了就存。</p>
+    {% if problem %}
+      <div class="c-notice c-notice--warn" role="alert">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">{{ problem }}</div></div>
+    {% endif %}
+    <form method="get" action="{% url 'backoffice:member_group_edit' group.pk %}" class="b-filters" role="search" data-person-search data-search-url="{% url 'backoffice:member_group_people' group.pk %}" data-add-url="{% url 'backoffice:member_group_member_add' group.pk %}">
+      <input type="search" name="q" value="{{ query }}" class="c-input" placeholder="搜昵称或邮箱，加进这个分组" aria-label="搜昵称或邮箱" autocomplete="off">
+      <button type="submit" class="c-btn c-btn--secondary c-btn--sm">搜索</button>
+    </form>
+    <ul class="b-list" data-person-results aria-live="polite">
+      {% for person in found %}
+        <li>
+          <span>{{ person.nickname }}<span class="b-sub">{{ person.email }}</span></span>
+          <form method="post" action="{% url 'backoffice:member_group_member_add' group.pk %}" data-inline>
+            {% csrf_token %}<input type="hidden" name="user" value="{{ person.pk }}">
+            <button type="submit" class="c-btn c-btn--secondary c-btn--sm">加入</button>
+          </form>
+        </li>
+      {% empty %}
+        {% if query %}<li><span>没有找到「{{ query }}」：只列已加入、还不在组里的人。</span></li>{% endif %}
+      {% endfor %}
+    </ul>
+    {% if memberships %}
+      <ol class="b-list b-people">
+        {% for row in memberships %}
+          <li data-membership="{{ row.pk }}">
+            <span class="b-people__who">{% include "components/avatar.html" with person=row.user size="xs" %}<span>{{ row.user.nickname }}<span class="b-sub">{{ row.user.email }}</span></span></span>
+            <form method="post" action="{% url 'backoffice:member_group_member_title' row.pk %}" class="b-people__title" data-autosave data-autosave-idle="">
+              {% csrf_token %}
+              <input type="text" name="title" value="{{ row.title }}" maxlength="20" class="c-input" placeholder="职务（可不填）" aria-label="{{ row.user.nickname }}的职务">
+              <button type="submit" class="c-btn c-btn--quiet c-btn--sm" data-autosave-button>保存职务</button>
+            </form>
+            <span class="b-rowacts">
+              <form method="post" action="{% url 'backoffice:member_group_member_move' row.pk %}" data-inline>
+                {% csrf_token %}<input type="hidden" name="direction" value="up">
+                <button type="submit" class="c-btn c-btn--quiet c-btn--sm"{% if forloop.first %} disabled{% endif %}>上移</button>
+              </form>
+              <form method="post" action="{% url 'backoffice:member_group_member_move' row.pk %}" data-inline>
+                {% csrf_token %}<input type="hidden" name="direction" value="down">
+                <button type="submit" class="c-btn c-btn--quiet c-btn--sm"{% if forloop.last %} disabled{% endif %}>下移</button>
+              </form>
+              <form method="post" action="{% url 'backoffice:member_group_member_remove' row.pk %}" data-inline data-confirm="把「{{ row.user.nickname }}」移出这个分组？">
+                {% csrf_token %}<button type="submit" class="c-btn c-btn--quiet c-btn--sm is-danger">移出</button>
+              </form>
+            </span>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="b-section__text">组里还没有人，用上面的搜索框加。</p>
+    {% endif %}
+  {% endif %}
+</section>

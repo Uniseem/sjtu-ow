@@ -2,25 +2,28 @@
 
 {% block content %}
   <table class="c-table c-table--stack">
-    <thead><tr><th>集合</th><th class="is-num">图片</th><th><span class="sr-only">操作</span></th></tr></thead>
+    <thead><tr><th>集合（名称改了就存）</th><th class="is-num">图片</th><th><span class="sr-only">操作</span></th></tr></thead>
     <tbody>
       {% for item in collections %}
         <tr>
-          <td>{% if item.depth > 1 %}{{ item.indent }}{{ item.name }}{% else %}（根）{% endif %}</td>
-          <td data-label="图片" class="is-num">{{ item.image_count }}</td>
           <td>
             {% if item.depth > 1 %}
+              {# The name is the box: change it and it is saved (design 13.17, round 203). #}
+              <form method="post" action="{% url 'backoffice:collection_rename' item.pk %}" class="b-filters" data-autosave data-autosave-idle="">
+                {% csrf_token %}
+                {% if item.indent %}<span aria-hidden="true">{{ item.indent }}</span>{% endif %}
+                <input type="text" name="name" value="{{ item.name }}" maxlength="255" class="c-input" aria-label="集合名称（改了就存）">
+                <button type="submit" class="c-btn c-btn--quiet c-btn--sm" data-autosave-button>改名</button>
+              </form>
+            {% else %}（根）{% endif %}
+          </td>
+          <td data-label="图片" class="is-num">{{ item.image_count }}</td>
+          <td>
+            {% if item.depth > 1 and not item.image_count %}
               <div class="b-rowacts">
-                <form method="post" action="{% url 'backoffice:collection_rename' item.pk %}" class="b-filters" data-autosave data-autosave-idle="">
-                  {% csrf_token %}
-                  <input type="text" name="name" value="{{ item.name }}" maxlength="255" class="c-input" aria-label="名称（改了就存）">
-                  <button type="submit" class="c-btn c-btn--quiet c-btn--sm" data-autosave-button>改名</button>
+                <form method="post" action="{% url 'backoffice:collection_delete' item.pk %}" data-confirm="删除集合「{{ item.name }}」？">
+                  {% csrf_token %}<button type="submit" class="c-btn c-btn--quiet c-btn--sm">删除</button>
                 </form>
-                {% if not item.image_count %}
-                  <form method="post" action="{% url 'backoffice:collection_delete' item.pk %}" data-confirm="删除集合「{{ item.name }}」？">
-                    {% csrf_token %}<button type="submit" class="c-btn c-btn--quiet c-btn--sm">删除</button>
-                  </form>
-                {% endif %}
               </div>
             {% endif %}
           </td>

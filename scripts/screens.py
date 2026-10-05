@@ -62,6 +62,16 @@ PAGES = [
     ("admin-user", "officer", "/admin/users/{member}/"),
     ("admin-images", "officer", "/admin/images/"),
     ("admin-settings", "officer", "/admin/settings/site/"),
+    # What saves itself (rounds 202, 203).
+    ("admin-groups", "officer", "/admin/member-groups/"),
+    ("admin-group", "officer", "/admin/member-groups/{group}/"),
+    ("admin-group-search", "officer", "/admin/member-groups/{group}/?q=截图"),
+    ("admin-group-new", "officer", "/admin/member-groups/new/"),
+    ("admin-categories", "officer", "/admin/categories/"),
+    ("admin-category", "officer", "/admin/categories/{category}/"),
+    ("admin-team", "officer", "/admin/teams/edit/{team}/"),
+    ("admin-image-collections", "officer", "/admin/images/collections/"),
+    ("admin-typography", "officer", "/admin/settings/typography/"),
 ]
 
 
@@ -343,7 +353,7 @@ def wait_for(url, seconds=60):
     raise SystemExit(f"{url} 没有起来")
 
 
-def shoot(width: int, scheme: str = "light"):
+def shoot(width: int, scheme: str = "light", only=()):
     shutil.rmtree(WORK, ignore_errors=True)
     OUT.mkdir(parents=True)
     if not (ROOT / "static/css/app.css").exists():
@@ -406,6 +416,8 @@ def shoot(width: int, scheme: str = "light"):
             },
         )
         for name, who, path in PAGES:
+            if only and not any(name.startswith(prefix) for prefix in only):
+                continue
             tools.send("Network.clearBrowserCookies")
             tools.send(
                 "Network.setCookie",
@@ -450,7 +462,9 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["seed"]:
         print(json.dumps(seed()))
     else:
+        # screens.py 1280 [dark] [admin-group me-]: only pages starting so.
         shoot(
             int(sys.argv[1]) if len(sys.argv) > 1 else 375,
             "dark" if "dark" in sys.argv[2:] else "light",
+            [arg for arg in sys.argv[2:] if arg not in ("dark", "light")],
         )
