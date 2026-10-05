@@ -14,6 +14,7 @@ from django.core import mail
 from django.core.mail import EmailMessage
 
 from core import letters
+from core.email_art import for_browser
 from core.email_samples import samples
 from core.mail import ensure_text_and_html
 from core.tests.test_design_system import _person, home  # noqa: F401
@@ -74,8 +75,10 @@ def test_every_html_is_the_same_letter_in_the_frame(sample):
     assert "祝好！" in html and letters.dated() in html
     assert "你收到这封邮件，是因为" in html
     assert html.count("这封邮件由系统自动发送") == 1
-    # Mail clients drop stylesheets, scripts and outside pictures.
-    assert "<img" not in html and "<script" not in html and "<link" not in html
+    # Mail clients drop stylesheets and scripts and hold back outside
+    # pictures: the only pictures are the ones inside the message (v7.4).
+    assert "<script" not in html and "<link" not in html
+    assert re.findall(r'<img src="([^"]+)"', html) == ["cid:ow-mark", "cid:ow-horizon"]
     assert " class=" not in html
 
 
@@ -213,7 +216,10 @@ def test_an_admin_sees_every_email(client, home):  # noqa: F811
 
     response = client.get("/_styleguide/emails/entered/")
     assert response.status_code == 200
-    assert response.content.decode() == BY_KEY["entered"].html
+    # The same letter, its cid: pictures pointed at /static/ for the browser.
+    html = response.content.decode()
+    assert html == for_browser(BY_KEY["entered"].html)
+    assert "cid:" not in html and "/static/img/email/horizon.png" in html
     # Inline styles are allowed for the email alone, and only this site frames it.
     policy = response["Content-Security-Policy"]
     assert "style-src 'unsafe-inline'" in policy

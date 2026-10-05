@@ -28,23 +28,25 @@ PNGS = (
 )
 
 
-def draw(size: int, *, rounded: bool = True) -> Image.Image:
+def draw(size: int, *, rounded: bool = True, fill=RED, ink=WHITE) -> Image.Image:
+    """The mark at ``size``; the letters' head draws it the other way round
+    (white square, red chevron: core.email_art)."""
     big = size * SUPERSAMPLE
     scale = big / BOX
     image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     pen = ImageDraw.Draw(image)
     if rounded:
         pen.rounded_rectangle(
-            (0, 0, big - 1, big - 1), radius=round(CORNER * scale), fill=RED
+            (0, 0, big - 1, big - 1), radius=round(CORNER * scale), fill=fill
         )
     else:
-        pen.rectangle((0, 0, big - 1, big - 1), fill=RED)
+        pen.rectangle((0, 0, big - 1, big - 1), fill=fill)
     points = [(x * scale, y * scale) for x, y in CHEVRON]
     width = round(STROKE * scale)
-    pen.line(points, fill=WHITE, width=width, joint="curve")
+    pen.line(points, fill=ink, width=width, joint="curve")
     for x, y in (points[0], points[-1]):  # round ends, as stroke-linecap
         pen.ellipse(
-            (x - width / 2, y - width / 2, x + width / 2, y + width / 2), fill=WHITE
+            (x - width / 2, y - width / 2, x + width / 2, y + width / 2), fill=ink
         )
     return image.resize((size, size), Image.Resampling.LANCZOS)
 

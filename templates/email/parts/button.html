@@ -1,8 +1,16 @@
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px;">
+{% load ow %}{% comment %}
+  The one thing to do (design 10.3): an SJTU red pill, then the address itself
+  for when the button does not open (v7.4): written out as people read it
+  (Chinese stays Chinese, not percent signs) while the link stays encoded, in
+  a grey box that selects whole at a click. A copy button cannot work in
+  mail: clients run no scripts.
+{% endcomment %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 12px;">
   <tr>
-    <td data-letter-button style="background-color:#9b3a33;border-radius:6px;">
-      <a href="{{ url }}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">{{ label }}</a>
+    <td data-letter-button bgcolor="#9b3a33" style="background-color:#9b3a33;border-radius:999px;">
+      <a href="{{ url }}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px;">{{ label }}</a>
     </td>
   </tr>
 </table>
-<p style="margin:0 0 16px;color:#5f6671;font-size:13px;line-height:1.6;word-break:break-all;">按钮打不开的话，把这个地址复制到浏览器：<br><a href="{{ url }}" style="color:#5f6671;">{{ url }}</a></p>
+<p style="margin:0 0 6px;color:#5f6671;font-size:13px;line-height:1.6;">按钮打不开的话，点下面的地址，或者复制到浏览器里打开（点一下框里就是全选）：</p>
+<div data-letter-url style="margin:0 0 16px;padding:12px 16px;background-color:#eef0f3;border-radius:12px;font-size:13px;line-height:1.6;word-break:break-all;-webkit-user-select:all;user-select:all;"><a href="{{ url }}" style="color:#963830;text-decoration:none;">{{ url|readable_url }}</a></div>

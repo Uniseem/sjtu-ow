@@ -161,6 +161,9 @@ def styleguide_email(request, key):
     found = sample(key)
     if found is None:
         raise Http404
-    response = HttpResponse(found.html)
+    from core.email_art import for_browser
+
+    # The browser cannot follow the letter's cid: pictures (design 10.3).
+    response = HttpResponse(for_browser(found.html))
     response._csp_config = EMAIL_CSP
     return response

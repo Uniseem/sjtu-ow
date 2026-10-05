@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import email.policy
 import logging
 from email.utils import formataddr
 
@@ -16,6 +17,31 @@ logger = logging.getLogger("sjtu_ow.mail")
 
 DEFAULT_SUBJECT_PREFIX = "[SJTU OW]"
 DEFAULT_FROM_NAME = "SJTU 守望先锋社区"
+
+
+class LetterMessage(EmailMultiAlternatives):
+    """A message whose HTML carries its own pictures (design 10.3, v7.4).
+
+    The letters' head shows the site mark and ridges as ``cid:`` pictures
+    (``core.email_art``): when the message is built for sending, the HTML part
+    becomes ``multipart/related`` with the pictures it points at, so they
+    show without loading anything from elsewhere. HTML without them is left
+    as it is."""
+
+    def message(self, *, policy=email.policy.default):
+        from core.email_art import used
+
+        msg = super().message(policy=policy)
+        html = next(
+            (part for part in msg.walk() if part.get_content_type() == "text/html"),
+            None,
+        )
+        if html is not None:
+            for cid, data in used(html.get_content()):
+                html.add_related(
+                    data, "image", "png", cid=f"<{cid}>", disposition="inline"
+                )
+        return msg
 
 
 class SMTPNotConfigured(Exception):
@@ -80,7 +106,7 @@ def ensure_text_and_html(message: EmailMessage) -> EmailMultiAlternatives:
     html_body = (
         html_parts[0] if html_parts else _html_from_text(text_body, message.subject)
     )
-    multipart = EmailMultiAlternatives(
+    multipart = LetterMessage(
         subject=message.subject,
         body=text_body,
         from_email=message.from_email,

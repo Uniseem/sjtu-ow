@@ -11,7 +11,15 @@ from django.core.files.base import ContentFile
 from PIL import Image as PILImage
 
 # Pictures in the first screen load at once; lazy would only delay them.
-FIRST_SCREEN = ("c-stage__img", "c-cover__img", "c-feature__img", "fill-288x288")
+FIRST_SCREEN = (
+    "c-stage__img",
+    "c-cover__img",
+    "c-feature__img",
+    "fill-288x288",
+    # A letter's head (design 10.3, v7.4): inside the message, read by mail
+    # clients that ignore loading=, and the first thing in it anyway.
+    'src="cid:ow-',
+)
 SKIP = {".venv", "node_modules", "prerendered", "staticfiles", "handoff", "media"}
 
 

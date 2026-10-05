@@ -1,17 +1,18 @@
 {% extends "email/layout.html" %}
 {% comment %}
   A core.letters.Letter in the frame (design 10.3): the conclusion, the key
-  facts, then the details, then at most one thing to do.
+  facts, then the details, then at most one thing to do. Lists are grey blocks
+  cut apart by white, like the site's rows (v7.4).
 {% endcomment %}
 {% block body %}
 <p style="margin:0 0 16px;">{{ letter.lead }}</p>
 {% if letter.facts %}{% include "email/parts/facts.html" with facts=letter.facts %}{% endif %}
 {% if letter.code %}{% include "email/parts/code.html" with code=letter.code %}{% endif %}
 {% if letter.items %}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" data-letter-items style="margin:8px 0 24px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" data-letter-items style="margin:8px 0 24px;background-color:#eef0f3;border-radius:12px;">
   {% for text, url in letter.items %}
   <tr>
-    <td style="padding:10px 0;{% if not forloop.first %}border-top:1px solid #e1e4e8;{% endif %}font-size:14px;line-height:1.6;">{{ text }}{% if url %}<br><a href="{{ url }}" style="color:#9b3a33;">{{ letter.item_link }}</a>{% endif %}</td>
+    <td style="padding:12px 16px;{% if not forloop.first %}border-top:3px solid #ffffff;{% endif %}font-size:14px;line-height:1.6;">{{ text }}{% if url %}<br><a href="{{ url }}" style="color:#963830;">{{ letter.item_link }}</a>{% endif %}</td>
   </tr>
   {% endfor %}
 </table>
@@ -21,4 +22,4 @@
 {% if letter.action %}{% include "email/parts/button.html" with label=letter.action.0 url=letter.action.1 %}{% endif %}
 {% if letter.note %}<p style="margin:16px 0 0;color:#4a505b;font-size:14px;">{{ letter.note }}</p>{% endif %}
 {% endblock %}
-{% block reason %}{{ letter.reason }}{% if letter.unsubscribe %}不想再收到？<a href="{{ letter.unsubscribe }}" style="color:#5f6671;">退订活动通知</a>。{% endif %}{% endblock %}
+{% block reason %}{{ letter.reason }}{% if letter.unsubscribe %}不想再收到？<a href="{{ letter.unsubscribe }}" style="color:#963830;">退订活动通知</a>。{% endif %}{% endblock %}

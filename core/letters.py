@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 
@@ -115,7 +114,10 @@ def render(letter: Letter, name: str = "") -> tuple[str, str]:
     return text_of(letter, name), html_of(letter, name)
 
 
-def message(letter: Letter, address: str, name: str = "") -> EmailMultiAlternatives:
+def message(letter: Letter, address: str, name: str = ""):
+    """One letter to one address, its pictures inside (core.mail.LetterMessage)."""
+    from core.mail import LetterMessage
+
     text, html = render(letter, name)
     headers = {}
     if letter.unsubscribe:
@@ -124,7 +126,7 @@ def message(letter: Letter, address: str, name: str = "") -> EmailMultiAlternati
             "List-Unsubscribe": f"<{letter.unsubscribe}>",
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         }
-    email = EmailMultiAlternatives(
+    email = LetterMessage(
         subject=letter.subject, body=text, to=[address], headers=headers
     )
     email.attach_alternative(html, "text/html")

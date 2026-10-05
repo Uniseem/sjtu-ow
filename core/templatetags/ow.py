@@ -6,7 +6,9 @@ every page prints them the same way.
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
+from urllib.parse import unquote
 
 from django import template
 from django.utils import timezone
@@ -285,3 +287,23 @@ def markdown(value):
     from content.markdown import render
 
     return render(value)
+
+
+# Runs of percent-escaped bytes above ASCII: what a Chinese slug turns into.
+_ESCAPED_TEXT = re.compile(r"(?:%[89A-Fa-f][0-9A-Fa-f])+")
+
+
+@register.filter
+def readable_url(url) -> str:
+    """An address as people write it (design 10.3, v7.4): ``/news/网站正式发布/``
+    instead of a string of percent signs. Only escaped non-ASCII text is
+    turned back; escaped ASCII (``%2F``, ``%3F``) keeps its meaning, and bytes
+    that are not UTF-8 stay as they were."""
+
+    def decode(match):
+        try:
+            return unquote(match.group(0), errors="strict")
+        except UnicodeDecodeError:
+            return match.group(0)
+
+    return _ESCAPED_TEXT.sub(decode, str(url or ""))

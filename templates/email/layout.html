@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 {% comment %}
-  The frame of every email (design 10.3): a dark head with the site's name and
-  an orange rule, a white card with the greeting, the body, 「祝好！」, the
-  signature and the date, then why you got it. Inline styles and tables only,
-  no pictures: mail clients drop stylesheets and block outside images. Light
+  The frame of every email (design 10.3, v7.4): an SJTU red head with the site
+  mark and name, the site's two ridges along its bottom edge running into a
+  white card (greeting, body, 「祝好！」, signature, date), then why you got it.
+  Like the site, nothing is outlined: blocks of colour on the grey page.
+  Inline styles and tables only (mail clients drop stylesheets). The two
+  pictures travel inside the message (cid:, core.mail attaches them; the
+  specimen page swaps in /static/), and every word is real text, so a client
+  that shows no pictures still has a red head with the name on it. Light
   only, so a client's automatic dark mode does not muddy it.
 {% endcomment %}
 <html lang="zh-Hans">
@@ -16,17 +20,25 @@
 </head>
 <body style="margin:0;padding:0;background-color:#f5f6f8;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f5f6f8;font-size:1px;line-height:1px;">{% block preheader %}{{ preheader }}{% endblock %}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f6f8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Noto Sans SC','Helvetica Neue',Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f6f8;font-family:-apple-system,BlinkMacSystemFont,'Microsoft YaHei','PingFang SC','Noto Sans SC','Helvetica Neue',Arial,sans-serif;">
   <tr>
     <td align="center" style="padding:32px 12px 40px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
         <tr>
-          <td data-letter-head style="background-color:#141a24;border-radius:8px 8px 0 0;border-bottom:3px solid #cf9152;padding:20px 32px;">
-            <a href="{{ site_url }}" style="color:#ffffff;text-decoration:none;font-size:18px;font-weight:700;letter-spacing:0.02em;">交大守望先锋</a><span style="color:#959cab;font-size:13px;">&nbsp;&nbsp;上海交通大学守望先锋社区</span>
+          <td data-letter-head bgcolor="#9b3a33" style="background-color:#9b3a33;border-radius:16px 16px 0 0;padding:24px 32px 4px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td width="36" valign="middle" style="width:36px;padding:0 12px 0 0;"><a href="{{ site_url }}"><img src="cid:ow-mark" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border:0;outline:none;"></a></td>
+                <td valign="middle" style="line-height:1.35;"><a href="{{ site_url }}" style="color:#ffffff;text-decoration:none;font-size:18px;font-weight:700;letter-spacing:0.02em;">交大守望先锋</a><br><span style="color:#f1e0da;font-size:13px;">上海交通大学守望先锋社区</span></td>
+              </tr>
+            </table>
           </td>
         </tr>
         <tr>
-          <td data-letter-card style="background-color:#ffffff;border:1px solid #e1e4e8;border-top:0;border-radius:0 0 8px 8px;padding:32px;color:#111318;font-size:15px;line-height:1.75;">
+          <td data-letter-horizon bgcolor="#9b3a33" style="background-color:#9b3a33;padding:0;font-size:0;line-height:0;"><img src="cid:ow-horizon" width="600" height="50" alt="" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;"></td>
+        </tr>
+        <tr>
+          <td data-letter-card style="background-color:#ffffff;border-radius:0 0 16px 16px;padding:12px 32px 32px;color:#111318;font-size:15px;line-height:1.75;">
             {% block greeting %}<p style="margin:0 0 16px;font-weight:600;">{{ greeting }}</p>{% endblock %}
             {% block body %}{% endblock %}
             {% block closing %}
@@ -39,7 +51,7 @@
         <tr>
           <td data-letter-foot style="padding:20px 32px 0;color:#5f6671;font-size:13px;line-height:1.7;">
             {% block foot %}{% block reason %}{% endblock %}{{ no_reply }}<br>{% endblock %}
-            <a href="{{ site_url }}" style="color:#5f6671;">{{ site_host }}</a>
+            <a href="{{ site_url }}" style="color:#963830;">{{ site_host }}</a>
           </td>
         </tr>
       </table>

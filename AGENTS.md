@@ -71,7 +71,7 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 
 它把工作区（**包括没提交的改动**，不碰暂存区）做成一个提交、打成 git bundle 传上去，测试机检出的就是本机现在的样子（换行是 LF）。检查在服务器上脱离连接跑，本机每 3 秒取一次日志，退出码就是检查的结果；同一时间只跑一个，后来的排队。整组里 pytest 按核数分片、`docker build` 同时在后台构建，全部约 1 分半。本机只在测试机连不上时才跑这组检查。
 
-改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。改了 `core/placeholders.py`（占位图的画法和动画）后跑 `uv run python manage.py render_placeholders` 并提交 `static/img/placeholders/`。换了校徽文件 `static/img/sjtu-emblem.svg` 后跑 `uv run python manage.py render_emblem_layers` 并提交两张图层。改了网站图标的画法（`core/icons.py`，171 起，照 `static/img/favicon.svg` 的形状）后跑 `uv run python manage.py render_icons` 并提交 `static/img/` 下的 `favicon.ico`、`apple-touch-icon.png`、`icon-192.png`、`icon-512.png`；只改 SVG 不会自动跟着变。改了 `locale/` 下的 `.po`（后台中文，117 起）后跑 `uv run python manage.py compile_translations` 并提交 `.mo`。
+改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。改了 `core/placeholders.py`（占位图的画法和动画）后跑 `uv run python manage.py render_placeholders` 并提交 `static/img/placeholders/`。换了校徽文件 `static/img/sjtu-emblem.svg` 后跑 `uv run python manage.py render_emblem_layers` 并提交两张图层。改了网站图标的画法（`core/icons.py`，171 起，照 `static/img/favicon.svg` 的形状）后跑 `uv run python manage.py render_icons` 并提交 `static/img/` 下的 `favicon.ico`、`apple-touch-icon.png`、`icon-192.png`、`icon-512.png`；只改 SVG 不会自动跟着变。改了邮件页头的图（`core/email_art.py`，200 起：站点标志反色、两道山脊，照站点的地平线和图标的数字画）或者它借用的地平线、图标数字后跑 `uv run python manage.py render_email_art` 并提交 `static/img/email/`；信里的图是随信内嵌的（`core.mail.LetterMessage`），邮箱不显示 SVG。改了 `locale/` 下的 `.po`（后台中文，117 起）后跑 `uv run python manage.py compile_translations` 并提交 `.mo`。
 
 ## 测试机与部署
 
