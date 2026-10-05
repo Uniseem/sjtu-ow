@@ -690,7 +690,7 @@ def test_unhandled_moderation_records_are_never_cleaned_up():
 
 
 def test_no_app_hardcodes_a_mail_subject_prefix():
-    """附录 C: core.mail adds the site's configured prefix ("[SJTU OW]").
+    """附录 C: core.mail adds the site's configured prefix ("[SJTU-OW]").
 
     A subject written with its own prefix gets doubled and ignores whatever
     the admin configured. Two apps did exactly that until this was checked,
@@ -721,7 +721,7 @@ def test_the_prefix_is_applied_exactly_once():
     from core.mail import apply_subject_prefix, get_subject_prefix
 
     prefix = get_subject_prefix()
-    assert prefix == "[SJTU OW]"
+    assert prefix == "[SJTU-OW]"
 
     once = apply_subject_prefix("内战提醒：周五内战")
     assert once == f"{prefix} 内战提醒：周五内战"
@@ -828,7 +828,7 @@ def test_site_settings_defaults_match_appendix_c():
     from core.models import SiteSettings
 
     site = SiteSettings.load()
-    assert site.email_subject_prefix == "[SJTU OW]"
+    assert site.email_subject_prefix == "[SJTU-OW]"
     assert site.max_game_accounts == 5
     assert site.team_max_members == 10
     assert site.team_max_captained == 3

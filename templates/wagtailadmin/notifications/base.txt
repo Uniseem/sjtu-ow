@@ -7,7 +7,7 @@
 {% endblock %}
 祝好！
 
-上海交通大学守望先锋社区
+SJTU-OW
 {% now "Y 年 n 月 j 日" %}
 
 ——

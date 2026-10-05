@@ -282,7 +282,7 @@ def test_page_meta_open_graph_and_canonical(client):
 
     response = client.get(article.url)
     html = response.content.decode("utf-8")
-    assert "<title>SEO 标题 · 上海交通大学守望先锋社区</title>" in html
+    assert "<title>SEO 标题 · SJTU-OW</title>" in html
     assert 'name="description" content="SEO 描述"' in html
     assert 'rel="canonical"' in html
     assert article.url in html

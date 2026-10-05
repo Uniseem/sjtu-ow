@@ -40,7 +40,7 @@ WAGTAIL_STOCK_GROUP_NAMES = ("Editors", "Moderators")
 WAGTAIL_STOCK_WORKFLOW_NAME = "Moderators approval"
 ROOT_TITLE = "根目录"
 
-SITE_DISPLAY_NAME = "上海交通大学守望先锋社区"
+SITE_DISPLAY_NAME = "SJTU-OW"
 
 STANDARD_PAGES = (
     ("用户协议", "terms"),

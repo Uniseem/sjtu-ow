@@ -59,7 +59,7 @@ def test_the_committed_files_are_what_the_code_draws():
 
 def test_the_manifest_names_files_that_exist():
     manifest = json.loads((IMG.parent / "manifest.webmanifest").read_text("utf-8"))
-    assert manifest["short_name"] == "交大守望先锋"
+    assert manifest["short_name"] == "SJTU-OW"
     for icon in manifest["icons"]:
         assert (IMG.parent / icon["src"]).exists()
         width, height = Image.open(IMG.parent / icon["src"]).size

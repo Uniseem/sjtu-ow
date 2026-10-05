@@ -284,7 +284,7 @@ SECURE_CSP = {
     "form-action": [CSP.SELF],
 }
 
-WAGTAIL_SITE_NAME = "上海交通大学守望先锋社区"
+WAGTAIL_SITE_NAME = "SJTU-OW"
 WAGTAILADMIN_BASE_URL = SITE_URL
 WAGTAILADMIN_LOGIN_URL = "account_login"
 ADMIN_URL_PREFIX = "/admin/"

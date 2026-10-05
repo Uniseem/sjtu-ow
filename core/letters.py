@@ -23,7 +23,7 @@ from django.utils import timezone
 logger = logging.getLogger("sjtu_ow.mail")
 
 CLOSING = "祝好！"
-SIGNATURE = "上海交通大学守望先锋社区"
+SIGNATURE = "SJTU-OW"
 NO_REPLY = "这封邮件由系统自动发送，请不要直接回复。"
 
 

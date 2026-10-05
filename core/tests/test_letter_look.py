@@ -60,7 +60,7 @@ def test_the_head_is_sjtu_red_with_the_site_mark_and_ridges(key):
     head = html[html.index("data-letter-head") : html.index("data-letter-card")]
     assert 'bgcolor="#9b3a33"' in head and "background-color:#9b3a33" in head
     assert 'src="cid:ow-mark"' in head and 'src="cid:ow-horizon"' in head
-    assert "交大守望先锋" in head and "上海交通大学守望先锋社区" in head
+    assert "SJTU-OW" in head and "上海交通大学守望先锋玩家社区" in head
     # v5's night head and orange rule are gone.
     assert "#141a24" not in html and "#cf9152" not in html
 

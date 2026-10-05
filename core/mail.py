@@ -15,8 +15,8 @@ from django.utils.html import strip_tags
 
 logger = logging.getLogger("sjtu_ow.mail")
 
-DEFAULT_SUBJECT_PREFIX = "[SJTU OW]"
-DEFAULT_FROM_NAME = "SJTU 守望先锋社区"
+DEFAULT_SUBJECT_PREFIX = "[SJTU-OW]"
+DEFAULT_FROM_NAME = "SJTU-OW"
 
 
 class LetterMessage(EmailMultiAlternatives):

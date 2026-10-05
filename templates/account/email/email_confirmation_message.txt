@@ -1,6 +1,6 @@
 {% extends "account/email/base_message.txt" %}
 
-{% block content %}你正在注册上海交通大学守望先锋社区，或者给账号换一个邮箱。请在页面上输入下面的验证码：
+{% block content %}你正在注册 SJTU-OW，或者给账号换一个邮箱。请在页面上输入下面的验证码：
 
 验证码：{{ code }}
 

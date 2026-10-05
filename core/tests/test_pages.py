@@ -194,7 +194,7 @@ def test_healthz_returns_503_when_disk_is_nearly_full(
 def test_home_returns_200(client):
     response = client.get(reverse("home"))
     assert response.status_code == 200
-    assert "上海交通大学守望先锋社区" in response.content.decode("utf-8")
+    assert "SJTU-OW" in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db

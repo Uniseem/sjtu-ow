@@ -82,7 +82,7 @@ def ics(user, now=None) -> str:
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//SJTU OW//sjtu-ow//ZH",
+        "PRODID:-//SJTU-OW//sjtu-ow//ZH",
         "CALSCALE:GREGORIAN",
         f"X-WR-CALNAME:{_escape(f'{user.nickname} 的社团安排')}",
         "X-WR-TIMEZONE:Asia/Shanghai",

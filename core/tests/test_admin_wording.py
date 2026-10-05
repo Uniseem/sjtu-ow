@@ -166,7 +166,7 @@ def test_admin_tabs_name_the_site_not_wagtail(site, client):
     assert "<title>首页 · 管理后台</title>" in html
     assert "img/favicon.svg" in html
     fallback = client.get("/wagtail/").content.decode()
-    assert "- SJTU OW 底层后台</title>" in fallback
+    assert "- SJTU-OW 底层后台</title>" in fallback
     assert "- Wagtail</title>" not in fallback
     assert "img/favicon.svg" in fallback
 

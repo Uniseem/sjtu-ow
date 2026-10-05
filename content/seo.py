@@ -6,8 +6,8 @@ from django.conf import settings
 
 from core.models import SiteSettings
 
-SITE_NAME = "上海交通大学守望先锋社区"
-DEFAULT_DESCRIPTION = "上海交通大学守望先锋社区网站"
+SITE_NAME = "SJTU-OW"
+DEFAULT_DESCRIPTION = "SJTU-OW：上海交通大学守望先锋玩家的社团网站"
 
 # Design 13.14's page kinds; each detail view passes its own.
 SHARE_KINDS = ("article", "tournament", "team", "scrim", "other")

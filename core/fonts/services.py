@@ -15,7 +15,7 @@ from core.fonts.css import regenerate_font_css
 
 logger = logging.getLogger(__name__)
 
-SAMPLE_TEXT = "上海交通大学守望先锋社区 SJTU Overwatch 2026 钻石 3 · Genji#51234"
+SAMPLE_TEXT = "SJTU-OW 上海交通大学守望先锋 2026 钻石 3 · Genji#51234"
 MAX_ENABLED_VARIANTS = 6
 STALE_PROCESSING_AFTER = timedelta(minutes=30)
 REQUEUE_DELAY_SECONDS = 30

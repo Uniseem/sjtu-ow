@@ -68,12 +68,12 @@ class SiteSettings(BaseGenericSetting):
     from_name = models.CharField(
         "发件人名称",
         max_length=100,
-        default="SJTU 守望先锋社区",
+        default="SJTU-OW",
     )
     email_subject_prefix = models.CharField(
         "邮件主题前缀",
         max_length=40,
-        default="[SJTU OW]",
+        default="[SJTU-OW]",
     )
     site_description = models.TextField(
         "站点简介",

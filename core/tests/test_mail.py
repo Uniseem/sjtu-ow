@@ -48,7 +48,7 @@ def test_send_mail_enqueues_instead_of_sending(settings):
 def test_worker_delivers_queued_mail(settings):
     settings.EMAIL_BACKEND = "core.mail.QueuedEmailBackend"
     settings.EMAIL_DELIVERY_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-    SiteSettings.objects.create(email_subject_prefix="[SJTU OW]")
+    SiteSettings.objects.create(email_subject_prefix="[SJTU-OW]")
     send_mail("Hello", "Body text", "from@example.com", ["to@example.com"])
     row = DBTaskResult.objects.get()
     payload = row.args_kwargs["args"][0]

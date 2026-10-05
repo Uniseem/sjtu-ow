@@ -1,7 +1,7 @@
 """Scrim emails (design 9.1, 10.2), written as letters (10.3). One per person.
 
 Subjects are written bare: core.mail prefixes every outgoing message with
-the site's configured prefix ([SJTU OW] by default, 附录 C), so a prefix
+the site's configured prefix ([SJTU-OW] by default, 附录 C), so a prefix
 written here would be doubled and would ignore the admin's setting.
 ``*_letter`` builds what an email says; the function without the suffix
 sends it (see teams.notifications).

@@ -2,7 +2,7 @@
 
 写给在这个仓库里干活的 AI 编码助手（Claude Code、Codex、Cursor、Grok……）和新接手的开发者。
 
-上海交通大学守望先锋社区网站：Wagtail 8 + Django 6 + Python 3.13，SQLite（WAL），uv 管依赖。前台是服务端渲染 + HTMX + Alpine.js（CSP 构建），公开页面由 worker 预渲染成静态 HTML。
+SJTU-OW（上海交通大学守望先锋社区网站；站名 208 起统一写 SJTU-OW，规则在设计 13.2「站点名称」，有测试拦旧名字）：Wagtail 8 + Django 6 + Python 3.13，SQLite（WAL），uv 管依赖。前台是服务端渲染 + HTMX + Alpine.js（CSP 构建），公开页面由 worker 预渲染成静态 HTML。
 
 ## 开工前按顺序读
 

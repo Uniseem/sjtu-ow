@@ -61,7 +61,7 @@ def test_every_email_reads_as_a_letter(sample):
     first = text.splitlines()[0]
     assert first.endswith("你好：")
     assert "\n祝好！\n" in text
-    assert f"上海交通大学守望先锋社区\n{letters.dated()}" in text
+    assert f"SJTU-OW\n{letters.dated()}" in text
     assert text.index("祝好！") < text.index("——")
     assert "你收到这封邮件，是因为" in text
     assert "这封邮件由系统自动发送，请不要直接回复。" in text

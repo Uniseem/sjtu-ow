@@ -1,6 +1,6 @@
-# 上海交通大学守望先锋社区网站
+# SJTU-OW（上海交通大学守望先锋社区网站）
 
-Django + Wagtail 站点。设计依据见 [`docs/design.md`](docs/design.md)，开发进度见 [`handoff/STATUS.md`](handoff/STATUS.md)。参与开发（包括用 AI 编码助手）先读 [`AGENTS.md`](AGENTS.md)。
+Django + Wagtail 站点。站名是 **SJTU-OW**（208 起，设计 13.2「站点名称」）：页头、标题后缀、邮件落款和发件人都写它，说明它是什么的句子才写「上海交通大学守望先锋……」。设计依据见 [`docs/design.md`](docs/design.md)，开发进度见 [`handoff/STATUS.md`](handoff/STATUS.md)。参与开发（包括用 AI 编码助手）先读 [`AGENTS.md`](AGENTS.md)。
 
 本文件只讲怎么运行、怎么用、怎么运维，**不写进度**。
 
