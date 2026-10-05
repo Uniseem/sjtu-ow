@@ -146,11 +146,18 @@ def revise_url(item) -> str:
     return ""
 
 
-def revise_letter(item, message: str) -> Letter:
+def revise_letter(item, message: str, before: int = 0) -> Letter:
+    """``before``: how many were sent about this item already (v7.5)."""
     kind = item.get_target_type_display()
     noun = REVISE_NOUN.get(item.target_type, kind)
     facts = [("内容类型", kind), ("内容片段", (item.quote or item.excerpt)[:200])]
     link = revise_url(item)
+    notice = (
+        f"关于这条{noun}，之前已经发过 {before} 次修改提醒，"
+        "这次可能有修改，请以这封为准。"
+        if before
+        else ""
+    )
     return Letter(
         subject=f"请修改你的{noun}",
         lead=f"社区的管理员看过你发布的一条{noun}，请你按下面的说明修改。",
@@ -158,8 +165,9 @@ def revise_letter(item, message: str) -> Letter:
         paragraphs=[f"管理员的说明：{message}", "改完保存就行，不用回复这封邮件。"],
         action=("去修改", link) if link else None,
         reason=REVISE_WHY,
+        notice=notice,
     )
 
 
-def ask_author(item, message: str) -> None:
-    send(revise_letter(item, message), [item.author])
+def ask_author(item, message: str, before: int = 0) -> None:
+    send(revise_letter(item, message, before), [item.author])

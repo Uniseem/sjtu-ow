@@ -47,7 +47,7 @@ PAGES = [
     ("member-page", "captain", "/members/{member}/"),
     ("own-page", "member", "/members/{member}/"),
     ("mail-tournament-reminder", "member", "/_styleguide/emails/tournament-reminder/"),
-    ("mail-tournament-moved", "member", "/_styleguide/emails/tournament-moved/"),
+    ("mail-tournament-update", "member", "/_styleguide/emails/tournament-update/"),
     ("mail-member-left", "member", "/_styleguide/emails/member-left/"),
     ("admin-activity", "officer", "/admin/activity/"),
     # The back office (round 196).

@@ -1,7 +1,8 @@
 """Site-wide business logic.
 
-So far: 「通知全体成员」, the activity notices (design 10.4, v6.19), and how
-far a copied scrim or tournament moves (14.2, v6.51). Email itself lives in
+So far: 「通知全体成员」 and 「通知报名的人」, the mails people send about a
+tournament, scrim or article (design 10.4, v6.19; v7.5), and how far a copied
+scrim or tournament moves (14.2, v6.51). Email itself lives in
 core.mail and core.letters, prerendering in core.prerender.
 """
 
@@ -11,10 +12,13 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from django.core import signing
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.urls import reverse
 
 UNSUBSCRIBE_SALT = "core.announcements.unsubscribe"
+EVERYONE = "everyone"
+PARTICIPANTS = "participants"
+NOTE_MAX = 500
 
 
 class AnnouncementError(Exception):
@@ -33,6 +37,11 @@ class Kind:
     is_live: object  # (obj) -> bool
     back_url: object  # (obj) -> admin address to return to
     label: str  # for the breadcrumb
+    noun: str  # 「这场赛事」, in the notice from the second mail on (10.3)
+    # 「通知报名的人」 (v7.5): who signed up, and their letter
+    # (obj, moved_from, note) -> Letter. None where nobody signs up.
+    participants: object = None
+    update_letter: object = None
 
 
 def _published(obj) -> bool:
@@ -60,6 +69,9 @@ def kinds() -> dict[str, Kind]:
             _published,
             lambda obj: reverse("tournaments:index"),
             "赛事",
+            "这场赛事",
+            tournament_mail.participants,
+            tournament_mail.update_letter,
         ),
         Broadcast.Kind.SCRIM: Kind(
             Broadcast.Kind.SCRIM,
@@ -69,6 +81,9 @@ def kinds() -> dict[str, Kind]:
             _published,
             lambda obj: reverse("scrims:index"),
             "内战活动",
+            "这场内战",
+            scrim_mail.participants,
+            scrim_mail.scrim_update_letter,
         ),
         # Design 10.4 (v6.23): content editors announce a published article.
         Broadcast.Kind.ARTICLE: Kind(
@@ -79,6 +94,7 @@ def kinds() -> dict[str, Kind]:
             lambda obj: bool(obj.live),
             lambda obj: reverse("backoffice:articles"),
             "文章",
+            "这篇文章",
         ),
     }
 
@@ -133,10 +149,54 @@ def set_announcements(user, accepts: bool) -> None:
 # --- sending ----------------------------------------------------------------
 
 
-def sent_broadcast(kind: str, obj):
+def history(kind: str, obj):
+    """Every mail sent (or planned) about this one, newest first (v7.5)."""
     from core.models import Broadcast
 
-    return Broadcast.objects.filter(kind=kind, object_id=obj.pk).first()
+    return Broadcast.objects.filter(kind=kind, object_id=obj.pk).order_by(
+        "-created_at", "-pk"
+    )
+
+
+def waiting_broadcast(kind: str, obj):
+    """The one planned for when this article goes live, if any (v6.54)."""
+    return history(kind, obj).filter(waits_for_publish=True).first()
+
+
+def repeat_notice(kind: str, obj, before: int) -> str:
+    """Design 10.3 (v7.5): from the second mail about the same thing on,
+    say how many went before; things may have changed since."""
+    if before <= 0:
+        return ""
+    return (
+        f"关于{kinds()[kind].noun}「{obj.title}」，之前已经发过 {before} 次邮件，"
+        "这次可能有修改，请以这封为准。"
+    )
+
+
+def compose(
+    kind: str,
+    obj,
+    *,
+    audience: str = EVERYONE,
+    unsubscribe: str = "",
+    moved_from=None,
+    note: str = "",
+    before: int = 0,
+):
+    """The letter one mail of this kind is, with the notice on top."""
+    entry = kinds()[kind]
+    if audience == PARTICIPANTS:
+        letter = entry.update_letter(obj, moved_from, note)
+    else:
+        letter = entry.letter(obj, unsubscribe)
+    letter.notice = repeat_notice(kind, obj, before)
+    return letter
+
+
+def participant_count(kind: str, obj) -> int:
+    entry = kinds()[kind]
+    return len(entry.participants(obj)) if entry.participants else 0
 
 
 def going_live_at(kind: str, obj):
@@ -154,27 +214,33 @@ def going_live_at(kind: str, obj):
     return planned.approved_go_live_at if planned else None
 
 
-def announcement_problem(kind: str, obj, *, publishing: bool = False) -> str:
+def announcement_problem(
+    kind: str, obj, *, publishing: bool = False, audience: str = EVERYONE
+) -> str:
     """Why this cannot go out now; "" when it can. ``publishing``: asked
     on the publish page, before the status changes. A planned article can be
-    announced ahead: it goes out when it goes live (v6.54)."""
+    announced ahead: it goes out when it goes live (v6.54). v7.5: the same
+    one may go out again; only a second plan for going live is refused."""
     from core.mail import SMTPNotConfigured, build_smtp_backend
     from core.models import SiteSettings
 
-    if (
-        not publishing
-        and not kinds()[kind].is_live(obj)
-        and going_live_at(kind, obj) is None
-    ):
-        return "发布之后才能通知全体成员。"
-    done = sent_broadcast(kind, obj)
-    if done is not None and done.waits_for_publish:
-        return "已经安排在上线时通知全体成员，同一篇只发一次。"
-    if done is not None:
-        return (
-            f"已经在 {_moment(done.created_at)} 通知过 {done.recipient_count} 人，"
-            "同一场只发一次。"
-        )
+    entry = kinds()[kind]
+    if audience == PARTICIPANTS:
+        if entry.participants is None:
+            return "这类内容没有报名的人。"
+        if not publishing and not entry.is_live(obj):
+            return "发布之后才能通知报名的人。"
+        if not entry.participants(obj):
+            return "还没有人报名，没有人可以通知。"
+    else:
+        if (
+            not publishing
+            and not entry.is_live(obj)
+            and going_live_at(kind, obj) is None
+        ):
+            return "发布之后才能通知全体成员。"
+        if waiting_broadcast(kind, obj) is not None:
+            return "已经安排在上线时通知全体成员，到时会发出，不用再安排。"
     try:
         build_smtp_backend(SiteSettings.load())
     except SMTPNotConfigured:
@@ -187,8 +253,11 @@ def recipient_count(obj) -> int:
 
 
 @transaction.atomic
-def announce(*, kind: str, obj, actor):
-    """Record the notice and queue it (design 10.4). One per object."""
+def announce(*, kind: str, obj, actor, audience: str = EVERYONE, note: str = ""):
+    """Record the mail and queue it (design 10.4). v7.5: to everyone or to
+    the people signed up, as often as someone sends it; each knows how many
+    went before it, and a notice to the people signed up carries the
+    admin's words and the start time they knew until now."""
     from core import admin_log
     from core.models import Broadcast
     from core.tasks import send_broadcast
@@ -196,29 +265,47 @@ def announce(*, kind: str, obj, actor):
     entry = kinds()[kind]
     if not entry.can_send(actor):
         raise AnnouncementError("你没有这类活动的管理权限。")
-    problem = announcement_problem(kind, obj)
+    note = (note or "").strip() if audience == PARTICIPANTS else ""
+    if len(note) > NOTE_MAX:
+        raise AnnouncementError(f"说明最多 {NOTE_MAX} 字。")
+    problem = announcement_problem(kind, obj, audience=audience)
     if problem:
         raise AnnouncementError(problem)
     # A planned article: noted now, sent by send_waiting() when it goes live.
-    waiting = going_live_at(kind, obj) is not None
-    try:
-        with transaction.atomic():
-            broadcast = Broadcast.objects.create(
-                kind=kind,
-                object_id=obj.pk,
-                subject=entry.letter(obj, "").subject,
-                sent_by=actor,
-                recipient_count=0 if waiting else recipient_count(obj),
-                waits_for_publish=waiting,
-            )
-    except IntegrityError as exc:  # someone else pressed it a moment ago
-        raise AnnouncementError("刚刚已经有人发过了，同一场只发一次。") from exc
+    waiting = audience == EVERYONE and going_live_at(kind, obj) is not None
+    moved_from = getattr(obj, "moved_from", None) if audience == PARTICIPANTS else None
+    if waiting:
+        count = 0
+    elif audience == PARTICIPANTS:
+        count = participant_count(kind, obj)
+    else:
+        count = recipient_count(obj)
+    broadcast = Broadcast.objects.create(
+        kind=kind,
+        object_id=obj.pk,
+        audience=audience,
+        before=history(kind, obj).count(),
+        note=note,
+        moved_from=moved_from,
+        subject=compose(
+            kind, obj, audience=audience, moved_from=moved_from, note=note
+        ).subject,
+        sent_by=actor,
+        recipient_count=count,
+        waits_for_publish=waiting,
+    )
+    if moved_from is not None:
+        # They are being told now (design 8.1, 9.1): the prompt goes.
+        entry.model.objects.filter(pk=obj.pk).update(moved_from=None)
+        obj.moved_from = None
+    action = "announce" if audience == EVERYONE else "notify_participants"
     admin_log.record(
         obj,
-        f"{kind}s.announce",
+        f"{kind}s.{action}",
         actor,
-        recipients=broadcast.recipient_count,
+        recipients=count,
         on_publish=waiting,
+        before=broadcast.before,
     )
     if not waiting:
         transaction.on_commit(lambda: send_broadcast.enqueue(broadcast.pk))
@@ -231,16 +318,17 @@ def send_waiting(kind: str, obj) -> bool:
     from core.models import Broadcast
     from core.tasks import send_broadcast
 
-    waiting = Broadcast.objects.filter(
+    sent = False
+    for broadcast in Broadcast.objects.filter(
         kind=kind, object_id=obj.pk, waits_for_publish=True
-    )
-    if not waiting.update(
-        waits_for_publish=False, recipient_count=recipient_count(obj)
     ):
-        return False
-    broadcast = Broadcast.objects.get(kind=kind, object_id=obj.pk)
-    transaction.on_commit(lambda: send_broadcast.enqueue(broadcast.pk))
-    return True
+        # The update is the claim: a second signal finds nothing left to send.
+        if Broadcast.objects.filter(pk=broadcast.pk, waits_for_publish=True).update(
+            waits_for_publish=False, recipient_count=recipient_count(obj)
+        ):
+            transaction.on_commit(lambda pk=broadcast.pk: send_broadcast.enqueue(pk))
+            sent = True
+    return sent
 
 
 def deliver(broadcast) -> int:
@@ -252,18 +340,27 @@ def deliver(broadcast) -> int:
     obj = entry.model.objects.filter(pk=broadcast.object_id).first()
     if obj is None:
         return 0
+    if broadcast.audience == PARTICIPANTS:
+        letter = compose(
+            broadcast.kind,
+            obj,
+            audience=PARTICIPANTS,
+            moved_from=broadcast.moved_from,
+            note=broadcast.note,
+            before=broadcast.before,
+        )
+        people = entry.participants(obj) if entry.participants else []
+        return send(letter, people, fail_silently=True)
     sent = 0
     for person in announcement_recipients(sjtu_only=getattr(obj, "sjtu_only", False)):
-        sent += send(
-            entry.letter(obj, unsubscribe_url(person)), [person], fail_silently=True
+        letter = compose(
+            broadcast.kind,
+            obj,
+            unsubscribe=unsubscribe_url(person),
+            before=broadcast.before,
         )
+        sent += send(letter, [person], fail_silently=True)
     return sent
-
-
-def _moment(value) -> str:
-    from django.utils.timezone import localtime
-
-    return f"{localtime(value):%Y-%m-%d %H:%M}"
 
 
 WEEK = timedelta(weeks=1)

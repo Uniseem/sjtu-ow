@@ -2,9 +2,11 @@
 {% comment %}
   A core.letters.Letter in the frame (design 10.3): the conclusion, the key
   facts, then the details, then at most one thing to do. Lists are grey blocks
-  cut apart by white, like the site's rows (v7.4).
+  cut apart by white, like the site's rows (v7.4). From the second mail about
+  the same thing on, a pale red block above it all says so (v7.5).
 {% endcomment %}
 {% block body %}
+{% if letter.notice %}<div data-letter-notice style="margin:0 0 16px;padding:12px 16px;background-color:#f1e0da;border-radius:12px;color:#73291f;font-size:14px;line-height:1.6;">{{ letter.notice }}</div>{% endif %}
 <p style="margin:0 0 16px;">{{ letter.lead }}</p>
 {% if letter.facts %}{% include "email/parts/facts.html" with facts=letter.facts %}{% endif %}
 {% if letter.code %}{% include "email/parts/code.html" with code=letter.code %}{% endif %}

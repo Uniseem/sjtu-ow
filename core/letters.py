@@ -42,6 +42,9 @@ class Letter:
     # Only on mail people may turn off (design 10.4): the footer links to it
     # and the message carries List-Unsubscribe for mail clients.
     unsubscribe: str = ""
+    # From the second mail about the same thing on (design 10.3, v7.5): how
+    # many went before, above the letter itself.
+    notice: str = ""
 
 
 def site_url(path: str = "/") -> str:
@@ -79,7 +82,7 @@ def frame(name: str = "", *, subject: str = "", preheader: str = "") -> dict:
 
 
 def text_of(letter: Letter, name: str = "") -> str:
-    parts = [greeting(name), letter.lead]
+    parts = [greeting(name), letter.notice, letter.lead]
     if letter.facts:
         parts.append("\n".join(f"{label}：{value}" for label, value in letter.facts))
     if letter.code:

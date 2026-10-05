@@ -431,7 +431,7 @@ def test_saving_a_tournament_does_what_the_admin_did(site, client):
     assert response.url == reverse("tournaments:edit", args=[tournament.pk])
     assert tournament.created_by == manager and tournament.status == "draft"
     assert after.call_count == 1
-    with mock.patch("tournaments.services.time_changed") as moved:
+    with mock.patch("tournaments.services.note_time_change") as moved:
         client.post(
             reverse("tournaments:edit", args=[tournament.pk]),
             _tournament_data(title="改名杯196"),
@@ -458,11 +458,10 @@ def test_an_untouched_time_with_seconds_is_kept(site, client):
         roster_max=tournament.roster_max,
         registration_mode=tournament.registration_mode,
     )
-    with mock.patch("tournaments.notifications.time_changed") as letter:
-        client.post(reverse("tournaments:edit", args=[tournament.pk]), data)
+    client.post(reverse("tournaments:edit", args=[tournament.pk]), data)
     tournament.refresh_from_db()
     assert tournament.starts_at == start
-    assert letter.call_count == 0
+    assert tournament.moved_from is None  # nothing to tell anyone (v7.5)
 
 
 @pytest.mark.django_db

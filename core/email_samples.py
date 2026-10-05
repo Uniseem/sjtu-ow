@@ -109,6 +109,15 @@ def _avatar(status, reason, note=""):
     )
 
 
+def _again(letter, noun: str, before: int):
+    """A letter as it goes out the second time on (design 10.3, v7.5)."""
+    letter.notice = (
+        f"关于{noun}「2026 秋季校内杯」，之前已经发过 {before} 次邮件，"
+        "这次可能有修改，请以这封为准。"
+    )
+    return letter
+
+
 def _letter(key, group, title, to, letter, name) -> Sample:
     text, html = letters.render(letter, name)
     return Sample(key, group, title, to, letter.subject, text, html)
@@ -235,13 +244,23 @@ def samples() -> list[Sample]:
             "西瓜",
         ),
         _letter(
-            "tournament-moved",
+            "tournament-update",
             "赛事",
-            "比赛时间改了",
+            "赛事有更新（管理员点「通知报名的人」，时间改过）",
             "报了名的人（名单里的、散人池里的）",
-            tournaments.time_changed_letter(
-                _tournament(), timezone.make_aware(datetime(2026, 11, 7, 14, 0))
+            tournaments.update_letter(
+                _tournament(),
+                timezone.make_aware(datetime(2026, 11, 7, 14, 0)),
+                "场地改到了线上，开赛前一小时进群看房间号。",
             ),
+            "小天使",
+        ),
+        _letter(
+            "tournament-update-again",
+            "赛事",
+            "赛事有更新（第二封起：开头写明之前发过几次）",
+            "报了名的人（名单里的、散人池里的）",
+            _again(tournaments.update_letter(_tournament()), "这场赛事", 1),
             "小天使",
         ),
         _letter(
@@ -416,11 +435,11 @@ def samples() -> list[Sample]:
             "小天使",
         ),
         _letter(
-            "scrim-moved",
+            "scrim-update",
             "内战",
-            "内战时间改了",
+            "内战有更新（管理员点「通知报名的人」，时间改过）",
             "全部报名者",
-            scrims.scrim_time_changed_letter(
+            scrims.scrim_update_letter(
                 _scrim(), timezone.make_aware(datetime(2026, 10, 4, 19, 30))
             ),
             "小天使",

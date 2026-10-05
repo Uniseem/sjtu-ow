@@ -30,6 +30,9 @@ ACTIONS = {
     "teams.disband": ("解散战队", "解散了战队"),
     "tournaments.announce": ("通知全体成员", "发了新赛事通知"),
     "scrims.announce": ("通知全体成员", "发了新内战通知"),
+    "articles.announce": ("通知全体成员", "发了新文章通知"),
+    "tournaments.notify_participants": ("通知报名的人", "给报名的人发了赛事更新"),
+    "scrims.notify_participants": ("通知报名的人", "给报名的人发了内战更新"),
 }
 
 

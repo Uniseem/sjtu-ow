@@ -36,21 +36,30 @@ def moment(value) -> str:
     return f"{localtime(value):%Y-%m-%d %H:%M}"
 
 
-def time_changed_letter(tournament, old_starts_at) -> Letter:
-    """Design 8.1 (v6.34): the start moved; say from when to when."""
-    return Letter(
-        subject=f"比赛时间改了：{tournament.title}",
-        lead=(
+def update_letter(tournament, moved_from=None, note: str = "") -> Letter:
+    """Design 10.4 (v7.5): 「通知报名的人」. If the start moved since they
+    last heard, say from when to when (v6.34 sent that on saving)."""
+    moved = bool(
+        moved_from and tournament.starts_at and moved_from != tournament.starts_at
+    )
+    if moved:
+        lead = (
             f"「{tournament.title}」的比赛时间改了："
-            f"原来 {moment(old_starts_at)}，现在 {moment(tournament.starts_at)}。"
-        ),
-        facts=[
-            ("现在的时间", moment(tournament.starts_at)),
-            *contact_fact(tournament),
-        ],
-        paragraphs=[
+            f"原来 {moment(moved_from)}，现在 {moment(tournament.starts_at)}。"
+        )
+    else:
+        lead = f"「{tournament.title}」的信息有更新，请以赛事页面上的为准。"
+    paragraphs = [f"管理员的说明：{note}"] if note else []
+    if moved:
+        paragraphs.append(
             "开赛前会按新的时间再提醒一次。新时间来不了的话，请尽早告诉队长或赛事管理员。"
-        ],
+        )
+    when = moment(tournament.starts_at) if tournament.starts_at else "待定"
+    return Letter(
+        subject=f"赛事有更新：{tournament.title}",
+        lead=lead,
+        facts=[("比赛时间", when), *contact_fact(tournament)],
+        paragraphs=paragraphs,
         action=("查看赛事页面", site_url(tournament.get_absolute_url())),
         reason=f"你收到这封邮件，是因为你报名了「{tournament.title}」。",
     )
@@ -67,14 +76,6 @@ def participants(tournament) -> list:
     ) | set(tournament.individual_signups.values_list("user_id", flat=True))
     return list(
         User.objects.filter(pk__in=ids, is_active=True).exclude(email="").order_by("pk")
-    )
-
-
-def time_changed(tournament, old_starts_at) -> int:
-    return send(
-        time_changed_letter(tournament, old_starts_at),
-        participants(tournament),
-        fail_silently=True,
     )
 
 

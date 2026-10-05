@@ -40,7 +40,7 @@
           </dl>
           <div class="b-actions">
             {% if url %}<a class="c-btn c-btn--secondary c-btn--sm" href="{{ url }}" target="_blank" rel="noopener">看文章{% include "components/icon.html" with name="external" class="size-4" %}</a>{% endif %}
-            {% if can_announce %}<a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'announce' 'article' article.pk %}">{% if article.live %}通知全体成员{% else %}上线时通知全体成员{% endif %}</a>{% endif %}
+            {% if can_announce %}<a class="c-btn c-btn--secondary c-btn--sm" href="{% url 'announce' 'article' article.pk %}">{% if article.live %}通知全体成员{% else %}上线时通知全体成员{% endif %}{% if announced %}（发过 {{ announced }} 次）{% endif %}</a>{% endif %}
           </div>
           {% if can_unpublish or can_delete %}
             <div class="b-actions">

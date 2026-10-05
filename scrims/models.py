@@ -86,6 +86,9 @@ class Scrim(models.Model):
     # A dedicated stamp, because ``updated_at`` also moves on ordinary edits.
     roster_changed_at = models.DateTimeField("名单变动时间", null=True, blank=True)
     reminder_sent_at = models.DateTimeField("提醒发送时间", null=True, blank=True)
+    # Design 8.1 / 9.1 (v7.5): the start time the people taking part last
+    # knew, while a later move has not been told yet (「通知报名的人」 clears it).
+    moved_from = models.DateTimeField("报名的人原来知道的时间", null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="创建人",

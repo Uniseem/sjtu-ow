@@ -55,20 +55,28 @@ def sees_every_article(user) -> bool:
     return user_can_edit_author(user)
 
 
-def _announced(pages) -> set[int]:
+def _announced(pages) -> dict[int, tuple[int, bool]]:
+    """Per article: how often it was announced, and whether one waits for it
+    to go live (design 10.4, v7.5), in one query."""
     from core.models import Broadcast
 
-    ids = [page.pk for page in pages]
-    return set(
-        Broadcast.objects.filter(
-            kind=Broadcast.Kind.ARTICLE, object_id__in=ids
-        ).values_list("object_id", flat=True)
-    )
+    found: dict[int, tuple[int, bool]] = {}
+    for object_id, waits in Broadcast.objects.filter(
+        kind=Broadcast.Kind.ARTICLE, object_id__in=[page.pk for page in pages]
+    ).values_list("object_id", "waits_for_publish"):
+        sent, waiting = found.get(object_id, (0, False))
+        found[object_id] = (sent + (not waits), waiting or waits)
+    return found
 
 
-def can_announce(page, user, announced: set[int]) -> bool:
-    """「通知全体成员」 (design 10.4): editors, once, live or planned."""
-    if not user_can_edit_author(user) or page.pk in announced:
+def times_announced(page, announced: dict) -> int:
+    return announced.get(page.pk, (0, False))[0]
+
+
+def can_announce(page, user, announced: dict) -> bool:
+    """「通知全体成员」 (design 10.4): editors, live or planned. v7.5: again
+    after it went out; only a second plan for going live is not offered."""
+    if not user_can_edit_author(user) or announced.get(page.pk, (0, False))[1]:
         return False
     if page.live:
         return True
@@ -104,7 +112,7 @@ def article_list(request):
         articles = articles.filter(live=False, _approved_schedule=True)
     articles = articles.order_by("-latest_revision_created_at", "-pk")
     page_obj, extra_query = paginate(request, articles, PER_PAGE)
-    announced = _announced(page_obj) if user_can_edit_author(user) else set()
+    announced = _announced(page_obj) if user_can_edit_author(user) else {}
     rows = []
     for page in page_obj:
         perms = page.permissions_for_user(user)
@@ -115,6 +123,7 @@ def article_list(request):
                 "url": page.get_url(request) if page.live else "",
                 "can_unpublish": perms.can_unpublish(),
                 "can_announce": can_announce(page, user, announced),
+                "announced": times_announced(page, announced),
             }
         )
     index = first_article_index()
@@ -238,7 +247,7 @@ def article_edit(request, pk):
         from moderation.services import latest_verdict
 
         verdict = latest_verdict(page)
-    announced = _announced([page]) if user_can_edit_author(user) else set()
+    announced = _announced([page]) if user_can_edit_author(user) else {}
     return render(
         request,
         "backoffice/content/article_edit.html",
@@ -252,6 +261,7 @@ def article_edit(request, pk):
             "can_unpublish": perms.can_unpublish(),
             "can_delete": perms.can_delete(),
             "can_announce": can_announce(page, user, announced),
+            "announced": times_announced(page, announced),
             "verdict": verdict,
             "guide": plain_writer(user),
             "back_url": reverse("backoffice:articles"),

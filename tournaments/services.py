@@ -266,10 +266,12 @@ def schedule_phase_refresh(tournament) -> None:
             prerender_page.using(run_after=moment).enqueue("/")
 
 
-def time_changed(tournament, old_starts_at) -> bool:
-    """Design 8.1 (v6.34): the admin moved a published tournament. Tell the
-    people taking part, and let the reminder go out again for the new time.
-    Call before ``after_change``, which arranges that reminder."""
+def note_time_change(tournament, old_starts_at) -> bool:
+    """Design 8.1 (v6.34; v7.5): the admin moved a published tournament. The
+    reminder goes out again for the new time; nobody is mailed on saving.
+    The time the people taking part last knew is kept (the first one, over
+    several moves; none once it is back) until someone presses 「通知报名的
+    人」. Call before ``after_change``, which arranges that reminder."""
     new = tournament.starts_at
     if (
         tournament.status != TournamentStatus.PUBLISHED
@@ -279,18 +281,13 @@ def time_changed(tournament, old_starts_at) -> bool:
         or new <= timezone.now()
     ):
         return False
-    Tournament.objects.filter(pk=tournament.pk).update(reminder_sent_at=None)
+    told = tournament.moved_from or old_starts_at
+    moved_from = None if told == new else told
+    Tournament.objects.filter(pk=tournament.pk).update(
+        reminder_sent_at=None, moved_from=moved_from
+    )
     tournament.reminder_sent_at = None
-    tournament_id = tournament.pk
-
-    def notify():
-        from tournaments import notifications
-
-        moved = Tournament.objects.filter(pk=tournament_id).first()
-        if moved is not None:
-            notifications.time_changed(moved, old_starts_at)
-
-    transaction.on_commit(notify)
+    tournament.moved_from = moved_from
     return True
 
 

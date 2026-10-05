@@ -36,6 +36,10 @@
         {% if items %}
           <section class="b-section">
             <h2 class="b-section__title">接下来</h2>
+            {% if item.moved_from and item.status == "published" %}
+              {% comment %}Design 8.1 / 9.1 (v7.5): saving mails nobody; this is the nudge.{% endcomment %}
+              <div class="c-notice c-notice--warn" data-time-moved>{% include "components/icon.html" with name="clock" %}<div class="c-notice__body">开始时间从 {{ item.moved_from|date:"n 月 j 日 H:i" }} 改到了 {{ item.starts_at|date:"n 月 j 日 H:i" }}，报名的人还不知道。<a href="{% url 'announce' kind item.pk %}?to=participants">通知报名的人</a></div></div>
+            {% endif %}
             <ul class="b-list">
               {% for entry in items %}<li><a class="{% if entry.danger %}c-btn c-btn--quiet c-btn--sm is-danger{% else %}c-btn c-btn--quiet c-btn--sm{% endif %}" href="{{ entry.url }}">{{ entry.label }}</a></li>{% endfor %}
             </ul>

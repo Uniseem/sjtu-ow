@@ -656,16 +656,31 @@ class PrerenderedPage(models.Model):
 
 
 class Broadcast(models.Model):
-    """One 「通知全体成员」 (design 10.4, v6.19): what went out, by whom, to
-    how many. At most one per tournament or scrim."""
+    """One mail someone sent about a tournament, scrim or article (design
+    10.4, v6.19): what went out, to whom, by whom, to how many. v7.5: as many
+    as people send; each knows how many went before it, which the letter
+    says from the second on (10.3)."""
 
     class Kind(models.TextChoices):
         TOURNAMENT = "tournament", "新赛事"
         SCRIM = "scrim", "新内战"
         ARTICLE = "article", "新文章"
 
+    class Audience(models.TextChoices):
+        EVERYONE = "everyone", "全体成员"
+        PARTICIPANTS = "participants", "报名的人"
+
     kind = models.CharField("类型", max_length=16, choices=Kind.choices)
     object_id = models.PositiveIntegerField("对象 ID")
+    audience = models.CharField(
+        "发给", max_length=16, choices=Audience.choices, default=Audience.EVERYONE
+    )
+    # How many mails about the same thing went out before this one (v7.5).
+    before = models.PositiveSmallIntegerField("之前发过", default=0)
+    # 「通知报名的人」 (v7.5): the admin's words, and the start time the
+    # people taking part knew until now (the letter says from when to when).
+    note = models.TextField("说明", blank=True)
+    moved_from = models.DateTimeField("原来的时间", null=True, blank=True)
     subject = models.CharField("主题", max_length=200)
     sent_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -685,11 +700,7 @@ class Broadcast(models.Model):
         verbose_name = "活动通知"
         verbose_name_plural = "活动通知"
         ordering = ["-created_at"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["kind", "object_id"], name="core_broadcast_once"
-            )
-        ]
+        indexes = [models.Index(fields=["kind", "object_id"])]
 
     def __str__(self):
         return self.subject

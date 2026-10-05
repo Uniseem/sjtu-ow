@@ -86,6 +86,15 @@ def test_an_editor_writes_to_the_author(
     assert entry.data["note"] == "简介里有贬低其他玩家的说法，请改一下。"
     history = client.get(reverse("moderation_detail", args=[item.pk])).content.decode()
     assert "要求作者修改（已发信）" in history
+    assert "之前已经发过" not in letter.body
+    # v7.5: a second one says how many went before it (design 10.3).
+    mailoutbox.clear()
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(
+            reverse("moderation_ask_author", args=[item.pk]),
+            {"message": "还没改，请再看一下。"},
+        )
+    assert "关于这条战队简介，之前已经发过 1 次修改提醒" in mailoutbox[0].body
 
 
 @pytest.mark.django_db

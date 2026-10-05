@@ -78,6 +78,9 @@ class Tournament(models.Model):
     )
     published_at = models.DateTimeField("首次发布时间", null=True, blank=True)
     reminder_sent_at = models.DateTimeField("提醒发送时间", null=True, blank=True)
+    # Design 8.1 / 9.1 (v7.5): the start time the people taking part last
+    # knew, while a later move has not been told yet (「通知报名的人」 clears it).
+    moved_from = models.DateTimeField("报名的人原来知道的时间", null=True, blank=True)
     # Design 8.1 (v6.32): for the people taking part only.
     participant_contact = models.CharField(
         "选手联系方式",

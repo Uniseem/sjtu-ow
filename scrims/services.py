@@ -430,9 +430,11 @@ def _notify_cancelled(scrim_id) -> None:
         notifications.scrim_cancelled(scrim)
 
 
-def time_changed(scrim, old_starts_at) -> bool:
-    """Design 9.1 (v6.34): the admin moved a published scrim. Tell everyone
-    signed up and let the reminder go out again. Call before ``after_change``."""
+def note_time_change(scrim, old_starts_at) -> bool:
+    """Design 9.1 (v6.34; v7.5): the admin moved a published scrim. The
+    reminder goes out again; nobody is mailed on saving, the time the people
+    signed up last knew is kept for 「通知报名的人」 (as tournaments do).
+    Call before ``after_change``."""
     new = scrim.starts_at
     if (
         scrim.status != ScrimStatus.PUBLISHED
@@ -441,18 +443,13 @@ def time_changed(scrim, old_starts_at) -> bool:
         or new <= timezone.now()
     ):
         return False
-    Scrim.objects.filter(pk=scrim.pk).update(reminder_sent_at=None)
+    told = scrim.moved_from or old_starts_at
+    moved_from = None if told == new else told
+    Scrim.objects.filter(pk=scrim.pk).update(
+        reminder_sent_at=None, moved_from=moved_from
+    )
     scrim.reminder_sent_at = None
-    scrim_id = scrim.pk
-
-    def notify():
-        from scrims import notifications
-
-        moved = Scrim.objects.filter(pk=scrim_id).first()
-        if moved is not None:
-            notifications.scrim_time_changed(moved, old_starts_at)
-
-    transaction.on_commit(notify)
+    scrim.moved_from = moved_from
     return True
 
 

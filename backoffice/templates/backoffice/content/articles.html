@@ -37,7 +37,7 @@
                 <div class="b-rowacts">
                   <a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'backoffice:article_edit' page.pk %}">编辑</a>
                   {% if row.url %}<a class="c-btn c-btn--quiet c-btn--sm" href="{{ row.url }}" target="_blank" rel="noopener">看文章</a>{% endif %}
-                  {% if row.can_announce %}<a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'announce' 'article' page.pk %}">{% if page.live %}通知全体成员{% else %}上线时通知全体成员{% endif %}</a>{% endif %}
+                  {% if row.can_announce %}<a class="c-btn c-btn--quiet c-btn--sm" href="{% url 'announce' 'article' page.pk %}">{% if page.live %}通知全体成员{% else %}上线时通知全体成员{% endif %}{% if row.announced %}（发过 {{ row.announced }} 次）{% endif %}</a>{% endif %}
                   {% if row.can_unpublish %}
                     <form method="post" action="{% url 'backoffice:article_unpublish' page.pk %}" data-confirm="撤下「{{ page.title }}」？撤下后变回草稿，访客看不到。">
                       {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">

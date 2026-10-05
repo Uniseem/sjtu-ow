@@ -110,7 +110,7 @@ def test_sjtu_only_events_tell_sjtu_members_only(site):
 
 
 @pytest.mark.django_db
-def test_a_manager_tells_everyone_once(
+def test_a_manager_tells_everyone_and_may_again(
     site, worker, mailoutbox, django_capture_on_commit_callbacks
 ):
     manager = _member("manager123@example.com", "赛事管理员")
@@ -133,10 +133,21 @@ def test_a_manager_tells_everyone_once(
     assert unsubscribe in letter.body
     assert letter.extra_headers["List-Unsubscribe"] == f"<{unsubscribe}>"
     assert letter.extra_headers["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
-    # The service says so itself; the unique constraint is only the backstop.
-    with pytest.raises(services.AnnouncementError, match="通知过"):
-        services.announce(kind="tournament", obj=tournament, actor=manager)
-    assert Broadcast.objects.count() == 1
+    assert "之前已经发过" not in letter.body  # the first one says nothing
+    # v7.5: it may go out again, and from the second one the letter says so.
+    mailoutbox.clear()
+    again = _send(
+        django_capture_on_commit_callbacks,
+        kind="tournament",
+        obj=tournament,
+        actor=manager,
+    )
+    assert again.before == 1 and Broadcast.objects.count() == 2
+    second = next(message for message in mailoutbox if message.to == [member.email])
+    notice = "关于这场赛事「秋季校内杯」，之前已经发过 1 次邮件，这次可能有修改"
+    assert second.body.index(notice) < second.body.index("五人一队")
+    html = dict((mime, c) for c, mime in second.alternatives)["text/html"]
+    assert "data-letter-notice" in html and notice in html
 
 
 @pytest.mark.django_db
@@ -198,9 +209,12 @@ def test_the_admin_previews_then_sends(
         client.post(url)
     assert len(mailoutbox) == 2
     again = client.get(url).content.decode()
-    assert "同一场只发一次" in again
+    assert "data-announce-again" in again and "之前发过 1 次" in again
+    assert "关于这场赛事「秋季校内杯」，之前已经发过 1 次邮件" in again  # the preview
+    assert "disabled" not in again.split("发给 2 人")[0].rsplit("<button", 1)[1]
     listing = client.get(reverse("tournaments:index")).content.decode()
-    assert url in listing
+    assert url in listing and "通知全体成员（发过 1 次）" in listing
+    assert f"{url}?to=participants" in listing and ">通知报名的人<" in listing
 
 
 @pytest.mark.django_db
@@ -367,8 +381,14 @@ def test_content_editors_announce_an_article(
     assert letter.subject.endswith("公告：秋季招新")
     assert "面向全校" in letter.body
     assert page.url in letter.body
-    assert announce not in client.get(explore).content.decode()
-    assert announce not in client.get(edit).content.decode()
+    # v7.5: still there after it went out, saying how often it has.
+    assert "通知全体成员（发过 1 次）" in client.get(explore).content.decode()
+    assert "通知全体成员（发过 1 次）" in client.get(edit).content.decode()
+    mailoutbox.clear()
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(announce)
+    again = next(message for message in mailoutbox if message.to == [member.email])
+    assert "关于这篇文章「秋季招新」，之前已经发过 1 次邮件" in again.body
 
 
 @pytest.mark.django_db
@@ -478,3 +498,25 @@ def test_publishing_a_planned_article_by_hand_sends_it_too(
     with django_capture_on_commit_callbacks(execute=True):
         page.save_revision().publish()
     assert len(mailoutbox) == 1
+
+
+# --- 「通知报名的人」 (round 201, v7.5) -------------------------------------
+
+
+@pytest.mark.django_db
+def test_articles_have_nobody_signed_up_and_a_note_has_a_limit(site, client):
+    editor = _member("editor201@example.com", "内容编辑")
+    page = _article(editor)
+    client.force_login(editor)
+    url = reverse("announce", args=["article", page.pk]) + "?to=participants"
+    assert client.get(url).status_code == 404
+    manager = _member("manager201@example.com", "赛事管理员")
+    with pytest.raises(services.AnnouncementError, match="最多 500 字"):
+        services.announce(
+            kind="tournament",
+            obj=_tournament(),
+            actor=manager,
+            audience="participants",
+            note="字" * 501,
+        )
+    assert not Broadcast.objects.exists()

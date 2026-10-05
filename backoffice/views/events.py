@@ -46,7 +46,38 @@ def pending_review_url(tournament) -> str:
     )
 
 
-def tournament_items(tournament) -> list[Item]:
+def sent_counts(kind: str, objs) -> dict[tuple[int, str], int]:
+    """How often each mail went out about these (design 10.4, v7.5), in one
+    query for a whole page: (id, audience) -> count."""
+    from core.models import Broadcast
+
+    rows = (
+        Broadcast.objects.filter(
+            kind=kind,
+            object_id__in=[obj.pk for obj in objs],
+            waits_for_publish=False,
+        )
+        .values("object_id", "audience")
+        .annotate(total=Count("pk"))
+    )
+    return {(row["object_id"], row["audience"]): row["total"] for row in rows}
+
+
+def notice_items(kind: str, obj, sent: dict) -> list[Item]:
+    """「通知全体成员」 and 「通知报名的人」: both may go out again (v7.5),
+    so each says how often it has."""
+    url = reverse("announce", args=[kind, obj.pk])
+    items = []
+    for label, audience, link in (
+        ("通知全体成员", "everyone", url),
+        ("通知报名的人", "participants", url + "?to=participants"),
+    ):
+        times = sent.get((obj.pk, audience), 0)
+        items.append(Item(f"{label}（发过 {times} 次）" if times else label, link))
+    return items
+
+
+def tournament_items(tournament, sent: dict | None = None) -> list[Item]:
     """「更多」 by status (design 14.2): what can be done to this one now."""
     items = []
     if tournament.status == TournamentStatus.DRAFT:
@@ -54,11 +85,7 @@ def tournament_items(tournament) -> list[Item]:
             Item("发布", reverse("tournament_action", args=[tournament.pk, "publish"]))
         )
     if tournament.status == TournamentStatus.PUBLISHED:
-        items.append(
-            Item(
-                "通知全体成员", reverse("announce", args=["tournament", tournament.pk])
-            )
-        )
+        items.extend(notice_items("tournament", tournament, sent or {}))
         items.append(
             Item(
                 "标记为已结束",
@@ -88,14 +115,12 @@ def tournament_items(tournament) -> list[Item]:
     return items
 
 
-def scrim_items(scrim) -> list[Item]:
+def scrim_items(scrim, sent: dict | None = None) -> list[Item]:
     items = []
     if scrim.status == ScrimStatus.DRAFT:
         items.append(Item("发布", reverse("scrim_action", args=[scrim.pk, "publish"])))
     if scrim.status == ScrimStatus.PUBLISHED:
-        items.append(
-            Item("通知全体成员", reverse("announce", args=["scrim", scrim.pk]))
-        )
+        items.extend(notice_items("scrim", scrim, sent or {}))
         items.append(
             Item("标记为已结束", reverse("scrim_action", args=[scrim.pk, "finish"]))
         )
@@ -136,12 +161,15 @@ def tournament_list(request):
     if mode in RegistrationMode.values:
         tournaments = tournaments.filter(registration_mode=mode)
     page_obj, extra_query = paginate(request, tournaments, PER_PAGE)
+    sent = sent_counts("tournament", page_obj)
     return render(
         request,
         "backoffice/events/tournaments.html",
         {
             "page_title": "赛事",
-            "rows": [(t, tournament_items(t), pending_review_url(t)) for t in page_obj],
+            "rows": [
+                (t, tournament_items(t, sent), pending_review_url(t)) for t in page_obj
+            ],
             "page_obj": page_obj,
             "extra_query": extra_query,
             "query": query,
@@ -160,7 +188,7 @@ def _save_tournament(request, form, *, created: bool):
         tournament.created_by = request.user
     tournament.save()
     log(tournament, "wagtail.create" if created else "wagtail.edit", user=request.user)
-    tournament_services.time_changed(tournament, old_starts_at)
+    tournament_services.note_time_change(tournament, old_starts_at)
     warning = tournament_services.roster_min_warning(tournament)
     if warning:
         messages.warning(request, warning)
@@ -179,7 +207,11 @@ def _tournament_form_page(request, form, *, title, tournament=None, copied_from=
             "item": tournament,
             "kind": "tournament",
             "public_url": tournament.get_absolute_url() if tournament else "",
-            "items": tournament_items(tournament) if tournament else [],
+            "items": tournament_items(
+                tournament, sent_counts("tournament", [tournament])
+            )
+            if tournament
+            else [],
             "copied_from": copied_from,
             "back_url": reverse("tournaments:index"),
             "back_label": "赛事",
@@ -270,12 +302,13 @@ def scrim_list(request):
     if status in ScrimStatus.values:
         scrims = scrims.filter(status=status)
     page_obj, extra_query = paginate(request, scrims, PER_PAGE)
+    sent = sent_counts("scrim", page_obj)
     return render(
         request,
         "backoffice/events/scrims.html",
         {
             "page_title": "内战",
-            "rows": [(scrim, scrim_items(scrim)) for scrim in page_obj],
+            "rows": [(scrim, scrim_items(scrim, sent)) for scrim in page_obj],
             "page_obj": page_obj,
             "extra_query": extra_query,
             "query": query,
@@ -292,7 +325,7 @@ def _save_scrim(request, form, *, created: bool):
         scrim.created_by = request.user
     scrim.save()
     log(scrim, "wagtail.create" if created else "wagtail.edit", user=request.user)
-    scrim_services.time_changed(scrim, old_starts_at)
+    scrim_services.note_time_change(scrim, old_starts_at)
     scrim_services.after_change(scrim, actor=request.user)
     messages.success(request, f"内战「{scrim.title}」已保存。")
     return scrim
@@ -308,7 +341,7 @@ def _scrim_form_page(request, form, *, title, scrim=None, copied_from=None):
             "item": scrim,
             "kind": "scrim",
             "public_url": reverse("scrim_detail", args=[scrim.pk]) if scrim else "",
-            "items": scrim_items(scrim) if scrim else [],
+            "items": scrim_items(scrim, sent_counts("scrim", [scrim])) if scrim else [],
             "copied_from": copied_from,
             "back_url": reverse("scrims:index"),
             "back_label": "内战",

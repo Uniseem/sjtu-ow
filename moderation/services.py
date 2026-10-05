@@ -396,6 +396,7 @@ def ask_author_to_revise(*, item, actor, message: str) -> ModerationItem:
     review page takes, 「直接处置只做发信」). The item counts as handled;
     the whole message stays in the action log."""
     from wagtail.log_actions import log as wagtail_log
+    from wagtail.models import ModelLogEntry
 
     from moderation.notifications import ask_author
 
@@ -407,6 +408,12 @@ def ask_author_to_revise(*, item, actor, message: str) -> ModerationItem:
     problem = author_problem(item)
     if problem:
         raise ModerationError(problem)
+    # The letter says how many went before it (design 10.3, v7.5).
+    before = (
+        ModelLogEntry.objects.for_instance(item)
+        .filter(action=REVISE_LOG_ACTION)
+        .count()
+    )
     item.status = ModerationItem.Status.HANDLED
     item.handling_note = "已发信要求作者修改"
     item.reviewed_by = actor
@@ -418,7 +425,7 @@ def ask_author_to_revise(*, item, actor, message: str) -> ModerationItem:
         user=actor,
         data={"result": "要求作者修改（已发信）", "note": message},
     )
-    transaction.on_commit(lambda: ask_author(item, message))
+    transaction.on_commit(lambda: ask_author(item, message, before))
     return item
 
 
