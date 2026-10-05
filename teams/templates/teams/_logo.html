@@ -1,0 +1,9 @@
+{% load wagtailimages_tags ow %}
+{% comment %}
+  The logo as it is now, on the captain's page (design 7.1, v7.11): choosing a
+  file uploads it at once, so the page shows what the team has.
+{% endcomment %}
+<div class="flex items-center gap-4" data-team-logo>
+  <span class="c-teams__logo c-teams__logo--lg c-hue-{{ team|hue }}">{% if team.logo %}{% image team.logo fill-288x288 alt="" %}{% else %}{{ team.name|initial }}{% endif %}</span>
+  <p class="text-sm text-fg-2">{% if team.logo %}现在的队标。选一个新文件就换上，勾「删除队标」就删掉。{% else %}还没有队标，选一个图片文件就传上去。{% endif %}</p>
+</div>

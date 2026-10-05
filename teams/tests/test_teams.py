@@ -832,6 +832,7 @@ def _logo_form(name, data):
     )
 
 
+@pytest.mark.django_db  # the name is checked against other teams (v7.11)
 def test_a_logo_over_5mb_is_refused():
     from teams.forms import LOGO_MAX_BYTES
 
@@ -842,6 +843,7 @@ def test_a_logo_over_5mb_is_refused():
     assert "5MB" in str(form.errors["logo_file"])
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize("name", ["logo.gif", "logo.png"])
 def test_only_jpg_png_or_webp_logos(name):
     """A GIF is refused by name, and by its real format when renamed."""
@@ -850,6 +852,7 @@ def test_only_jpg_png_or_webp_logos(name):
     assert "JPG、PNG 或 WebP" in str(form.errors["logo_file"])
 
 
+@pytest.mark.django_db
 def test_a_small_png_logo_is_accepted():
     form = _logo_form("logo.png", _image("PNG"))
     assert "logo_file" not in form.errors

@@ -1,0 +1,10 @@
+<section class="b-section" data-split-copy>
+  <div class="c-panel__head">
+    <h2 class="b-section__title">复制结果</h2>
+    <div class="b-actions">
+      <button type="button" class="c-btn c-btn--secondary c-btn--sm" data-copy-button>{% include "components/icon.html" with name="copy" %}复制</button>
+      <span class="b-sub" data-copy-status role="status">复制后发到群里。</span>
+    </div>
+  </div>
+  <div class="c-field"><textarea readonly rows="12" class="split-copy" data-copy-text aria-label="分队结果">{{ copy_text }}</textarea></div>
+</section>

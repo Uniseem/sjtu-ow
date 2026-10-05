@@ -103,9 +103,10 @@
 
   function wireBoard() {
     var form = document.querySelector("[data-teams-form]");
-    if (!form || typeof window.Sortable === "undefined") {
+    if (!form || form.__wired || typeof window.Sortable === "undefined") {
       return;
     }
+    form.__wired = true;
     var help = form.querySelector("[data-drag-help]");
     if (help) {
       help.hidden = false;
@@ -164,6 +165,16 @@
       }
     }
 
+    // Every move saves (design 13.17, v7.11): the form saves itself on a
+    // change, and scripts changing values send none, so say it here.
+    function moved() {
+      refresh();
+      var marker = form.querySelector("[data-teams-moved]");
+      if (marker) {
+        marker.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+
     // Design 9.5 still allows saving a split whose role counts are wrong, so
     // only the team size is enforced here; role zones just turn red.
     function accepts(targetZone, card) {
@@ -187,7 +198,13 @@
           var target = zoneOf(event.to);
           return target ? accepts(target, event.dragged) : false;
         },
-        onEnd: refresh,
+        onEnd: function (event) {
+          if (event.from !== event.to || event.oldIndex !== event.newIndex) {
+            moved();
+          } else {
+            refresh();
+          }
+        },
       });
     });
 
@@ -207,7 +224,7 @@
         return;
       }
       target.querySelector("[data-list]").appendChild(card);
-      refresh();
+      moved();
     });
 
     refresh();
@@ -219,9 +236,10 @@
     var button = document.querySelector("[data-copy-button]");
     var text = document.querySelector("[data-copy-text]");
     var status = document.querySelector("[data-copy-status]");
-    if (!button || !text) {
+    if (!button || !text || button.__wired) {
       return;
     }
+    button.__wired = true;
     function say(message) {
       if (status) {
         status.textContent = message;
@@ -251,6 +269,13 @@
 
   ready(function () {
     wirePicker();
+    wireBoard();
+    wireCopy();
+  });
+
+  // Unticking someone sends the board back whole, saving it sends the copy
+  // text back (autosave.js, v7.11): wire up what came in.
+  document.addEventListener("ow:replaced", function () {
     wireBoard();
     wireCopy();
   });

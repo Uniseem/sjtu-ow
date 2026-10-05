@@ -21,9 +21,10 @@
       <h2 class="b-section__title">勾选上场</h2>
       {% include "core/admin/_tabs.html" with tabs=order_tabs current=order param="order" label="排序" %}
     </div>
-    <form method="post" data-split-form class="b-form">
+    <form method="post" data-split-form class="b-form" data-autosave data-autosave-idle="勾上、取消就自动保存">
       {% csrf_token %}
       <input type="hidden" name="order" value="{{ order }}">
+      <input type="hidden" name="part" value="pick">
       <table class="c-table c-table--stack">
         <thead>
           <tr><th>上场</th><th>昵称</th><th>游戏 ID</th><th>能打的位置与段位</th>{% if show_contacts %}<th>联系方式</th>{% endif %}<th>报名时间</th></tr>
@@ -47,70 +48,13 @@
       <div class="b-formbar">
         <span>已选 <strong data-picked>{{ selected_count }}</strong> / 需要 {{ needed }} 人</span>
         <span data-pick-warning class="b-formbar__note" {% if selected_count == needed %}hidden{% endif %}>人数正好等于需要人数时才能生成分队。</span>
-        <button type="submit" name="action" value="select" class="c-btn c-btn--secondary">保存上场名单</button>
+        <button type="submit" name="action" value="select" class="c-btn c-btn--secondary" data-autosave-button>保存上场名单</button>
         <button type="submit" name="action" value="generate" class="c-btn c-btn--primary" data-generate data-needed="{{ needed }}" {% if selected_count != needed %}disabled{% endif %}>生成分队</button>
       </div>
     </form>
   </section>
 
-  {% if has_teams %}
-    <section class="b-form">
-      <h2 class="b-section__title">分队结果</h2>
-      <p class="b-section__text">
-        A 队总分 <strong data-total-a>{{ total_a }}</strong> ·
-        B 队总分 <strong data-total-b>{{ total_b }}</strong> ·
-        分差 <strong data-gap>{{ gap }}</strong>
-        <span class="split-warn" data-over-capacity hidden>有队伍超员，先把人拖到缓冲区</span>
-      </p>
-
-      <form method="post" data-teams-form data-team-size="{{ team_size }}" class="b-form">
-        {% csrf_token %}
-        <input type="hidden" name="order" value="{{ order }}">
-        <div class="c-notice c-notice--info" data-drag-help hidden>{% include "components/icon.html" with name="info" %}<div class="c-notice__body">拖动卡片换队伍和位置。<strong>队伍满员时不能直接拖进去</strong>——先把要换下来的人拖到下面的缓冲区，再把新人拖进来。不用鼠标的话，每张卡片上的按钮也能移动。</div></div>
-        <noscript>
-          <div class="c-notice c-notice--error"><div class="c-notice__body">这个页面的分队调整需要 JavaScript。</div></div>
-        </noscript>
-
-        <div class="split-teams">
-          {% for side in sides %}
-            <div class="split-team" data-team-panel="{{ side.team }}">
-              <h3 class="b-section__title">{{ side.label }}（总分 <span data-team-total="{{ side.team }}">{{ side.total }}</span>）</h3>
-              {% if side.problems %}
-                <p class="split-problem" data-team-problem="{{ side.team }}">位置人数不符：{{ side.problems|join:"、" }}</p>
-              {% else %}
-                <p class="split-problem" data-team-problem="{{ side.team }}" hidden></p>
-              {% endif %}
-              {% for zone in side.zones %}
-                {% include "scrims/admin/_zone.html" with team=side.team role=zone.role label=zone.label members=zone.members capacity=zone.capacity %}
-              {% endfor %}
-            </div>
-          {% endfor %}
-        </div>
-
-        <div class="split-buffer">
-          {% include "scrims/admin/_zone.html" with team="" role="" label="缓冲区（不上场）" members=bench capacity=0 %}
-          <p class="b-sub">队伍满了要换人，先把人拖到这里腾位置。留在这里的人这次不上场。</p>
-        </div>
-
-        <div class="b-formbar">
-          <button type="submit" name="action" value="save" class="c-btn c-btn--primary">保存分队</button>
-          <a class="c-btn c-btn--secondary" href="{% url 'scrim_split_text' scrim.pk %}" target="_blank" rel="noopener">查看纯文本</a>
-          <span class="b-formbar__note">位置人数不符合规格时会标红，但仍然可以保存。</span>
-        </div>
-      </form>
-    </section>
-
-    <section class="b-section">
-      <div class="c-panel__head">
-        <h2 class="b-section__title">复制结果</h2>
-        <div class="b-actions">
-          <button type="button" class="c-btn c-btn--secondary c-btn--sm" data-copy-button>{% include "components/icon.html" with name="copy" %}复制</button>
-          <span class="b-sub" data-copy-status role="status">复制后发到群里。</span>
-        </div>
-      </div>
-      <div class="c-field"><textarea readonly rows="12" class="split-copy" data-copy-text aria-label="分队结果">{{ copy_text }}</textarea></div>
-    </section>
-  {% endif %}
+  {% include "scrims/admin/_board.html" %}
 {% endblock %}
 
 {% block extra_js %}

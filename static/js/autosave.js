@@ -128,6 +128,12 @@
   Saver.prototype.save = function () {
     var self = this;
     window.clearTimeout(this.timer);
+    // Swapped out by a newer piece of the page (v7.11): what it held is stale,
+    // and saving it would undo what replaced it.
+    if (!document.contains(this.form)) {
+      this.dirty = false;
+      return Promise.resolve(null);
+    }
     if (this.busy) {
       this.again = true;
       return this.busy;
@@ -189,7 +195,8 @@
       window.history.replaceState(null, "", data.location);
       form.setAttribute("action", data.location);
     }
-    Object.keys(data.replace || {}).forEach(function (selector) {
+    var replaced = Object.keys(data.replace || {});
+    replaced.forEach(function (selector) {
       var target = document.querySelector(selector);
       if (!target) {
         return;
@@ -204,11 +211,29 @@
         }
       }
     });
+    if (replaced.length) {
+      // What came in may hold forms of its own (the split page's board,
+      // v7.11); they save themselves too, and page scripts wire them up.
+      setUp(document);
+      document.dispatchEvent(
+        new CustomEvent("ow:replaced", { detail: { selectors: replaced } })
+      );
+    }
     // Values the server gave a field (an article's address following its
-    // title, v7.9); not the one being typed in.
+    // title, v7.9); not the one being typed in. A file box is emptied and a
+    // tick set (a team's logo, v7.11), so the next save does not upload or
+    // remove it again.
     Object.keys(data.values || {}).forEach(function (name) {
       var control = form.elements[name];
-      if (control && control.tagName && control !== document.activeElement) {
+      if (!control || !control.tagName) {
+        return;
+      }
+      var type = (control.getAttribute("type") || "").toLowerCase();
+      if (type === "checkbox") {
+        control.checked = Boolean(data.values[name]);
+      } else if (type === "file") {
+        control.value = "";
+      } else if (!(isText(control) && control === document.activeElement)) {
         control.value = data.values[name];
       }
     });

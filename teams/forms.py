@@ -60,7 +60,14 @@ class TeamForm(forms.ModelForm):
         return join_roles(self.cleaned_data.get("recruiting_roles") or [])
 
     def clean_name(self):
-        return (self.cleaned_data["name"] or "").strip()
+        from teams.services import NAME_TAKEN, name_taken
+
+        name = (self.cleaned_data["name"] or "").strip()
+        # On the field before saving (v7.11): autosave leaves a taken name
+        # unsaved and saves the rest; the service still checks it.
+        if name_taken(name, exclude_pk=self.instance.pk):
+            raise forms.ValidationError(NAME_TAKEN)
+        return name
 
     def clean_logo_file(self):
         uploaded = self.cleaned_data.get("logo_file")

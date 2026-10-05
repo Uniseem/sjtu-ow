@@ -83,7 +83,7 @@ def _contacts(request, signups) -> dict | None:
 
 
 def page_context(request, scrim):
-    order = _order(request.GET.get("order"))
+    order = _order(request.GET.get("order") or request.POST.get("order"))
     signups = services.all_signups(scrim, order=order)
     contacts = _contacts(request, signups)
     if contacts is not None:
@@ -145,6 +145,43 @@ def _placements_from_post(request, scrim):
     return placements
 
 
+def _autosave(request, scrim):
+    """Ticking and moving save themselves (design 9.5, 13.17; v7.11). A tick
+    changes who is on the board, so the board comes back whole; a move
+    changes the copy text and the 「位置人数不符」 lines, so those do.
+    Each kind of edit is one log entry per half hour."""
+    from django.template.loader import render_to_string
+
+    from core import autosave
+
+    outcome = autosave.Outcome()
+    part = request.POST.get("part")
+    if part == "pick":
+        services.set_selection(scrim=scrim, signup_ids=request.POST.getlist("signups"))
+        autosave.log_edit(scrim, request.user, action="scrims.select")
+        outcome.saved = ["signups"]
+        context = page_context(request, scrim)
+        outcome.replace["[data-split-board]"] = render_to_string(
+            "scrims/admin/_board.html", context, request=request
+        )
+    elif part == "teams":
+        services.save_teams(
+            scrim=scrim, placements=_placements_from_post(request, scrim)
+        )
+        autosave.log_edit(scrim, request.user, action="scrims.save_teams")
+        outcome.saved = ["teams"]
+        context = page_context(request, scrim)
+        outcome.replace["[data-split-copy]"] = render_to_string(
+            "scrims/admin/_copy.html", context, request=request
+        )
+        for side in context["sides"]:
+            outcome.replace[f'[data-team-problem="{side["team"]}"]'] = render_to_string(
+                "scrims/admin/_problem.html",
+                {"team": side["team"], "problems": side["problems"]},
+            )
+    return autosave.respond(outcome)
+
+
 def split_view(request, pk):
     scrim = get_object_or_404(Scrim, pk=pk)
     if not services.can_manage(request.user):
@@ -152,6 +189,10 @@ def split_view(request, pk):
 
         raise PermissionDenied("需要内战管理权限。")
 
+    from core import autosave
+
+    if autosave.wants(request):
+        return _autosave(request, scrim)
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "select":

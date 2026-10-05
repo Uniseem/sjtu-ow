@@ -124,11 +124,12 @@
 
       <section aria-labelledby="manage-profile">
         {% include "components/section_head.html" with title="战队资料" heading_id="manage-profile" %}
-        <form method="post" enctype="multipart/form-data" class="c-form max-w-xl">
+        <form method="post" enctype="multipart/form-data" class="c-form max-w-xl" data-autosave>
           {% csrf_token %}
           <input type="hidden" name="form" value="profile">
+          {% include "teams/_logo.html" %}
           {% include "account/_form.html" %}
-          <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary">保存</button></div>
+          <div class="c-formbar"><button type="submit" class="c-btn c-btn--primary" data-autosave-button>保存</button></div>
         </form>
       </section>
 

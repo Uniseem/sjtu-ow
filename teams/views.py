@@ -188,12 +188,65 @@ def team_apply(request, pk):
     )
 
 
+def _autosave_profile(request, team, form):
+    """「战队资料」 saves itself (design 7.1, 13.17; v7.11): the changed
+    fields that are fine over what is stored, a bad one (a taken name) kept
+    as it was. A chosen logo is uploaded and shown at once; the file box is
+    emptied and 「删除队标」 unticked, so the next save does not do it again."""
+    from django.template.loader import render_to_string
+
+    from core import autosave
+
+    valid = form.is_valid()
+    outcome = autosave.Outcome(errors={} if valid else autosave.errors_of(form))
+    names = autosave.valid_changes(form)
+    if not names:
+        return autosave.respond(outcome)
+    values = {
+        "name": team.name,
+        "description": team.description,
+        "is_recruiting": team.is_recruiting,
+        "recruiting_roles": team.recruiting_roles,
+        "member_contact": team.member_contact,
+    }
+    for name in names:
+        if name in values and name in form.cleaned_data:
+            values[name] = form.cleaned_data[name]
+    logo, new_logo = team.logo, None
+    if "remove_logo" in names and form.cleaned_data.get("remove_logo"):
+        logo = None
+    if "logo_file" in names and form.cleaned_data.get("logo_file"):
+        logo = new_logo = create_logo(
+            form.cleaned_data["logo_file"],
+            title=f"{values['name']} 队标",
+            user=request.user,
+        )
+    try:
+        services.update_team(team=team, user=request.user, logo=logo, **values)
+    except services.TeamError as exc:
+        _drop_unused_logo(new_logo)
+        key = "name" if str(exc) == services.NAME_TAKEN else "__all__"
+        outcome.errors[key] = [str(exc)]
+        return autosave.respond(outcome)
+    outcome.saved = names
+    if {"logo_file", "remove_logo"} & set(names):
+        outcome.values = {"logo_file": "", "remove_logo": False}
+        outcome.replace["[data-team-logo]"] = render_to_string(
+            "teams/_logo.html", {"team": team}, request=request
+        )
+    return autosave.respond(outcome)
+
+
 @login_required
 def team_manage(request, pk):
     team = get_object_or_404(Team, pk=pk)
     if not services.is_captain(team, request.user) and not request.user.is_superuser:
         raise Http404
     form = TeamForm(request.POST or None, request.FILES or None, instance=team)
+    from core import autosave
+
+    if autosave.wants(request) and request.POST.get("form") == "profile":
+        return _autosave_profile(request, team, form)
     if request.method == "POST" and request.POST.get("form") == "profile":
         if form.is_valid():
             logo = team.logo

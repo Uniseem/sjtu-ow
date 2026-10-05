@@ -1,0 +1,52 @@
+{% comment %}
+  分队结果 and 复制结果 (design 9.5, 9.6). One piece, so that unticking a
+  player can send it back whole (v7.11); the board saves itself on every move.
+{% endcomment %}
+<div data-split-board>
+  {% if has_teams %}
+    <section class="b-form">
+      <h2 class="b-section__title">分队结果</h2>
+      <p class="b-section__text">
+        A 队总分 <strong data-total-a>{{ total_a }}</strong> ·
+        B 队总分 <strong data-total-b>{{ total_b }}</strong> ·
+        分差 <strong data-gap>{{ gap }}</strong>
+        <span class="split-warn" data-over-capacity hidden>有队伍超员，先把人拖到缓冲区</span>
+      </p>
+
+      <form method="post" action="{% url 'scrim_split' scrim.pk %}" data-teams-form data-team-size="{{ team_size }}" class="b-form" data-autosave data-autosave-idle="拖动或用按钮移动，每动一次就自动保存">
+        {% csrf_token %}
+        <input type="hidden" name="order" value="{{ order }}">
+        <input type="hidden" name="part" value="teams" data-teams-moved>
+        <div class="c-notice c-notice--info" data-drag-help hidden>{% include "components/icon.html" with name="info" %}<div class="c-notice__body">拖动卡片换队伍和位置。<strong>队伍满员时不能直接拖进去</strong>——先把要换下来的人拖到下面的缓冲区，再把新人拖进来。不用鼠标的话，每张卡片上的按钮也能移动。</div></div>
+        <noscript>
+          <div class="c-notice c-notice--error"><div class="c-notice__body">这个页面的分队调整需要 JavaScript。</div></div>
+        </noscript>
+
+        <div class="split-teams">
+          {% for side in sides %}
+            <div class="split-team" data-team-panel="{{ side.team }}">
+              <h3 class="b-section__title">{{ side.label }}（总分 <span data-team-total="{{ side.team }}">{{ side.total }}</span>）</h3>
+              {% include "scrims/admin/_problem.html" with team=side.team problems=side.problems %}
+              {% for zone in side.zones %}
+                {% include "scrims/admin/_zone.html" with team=side.team role=zone.role label=zone.label members=zone.members capacity=zone.capacity %}
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="split-buffer">
+          {% include "scrims/admin/_zone.html" with team="" role="" label="缓冲区（不上场）" members=bench capacity=0 %}
+          <p class="b-sub">队伍满了要换人，先把人拖到这里腾位置。留在这里的人这次不上场。</p>
+        </div>
+
+        <div class="b-formbar">
+          <button type="submit" name="action" value="save" class="c-btn c-btn--primary" data-autosave-button>保存分队</button>
+          <a class="c-btn c-btn--secondary" href="{% url 'scrim_split_text' scrim.pk %}" target="_blank" rel="noopener">查看纯文本</a>
+          <span class="b-formbar__note">位置人数不符合规格时会标红，但仍然可以保存。</span>
+        </div>
+      </form>
+    </section>
+
+    {% include "scrims/admin/_copy.html" %}
+  {% endif %}
+</div>

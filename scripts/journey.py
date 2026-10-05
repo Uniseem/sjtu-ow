@@ -503,17 +503,89 @@ def officers(tools, base, data) -> list[str]:
         return count('a') + '/' + count('b');
     })()""")
     step("生成了两队各 5 人", counts == "5/5", counts or "")
-    moved = js("""(() => {
+
+    # Round 207 (design 9.5, 13.17): every move saves itself; after a reload
+    # the board is as it was left.
+    def saved(form):
+        for _ in range(20):
+            time.sleep(0.5)
+            state = js(
+                f"(document.querySelector({form!r} + ' [data-autosave-status]')"
+                " || {dataset: {}}).dataset.state"
+            )
+            if state == "saved":
+                return True
+        return False
+
+    def team_a():
+        return js("document.querySelectorAll('[data-zone-team=a] [data-card]').length")
+
+    mover = js("""(() => {
         const card = document.querySelector('[data-zone-team=a] [data-card]');
         card.querySelector('[data-move=""]').click();
-        const out = document.querySelectorAll('[data-zone-team=a] [data-card]').length;
-        card.querySelector('[data-move=a]').click();
-        const back = document.querySelectorAll('[data-zone-team=a] [data-card]').length;
-        return out + '/' + back;
+        return card.getAttribute('data-signup');
     })()""")
-    step("卡片按钮移到缓冲区再移回", moved == "4/5", moved or "")
-    press("button[name=action][value=save]")
-    step("保存分队", says("已保存分队"))
+    stored = saved("[data-teams-form]")
+    tools.send("Page.reload", {})
+    time.sleep(2.5)
+    step("移到缓冲区就存上了，刷新还在", stored and team_a() == 4, str(team_a()))
+    js(f"""document.querySelector('[data-card][data-signup="{mover}"]')
+        .querySelector('[data-move=a]').click()""")
+    stored = saved("[data-teams-form]")
+    tools.send("Page.reload", {})
+    time.sleep(2.5)
+    step("移回来也存上了", stored and team_a() == 5, str(team_a()))
+    # Unticking someone sends the board back whole; the board that came in
+    # still saves its moves (autosave.js sets it up, scrim-split.js wires it).
+    gone = js("""(() => {
+        const card = document.querySelector('[data-zone-team=b] [data-card]');
+        const id = card.getAttribute('data-signup');
+        const box = document.querySelector(`[data-pick][value="${id}"]`);
+        box.checked = false;
+        box.dispatchEvent(new Event('change', {bubbles: true}));
+        return id;
+    })()""")
+    stored = saved("[data-split-form]")
+    off = js(f"!document.querySelector('[data-card][data-signup=\"{gone}\"]')")
+    step("取消勾选的人马上从分队结果里拿掉", stored and off is True, str(off))
+    js("""document.querySelector('[data-zone-team=a] [data-card]')
+        .querySelector('[data-move=""]').click()""")
+    stored = saved("[data-teams-form]")
+    tools.send("Page.reload", {})
+    time.sleep(2.5)
+    step("换上来的分队结果照样每动一次就存", stored and team_a() == 4, str(team_a()))
+
+    # Round 207 (design 7.1): the captain's 战队资料 saves itself, and a logo
+    # goes up as soon as it is chosen (the officer may open any team's page).
+    go(f"/teams/{data['team']}/manage/")
+    js("""(() => {
+        const box = document.querySelector('#id_description');
+        box.value = '浏览器里改的简介';
+        box.dispatchEvent(new Event('input', {bubbles: true}));
+    })()""")
+    stored = saved("form[data-autosave]")
+    tools.send("Page.reload", {})
+    time.sleep(2.5)
+    kept = js("document.querySelector('#id_description').value") or ""
+    same = stored and kept == "浏览器里改的简介"
+    step("战队资料改了就存，刷新还在", same, kept)
+    from PIL import Image as PILImage
+
+    logo = WORK / "journey-logo.png"
+    PILImage.new("RGB", (64, 64), (155, 58, 51)).save(logo)
+    box = tools.send(
+        "Runtime.evaluate", {"expression": "document.querySelector('#id_logo_file')"}
+    )["result"]["objectId"]
+    tools.send("DOM.setFileInputFiles", {"files": [str(logo)], "objectId": box})
+    for _ in range(20):
+        time.sleep(0.5)
+        if js("!!document.querySelector('[data-team-logo] img')"):
+            break
+    shown = js(
+        "!!document.querySelector('[data-team-logo] img') + '|' +"
+        " document.querySelector('#id_logo_file').value"
+    )
+    step("队标选好就换上，文件框清空了", shown == "true|", shown or "")
 
     go(f"/admin/tournaments/{data['cup']}/teams/")
     placed = js("""(() => {
