@@ -335,6 +335,11 @@ class ContactMethod(models.Model):
     def clean(self):
         super().clean()
         self.value = (self.value or "").strip()
+        # The type failed its own check (or was dropped from the form after
+        # an error there, 212): say so on the type, don't pile a confusing
+        # 「未知的联系方式类型」 onto the value.
+        if self.type not in ContactType.values:
+            return
         try:
             validate_contact_value(self.type, self.value)
         except ValidationError as exc:

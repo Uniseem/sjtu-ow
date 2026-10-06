@@ -431,13 +431,12 @@ class TournamentForm(KeepSeconds, forms.ModelForm):
         )
 
     fieldsets = ArticleForm.fieldsets
-    # Rules across fields that still end up on the form itself (a database
-    # constraint): these are left out of an autosave together (v7.10).
+    # Rules across fields that still end up on one field of the group (a
+    # database constraint): the whole group sits an autosave out (v7.10,
+    # groups since 212). Two rules, two groups.
     autosave_together = (
-        "registration_opens_at",
-        "registration_closes_at",
-        "roster_min",
-        "roster_max",
+        ("registration_opens_at", "registration_closes_at"),
+        ("roster_min", "roster_max"),
     )
 
     def clean(self):

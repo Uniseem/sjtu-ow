@@ -438,17 +438,21 @@ def _people_html(request, group, problem: str = "") -> str:
 def _group_autosave(request, form, *, created: bool):
     """Design 13.17 (v7.6): the group exists from the first change (named or
     not; unnamed ones stay off /members/). A new one brings its people block
-    along at once (v7.7), so people can be added without reloading."""
-    saved = autosave.save_valid_fields(form)
-    group = form.instance
-    location = ""
+    along at once (v7.7), so people can be added without reloading. Fields
+    with an error sit this save out, the rest still create it (212, B6)."""
     replace = {}
-    if created and group.pk:
+    if created:
+        group, saved = autosave.new_from_valid_fields(form, MemberGroup())
+        group.save()
         log(group, "wagtail.create", user=request.user)
         location = reverse("backoffice:member_group_edit", args=[group.pk])
         replace["[data-memberships]"] = _people_html(request, group)
-    elif saved:
-        autosave.log_edit(group, request.user)
+    else:
+        saved = autosave.save_valid_fields(form)
+        group = form.instance
+        location = ""
+        if saved:
+            autosave.log_edit(group, request.user)
     return autosave.respond(
         autosave.Outcome(
             saved=saved,

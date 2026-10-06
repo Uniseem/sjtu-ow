@@ -7,9 +7,11 @@ the form submits as it always did.
 
 The rule: a valid form is saved whole. Otherwise every changed field that is
 valid on its own is saved and every field with an error keeps its stored
-value, the page saying why; when a rule across fields fails (the form's own
-error), the fields the form names in ``autosave_together`` are not saved
-this time either, and if it names none, nothing is.
+value, the page saying why; when a rule across fields fails, the fields the
+form names in ``autosave_together`` are not saved this time either — whether
+the rule reported itself on the form (``__all__``) or on one field of the
+group (v7.10 does that, so the note sits under a field). If the form names
+no group for a form-level error, nothing is.
 """
 
 from __future__ import annotations
@@ -66,16 +68,36 @@ def respond(outcome: Outcome) -> JsonResponse:
     )
 
 
+def _together_groups(form) -> list[set[str]]:
+    """``autosave_together`` as a list of groups: a bare field name is a
+    one-field group, a tuple is a rule that spans those fields (212: the
+    roster range and the registration window are two rules, not one)."""
+    groups = []
+    for item in getattr(form, "autosave_together", None) or ():
+        groups.append({item} if isinstance(item, str) else set(item))
+    return groups
+
+
 def valid_changes(form) -> list[str]:
     """The changed fields that may be saved now (the rule above)."""
     if form.is_valid():
         return list(form.changed_data)
     bad = set(form.errors) - {NON_FIELD_ERRORS}
+    groups = _together_groups(form)
     if NON_FIELD_ERRORS in form.errors:
-        together = getattr(form, "autosave_together", None)
-        if not together:
+        # The form's own error names no field: without a registered group
+        # nothing may be saved; with one, the group sits this save out.
+        if not groups:
             return []
-        bad |= set(together)
+        for group in groups:
+            bad |= group
+    else:
+        for group in groups:
+            if bad & group:
+                # A rule across fields reported on one field of the group
+                # (212): saving another field of the group alone would break
+                # the pair, so the whole group sits this save out too.
+                bad |= group
     return [
         name
         for name in form.changed_data

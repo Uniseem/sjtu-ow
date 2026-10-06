@@ -4,6 +4,8 @@
   <div class="{% if article %}b-split{% else %}b-single{% endif %}">
     <form method="post" class="b-form" novalidate data-autosave data-autosave-idle="改了就自动存成草稿，点「发布」才上线">
       {% csrf_token %}
+      {% comment %}212, D3: the revision this editor started from; the server refuses a save that would overwrite someone else's.{% endcomment %}
+      <input type="hidden" name="latest_revision" value="{% if article %}{{ article.latest_revision_id }}{% endif %}">
       {% if guide %}
         <div class="c-notice c-notice--info" data-submission-guide>
           {% include "components/icon.html" with name="info" %}

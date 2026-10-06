@@ -303,3 +303,77 @@ def test_a_tournament_reminder_waits_too(django_capture_on_commit_callbacks):
         tournament_services.schedule_reminder(tournament)
     (row,) = _waiting(send_tournament_reminder, tournament.pk)
     assert row.run_after - timezone.now() > REMINDER_GRACE - timedelta(minutes=1)
+
+
+# --- round 212, T1: the rule reports on one field; the pair saves or not at all -----
+
+
+@pytest.mark.django_db
+def test_changing_the_other_half_of_a_rule_saves_nothing_of_the_pair(site, client):
+    """Editing registration_opens_at past the deadline: the error lands on
+    registration_closes_at (v7.10), and opens must not save alone — alone it
+    breaks the tournament_registration_window constraint (IntegrityError,
+    and the rest of the request lost with it)."""
+    tournament = _published_tournament()
+    client.force_login(_user("half212@example.com", "赛事管理员"))
+    edit = reverse("tournaments:edit", args=[tournament.pk])
+    before = tournament.registration_opens_at
+    late = timezone.localtime(tournament.registration_closes_at + timedelta(days=1))
+    answer = _save(
+        client,
+        edit,
+        _tournament_fields(
+            tournament,
+            summary="又改了简介",
+            registration_opens_at=late.strftime("%Y-%m-%dT%H:%M"),
+        ),
+    )
+    assert "registration_closes_at" in answer["errors"]
+    assert "summary" in answer["saved"]
+    assert "registration_opens_at" not in answer["saved"]
+    tournament.refresh_from_db()
+    assert tournament.summary == "又改了简介"
+    assert tournament.registration_opens_at == before
+
+
+@pytest.mark.django_db
+def test_a_copy_with_the_window_backwards_is_no_500_and_keeps_the_times(site, client):
+    """The new/copy path creates the draft from the fields that are fine; a
+    backwards window used to die as an IntegrityError 500 and retry forever."""
+    source = _published_tournament()
+    client.force_login(_user("copy212@example.com", "赛事管理员"))
+    copied = tournament_services.copy_for_new(source)
+    late = timezone.localtime(copied.registration_closes_at + timedelta(days=1))
+    data = _tournament_fields(
+        copied,
+        summary="复制时改的简介",
+        registration_opens_at=late.strftime("%Y-%m-%dT%H:%M"),
+    )
+    response = client.post(
+        reverse("tournaments:copy", args=[source.pk]), data, **AUTOSAVE
+    )
+    assert response.status_code == 200
+    answer = json.loads(response.content)
+    assert "registration_closes_at" in answer["errors"]
+    new = Tournament.objects.exclude(pk=source.pk).get()
+    assert answer["location"] == reverse("tournaments:edit", args=[new.pk])
+    assert new.summary == "复制时改的简介"
+    # The bad half of the pair kept what the copy had; the pair stays legal.
+    assert new.registration_opens_at == copied.registration_opens_at
+    assert new.registration_opens_at < new.registration_closes_at
+
+
+@pytest.mark.django_db
+def test_the_roster_pair_also_saves_together_or_not_at_all(site, client):
+    """Changing roster_min past roster_max: min must not save alone either
+    (the tournament_roster_range constraint)."""
+    tournament = _published_tournament(roster_min=5, roster_max=6)
+    client.force_login(_user("roster212@example.com", "赛事管理员"))
+    edit = reverse("tournaments:edit", args=[tournament.pk])
+    answer = _save(
+        client, edit, _tournament_fields(tournament, summary="简介三", roster_min=7)
+    )
+    assert "roster_max" in answer["errors"]
+    assert "summary" in answer["saved"] and "roster_min" not in answer["saved"]
+    tournament.refresh_from_db()
+    assert tournament.roster_min == 5 and tournament.summary == "简介三"

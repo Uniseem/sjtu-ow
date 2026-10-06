@@ -18,6 +18,7 @@
   var TEXT_PAUSE = 800;
   var PICK_PAUSE = 60;
   var RETRY = 5000;
+  var RETRY_MAX = 60000;
   var savers = [];
 
   function token(form) {
@@ -45,6 +46,18 @@
     return control.tagName === "INPUT" && (control.getAttribute("type") || "") === "password";
   }
 
+  // A chosen file would upload again on every retry (the team logo, 212/F2),
+  // so a failed save of a form holding one waits for the next change.
+  function fileChosen(form) {
+    var inputs = form.querySelectorAll('input[type="file"]');
+    for (var i = 0; i < inputs.length; i += 1) {
+      if (inputs[i].files && inputs[i].files.length) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function fieldBox(control) {
     return control.closest(".c-field") || control.parentElement;
   }
@@ -69,6 +82,8 @@
     this.again = false;
     this.dirty = false;
     this.failed = false;
+    this.gaveUp = false; // permanent failure (login gone, no permission): no retry
+    this.failures = 0;   // consecutive failures, for the backoff
     this.status = form.querySelector("[data-autosave-status]");
     if (!this.status) {
       this.status = document.createElement("p");
@@ -122,7 +137,7 @@
     if (!document.contains(this.form)) {
       return false;
     }
-    return this.dirty || this.busy !== null || this.failed;
+    return this.dirty || this.busy !== null || (this.failed && !this.gaveUp);
   };
 
   Saver.prototype.save = function () {
@@ -139,6 +154,7 @@
       return this.busy;
     }
     this.dirty = false;
+    this.gaveUp = false;
     this.show("saving", "正在保存…");
     var body = new FormData(this.form);
     this.busy = window
@@ -150,22 +166,43 @@
       })
       .then(function (response) {
         var type = response.headers.get("Content-Type") || "";
+        if (response.status === 401 || response.status === 403 || response.status === 404) {
+          var refused = new Error("HTTP " + response.status);
+          refused.permanent = true;
+          throw refused;
+        }
         if (!response.ok || type.indexOf("json") < 0) {
-          throw new Error("HTTP " + response.status);
+          // A 200 that is not JSON is the login page: the session is gone;
+          // retrying it would never save (212/F2).
+          var failed = new Error("HTTP " + response.status);
+          failed.permanent = response.ok;
+          throw failed;
         }
         return response.json();
       })
       .then(function (data) {
         self.failed = false;
+        self.failures = 0;
         self.apply(data);
       })
-      .catch(function () {
+      .catch(function (error) {
         self.failed = true;
-        self.show("failed", "保存失败，5 秒后重试");
+        if (error && error.permanent) {
+          self.gaveUp = true;
+          self.show("failed", "保存失败：登录状态已失效或没有权限，重新登录后再改");
+          return;
+        }
+        if (fileChosen(self.form)) {
+          self.show("failed", "保存失败，再改一次会重新尝试");
+          return;
+        }
+        self.failures += 1;
+        var wait = Math.min(RETRY * Math.pow(2, self.failures - 1), RETRY_MAX);
+        self.show("failed", "保存失败，" + Math.round(wait / 1000) + " 秒后重试");
         window.clearTimeout(self.timer);
         self.timer = window.setTimeout(function () {
           self.save();
-        }, RETRY);
+        }, wait);
       })
       .then(function () {
         self.busy = null;
@@ -265,7 +302,10 @@
       box.appendChild(note);
     });
     if (problems.length) {
-      this.show("partial", "有 " + problems.length + " 项没存（其余已保存 " + data.saved_at + "）：" + problems.join("；"));
+      var prefix = data.saved && data.saved.length
+        ? "有 " + problems.length + " 项没存（其余已保存 " + data.saved_at + "）："
+        : "没有保存：";
+      this.show("partial", prefix + problems.join("；"));
     } else {
       this.show("saved", "已保存 " + data.saved_at);
     }

@@ -1,0 +1,303 @@
+基线（并行负载下，未变异）：
+  w0: exit=0 1902 passed, 2 deselected in 304.10s (0:05:04) []
+  w1: exit=0 1902 passed, 2 deselected in 303.94s (0:05:03) []
+  w2: exit=0 1902 passed, 2 deselected in 305.83s (0:05:05) []
+[1/299] ✓ accounts/forms.py:133 ProfileForm.clean_motto  if LINK_IN_TEXT.search(motto)
+[2/299] ✗ accounts/forms.py:189 GameAccountForm.clean_battletag  if qs.exists()
+[3/299] ✓ accounts/forms.py:262 DeleteAccountForm.clean_password  if not self.user.check_password(password)
+[4/299] ✓ accounts/forms.py:288 AvatarForm.clean_file  if not uploaded
+[5/299] ✓ accounts/forms.py:290 AvatarForm.clean_file  if uploaded.size > AVATAR_MAX_BYTES
+[6/299] ✓ accounts/forms.py:294 AvatarForm.clean_file  if not name.endswith(AVATAR_EXTENSIONS) or ( content_type and c
+[7/299] ✓ accounts/images.py:36 square_face  if picture.format not in AVATAR_FORMATS
+[8/299] ✓ accounts/images.py:39 square_face  if width * height > AVATAR_MAX_PIXELS
+[9/299] ✓ accounts/images.py:41 square_face  if min(width, height) < AVATAR_MIN_SIDE
+[10/299] ✓ accounts/management/commands/verify_email.py:19 Command.handle  if user is None
+[11/299] ✓ accounts/models.py:24 UserManager._create_user  if not email
+[12/299] ✓ accounts/models.py:45 UserManager.create_superuser  if extra_fields.get("is_staff") is not True
+[13/299] ✓ accounts/models.py:47 UserManager.create_superuser  if extra_fields.get("is_superuser") is not True
+[14/299] ✓ accounts/models.py:200 validate_battletag  if tag.count("#") != 1
+[15/299] ✓ accounts/models.py:203 validate_battletag  if " " in name or not name or "#" in name
+[16/299] ✓ accounts/models.py:205 validate_battletag  if not (2 <= len(name) <= 12)
+[17/299] ✓ accounts/models.py:207 validate_battletag  if not digits.isdigit() or not (4 <= len(digits) <= 6)
+[18/299] ✗ accounts/models.py:255 GameAccount.clean  if qs.exists()
+[19/299] ✓ accounts/models.py:295 validate_contact_value  if not text.isdigit() or not (5 <= len(text) <= 11)
+[20/299] ✓ accounts/models.py:298 validate_contact_value  if not (6 <= len(text) <= 20)
+[21/299] ✓ accounts/models.py:301 validate_contact_value  if not (len(text) == 11 and text.startswith("1") and text.isdig
+[22/299] ✓ accounts/models.py:304 validate_contact_value  if not text or len(text) > 64
+[23/299] ✓ accounts/permissions.py:21 can_use  if feature not in Feature.values
+[24/299] ✓ accounts/ranks.py:32 encode_rank  if tier not in TIER_INDEX
+[25/299] ✓ accounts/ranks.py:34 encode_rank  if division not in {1, 2, 3, 4, 5}
+[26/299] ✓ accounts/ranks.py:45 decode_rank  if not isinstance(score, int) or score < 0 or score > 39
+[27/299] ✗ accounts/ranks.py:48 decode_rank  if tier_index not in INDEX_TIER
+[28/299] ✓ accounts/services.py:126 add_game_account  if user.game_accounts.count() >= max_game_accounts()
+[29/299] ✓ accounts/services.py:384 delete_account  if blockers
+[30/299] ✓ accounts/services.py:696 submit_avatar  if not can_use(user, Feature.AVATAR_UPLOAD)
+[31/299] ✓ accounts/services.py:698 submit_avatar  if over_limit(f"avatar-upload:{user.pk}", AVATAR_UPLOADS_PER_DA
+[32/299] ✓ accounts/services.py:754 _locked  if submission is None or submission.status != status
+[33/299] ✓ accounts/services.py:762 _check_reason  if reason not in Category.values
+[34/299] ✓ accounts/services.py:778 take_down_avatar  if not submission.image_id or user.avatar_id != submission.imag
+[35/299] ✓ backoffice/forms.py:180 ArticleForm.clean_slug  if not Page._slug_is_available(slug, self.parent, self.instance
+[36/299] ✓ backoffice/forms.py:290 PinnedArticlesForm.clean  if len(picked) != len(set(picked))
+[37/299] ✓ backoffice/forms.py:313 CategoryForm.clean_slug  if slug and taken.exists()
+[38/299] ✓ backoffice/forms.py:607 UserRuleForm.clean_feature  if feature and taken.exists()
+[39/299] ✓ backoffice/forms.py:627 GroupRestrictionForm.clean_feature  if feature and taken.exists()
+[40/299] ✓ backoffice/forms.py:671 TeamForm.clean_name  if name and name_taken(name, exclude_pk=self.instance.pk)
+[41/299] ✗ backoffice/nav.py:235 placed  if section not in BY_KEY
+[42/299] ✓ backoffice/nav.py:243 placed.decorate.wrapper  if not request.user.is_authenticated
+[43/299] ✗ backoffice/nav.py:245 placed.decorate.wrapper  if not access.can_enter(request.user)
+[44/299] ✓ backoffice/nav.py:247 placed.decorate.wrapper  if not gate(request.user)
+[45/299] ✗ backoffice/views/articles.py:258 article_new  if parent is None
+[46/299] ✗ backoffice/views/articles.py:260 article_new  if not parent.permissions_for_user(user).can_add_subpage()
+[47/299] ✓ backoffice/views/articles.py:278 _editable  if not perms.can_edit()
+[48/299] ✗ backoffice/views/articles.py:292 article_edit  if "publish" in request.POST and not perms.can_publish()
+[49/299] ✗ backoffice/views/articles.py:311 article_unpublish  if not page.permissions_for_user(request.user).can_unpublish()
+[50/299] ✗ backoffice/views/articles.py:322 article_delete  if not page.permissions_for_user(request.user).can_delete()
+[51/299] ✓ backoffice/views/categories.py:23 _may  if not request.user.has_perm(f"content.{action}_articlecategory
+[52/299] ✓ backoffice/views/comments.py:57 comment_action  if action not in ACTIONS
+[53/299] ✗ backoffice/views/images.py:117 image_upload  if not form.fields["collection"].queryset.exists()
+[54/299] ✗ backoffice/views/images.py:153 image_edit  if not image_policy().user_has_permission_for_instance(user, "c
+[55/299] ✗ backoffice/views/images.py:198 image_delete  if not image_policy().user_has_permission_for_instance( request
+[56/299] ✓ backoffice/views/images.py:244 image_chooser_upload  if collection is None
+[57/299] ✗ backoffice/views/images.py:247 image_chooser_upload  if upload is None
+[58/299] ✗ backoffice/views/images.py:250 image_chooser_upload  if error
+[59/299] ✓ backoffice/views/members.py:365 _group_may  if not request.user.has_perm(f"members.{action}_membergroup")
+[60/299] ✗ backoffice/views/pages.py:92 page_edit  if not page.permissions_for_user(request.user).can_edit()
+[61/299] ✓ comments/services.py:56 can_comment  if not can_use(user, FEATURE)
+[62/299] ✓ comments/services.py:58 can_comment  if not page.comments_enabled
+[63/299] ✓ comments/services.py:68 create  if not body
+[64/299] ✓ comments/services.py:70 create  if len(body) > MAX_BODY
+[65/299] ✓ comments/services.py:74 create  if parent.page_id != page.pk
+[66/299] ✓ comments/services.py:76 create  if not parent.visible
+[67/299] ✓ comments/services.py:83 create  if problems
+[68/299] ✓ comments/services.py:126 hide  if not can_moderate(actor)
+[69/299] ✓ comments/services.py:137 unhide  if not can_moderate(actor)
+[70/299] ✓ comments/services.py:215 toggle_like  if not getattr(user, "is_authenticated", False)
+[71/299] ✓ comments/services.py:217 toggle_like  if not comment.visible
+[72/299] ✓ comments/services.py:252 pin  if not can_moderate(actor)
+[73/299] ✓ comments/services.py:255 pin  if problem
+[74/299] ✓ comments/services.py:266 unpin  if not can_moderate(actor)
+[75/299] ✓ comments/services.py:275 _own  if not getattr(actor, "is_authenticated", False) or comment.aut
+[76/299] ✓ comments/services.py:283 edit  if not comment.visible
+[77/299] ✓ comments/services.py:286 edit  if not body
+[78/299] ✓ comments/services.py:288 edit  if len(body) > MAX_BODY
+[79/299] ✓ comments/views.py:25 _page_or_404  if page is None
+[80/299] ✓ content/embeds.py:74 BilibiliEmbedFinder.find_embed  if _hostname(resolved) not in BILIBILI_HOSTS | B23_HOSTS
+[81/299] ✓ content/embeds.py:77 BilibiliEmbedFinder.find_embed  if not bvid
+[82/299] ✓ content/management/commands/load_legal_pages.py:51 Command.handle  if page is None
+[83/299] ✓ content/markdown_views.py:37 upload_image  if not allowed.filter(pk=collection.pk).exists()
+[84/299] ✓ content/markdown_views.py:40 upload_image  if upload is None
+[85/299] ✓ content/markdown_views.py:51 upload_image  if not form.is_valid()
+[86/299] ✓ content/models.py:129 ReservedSlugMixin.clean  if slug in RESERVED_CHILD_SLUGS
+[87/299] ✓ content/models.py:175 HomePagePinnedArticle._enforce_pin_limit  if qs.count() >= MAX_PINNED_ARTICLES
+[88/299] ✓ content/models.py:196 HomePage.clean  if self.pinned_articles.count() > MAX_PINNED_ARTICLES
+[89/299] ✓ content/services.py:74 sync_default_site_from_site_url  if site is None
+[90/299] ✗ core/activity.py:254 activity_view  if not can_view(request.user)
+[91/299] ✗ core/admin_manual.py:229 manual_view  if not parts
+[92/299] ✓ core/admin_todo.py:171 backup_problems  if not archives
+[93/299] ✓ core/admin_todo.py:176 backup_problems  if age > BACKUP_STALE
+[94/299] ✓ core/admin_todo.py:182 backup_problems  if status.get("offsite") == "failed"
+[95/299] ✗ core/announce_admin.py:23 announce_view  if entry is None
+[96/299] ✓ core/announce_admin.py:25 announce_view  if not entry.can_send(request.user)
+[97/299] ✓ core/announce_admin.py:30 announce_view  if to_participants and entry.participants is None
+[98/299] ✓ core/crypto.py:15 _fernet  if not raw
+[99/299] ✓ core/fields.py:31 EncryptedTextField.to_python  if looks_like_fernet(value)
+[100/299] ✓ core/fields.py:44 EncryptedTextField.get_prep_value  if looks_like_fernet(value)
+[101/299] ✗ core/fonts/admin_views.py:42 superuser_required.wrapper  if not request.user.is_superuser
+[102/299] ✓ core/fonts/download.py:55 fetch_bytes  if declared and int(declared) > max_bytes
+[103/299] ✓ core/fonts/download.py:65 fetch_bytes  if len(data) > max_bytes
+[104/299] ✓ core/fonts/download.py:67 fetch_bytes  if not data
+[105/299] ✓ core/fonts/download.py:98 fetch_google_css  if exc.code == 400
+[106/299] ✓ core/fonts/download.py:130 parse_google_css  if host not in GOOGLE_FONT_HOSTS
+[107/299] ✓ core/fonts/download.py:145 parse_google_css  if not faces
+[108/299] ✓ core/fonts/forms.py:78 FontUploadForm.clean_file  if uploaded.size > processing.MAX_FONT_BYTES
+[109/299] ✓ core/fonts/forms.py:139 FontFaceAddForm.clean_file  if uploaded.size > processing.MAX_FONT_BYTES
+[110/299] ✓ core/fonts/forms.py:148 FontFaceAddForm.clean  if not cleaned.get("file") and not cleaned.get("url")
+[111/299] ✓ core/fonts/processing.py:58 inspect_font  if not data
+[112/299] ✓ core/fonts/processing.py:60 inspect_font  if len(data) > MAX_FONT_BYTES
+[113/299] ✓ core/fonts/processing.py:75 inspect_font  if fs_type & FSTYPE_RESTRICTED
+[114/299] ✓ core/fonts/processing.py:79 inspect_font  if fs_type & FSTYPE_BITMAP_ONLY
+[115/299] ✓ core/fonts/processing.py:93 inspect_font  if not codepoints
+[116/299] ✓ core/fonts/services.py:359 delete_family  if regions.exists()
+[117/299] ✓ core/health.py:76 check_database  if not HealthProbe.objects.filter(token="__healthz__").exists()
+[118/299] ✓ core/held_views.py:50 confirm  if done is None
+[119/299] ✗ core/held_views.py:111 letters_preview  if not request.user.is_authenticated
+[120/299] ✓ core/held_views.py:114 letters_preview  if row is None
+[121/299] ✓ core/mail.py:189 build_smtp_backend  if not site or not site.smtp_host or not site.from_address
+[122/299] ✓ core/mail.py:273 send_test_email  if not sent
+[123/299] ✓ core/management/commands/backup.py:106 Command.handle  if archive.exists()
+[124/299] ✓ core/management/commands/restore.py:147 Command.handle  if not archive.exists()
+[125/299] ✓ core/management/commands/restore.py:160 Command.handle  if not snapshot.exists()
+[126/299] ✓ core/management/commands/restore.py:165 Command.handle  if broken
+[127/299] ✓ core/models.py:14 https_only  if value and not value.lower().startswith("https://")
+[128/299] ✓ core/models.py:602 TypographyRule.clean  if errors
+[129/299] ✓ core/net.py:36 assert_public_https_url  if parts.scheme != "https"
+[130/299] ✓ core/net.py:39 assert_public_https_url  if not host
+[131/299] ✓ core/net.py:46 assert_public_https_url  if is_internal(address)
+[132/299] ✓ core/offsite.py:44 _fernet  if not raw
+[133/299] ✓ core/offsite.py:133 upload  if not config.enabled
+[134/299] ✓ core/offsite.py:135 upload  if config.missing
+[135/299] ✓ core/offsite.py:162 probe  if config.missing
+[136/299] ✓ core/offsite.py:193 listing  if config.missing
+[137/299] ✓ core/offsite.py:242 prune  if config.missing
+[138/299] ✓ core/offsite.py:269 download  if config.missing
+[139/299] ✓ core/prerender.py:54 normalize_path  if not path.startswith("/")
+[140/299] ✓ core/prerender.py:56 normalize_path  if "?" in path or "#" in path
+[141/299] ✓ core/prerender.py:58 normalize_path  if ".." in path or "//" in path
+[142/299] ✓ core/prerender.py:167 render_html  if response.status_code in (404, 410)
+[143/299] ✓ core/prerender.py:169 render_html  if response.status_code != 200
+[144/299] ✓ core/prerender.py:172 render_html  if "text/html" not in content_type
+[145/299] ✓ core/prerender.py:174 render_html  if response.cookies
+[146/299] ✓ core/prerender.py:180 render_html  if marker in text
+[147/299] ✓ core/services.py:266 announce  if not entry.can_send(actor)
+[148/299] ✓ core/services.py:269 announce  if len(note) > NOTE_MAX
+[149/299] ✓ core/services.py:272 announce  if problem
+[150/299] ✓ core/styleguide.py:123 _admins_only  if not (user.is_authenticated and user.has_perm(ADMIN_PERMISSIO
+[151/299] ✓ core/styleguide.py:162 styleguide_email  if found is None
+[152/299] ✓ core/translations.py:34 _entries  if keyword is None
+[153/299] ✓ core/translations.py:39 _entries  if keyword in entry
+[154/299] ✓ core/translations.py:50 parse_po  if msgid is None
+[155/299] ✗ core/views.py:107 send_site_test_email  if not request.user.has_perm("core.change_sitesettings")
+[156/299] ✗ core/views.py:124 try_offsite_backup  if not request.user.has_perm("core.change_sitesettings")
+[157/299] ✓ core/views.py:145 calendar_feed  if user is None
+[158/299] ✓ core/views.py:163 announcements_unsubscribe  if person is None
+[159/299] ✓ members/models.py:69 MemberGroup.clean  if name and clash.exists()
+[160/299] ✓ members/models.py:111 MemberGroupMembership.clean  if self.user_id and not is_joined(self.user)
+[161/299] ✓ members/models.py:117 MemberGroupMembership.clean  if any(len(title) > 10 for title in split_titles(self.title))
+[162/299] ✓ members/services.py:241 add_member  if not is_joined(user)
+[163/299] ✓ members/services.py:244 add_member  if group.memberships.filter(user=user).exists()
+[164/299] ✓ members/services.py:278 set_title  if len(title) > 20 or any(len(post) > 10 for post in split_titl
+[165/299] ✓ members/views.py:38 member_detail  if user is None
+[166/299] ✗ moderation/admin_views.py:53 reviewer_required.wrapper  if not can_review(request.user)
+[167/299] ✓ moderation/services.py:426 ask_author_to_revise  if not message
+[168/299] ✓ moderation/services.py:428 ask_author_to_revise  if len(message) > REVISE_MAX_CHARS
+[169/299] ✓ moderation/services.py:431 ask_author_to_revise  if problem
+[170/299] ✓ moderation/services.py:541 clean_extra_body  if not isinstance(value, dict)
+[171/299] ✓ moderation/services.py:546 clean_extra_body  if taken
+[172/299] ✗ scrims/admin_views.py:28 manager_required.wrapper  if not services.can_manage(request.user)
+[173/299] ✓ scrims/admin_views.py:44 scrim_action  if action not in ACTIONS
+[174/299] ✓ scrims/services.py:107 signup_problems  if not user.is_active
+[175/299] ✓ scrims/services.py:109 signup_problems  if not can_use(user, "scrim_signup")
+[176/299] ✓ scrims/services.py:112 signup_problems  if gaps
+[177/299] ✓ scrims/services.py:114 signup_problems  if scrim.sjtu_only and not user.is_sjtu
+[178/299] ✓ scrims/services.py:116 signup_problems  if scrim.status != ScrimStatus.PUBLISHED
+[179/299] ✓ scrims/services.py:118 signup_problems  if now > scrim.signup_deadline
+[180/299] ✓ scrims/services.py:126 role_problems  if not roles
+[181/299] ✓ scrims/services.py:137 role_problems  if missing
+[182/299] ✓ scrims/services.py:144 role_problems  if all(getattr(account, field, None) is None for field in RANK_
+[183/299] ✓ scrims/services.py:151 _resolve_account  if account is None
+[184/299] ✓ scrims/services.py:172 sign_up  if problems
+[185/299] ✓ scrims/services.py:202 cancel  if signup is None
+[186/299] ✓ scrims/services.py:204 cancel  if now > scrim.signup_deadline
+[187/299] ✓ scrims/services.py:312 publish  if scrim.status == ScrimStatus.CANCELLED
+[188/299] ✓ scrims/services.py:315 publish  if gaps
+[189/299] ✓ scrims/services.py:340 cancel_scrim  if scrim.status == ScrimStatus.CANCELLED
+[190/299] ✓ scrims/services.py:342 cancel_scrim  if scrim.status == ScrimStatus.DRAFT and missing(scrim)
+[191/299] ✗ scrims/split_admin.py:187 split_view  if not services.can_manage(request.user)
+[192/299] ✗ scrims/split_admin.py:239 copy_view  if not services.can_manage(request.user)
+[193/299] ✓ scrims/teaming.py:92 check_feasible  if len(players) != needed
+[194/299] ✓ scrims/teaming.py:102 check_feasible  if len(able) < total_needed
+[195/299] ✓ scrims/teaming.py:108 check_feasible  if stuck
+[196/299] ✓ scrims/teaming.py:295 generate  if not tied
+[197/299] ✓ scrims/views.py:36 _visible_or_404  if scrim is None
+[198/299] ✓ scrims/views.py:85 scrim_signup  if not request.user.is_authenticated
+[199/299] ✓ scrims/views.py:105 scrim_cancel_signup  if not request.user.is_authenticated
+[200/299] ✓ scrims/views.py:126 scrim_actions_fragment  if scrim is None
+[201/299] ✓ scrims/views.py:137 me_scrims  if not request.user.is_authenticated
+[202/299] ✓ search/views.py:23 search  if over_limit(f"search:{client_ip(request)}", SEARCH_RATE_LIMIT
+[203/299] ✓ sjtu_ow/settings/env.py:10 env  if required and default is None
+[204/299] ✓ sjtu_ow/settings/prod.py:10 <module>  if not ALLOWED_HOSTS
+[205/299] ✓ sjtu_ow/settings/prod.py:16 <module>  if not CSRF_TRUSTED_ORIGINS
+[206/299] ✗ teams/admin_views.py:25 superuser_required.wrapper  if not request.user.is_superuser
+[207/299] ✓ teams/forms.py:68 TeamForm.clean_name  if name_taken(name, exclude_pk=self.instance.pk)
+[208/299] ✓ teams/forms.py:76 TeamForm.clean_logo_file  if uploaded.size > LOGO_MAX_BYTES
+[209/299] ✓ teams/forms.py:80 TeamForm.clean_logo_file  if not name.endswith(LOGO_EXTENSIONS) or ( content_type and con
+[210/299] ✗ teams/forms.py:101 ApplicationForm.clean  if not any( cleaned.get(name) for name in ("role_tank", "role_d
+[211/299] ✓ teams/services.py:135 create_team  if blocker
+[212/299] ✗ teams/services.py:137 create_team  if name_taken(name)
+[213/299] ✓ teams/services.py:168 update_team  if not is_captain(team, user) and not user.is_superuser
+[214/299] ✓ teams/services.py:170 update_team  if team.is_disbanded
+[215/299] ✗ teams/services.py:172 update_team  if name_taken(name, exclude_pk=team.pk)
+[216/299] ✓ teams/services.py:232 apply_to_team  if not allowed
+[217/299] ✓ teams/services.py:234 apply_to_team  if not any(roles.values())
+[218/299] ✓ teams/services.py:267 approve_application  if not is_captain(team, actor) and not actor.is_superuser
+[219/299] ✓ teams/services.py:269 approve_application  if application.status != ApplicationStatus.PENDING
+[220/299] ✓ teams/services.py:271 approve_application  if team.is_disbanded
+[221/299] ✓ teams/services.py:292 approve_application  if is_full(team)
+[222/299] ✓ teams/services.py:303 approve_application  if gone
+[223/299] ✓ teams/services.py:305 approve_application  if already_member
+[224/299] ✓ teams/services.py:318 reject_application  if not is_captain(application.team, actor) and not actor.is_sup
+[225/299] ✓ teams/services.py:320 reject_application  if application.status != ApplicationStatus.PENDING
+[226/299] ✓ teams/services.py:334 cancel_application  if application.applicant_id != actor.pk
+[227/299] ✓ teams/services.py:336 cancel_application  if application.status != ApplicationStatus.PENDING
+[228/299] ✓ teams/services.py:412 leave_team  if membership is None
+[229/299] ✓ teams/services.py:414 leave_team  if membership.is_captain
+[230/299] ✓ teams/services.py:443 remove_member  if not is_captain(team, actor) and not actor.is_superuser
+[231/299] ✓ teams/services.py:445 remove_member  if member_user.pk == actor.pk
+[232/299] ✓ teams/services.py:448 remove_member  if membership is None
+[233/299] ✓ teams/services.py:461 transfer_captain  if not is_captain(team, actor) and not actor.is_superuser
+[234/299] ✓ teams/services.py:464 transfer_captain  if target is None
+[235/299] ✓ teams/services.py:466 transfer_captain  if target.is_captain
+[236/299] ✓ teams/services.py:468 transfer_captain  if captained_count(new_captain) >= max_captained()
+[237/299] ✓ teams/services.py:488 assign_captain  if not actor.is_superuser
+[238/299] ✓ teams/services.py:490 assign_captain  if team.is_disbanded
+[239/299] ✓ teams/services.py:492 assign_captain  if not new_captain.is_active
+[240/299] ✓ teams/services.py:495 assign_captain  if is_full(team)
+[241/299] ✓ teams/services.py:530 disband_team  if not is_captain(team, actor) and not actor.is_superuser
+[242/299] ✓ teams/services.py:532 disband_team  if team.is_disbanded
+[243/299] ✓ teams/services.py:535 disband_team  if blockers
+[244/299] ✓ teams/services.py:726 remove_alumnus  if not can_remove_alumnus(alumnus, actor)
+[245/299] ✓ teams/views.py:243 team_manage  if not services.is_captain(team, request.user) and not request.
+[246/299] ✗ tournaments/admin_views.py:28 manager_required.wrapper  if not services.can_manage(request.user)
+[247/299] ✓ tournaments/admin_views.py:44 tournament_action  if action not in ACTIONS
+[248/299] ✓ tournaments/registration.py:61 member_problems  if as_self
+[249/299] ✓ tournaments/registration.py:66 member_problems  if gaps
+[250/299] ✓ tournaments/registration.py:68 member_problems  if tournament.sjtu_only and not user.is_sjtu
+[251/299] ✓ tournaments/registration.py:96 precheck  if not tournament.takes_teams
+[252/299] ✓ tournaments/registration.py:99 precheck  if tournament.status != TournamentStatus.PUBLISHED or not ( tou
+[253/299] ✓ tournaments/registration.py:103 precheck  if team.is_disbanded or not is_team_captain(team, actor)
+[254/299] ✓ tournaments/registration.py:108 precheck  if not (tournament.roster_min <= count <= tournament.roster_max
+[255/299] ✓ tournaments/registration.py:126 precheck  if conflict
+[256/299] ✓ tournaments/registration.py:145 _resolve_accounts  if account_id
+[257/299] ✓ tournaments/registration.py:147 _resolve_accounts  if account is None
+[258/299] ✓ tournaments/registration.py:245 submit  if problems
+[259/299] ✓ tournaments/registration.py:380 withdraw  if registration.team_id is None
+[260/299] ✓ tournaments/registration.py:382 withdraw  if not is_team_captain(registration.team, actor)
+[261/299] ✓ tournaments/registration.py:384 withdraw  if registration.status not in ACTIVE_STATUSES
+[262/299] ✓ tournaments/registration.py:386 withdraw  if not captain_can_change(registration)
+[263/299] ✓ tournaments/registration.py:400 approve  if registration.status != RegistrationStatus.PENDING
+[264/299] ✓ tournaments/registration.py:416 reject  if registration.team_id is None
+[265/299] ✓ tournaments/registration.py:418 reject  if not note or not note.strip()
+[266/299] ✓ tournaments/registration.py:517 individual_problems  if not tournament.takes_individuals
+[267/299] ✓ tournaments/registration.py:519 individual_problems  if not tournament.registration_open(now)
+[268/299] ✓ tournaments/registration.py:523 individual_problems  if conflict
+[269/299] ✓ tournaments/registration.py:566 sign_up_individual  if account is None
+[270/299] ✓ tournaments/registration.py:569 sign_up_individual  if not roles
+[271/299] ✓ tournaments/registration.py:571 sign_up_individual  if problems
+[272/299] ✓ tournaments/registration.py:575 sign_up_individual  if signup is not None and signup.is_placed
+[273/299] ✓ tournaments/registration.py:595 cancel_individual  if signup is None
+[274/299] ✓ tournaments/registration.py:597 cancel_individual  if signup.is_placed
+[275/299] ✓ tournaments/registration.py:599 cancel_individual  if now > tournament.registration_closes_at
+[276/299] ✓ tournaments/registration.py:757 form_teams  if registration is None
+[277/299] ✓ tournaments/registration.py:764 form_teams  if entry is None
+[278/299] ✓ tournaments/registration.py:767 form_teams  if signup_id in seen
+[279/299] ✓ tournaments/registration.py:776 form_teams  if len(ids) > tournament.roster_max
+[280/299] ✓ tournaments/registration.py:787 form_teams  if len(names) != len(set(names))
+[281/299] ✓ tournaments/registration.py:789 form_teams  if problems
+[282/299] ✓ tournaments/registration.py:846 form_teams  if member_issues
+[283/299] ✓ tournaments/registration.py:914 dissolve  if registration.team_id is not None
+[284/299] ✓ tournaments/registration.py:916 dissolve  if registration.status not in ACTIVE_STATUSES
+[285/299] ✓ tournaments/registration.py:939 leave  if registration.team_id is not None
+[286/299] ✓ tournaments/registration.py:941 leave  if registration.status not in ACTIVE_STATUSES
+[287/299] ✓ tournaments/registration.py:944 leave  if row is None
+[288/299] ✓ tournaments/registration.py:946 leave  if enforce_deadline and not captain_can_change(registration)
+[289/299] ✓ tournaments/registration_views.py:38 register  if not tournament.is_public
+[290/299] ✓ tournaments/registration_views.py:126 registration_detail  if not registration_service.visible_to(registration, request.us
+[291/299] ✓ tournaments/registration_views.py:219 _public_tournament_or_404  if not tournament.is_public
+[292/299] ✗ tournaments/review_admin.py:35 reviewer_required.wrapper  if not services.can_manage(request.user)
+[293/299] ✓ tournaments/services.py:207 publish  if tournament.status == TournamentStatus.CANCELLED
+[294/299] ✓ tournaments/services.py:210 publish  if gaps
+[295/299] ✓ tournaments/services.py:221 finish  if tournament.status != TournamentStatus.PUBLISHED
+[296/299] ✓ tournaments/services.py:230 cancel  if tournament.status == TournamentStatus.CANCELLED
+[297/299] ✗ tournaments/services.py:232 cancel  if tournament.status == TournamentStatus.DRAFT and missing(tour
+[298/299] ✓ tournaments/teams_admin.py:54 page_context  if len(members) < tournament.roster_min
+[299/299] ✓ tournaments/views.py:33 tournament_detail  if not tournament.is_public

@@ -15,7 +15,7 @@ from wagtail.actions.publish_page_revision import PublishPageRevisionAction
 from backoffice.forms import IndexIntroForm, PinnedArticlesForm, StandardPageForm
 from backoffice.nav import placed
 from backoffice.views.articles import article_status
-from content.drafts import save_draft
+from content.drafts import STALE_MESSAGE, save_draft, stale_base
 from content.models import (
     MAX_PINNED_ARTICLES,
     ArticleIndexPage,
@@ -94,17 +94,31 @@ def page_edit(request, pk):
     draft = page.get_latest_revision_as_object()
     form = StandardPageForm(request.POST or None, instance=draft)
     if autosave.wants(request):
+        if stale_base(page, request):  # someone else saved meanwhile (212, D3)
+            return autosave.respond(
+                autosave.Outcome(errors={"__all__": [STALE_MESSAGE]})
+            )
         valid = form.is_valid()
         saved = autosave.valid_changes(form)
+        outcome = autosave.Outcome(saved=saved)
         if saved:
-            save_draft(page, form.instance, request.user)  # the fine fields applied
-        errors = {} if valid else autosave.errors_of(form)
-        return autosave.respond(autosave.Outcome(saved=saved, errors=errors))
-    if request.method == "POST" and form.is_valid():
-        _save(
-            request, page, form.instance, published=f"「{form.instance.title}」已发布。"
-        )
-        return redirect("backoffice:page_edit", page.pk)
+            revision = save_draft(
+                page, form.instance, request.user
+            )  # the fine fields applied
+            outcome.values["latest_revision"] = revision.pk
+        outcome.errors = {} if valid else autosave.errors_of(form)
+        return autosave.respond(outcome)
+    if request.method == "POST":
+        if stale_base(page, request):
+            messages.error(request, STALE_MESSAGE)
+        elif form.is_valid():
+            _save(
+                request,
+                page,
+                form.instance,
+                published=f"「{form.instance.title}」已发布。",
+            )
+            return redirect("backoffice:page_edit", page.pk)
     page = StandardPage.objects.annotate_approved_schedule().get(pk=page.pk)
     return render(
         request,
@@ -138,6 +152,11 @@ def home_pins(request):
     initial = {f"article_{n}": a.pk for n, a in enumerate(current, start=1)}
     form = PinnedArticlesForm(request.POST or None, initial=initial)
     if request.method == "POST":
+        stale = stale_base(home, request)  # someone else saved meanwhile (212, D3)
+        if autosave.wants(request) and stale:
+            return autosave.respond(
+                autosave.Outcome(errors={"__all__": [STALE_MESSAGE]})
+            )
         valid = form.is_valid()
         if valid:
             draft.pinned_articles = [
@@ -148,11 +167,15 @@ def home_pins(request):
             ]
         if autosave.wants(request):
             saved = autosave.valid_changes(form)
+            outcome = autosave.Outcome(saved=saved)
             if valid and saved:
-                save_draft(home, draft, request.user)
-            errors = {} if valid else autosave.errors_of(form)
-            return autosave.respond(autosave.Outcome(saved=saved, errors=errors))
-        if valid:
+                revision = save_draft(home, draft, request.user)
+                outcome.values["latest_revision"] = revision.pk
+            outcome.errors = {} if valid else autosave.errors_of(form)
+            return autosave.respond(outcome)
+        if stale:
+            messages.error(request, STALE_MESSAGE)
+        elif valid:
             _save(request, home, draft, published="首页的置顶文章已更新。")
             return redirect("backoffice:home_pins")
     return _draft_page(
@@ -175,16 +198,25 @@ def index_intro(request):
     draft = index.get_latest_revision_as_object()
     form = IndexIntroForm(request.POST or None, initial={"intro": draft.intro})
     if request.method == "POST":
+        stale = stale_base(index, request)  # someone else saved meanwhile (212, D3)
+        if autosave.wants(request) and stale:
+            return autosave.respond(
+                autosave.Outcome(errors={"__all__": [STALE_MESSAGE]})
+            )
         valid = form.is_valid()
         if valid:
             draft.intro = form.cleaned_data["intro"]
         if autosave.wants(request):
             saved = autosave.valid_changes(form)
+            outcome = autosave.Outcome(saved=saved)
             if valid and saved:
-                save_draft(index, draft, request.user)
-            errors = {} if valid else autosave.errors_of(form)
-            return autosave.respond(autosave.Outcome(saved=saved, errors=errors))
-        if valid:
+                revision = save_draft(index, draft, request.user)
+                outcome.values["latest_revision"] = revision.pk
+            outcome.errors = {} if valid else autosave.errors_of(form)
+            return autosave.respond(outcome)
+        if stale:
+            messages.error(request, STALE_MESSAGE)
+        elif valid:
             _save(request, index, draft, published="资讯栏目的介绍已更新。")
             return redirect("backoffice:index_intro")
     return _draft_page(request, index, form, title="资讯栏目的介绍")

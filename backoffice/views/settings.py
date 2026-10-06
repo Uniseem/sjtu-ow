@@ -15,6 +15,7 @@ from backoffice.forms import LogFilterForm, SiteSettingsForm
 from backoffice.nav import placed
 from backoffice.views.common import paginate
 from core import autosave
+from core.forms import SECRET_FIELDS
 from core.models import SiteSettings
 
 LOG_PER_PAGE = 50
@@ -28,9 +29,13 @@ def site_settings(request):
         saved = autosave.save_valid_fields(form)
         if saved:
             autosave.log_edit(form.instance, request.user)
-        return autosave.respond(
-            autosave.Outcome(saved=saved, errors=autosave.errors_of(form))
-        )
+        outcome = autosave.Outcome(saved=saved, errors=autosave.errors_of(form))
+        # A secret just saved is emptied in the page (212, F4): left in the
+        # box, every later autosave of this form would post it again.
+        for name in saved:
+            if name in SECRET_FIELDS:
+                outcome.values[name] = ""
+        return autosave.respond(outcome)
     if request.method == "POST" and form.is_valid():
         site = form.save()
         autosave.log_edit(site, request.user)

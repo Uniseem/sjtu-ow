@@ -23,7 +23,7 @@ from wagtail.actions.unpublish_page import UnpublishPageAction
 from backoffice.forms import ArticleForm
 from backoffice.nav import placed
 from backoffice.views.common import paginate, safe_next, search_text
-from content.drafts import save_draft, start_article
+from content.drafts import STALE_MESSAGE, save_draft, stale_base, start_article
 from content.models import ArticleCategory, ArticlePage
 from content.permissions import plain_writer, user_can_edit_author
 from content.services import first_article_index
@@ -166,8 +166,11 @@ def _publish(request, revision) -> None:
 def _autosave(request, form, page, parent):
     """Save what may be saved as a draft (design 13.17, v7.9): the fields
     that are fine, the rest keep what was stored. A new article is created
-    by its first change, empty title and category included."""
+    by its first change, empty title and category included. A page someone
+    else saved since this editor opened it refuses the save (212, D3)."""
     user = request.user
+    if page is not None and stale_base(page, request):
+        return autosave.respond(autosave.Outcome(errors={"__all__": [STALE_MESSAGE]}))
     valid = form.is_valid()
     draft = form.finish(form.instance)  # the valid fields are applied to it
     saved = autosave.valid_changes(form)
@@ -175,6 +178,7 @@ def _autosave(request, form, page, parent):
     outcome = autosave.Outcome(saved=saved, errors=errors)
     if page is None:
         page = start_article(parent, draft, user)
+        outcome.values["latest_revision"] = page.latest_revision_id
         outcome.location = reverse("backoffice:article_edit", args=[page.pk])
         outcome.replace["[data-article-preview]"] = (
             f'<a class="c-btn c-btn--quiet" data-article-preview href="'
@@ -182,7 +186,8 @@ def _autosave(request, form, page, parent):
             'target="_blank" rel="noopener">预览草稿</a>'
         )
     elif saved:
-        save_draft(page, draft, user)
+        revision = save_draft(page, draft, user)
+        outcome.values["latest_revision"] = revision.pk
     if "slug" in form.fields and draft.slug != form.initial.get("slug"):
         outcome.values["slug"] = draft.slug
     return autosave.respond(outcome)
@@ -231,9 +236,13 @@ def _form_page(request, form, article):
 
 def _submit(request, form, page, parent):
     """The whole form, without the script or by 「发布」: checked whole,
-    saved as a draft, published if asked and allowed."""
+    saved as a draft, published if asked and allowed. A page someone else
+    saved since this editor opened it refuses the save (212, D3)."""
     user = request.user
     if not form.is_valid():
+        return _form_page(request, form, page)
+    if page is not None and stale_base(page, request):
+        messages.error(request, STALE_MESSAGE)
         return _form_page(request, form, page)
     draft = form.finish(form.instance)
     if page is None:

@@ -210,8 +210,9 @@ class GameAccountForm(forms.ModelForm):
 
 
 class ContactMethodForm(forms.ModelForm):
-    # The value is checked against its type (design 3.5).
-    autosave_together = ("type", "value")
+    # The value is checked against its type (design 3.5): one rule across
+    # the two fields, so they save together or not at all (212, A3).
+    autosave_together = (("type", "value"),)
 
     class Meta:
         model = ContactMethod
@@ -222,6 +223,22 @@ class ContactMethodForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["type"].label = "类型"
         self.fields["value"].label = "内容"
+
+    def clean(self):
+        cleaned = super().clean()
+        # The (user, type) constraint names ``user``, which is not on the
+        # form, so is_valid() would skip it and save() would 500 (212, A1);
+        # check it here where the error can land on the field.
+        contact_type = cleaned.get("type")
+        if self.user is not None and contact_type:
+            clash = (
+                ContactMethod.objects.filter(user=self.user, type=contact_type)
+                .exclude(pk=self.instance.pk)
+                .exists()
+            )
+            if clash:
+                self.add_error("type", "每种联系方式只能填写一次。")
+        return cleaned
 
     def save(self, commit=True):
         contact = super().save(commit=False)

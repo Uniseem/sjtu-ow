@@ -388,3 +388,134 @@ def test_editors_with_a_role_but_no_group_permission_still_need_it(site, client)
     assert response.status_code == 403
     assert not MemberGroup.objects.filter(name="偷建").exists()
     assert Group.objects.filter(name=GROUP_SUBMITTER).exists()
+
+
+# --- round 212: the autosave wrap-up (210 review T1, A1, A3, F4, B6) -----------------
+
+
+@pytest.mark.django_db
+def test_a_rule_on_one_field_holds_back_its_whole_group(site):
+    """212, T1: v7.10 reports a rule across fields on one field of the group;
+    the other field must not save alone (it would break the pair)."""
+    person = _user("group212@example.com")
+    User.objects.filter(pk=person.pk).update(motto="冲突")
+
+    class Paired(forms.ModelForm):
+        autosave_together = (("nickname", "motto"),)
+
+        class Meta:
+            model = User
+            fields = ("nickname", "motto")
+
+        def clean(self):
+            cleaned = super().clean()
+            if cleaned.get("motto") == "冲突":
+                self.add_error("motto", "两项对不上。")
+            return cleaned
+
+    # Only the nickname changed, yet it is in the group the error names.
+    data = {"nickname": "新的名字", "motto": "冲突"}
+    assert autosave.save_valid_fields(Paired(data, instance=person)) == []
+    person.refresh_from_db()
+    assert person.nickname != "新的名字"
+
+    class Unpaired(Paired):
+        autosave_together = ()
+
+    assert autosave.save_valid_fields(Unpaired(data, instance=person)) == ["nickname"]
+
+
+@pytest.mark.django_db
+def test_a_contact_type_clash_is_an_error_not_a_500(site, client):
+    """212, A1: the (user, type) constraint names no form field, so it used
+    to slip past is_valid() and 500 in save(); now the form says it."""
+    person = _user("clash212@example.com")
+    qq = ContactMethod.objects.create(user=person, type="qq", value="12345678")
+    ContactMethod.objects.create(user=person, type="wechat", value="wxid_abc")
+    client.force_login(person)
+    url = reverse("me_contact_edit", args=[qq.pk])
+    answer = _save(client, url, {"type": "wechat", "value": "wxid_def"})
+    assert "type" in answer["errors"]
+    qq.refresh_from_db()
+    assert (qq.type, qq.value) == ("qq", "12345678")
+    # The whole form (no script) says the same instead of dying.
+    response = client.post(url, {"type": "wechat", "value": "wxid_def"})
+    assert response.status_code == 200
+    qq.refresh_from_db()
+    assert (qq.type, qq.value) == ("qq", "12345678")
+
+
+@pytest.mark.django_db
+def test_a_contact_type_does_not_save_without_a_matching_value(site, client):
+    """212, A3: changing only the type to one the stored number does not fit
+    must hold the type back too — saving it alone bypasses clean()."""
+    person = _user("pair212@example.com")
+    contact = ContactMethod.objects.create(user=person, type="qq", value="12345678")
+    client.force_login(person)
+    url = reverse("me_contact_edit", args=[contact.pk])
+    answer = _save(client, url, {"type": "phone", "value": "12345678"})
+    assert "value" in answer["errors"]
+    contact.refresh_from_db()
+    assert contact.type == "qq"  # not 「手机号 12345678」
+    # Both changed and matching: they go together.
+    answer = _save(client, url, {"type": "phone", "value": "13800001111"})
+    assert answer["ok"]
+    contact.refresh_from_db()
+    assert (contact.type, contact.value) == ("phone", "13800001111")
+
+
+@pytest.mark.django_db
+def test_a_saved_secret_is_emptied_in_the_response(site, client):
+    """212, F4: left in the box, every later autosave of the settings form
+    would post the secret again; the response clears it."""
+    from wagtail.test.utils.form_data import querydict_from_html
+
+    client.force_login(_root())
+    url = reverse("backoffice:site_settings")
+    data = querydict_from_html(client.get(url).content.decode(), form_index=0)
+    data["smtp_password"] = "brand-new-secret"
+    answer = _save(client, url, data)
+    assert "smtp_password" in answer["saved"]
+    assert answer["values"]["smtp_password"] == ""
+    assert SiteSettings.load().smtp_password == "brand-new-secret"
+
+
+@pytest.mark.django_db
+def test_a_new_category_is_created_even_when_the_first_change_is_wrong(site, client):
+    """212, B6: 「第一次改动就建好」 holds even when the first change has an
+    error — the row exists, the bad fields sit this save out."""
+    from content.models import ArticleCategory
+
+    client.force_login(_user("cat212@example.com", GROUP_CONTENT))
+    url = reverse("backoffice:category_new")
+    answer = _save(client, url, {"name": "活动", "slug": "guide", "sort_order": "x"})
+    category = ArticleCategory.objects.get(name="活动")
+    assert answer["location"] == reverse("backoffice:category_edit", args=[category.pk])
+    assert {"slug", "sort_order"} <= set(answer["errors"])
+    assert category.slug == "" and category.sort_order == 0
+
+
+@pytest.mark.django_db
+def test_a_new_member_group_is_created_even_when_the_first_change_is_wrong(
+    site,
+    client,
+):
+    client.force_login(_user("grp212@example.com", GROUP_CONTENT))
+    MemberGroup.objects.create(name="干部")
+    url = reverse("backoffice:member_group_new")
+    answer = _save(
+        client,
+        url,
+        {
+            "name": "干部",
+            "description": "新分组的简介",
+            "is_visible": "on",
+            "sort_order": "x",
+        },
+    )
+    group = MemberGroup.objects.get(description="新分组的简介")
+    assert group.name == "" and group.sort_order == 0
+    assert answer["location"] == reverse(
+        "backoffice:member_group_edit", args=[group.pk]
+    )
+    assert "name" in answer["errors"] and "sort_order" in answer["errors"]

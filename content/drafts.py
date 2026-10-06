@@ -19,6 +19,28 @@ OVERWRITE_WITHIN = timedelta(minutes=30)
 # the lists say 「（无标题）」. Publishing replaces it with the real one.
 UNTITLED = "（无标题）"
 
+# 212, D3: two people with the same editor open would overwrite each other's
+# saves, so the form says which revision it started from.
+STALE_MESSAGE = (
+    "另一个人在你打开以后改过这篇，你的改动没有存；刷新页面看一看现在的内容，再重新改。"
+)
+
+
+def stale_base(page, request) -> bool:
+    """The page changed since this editor opened it: the form posts the
+    revision it started from (a hidden ``latest_revision``), and a mismatch
+    means saving would overwrite someone else's work. Forms without the
+    field (an older page still open, a new article before it exists) save as
+    before; a value that is not a number is refused rather than ignored."""
+    posted = (request.POST.get("latest_revision") or "").strip()
+    if not posted:
+        return False
+    try:
+        base = int(posted)
+    except ValueError:
+        return True
+    return page.latest_revision_id != base
+
 
 def overwritable(page, user):
     """The revision this person may write over: their own latest draft,

@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.contrib.auth.models import Group, Permission
+from django.db.models import Q, Subquery
 from wagtail.coreutils import get_supported_content_language_variant
 from wagtail.models import (
     Collection,
@@ -26,7 +27,13 @@ from accounts.services import (
     GROUP_SUBMITTER,
     GROUP_TOURNAMENT,
 )
-from content.models import ArticleCategory, ArticleIndexPage, HomePage, StandardPage
+from content.models import (
+    ArticleCategory,
+    ArticleIndexPage,
+    ArticlePage,
+    HomePage,
+    StandardPage,
+)
 
 INITIAL_CATEGORIES = (
     ("notice", "公告", False, 10),
@@ -222,6 +229,44 @@ def ensure_page_tree() -> HomePage:
 
 def first_article_index() -> ArticleIndexPage | None:
     return ArticleIndexPage.objects.order_by("path").first()
+
+
+def category_use_counts() -> dict[int, int]:
+    """Category pk -> how many articles use it (design 5.3), drafts included
+    (212, D2): an autosaved draft's category lives only in its revisions, so
+    the page rows alone miss it and deleting the category would 500 the
+    article's edit page. Each page counts once, under the category its
+    latest (or scheduled) revision names, else its stored row."""
+    from django.contrib.contenttypes.models import ContentType
+    from wagtail.models import Revision
+
+    by_page: dict[int, int] = dict(
+        ArticlePage.objects.filter(category__isnull=False).values_list(
+            "pk", "category_id"
+        )
+    )
+    latest = ArticlePage.objects.exclude(latest_revision_id=None).values(
+        "latest_revision_id"
+    )
+    rows = (
+        Revision.objects.filter(
+            content_type=ContentType.objects.get_for_model(ArticlePage)
+        )
+        .filter(Q(pk__in=Subquery(latest)) | Q(approved_go_live_at__isnull=False))
+        .values_list("object_id", "content__category")
+    )
+    for object_id, category_id in rows:
+        if category_id is not None:
+            by_page[int(object_id)] = category_id
+    counts: dict[int, int] = {}
+    for category_id in by_page.values():
+        counts[category_id] = counts.get(category_id, 0) + 1
+    return counts
+
+
+def category_in_use(category) -> int:
+    """How many articles (drafts included) use this category."""
+    return category_use_counts().get(category.pk, 0)
 
 
 def article_create_admin_url() -> str | None:

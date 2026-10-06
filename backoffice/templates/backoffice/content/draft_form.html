@@ -8,6 +8,8 @@
   <div class="b-split">
     <form method="post" class="b-form" novalidate data-autosave data-autosave-idle="改了就自动存成草稿，点「发布」才上线">
       {% csrf_token %}
+      {% comment %}212, D3: the revision this editor started from.{% endcomment %}
+      <input type="hidden" name="latest_revision" value="{{ item.latest_revision_id }}">
       <div class="b-fieldset">
         {% if intro %}<p class="b-section__text">{{ intro }}</p>{% endif %}
         {% include "backoffice/parts/fields.html" %}

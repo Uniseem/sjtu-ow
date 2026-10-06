@@ -157,7 +157,10 @@ def test_the_address_follows_the_title_until_published(site, client):
     edit = answer["location"]
     fields = {"title": "新赛季开始了", "category": guide.pk, "body": "x", "slug": "新"}
     answer = _save(client, edit, fields)
-    assert answer["values"] == {"slug": "新赛季开始了"}  # the page shows it
+    page.refresh_from_db()
+    # the page shows it (212: the response also carries the new revision number)
+    assert answer["values"]["slug"] == "新赛季开始了"
+    assert answer["values"]["latest_revision"] == page.latest_revision_id
     assert _draft(page).slug == "新赛季开始了"
 
     # Typed by the editor: kept, whatever the title does next.
@@ -234,3 +237,122 @@ def test_the_editor_saves_after_a_pause_not_per_keystroke():
     assert 'new Event("input"' in on_change and 'new Event("change"' not in on_change
     on_blur = source.split('editor.codemirror.on("blur"', 1)[1].split("});", 1)[0]
     assert 'new Event("change"' in on_blur
+
+
+# --- round 212, D3: a save based on an older revision is refused ---------------------
+
+
+def _opened_revision(client, url) -> int:
+    html = client.get(url).content.decode()
+    match = re.search(r'name="latest_revision" value="(\d+)"', html)
+    assert match, "the edit form carries the revision it started from"
+    return int(match.group(1))
+
+
+@pytest.mark.django_db
+def test_two_editors_do_not_overwrite_each_other(site, client):
+    """Both opened the article; whoever saves second on the old base is told
+    someone else changed it, instead of wiping the first one's fields."""
+    from django.test import Client
+
+    writer = _user("both212@example.com", GROUP_SUBMITTER)
+    page = _article(writer, title="一起改212", live=True)
+    edit = reverse("backoffice:article_edit", args=[page.pk])
+    client.force_login(writer)
+    second = Client()
+    second.force_login(_user("other212@example.com", "内容编辑"))
+
+    base_first = _opened_revision(client, edit)
+    base_second = _opened_revision(second, edit)
+    answer = _save(
+        client, edit, _fields(page, body="甲写的正文", latest_revision=base_first)
+    )
+    assert answer["ok"]
+    assert answer["values"]["latest_revision"] != base_first
+
+    stale = _save(
+        second, edit, _fields(page, title="乙改的标题", latest_revision=base_second)
+    )
+    assert not stale["ok"] and stale["saved"] == []
+    assert "另一个人" in stale["errors"]["__all__"][0]
+    draft = _draft(page)
+    assert draft.body == "甲写的正文" and draft.title == "一起改212"
+
+    # Refreshing hands over the current number; saving then keeps both edits.
+    fresh = _opened_revision(second, edit)
+    answer = _save(
+        second,
+        edit,
+        _fields(_draft(page), title="乙改的标题", latest_revision=fresh),
+    )
+    assert answer["ok"]
+    draft = _draft(page)
+    assert draft.body == "甲写的正文" and draft.title == "乙改的标题"
+    # The answer carries the new number, so editing continues without reload.
+    again = _save(
+        second,
+        edit,
+        _fields(
+            _draft(page),
+            title="乙又改了",
+            latest_revision=answer["values"]["latest_revision"],
+        ),
+    )
+    assert again["ok"] and _draft(page).title == "乙又改了"
+
+
+@pytest.mark.django_db
+def test_a_stale_whole_form_submit_is_refused(site, client):
+    """No script (or 「发布」): the same guard, as a page message."""
+    from django.test import Client
+
+    writer = _user("whole212@example.com", GROUP_SUBMITTER)
+    page = _article(writer, title="整张212", live=True)
+    edit = reverse("backoffice:article_edit", args=[page.pk])
+    client.force_login(writer)
+    base = _opened_revision(client, edit)
+    other = Client()
+    other.force_login(_user("whole212b@example.com", "内容编辑"))
+    _save(other, edit, _fields(page, body="别人先存的", latest_revision=base))
+
+    response = client.post(edit, _fields(page, body="我这边打的", latest_revision=base))
+    assert response.status_code == 200  # the form again, not a silent overwrite
+    assert "另一个人" in response.content.decode()
+    assert _draft(page).body == "别人先存的"
+    # A number that is no number is refused, not ignored.
+    response = client.post(
+        edit, _fields(page, body="我这边打的", latest_revision="abc")
+    )
+    assert response.status_code == 200
+    assert _draft(page).body == "别人先存的"
+
+
+@pytest.mark.django_db
+def test_plain_pages_and_pins_refuse_a_stale_base(site, client):
+    from django.test import Client
+
+    from content.models import StandardPage
+
+    page = StandardPage.objects.get(slug="about")
+    edit = reverse("backoffice:page_edit", args=[page.pk])
+    client.force_login(_user("plain212a@example.com", "内容编辑"))
+    second = Client()
+    second.force_login(_user("plain212b@example.com", "内容编辑"))
+    base = _opened_revision(client, edit)
+    base_second = _opened_revision(second, edit)
+    answer = _save(
+        client, edit, {"title": "关于我们", "body": "甲写的", "latest_revision": base}
+    )
+    assert answer["ok"]
+    stale = _save(
+        second,
+        edit,
+        {"title": "乙改的标题", "body": "乙写的", "latest_revision": base_second},
+    )
+    assert not stale["ok"] and "另一个人" in stale["errors"]["__all__"][0]
+    assert _draft(page).body == "甲写的"
+
+    pins = reverse("backoffice:home_pins")
+    base = _opened_revision(client, pins)
+    answer = _save(second, pins, {"latest_revision": base - 1})
+    assert not answer["ok"] and "另一个人" in answer["errors"]["__all__"][0]
