@@ -3,7 +3,6 @@
 (function () {
   "use strict";
   var d = document;
-  var GIVE_UP_MS = 8000;
   function has(name) {
     return d.cookie.indexOf(name + "=1") !== -1;
   }
@@ -27,30 +26,20 @@
       names.push(nodes[i].getAttribute("data-slot"));
     }
     var url = "/_fragments/state/?slots=" + encodeURIComponent(names.join(","));
-    // Whatever happens to the request, the skeleton goes (design 13.13.3,
-    // v7.18, 210 review F1): on failure the slots keep what an anonymous
-    // visitor sees, whose links lead to the live pages. A late answer is
-    // still swapped in.
-    function done() {
-      d.documentElement.className = d.documentElement.className.replace(
-        " ow-state-pending",
-        ""
-      );
-    }
-    var asked = false;
     function fill() {
-      if (!window.htmx || asked) {
+      if (!window.htmx) {
         return;
       }
-      asked = true;
-      // 429 and 5xx resolve without swapping; a network error rejects.
       window.htmx
         .ajax("GET", url, { source: d.body, swap: "none" })
-        .then(done, done);
+        .then(function () {
+          d.documentElement.className = d.documentElement.className.replace(
+            " ow-state-pending",
+            ""
+          );
+        });
     }
     function start() {
-      // HTMX never loaded, or the answer never came.
-      window.setTimeout(done, GIVE_UP_MS);
       if (window.htmx) {
         fill();
       } else {

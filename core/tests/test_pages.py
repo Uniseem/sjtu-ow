@@ -10,6 +10,19 @@ from django.db.utils import OperationalError
 from django.urls import reverse
 
 
+@pytest.fixture
+def superuser(client):
+    """Details are for superusers only (design 16.6, v7.18); the tests that
+    read them sign one in."""
+    from accounts.models import User
+
+    admin = User.objects.create_superuser(
+        email="health-admin@example.com", password="Health-Check-Pass-1"
+    )
+    client.force_login(admin)
+    return admin
+
+
 def _disk_with_free_percent(monkeypatch, percent):
     from core import health
 
@@ -18,7 +31,7 @@ def _disk_with_free_percent(monkeypatch, percent):
 
 
 @pytest.mark.django_db
-def test_healthz_returns_200(client, worker_heartbeat, monkeypatch):
+def test_healthz_returns_200(client, superuser, worker_heartbeat, monkeypatch):
     # The disk check reads the host's real free space. GitHub's runners had
     # 17.8% free, below the 20% threshold (round 045). The threshold has its
     # own tests below; here the disk must not decide the result.
@@ -35,7 +48,7 @@ def test_healthz_returns_200(client, worker_heartbeat, monkeypatch):
 
 @pytest.mark.django_db(transaction=True)
 def test_healthz_returns_200_when_database_is_busy(
-    client, worker_heartbeat, monkeypatch
+    client, superuser, worker_heartbeat, monkeypatch
 ):
     _disk_with_free_percent(monkeypatch, 50)
     connection.close()
@@ -84,7 +97,7 @@ def test_healthz_returns_503_when_database_not_writable(client, monkeypatch):
 
 @pytest.mark.django_db(transaction=True)
 def test_a_read_only_database_with_an_expired_heartbeat_still_answers(
-    client, monkeypatch
+    client, superuser, monkeypatch
 ):
     """Round 129: reading an expired cache entry deletes it; on a read-only
     database that delete failed and /healthz answered 500 instead of 503."""
@@ -115,7 +128,7 @@ def test_a_read_only_database_with_an_expired_heartbeat_still_answers(
 
 
 @pytest.mark.django_db
-def test_healthz_returns_503_when_heartbeat_expired(client):
+def test_healthz_returns_503_when_heartbeat_expired(client, superuser):
     from datetime import timedelta
 
     from django.core.cache import cache
@@ -188,6 +201,72 @@ def test_healthz_returns_503_when_disk_is_nearly_full(
     assert response.status_code == 503
     payload = json.loads(response.content)
     assert payload["checks"]["disk"]["ok"] is False
+
+
+def _expire_heartbeat():
+    from datetime import timedelta
+
+    from django.core.cache import cache
+    from django.utils import timezone
+
+    from core.health import WORKER_HEARTBEAT_CACHE_KEY
+
+    cache.set(
+        WORKER_HEARTBEAT_CACHE_KEY,
+        (timezone.now() - timedelta(minutes=3)).isoformat(),
+        timeout=600,
+    )
+
+
+@pytest.mark.django_db
+def test_the_public_sees_which_check_failed_but_no_details(client, monkeypatch):
+    """Design 16.6 (v7.18, 210 review C9): /healthz is open to the internet.
+    It used to return the database error text, the disk percentage and the
+    backlog size; an outside monitor only needs the status."""
+    _disk_with_free_percent(monkeypatch, 37)
+    _expire_heartbeat()
+    response = client.get(reverse("healthz"))
+
+    assert response.status_code == 503  # the status code is unchanged
+    payload = json.loads(response.content)
+    assert payload["status"] == "error"
+    assert payload["checks"] == {
+        "database": {"ok": True},
+        "disk": {"ok": True},
+        "worker_heartbeat": {"ok": False},
+        "task_backlog": {"ok": True},
+    }
+    body = response.content.decode()
+    assert "心跳过期" not in body
+    assert "37" not in body
+
+
+@pytest.mark.django_db
+def test_back_office_staff_who_are_not_superusers_see_no_details(client):
+    from django.utils import timezone
+
+    from accounts.models import User
+
+    editor = User.objects.create_user(
+        email="health-editor@example.com",
+        password="Health-Check-Pass-1",
+        nickname="内容编辑",
+        is_staff=True,
+        agreed_terms_at=timezone.now(),
+        agreed_cross_border_at=timezone.now(),
+    )
+    client.force_login(editor)
+    _expire_heartbeat()
+    payload = json.loads(client.get(reverse("healthz")).content)
+    assert payload["checks"]["worker_heartbeat"] == {"ok": False}
+
+
+@pytest.mark.django_db
+def test_a_superuser_sees_the_details(client, superuser):
+    _expire_heartbeat()
+    payload = json.loads(client.get(reverse("healthz")).content)
+    assert "心跳过期" in payload["checks"]["worker_heartbeat"]["detail"]
+    assert "detail" in payload["checks"]["disk"]
 
 
 @pytest.mark.django_db

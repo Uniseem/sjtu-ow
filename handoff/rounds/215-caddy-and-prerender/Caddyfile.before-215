@@ -2,18 +2,9 @@
 	admin off
 }
 
-# HSTS for what Caddy serves itself (design 15.2, v7.18): the first visit
-# nearly always lands on a prerendered page, which used to go without it.
-# Must match Django's SECURE_HSTS_* word for word; a test compares the two.
-# Not on the routes to Django, which sends its own.
-(transport_security) {
-	header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-}
-
 # What Django sends with every page it renders (design 13.13.2, v6.3). The
 # policy must match SECURE_CSP word for word; a test compares the two.
 (page_security) {
-	import transport_security
 	header {
 		Content-Security-Policy "default-src 'self'; script-src 'self' 'inline-speculation-rules'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 		X-Frame-Options "DENY"
@@ -53,14 +44,12 @@
 	@hashed_static path_regexp hashed_static ^/static/.+\.[a-f0-9]{12}\.[^/]+$
 	handle @hashed_static {
 		root * /srv
-		import transport_security
 		header Cache-Control "public, max-age=31536000, immutable"
 		file_server
 	}
 
 	handle /static/* {
 		root * /srv
-		import transport_security
 		header Cache-Control "public, max-age=300, must-revalidate"
 		file_server
 	}
@@ -70,15 +59,7 @@
 	handle @hashed_fonts {
 		root * /srv
 		header Cache-Control "public, max-age=31536000, immutable"
-		import transport_security
 		file_server
-	}
-
-	# Anything else under fonts/ is an uploaded original (design 15.2,
-	# v7.18): the public only ever gets the slices above. The admin
-	# downloads an original through Django.
-	handle /media/fonts/* {
-		respond 404
 	}
 
 	# Thumbnails are named after the original's file name and the crop, so
@@ -86,14 +67,12 @@
 	handle /media/images/* {
 		root * /srv
 		header Cache-Control "public, max-age=31536000, immutable"
-		import transport_security
 		file_server
 	}
 
 	handle /media/* {
 		root * /srv
 		header Cache-Control "public, max-age=86400"
-		import transport_security
 		file_server
 	}
 

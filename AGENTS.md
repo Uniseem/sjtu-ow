@@ -71,6 +71,8 @@ bash scripts/remote-check.sh attach           # 本机这边断了，接着看�
 
 它把工作区（**包括没提交的改动**，不碰暂存区）做成一个提交、打成 git bundle 传上去，测试机检出的就是本机现在的样子（换行是 LF）。检查在服务器上脱离连接跑，本机每 3 秒取一次日志，退出码就是检查的结果；同一时间只跑一个，后来的排队。整组里 pytest 按核数分片、`docker build` 同时在后台构建，全部约 1 分半。本机只在测试机连不上时才跑这组检查。
 
+**所有测试和检查都放到后台跑，别让对话卡住**（用户 2026-10-07：「所有的测试都后台运行，不要被卡住」）：`remote-check.sh` 整组、单条 `run`、变异脚本、`journey.py`、截图、真环境演练，一律用助手工具的后台运行（Claude Code 的 `run_in_background`），输出写到文件，跑完等完成通知再读结果；等的时候接着做不依赖结果的事（写报告、改文档、准备下一步）。不要前台阻塞地等，也不要用 `sleep` 循环轮询。几个检查有先后依赖时，串成一条后台命令按顺序跑（测试机同一时间只跑一个，后来的本来就排队）
+
 改了错误页模板或 `static/css/error.css` 后跑 `uv run python manage.py render_error_pages` 并提交 `deploy/error_pages/`。改了 `core/placeholders.py`（占位图的画法和动画）后跑 `uv run python manage.py render_placeholders` 并提交 `static/img/placeholders/`。换了校徽文件 `static/img/sjtu-emblem.svg` 后跑 `uv run python manage.py render_emblem_layers` 并提交两张图层。改了网站图标的画法（`core/icons.py`，171 起，照 `static/img/favicon.svg` 的形状）后跑 `uv run python manage.py render_icons` 并提交 `static/img/` 下的 `favicon.ico`、`apple-touch-icon.png`、`icon-192.png`、`icon-512.png`；只改 SVG 不会自动跟着变。改了邮件页头的图（`core/email_art.py`，200 起：站点标志反色、两道山脊，照站点的地平线和图标的数字画）或者它借用的地平线、图标数字后跑 `uv run python manage.py render_email_art` 并提交 `static/img/email/`；信里的图是随信内嵌的（`core.mail.LetterMessage`），邮箱不显示 SVG。改了 `locale/` 下的 `.po`（后台中文，117 起）后跑 `uv run python manage.py compile_translations` 并提交 `.mo`。
 
 ## 测试机与部署
@@ -197,6 +199,7 @@ Host sjtu-ow-test
 - **别用一个短词断言页面里「没有」某样东西**（175）：`"cdn" not in html.lower()` 会碰上页面里的 CSRF 令牌、内容安全策略随机串，偶尔就红（171 的 CI 这样红过一次）。断言具体的结构，比如没有 `src="https://…"` 的 `<script>`
 - **正文和说明是 Markdown**（192 起，设计 5.2）：渲染只走 `content/markdown.py`，别在别处再写一个；测试里建文章直接写 `body="正文"`，不再是 `[("paragraph", …)]`。`content/legacy_body.py` 和 `content/blocks.py` 是迁移要用的，不能删。后台编辑器 EasyMDE 的样式表是表单资源；覆盖它的规则在 `static/css/markdown-editor.css`（196 起由控件带上，排在 EasyMDE 的后面），前面都加了 `.md-field` 提高优先级，新加的也要加
 - **后台的八个大类**（193 起，196 重写）：193 那版靠 `core/admin_sections.py` 按网址前缀往 Wagtail 的界面里插标签条，196 整个删了；现在大类和标签在 `backoffice/nav.py`，视图用 `placed()` 自己声明在哪（见上面「后台也是自己写的」）
+- **`htmx.ajax()` 的 Promise 只在网络错误时 reject**（215）：429、5xx 照样 resolve（只是不换内容），HTMX 没加载上时根本没有 Promise。只写 `.then(成功)` 的话，断网、脚本被拦时界面会卡在中间状态（`state.js` 的骨架就这样一直挂着）。收尾的事写 `.then(done, done)`，再加一个超时兜底。在浏览器里验证这类「一闪而过」的状态别从外面轮询（失败几十毫秒就结束，轮询看不到），用 `Page.addScriptToEvaluateOnNewDocument` 挂一个 MutationObserver 让页面自己记时间（`handoff/rounds/215-caddy-and-prerender/f1_probe.py`）
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
 ## 改了什么，就更新哪份文档

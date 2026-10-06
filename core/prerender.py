@@ -370,15 +370,46 @@ def request_page(path: str, kind: str = "") -> bool:
     return True
 
 
-def request_removal(path: str) -> None:
-    """Content just went private: delete the static file right away."""
-    from django.db import transaction
+REMOVAL_FAILED = "下线后删除静态文件失败，已交给后台任务重试"
 
-    from core.tasks import remove_prerendered
+
+def request_removal(path: str) -> None:
+    """Content just went private: delete the static file right away.
+
+    This process deletes it once the change is committed (design 13.13.5,
+    v7.18). It used to be a worker task, so with the worker stopped or
+    behind, an unpublished article stayed public as a file (210 review, C5).
+    A failed delete is logged, shows up as a failed page on the admin's
+    to-do list, and goes to the worker for a second try."""
+    from django.db import transaction
 
     if not is_enabled():
         return
-    transaction.on_commit(lambda: remove_prerendered.enqueue(path))
+    transaction.on_commit(lambda: _remove_now(path))
+
+
+def _remove_now(path: str) -> None:
+    from core.models import PrerenderedPage
+    from core.tasks import remove_prerendered
+
+    try:
+        drop(path)
+    except Exception:
+        logger.exception("下线内容的静态文件删除失败 %s", path)
+        try:
+            failed = {
+                "status": PrerenderedPage.Status.FAILED,
+                "error": REMOVAL_FAILED,
+                "requested_at": None,
+            }
+            PrerenderedPage.objects.update_or_create(
+                path=normalize_path(path),
+                defaults=failed,
+                create_defaults={**failed, "kind": "page"},
+            )
+        except Exception:
+            logger.exception("没能把 %s 标成生成失败", path)
+        remove_prerendered.enqueue(path)
 
 
 def request_all() -> None:

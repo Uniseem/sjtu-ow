@@ -502,6 +502,12 @@ uv run python manage.py optimize_db        # PRAGMA optimize + WAL 检查点
 
 数据库探活写入专用表 `HealthProbe` 后回滚，等待最多 200 毫秒；遇到 SQLite `database is locked` 视为正常忙碌（仍返回 200）。
 
+对外的响应只有总状态和每一项是否正常（215 起，设计 16.6）：`{"status": "error", "checks": {"worker_heartbeat": {"ok": false}, …}}`。数据库报错原文、磁盘剩余百分比、积压数量这些细节只给登录的超级管理员看；在服务器上看细节：
+
+```bash
+docker compose … exec -T web python manage.py shell -c "from core.health import run_health_checks; print(run_health_checks())"
+```
+
 后台的网址前缀由设置 `ADMIN_URL_PREFIX`（`/admin/`，本站的后台）和 `WAGTAIL_ADMIN_PREFIX`（`/wagtail/`，Wagtail 的管理界面）控制，供中间件识别后台请求：两处都用后台的内容安全策略，`/wagtail/` 只放超级管理员进。不要和 Wagtail 官方设置混淆；Caddyfile 里这两个前缀都直接交给 Django。
 
 ## CI

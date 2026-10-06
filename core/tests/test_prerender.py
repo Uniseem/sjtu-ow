@@ -167,6 +167,53 @@ def test_unpublishing_deletes_the_static_file(prerender_root, site_tree):
     assert not PrerenderedPage.objects.filter(path="/news/unpublish-me/").exists()
 
 
+def _removal_tasks():
+    from django_tasks_db.models import DBTaskResult
+
+    return DBTaskResult.objects.filter(task_path="core.tasks.remove_prerendered")
+
+
+@pytest.mark.django_db
+def test_unpublishing_deletes_the_file_without_waiting_for_the_worker(
+    prerender_root, site_tree, django_capture_on_commit_callbacks
+):
+    """Design 13.13.5 (v7.18, 210 review C5): the file goes once the change
+    is committed, in this process. It used to be a worker task, so with the
+    worker stopped an unpublished article stayed public as a file."""
+    page = _article(slug="gone-now")
+    prerender.generate("/news/gone-now/")
+    target = prerender_root / "news" / "gone-now" / "index.html"
+    assert target.exists()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        page.unpublish()
+
+    assert not target.exists()
+    assert not PrerenderedPage.objects.filter(path="/news/gone-now/").exists()
+    assert not _removal_tasks().exists()  # nothing left for the worker
+
+
+@pytest.mark.django_db
+def test_a_failed_removal_is_flagged_and_handed_to_the_worker(
+    prerender_root, site_tree, django_capture_on_commit_callbacks, monkeypatch, caplog
+):
+    page = _article(slug="stuck")
+    prerender.generate("/news/stuck/")
+
+    def refuse(path):
+        raise PermissionError("read-only file system")
+
+    monkeypatch.setattr(prerender, "remove_page", refuse)
+    with django_capture_on_commit_callbacks(execute=True):
+        page.unpublish()
+
+    record = PrerenderedPage.objects.get(path="/news/stuck/")
+    assert record.status == PrerenderedPage.Status.FAILED
+    assert record.error == prerender.REMOVAL_FAILED  # on the admin's to-do list
+    assert "下线内容的静态文件删除失败 /news/stuck/" in caplog.text
+    assert _removal_tasks().count() == 1
+
+
 @pytest.mark.django_db
 def test_slug_change_drops_the_old_address(prerender_root, site_tree):
     page = _article(slug="old-slug")
@@ -205,6 +252,26 @@ def test_nothing_happens_when_prerendering_is_off(settings, tmp_path, site_tree)
 
 
 # --- the state fragment -------------------------------------------------------
+
+
+def test_the_skeleton_goes_even_when_the_state_request_fails():
+    """Design 13.13.3 (v7.18, 210 review F1): the script used to drop the
+    skeleton only on success, so a network error, or HTMX failing to load,
+    left the header, the sign-up box and the whole comment section grey
+    and hidden. Substring guards; the browser run is
+    handoff/rounds/215-caddy-and-prerender/f1_probe.py."""
+    from pathlib import Path
+
+    from django.conf import settings
+
+    script = (Path(settings.BASE_DIR) / "static" / "js" / "state.js").read_text(
+        encoding="utf-8"
+    )
+    assert ".then(done, done)" in script  # rejected (network error) too
+    assert "var GIVE_UP_MS = 8000;" in script
+    assert "window.setTimeout(done, GIVE_UP_MS);" in script  # HTMX never came
+    start = script[script.index("function start()") :]
+    assert start.index("setTimeout(done, GIVE_UP_MS)") < start.index("fill();")
 
 
 @pytest.mark.django_db

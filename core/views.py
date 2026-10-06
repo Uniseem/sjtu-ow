@@ -38,13 +38,29 @@ def home(request):
 @csrf_exempt
 @require_GET
 def healthz(request):
-    """Liveness/readiness probe. Does not require CSRF; returns JSON status only."""
+    """Liveness/readiness probe. Does not require CSRF; returns JSON status only.
+
+    The public sees the overall status and which check failed; the details
+    (database error text, disk percentage, backlog size) are for superusers
+    (design 16.6, v7.18, 210 review C9). The status code is the same for both.
+    """
     result = run_health_checks()
     status_code = 200 if result["ok"] else 503
+    checks = result["checks"]
+    if not _sees_health_details(request):
+        checks = {name: {"ok": check["ok"]} for name, check in checks.items()}
     return JsonResponse(
-        {"status": result["status"], "checks": result["checks"]},
-        status=status_code,
+        {"status": result["status"], "checks": checks}, status=status_code
     )
+
+
+def _sees_health_details(request) -> bool:
+    # Looking up a signed-in user reads the database; when that is the very
+    # thing that is broken, the probe must still answer 503, not 500.
+    try:
+        return request.user.is_superuser
+    except Exception:  # noqa: BLE001
+        return False
 
 
 @require_GET

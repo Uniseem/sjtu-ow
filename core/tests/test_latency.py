@@ -73,6 +73,83 @@ def test_thumbnails_are_kept_a_year_and_other_uploads_a_day():
     assert 'Cache-Control "public, max-age=86400"' in uploads
 
 
+def _django_hsts() -> str:
+    """The Strict-Transport-Security header Django sends in production, from
+    the values in settings/prod.py run through Django's own middleware."""
+    import ast
+
+    from django.http import HttpResponse
+    from django.middleware.security import SecurityMiddleware
+    from django.test import RequestFactory, override_settings
+
+    prod = Path(settings.BASE_DIR) / "sjtu_ow" / "settings" / "prod.py"
+    wanted = {}
+    for node in ast.parse(prod.read_text(encoding="utf-8")).body:
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+            name = node.targets[0].id
+            if name.startswith("SECURE_HSTS_"):
+                wanted[name] = ast.literal_eval(node.value)
+    assert set(wanted) == {
+        "SECURE_HSTS_SECONDS",
+        "SECURE_HSTS_INCLUDE_SUBDOMAINS",
+        "SECURE_HSTS_PRELOAD",
+    }
+    with override_settings(**wanted):
+        middleware = SecurityMiddleware(lambda request: HttpResponse())
+        response = middleware(RequestFactory().get("/", secure=True))
+    return response["Strict-Transport-Security"]
+
+
+# Every way Caddy answers from disk, by the line that opens its block.
+CADDY_FILE_ROUTES = (
+    "(page_security)",
+    "handle @hashed_static",
+    "handle /static/*",
+    "handle @hashed_fonts",
+    "handle /media/images/*",
+    "handle /media/* {",
+)
+
+
+def test_what_caddy_serves_itself_carries_django_s_hsts():
+    """Design 15.2 (v7.18, 210 review C6): only Django's own pages sent HSTS,
+    and the first visit nearly always lands on the prerendered homepage."""
+    caddy = _caddy()
+    value = re.search(
+        r'header Strict-Transport-Security "([^"]+)"',
+        _block(caddy, "(transport_security)"),
+    )
+    assert value, "no Strict-Transport-Security in (transport_security)"
+    assert value.group(1) == _django_hsts()
+    for opening in CADDY_FILE_ROUTES:
+        assert "import transport_security" in _block(caddy, opening), opening
+    # Django sends its own; the header must not be doubled on its routes.
+    assert "transport_security" not in _block(caddy, "(django)")
+    assert caddy.count("Strict-Transport-Security") == 1
+
+
+def test_uploaded_font_originals_are_not_served():
+    """Design 15.2 (v7.18, 210 review C4): originals live under
+    media/fonts/<id>/original/ and `handle /media/*` served them to anyone.
+    Only the hashed stylesheet and the slices are public."""
+    caddy = _caddy()
+    fonts = _block(caddy, "handle /media/fonts/*")
+    assert "respond 404" in fonts
+    assert "file_server" not in fonts
+    # Before the catch-all for uploads, after the public font files.
+    assert (
+        caddy.index("handle @hashed_fonts")
+        < caddy.index("handle /media/fonts/*")
+        < caddy.index("handle /media/* {")
+    )
+    public = re.search(r"@hashed_fonts path_regexp hashed_fonts (\S+)", caddy)
+    pattern = re.compile(public.group(1))
+    assert pattern.match("/media/fonts/css/fonts.0123456789ab.css")
+    assert pattern.match("/media/fonts/3/latin.0123456789ab.woff2")
+    assert not pattern.match("/media/fonts/3/original/Source.woff2")
+    assert not pattern.match("/media/fonts/3/original/Source.otf")
+
+
 # --- preparing the next page -------------------------------------------------------
 
 
