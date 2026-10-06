@@ -201,6 +201,18 @@ Host sjtu-ow-test
 - **后台的八个大类**（193 起，196 重写）：193 那版靠 `core/admin_sections.py` 按网址前缀往 Wagtail 的界面里插标签条，196 整个删了；现在大类和标签在 `backoffice/nav.py`，视图用 `placed()` 自己声明在哪（见上面「后台也是自己写的」）
 - **`htmx.ajax()` 的 Promise 只在网络错误时 reject**（215）：429、5xx 照样 resolve（只是不换内容），HTMX 没加载上时根本没有 Promise。只写 `.then(成功)` 的话，断网、脚本被拦时界面会卡在中间状态（`state.js` 的骨架就这样一直挂着）。收尾的事写 `.then(done, done)`，再加一个超时兜底。在浏览器里验证这类「一闪而过」的状态别从外面轮询（失败几十毫秒就结束，轮询看不到），用 `Page.addScriptToEvaluateOnNewDocument` 挂一个 MutationObserver 让页面自己记时间（`handoff/rounds/215-caddy-and-prerender/f1_probe.py`）
 - **别用 `ssh 服务器 'bash -s' < 本机脚本` 跑含 `docker compose exec` 的脚本**（215）：`exec -T` 会把标准输入里剩下的脚本当成自己的输入读掉，后面的命令一条都不执行，退出码还是 0。215 升级正式站时就这样只做了备份、没部署。先 `scp` 脚本上去，再 `ssh 服务器 'bash /root/脚本.sh < /dev/null'`
+- **空的数据卷每次挂载都会被 Docker 改回镜像里挂载点的属主**（216）：镜像 216 起以 `app`（uid 10001）运行。演练「旧数据卷属于 root」时只把空目录改成 root，一挂上又变回 `app`、照样能写，差点得出「升级不用交接」的错误结论；卷里有文件时才保持原属主。正式站的卷都有文件，所以 README「升级到 216」那步 `chown` 不能省。模拟旧卷要先往卷里放文件再改属主（`handoff/rounds/216-review-lows/c10_drill.sh`）
+- **交接数据卷前先停 `web`、`worker`**（216）：只 `chown` 不停容器的话，旧容器（root）在交接和启动新容器之间还会写出新文件（预渲染页、`-wal`、上传），新镜像又写不进。顺序是 `build` → `stop web worker` → 用新镜像 `run --user root … chown` → `migrate` → `up -d`；之后 `find /app/... ! -user app` 应为 0
+- **看容器里的进程以谁运行，别用 `docker top -eo user,args`**（216）：少了 PID 列，Docker 报「Couldn't find PID field」，而写成 `! docker top … | grep -q root` 的检查会因为命令失败「白过」。读容器里的 `/proc/1/status`（`grep '^Uid:'`）
+- **变异脚本要改的那行在文件里出现两次时，会改到别处**（216）：`mutate.py` 用 `replace(old, new, 1)` 只换第一处；216「不能移除队长」的 `if membership.is_captain:` 在 `teams/services.py` 里有两处，变异改到了别的函数，测试照样绿，看起来像「没抓到」。写变异时把原文写长到只命中一处（带上相邻的注释或下一行），写完先数一遍出现次数
+- **JS 的子串守卫别只查一个词**（216）：F5 的测试只查脚本里有没有 `response.redirected`，这个词在错误标记里也出现，把判断条件改坏照样绿。要查就查完整的条件（`if (!response.ok || response.redirected) {`）并断言它在关键调用之前；这类测试本来就抓不到逻辑错（217 16-3），行为靠 `journey.py` 和测试机上的浏览器探针
+- **验证过邮箱的测试用户会被自动放进「投稿者」组**（216、217）：投稿者能发布文章、能传图。要测「能进后台但不能发布」「管理员自己的传图权限」时，测试用户别给验证过的邮箱，否则测试因为投稿者的权限变绿，测的不是要测的东西
+- **`handoff/` 下的复现脚本不进 CI**（217）：复核代理的复现脚本断言的是「问题还在」，217 有几个名字正好匹配 `*_tests.py`，被 CI 收进去跑红了。`pyproject.toml` 的 `norecursedirs` 已排除 `handoff`；复现时指定路径跑（`remote-check.sh run uv run pytest -q handoff/…/文件.py`，指定路径时照样收集）。以后的复现脚本也放 `handoff/rounds/<轮次>/` 下
+- **很多代理同时用测试机时会排长队**（217）：`remote-check.sh` 同一时间只跑一个，16 个复核代理各排几次复现，后面的等十几分钟；收尾时还排着的结果就拿不到了。派多个代理时让它们先读代码、只给最关键的几条上测试机，或者把复现合成一个脚本；长的变异普查在锁外单独的工作树里跑（硬规则 7）。**别用 `| tail -N` 截输出**：13 号代理截掉了前面打印的数字，复现结论少了一半
+- **跑完浏览器和演练脚本要收进程**（215）：测试机上留下过一天前的开发服务器、worker、Chromium 和 214 的演练脚本，父进程早没了。脚本里起的子进程要在 `finally` 里 `terminate()` 并等待，Docker 演练要 `trap … EXIT` 删容器和卷；发现孤儿时按 PID 逐个 `kill -TERM`（看 `ps -eo pid,ppid,etime,args`，`ppid` 是 1 的那些），别碰正在跑的那组
+- **`transaction=True` 的测试提交的缓存行不会被清掉**（217 16-1）：`--reuse-db` 下下一次 pytest 还看得到，worker 心跳、限流计数这类缓存会让顺序靠后的测试偶发红。新写这类测试时在前后删掉自己用的缓存键（216 的 A10 线程测试就是这样做的）
+- **和时间有关的断言要固定到整分**（217 16-13）：`test_autosave_events` 里一条比较「复制来的时间」，一边带微秒、一边被表单截到分钟，碰上就红（217 的 CI 红过一次）。造时间时用 `replace(second=0, microsecond=0)`
+- **刚推送就 `gh run watch` 可能等的是上一次运行**（217）：新运行还没出现在列表里时取到的是旧的编号，或者 `watch` 提前退出。用后台循环等最新一条的 `status` 变成 `completed` 再读结论
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
 ## 改了什么，就更新哪份文档
