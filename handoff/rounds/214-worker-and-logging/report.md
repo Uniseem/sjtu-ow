@@ -69,6 +69,25 @@ DRILL-C3 traceback 会在这里
 
 **C1，SMTP 黑洞（收下连接不回应）**：**未复现成功**。三轮演练里邮件任务都是 0 秒 SUCCESSFUL：第一轮发现开发配置的 `EMAIL_DELIVERY_BACKEND` 是 console（根本不碰 SMTP），改用生产配置后第二轮仍瞬间成功，原因没查完（怀疑草稿库里有两行 SiteSettings、`load()` 拿到空行走了未配置分支，或 2525 端口旧监听器残留），用户关机时间到，没有继续。SMTP 超时本身由单元测试钉住（`build_smtp_backend` 的 `timeout` 参数，变异验证确认拆掉会红）；黑洞演练留给下次开工补做。
 
+**C1 补做（2026-10-07，补记）**：写成脚本 `c1_drill.py` 在测试机上真跑：临时库、开发配置但发信走 `SiteSettingsEmailBackend`（10-06 那次瞬间成功，就是因为开发配置的发信后端是 console，根本不碰 SMTP）、关掉收件人白名单；脚本里起一个收下连接、一个字也不回的假 SMTP 服务，真起 `manage.py run_worker`，投两封信。结果（`remote-check.sh run`，退出码 0）：
+
+```
+黑洞端口 44871，收下连接 2 次，相对 worker 启动：1.9 秒、22.0 秒
+演练 1：FAILED，用时 20.0 秒，异常 smtplib.SMTPServerDisconnected
+演练 2：FAILED，用时 20.0 秒，异常 smtplib.SMTPServerDisconnected
+演练 1 的第 1 次重试：READY，排在 2026-10-06 17:50:56.978648
+演练 2 的第 1 次重试：READY，排在 2026-10-06 17:51:17.013093
+ok   两封信都失败（不是 0 秒成功）
+ok   每次在 18–25 秒之间放弃
+ok   异常是超时（timed out）
+ok   第二封在第一封放弃后接着跑
+ok   两封都排了 1 分钟后的重试
+ok   黑洞确实收到了连接
+C1 演练通过
+```
+
+smtplib 把套接字超时包成 `SMTPServerDisconnected("Connection unexpectedly closed: timed out")`，所以按 traceback 里的 `timed out` 判断，不按异常类名。对照：`--without-timeout` 把 `timeout=SMTP_TIMEOUT_SECONDS` 从测试机那份检出里拿掉再跑，60 秒内第一封一直 RUNNING、第二封一直 READY，六项全红（`对照：拆掉超时后演练红了，符合预期`），说明这个演练能抓到 C1。
+
 ## 顺带发现（重要，留给后面轮次/用户）
 
 - **测试机的公网 IPv4 没了**：2026-10-06 约 21:21（服务器 13:21 UTC）前后，eth0 上只剩 IPv6（`2a0e:6a80:3:9c7::/64`），原来的 `189.24.110.12:2222` 转发口对所有来源「连上即断」（从正式站探也一样，不是封 IP）；本机 DNS 转发进程（127.0.2.2/127.0.2.3）同时消失，整机 DNS 全灭。排查后把本机 SSH 配置的 `sjtu-ow-test` 改成 IPv6 + 22 直连，并在测试机上把 eth0 的 DNS 临时指到公共解析（`resolvectl dns eth0 ...`，运行态、重启失效）。**那套线路优化转发如果还要用，需要用户去转发机上把 2222 的后端地址改成 IPv6 或新地址；Docker 的出站、容器里的 DNS 是否受影响还没查。**（2026-10-07 补记：转发恢复了，本机经 `189.24.110.12:2222` 登得上测试机，主机密钥按 `HostKeyAlias` 核对一致；本机这时反而没有 IPv6，直连报 No route to host。`sjtu-ow-test` 已改回走转发，和 `AGENTS.md` 写的一样。）
