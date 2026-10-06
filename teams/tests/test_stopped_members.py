@@ -54,3 +54,11 @@ def test_the_captain_sees_whom_to_remove(client, team):
     html = client.get(f"/teams/{team.pk}/manage/").content.decode()
     assert html.count("data-account-stopped") == 1
     assert "可以移出、空出名额" in html
+
+
+def test_the_manage_page_offers_no_transfer_for_a_stopped_member(client, team):
+    """213, T2 (design 7.4): the button would only raise, so it is not shown;
+    the active member's row still has it."""
+    client.force_login(User.objects.get(email="cap179@example.com"))
+    html = client.get(f"/teams/{team.pk}/manage/").content.decode()
+    assert html.count("转让队长") == 1  # 「还在的人」only, not 「被停用的人」

@@ -341,3 +341,11 @@ def test_the_daily_cleanup_drops_old_letters():
     )
     call_command("cleanup_old_data", stdout=StringIO())
     assert [row.letter["subject"] for row in HeldLetter.objects.all()] == ["新的"]
+
+
+@pytest.mark.django_db
+def test_the_preview_is_404_for_anonymous(client):
+    """The signed-out check comes first; without it the actor filter would
+    crash on AnonymousUser (213, guard census)."""
+    preview = reverse("letters_preview", args=[uuid.uuid4(), 1])
+    assert client.get(preview).status_code == 404

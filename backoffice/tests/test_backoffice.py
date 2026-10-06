@@ -685,3 +685,98 @@ def test_caddy_always_hands_both_admins_to_django():
     line = next(row for row in caddyfile.splitlines() if "@always_django path" in row)
     for path in ("/admin/*", "/admin", "/wagtail/*", "/wagtail"):
         assert f" {path} " in f" {line} ", path
+
+
+@pytest.mark.django_db
+def test_reactivation_goes_through_the_service_and_clears_the_note(site, client):
+    """213, A8 (design 3.7): the spent reason does not survive reactivation."""
+    root = _root()
+    member = _user("stop213@example.com")
+    client.force_login(root)
+    url = reverse("backoffice:user_active", args=[member.pk])
+    client.post(url, {"action": "stop", "deactivation_note": "刷评论"})
+    member.refresh_from_db()
+    assert not member.is_active and member.deactivation_note == "刷评论"
+
+    client.post(url, {"action": "start"})
+    member.refresh_from_db()
+    assert member.is_active and member.deactivation_note == ""
+
+
+@pytest.mark.django_db
+def test_a_deleted_account_cannot_be_reactivated(site, client):
+    """213, A8/A9 (design 3.7, 3.8): the data is anonymised, so re-enabling
+    the shell would only revive whatever permissions it once had. No button,
+    and a typed POST is refused too."""
+    from django.contrib.messages import get_messages
+
+    from accounts.services import delete_account
+
+    root = _root()
+    gone = _user("gone213@example.com")
+    delete_account(gone)
+    gone.refresh_from_db()
+    assert not gone.is_active
+
+    client.force_login(root)
+    html = client.get(reverse("backoffice:user_edit", args=[gone.pk])).content.decode()
+    assert "不能再启用" in html
+    assert "重新启用" not in html
+
+    response = client.post(
+        reverse("backoffice:user_active", args=[gone.pk]), {"action": "start"}
+    )
+    gone.refresh_from_db()
+    assert not gone.is_active
+    said = [str(message) for message in get_messages(response.wsgi_request)]
+    assert any("不能再启用" in message for message in said), said
+
+
+@pytest.mark.django_db
+def test_a_manager_without_submission_cannot_write_articles(site, client):
+    """An unverified 赛事管理员 can enter the back office but has no add
+    permission on the article index: the view itself refuses (213, guard
+    census)."""
+    manager = User.objects.create_user(
+        email="events213@example.com",
+        password="Correct-Horse-Battery-1",
+        nickname="赛事213",
+        agreed_terms_at=timezone.now(),
+        agreed_cross_border_at=timezone.now(),
+    )
+    manager.groups.add(Group.objects.get(name="赛事管理员"))
+    client.force_login(manager)
+    assert client.get(reverse("backoffice:article_new")).status_code == 403
+    guide = ArticleCategory.objects.get(slug="guide")
+    response = client.post(
+        reverse("backoffice:article_new"),
+        {"title": "偷写213", "category": guide.pk, "body": "x", "save": "1"},
+    )
+    assert response.status_code == 403
+    assert not ArticlePage.objects.filter(title="偷写213").exists()
+
+
+@pytest.mark.django_db
+def test_article_new_without_an_index_is_404(site, client):
+    writer = _user("noindex213@example.com", GROUP_SUBMITTER)
+    client.force_login(writer)
+    ArticleIndexPage.objects.all().delete()
+    assert client.get(reverse("backoffice:article_new")).status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_chooser_reports_a_bad_file_instead_of_crashing(site, media, client):
+    member = _user("badfile213@example.com", GROUP_SUBMITTER)
+    client.force_login(member)
+    collection = Collection.objects.get(name=SUBMISSION_IMAGE_COLLECTION)
+    response = client.post(
+        reverse("backoffice:image_chooser_upload"),
+        {
+            "collection": collection.pk,
+            "file": SimpleUploadedFile(
+                "notes.txt", b"not a picture", content_type="text/plain"
+            ),
+        },
+    )
+    assert response.status_code == 400
+    assert json.loads(response.content)["error"]

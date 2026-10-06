@@ -4,7 +4,7 @@ from django.core.management import call_command
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import ContactMethod, ContactType, User
+from accounts.models import BATTLTAG_TAKEN, ContactMethod, ContactType, User
 from accounts.services import (
     ALL_PRESET_GROUPS,
     CONTACT_VIEW_GROUPS,
@@ -131,3 +131,26 @@ def test_init_site_is_idempotent_and_keeps_memberships():
             content_type__app_label="wagtailadmin",
             codename="access_admin",
         ).exists()
+
+
+@pytest.mark.django_db
+def test_a_taken_battletag_is_a_form_error_not_a_crash(client):
+    """A duplicate ends as the same message on the page, whichever layer
+    catches it: the form check, or the case-insensitive unique constraint
+    through the view's ValidationError handling (213, guard census)."""
+    owner = _user(email="taken-owner@example.com")
+    add_game_account(owner, battletag="Taken#1234")
+    client.force_login(_user(email="taken-other@example.com"))
+    response = client.post(
+        reverse("me_game_accounts"),
+        {
+            "battletag": "taken#1234",
+            "rank_tank": "",
+            "rank_damage": "",
+            "rank_support": "",
+        },
+    )
+    assert response.status_code == 200
+    assert BATTLTAG_TAKEN in response.content.decode()
+    assert owner.game_accounts.count() == 1
+    assert User.objects.get(email="taken-other@example.com").game_accounts.count() == 0

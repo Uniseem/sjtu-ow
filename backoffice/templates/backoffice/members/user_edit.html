@@ -57,12 +57,17 @@
               <div class="b-actions"><button type="submit" class="c-btn c-btn--secondary c-btn--sm is-danger">停用账号</button></div>
             </form>
           {% else %}
-            <p class="b-section__text">账号已停用，不能登录。</p>
-            <form method="post" action="{% url 'backoffice:user_active' person.pk %}">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="start">
-              <button type="submit" class="c-btn c-btn--secondary c-btn--sm">重新启用</button>
-            </form>
+            {% comment %}213, A8: a deleted account never comes back, so there is no button.{% endcomment %}
+            {% if person_deleted %}
+              <p class="b-section__text">账号已注销：数据已匿名化，不能再启用。</p>
+            {% else %}
+              <p class="b-section__text">账号已停用，不能登录。</p>
+              <form method="post" action="{% url 'backoffice:user_active' person.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="start">
+                <button type="submit" class="c-btn c-btn--secondary c-btn--sm">重新启用</button>
+              </form>
+            {% endif %}
           {% endif %}
         </section>
       {% endif %}

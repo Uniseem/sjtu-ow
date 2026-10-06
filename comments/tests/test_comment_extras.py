@@ -580,3 +580,60 @@ def test_every_change_regenerates_the_article(
         with django_capture_on_commit_callbacks(execute=True):
             action()
         assert PrerenderedPage.objects.filter(path=article.get_url()).exists(), action
+
+
+@pytest.mark.django_db
+def test_a_silenced_author_cannot_edit_old_comments(article, reader):
+    """213, S1 (design 5.6): editing takes the same rights as posting."""
+    from accounts.models import Feature, FeatureUserRule
+
+    comment = _comment(article, reader, "禁言前的")
+    FeatureUserRule.objects.create(
+        user=reader, feature=Feature.ARTICLE_COMMENT, allowed=False
+    )
+    with pytest.raises(services.CommentError, match="暂时无法使用此功能"):
+        services.edit(comment=comment, actor=reader, body="禁言后改")
+    comment.refresh_from_db()
+    assert comment.body == "禁言前的"
+
+
+@pytest.mark.django_db
+def test_a_closed_article_takes_no_edits(article, reader):
+    """213, S1: comments closed means no edits either (design 5.6)."""
+    comment = _comment(article, reader, "关评论前的")
+    article.comments_enabled = False
+    article.save(update_fields=["comments_enabled"])
+    comment = Comment.objects.get(pk=comment.pk)
+    with pytest.raises(services.CommentError, match="关闭了评论"):
+        services.edit(comment=comment, actor=reader, body="想改")
+    comment.refresh_from_db()
+    assert comment.body == "关评论前的"
+
+
+@pytest.mark.django_db
+def test_editing_shares_the_posting_limit(client, article, reader):
+    """213, S1: edits count toward the same per-minute limit (design 5.6)."""
+    client.force_login(reader)
+    cache.clear()
+    comment = _comment(article, reader, "原文")
+    url = reverse("comment_edit", args=[comment.pk])
+    for n in range(3):  # COMMENT_LIMIT_MINUTE
+        client.post(url, {"body": f"第 {n} 版"}, HTTP_HX_REQUEST="true")
+    comment.refresh_from_db()
+    assert comment.body == "第 2 版"
+    refused = client.post(url, {"body": "第四版"}, HTTP_HX_REQUEST="true")
+    assert "编辑太频繁了" in refused.content.decode()
+    comment.refresh_from_db()
+    assert comment.body == "第 2 版"
+
+
+@pytest.mark.django_db
+def test_a_hidden_comment_cannot_be_deleted_by_its_author(article, reader, editor):
+    """213, S7 (design 5.6): a moderator hid it; deleting would leave the
+    review list an empty row."""
+    comment = _comment(article, reader, "被隐藏的")
+    services.hide(comment=comment, actor=editor)
+    with pytest.raises(services.CommentError, match="不能删除"):
+        services.delete(comment=comment, actor=reader)
+    comment.refresh_from_db()
+    assert not comment.is_deleted and comment.body == "被隐藏的"

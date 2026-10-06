@@ -856,3 +856,15 @@ def test_only_jpg_png_or_webp_logos(name):
 def test_a_small_png_logo_is_accepted():
     form = _logo_form("logo.png", _image("PNG"))
     assert "logo_file" not in form.errors
+
+
+@pytest.mark.django_db
+def test_the_captaincy_cannot_go_to_a_stopped_account(team, member, captain):
+    """213, T2 (design 7.4): a stopped captain deadlocks the team — nobody
+    can apply, a superuser must appoint a new one. assign_captain has had
+    this guard since 179; transfer_captain lacked it."""
+    User.objects.filter(pk=member.pk).update(is_active=False)
+    member.refresh_from_db()
+    with pytest.raises(services.TeamError, match="已停用"):
+        services.transfer_captain(team=team, actor=captain, new_captain=member)
+    assert team.captain() == captain

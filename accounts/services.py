@@ -406,6 +406,7 @@ def delete_account(user) -> None:
         user.sjtu_verified_at = None
         user.is_active = False
         user.is_staff = False
+        user.is_superuser = False  # 213, A9: a deleted superuser must stay gone
         user.deactivation_note = DELETED_NOTE
         user.set_unusable_password()
         user.save()
@@ -810,6 +811,37 @@ def after_deactivation(user) -> list:
         decision_note="账号已停用",
     )
     return pause_recruiting(user)
+
+
+class AccountError(Exception):
+    """A refused account state change; shown to the admin who asked."""
+
+
+def is_deleted(user) -> bool:
+    """A self-deleted account (design 3.8): anonymised in place. It never
+    comes back — its data is gone, and re-enabling the shell would revive
+    whatever permissions it once had (213, A8/A9)."""
+    return user.email.endswith("@deleted.invalid")
+
+
+def deactivate_account(user, *, note: str) -> list:
+    """Stop an account (design 3.7; a service since 213, A8): it can no
+    longer log in, and the fallout of 3.7 runs here. Returns the teams that
+    stopped recruiting, for the admin's messages."""
+    user.is_active = False
+    user.deactivation_note = note
+    user.save(update_fields=["is_active", "deactivation_note"])
+    return after_deactivation(user)
+
+
+def reactivate_account(user) -> None:
+    """Bring a stopped account back; the spent reason is cleared (design 3.7,
+    v7.16). A deleted account stays deleted (213, A8)."""
+    if is_deleted(user):
+        raise AccountError("注销过的账号不能再启用。")
+    user.is_active = True
+    user.deactivation_note = ""
+    user.save(update_fields=["is_active", "deactivation_note"])
 
 
 def admin_profile(user, *, viewer) -> dict:

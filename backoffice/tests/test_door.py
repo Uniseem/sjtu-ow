@@ -210,3 +210,8 @@ def test_new_and_delete_still_need_their_own_permission(site, client):
     assert access.uses_images(editor)
     assert client.get(reverse("backoffice:collections")).status_code == 403
     assert Group.objects.filter(name=GROUP_CONTENT).exists()
+
+
+def test_a_section_that_does_not_exist_is_caught_when_the_page_is_placed():
+    with pytest.raises(ValueError):
+        placed("no-such-section")

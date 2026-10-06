@@ -278,8 +278,13 @@ def _own(comment, actor) -> None:
 
 @transaction.atomic
 def edit(*, comment, actor, body) -> Comment:
-    """The author rewrites the body; it is reviewed again (design 5.6)."""
+    """The author rewrites the body; it is reviewed again (design 5.6).
+    Editing takes the same rights as posting (213, S1): a silenced author,
+    or a page whose comments are now closed, cannot rewrite old comments."""
     _own(comment, actor)
+    problems = can_comment(actor, comment.page)
+    if problems:
+        raise CommentError(problems)
     if not comment.visible:
         raise CommentError("这条评论已经不能编辑了")
     body = (body or "").strip()
@@ -298,10 +303,14 @@ def edit(*, comment, actor, body) -> Comment:
 
 @transaction.atomic
 def delete(*, comment, actor) -> Comment:
-    """The author deletes: body cleared, row kept so replies stay threaded."""
+    """The author deletes: body cleared, row kept so replies stay threaded.
+    A comment a moderator hid stays (213, S7): deleting it would leave an
+    empty row in the review list."""
     _own(comment, actor)
     if comment.is_deleted:
         return comment
+    if comment.is_hidden:
+        raise CommentError("这条评论已经不能删除了")
     comment.is_deleted = True
     comment.is_pinned = False
     comment.body = ""

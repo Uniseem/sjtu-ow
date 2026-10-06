@@ -463,6 +463,11 @@ def transfer_captain(*, team, actor, new_captain) -> None:
     target = TeamMembership.objects.filter(team=team, user=new_captain).first()
     if target is None:
         raise TeamError("只能转让给现有成员。")
+    if not new_captain.is_active:
+        # Same guard as assign_captain (213, T2): a stopped account as
+        # captain deadlocks the team (nobody can apply, a superuser must
+        # step in).
+        raise TeamError("这个账号已停用，不能当队长。")
     if target.is_captain:
         raise TeamError("这位成员已经是队长了。")
     if captained_count(new_captain) >= max_captained():

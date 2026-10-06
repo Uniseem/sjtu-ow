@@ -520,3 +520,10 @@ def test_articles_have_nobody_signed_up_and_a_note_has_a_limit(site, client):
             note="字" * 501,
         )
     assert not Broadcast.objects.exists()
+
+
+@pytest.mark.django_db
+def test_an_unknown_kind_is_404(site, client):
+    """An unregistered announce kind is a 404, not a crash (213, guard census)."""
+    client.force_login(_member("kind213@example.com"))
+    assert client.get(reverse("announce", args=["nosuch", 1])).status_code == 404

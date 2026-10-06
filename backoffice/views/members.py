@@ -102,13 +102,13 @@ def user_list(request):
     )
 
 
-def _after_deactivation(request, user) -> None:
+def _after_deactivation(request, user, paused) -> None:
     """As the Wagtail edit page did (design 3.7): applications cancelled,
-    recruiting paused, a word about the teams this person captains."""
-    from accounts.services import after_deactivation
+    recruiting paused, a word about the teams this person captains. The
+    state change itself is accounts.services.deactivate_account (213, A8);
+    ``paused`` is what it returned."""
     from teams.services import captained_teams
 
-    paused = after_deactivation(user)
     messages.info(request, "账号已停用：不能再登录，待审批的入队申请已取消。")
     teams = captained_teams(user)
     if teams:
@@ -143,7 +143,7 @@ def user_edit(request, pk):
         autosave.log_edit(person, request.user)
         messages.success(request, f"「{person.nickname}」已保存。")
         return redirect("backoffice:user_edit", person.pk)
-    from accounts.services import admin_profile
+    from accounts.services import admin_profile, is_deleted
 
     return render(
         request,
@@ -152,6 +152,7 @@ def user_edit(request, pk):
             "page_title": person.nickname or person.email,
             "form": form,
             "person": person,
+            "person_deleted": is_deleted(person),
             "profile": admin_profile(person, viewer=request.user),
             "rules": person.feature_rules.select_related("updated_by"),
             "rule_form": UserRuleForm(user=person),
@@ -167,30 +168,33 @@ def user_edit(request, pk):
 @require_POST
 def user_active(request, pk):
     """停用 and 启用 (design 3.7; v7.6 a button of their own, 13.17). Nobody
-    switches their own account off from here."""
+    switches their own account off from here. State changes go through
+    accounts.services (213, A8)."""
+    from accounts import services as account_services
+
     person = get_object_or_404(User, pk=pk)
     if person.pk == request.user.pk:
         messages.error(request, "不能在这里停用自己的账号。")
         return redirect("backoffice:user_edit", person.pk)
     if request.POST.get("action") == "start":
         if not person.is_active:
-            person.is_active = True
-            person.save(update_fields=["is_active"])
-            admin_log.record(person, "users.reactivate", request.user)
-            messages.success(request, f"「{person.nickname}」已重新启用。")
+            try:
+                account_services.reactivate_account(person)
+            except account_services.AccountError as exc:
+                messages.error(request, str(exc))
+            else:
+                admin_log.record(person, "users.reactivate", request.user)
+                messages.success(request, f"「{person.nickname}」已重新启用。")
         return redirect("backoffice:user_edit", person.pk)
     form = DeactivateForm(request.POST)
     if not form.is_valid():
         messages.error(request, form.errors["deactivation_note"][0])
         return redirect("backoffice:user_edit", person.pk)
     if person.is_active:
-        person.is_active = False
-        person.deactivation_note = form.cleaned_data["deactivation_note"].strip()
-        person.save(update_fields=["is_active", "deactivation_note"])
-        admin_log.record(
-            person, "users.deactivate", request.user, note=person.deactivation_note
-        )
-        _after_deactivation(request, person)
+        note = form.cleaned_data["deactivation_note"].strip()
+        paused = account_services.deactivate_account(person, note=note)
+        admin_log.record(person, "users.deactivate", request.user, note=note)
+        _after_deactivation(request, person, paused)
     return redirect("backoffice:user_edit", person.pk)
 
 

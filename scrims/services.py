@@ -176,19 +176,25 @@ def sign_up(*, scrim, user, game_account_id, roles, now=None):
     is_new = signup is None
     if is_new:
         signup = ScrimSignup(scrim=scrim, user=user)
-    was_placed = bool(signup.team) if not is_new else False
+    was_placed = (signup.is_selected or bool(signup.team)) if not is_new else False
     changed_account = not is_new and signup.game_account_id != account.pk
+    changed_roles = not is_new and any(
+        getattr(signup, field) != (role in roles) for role, field in ROLE_FIELDS.items()
+    )
     signup.game_account = account
     for role, field in ROLE_FIELDS.items():
         setattr(signup, field, role in roles)
-    if changed_account:
-        # The split was made against the old ID's ranks, so it is stale.
+    if changed_account or changed_roles:
+        # The split was made against the old ID's ranks and roles (213, S2:
+        # roles too — a player who drops a role breaks the saved split just
+        # the same), so it is stale. Buffer players count as placed: their
+        # is_selected is cleared here, and the admin must hear about it.
         _clear_placement(signup)
     try:
         signup.save()
     except IntegrityError as exc:  # concurrent double submit
         raise ScrimError("你已经报名过这场内战了") from exc
-    if was_placed and changed_account:
+    if was_placed and (changed_account or changed_roles):
         _mark_teams_changed(scrim)
     _refresh_detail(scrim)
     return signup
@@ -309,8 +315,14 @@ def missing(scrim) -> list[str]:
 
 @transaction.atomic
 def publish(*, scrim, actor=None):
+    # Status only moves forward (design 9.1, v7.16; 213/S3): a draft is the
+    # only thing that can be published.
     if scrim.status == ScrimStatus.CANCELLED:
         raise ScrimError("已取消的内战不能再发布。")
+    if scrim.status == ScrimStatus.FINISHED:
+        raise ScrimError("已结束的内战不能再发布。")
+    if scrim.status != ScrimStatus.DRAFT:
+        raise ScrimError("这场内战已经发布了。")
     gaps = missing(scrim)
     if gaps:
         raise ScrimError(f"还没填好：{'、'.join(gaps)}。填好再发布。")
@@ -328,6 +340,11 @@ def publish(*, scrim, actor=None):
 
 @transaction.atomic
 def finish(*, scrim, actor=None):
+    # Only a published scrim can end (design 9.1, v7.16; 213/S3) — finishing
+    # a draft would publish its blanks, finishing a cancelled one would put
+    # it back on the list. Same rule as tournaments.services.finish.
+    if scrim.status != ScrimStatus.PUBLISHED:
+        raise ScrimError("只有已发布的内战可以标记为已结束。")
     scrim.status = ScrimStatus.FINISHED
     scrim.save(update_fields=["status", "updated_at"])
     _status_changed(scrim)

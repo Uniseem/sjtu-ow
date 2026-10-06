@@ -302,3 +302,14 @@ def test_content_editors_cannot_manage_tournaments(client, manager):
     assert (
         client.get(reverse("tournaments:edit", args=[tournament.pk])).status_code == 403
     )
+
+
+@pytest.mark.django_db
+def test_a_half_filled_draft_is_deleted_not_cancelled(manager):
+    """Cancelled is public, so a draft with blanks refuses cancel (213, guard
+    census)."""
+    draft = _tournament(title="", status=TournamentStatus.DRAFT, published_at=None)
+    with pytest.raises(services.TournamentError, match="直接删除"):
+        services.cancel(tournament=draft, actor=manager)
+    draft.refresh_from_db()
+    assert draft.status == TournamentStatus.DRAFT

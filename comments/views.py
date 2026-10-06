@@ -156,6 +156,10 @@ def like(request, pk):
 
 @require_POST
 def edit(request, pk):
+    if request.user.is_authenticated and _too_many(request.user):
+        # Editing shares the posting limit (design 5.6, 213/S1).
+        comment = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
+        return _section_response(request, comment.page, ["编辑太频繁了，稍后再试"])
     return _act(
         request,
         pk,

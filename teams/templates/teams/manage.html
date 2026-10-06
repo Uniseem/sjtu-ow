@@ -77,11 +77,14 @@
                 <td data-label="操作" class="is-num">
                   {% if not membership.is_captain %}
                     <span class="inline-flex flex-wrap justify-end gap-2">
-                      <form method="post" action="{% url 'captain_transfer' team.pk %}" data-confirm="把队长转让给这名成员？转让后你就是普通队员了。">
-                        {% csrf_token %}
-                        <input type="hidden" name="user" value="{{ membership.user.pk }}">
-                        <button type="submit" class="c-btn c-btn--secondary c-btn--sm">转让队长</button>
-                      </form>
+                      {% comment %}213, T2: a stopped account cannot take the captaincy; the button would only raise.{% endcomment %}
+                      {% if membership.user.is_active %}
+                        <form method="post" action="{% url 'captain_transfer' team.pk %}" data-confirm="把队长转让给这名成员？转让后你就是普通队员了。">
+                          {% csrf_token %}
+                          <input type="hidden" name="user" value="{{ membership.user.pk }}">
+                          <button type="submit" class="c-btn c-btn--secondary c-btn--sm">转让队长</button>
+                        </form>
+                      {% endif %}
                       <form method="post" action="{% url 'member_remove' team.pk %}" data-confirm="把这名成员移出战队？">
                         {% csrf_token %}
                         <input type="hidden" name="user" value="{{ membership.user.pk }}">

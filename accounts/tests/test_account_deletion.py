@@ -276,3 +276,26 @@ def test_export_is_rate_limited(client, world):
     for _ in range(5):
         assert client.get(reverse("me_export")).status_code == 200
     assert client.get(reverse("me_export")).status_code == 302
+
+
+@pytest.mark.django_db
+def test_deleting_an_account_drops_the_superuser_flag(db):
+    """213, A9 (design 3.8): is_staff was cleared but is_superuser was not —
+    with reactivation (A8) a deleted superuser would come back with full
+    power."""
+    now = timezone.now()
+    user = User.objects.create_user(
+        email="rootgone213@example.com",
+        password=PASSWORD,
+        nickname="超管213",
+        agreed_terms_at=now,
+        agreed_cross_border_at=now,
+    )
+    User.objects.filter(pk=user.pk).update(is_superuser=True, is_staff=True)
+
+    delete_account(User.objects.get(pk=user.pk))
+
+    user.refresh_from_db()
+    assert not user.is_active
+    assert not user.is_staff
+    assert not user.is_superuser

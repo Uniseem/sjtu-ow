@@ -712,3 +712,124 @@ def test_a_game_id_used_by_a_live_scrim_is_still_refused(client, scrim, player):
     assert "内战" in response.content.decode()
     assert 'hx-swap-oob="true"' in response.content.decode()
     assert player.game_accounts.filter(pk=account.pk).exists()
+
+
+@pytest.mark.django_db
+def test_changing_roles_clears_the_placement_and_marks_the_split_stale(scrim, player):
+    """213, S2 (design 9.2): the split was made against the roles the player
+    named, so dropping a role breaks it just like changing the game ID."""
+    signup = services.sign_up(
+        scrim=scrim,
+        user=player,
+        game_account_id=player.game_accounts.first().pk,
+        roles=[Role.DAMAGE],
+    )
+    signup.is_selected = True
+    signup.team = Team.A
+    signup.assigned_role = Role.DAMAGE
+    signup.rating_used = DIAMOND_3
+    signup.save()
+    Scrim.objects.filter(pk=scrim.pk).update(teams_generated_at=timezone.now())
+
+    services.sign_up(
+        scrim=scrim,
+        user=player,
+        game_account_id=player.game_accounts.first().pk,
+        roles=[Role.TANK],
+    )
+
+    signup.refresh_from_db()
+    assert signup.is_selected is False
+    assert signup.team == ""
+    assert signup.assigned_role == ""
+    assert signup.rating_used is None
+    scrim.refresh_from_db()
+    assert services.teams_are_stale(scrim) is True
+
+
+@pytest.mark.django_db
+def test_a_buffer_player_changing_ids_marks_the_split_stale(scrim, player):
+    """213, S2: checked onto the field but not yet split into a team —
+    clearing that selection must reach the admin too."""
+    signup = services.sign_up(
+        scrim=scrim,
+        user=player,
+        game_account_id=player.game_accounts.first().pk,
+        roles=[Role.DAMAGE],
+    )
+    signup.is_selected = True
+    signup.save()
+    Scrim.objects.filter(pk=scrim.pk).update(teams_generated_at=timezone.now())
+    scrim.refresh_from_db()
+    assert services.teams_are_stale(scrim) is False
+
+    second = GameAccount.objects.create(
+        user=player, battletag="玩家甲#5678", rank_damage=PLATINUM_1
+    )
+    services.sign_up(
+        scrim=scrim, user=player, game_account_id=second.pk, roles=[Role.DAMAGE]
+    )
+
+    signup.refresh_from_db()
+    assert signup.is_selected is False
+    scrim.refresh_from_db()
+    assert services.teams_are_stale(scrim) is True
+
+
+@pytest.mark.django_db
+def test_repeating_the_same_signup_keeps_the_placement(scrim, player):
+    """Nothing changed, nothing cleared, no false 「分队有变化」."""
+    signup = services.sign_up(
+        scrim=scrim,
+        user=player,
+        game_account_id=player.game_accounts.first().pk,
+        roles=[Role.DAMAGE],
+    )
+    signup.is_selected = True
+    signup.team = Team.A
+    signup.assigned_role = Role.DAMAGE
+    signup.save()
+    Scrim.objects.filter(pk=scrim.pk).update(teams_generated_at=timezone.now())
+
+    services.sign_up(
+        scrim=scrim,
+        user=player,
+        game_account_id=player.game_accounts.first().pk,
+        roles=[Role.DAMAGE],
+    )
+
+    signup.refresh_from_db()
+    assert signup.is_selected is True and signup.team == Team.A
+    scrim.refresh_from_db()
+    assert services.teams_are_stale(scrim) is False
+
+
+@pytest.mark.django_db
+def test_only_a_published_scrim_can_be_finished(db):
+    """213, S3 (design 9.1, v7.16): same rule as tournaments."""
+    for status in (ScrimStatus.DRAFT, ScrimStatus.CANCELLED, ScrimStatus.FINISHED):
+        scrim = make_scrim(status=status)
+        with pytest.raises(services.ScrimError, match="只有已发布"):
+            services.finish(scrim=scrim)
+        scrim.refresh_from_db()
+        assert scrim.status == status
+
+    live = make_scrim(status=ScrimStatus.PUBLISHED)
+    services.finish(scrim=live)
+    live.refresh_from_db()
+    assert live.status == ScrimStatus.FINISHED
+
+
+@pytest.mark.django_db
+def test_only_a_draft_can_be_published(db):
+    """213, S3: a published, finished or cancelled scrim cannot be published
+    (again)."""
+    scrim = make_scrim(status=ScrimStatus.PUBLISHED)
+    with pytest.raises(services.ScrimError, match="已经发布"):
+        services.publish(scrim=scrim)
+    scrim = make_scrim(status=ScrimStatus.FINISHED)
+    with pytest.raises(services.ScrimError, match="已结束"):
+        services.publish(scrim=scrim)
+    scrim = make_scrim(status=ScrimStatus.CANCELLED)
+    with pytest.raises(services.ScrimError, match="已取消"):
+        services.publish(scrim=scrim)
