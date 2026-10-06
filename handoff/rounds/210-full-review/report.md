@@ -105,7 +105,7 @@ setsid nohup .venv/bin/python handoff/rounds/210-full-review/mutate_guards.py \
 | 核心、运维 | `sjtu_ow/settings/`、`core/` 的 24 个模块、管理命令、`deploy/*`、`Dockerfile`、`scripts/check.sh`、CI，以及 `django_tasks_db` 和 Django 的源码 | 11 条（4 中） |
 | 前端 | 12 个 JS 文件、全部模板、templatetags、`core/slots.py`、`content/markdown.py` 的调用点 | 10 条（2 中）；没有 XSS、CSRF |
 | 后台 | `backoffice/` 全部、`core/announce_admin.py`、发信页、`core/forms.py`、相关测试和 196/202/205/206 的变异清单 | 11 条（3 中）；权限核对表全部一致 |
-| 内容、AI 审核 | **截稿时没回来** | — |
+| 内容、AI 审核 | `content/`、`moderation/` 全部、`backoffice/views/{articles,pages,categories}.py`、`search/services.py`、`static/js/markdown-editor.js`，以及 Wagtail 8 的 `embeds`、`pages.save_revision`、`publish_scheduled` 和 modelcluster 的源码（报告在第一次提交 `86cddb1` 之后到，写在 `review.md`「补充」） | 10 条（1 高、2 中）；手拼 HTML 和链接校验没漏 |
 
 ## 顺带发现
 

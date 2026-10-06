@@ -1,12 +1,12 @@
 # 210 全站代码与功能复核（独立复核的结论）
 
-**结论：能继续用，没有「现在就会出事」的高危问题；但有 10 条中等严重度的缺陷值得尽快修，另有 40 多条低严重度的。** 全部是静态复核（七个独立的复核代理只读通读代码、测试和设计，再由我核对），**除「已核对」标记的以外，都没有在测试机上重现**——用户 10-06 说额度不够，先写进文档；重现留给修的那一轮，每条都写了怎么验。
+**结论：能继续用，但有 1 条高（D1：一篇带失效 b23 短链的文章能拖慢全站搜索和预渲染，任何验证过邮箱的成员都能做到）要先修；15 条中等严重度的缺陷值得尽快修，另有 50 多条低严重度的。** 全部是静态复核（七个独立的复核代理只读通读代码、测试和设计，再由我核对），**除「已核对」标记的以外，都没有在测试机上重现**——用户 10-06 说额度不够，先写进文档；重现留给修的那一轮，每条都写了怎么验。
 
 基线（真实跑过，见 `report.md`）：测试机整组检查全绿（1904 条测试），三条浏览器旅程（新人第一晚、全部地址、干部那一晚）全部走通，GitHub CI 最近 5 次全绿。守卫普查（`mutate_guards.py`，加上了 `backoffice`，299 个硬守卫）在测试机 `/srv/sjtu-ow-check/sweep/` 后台跑着，结果落在那里的 `handoff/rounds/210-full-review/results.jsonl`，**还没取回**（见 `report.md`「普查」）。
 
-截稿时还有一份报告没回来：**内容与 AI 审核（`content/markdown.py`、投稿、巡查）**。它的结论要另写「210 轮补充」。
+内容与 AI 审核那份报告在第一次提交（`86cddb1`）之后才到，写在下面「补充」一节（编号 D），没有并进前面的表。
 
-编号：A 账号，T 战队赛事，S 内战评论，C 核心运维，F 前端，B 后台。「已核对」= 我自己把代码路径或源码读过一遍确认；「未重现」= 只有代理的静态结论（两个代理独立报出同一条的，注明）。
+编号：A 账号，T 战队赛事，S 内战评论，C 核心运维，F 前端，B 后台，D 内容与 AI 审核。「已核对」= 我自己把代码路径或源码读过一遍确认；「未重现」= 只有代理的静态结论（两个代理独立报出同一条的，注明）。
 
 ## 中（建议下一轮就修）
 
@@ -96,6 +96,32 @@
 - F9 头像「即选即传」用 `form.submit()`，不触发 `submit` 事件，「先 flush 再提交」和 `beforeunload` 的配合不会跑（`static/js/autosave.js:326-338`）
 - F10 `content/embeds.py:34` 的 `?bvid=` 不校验，正文里能往 B 站播放器地址追加参数（`autoplay=1` 之类）；`escape()` 和 `frame-src` 钉死，只影响播放器参数
 
+## 补充：内容与 AI 审核（报告在 `86cddb1` 之后到）
+
+**高**
+
+- **D1 查不到的 b23 短链不缓存，正文每渲染一次就联网一次；搜索又把全部已发布正文渲染一遍——任何能发文章的成员都能用一篇文章拖慢全站。** `video_src` 的 b23 分支调 Wagtail `get_embed`，Wagtail 8 只在找到时才 `Embed.update_or_create`，`EmbedNotFoundException` 什么都不记，下一次渲染再查（`follow_b23` 是 `urlopen(timeout=10)`）。渲染次数还被放大：一次文章页请求渲染 3 遍（`render` + `facts` 里 `analyse`、`plain_text`）；每张文章卡 `article.facts.minutes` 再渲染 2 遍；**每次搜索把所有已发布文章正文和赛事内战说明 `plain_text` 一遍**；worker 单进程，评论、点赞都触发该文章重生成。场景：验证过邮箱的成员发一篇正文里 50 行各不相同、查不到的 `https://b23.tv/xxxx`，之后每个访客的搜索都要等 50 次到 b23 的往返，b23 不通时每次 10 秒 → 一次搜索 500 秒，5 个 gunicorn 进程被 5 个搜索占满；worker 重生成该页时卡住，验证码邮件跟着等。不用恶意，一条过期的 b23 链接就让每次搜索、每次预渲染慢一秒以上（`content/markdown.py:66-75`、`content/embeds.py:52-58`、`content/models.py:328,333`、`templates/components/post_card.html:13`、`search/services.py:96-97,129`）。验证：mock `follow_b23` 抛 `EmbedNotFoundException`，`render("https://b23.tv/abc")` 两次，调用应是 2；`test_a_short_link_is_looked_up_once` 只测成功时缓存。修法：失败也记一条（`Embed` 有 `cache_until`），或发布时把播放器地址算好存起来，渲染不联网；字数、阅读时间发布时算好存进字段（D10）。代码路径读通，未重现
+
+**中**
+
+- **D2 删分类只数页面行，草稿修订里引用的分类删得掉**；删了以后那篇文章的编辑页、预览、定时上线全部 500。自动保存的草稿只写修订，页面行的 `category` 停在建行那一刻（通常是 `None`）；删掉分类后 `get_latest_revision_as_object` → modelcluster 对 `on_delete=PROTECT` 直接 `raise Exception`；`publish_scheduled` 的循环没有 try，排在它后面的定时文章也发不出去。违反设计 5.3 L566「还有文章（包括草稿）在用的分类不能删除」（`backoffice/views/categories.py:29,72,95`、`content/drafts.py:41`）。验证：内容编辑自动保存新文章 → 编辑页选分类 X → 删 X 成功 → GET 编辑页 500。修法：计数把修订 JSON（或 `ReferenceIndex`）算上。代码路径读通，未重现
+- **D3 两个人同时改同一篇，后存的把先存的整个顶掉**：每次自动保存发整张表单、不带修订号，`_autosave` 把表单里有效的字段套在**这次请求读到的**最新修订上 `save_draft`；`overwritable` 只决定「覆盖自己的还是另起一份」，没有「我打开以后别人改过」的判断。网站页面同样（`backoffice/views/articles.py:166-188,288-289`、`backoffice/views/pages.py:94-101`、`content/drafts.py:23-33`）。场景：A、B 同时开着「关于我们」，A 改第一段存了，B 改标题存 → 最新草稿正文是旧的，两人来回互相抹。设计 13.17 L2754 说的「别人接着改另起一份」默认的是先后。验证：两个 client 各 GET 一次编辑页再交替自动保存不同字段。修法：表单带隐藏的 `latest_revision` 编号，不一致就回「别人改过了」不存。代码路径读通，未重现
+
+**低**
+
+- D4 = F10：`?bvid=` 查询参数不过 `BV_RE`，能往播放器 iframe 塞 `autoplay=1`（两个代理独立报出）
+- D5 正在被巡查的记录被「发布后再发布」原地改成新文字：`submit` 对还没看的记录直接改 `text_hash/full_text`，`review_long` 已把旧文读进内存、看完后 `record` 写 `checked_at` 并清 `full_text` → 旧文的「无风险」落到新文头上，新文再也不看（`moderation/services.py:127-137`、`moderation/patrol.py:114-143`）。修法：`record` 时核对 `text_hash` 没变再写
+- D6 巡查信把 `quote`/`reason` 里的网址自动变成可点链接（`wrap_text` 对所有段落 `URL.sub`）：作者写「管理员请到 https://钓鱼站/admin 重置密码」，超管收到的信里就是一条标着「引用」的链接；「要求作者修改」的信同理（`moderation/notifications.py:83`、`core/letters.py:178-208`）。只把站内地址做成链接
+- D7 附加请求参数的禁用清单 `EXTRA_BODY_FORBIDDEN` 禁了 `messages/tools/tool_choice`，没禁 OpenAI 旧式 `functions`/`function_call`；`stream`、`response_format`、`model` 也能被覆盖，`stream:true` 会让每轮「响应不是 JSON」不计次数永远重试（`moderation/services.py:534`、`moderation/providers.py:141-144`）。只超管能填
+- D8 `providers.review` 只接 `URLError, TimeoutError, OSError`，不接 `http.client.HTTPException`（`IncompleteRead`、`BadStatusLine`）：半截断流时异常冒到任务层，这一轮没有 `note_failure`、没有 follow-up（`moderation/providers.py:175`）
+- D9 设计附录 C L3419 还写着 AI 密钥和地址在环境变量，197/v7.1 起都在后台（5.5.3 正文已改，附录没改）
+- D10 字数和阅读时间每次都重新解析 Markdown（`article_meta.py:26-29` 两次完整渲染），搜索每次解析全部正文；和 D1 叠加。发布时算好存字段
+- 测试绿但没测到：`test_a_short_link_is_looked_up_once` 只 mock 成功；`test_markdown.py` 没有 REVIEW-GUIDE 192 点名的 `![x" onerror=…]`、`> ——<script>`、`?bvid=` 输入；`test_category_delete.py` 的文章全是页面行、没有草稿修订引用；`test_drafts.py:102` 只数修订条数、没测同时打开；`test_patrol_failures.py` 没有「巡查中途再提交」
+
+**查过没问题**：手拼 HTML 全经 `escape`，`src`/`href` 来自 markdown-it 且过 `validateLink`（拒 `javascript:`、`vbscript:`、`file:`、非图片 `data:`）和 `normalizeLink`，`own_image` 拒 `//host`；预览和上传接口都套 `placed`、上传按集合权限只进「投稿图片」；发布/撤下/删除别人的文章由 `OwnArticlesPermissionTester` 限在 owner 或有 change 权限的人；草稿不从栏目、相关、首页、sitemap、搜索、预渲染、分享卡片露出，AI 只在 `page_published` 送审；网址跟标题的四种情形；草稿修订的 `overwritable` 和 Wagtail 自己的检查；AI 巡查和 5.5.3 逐条对得上（计次规则、`GAVE_UP`、一次失败停轮、60 秒截止、follow-up 优先级、30 天沿用、每日上限、批大小、`<<<`/`>>>` 替换、请求只有文本无 tools）；密钥只在 `Authorization` 头、日志只含状态码、表单不回显、`EncryptedTextField` 落库；复核页权限和 `next`；首页数字；sitemap/robots；坏输入
+
+**没来得及看**：`content/legacy_body.py` 逐行、`backoffice/views/images.py`、`moderation/avatar_admin.py`、评论对未发布文章的接口、`core/prerender.py` 对 404 的处理、`/wagtail/` 超管路径的旧表单、205/198 变异脚本的覆盖
+
 ## 代理「查过没问题」的覆盖面（摘要）
 
 - **账号**：越权（游戏 ID、联系方式按 `user=request.user` 取）、CSRF、注册/登录/验证码/找回密码的限流和枚举防护、停用账号的会话失效、注销的顺序和清单、导出只有本人数据、成员展示和搜索只露昵称、头像上传三道检查、`can_use()` 和 4.3.2 一致、`next` 只交给 allauth、Cookie 配置、日历签名
@@ -111,7 +137,8 @@
 
 ## 建议的修法顺序
 
-1. **211**：T1（连带查 `ScrimForm`）、A1、A3、F2、F4、B6——都是 202–207 自动保存的收尾，一起修
+0. **先修 D1**（b23 查不到也缓存、字数阅读时间发布时算好存起来、搜索不再逐篇渲染）——这是唯一一条任何成员都能触发的全站影响
+1. **211**：T1（连带查 `ScrimForm`）、A1、A3、F2、F4、B6、D3（带修订号）、D2（删分类数修订）——都是 202–207 自动保存的收尾，一起修
 2. **212**：S1、S7、S2、S3、T2、T7、A8、A9、B3——权限和状态守卫，每条补「拆掉就红」的测试
 3. **213**：C1、C2、C3——worker 和日志，改完在服务器上真演练一次（064 的坑）
 4. **214**：C4、C5、C6、C9、F1——Caddy 和预渲染
