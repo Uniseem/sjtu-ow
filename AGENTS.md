@@ -200,6 +200,7 @@ Host sjtu-ow-test
 - **正文和说明是 Markdown**（192 起，设计 5.2）：渲染只走 `content/markdown.py`，别在别处再写一个；测试里建文章直接写 `body="正文"`，不再是 `[("paragraph", …)]`。`content/legacy_body.py` 和 `content/blocks.py` 是迁移要用的，不能删。后台编辑器 EasyMDE 的样式表是表单资源；覆盖它的规则在 `static/css/markdown-editor.css`（196 起由控件带上，排在 EasyMDE 的后面），前面都加了 `.md-field` 提高优先级，新加的也要加
 - **后台的八个大类**（193 起，196 重写）：193 那版靠 `core/admin_sections.py` 按网址前缀往 Wagtail 的界面里插标签条，196 整个删了；现在大类和标签在 `backoffice/nav.py`，视图用 `placed()` 自己声明在哪（见上面「后台也是自己写的」）
 - **`htmx.ajax()` 的 Promise 只在网络错误时 reject**（215）：429、5xx 照样 resolve（只是不换内容），HTMX 没加载上时根本没有 Promise。只写 `.then(成功)` 的话，断网、脚本被拦时界面会卡在中间状态（`state.js` 的骨架就这样一直挂着）。收尾的事写 `.then(done, done)`，再加一个超时兜底。在浏览器里验证这类「一闪而过」的状态别从外面轮询（失败几十毫秒就结束，轮询看不到），用 `Page.addScriptToEvaluateOnNewDocument` 挂一个 MutationObserver 让页面自己记时间（`handoff/rounds/215-caddy-and-prerender/f1_probe.py`）
+- **别用 `ssh 服务器 'bash -s' < 本机脚本` 跑含 `docker compose exec` 的脚本**（215）：`exec -T` 会把标准输入里剩下的脚本当成自己的输入读掉，后面的命令一条都不执行，退出码还是 0。215 升级正式站时就这样只做了备份、没部署。先 `scp` 脚本上去，再 `ssh 服务器 'bash /root/脚本.sh < /dev/null'`
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
 
 ## 改了什么，就更新哪份文档

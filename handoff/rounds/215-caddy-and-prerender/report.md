@@ -161,6 +161,39 @@ exit=0
 
 顺带：测试机上有一批没人管的进程（父进程已退出），一组是一天前的开发服务器、worker 和 Chromium，另外几个是 214 演练留下的 worker 和 `/tmp/drill214.sh`。它们是以前的脚本没收干净留下的，这次逐个 `kill -TERM` 清掉了，正在跑的 `pages` 那组没碰。
 
+## 正式站升级（2026-10-07 02:25 北京时间，补记）
+
+先核对服务器上要被覆盖的 9 个文件和 214 一致，`backup`（`sjtu-ow-20261007-022425.tar.gz`，210.8 MB），再 `deploy_ship.sh 215`：镜像重建、无迁移、`prerender` 全量成功 12 失败 0、healthz ok。`Caddyfile.vps` 按新的仓库 Caddyfile 重新生成：在 `admin off` 下面插回原来那 10 行 `servers` 块，`diff` 只有这一块，`caddy validate` 显示 `Valid configuration`，重启 `proxy`。改前的 `Caddyfile.vps` 留在服务器 `/root/sjtu-ow-backups/Caddyfile.vps.before-215`。
+
+第一次升级只做到备份就停了：脚本是 `ssh 服务器 'bash -s' < 脚本` 传进去的，`docker compose exec -T` 把标准输入里剩下的脚本读掉了，后面一条都没执行，退出码还是 0。从外面核对时 `/healthz` 还带细节，才发现没升上去。改成先 `scp` 脚本、再 `bash 脚本 < /dev/null`，重跑（跳过重复备份）。这个坑写进了 AGENTS.md。
+
+从本机经域名核对（`https://sjtu.ow-shanghaiuniversity.com`）：
+
+```
+== 首页（预渲染）
+HTTP/2 200
+content-security-policy: default-src 'self'; script-src 'self' 'inline-speculation-rules';
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+== 静态文件
+/static/js/state.90d336d43e97.js
+HTTP/2 200
+cache-control: public, max-age=31536000, immutable
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+== 登录页（Django）
+HSTS 头的条数：1
+== 字体原文件地址
+404
+== 字体样式表
+/media/fonts/css/fonts.f42c1154633c.css
+200
+== healthz
+{"status": "ok", "checks": {"database": {"ok": true}, "disk": {"ok": true}, "worker_heartbeat": {"ok": true}, "task_backlog": {"ok": true}}}  HTTP 200
+== 首页引用的 state.js 里有 8 秒兜底
+2
+```
+
+用户的反向代理把 Caddy 加的 HSTS 原样带出来了，Django 那条路上也只有一份。字体原文件那一行在正式站上说明不了什么：正式站没上传过字体，这个地址改之前也是 404。真正证明拦得住的是测试机上的 Caddy 探针。
+
 ## 设计偏差
 
 无。五条都是按已有设计补齐实现；设计里补写的是「怎么做到」（谁来删、失败时怎么显示、对外给什么），不改变已有规则。
