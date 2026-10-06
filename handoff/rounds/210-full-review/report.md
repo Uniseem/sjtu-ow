@@ -93,7 +93,26 @@ setsid nohup .venv/bin/python handoff/rounds/210-full-review/mutate_guards.py \
   --out handoff/rounds/210-full-review/results.jsonl > handoff/rounds/210-full-review/sweep-log.txt 2>&1 &
 ```
 
-截稿时（17:10）在跑基线（3 份副本各跑一遍全量），`load average: 3.05`。**取回结果**：`scp sjtu-ow-test:/srv/sjtu-ow-check/sweep/handoff/rounds/210-full-review/{results.jsonl,sweep-log.txt} handoff/rounds/210-full-review/`，看 `sweep-log.txt` 末尾的汇总；每个「全量测试也没抓到」的守卫照 179 报告的表格逐个判断。跑完后删 `/srv/sjtu-ow-check/sweep` 工作树（`git -C /srv/sjtu-ow-check/repo worktree remove --force /srv/sjtu-ow-check/sweep`）和 `/srv/sjtu-ow-check/sweep-copies`。
+截稿时（17:10）在跑基线（3 份副本各跑一遍全量），`load average: 3.05`。
+
+**17:45 的中途结果**（用户额度用尽前最后一次看）：54/299 跑完，12 个「全量测试也没抓到」（脚本的 ✗ 是本应用测试和全量测试都绿才打的）：
+
+```
+[2/299]  ✗ accounts/forms.py:189 GameAccountForm.clean_battletag  if qs.exists()
+[18/299] ✗ accounts/models.py:255 GameAccount.clean  if qs.exists()
+[27/299] ✗ accounts/ranks.py:48 decode_rank  if tier_index not in INDEX_TIER
+[41/299] ✗ backoffice/nav.py:235 placed  if section not in BY_KEY
+[43/299] ✗ backoffice/nav.py:245 placed.decorate.wrapper  if not access.can_enter(request.user)
+[45/299] ✗ backoffice/views/articles.py:258 article_new  if parent is None
+[46/299] ✗ backoffice/views/articles.py:260 article_new  if not parent.permissions_for_user(user).can_add_subpage()
+[48/299] ✗ backoffice/views/articles.py:292 article_edit  if "publish" in request.POST and not perms.can_publish()
+[49/299] ✗ backoffice/views/articles.py:311 article_unpublish  if not page.permissions_for_user(request.user).can_unpublish()
+[50/299] ✗ backoffice/views/articles.py:322 article_delete  if not page.permissions_for_user(request.user).can_delete()
+[53/299] ✗ backoffice/views/images.py:117 image_upload  if not form.fields["collection"].queryset.exists()
+[54/299] ✗ backoffice/views/images.py:153 image_edit  if not image_policy().user_has_permission_for_instance(user, "change", image)
+```
+
+第 54 个正是 `review.md` B3 预测的那处（图片改删守卫只有超管测过）。其余要逐个判断：`accounts` 的两处游戏 ID 查重 179 判过「库约束兜底」；`nav.py:245` 和 `articles.py:258` 多半是等价变异（每个标签的 `allowed` 都先调 `can_enter`，Wagtail 的页面动作自己再查权限）；`articles.py:292/311/322` 要看 Wagtail 的动作层是不是真的挡住了，挡住了就是等价，没挡住就是 B3 一类的测试空白。**没判断，留给取回全部结果的那一轮。****取回结果**：`scp sjtu-ow-test:/srv/sjtu-ow-check/sweep/handoff/rounds/210-full-review/{results.jsonl,sweep-log.txt} handoff/rounds/210-full-review/`，看 `sweep-log.txt` 末尾的汇总；每个「全量测试也没抓到」的守卫照 179 报告的表格逐个判断。跑完后删 `/srv/sjtu-ow-check/sweep` 工作树（`git -C /srv/sjtu-ow-check/repo worktree remove --force /srv/sjtu-ow-check/sweep`）和 `/srv/sjtu-ow-check/sweep-copies`。
 
 ## 代理复核的覆盖
 
