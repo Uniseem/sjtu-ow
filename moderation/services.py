@@ -204,8 +204,14 @@ def record(
     model,
     input_tokens: int = 0,
     output_tokens: int = 0,
-) -> None:
-    """Write the AI's answer. This is the AI path's only write (design 5.5)."""
+) -> bool:
+    """Write the AI's answer. This is the AI path's only write (design 5.5).
+
+    Only onto the text that was read (216, D5): a long piece is read for a
+    while, and publishing again meanwhile rewrites the same waiting row with
+    the new text. The verdict on the old words used to land on the new ones,
+    and the new ones were never read. Now the row is left for the next
+    patrol, which reads what is there. Returns whether it was written."""
     item.risk = risk if risk in Risk.values else Risk.UNKNOWN
     item.categories = list(categories or [])
     item.reason = reason or ""
@@ -218,20 +224,24 @@ def record(
     if item.risk == Risk.NONE:
         # Nothing for a human to look at; keep the row for statistics only.
         item.status = ModerationItem.Status.OK
-    item.save(
-        update_fields=[
-            "risk",
-            "categories",
-            "reason",
-            "quote",
-            "model",
-            "input_tokens",
-            "output_tokens",
-            "checked_at",
-            "status",
-            "full_text",
-        ]
+    names = (
+        "risk",
+        "categories",
+        "reason",
+        "quote",
+        "model",
+        "input_tokens",
+        "output_tokens",
+        "checked_at",
+        "status",
+        "full_text",
     )
+    written = ModerationItem.objects.filter(
+        pk=item.pk, text_hash=item.text_hash
+    ).update(**{name: getattr(item, name) for name in names})
+    if not written:
+        logger.info("审核期间内容又改了，这次的结论不写：%s", item.pk)
+    return bool(written)
 
 
 def note_failure(items, error: str, *, counts: bool) -> int:
@@ -245,7 +255,13 @@ def note_failure(items, error: str, *, counts: bool) -> int:
         item.attempts += 1 if counts else 0
         item.last_error = error[:300]
         item.failed_at = now
-        item.save(update_fields=["attempts", "last_error", "failed_at"])
+        # Onto the text that failed only (216, D5): text replaced meanwhile
+        # starts again from 0 attempts, as submit() set it.
+        written = ModerationItem.objects.filter(
+            pk=item.pk, text_hash=item.text_hash
+        ).update(attempts=item.attempts, last_error=item.last_error, failed_at=now)
+        if not written:
+            continue
         if item.attempts >= GIVE_UP_AFTER:
             record(
                 item,
@@ -531,7 +547,18 @@ def latest_verdict(page):
 
 # Keys the 附加请求参数 may not carry: they would replace the request itself or
 # hand the model tools (5.5.3 「不给模型任何工具」).
-EXTRA_BODY_FORBIDDEN = ("messages", "tools", "tool_choice")
+# 216 (D7): also the older OpenAI way to give tools, and the switches that
+# would make every answer unreadable (a streamed reply is not JSON, so each
+# round failed without counting) or send it to another model.
+EXTRA_BODY_FORBIDDEN = (
+    "messages",
+    "tools",
+    "tool_choice",
+    "functions",
+    "function_call",
+    "stream",
+    "model",
+)
 
 
 def clean_extra_body(value) -> dict:

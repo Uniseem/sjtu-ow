@@ -25,9 +25,13 @@ from django.db import connection
 from core.dbfile import database_path, wal_siblings
 
 # (table, column) pairs holding Fernet ciphertext.
+# Every EncryptedTextField; a test compares this with the models (216, C7:
+# the AI key added in 197 was missing, so a backup holding only that key
+# passed the check with the wrong key, and every page then failed to load).
 ENCRYPTED_COLUMNS = (
     ("core_sitesettings", "smtp_password"),
     ("core_sitesettings", "backup_s3_secret_access_key"),
+    ("core_sitesettings", "moderation_api_key"),
 )
 
 

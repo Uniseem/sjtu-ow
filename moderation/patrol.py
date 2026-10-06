@@ -82,7 +82,9 @@ def review_short_batch(items, tally: Round) -> str:
             missed = verdict.error if verdict else "模型漏掉了这一条"
             services.note_failure([item], missed, counts=True)
             continue
-        services.record(
+        # Counted only when the verdict was written (216, D5): text replaced
+        # meanwhile is still waiting, so it was not read.
+        if services.record(
             item,
             risk=verdict.risk,
             categories=verdict.categories,
@@ -91,8 +93,8 @@ def review_short_batch(items, tally: Round) -> str:
             model=result.model or model,
             input_tokens=share_in,
             output_tokens=share_out,
-        )
-        tally.reviewed += 1
+        ):
+            tally.reviewed += 1
     return ""
 
 
@@ -102,7 +104,7 @@ def review_long(item, tally: Round) -> str:
     from moderation.providers import get_provider
 
     if services.copy_recent_verdict(item):
-        tally.reviewed += 1
+        tally.reviewed += 1  # copied onto the very text it matched
         return ""
     if services.quota_left() <= 0:
         return QUOTA
@@ -131,7 +133,7 @@ def review_long(item, tally: Round) -> str:
         if verdicts[-1].risk == Risk.HIGH:
             break  # nothing in the rest can be worse
     verdict = services.worst(verdicts)
-    services.record(
+    if services.record(
         item,
         risk=verdict.risk,
         categories=verdict.categories,
@@ -140,8 +142,8 @@ def review_long(item, tally: Round) -> str:
         model=used_model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-    )
-    tally.reviewed += 1
+    ):
+        tally.reviewed += 1
     return ""
 
 

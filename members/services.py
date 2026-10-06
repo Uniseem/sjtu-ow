@@ -215,17 +215,22 @@ class MembershipError(Exception):
     pass
 
 
-def search_people(group, query: str, limit: int = SEARCH_LIMIT) -> list:
-    """Joined people whose nickname or email has ``query`` in it and who are
-    not in the group yet: what 「搜昵称或邮箱」 lists (round 203)."""
+def search_people(
+    group, query: str, limit: int = SEARCH_LIMIT, *, by_email: bool = False
+) -> list:
+    """Joined people whose nickname has ``query`` in it and who are not in
+    the group yet (round 203). The email is searched only for superusers
+    (``by_email``; 216, A2): content editors searched 「@」, ten at a time,
+    and could read everyone's address off the list."""
     from django.db.models import Q
 
     query = (query or "").strip()
     if not query:
         return []
-    people = joined_users().filter(
-        Q(nickname__icontains=query) | Q(email__icontains=query)
-    )
+    match = Q(nickname__icontains=query)
+    if by_email:
+        match |= Q(email__icontains=query)
+    people = joined_users().filter(match)
     if group is not None and group.pk:
         people = people.exclude(member_groups__group=group)
     return list(people.order_by("nickname", "pk")[:limit])

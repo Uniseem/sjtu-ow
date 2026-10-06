@@ -79,6 +79,12 @@ def worker():
         yield task
 
 
+def _half_an_hour_later():
+    """Design 10.4 (v7.20, 216 B11): the same one goes to everyone again only
+    after 30 minutes; tests that send twice move the first one back."""
+    Broadcast.objects.update(created_at=timezone.now() - timedelta(minutes=31))
+
+
 def _send(django_capture_on_commit_callbacks, **kwargs):
     with django_capture_on_commit_callbacks(execute=True):
         return services.announce(**kwargs)
@@ -136,6 +142,7 @@ def test_a_manager_tells_everyone_and_may_again(
     assert "之前已经发过" not in letter.body  # the first one says nothing
     # v7.5: it may go out again, and from the second one the letter says so.
     mailoutbox.clear()
+    _half_an_hour_later()
     again = _send(
         django_capture_on_commit_callbacks,
         kind="tournament",
@@ -208,6 +215,7 @@ def test_the_admin_previews_then_sends(
     with django_capture_on_commit_callbacks(execute=True):
         client.post(url)
     assert len(mailoutbox) == 2
+    _half_an_hour_later()
     again = client.get(url).content.decode()
     assert "data-announce-again" in again and "之前发过 1 次" in again
     assert "关于这场赛事「秋季校内杯」，之前已经发过 1 次邮件" in again  # the preview
@@ -385,6 +393,7 @@ def test_content_editors_announce_an_article(
     assert "通知全体成员（发过 1 次）" in client.get(explore).content.decode()
     assert "通知全体成员（发过 1 次）" in client.get(edit).content.decode()
     mailoutbox.clear()
+    _half_an_hour_later()
     with django_capture_on_commit_callbacks(execute=True):
         client.post(announce)
     again = next(message for message in mailoutbox if message.to == [member.email])

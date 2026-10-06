@@ -4,6 +4,7 @@
 time; when GitHub answered 503 the image build and the checks both failed.
 """
 
+import hashlib
 import io
 import os
 import re
@@ -67,10 +68,36 @@ def test_a_flaky_download_is_retried(tmp_path):
             raise urllib.error.HTTPError(url, 503, "Service Unavailable", {}, None)
         return io.BytesIO(b"binary")
 
-    target = fetcher.fetch("2.9.0", tmp_path, opener=opener, wait=0)
+    target = fetcher.fetch(
+        "2.9.0",
+        tmp_path,
+        opener=opener,
+        wait=0,
+        expected=hashlib.sha256(b"binary").hexdigest(),
+    )
     assert len(calls) == 3
     assert target.read_bytes() == b"binary"
     assert os.access(target, os.X_OK) or sys.platform == "win32"
+
+
+def test_a_binary_that_does_not_match_its_digest_is_refused(tmp_path):
+    """216, C10: the build runs what it downloaded; a swapped file on the
+    release page (or on the way) must stop the build, and leave nothing."""
+
+    def opener(url, timeout):
+        return io.BytesIO(b"something else")
+
+    with pytest.raises(SystemExit, match="sha256 不对"):
+        fetcher.fetch("2.9.0", tmp_path, opener=opener, wait=0)
+    assert not list(tmp_path.iterdir())
+
+
+def test_every_architecture_of_the_pinned_version_has_a_digest():
+    for machine in ("x86_64", "aarch64"):
+        digest = fetcher.expected_sha256(settings.TAILWIND_CLI_VERSION, machine)
+        assert re.fullmatch(r"[0-9a-f]{64}", digest)
+    with pytest.raises(SystemExit, match="没有 Tailwind 命令行"):
+        fetcher.expected_sha256("0.0.1", "x86_64")
 
 
 def test_giving_up_says_so(tmp_path):

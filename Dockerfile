@@ -37,6 +37,16 @@ RUN chmod +x /app/deploy/entrypoint-web.sh /app/deploy/entrypoint-worker.sh \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Not root (216, C10): the processes run as "app". The volumes' mount points
+# are made here and owned by it, so a new volume starts out writable; volumes
+# made before 216 belong to root and are handed over once when upgrading
+# (README「升级」). `docker compose exec` runs as this user too, so files the
+# cron jobs write (backups, the database's -wal) stay the app's.
+RUN useradd --system --uid 10001 --create-home --home-dir /home/app app \
+    && mkdir -p /app/data /app/media /app/staticfiles /app/prerendered /app/backups \
+    && chown app:app /app/data /app/media /app/staticfiles /app/prerendered /app/backups
+USER app
+
 EXPOSE 8000
 
 CMD ["/app/deploy/entrypoint-web.sh"]

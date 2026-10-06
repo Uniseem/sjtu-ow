@@ -192,6 +192,13 @@
     window
       .fetch(url, Object.assign({ credentials: "same-origin" }, options || {}))
       .then(function (response) {
+        // A lost session answers with the login page (a redirect); shown in
+        // here, its form looked like the upload (216, F5).
+        if (!response.ok || response.redirected) {
+          var gone = new Error("HTTP " + response.status);
+          gone.signedOut = response.redirected || response.status === 403;
+          throw gone;
+        }
         return response.text();
       })
       .then(function (html) {
@@ -202,8 +209,10 @@
           search.focus();
         }
       })
-      .catch(function () {
-        dialogBody.innerHTML = '<p class="c-notice c-notice--error">图片没有加载出来，关掉再试一次。</p>';
+      .catch(function (error) {
+        dialogBody.innerHTML = error && error.signedOut
+          ? '<p class="c-notice c-notice--error">登录状态已失效或没有权限，重新登录后再选图片。</p>'
+          : '<p class="c-notice c-notice--error">图片没有加载出来，关掉再试一次。</p>';
         dialogBody.removeAttribute("aria-busy");
       });
   }

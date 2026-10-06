@@ -273,8 +273,16 @@ def assign_scrim_permissions() -> list[str]:
 
 
 def can_delete(scrim) -> bool:
-    """Only a draft nobody signed up for (round 115); otherwise cancel it."""
-    return scrim.status == ScrimStatus.DRAFT and not scrim.signups.exists()
+    """Only a draft nobody signed up for (round 115); otherwise cancel it.
+
+    The back office list already counts signups (``signup_total``); asking
+    the database again was one query per draft on the page (216, S10)."""
+    if scrim.status != ScrimStatus.DRAFT:
+        return False
+    counted = getattr(scrim, "signup_total", None)
+    if counted is not None:
+        return counted == 0
+    return not scrim.signups.exists()
 
 
 # Design 9.1 (v6.30): a scrim is an evening; six hours after it starts it is

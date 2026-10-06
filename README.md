@@ -151,6 +151,15 @@ journalctl -u cron | grep CMD      # 看任务有没有按时跑
 
 停掉 `web` 后，Caddy 对会打到后端的请求返回维护页；已经生成的预渲染公开页面仍可访问。
 
+**升级到 216 及以后时把数据卷交给 `app` 用户**：216 起 `web`、`worker` 以镜像里的普通用户 `app`（uid 10001）运行（设计 16.2），以前建的数据卷属于 root，新镜像写不进去。**在 `up -d` 和 `migrate` 之前**，用新镜像以 root 跑一次（数据卷名按 Compose 项目名，下面是正式站的 `sjtu-ow`）：
+
+```bash
+$C build
+$C run --rm --no-deps --user root web chown -R 10001:10001 /app/data /app/media /app/staticfiles /app/prerendered /app/backups
+```
+
+`worker` 挂的卷是同一批，不用另跑。只做一次；之后新建的数据卷一开始就属于 `app`。漏了这一步的症状：`migrate` 报 `attempt to write a readonly database`、`collectstatic` 报 `Permission denied`。
+
 **升级到 107 及以后时清一次旧缩略图**：107 起缩略图一律存成 WebP（设计 13.10），但已经生成过的 PNG、JPEG 缩略图还记在库里、会被继续使用。升级后执行 `$C exec web python manage.py wagtail_update_image_renditions --purge-only`，再 `$C exec web python manage.py prerender`，页面重新生成时按新格式生成缩略图。**核对输出的两个数**：「Purging N」和「Successfully processed N」要一样；worker 刚启动时可能锁着数据库，有几条删不掉（错误打在 stderr 里），再跑一次就行（107 在演示站上第一次就漏了 41 条）。
 
 **改了 `deploy/Caddyfile` 之后要 `$C restart proxy`**：Caddyfile 全局关了管理接口（`admin off`），`caddy reload` 用不了。改之前可以先验证：`docker run --rm -e CADDY_SITE_ADDRESS=:80 -v $PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`。
@@ -412,7 +421,7 @@ python manage.py remove_stale_contenttypes --include-stale-apps --noinput
 
 **AI 只有读取权限**：请求里不带任何工具、不带身份信息，模型唯一的产出是一条巡查记录；退回稿件、清空战队简介、停用账号等处置全部由管理员在对应功能里执行。
 
-- **全部在后台设置**（197 起，不用改 `.env`、不用重启）：「设置 → 全站设置 → AI 审核」里有开关、模型（默认 `deepseek-v4.1-flash`）、每日上限、巡查提醒发到，以及**接口密钥**（和 SMTP 密码一样加密存储，填过之后页面上不再显示，旁边写着「已保存」；空着保存表示不改）、**接口地址**（空着用 DeepSeek；聚合平台或自建服务填它的 OpenAI 兼容地址）、**附加请求参数**（一段 JSON 对象，原样并进每次请求，比如关闭思考模式的参数；不能带 `messages`、`tools`、`tool_choice`）、超时、最多输出 token。保存后下一次巡查就用新的。196 以前这几项是环境变量 `MODERATION_API_KEY`、`MODERATION_BASE_URL`、`MODERATION_EXTRA_BODY`、`MODERATION_TIMEOUT`、`MODERATION_MAX_OUTPUT_TOKENS`，升级时设过的由迁移 `core/0021` 搬进全站设置，之后不再读，可以从 `.env` 里删掉。
+- **全部在后台设置**（197 起，不用改 `.env`、不用重启）：「设置 → 全站设置 → AI 审核」里有开关、模型（默认 `deepseek-v4.1-flash`）、每日上限、巡查提醒发到，以及**接口密钥**（和 SMTP 密码一样加密存储，填过之后页面上不再显示，旁边写着「已保存」；空着保存表示不改）、**接口地址**（空着用 DeepSeek；聚合平台或自建服务填它的 OpenAI 兼容地址）、**附加请求参数**（一段 JSON 对象，原样并进每次请求，比如关闭思考模式的参数；不能带 `messages`、`tools`、`tool_choice`、`functions`、`function_call`、`stream`、`model`，216 起后四个也禁）、超时、最多输出 token。保存后下一次巡查就用新的。196 以前这几项是环境变量 `MODERATION_API_KEY`、`MODERATION_BASE_URL`、`MODERATION_EXTRA_BODY`、`MODERATION_TIMEOUT`、`MODERATION_MAX_OUTPUT_TOKENS`，升级时设过的由迁移 `core/0021` 搬进全站设置，之后不再读，可以从 `.env` 里删掉。
 - **没配密钥就不送审**（自建服务可以只填接口地址），不会产生「无法判定」的噪音。后台还可以整体关掉。
 - **试一下**（122 起）：全站设置页右侧的「试一下 AI」（197 起，试完回到这一页），或者「审核 → 内容」页的「试一下」，发一句测试内容给 AI，显示判断结果或连不上的原因（开关关着也能试，算一次调用、不留记录）。后台首页的「上线清单」也会提示密钥和开关的状态
 - 省钱措施：短内容合并成一批（198 起一批 = 「最多输出 token」÷ 60，最多 20 条，默认 600 就是 10 条，免得回答被截断）、相同文本 30 天内不重复送审、每天调用上限（默认 2000）、后台显示本月调用次数和估算花费。长文章按约 8000 字分块，每块一个请求，有一块高风险就不看后面的。
@@ -479,7 +488,7 @@ uv run python manage.py restore backups/sjtu-ow-20260916-221549.tar.gz --yes  # 
 ## 定时维护
 
 ```bash
-uv run python manage.py cleanup_old_data   # 任务记录、已处理的 AI 审核记录、会话、14 天没人处理的入队申请
+uv run python manage.py cleanup_old_data   # 任务记录、已处理的 AI 审核记录、会话、14 天没人处理的入队申请、7 天没动的空草稿（216 起）
 uv run python manage.py cleanup_static     # 不属于当前版本且超过 30 天的静态文件
 uv run python manage.py optimize_db        # PRAGMA optimize + WAL 检查点
 ```

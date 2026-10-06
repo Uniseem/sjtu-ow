@@ -5,6 +5,7 @@ handled moderation records 180 days, plus expired sessions; since round 204
 the letters actions wrote (design 10.5) after 30 days too. API call logs and
 webhook deliveries went with the open API in round 067. Since round 141 it
 also closes team applications no captain answered in 14 days (design 7.3).
+Since round 216 it removes drafts that never got a word (design 13.17).
 """
 
 from django.core.management.base import BaseCommand
@@ -14,6 +15,9 @@ TASK_DAYS = 30
 # Design 15.5: handled moderation records live 180 days. Records nobody has
 # looked at are kept forever, however old they are.
 MODERATION_DAYS = 180
+# Design 13.17 (v7.19): a new article or event exists from its first change,
+# so opening 「新建」 and leaving left an empty draft behind every time.
+EMPTY_DRAFT_DAYS = 7
 
 
 class Command(BaseCommand):
@@ -41,6 +45,9 @@ class Command(BaseCommand):
             counts[label] = total
 
         counts["过期会话"] = self.clear_sessions(dry_run)
+        counts[f"空着的草稿（{EMPTY_DRAFT_DAYS} 天没动）"] = self.empty_drafts(
+            dry_run, now
+        )
         closed = self.stale_applications(dry_run, now)
         reminded = 0 if dry_run else self.remind_captains(now)
 
@@ -117,6 +124,50 @@ class Command(BaseCommand):
         from teams import services
 
         return services.remind_captains(now)
+
+    @staticmethod
+    def empty_drafts(dry_run, now):
+        """Never published, no title and no text, untouched for a week:
+        articles (what the latest revision holds counts), tournaments and
+        scrims (216, B8). Anything with a word in it stays."""
+        from django.utils import timezone as tz
+
+        from content.models import ArticlePage
+        from scrims.models import Scrim, ScrimStatus
+        from tournaments.models import Tournament, TournamentStatus
+
+        cutoff = now - tz.timedelta(days=EMPTY_DRAFT_DAYS)
+        found = 0
+        for model, draft in (
+            (Tournament, TournamentStatus.DRAFT),
+            (Scrim, ScrimStatus.DRAFT),
+        ):
+            empty = model.objects.filter(
+                status=draft, title="", description="", updated_at__lt=cutoff
+            )
+            if model is Tournament:
+                empty = empty.filter(published_at__isnull=True)
+            else:
+                empty = empty.filter(signups__isnull=True)
+            found += empty.count()
+            if not dry_run:
+                empty.delete()
+        articles = ArticlePage.objects.filter(
+            live=False,
+            first_published_at__isnull=True,
+            latest_revision_created_at__lt=cutoff,
+        ).select_related("latest_revision")
+        for page in articles:
+            content = page.latest_revision.content if page.latest_revision else {}
+            if any(
+                str(content.get(name) or "").strip()
+                for name in ("title", "summary", "body")
+            ):
+                continue
+            found += 1
+            if not dry_run:
+                page.delete()
+        return found
 
     @staticmethod
     def clear_sessions(dry_run):

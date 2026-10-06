@@ -131,14 +131,15 @@ def create_team(
     *, user, name, description="", logo=None, is_recruiting=True, recruiting_roles=""
 ) -> Team:
     """Create a team; the creator becomes its captain (design 7.1)."""
-    blocker = create_blocker(user)
-    if blocker:
-        raise TeamError(blocker)
-    if name_taken(name):
-        raise TeamError(NAME_TAKEN)
-
     try:
         with transaction.atomic():
+            # The checks inside the transaction (216, T5): two at once could
+            # both pass「最多同时担任 N 支战队的队长」 and both insert.
+            blocker = create_blocker(user)
+            if blocker:
+                raise TeamError(blocker)
+            if name_taken(name):
+                raise TeamError(NAME_TAKEN)
             team = Team.objects.create(
                 name=name,
                 description=description,
@@ -227,20 +228,29 @@ def lacks_game_account(user) -> bool:
     )
 
 
+@transaction.atomic
 def apply_to_team(*, team, user, roles, message="") -> TeamApplication:
+    # One transaction (216, T5): a double click sent two requests that both
+    # passed「还有一条待审批的申请」 and the second hit the unique constraint,
+    # a 500. Now the second waits for the first (IMMEDIATE, design 12.12)
+    # and is refused by the check.
     allowed, reason = can_apply(team, user)
     if not allowed:
         raise TeamError(reason)
     if not any(roles.values()):
         raise TeamError("请至少选择一个意向位置。")
-    application = TeamApplication.objects.create(
-        team=team,
-        applicant=user,
-        role_tank=bool(roles.get("tank")),
-        role_damage=bool(roles.get("damage")),
-        role_support=bool(roles.get("support")),
-        message=message,
-    )
+    try:
+        with transaction.atomic():
+            application = TeamApplication.objects.create(
+                team=team,
+                applicant=user,
+                role_tank=bool(roles.get("tank")),
+                role_damage=bool(roles.get("damage")),
+                role_support=bool(roles.get("support")),
+                message=message,
+            )
+    except IntegrityError as exc:
+        raise TeamError("你对这支战队还有一条待审批的申请。") from exc
     from teams import notifications
 
     notifications.application_submitted(application)
@@ -260,7 +270,12 @@ GONE_NOTE = "申请人的账号已注销或停用"
 
 
 def approve_application(*, application, actor) -> TeamApplication:
-    """Approve inside one write transaction, re-checking the limits (7.3)."""
+    """Approve inside one write transaction, re-checking the limits (7.3).
+
+    What serialises two approvals is the transaction itself: every write
+    transaction here takes the whole-database lock up front (IMMEDIATE,
+    design 12.12). ``select_for_update`` does nothing on SQLite; it stays for
+    a database that has row locks (216, T9)."""
     with transaction.atomic():
         application = TeamApplication.objects.select_for_update().get(pk=application.pk)
         team = application.team
@@ -447,6 +462,10 @@ def remove_member(*, team, actor, member_user) -> None:
     membership = TeamMembership.objects.filter(team=team, user=member_user).first()
     if membership is None:
         raise TeamError("这个人不是战队成员。")
+    if membership.is_captain:
+        # A superuser could remove the captain and leave the team with none
+        # (216). Hand the captaincy over first (「指定队长」).
+        raise TeamError("不能移除队长，先把队长转给别人。")
     _retire(membership, LeaveReason.REMOVED)
     membership.delete()
     from teams import notifications
@@ -488,8 +507,13 @@ def _after_transfer(team, new_captain, actor):
     on_team_changed(team, author=actor)
 
 
+@transaction.atomic
 def assign_captain(*, team, actor, new_captain) -> None:
-    """Superuser rescue path when a captain's account is gone (design 7.4)."""
+    """Superuser rescue path when a captain's account is gone (design 7.4).
+
+    One transaction (216, T4): the person used to join the team first and
+    stay on it when the transfer was then refused (already captain of the
+    most teams one may lead)."""
     if not actor.is_superuser:
         raise TeamError("只有超级管理员可以指定队长。")
     if team.is_disbanded:  # round 115

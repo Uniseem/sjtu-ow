@@ -12,6 +12,11 @@
 //
 // A form with data-autosubmit-file sends itself as soon as a file is chosen
 // (the avatar: 「上传后自动就保存替换」).
+//
+// Forms sharing data-autosave-queue="name" take turns (216, S8): the split
+// page's tick list answers with a whole new board, which holds the teams
+// form; a move saved at the same moment was overwritten, and the next move
+// posted the old board back.
 (function () {
   "use strict";
 
@@ -75,8 +80,22 @@
     return label ? label.textContent.replace("*", "").trim() : "";
   }
 
+  // One per form: a new thing's first save, retried after a lost answer,
+  // lands on what the first try made (216, B8; core.middleware).
+  function newKey() {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    var out = "";
+    var bytes = new Uint8Array(24);
+    window.crypto.getRandomValues(bytes);
+    for (var i = 0; i < bytes.length; i += 1) {
+      out += chars.charAt(bytes[i] % chars.length);
+    }
+    return out;
+  }
+
   function Saver(form) {
     this.form = form;
+    this.key = newKey();
     this.timer = null;
     this.busy = null;
     this.again = false;
@@ -140,6 +159,22 @@
     return this.dirty || this.busy !== null || (this.failed && !this.gaveUp);
   };
 
+  // Another form in the same queue that is saving right now, if any.
+  Saver.prototype.queuedBehind = function () {
+    var queue = this.form.getAttribute("data-autosave-queue");
+    if (!queue) {
+      return null;
+    }
+    for (var i = 0; i < savers.length; i += 1) {
+      var other = savers[i];
+      if (other !== this && other.busy && document.contains(other.form) &&
+          other.form.getAttribute("data-autosave-queue") === queue) {
+        return other.busy;
+      }
+    }
+    return null;
+  };
+
   Saver.prototype.save = function () {
     var self = this;
     window.clearTimeout(this.timer);
@@ -153,16 +188,29 @@
       this.again = true;
       return this.busy;
     }
+    var ahead = this.queuedBehind();
+    if (ahead) {
+      this.dirty = true;
+      return ahead.then(function () {
+        return self.save();
+      });
+    }
     this.dirty = false;
     this.gaveUp = false;
     this.show("saving", "正在保存…");
     var body = new FormData(this.form);
+    this.sent = body;
     this.busy = window
       .fetch(this.form.getAttribute("action") || window.location.href, {
         method: "POST",
         body: body,
         credentials: "same-origin",
-        headers: { "X-Autosave": "1", "X-CSRFToken": token(this.form), Accept: "application/json" },
+        headers: {
+          "X-Autosave": "1",
+          "X-Autosave-Key": this.key,
+          "X-CSRFToken": token(this.form),
+          Accept: "application/json",
+        },
       })
       .then(function (response) {
         var type = response.headers.get("Content-Type") || "";
@@ -232,6 +280,11 @@
       window.history.replaceState(null, "", data.location);
       form.setAttribute("action", data.location);
     }
+    if (data.retry) {
+      // An earlier try made it after all; save there (216, B8).
+      this.again = true;
+      return;
+    }
     var replaced = Object.keys(data.replace || {});
     replaced.forEach(function (selector) {
       var target = document.querySelector(selector);
@@ -260,6 +313,7 @@
     // title, v7.9); not the one being typed in. A file box is emptied and a
     // tick set (a team's logo, v7.11), so the next save does not upload or
     // remove it again.
+    var sent = this.sent;
     Object.keys(data.values || {}).forEach(function (name) {
       var control = form.elements[name];
       if (!control || !control.tagName) {
@@ -270,7 +324,14 @@
         control.checked = Boolean(data.values[name]);
       } else if (type === "file") {
         control.value = "";
-      } else if (!(isText(control) && control === document.activeElement)) {
+      } else if (isText(control) && control === document.activeElement) {
+        return;
+      } else if (isText(control) && sent && sent.has(name) &&
+          String(sent.get(name)) !== control.value) {
+        // Typed into and left while this answer was on its way (216, B5):
+        // the server's value is older than what is in the box now.
+        return;
+      } else {
         control.value = data.values[name];
       }
     });
@@ -372,7 +433,17 @@
         if (status) {
           status.hidden = false;
         }
-        form.submit();
+        // Through the submit event (216, F9): form.submit() skips it, so
+        // unsaved changes elsewhere on the page were not saved first and
+        // the browser asked「离开此页？」.
+        flushAll().then(function () {
+          form.__owFlushed = true;
+          if (form.requestSubmit) {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        });
       }
       return;
     }

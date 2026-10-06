@@ -14,13 +14,13 @@
       <div class="c-notice c-notice--warn" role="alert">{% include "components/icon.html" with name="alert" %}<div class="c-notice__body">{{ problem }}</div></div>
     {% endif %}
     <form method="get" action="{% url 'backoffice:member_group_edit' group.pk %}" class="b-filters" role="search" data-person-search data-search-url="{% url 'backoffice:member_group_people' group.pk %}" data-add-url="{% url 'backoffice:member_group_member_add' group.pk %}">
-      <input type="search" name="q" value="{{ query }}" class="c-input" placeholder="搜昵称或邮箱，加进这个分组" aria-label="搜昵称或邮箱" autocomplete="off">
+      <input type="search" name="q" value="{{ query }}" class="c-input" placeholder="{% if sees_emails %}搜昵称或邮箱{% else %}搜昵称{% endif %}，加进这个分组" aria-label="{% if sees_emails %}搜昵称或邮箱{% else %}搜昵称{% endif %}" autocomplete="off">
       <button type="submit" class="c-btn c-btn--secondary c-btn--sm">搜索</button>
     </form>
     <ul class="b-list" data-person-results aria-live="polite">
       {% for person in found %}
         <li>
-          <span>{{ person.nickname }}<span class="b-sub">{{ person.email }}</span></span>
+          <span>{{ person.nickname }}<span class="b-sub">{% if sees_emails %}{{ person.email }}{% else %}#{{ person.pk }}{% endif %}</span></span>
           <form method="post" action="{% url 'backoffice:member_group_member_add' group.pk %}" data-inline>
             {% csrf_token %}<input type="hidden" name="user" value="{{ person.pk }}">
             <button type="submit" class="c-btn c-btn--secondary c-btn--sm">加入</button>
@@ -34,7 +34,7 @@
       <ol class="b-list b-people">
         {% for row in memberships %}
           <li data-membership="{{ row.pk }}">
-            <span class="b-people__who">{% include "components/avatar.html" with person=row.user size="xs" %}<span>{{ row.user.nickname }}<span class="b-sub">{{ row.user.email }}</span></span></span>
+            <span class="b-people__who">{% include "components/avatar.html" with person=row.user size="xs" %}<span>{{ row.user.nickname }}<span class="b-sub">{% if sees_emails %}{{ row.user.email }}{% else %}#{{ row.user.pk }}{% endif %}</span></span></span>
             <form method="post" action="{% url 'backoffice:member_group_member_title' row.pk %}" class="b-people__title" data-autosave data-autosave-idle="">
               {% csrf_token %}
               <input type="text" name="title" value="{{ row.title }}" maxlength="20" class="c-input" placeholder="职务（可不填）" aria-label="{{ row.user.nickname }}的职务">

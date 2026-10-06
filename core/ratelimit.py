@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 
 from django.core.cache import cache
+from django.db import transaction
 
 
 def client_ip(request) -> str:
@@ -22,10 +23,15 @@ def over_limit(key: str, limit: int, window_seconds: int = 60) -> bool:
     """Count one hit; True once the caller has used up its quota."""
     bucket = int(time.time() // window_seconds)
     cache_key = f"sjtu_ow:rl:{key}:{bucket}"
-    try:
-        added = cache.add(cache_key, 1, window_seconds * 2)
-        count = 1 if added else cache.incr(cache_key)
-    except ValueError:  # entry expired between add() and incr()
-        cache.set(cache_key, 1, window_seconds * 2)
-        count = 1
+    # The database cache has no incr of its own: Django's fallback is get
+    # then set, so two requests at once both read 2 and both write 3 (216,
+    # A10). In one transaction they cannot: every write transaction here is
+    # IMMEDIATE (design 12.12), so the second waits for the first to commit.
+    with transaction.atomic():
+        try:
+            added = cache.add(cache_key, 1, window_seconds * 2)
+            count = 1 if added else cache.incr(cache_key)
+        except ValueError:  # entry expired between add() and incr()
+            cache.set(cache_key, 1, window_seconds * 2)
+            count = 1
     return count > limit

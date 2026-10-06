@@ -7,6 +7,7 @@ the text we send and answer with the fixed JSON structure.
 
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import time
@@ -138,10 +139,18 @@ class OpenAICompatibleProvider:
         }
         # Provider-specific switches (for example turning thinking off) without
         # touching this file; the exact key differs per provider.
-        payload.update(self.extra_body)
-        # Never send tools: a model with tools would no longer be read-only.
-        payload.pop("tools", None)
-        payload.pop("tool_choice", None)
+        from moderation.services import EXTRA_BODY_FORBIDDEN
+
+        # What 全站设置 refuses is also never taken from a value stored
+        # before the rule (216, D7): no tools (read-only), no stream, the
+        # model and messages are ours.
+        payload.update(
+            {
+                key: value
+                for key, value in self.extra_body.items()
+                if key not in EXTRA_BODY_FORBIDDEN
+            }
+        )
         return payload
 
     def _post(self, payload: dict) -> dict:
@@ -172,8 +181,16 @@ class OpenAICompatibleProvider:
                     # content block); 401/403/404 are the settings.
                     counts = exc.code == 400
                     break
-            except (urllib.error.URLError, TimeoutError, OSError) as exc:
-                last_error = str(exc)
+            except (
+                urllib.error.URLError,
+                TimeoutError,
+                OSError,
+                # A reply cut off half way (IncompleteRead, BadStatusLine) is a
+                # failed call like any other (216, D8); it used to escape the
+                # round, with no note of the failure and no follow-up.
+                http.client.HTTPException,
+            ) as exc:
+                last_error = str(exc) or type(exc).__name__
             except json.JSONDecodeError as exc:
                 last_error = f"响应不是 JSON：{exc}"
             else:

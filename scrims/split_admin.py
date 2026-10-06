@@ -138,8 +138,12 @@ def _placements_from_post(request, scrim):
             role = ""
         elif role not in Role.values:
             role = signup.assigned_role or ""
-        rating = signup.rating_for(role) if scrim.role_queue and role else None
-        if rating is None:
+        if scrim.role_queue and role:
+            # A role they have no rank for counts 0, as in the algorithm and
+            # on the board (216, S5): the best rank of another role was
+            # stored, and the saved totals disagreed with the page.
+            rating = signup.rating_for(role) or 0
+        else:
             rating = signup.best_rating
         placements[signup.pk] = (team, role, rating)
     return placements
@@ -179,6 +183,17 @@ def _autosave(request, scrim):
                 "scrims/admin/_problem.html",
                 {"team": side["team"], "problems": side["problems"]},
             )
+            # The saved totals, so the page shows what was stored (216, S5).
+            outcome.replace[f'[data-team-total="{side["team"]}"]'] = (
+                f'<span data-team-total="{side["team"]}">{side["total"]}</span>'
+            )
+        outcome.replace["[data-total-a]"] = (
+            f"<strong data-total-a>{context['total_a']}</strong>"
+        )
+        outcome.replace["[data-total-b]"] = (
+            f"<strong data-total-b>{context['total_b']}</strong>"
+        )
+        outcome.replace["[data-gap]"] = f"<strong data-gap>{context['gap']}</strong>"
     return autosave.respond(outcome)
 
 
@@ -221,6 +236,14 @@ def split_view(request, pk):
                     request,
                     f"已生成分队，总分差 {split.score[0]}，位置分差 {split.score[1]}。",
                 )
+                unrated = teaming.unrated_placements(split, players, scrim)
+                if unrated:
+                    messages.warning(
+                        request,
+                        "这些人分到的位置没有段位，按 0 分算："
+                        + "、".join(unrated)
+                        + "。可以手动换一下。",
+                    )
         elif action == "save":
             services.save_teams(
                 scrim=scrim, placements=_placements_from_post(request, scrim)

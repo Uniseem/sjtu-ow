@@ -21,7 +21,7 @@
       <h2 class="b-section__title">勾选上场</h2>
       {% include "core/admin/_tabs.html" with tabs=order_tabs current=order param="order" label="排序" %}
     </div>
-    <form method="post" data-split-form class="b-form" data-autosave data-autosave-idle="勾上、取消就自动保存">
+    <form method="post" data-split-form class="b-form" data-autosave data-autosave-queue="split" data-autosave-idle="勾上、取消就自动保存">
       {% csrf_token %}
       <input type="hidden" name="order" value="{{ order }}">
       <input type="hidden" name="part" value="pick">

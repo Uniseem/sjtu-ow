@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import re
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -42,7 +44,42 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-_opener = urllib.request.build_opener(_SafeRedirectHandler)
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """Connects to the address that was checked (216, C8). urllib looked the
+    name up again to connect, so a name that answered with a public address
+    for the check and an internal one a moment later (DNS rebinding) got
+    through. TLS still checks the certificate against the name."""
+
+    def connect(self):
+        from core.net import UnsafeUrl, public_addresses
+
+        if self._tunnel_host:
+            # Through an HTTPS proxy (HTTPS_PROXY): ``host`` is the proxy,
+            # which resolves the font's name itself. Check that name, then
+            # let the standard library tunnel and check the certificate
+            # against it.
+            try:
+                public_addresses(self._tunnel_host, self._tunnel_port or 443)
+            except UnsafeUrl as exc:
+                raise DownloadError(f"下载地址不可用：{exc}") from exc
+            super().connect()
+            return
+        try:
+            address = public_addresses(self.host, self.port)[0]
+        except UnsafeUrl as exc:
+            raise DownloadError(f"下载地址不可用：{exc}") from exc
+        self.sock = socket.create_connection(
+            (str(address), self.port), self.timeout, self.source_address
+        )
+        self.sock = self._context.wrap_socket(self.sock, server_hostname=self.host)
+
+
+class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_PinnedHTTPSConnection, req, context=self._context)
+
+
+_opener = urllib.request.build_opener(_SafeRedirectHandler, _PinnedHTTPSHandler)
 
 
 def fetch_bytes(url: str, *, max_bytes: int = MAX_FONT_BYTES) -> bytes:

@@ -200,7 +200,11 @@ def _form_page(request, form, article):
         "page_title": "写文章",
         "form": form,
         "article": None,
-        "can_publish": True,
+        # A new article is the writer's own, so publishing it comes down to
+        # 发布 on the section (216, B10); it was shown to everyone and a
+        # writer without it got 「你不能发布」 only after pressing it.
+        "can_publish": form.parent is not None
+        and form.parent.permissions_for_user(user).can_publish_subpage(),
         "guide": plain_writer(user),
         "back_url": reverse("backoffice:articles"),
         "back_label": "文章",

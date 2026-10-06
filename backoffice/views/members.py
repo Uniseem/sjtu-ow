@@ -30,6 +30,7 @@ from backoffice.forms import (
     UserRuleForm,
     assignable_groups,
     person_label,
+    sees_emails,
 )
 from backoffice.nav import placed
 from backoffice.views.common import paginate, search_text
@@ -427,7 +428,10 @@ def _people_context(request, group) -> dict:
             group.memberships.select_related("user").order_by("sort_order", "pk")
         ),
         "query": query,
-        "found": member_services.search_people(group, query),
+        "found": member_services.search_people(
+            group, query, by_email=sees_emails(request.user)
+        ),
+        "sees_emails": sees_emails(request.user),
     }
 
 
@@ -491,11 +495,14 @@ def _people_done(request, group, problem: str = "", note: str = ""):
 def group_people(request, pk):
     """搜人 for the search box: joined people not in the group yet."""
     group = get_object_or_404(MemberGroup, pk=pk)
-    found = member_services.search_people(group, request.GET.get("q", "")[:50])
+    found = member_services.search_people(
+        group, request.GET.get("q", "")[:50], by_email=sees_emails(request.user)
+    )
     return JsonResponse(
         {
             "results": [
-                {"id": person.pk, "label": person_label(person)} for person in found
+                {"id": person.pk, "label": person_label(person, request.user)}
+                for person in found
             ]
         }
     )

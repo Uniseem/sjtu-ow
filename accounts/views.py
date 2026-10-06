@@ -393,12 +393,22 @@ def me_export(request):
     return response
 
 
+DELETE_TRIES_PER_HOUR = 5  # design 3.8 (v7.19)
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def me_delete(request):
     """Design 3.8: anonymise the account after the password is confirmed."""
     blockers = deletion_blockers(request.user)
     form = DeleteAccountForm(request.POST or None, user=request.user)
+    # The password box here was a place to guess passwords with a stolen
+    # session, as often as one liked (216, A6).
+    if request.method == "POST" and over_limit(
+        f"me-delete:{request.user.pk}", DELETE_TRIES_PER_HOUR, 3600
+    ):
+        messages.error(request, "尝试太频繁了，请一小时后再试。")
+        return redirect("me_delete")
     if request.method == "POST" and not blockers and form.is_valid():
         try:
             delete_account(request.user)

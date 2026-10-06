@@ -90,6 +90,10 @@ class User(AbstractUser):
             "新赛事、新内战发布时的群发邮件（设计 10.4）。和本人有关的通知不受影响。"
         ),
     )
+    # 「换一个订阅地址」 (design 13.5, v7.20): the calendar address carries
+    # this number from the first change on; raising it cuts off every address
+    # handed out before. 0 keeps the address everyone already subscribed to.
+    calendar_version = models.PositiveIntegerField("日历订阅地址版本", default=0)
     # Shown wherever the face is (design-details 2.3, v6.1). Nothing sets it
     # yet (no upload, not in the admin); empty means the 底图 and the initial.
     avatar = models.ForeignKey(
@@ -123,8 +127,10 @@ class User(AbstractUser):
 class AvatarSubmission(models.Model):
     """A picture a member uploaded as their face (design-details 2.3, v6.11).
 
-    It shows only once a reviewer approves it; until then the person keeps the
-    face they had. The status changes only through accounts.services.
+    Since v6.73 it shows as soon as it is uploaded; a content editor can take
+    it down afterwards (216: this said 「only once a reviewer approves it」,
+    which stopped being true in round 195). The status changes only through
+    accounts.services.
     """
 
     class Status(models.TextChoices):
@@ -257,6 +263,7 @@ class GameAccount(models.Model):
 
     def save(self, *args, **kwargs):
         rank_fields = ("rank_tank", "rank_damage", "rank_support")
+        stamped = False
         if not self._state.adding and self.pk:
             previous = (
                 type(self).objects.filter(pk=self.pk).values(*rank_fields).first()
@@ -265,8 +272,15 @@ class GameAccount(models.Model):
                 previous[name] != getattr(self, name) for name in rank_fields
             ):
                 self.ranks_updated_at = timezone.now()
+                stamped = True
         if not self.ranks_updated_at:
             self.ranks_updated_at = timezone.now()
+            stamped = True
+        # Autosave saves only the fields that changed (216, A7): a new rank
+        # went in while its date stayed old, and 180 days on it greyed out.
+        update_fields = kwargs.get("update_fields")
+        if stamped and update_fields is not None:
+            kwargs["update_fields"] = {*update_fields, "ranks_updated_at"}
         super().save(*args, **kwargs)
 
     @property

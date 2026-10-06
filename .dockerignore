@@ -7,6 +7,8 @@ __pycache__
 *.pyc
 data/*.sqlite3
 data/*.sqlite3-*
+# Backups hold everyone's email and contacts; never into the image (216, C10).
+backups
 media/*
 !media/.gitkeep
 staticfiles

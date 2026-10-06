@@ -40,4 +40,9 @@ urlpatterns = [
         registration_views.me_registrations,
         name="me_registrations",
     ),
+    path(
+        "me/registrations/calendar/new-address/",
+        registration_views.me_calendar_reset,
+        name="me_calendar_reset",
+    ),
 ]

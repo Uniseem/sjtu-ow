@@ -71,7 +71,10 @@ def players_from(signups, scrim) -> list[Player]:
             Player(
                 signup_id=signup.pk,
                 nickname=signup.user.nickname,
-                battletag=signup.game_account.battletag,
+                # The game ID may be deleted once the scrim is over (216, S4).
+                battletag=(
+                    signup.game_account.battletag if signup.game_account else ""
+                ),
                 roles=tuple(signup.roles),
                 ratings=ratings,
                 best=signup.best_rating or 0,
@@ -297,6 +300,25 @@ def generate(players, scrim, *, rng=None) -> Split:
             "找不到合法的分队方案：每个位置都要有足够的、能打这个位置的玩家。"
         )
     return rng.choice(tied)
+
+
+def unrated_placements(split: Split, players, scrim) -> list[str]:
+    """Who was put in a role they have no rank for, counted as 0 (216, S6).
+
+    A player keeps every role they ticked; a rank set to 「未定级」 after
+    signing up leaves that role at 0 and the split leans on it. The admin
+    is told instead of finding out from a lopsided game."""
+    if not scrim.role_queue:
+        return []
+    lookup = {player.signup_id: player for player in players}
+    found = []
+    for assignment in (split.a, split.b):
+        for role, ids in assignment.by_role.items():
+            for signup_id in ids:
+                player = lookup[signup_id]
+                if role not in player.ratings:
+                    found.append(f"{player.nickname}（{ROLE_LABELS[role]}）")
+    return found
 
 
 def ratings_used(split: Split, players, scrim) -> dict[int, int]:

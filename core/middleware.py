@@ -176,3 +176,72 @@ class HeldLettersMiddleware:
         with outbox.asking(actor) as batch:
             response = self.get_response(request)
         return outbox.settle(request, response, batch)
+
+
+class AutosaveReplayMiddleware:
+    """A new thing is made once, however often its first save is sent (216,
+    B8; design 13.17). The first autosave of a new article, event or group
+    posts to the 「新建」 address and creates the row; when the answer was
+    lost on the way (the network dropped), the script retried to the same
+    address and made a second one. Each form sends a key of its own
+    (``X-Autosave-Key``); once a save under that key has created something,
+    the same key at another address is told where it went (``retry``), and
+    the script saves there instead."""
+
+    KEY_SECONDS = 24 * 3600
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        import json
+
+        from django.core.cache import cache
+        from django.http import JsonResponse
+        from django.utils import timezone
+
+        key = self._key(request)
+        if key is not None:
+            made = cache.get(key)
+            if made and made != request.path:
+                return JsonResponse(
+                    {
+                        "ok": True,
+                        "saved": [],
+                        "errors": {},
+                        "location": made,
+                        "replace": {},
+                        "values": {},
+                        "saved_at": timezone.localtime().strftime("%H:%M"),
+                        "retry": True,
+                    }
+                )
+        response = self.get_response(request)
+        if (
+            key is not None
+            and response.status_code == 200
+            and "json" in response.get("Content-Type", "")
+        ):
+            try:
+                data = json.loads(response.content)
+            except ValueError:
+                data = None
+            location = data.get("location") if isinstance(data, dict) else ""
+            if location and location != request.path:
+                cache.set(key, location, self.KEY_SECONDS)
+        return response
+
+    @staticmethod
+    def _key(request):
+        import re
+
+        from core import autosave
+
+        if not autosave.wants(request):
+            return None
+        raw = request.headers.get("X-Autosave-Key", "")
+        if not re.fullmatch(r"[A-Za-z0-9]{16,64}", raw):
+            return None
+        user = getattr(request, "user", None)
+        owner = user.pk if user is not None and user.is_authenticated else "-"
+        return f"sjtu_ow:autosave-made:{owner}:{raw}"

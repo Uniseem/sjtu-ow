@@ -5,5 +5,7 @@
   底图 with the initial (2.2). person; size is xs, sm,
   md or lg (empty for the default); plain leaves out the 底图 (the account
   menu, comments). Always decoration: the name is printed beside it.
+  A stopped account shows no picture of its own either (2.4, v7.20; 210
+  review A12): the initial, like a closed one.
 {% endcomment %}
-<span class="c-avatar{% if size %} c-avatar--{{ size }}{% endif %}{% if not plain %} c-hue-{{ person|hue }}{% endif %}" aria-hidden="true">{% if person.avatar_id %}{% if size == "md" or size == "lg" %}{% image person.avatar fill-176x176 alt="" loading="lazy" %}{% else %}{% image person.avatar fill-88x88 alt="" loading="lazy" %}{% endif %}{% else %}{% if size == "md" or size == "lg" %}{% default_avatar person "fill-176x176" as face %}{% else %}{% default_avatar person "fill-88x88" as face %}{% endif %}{% if face %}{{ face }}{% else %}{{ person.nickname|initial }}{% endif %}{% endif %}</span>
+<span class="c-avatar{% if size %} c-avatar--{{ size }}{% endif %}{% if not plain %} c-hue-{{ person|hue }}{% endif %}" aria-hidden="true">{% if person.avatar_id and person.is_active %}{% if size == "md" or size == "lg" %}{% image person.avatar fill-176x176 alt="" loading="lazy" %}{% else %}{% image person.avatar fill-88x88 alt="" loading="lazy" %}{% endif %}{% else %}{% if size == "md" or size == "lg" %}{% default_avatar person "fill-176x176" as face %}{% else %}{% default_avatar person "fill-88x88" as face %}{% endif %}{% if face %}{{ face }}{% else %}{{ person.nickname|initial }}{% endif %}{% endif %}</span>

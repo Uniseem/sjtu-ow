@@ -43,6 +43,48 @@ def test_templates_have_no_inline_style_attributes():
     assert offenders == []
 
 
+def _page_templates():
+    roots = [Path(settings.BASE_DIR) / "templates"]
+    roots.extend(sorted(Path(settings.BASE_DIR).glob("*/templates")))
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for path in root.rglob("*.html"):
+            text = path.read_text(encoding="utf-8")
+            if not _is_email(path, text):
+                yield path, text
+
+
+def test_templates_have_no_inline_scripts_or_event_attributes():
+    """The CSP forbids inline script (design 15.2): an onclick= or a <script>
+    without src would be blocked in the browser and do nothing, and only a
+    browser run would notice. The style scan above did not look for these
+    (216, F8)."""
+    import re
+
+    handler = re.compile(r"""\son[a-z]+\s*=\s*["'{]""", re.I)
+    script = re.compile(r"<script\b([^>]*)>", re.I)
+    allowed = ('type="speculationrules"', 'type="application/json"')
+    offenders = []
+    for path, text in _page_templates():
+        name = str(path.relative_to(settings.BASE_DIR))
+        if handler.search(text):
+            offenders.append(f"{name}: on…=")
+        for attributes in script.findall(text):
+            if "src=" in attributes or any(ok in attributes for ok in allowed):
+                continue
+            offenders.append(f"{name}: <script{attributes}>")
+    assert offenders == []
+
+
+def test_the_inline_script_scan_finds_what_it_is_for():
+    import re
+
+    handler = re.compile(r"""\son[a-z]+\s*=\s*["'{]""", re.I)
+    assert handler.search('<button onclick="go()">')
+    assert not handler.search('<a href="/on=1">')
+
+
 def test_django_error_pages_reference_only_error_css():
     pages = [
         ("errors/404.html", {}),

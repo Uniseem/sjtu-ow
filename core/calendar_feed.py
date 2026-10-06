@@ -18,22 +18,43 @@ LENGTHS = {"内战": timedelta(hours=3), "赛事": timedelta(hours=4)}
 def token(user) -> str:
     """The same address every time (round 195): until then it was signed with
     a timestamp, so each page showed a different one and a phone that had
-    subscribed saw the page offer it a "new" calendar."""
-    return signing.Signer(salt=CALENDAR_SALT).sign_object(user.pk)
+    subscribed saw the page offer it a "new" calendar. Once the person asked
+    for a new one (v7.20), the address also carries ``calendar_version``."""
+    version = getattr(user, "calendar_version", 0) or 0
+    payload = [user.pk, version] if version else user.pk
+    return signing.Signer(salt=CALENDAR_SALT).sign_object(payload)
 
 
 def user_for(raw: str):
     from accounts.models import User
 
     try:
-        pk = signing.Signer(salt=CALENDAR_SALT).unsign_object(raw)
+        payload = signing.Signer(salt=CALENDAR_SALT).unsign_object(raw)
     except (signing.BadSignature, ValueError):
         try:
             # Addresses handed out before round 195 keep working.
-            pk = signing.loads(raw, salt=CALENDAR_SALT)
+            payload = signing.loads(raw, salt=CALENDAR_SALT)
         except (signing.BadSignature, ValueError):
             return None
-    return User.objects.filter(pk=pk, is_active=True).first()
+    if isinstance(payload, list) and len(payload) == 2:
+        pk, version = payload
+    else:
+        pk, version = payload, 0
+    if not isinstance(pk, int) or not isinstance(version, int):
+        return None
+    # An address from before the last 「换一个订阅地址」 no longer works.
+    return User.objects.filter(pk=pk, is_active=True, calendar_version=version).first()
+
+
+def new_address(user) -> None:
+    """「换一个订阅地址」 (design 13.5, v7.20; 210 review: the address could
+    not be revoked once it leaked)."""
+    from django.db.models import F
+
+    from accounts.models import User
+
+    User.objects.filter(pk=user.pk).update(calendar_version=F("calendar_version") + 1)
+    user.refresh_from_db(fields=["calendar_version"])
 
 
 def feed_url(user, *, webcal=False) -> str:

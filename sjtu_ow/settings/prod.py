@@ -76,6 +76,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "core.middleware.AutosaveReplayMiddleware",
     "core.middleware.LoggedInHintCookieMiddleware",
     "core.middleware.PrerenderMissMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",

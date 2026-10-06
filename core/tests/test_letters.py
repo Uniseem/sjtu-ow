@@ -162,9 +162,12 @@ def test_an_unknown_address_gets_a_letter_without_a_name(client):
     assert message.body.startswith("你好：\n")
 
 
-def test_text_only_mail_is_framed_once_with_its_own_footer():
+def test_text_only_mail_is_framed_once_with_its_own_footer(settings):
     """Wagtail's notifications: the text greets and closes itself; what it puts
-    after 「——」 goes to the frame's footer instead of being said twice."""
+    after 「——」 goes to the frame's footer instead of being said twice. The
+    address in it is this site's (Wagtail links its own pages); only those
+    become links (216, D6)."""
+    settings.SITE_URL = "https://example.com"
     message = EmailMessage(
         subject="页面已批准",
         body=(

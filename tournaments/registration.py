@@ -131,19 +131,23 @@ def precheck(*, tournament, team, actor, exclude_registration=None):
 def _resolve_accounts(members, selections):
     """Check 7: every chosen game ID belongs to that member (design 8.3)."""
     from accounts.models import GameAccount
+    from core.converters import as_id
 
     problems = []
     chosen = {}
     for membership in members:
         user = membership.user
-        account_id = selections.get(str(user.pk)) or selections.get(user.pk)
+        chosen_id = selections.get(str(user.pk)) or selections.get(user.pk)
         account = None
-        if account_id:
-            account = GameAccount.objects.filter(pk=account_id, user=user).first()
+        if chosen_id:
+            # Straight from the form (account-<pk>): "abc" was a ValueError,
+            # a 500 (216, T3; AGENTS「编号一律过一道关」). as_id() gives None
+            # for anything that is not an id, which matches no account.
+            account = GameAccount.objects.filter(pk=as_id(chosen_id), user=user).first()
+            if account is None:
+                problems.append("游戏 ID 选择有误，请刷新页面重试")
         if account is None:
             account = GameAccount.objects.filter(user=user).order_by("pk").first()
-            if account_id:
-                problems.append("游戏 ID 选择有误，请刷新页面重试")
         if account is None:
             problems.append(f"{user.nickname} 还没有填写游戏 ID")
         chosen[user.pk] = account
@@ -217,7 +221,10 @@ def log(
 
 @transaction.atomic
 def submit(*, tournament, team, actor, selections) -> Registration:
-    """First submit, resubmit and roster sync all go through here (design 8.3)."""
+    """First submit, resubmit and roster sync all go through here (design 8.3).
+
+    Serialised by the IMMEDIATE transaction (design 12.12), not by
+    ``select_for_update``, which SQLite ignores (216, T9)."""
     registration = (
         Registration.objects.select_for_update()
         .filter(tournament=tournament, team=team)
@@ -394,9 +401,22 @@ def withdraw(*, registration, actor) -> Registration:
     )
 
 
+def _still_open(tournament) -> None:
+    """Admins review and form teams only while the tournament is on (design
+    8.5, v7.20; 210 review T7): after it was cancelled or finished, passing
+    someone wrote 「报名已通过」 letters and a new line on the team's page."""
+    from tournaments.models import TournamentStatus
+
+    if tournament.status == TournamentStatus.CANCELLED:
+        raise RegistrationError("赛事已取消，不能再审核或编队。")
+    if tournament.status == TournamentStatus.FINISHED:
+        raise RegistrationError("赛事已结束，不能再审核或编队。")
+
+
 @transaction.atomic
 def approve(*, registration, actor) -> Registration:
     """Design 8.5 row 1: an admin passes a pending registration."""
+    _still_open(registration.tournament)
     if registration.status != RegistrationStatus.PENDING:
         raise RegistrationError("当前状态不能通过")
     return _set_status(
@@ -415,6 +435,7 @@ def reject(*, registration, actor, note) -> Registration:
     the review page only hid the buttons)."""
     if registration.team_id is None:
         raise RegistrationError("临时队伍请在「队伍编排」里调整，这里不能驳回。")
+    _still_open(registration.tournament)
     if not note or not note.strip():
         raise RegistrationError("驳回必须填写备注")
     if registration.status == RegistrationStatus.APPROVED:
@@ -550,10 +571,10 @@ def pool_counts(pool) -> dict:
 
 
 def _own_account(user, game_account_id):
-    try:
-        return user.game_accounts.filter(pk=int(game_account_id)).first()
-    except (TypeError, ValueError):
-        return None
+    from core.converters import as_id
+
+    # Through as_id like every id from a form (216): None matches nothing.
+    return user.game_accounts.filter(pk=as_id(game_account_id)).first()
 
 
 @transaction.atomic
@@ -703,11 +724,13 @@ def _write_adhoc_roster(registration, entries):
                 user=user,
                 game_account=account,
                 nickname=user.nickname,
-                battletag=account.battletag,
+                # The game ID can be deleted once the event is over (216, T8),
+                # as in _write_roster.
+                battletag=account.battletag if account else "",
                 is_sjtu=user.is_sjtu,
-                rank_tank=account.rank_tank,
-                rank_damage=account.rank_damage,
-                rank_support=account.rank_support,
+                rank_tank=account.rank_tank if account else None,
+                rank_damage=account.rank_damage if account else None,
+                rank_support=account.rank_support if account else None,
                 is_captain=False,
                 is_active=registration.status in ACTIVE_STATUSES,
             )
@@ -741,6 +764,7 @@ def form_teams(*, tournament, actor, layout) -> dict:
     for a new team. Live teams missing from the layout lose everyone.
     Everything is validated first; nothing is written if anything is wrong.
     """
+    _still_open(tournament)
     live = {row.pk: row for row in adhoc_registrations(tournament)}
     entries = {
         row.pk: row
@@ -916,6 +940,7 @@ def dissolve(*, registration, actor) -> None:
     if registration.status not in ACTIVE_STATUSES:
         raise RegistrationError("这支队伍已经不在报名中")
     tournament = registration.tournament
+    _still_open(tournament)
     team_name = registration.team_name
     users = _dissolve(registration, actor=actor, actor_type=ActorType.ADMIN)
     _refresh_tournament_page(tournament)

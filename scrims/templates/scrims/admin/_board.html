@@ -13,7 +13,7 @@
         <span class="split-warn" data-over-capacity hidden>有队伍超员，先把人拖到缓冲区</span>
       </p>
 
-      <form method="post" action="{% url 'scrim_split' scrim.pk %}" data-teams-form data-team-size="{{ team_size }}" class="b-form" data-autosave data-autosave-idle="拖动或用按钮移动，每动一次就自动保存">
+      <form method="post" action="{% url 'scrim_split' scrim.pk %}" data-teams-form data-team-size="{{ team_size }}" class="b-form" data-autosave data-autosave-queue="split" data-autosave-idle="拖动或用按钮移动，每动一次就自动保存">
         {% csrf_token %}
         <input type="hidden" name="order" value="{{ order }}">
         <input type="hidden" name="part" value="teams" data-teams-moved>

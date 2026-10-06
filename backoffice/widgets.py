@@ -40,6 +40,13 @@ class ImagePicker(forms.Widget):
 
     template_name = "backoffice/widgets/image_picker.html"
 
+    def __init__(self, attrs=None, label=""):
+        super().__init__(attrs)
+        # The field's own <label> points at a hidden input, which nothing
+        # reads out; the buttons carry the field's name instead (216, F7: a
+        # page of pictures was N times 「选择, 按钮」).
+        self.label = str(label or "")
+
     def get_context(self, name, value, attrs):
         from wagtail.images import get_image_model
 
@@ -52,6 +59,7 @@ class ImagePicker(forms.Widget):
                 "image": image,
                 "thumb": thumbnail(image),
                 "chooser_url": reverse("backoffice:image_chooser"),
+                "label": self.label,
             }
         )
         return context
@@ -85,5 +93,5 @@ def image_field(user, *, label, required=False, help_text="", current=None):
         required=required,
         label=label,
         help_text=help_text,
-        widget=ImagePicker,
+        widget=ImagePicker(label=label),
     )

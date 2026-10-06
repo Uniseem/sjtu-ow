@@ -20,14 +20,33 @@ def resolved_addresses(host: str, port: int) -> list[ipaddress._BaseAddress]:
 
 
 def is_internal(address) -> bool:
+    """Anything not on the public internet. ``is_global`` also catches the
+    shared carrier range 100.64.0.0/10, which ``is_private`` does not (216,
+    C8): the production server's own WARP network, 100.96.0.0/12, is in it.
+    An IPv4 address written as IPv6 (::ffff:10.0.0.1) is judged as IPv4."""
+    mapped = getattr(address, "ipv4_mapped", None)
+    if mapped is not None:
+        address = mapped
     return (
-        address.is_private
+        not address.is_global
+        or address.is_private
         or address.is_loopback
         or address.is_link_local
         or address.is_reserved
         or address.is_multicast
         or address.is_unspecified
     )
+
+
+def public_addresses(host: str, port: int) -> list:
+    """The host's addresses, all of them public, or :class:`UnsafeUrl`."""
+    try:
+        addresses = resolved_addresses(host, port)
+    except OSError as exc:
+        raise UnsafeUrl(f"无法解析主机名：{exc}") from exc
+    if not addresses or any(is_internal(address) for address in addresses):
+        raise UnsafeUrl("地址指向内网或本机，已拒绝。")
+    return addresses
 
 
 def assert_public_https_url(url: str) -> None:

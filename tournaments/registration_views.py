@@ -211,6 +211,19 @@ def me_registrations(request):
     )
 
 
+@login_required
+@require_POST
+def me_calendar_reset(request):
+    """「换一个订阅地址」 (design 13.5, v7.20)."""
+    from core.calendar_feed import new_address
+
+    new_address(request.user)
+    messages.success(
+        request, "已换成新的订阅地址，旧地址不能再用了。手机上要用新地址重新订阅。"
+    )
+    return redirect("me_registrations")
+
+
 # --- individual signups (design 8.8.1) ----------------------------------------
 
 

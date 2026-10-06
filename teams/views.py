@@ -103,9 +103,13 @@ def team_create(request):
     form = TeamForm(request.POST or None, request.FILES or None)
     blocker = services.create_blocker(request.user)
     if request.method == "POST" and not blocker:
-        if over_limit(f"team_create:{request.user.pk}", CREATE_LIMIT, DAY):
+        # Counted only once the form is valid (216, T6): three tries with a
+        # taken name used to use up the day's three.
+        if not form.is_valid():
+            pass
+        elif over_limit(f"team_create:{request.user.pk}", CREATE_LIMIT, DAY):
             messages.error(request, "今天创建的战队太多了，明天再试。")
-        elif form.is_valid():
+        else:
             logo = None
             if form.cleaned_data.get("logo_file"):
                 logo = create_logo(

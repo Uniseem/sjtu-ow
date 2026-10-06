@@ -42,11 +42,14 @@ def square_face(uploaded) -> ContentFile:
             raise AvatarError(f"图片至少要 {AVATAR_MIN_SIDE}×{AVATAR_MIN_SIDE} 像素。")
         picture.seek(0)  # an animation keeps its first frame
         picture.load()
+        # Inside the try (216, A4): a JPEG whose EXIF block is garbage, or a
+        # PNG with a malformed "Raw profile type exif" chunk, decodes fine
+        # and only fails here. That was a 500.
+        picture = ImageOps.exif_transpose(picture)
     except AvatarError:
         raise
     except Exception as error:  # noqa: BLE001 - any decoding failure
         raise AvatarError("读不出这张图片，请换一张 JPG、PNG 或 WebP。") from error
-    picture = ImageOps.exif_transpose(picture)
     mode = "RGBA" if picture.mode in ("RGBA", "LA", "P") else "RGB"
     picture = picture.convert(mode)
     side = min(picture.size)

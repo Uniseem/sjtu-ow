@@ -85,7 +85,10 @@ def avatar_review_action(request, pk):
     reason = request.POST.get("reason", "")
     note = request.POST.get("note", "")
     back = request.POST.get("next", "")
-    if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
+    # require_https like the other three (216, F6).
+    if not url_has_allowed_host_and_scheme(
+        back, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
         back = reverse("avatar_review")
     try:
         if action == "take_down":

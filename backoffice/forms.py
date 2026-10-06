@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from django import forms
 from django.contrib.auth.models import Group
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -29,6 +29,7 @@ from backoffice.widgets import DateLocal, DateTimeLocal, image_field
 from content.models import ArticleCategory, ArticlePage, StandardPage
 from content.permissions import is_submitter_only, plain_writer, user_can_edit_author
 from content.widgets import MarkdownEditor
+from core.converters import as_id
 from core.models import SiteSettings
 from members.models import MemberGroup
 from scrims.models import Scrim
@@ -53,15 +54,41 @@ class KeepSeconds:
         super()._post_clean()
 
 
-def person_label(user) -> str:
-    return f"{user.nickname}（{user.email}）"
+def sees_emails(viewer) -> bool:
+    """Only superusers see members' email addresses (design 4.1, v7.20; 210
+    review A2): 「账号安全」 tells everyone only they and superusers can."""
+    return bool(viewer is not None and getattr(viewer, "is_superuser", False))
 
 
-class PersonChoiceField(forms.ModelChoiceField):
-    """Nicknames repeat; pick 「昵称（邮箱）」."""
+def person_label(user, viewer=None) -> str:
+    """「昵称（邮箱）」 for superusers, 「昵称（#编号）」 for everyone else: the
+    number tells two people with one nickname apart and says nothing."""
+    if sees_emails(viewer):
+        return f"{user.nickname}（{user.email}）"
+    return f"{user.nickname}（#{user.pk}）"
+
+
+class IdChoiceField(forms.ModelChoiceField):
+    """A row picked by id, refusing what is not one before the lookup (216,
+    B4). Twenty digits through a Wagtail page's key (a one-to-one link,
+    which Django does not range-check) were an OverflowError, a 500
+    (AGENTS「编号一律过一道关」)."""
+
+    def to_python(self, value):
+        if value not in self.empty_values and as_id(value) is None:
+            raise ValidationError(
+                self.error_messages["invalid_choice"], code="invalid_choice"
+            )
+        return super().to_python(value)
+
+
+class PersonChoiceField(IdChoiceField):
+    """Nicknames repeat; pick by ``person_label`` (set ``viewer``)."""
+
+    viewer = None
 
     def label_from_instance(self, obj):
-        return person_label(obj)
+        return person_label(obj, self.viewer)
 
 
 # --- articles (docs/admin.md 4.2) ------------------------------------------------
@@ -152,6 +179,7 @@ class ArticleForm(KeepSeconds, forms.ModelForm):
                 required=False,
                 help_text="空着就是写这篇的人。",
             )
+            self.fields["author"].viewer = user
         if not user_can_edit_author(user):
             self.fields.pop("author")
         if is_submitter_only(user):
@@ -218,6 +246,18 @@ class ArticleForm(KeepSeconds, forms.ModelForm):
         original = self._original_slug
         return not original or original == self._free_slug(self._original_title)
 
+    def _update_errors(self, errors):
+        """Wagtail's Page.clean says a clashing address on ``slug``, which
+        plain members' form leaves out; Django then raised ValueError (no
+        such field), a 500 (216, B9). The message goes on the form."""
+        if hasattr(errors, "error_dict"):
+            moved = {}
+            for name, messages in errors.error_dict.items():
+                key = name if name in self.fields else NON_FIELD_ERRORS
+                moved.setdefault(key, []).extend(messages)
+            errors = ValidationError(moved)
+        super()._update_errors(errors)
+
     def finish(self, page):
         """What saving adds, whole or in part (``core.autosave``): the
         address and who wrote it. Wagtail's full_clean fills an empty slug
@@ -276,7 +316,7 @@ class PinnedArticlesForm(forms.Form):
         super().__init__(*args, **kwargs)
         live = ArticlePage.objects.live().order_by("-first_published_at")
         for number in range(1, self.SLOTS + 1):
-            self.fields[f"article_{number}"] = forms.ModelChoiceField(
+            self.fields[f"article_{number}"] = IdChoiceField(
                 queryset=live,
                 required=False,
                 label=f"第 {number} 篇",
@@ -329,7 +369,7 @@ def collections_for(user, action: str):
     return policy.collections_user_has_permission_for(user, action)
 
 
-class CollectionChoiceField(forms.ModelChoiceField):
+class CollectionChoiceField(IdChoiceField):
     def label_from_instance(self, obj):
         depth = max(obj.depth - 2, 0)
         return ("　" * depth) + obj.name if obj.depth > 1 else "（根）"

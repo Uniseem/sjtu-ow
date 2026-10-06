@@ -63,6 +63,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "core.middleware.AutosaveReplayMiddleware",
     "core.middleware.LoggedInHintCookieMiddleware",
     "core.middleware.PrerenderMissMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -248,6 +249,10 @@ ACCOUNT_PASSWORD_RESET_BY_CODE_ENABLED = True
 ACCOUNT_PASSWORD_RESET_BY_CODE_MAX_ATTEMPTS = 3
 ACCOUNT_PASSWORD_RESET_BY_CODE_TIMEOUT = 3 * 60
 ACCOUNT_CHANGE_EMAIL = True
+# Changing the sign-in email asks for the password again (216, A5): changing
+# the password already needs the old one, so the email was the weak link for
+# someone holding a stolen session. allauth keeps a 5-minute window.
+ACCOUNT_REAUTHENTICATION_REQUIRED = True
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_PREVENT_ENUMERATION = True
 ACCOUNT_UNIQUE_EMAIL = True

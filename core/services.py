@@ -14,11 +14,15 @@ from datetime import timedelta
 from django.core import signing
 from django.db import transaction
 from django.urls import reverse
+from django.utils import timezone
 
 UNSUBSCRIBE_SALT = "core.announcements.unsubscribe"
 EVERYONE = "everyone"
 PARTICIPANTS = "participants"
 NOTE_MAX = 500
+# Design 10.4 (v7.20, 210 review B11): the same one to everyone at most once
+# in this long. Ten clicks sent ten mails to the whole site.
+EVERYONE_GAP_MINUTES = 30
 
 
 class AnnouncementError(Exception):
@@ -241,6 +245,20 @@ def announcement_problem(
             return "发布之后才能通知全体成员。"
         if waiting_broadcast(kind, obj) is not None:
             return "已经安排在上线时通知全体成员，到时会发出，不用再安排。"
+        recent = (
+            history(kind, obj)
+            .filter(
+                audience=EVERYONE,
+                created_at__gte=timezone.now()
+                - timedelta(minutes=EVERYONE_GAP_MINUTES),
+            )
+            .first()
+        )
+        if recent is not None:
+            return (
+                f"{timezone.localtime(recent.created_at):%H:%M} 刚通知过全体成员，"
+                f"{EVERYONE_GAP_MINUTES} 分钟内不再发。"
+            )
     try:
         build_smtp_backend(SiteSettings.load())
     except SMTPNotConfigured:

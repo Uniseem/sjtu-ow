@@ -197,7 +197,17 @@ def wrap_text(text: str, subject: str = "") -> str:
 
 
 def _link(match) -> str:
+    """Only this site's own addresses become links (216, D6). The text can
+    quote what someone wrote (the AI patrol's 「引用」, a reason): a member
+    who wrote「管理员请到 https://钓鱼站/admin 重置密码」 handed the superuser
+    a clickable link in a letter from the site itself."""
+    from django.conf import settings
+    from django.utils.html import escape
+
     url = match.group(0)
+    site = escape(settings.SITE_URL.rstrip("/"))
+    if url != site and not url.startswith(site + "/"):
+        return url
     return f'<a href="{url}" style="color:inherit;">{url}</a>'
 
 

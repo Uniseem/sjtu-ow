@@ -57,6 +57,14 @@ def prerender_index(request):
     )
 
 
+def _usable(path: str) -> bool:
+    try:
+        prerender.normalize_path(path)
+    except prerender.PrerenderError:
+        return False
+    return prerender.looks_prerenderable(path)
+
+
 @superuser_required
 @require_POST
 def prerender_rebuild(request):
@@ -64,8 +72,16 @@ def prerender_rebuild(request):
     if not prerender.is_enabled():
         messages.error(request, "预渲染当前是关闭的（PRERENDER_ENABLED）。")
     elif path:
-        prerender.request_page(path)
-        messages.success(request, f"已排入队列：{path}")
+        # request_page says False for an address it will not render (216,
+        # B7): it was 「已排入队列」 all the same. False also means the same
+        # page was asked for within 30 seconds, which is queued already.
+        if not _usable(path):
+            messages.error(
+                request, f"「{path}」不是能生成的页面地址（以 / 开头，不带 ? 和 #）。"
+            )
+        else:
+            prerender.request_page(path)
+            messages.success(request, f"已排入队列：{path}")
     else:
         prerender.request_all()
         messages.success(request, "已排入队列：全部页面。")
