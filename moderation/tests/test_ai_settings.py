@@ -210,18 +210,24 @@ def test_the_migration_carries_the_old_environment_in(monkeypatch):
         executor.migrate([target])
 
     SiteSettings.load()  # the row the migration fills
-    migrate(("core", "0020_ai_patrol"))
-    monkeypatch.setenv("MODERATION_API_KEY", "sk-from-env")
-    monkeypatch.setenv("MODERATION_BASE_URL", "https://env.example.com/v1")
-    monkeypatch.setenv("MODERATION_EXTRA_BODY", '{"thinking": {"type": "disabled"}}')
-    monkeypatch.setenv("MODERATION_TIMEOUT", "45")
-    monkeypatch.setenv("MODERATION_MAX_OUTPUT_TOKENS", "800")
-    migrate(("core", "0021_ai_settings_in_admin"))
-    row = SiteSettings.load()
-    assert row.moderation_api_key == "sk-from-env"
-    assert row.moderation_base_url == "https://env.example.com/v1"
-    assert row.moderation_extra_body == {"thinking": {"type": "disabled"}}
-    assert (row.moderation_timeout, row.moderation_max_output_tokens) == (45, 800)
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT moderation_api_key FROM core_sitesettings")
-        assert "sk-from-env" not in cursor.fetchone()[0]
+    try:
+        migrate(("core", "0020_ai_patrol"))
+        monkeypatch.setenv("MODERATION_API_KEY", "sk-from-env")
+        monkeypatch.setenv("MODERATION_BASE_URL", "https://env.example.com/v1")
+        monkeypatch.setenv(
+            "MODERATION_EXTRA_BODY", '{"thinking": {"type": "disabled"}}'
+        )
+        monkeypatch.setenv("MODERATION_TIMEOUT", "45")
+        monkeypatch.setenv("MODERATION_MAX_OUTPUT_TOKENS", "800")
+        migrate(("core", "0021_ai_settings_in_admin"))
+        row = SiteSettings.load()
+        assert row.moderation_api_key == "sk-from-env"
+        assert row.moderation_base_url == "https://env.example.com/v1"
+        assert row.moderation_extra_body == {"thinking": {"type": "disabled"}}
+        assert (row.moderation_timeout, row.moderation_max_output_tokens) == (45, 800)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT moderation_api_key FROM core_sitesettings")
+            assert "sk-from-env" not in cursor.fetchone()[0]
+    finally:
+        # Later tests in this process need today's tables (round 211).
+        call_command("migrate", verbosity=0)

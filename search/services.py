@@ -1,10 +1,11 @@
 """Site search (design 13.16): substring matching over four kinds of content.
 
 No tokeniser: every term must occur somewhere in the text, case-folded.
-Bodies and event descriptions are Markdown (v6.70), matched in Python on the
-words a reader sees rather than in SQL, so markup and link addresses never
-match or show in excerpts. The club's data is small enough for that (13.16
-says when to revisit).
+Bodies and event descriptions are Markdown (v6.70); their plain text is read
+off at save time into ``body_plain`` / ``description_plain`` (v7.14), so a
+query matches the words a reader sees without re-parsing anything — markup
+and link addresses never match or show in excerpts. The club's data is small
+enough for matching in Python rather than SQL (13.16 says when to revisit).
 """
 
 from __future__ import annotations
@@ -12,8 +13,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from django.utils.html import strip_tags
-
-from content.markdown import plain_text
 
 PER_TYPE_LIMIT = 20
 MAX_QUERY_LENGTH = 50
@@ -94,7 +93,9 @@ def search_articles(terms, request=None) -> Group:
     )
 
     def text_of(page):
-        return f"{page.title}\n{page.summary}\n{plain(plain_text(page.body))}"
+        # body_plain is the body as the reader sees it, read off at save
+        # time (v7.14); searching never re-parses the Markdown.
+        return f"{page.title}\n{page.summary}\n{page.body_plain}"
 
     def hit_of(page, text):
         return Hit(
@@ -126,7 +127,7 @@ def search_events(terms) -> Group:
     def text_of(item):
         _kind, row = item
         summary = getattr(row, "summary", "")
-        return f"{row.title}\n{summary}\n{plain(plain_text(row.description))}"
+        return f"{row.title}\n{summary}\n{row.description_plain}"
 
     def hit_of(item, text):
         kind, row = item

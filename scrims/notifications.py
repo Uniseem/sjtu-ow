@@ -139,9 +139,8 @@ def new_scrim_letter(scrim, unsubscribe: str = "") -> Letter:
     ]
     if scrim.sjtu_only:
         facts.append(("参加范围", "仅限交大成员"))
-    from content.markdown import plain_text
-
-    description = plain_text(scrim.description)  # Markdown (v6.70)
+    # The plain text as the reader sees it, read off at save time (v7.14).
+    description = scrim.description_plain
     if len(description) > 300:
         description = description[:300] + "……"
     return Letter(

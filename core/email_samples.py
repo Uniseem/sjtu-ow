@@ -429,6 +429,8 @@ def samples() -> list[Sample]:
                     signup_deadline=timezone.make_aware(datetime(2026, 10, 5, 18, 0)),
                     sjtu_only=False,
                     description="怀旧版本，六人一队，不限位置。",
+                    # The letter reads the plain text stored at save time (v7.14).
+                    description_plain="怀旧版本，六人一队，不限位置。",
                 ),
                 "https://example.com/unsubscribe/sample/",
             ),

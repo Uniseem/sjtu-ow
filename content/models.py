@@ -6,7 +6,6 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import models
-from django.utils.functional import cached_property
 from modelcluster.fields import ParentalKey
 from wagtail.admin.panels import FieldPanel, InlinePanel
 from wagtail.models import Orderable, Page
@@ -283,6 +282,11 @@ class ArticlePage(SeoPageMixin, Page):
     summary = models.CharField("摘要", max_length=200, blank=True)
     # Markdown (design 5.2, v6.70; a StreamField until then).
     body = models.TextField("正文", blank=True)
+    # Read off the body at save time (v7.14): the plain text for search, the
+    # counts for the head and the cards — pages and search never re-parse.
+    body_plain = models.TextField("正文纯文本", blank=True)
+    body_words = models.PositiveIntegerField("字数", default=0)
+    body_minutes = models.PositiveIntegerField("阅读分钟数", default=1)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -330,7 +334,6 @@ class ArticlePage(SeoPageMixin, Page):
         context["toc"] = (
             headings if len(headings) >= article_meta.TOC_MIN_HEADINGS else []
         )
-        context["facts"] = self.facts
         context["updated"] = self.was_updated
         siblings = (
             ArticlePage.objects.live().public().child_of(self.get_parent())
@@ -395,13 +398,6 @@ class ArticlePage(SeoPageMixin, Page):
 
         return OwnArticlesPermissionTester(user, self)
 
-    @cached_property
-    def facts(self):
-        """Words and reading time, for cards and the head (design-details 6.3)."""
-        from content.article_meta import facts
-
-        return facts(self.body)
-
     @property
     def was_updated(self) -> bool:
         """Changed more than a day after it first went out (6.2)."""
@@ -414,6 +410,21 @@ class ArticlePage(SeoPageMixin, Page):
     def save(self, *args, **kwargs):
         if not self.author_id and self.owner_id:
             self.author_id = self.owner_id
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "body" in update_fields:
+            from content.article_meta import stored_counts
+
+            (
+                self.body_plain,
+                self.body_words,
+                self.body_minutes,
+            ) = stored_counts(self.body)
+            if update_fields is not None:
+                kwargs["update_fields"] = list(
+                    dict.fromkeys(
+                        [*update_fields, "body_plain", "body_words", "body_minutes"]
+                    )
+                )
         return super().save(*args, **kwargs)
 
     class Meta:

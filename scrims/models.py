@@ -61,6 +61,9 @@ class Scrim(models.Model):
 
     title = models.CharField("标题", max_length=100)
     description = models.TextField("说明", blank=True)
+    # The plain text of the description, read off at save time (v7.14):
+    # search and the letters match it without re-parsing the Markdown.
+    description_plain = models.TextField("说明纯文本", blank=True)
     # Empty only on a draft (design 13.17, v7.10): publishing needs it.
     starts_at = models.DateTimeField("开始时间", null=True)
     signup_closes_at = models.DateTimeField(
@@ -111,6 +114,18 @@ class Scrim(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "description" in update_fields:
+            from content.markdown import plain_text
+
+            self.description_plain = plain_text(self.description)
+            if update_fields is not None:
+                kwargs["update_fields"] = list(
+                    dict.fromkeys([*update_fields, "description_plain"])
+                )
+        return super().save(*args, **kwargs)
 
     @property
     def team_size(self) -> int:

@@ -105,6 +105,74 @@ def test_a_short_link_is_looked_up_once(monkeypatch):
     assert len(calls) == 1  # Wagtail keeps the answer
 
 
+@pytest.mark.django_db
+def test_a_failed_short_link_lookup_is_cached_too(monkeypatch):
+    """v7.14 (210 复核 D1): a dead short link is remembered for an hour, so
+    rendering the same line again stays off the network."""
+    from wagtail.embeds.embeds import get_embed_hash
+    from wagtail.embeds.exceptions import EmbedNotFoundException
+    from wagtail.embeds.models import Embed
+
+    from content import embeds
+
+    calls = []
+
+    def follow(url):
+        calls.append(url)
+        raise EmbedNotFoundException
+
+    monkeypatch.setattr(embeds, "follow_b23", follow)
+    out = html("https://b23.tv/dead-link")
+    assert "<iframe" not in out and "https://b23.tv/dead-link" in out
+    html("https://b23.tv/dead-link")
+    html("https://b23.tv/dead-link")
+    assert len(calls) == 1  # the miss is remembered too
+    row = Embed.objects.get(hash=get_embed_hash("https://b23.tv/dead-link"))
+    assert row.html == "" and row.cache_until > timezone.now()
+
+
+@pytest.mark.django_db
+def test_a_failed_lookup_is_retried_once_the_hour_passes(monkeypatch):
+    from wagtail.embeds.embeds import get_embed_hash
+    from wagtail.embeds.exceptions import EmbedNotFoundException
+    from wagtail.embeds.models import Embed
+
+    from content import embeds
+
+    calls = []
+
+    def follow(url):
+        calls.append(url)
+        if len(calls) == 1:
+            raise EmbedNotFoundException
+        return BV
+
+    monkeypatch.setattr(embeds, "follow_b23", follow)
+    assert "<iframe" not in html("https://b23.tv/later")
+    Embed.objects.filter(hash=get_embed_hash("https://b23.tv/later")).update(
+        cache_until=timezone.now() - timedelta(seconds=1)
+    )
+    out = html("https://b23.tv/later")
+    assert "bvid=BV1xx411c7mD" in out
+    assert len(calls) == 2  # expired, so tried again — and found
+    html("https://b23.tv/later")
+    assert len(calls) == 2  # a found answer is kept for good
+
+
+def test_a_query_bvid_must_look_like_one():
+    """v7.14 (210 复核 F10): a query bvid that is not a BV number is dropped,
+    not carried into the player address."""
+    sneaky = (
+        "https://www.bilibili.com/video/BV1xx411c7mD?bvid=BV1xx411c7mD%26autoplay%3D1"
+    )
+    out = html(sneaky)
+    assert "autoplay" not in out
+    assert (
+        '<iframe src="https://player.bilibili.com/player.html?bvid=BV1xx411c7mD"' in out
+    )
+    assert "<iframe" not in html("https://www.bilibili.com/?bvid=x%26autoplay%3D1")
+
+
 def test_pasted_addresses_become_links_without_the_full_stop():
     out = html("详见 https://ow.example.com/rules. 谢谢，https://a.example/x，再见")
     assert (

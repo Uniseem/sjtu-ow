@@ -23,10 +23,18 @@ TOC_MIN_HEADINGS = 3
 def body_text(body) -> tuple[str, int, int]:
     """(plain text, images, videos) of a Markdown body (v6.70): what the
     reader sees, so no asterisks or link addresses; image captions count."""
-    from content.markdown import analyse, plain_text
+    from content.markdown import analyse, plain_html
 
     rendered = analyse(body)
-    return plain_text(body), rendered.images, rendered.videos
+    return plain_html(rendered.html), rendered.images, rendered.videos
+
+
+def stored_counts(body) -> tuple[str, int, int]:
+    """(plain text, words, reading minutes) kept on the row at save time
+    (v7.14), so pages, cards and search never re-parse the body."""
+    text, images, videos = body_text(body)
+    words = word_count(text)
+    return text, words, reading_minutes(words, images, videos)
 
 
 def word_count(text: str) -> int:

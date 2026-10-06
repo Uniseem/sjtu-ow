@@ -650,16 +650,21 @@ def test_the_migration_turns_the_introduction_and_its_drafts_into_markdown():
         executor.migrate([target])
 
     call_command("init_site", verbosity=0)
-    migrate(("content", "0008_publish_without_review"))
-    news = ArticleIndexPage.objects.get(slug="news")
-    news.intro = "<p><b>新人</b>先看<a href='https://example.com'>攻略</a></p>"
-    news.save()
-    revision = news.save_revision()
-    migrate(("content", "0009_markdown_intro"))
-    news.refresh_from_db()
-    revision.refresh_from_db()
-    assert news.intro == "**新人**先看[攻略](https://example.com)"
-    assert revision.content["intro"] == "**新人**先看[攻略](https://example.com)"
+    try:
+        migrate(("content", "0008_publish_without_review"))
+        news = ArticleIndexPage.objects.get(slug="news")
+        news.intro = "<p><b>新人</b>先看<a href='https://example.com'>攻略</a></p>"
+        news.save()
+        revision = news.save_revision()
+        migrate(("content", "0009_markdown_intro"))
+        news.refresh_from_db()
+        revision.refresh_from_db()
+        assert news.intro == "**新人**先看[攻略](https://example.com)"
+        assert revision.content["intro"] == "**新人**先看[攻略](https://example.com)"
+    finally:
+        # Later tests in this process need today's tables (round 211: the run
+        # went on at 0009 and the next article query missed 0012's columns).
+        call_command("migrate", verbosity=0)
 
 
 @pytest.mark.django_db

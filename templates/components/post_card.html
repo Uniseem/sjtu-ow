@@ -10,6 +10,6 @@
   <h3 class="c-media__title"><a href="{% pageurl article %}" class="c-stretch" title="{{ article.title }}">{{ article.title }}</a></h3>
   {% if summary and article.summary %}<p class="c-media__summary">{{ article.summary }}</p>{% endif %}
   {% if article.author %}
-    <p class="c-media__byline">{% include "components/avatar.html" with person=article.author size="xs" %}<span class="c-media__author">{{ article.author.nickname }}</span><span aria-hidden="true">·</span><span>约 <span class="font-numeric">{{ article.facts.minutes }}</span> 分钟</span></p>
+    <p class="c-media__byline">{% include "components/avatar.html" with person=article.author size="xs" %}<span class="c-media__author">{{ article.author.nickname }}</span><span aria-hidden="true">·</span><span>约 <span class="font-numeric">{{ article.body_minutes }}</span> 分钟</span></p>
   {% endif %}
 </article>

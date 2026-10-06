@@ -77,6 +77,48 @@ def test_the_cover_carries_the_facts(client, site):
 
 
 @pytest.mark.django_db
+def test_the_counts_are_stored_at_publish_and_recounted_at_republish(client, site):
+    """v7.14 (210 复核 D10): words and reading time are read off the body
+    when the page is saved, not while it is shown."""
+    news, author, guide = site
+    article = _article(
+        news, guide, author, title="存算", slug="stored",
+        body=_body("**" + "字" * 450 + "**"),
+    )  # fmt: skip
+    article.refresh_from_db()
+    assert (article.body_words, article.body_minutes) == (450, 2)
+    assert article.body_plain == "字" * 450  # no markup in the stored text
+
+    article.body = "新" * 10
+    article.save_revision().publish()
+    article.refresh_from_db()
+    assert (article.body_words, article.body_minutes) == (10, 1)
+    assert article.body_plain == "新" * 10
+
+
+@pytest.mark.django_db
+def test_the_head_and_cards_do_not_recount(client, site, monkeypatch):
+    """Rendering a page or a card reads the stored counts (v7.14)."""
+    news, author, guide = site
+    article = _article(
+        news, guide, author, title="不现算", slug="no-recount",
+        body=_body("字" * 450),
+    )  # fmt: skip
+
+    def boom(body):
+        raise AssertionError("展示时不该再算字数")
+
+    monkeypatch.setattr(article_meta, "facts", boom)
+    monkeypatch.setattr(article_meta, "stored_counts", boom)
+    monkeypatch.setattr(article_meta, "body_text", boom)
+    page = client.get(article.url)
+    assert page.status_code == 200
+    assert ">450</span> 字" in page.content.decode("utf-8")
+    listing = client.get(news.url).content.decode("utf-8")
+    assert "不现算" in listing and "约 <span" in listing
+
+
+@pytest.mark.django_db
 def test_an_edit_a_day_later_is_shown_as_updated(client, site):
     news, author, guide = site
     article = _article(news, guide, author, title="改过", slug="edited")

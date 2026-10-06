@@ -64,13 +64,16 @@ def video_src(url: str) -> str:
         bvid, page = embeds.extract_bvid_and_page(url)
         return embeds.player_src(bvid, page) if bvid else ""
     if host in embeds.B23_HOSTS:
-        # Short links need one lookup; Wagtail keeps the answer (Embed).
+        # Short links need one lookup; Wagtail keeps the answer (Embed) —
+        # and a miss is remembered too, for an hour, so a dead link does
+        # not put every render on the network (design 5.2, v7.14).
         from wagtail.embeds.embeds import get_embed
         from wagtail.embeds.exceptions import EmbedException
 
         try:
             found = re.search(r'\bsrc="([^"]+)"', get_embed(url).html or "")
         except EmbedException:
+            embeds.remember_failed_lookup(url)
             return ""
         return found.group(1) if found else ""
     return ""
@@ -283,7 +286,12 @@ def render(source: str | None) -> SafeString:
     return analyse(source).html
 
 
+def plain_html(rendered_html: str) -> str:
+    """The words a reader sees, from rendered HTML (counts, search, review)."""
+    text = html.unescape(strip_tags(str(rendered_html)))
+    return "\n".join(line.strip() for line in text.splitlines() if line.strip())
+
+
 def plain_text(source: str | None) -> str:
     """The words a reader sees, no markup: for counts, search and review."""
-    text = html.unescape(strip_tags(render(source)))
-    return "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    return plain_html(render(source))

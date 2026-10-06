@@ -29,6 +29,9 @@ class Tournament(models.Model):
     title = models.CharField("标题", max_length=100)
     summary = models.CharField("简介", max_length=300, blank=True)
     description = models.TextField("详细说明", blank=True)  # Markdown (v6.70)
+    # The plain text of the description, read off at save time (v7.14):
+    # search matches it without re-parsing every tournament per query.
+    description_plain = models.TextField("详细说明纯文本", blank=True)
     cover = models.ForeignKey(
         "wagtailimages.Image",
         verbose_name="封面",
@@ -118,6 +121,18 @@ class Tournament(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "description" in update_fields:
+            from content.markdown import plain_text
+
+            self.description_plain = plain_text(self.description)
+            if update_fields is not None:
+                kwargs["update_fields"] = list(
+                    dict.fromkeys([*update_fields, "description_plain"])
+                )
+        return super().save(*args, **kwargs)
 
     def get_absolute_url(self) -> str:
         return f"/tournaments/{self.pk}/"

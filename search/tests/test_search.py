@@ -87,6 +87,24 @@ def test_unpublished_articles_are_invisible(articles):
     assert services.search_articles(["未发布"]).hits == []
 
 
+@pytest.mark.django_db
+def test_search_matches_the_stored_plain_text_without_parsing(
+    client, articles, monkeypatch
+):
+    """v7.14 (210 复核 D1): a query matches the plain text stored at save
+    time; nothing re-parses Markdown while searching."""
+    live, _draft = articles
+
+    def boom(source):
+        raise AssertionError("搜索时不该再渲染正文")
+
+    monkeypatch.setattr("content.markdown.plain_text", boom)
+    monkeypatch.setattr("content.markdown.render", boom)
+    response = client.get(reverse("search"), {"q": "龙刃"})
+    assert response.status_code == 200
+    assert live.title in response.content.decode("utf-8")
+
+
 # --- events ---------------------------------------------------------------------------
 
 
@@ -130,6 +148,44 @@ def test_events_include_published_tournaments_and_scrims_only():
     assert scrim_hits[0].meta == "内战"
     rule_hits = services.search_events(["规则"]).hits
     assert {hit.title for hit in rule_hits} == {"公开的秋季赛", "结束的赛事"}
+
+
+@pytest.mark.django_db
+def test_events_match_the_stored_plain_text_without_parsing(monkeypatch):
+    """v7.14: the description's plain text is stored at save time, and
+    search reads the stored text."""
+    _tournament("秋季赛")
+    Scrim.objects.create(
+        title="周五内战",
+        description="带上**耳机**",
+        starts_at=timezone.now() + timedelta(days=1),
+        status=ScrimStatus.PUBLISHED,
+    )
+    assert "规则" in Tournament.objects.get(title="秋季赛").description_plain
+    assert Scrim.objects.get(title="周五内战").description_plain == "带上耳机"
+
+    def boom(source):
+        raise AssertionError("搜索时不该再渲染说明")
+
+    monkeypatch.setattr("content.markdown.plain_text", boom)
+    monkeypatch.setattr("content.markdown.render", boom)
+    assert [hit.title for hit in services.search_events(["规则"]).hits] == ["秋季赛"]
+    assert [hit.title for hit in services.search_events(["耳机"]).hits] == ["周五内战"]
+
+
+@pytest.mark.django_db
+def test_the_stored_plain_text_follows_saved_descriptions_only():
+    """A save that does not write the description leaves the stored text
+    alone; writing the description recomputes it (v7.14)."""
+    row = _tournament("换说明")
+    row.description = "改了但这个字段没存"
+    row.save(update_fields=["updated_at"])
+    row.refresh_from_db()
+    assert "规则" in row.description_plain  # still the stored description's text
+    row.description = "全新说明"
+    row.save(update_fields=["description"])
+    row.refresh_from_db()
+    assert row.description_plain == "全新说明"
 
 
 # --- teams and members ----------------------------------------------------------------

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from urllib.error import URLError
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
+from django.utils import timezone
 from wagtail.embeds.exceptions import EmbedNotFoundException
 from wagtail.embeds.finders.base import EmbedFinder
 
@@ -22,6 +24,9 @@ BILIBILI_HOSTS = frozenset(
 B23_HOSTS = frozenset({"b23.tv", "www.b23.tv"})
 PLAYER_BASE = "https://player.bilibili.com/player.html"
 _USER_AGENT = "sjtu-ow-embed/1.0"
+# A lookup that found nothing is remembered for this long, then retried
+# (design 5.2, v7.14); a found one is kept forever (no cache_until).
+FAILED_LOOKUP_TTL = timedelta(hours=1)
 
 
 def _hostname(url: str) -> str:
@@ -32,6 +37,10 @@ def extract_bvid_and_page(url: str) -> tuple[str | None, int | None]:
     parsed = urlparse(url)
     query = parse_qs(parsed.query)
     bvid = (query.get("bvid") or [None])[0]
+    # A query parameter is only a BV number if it looks exactly like one;
+    # anything else would be carried into the player address (v7.14).
+    if bvid and not BV_RE.fullmatch(bvid):
+        bvid = None
     if not bvid:
         match = BV_RE.search(parsed.path) or BV_RE.search(url)
         bvid = match.group(1) if match else None
@@ -56,6 +65,29 @@ def follow_b23(url: str) -> str:
             return response.geturl() or url
     except (URLError, OSError, ValueError) as exc:
         raise EmbedNotFoundException(f"b23.tv lookup failed: {exc}") from exc
+
+
+def remember_failed_lookup(url: str) -> None:
+    """A lookup that found nothing is kept too, for FAILED_LOOKUP_TTL, so
+    rendering the same line again does not ask the network again (v7.14).
+    Wagtail's get_embed only caches what it found; the row it reads is the
+    same one written here, keyed by the same hash."""
+    from django.db import IntegrityError
+    from wagtail.embeds.embeds import get_embed_hash
+    from wagtail.embeds.models import Embed
+
+    try:
+        Embed.objects.update_or_create(
+            hash=get_embed_hash(url),
+            defaults={
+                "url": url,
+                "type": "video",
+                "html": "",
+                "cache_until": timezone.now() + FAILED_LOOKUP_TTL,
+            },
+        )
+    except IntegrityError:
+        pass  # another worker wrote the same row at the same moment
 
 
 class BilibiliEmbedFinder(EmbedFinder):
@@ -91,4 +123,9 @@ class BilibiliEmbedFinder(EmbedFinder):
             "width": max_width or 640,
             "height": max_height or 360,
             "html": html,
+            # A failure row for this address may be sitting in the cache
+            # with an hour's cache_until (remember_failed_lookup); without
+            # this key update_or_create would keep it and the just-found
+            # answer would look stale on the very next render.
+            "cache_until": None,
         }

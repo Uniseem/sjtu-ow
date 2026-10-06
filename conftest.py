@@ -1,5 +1,6 @@
 import pytest
 from django.core.management import call_command
+from django.db.migrations.executor import MigrationExecutor as _RealMigrationExecutor
 
 from core.worker import write_worker_heartbeat
 
@@ -47,6 +48,31 @@ def _forget_renditions():
     from django.core.cache import caches
 
     caches["renditions"].clear()
+
+
+@pytest.fixture(autouse=True)
+def _migration_tests_leave_the_schema_at_latest(request, django_db_blocker):
+    """A test that rewinds migrations must migrate back to the latest before
+    finishing (round 129 first hit this). Two tests forgot, and their
+    shard-mates then failed tests later on columns that 'did not exist'
+    (round 211). Only transaction tests can leak schema changes; plain
+    django_db rolls them back."""
+    yield
+    marker = request.node.get_closest_marker("django_db")
+    if marker is None or not marker.kwargs.get("transaction"):
+        return
+    from django.db import connection
+
+    # The class is bound at import time: a test may monkeypatch the executor
+    # itself (test_restore_warns_when_the_code_is_newer_than_the_backup) and
+    # there is no promise it has been unpatched by the time this teardown runs.
+    with django_db_blocker.unblock():
+        executor = _RealMigrationExecutor(connection)
+        pending = executor.migration_plan(executor.loader.graph.leaf_nodes())
+    assert not pending, (
+        "这个测试把数据库留在了旧迁移上，后面的测试会对着旧表结构跑："
+        + ", ".join(f"{m.app_label}.{m.name}" for m, _ in pending)
+    )
 
 
 @pytest.fixture
