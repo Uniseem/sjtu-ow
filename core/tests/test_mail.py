@@ -126,3 +126,16 @@ def test_a_test_email_the_server_did_not_take_is_an_error(monkeypatch):
     monkeypatch.setattr(mail, "build_smtp_backend", lambda site: Refusing())
     with pytest.raises(RuntimeError, match="没有接受"):
         send_test_email("admin@example.com")
+
+
+@pytest.mark.django_db
+def test_smtp_backend_gives_up_after_20_seconds(db):
+    """A server that accepts and stays silent must not stall the one worker
+    forever (design 10.1, v7.17; 210 复核 C1)."""
+    from core.mail import SMTP_TIMEOUT_SECONDS, build_smtp_backend
+
+    site = SiteSettings.objects.create(
+        smtp_host="smtp.example.com", from_address="noreply@example.com"
+    )
+    backend = build_smtp_backend(site)
+    assert backend.timeout == SMTP_TIMEOUT_SECONDS == 20

@@ -1,6 +1,6 @@
 from django_tasks_db.management.commands.db_worker import Command as DBWorkerCommand
 
-from core.worker import start_heartbeat_thread
+from core.worker import reset_orphaned_running_tasks, start_heartbeat_thread
 
 
 class Command(DBWorkerCommand):
@@ -11,5 +11,8 @@ class Command(DBWorkerCommand):
     )
 
     def handle(self, *args, **options):
+        # Before taking new work: tasks left RUNNING by a killed worker
+        # (design 16.2, v7.17).
+        reset_orphaned_running_tasks()
         start_heartbeat_thread()
         super().handle(*args, **options)

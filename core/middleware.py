@@ -23,13 +23,17 @@ ADMIN_CSP = {
 
 
 class RequestIDMiddleware:
-    """Attach a request ID for the 500 error page. No database access."""
+    """Attach a request ID for the 500 error page. No database access.
+
+    The ID is always generated here (design 15.5, v7.17, 210 复核 C11): a
+    client-supplied X-Request-ID would let anyone forge the ID they report,
+    and the log line would not be traceable."""
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        request_id = request.headers.get("X-Request-ID") or get_random_string(12)
+        request_id = get_random_string(12)
         request.request_id = request_id
         response = self.get_response(request)
         response["X-Request-ID"] = request_id

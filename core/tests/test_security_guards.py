@@ -190,3 +190,17 @@ def test_the_production_middleware_keeps_everything_base_has():
     result = _run_in_prod_env(code)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout.strip().splitlines()[-1]) == []
+
+
+def test_prod_logging_sends_request_errors_to_stdout():
+    """210 复核 C3: production's 500 tracebacks must reach the container's
+    stdout; Django's own default django.request handlers are off in prod."""
+    code = (
+        "import sjtu_ow.settings.prod as p\n"
+        "request = p.LOGGING['loggers']['django.request']\n"
+        "assert request['handlers'] == ['console'] and request['level'] == 'ERROR'\n"
+        "assert not request['propagate']\n"
+        "errors = p.LOGGING['loggers']['sjtu_ow.errors']\n"
+        "assert errors['handlers'] == ['console']\n"
+    )
+    assert _run_in_prod_env(code).returncode == 0

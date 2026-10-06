@@ -18,6 +18,11 @@ logger = logging.getLogger("sjtu_ow.mail")
 DEFAULT_SUBJECT_PREFIX = "[SJTU-OW]"
 DEFAULT_FROM_NAME = "SJTU-OW"
 
+# Design 10.1 (v7.17, 210 复核 C1): a server that accepts the connection and
+# then says nothing must not stall the single-threaded worker forever — give
+# up after 20 seconds and let the usual retry schedule take over.
+SMTP_TIMEOUT_SECONDS = 20
+
 
 class LetterMessage(EmailMultiAlternatives):
     """A message whose HTML carries its own pictures (design 10.3, v7.4).
@@ -198,6 +203,7 @@ def build_smtp_backend(site) -> SMTPEmailBackend:
         password=password or None,
         use_tls=use_tls,
         use_ssl=use_ssl,
+        timeout=SMTP_TIMEOUT_SECONDS,
         fail_silently=False,
     )
 

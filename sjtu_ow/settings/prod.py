@@ -40,6 +40,22 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
+        # Design 15.5 (v7.17, 210 复核 C3): Django's own default sends
+        # django.request's ERRORs to a console handler gated on
+        # require_debug_true (always off here) and to mail_admins (ADMINS is
+        # empty) — tracebacks went nowhere. Send them to the container's
+        # stdout like everything else.
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        # The 500 page's own line (request ID + path) from core.views.
+        "sjtu_ow.errors": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
     },
 }
 

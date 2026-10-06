@@ -21,6 +21,28 @@ _thread: threading.Thread | None = None
 _stop = threading.Event()
 
 
+def reset_orphaned_running_tasks() -> int:
+    """Put tasks still marked RUNNING back to READY. There is only ever one
+    worker (design 16.2), so at startup a running task's owner is dead —
+    killed mid-run by a deploy, for instance (design 16.2, v7.17, 210 复核
+    C2). It runs again from the start: a half-sent broadcast may reach some
+    people twice, which beats the rest never hearing it."""
+    from django_tasks_db.models import DBTaskResult, TaskResultStatus
+
+    orphaned = list(DBTaskResult.objects.running())
+    for result in orphaned:
+        result.status = TaskResultStatus.READY
+        result.started_at = None
+        result.save(update_fields=["status", "started_at"])
+    if orphaned:
+        logger.warning(
+            "Reset %d orphaned running task(s): %s",
+            len(orphaned),
+            ", ".join(result.task_name for result in orphaned),
+        )
+    return len(orphaned)
+
+
 def write_worker_heartbeat() -> None:
     cache.set(
         WORKER_HEARTBEAT_CACHE_KEY,

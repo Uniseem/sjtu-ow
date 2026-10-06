@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -12,6 +14,8 @@ from core.mail import SMTPNotConfigured, send_test_email
 from core.middleware import OW_FLASH_COOKIE, OW_LOGGED_IN_COOKIE
 from core.ratelimit import client_ip, over_limit
 from core.slots import render_requested
+
+logger = logging.getLogger("sjtu_ow.errors")
 
 STATE_RATE_LIMIT = 120  # per IP per minute (design 附录 C)
 DEFAULT_SLOTS = ("account", "messages")
@@ -91,8 +95,11 @@ def permission_denied(request, exception):
 
 
 def server_error(request):
-    request_id = getattr(request, "request_id", "") or request.headers.get(
-        "X-Request-ID", ""
+    request_id = getattr(request, "request_id", "")
+    # Design 15.5 (v7.17): the page shows this ID; this line ties it to the
+    # traceback django.request logs just before.
+    logger.error(
+        "500 request_id=%s path=%s", request_id or "-", request.path, exc_info=False
     )
     return _error_response("errors/500.html", 500, {"request_id": request_id})
 
