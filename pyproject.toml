@@ -70,4 +70,8 @@ known-first-party = [
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "sjtu_ow.settings.dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
+# handoff/ holds round notes and reproduction scripts that assert a bug is
+# still there (217 findings); they are run by hand, never by CI. The rest
+# are pytest's own defaults, which this setting replaces.
+norecursedirs = ["handoff", ".*", "*.egg", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}"]
 addopts = "--reuse-db"

@@ -74,6 +74,11 @@
 - **16-2 没有测试检查前台响应真的带严格 CSP**：中间件的路径判断写宽了，后台的宽松策略会套到全站，测试照样绿
 - **16-3 211–216 又加了约 10 条只对 JS 源码查子串的测试**：`mutate.py` 的「改坏后红了」只证明那串字还在
 
+**217 推送后 CI 补记**：
+
+- 复核代理留在 `findings/` 下的复现脚本（`02-repro_tests.py` 这类名字）被 pytest 当成测试收进 CI 跑了，它们断言的是「问题还在」，其中一条（02-7）因为脚本自己的问题红了。`pyproject.toml` 加了 `norecursedirs = ["handoff", …]`，CI 不再进 `handoff/`；复现脚本照旧用 `remote-check.sh run uv run pytest -q 路径` 手动跑（指定路径时 pytest 照样收集）。
+- **16-13（新，中）`core/tests/test_autosave_events.py::test_a_copy_keeps_what_it_copied_when_a_field_is_wrong` 偶发失败**：CI 上 `assert datetime(…, 19, 52, 0, 906236) == datetime(…, 19, 52)`，比较的一边带微秒、一边截到分钟，和运行时刻有关；216 推送时同一条是绿的。属于 16 块说的「和时间有关的不稳定测试」，留给修的那一轮（把测试里造时间的地方固定到整分）。
+
 ## 要用户拍板的
 
 - **05-2**：个人报名的赛事在编队前取消，散人池里的人一封信都收不到，取消后「通知报名的人」也被拦（设计 10.2 空白）
