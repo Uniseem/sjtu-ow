@@ -147,6 +147,26 @@ ok  浏览器没有报错
 全部走通
 ```
 
+## 正式站升级（2026-10-07 03:20 北京时间，补记）
+
+脚本先 `scp` 到服务器再 `bash 脚本 < /dev/null`（215 的坑）：核对要覆盖的 57 个文件和 215 一致 → `backup`（`sjtu-ow-20261007-032024.tar.gz`，210.8 MB）→ 解包、`build` → **先停 `web`、`worker`**（免得交接时旧容器又以 root 写出新文件）→ 用新镜像以 root `chown -R 10001:10001` 五个挂载点 → 迁移（`accounts.0010_user_calendar_version... OK`）→ `up -d` → 全量 `prerender`（成功 12，失败 0）。停机约半分钟，期间 Caddy 回维护页。
+
+```
+app /app/data/db.sqlite3
+app /app/media
+app /app/staticfiles
+app /app/prerendered
+app /app/backups
+web 的 1 号进程 uid：10001
+worker 的 1 号进程 uid：10001
+迁移干净
+{'status': 'ok', 'ok': True, 'checks': {'database': {'ok': True, 'detail': 'ok'}, 'disk': {'ok': True, 'detail': 'free space 26.7%'}, 'worker_heartbeat': {'ok': True, 'detail': 'ok (21s ago)', 'affects_status': True}, 'task_backlog': {'ok': True, 'detail': 'ok', 'affects_status': True}}}
+不归 app 的文件：0
+backups 可写
+```
+
+从本机经域名：`/`、`/news/`、`/members/`、`/accounts/login/`、`/healthz` 都是 200，`/healthz` 对外不带细节，首页带 HSTS。定时任务（`/etc/cron.d/sjtu-ow` 里的 `exec web …`）以后也以 `app` 运行，写的备份归它。
+
 ## 设计偏差
 
 无。v7.19（剩下的低）、v7.20（四处设计空白和日历地址）先改文档再改代码；`docs/admin.md` 4.4 跟着改了成员分组的搜人说明。
