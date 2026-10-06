@@ -116,7 +116,7 @@ System check identified no issues (0 silenced).
 == 全部通过 (13:11:50)
 ```
 
-正式站升级：见提交后的 STATUS 更新（本节在部署后补记）。
+正式站升级（2026-10-06 21:24 北京时间）：先 `backup`（`sjtu-ow-20261006-212416.tar.gz`，210.8 MB；异地备份未开启，命令照常提醒），ship213（20 个文件，212 已是正式站基线）上传后 `deploy_ship.sh 213`：镜像重建、无迁移可应用、`prerender` 全量生成成功 12 失败 0、healthz `ok`（worker 心跳、任务积压都正常）；`migrate --check` 干净；本机访问首页 HTTP 200。推送后 CI 绿（6m44s）。
 
 ## 设计偏差
 
