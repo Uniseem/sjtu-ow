@@ -325,6 +325,10 @@ WAGTAILEMBEDS_FINDERS = [
     }
 ]
 WAGTAILIMAGES_MAX_UPLOAD_SIZE = 5 * 1024 * 1024
+# Every picture is re-encoded on the way in (219, core/uploads.py): the file
+# stored has no EXIF, no original name, no more than 4096 pixels a side.
+WAGTAILIMAGES_IMAGE_FORM_BASE = "core.image_forms.SafeImageForm"
+WAGTAILIMAGES_MAX_IMAGE_PIXELS = 40_000_000
 WAGTAILIMAGES_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 # Thumbnails are WebP whatever was uploaded (design 13.10, v6.5): a PNG
 # avatar card was over 200 KB. Share images ask for JPEG themselves.

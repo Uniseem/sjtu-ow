@@ -100,7 +100,7 @@ def team_detail(request, pk):
 
 @login_required
 def team_create(request):
-    form = TeamForm(request.POST or None, request.FILES or None)
+    form = TeamForm(request.POST or None, request.FILES or None, user=request.user)
     blocker = services.create_blocker(request.user)
     if request.method == "POST" and not blocker:
         # Counted only once the form is valid (216, T6): three tries with a
@@ -246,7 +246,9 @@ def team_manage(request, pk):
     team = get_object_or_404(Team, pk=pk)
     if not services.is_captain(team, request.user) and not request.user.is_superuser:
         raise Http404
-    form = TeamForm(request.POST or None, request.FILES or None, instance=team)
+    form = TeamForm(
+        request.POST or None, request.FILES or None, instance=team, user=request.user
+    )
     from core import autosave
 
     if autosave.wants(request) and request.POST.get("form") == "profile":

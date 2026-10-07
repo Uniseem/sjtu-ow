@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower
 from django.utils import timezone
 
+from teams.images import discard_logo
 from teams.models import (
     ApplicationStatus,
     LeaveReason,
@@ -172,6 +173,7 @@ def update_team(
         raise TeamError("战队已解散。")
     if name_taken(name, exclude_pk=team.pk):
         raise TeamError(NAME_TAKEN)
+    old_logo = team.logo
     team.name = name
     team.description = description
     team.logo = logo
@@ -184,6 +186,9 @@ def update_team(
         team.save()
     except IntegrityError as exc:
         raise TeamError(NAME_TAKEN) from exc
+    if old_logo is not None and old_logo.pk != getattr(logo, "pk", None):
+        # The replaced or removed logo's file and thumbnails go too (219).
+        transaction.on_commit(lambda: discard_logo(old_logo))
     on_team_changed(team, author=user)
     return team
 

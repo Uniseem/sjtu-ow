@@ -349,6 +349,22 @@ def ensure_default_avatar_collection() -> Collection:
     return root.add_child(name=DEFAULT_AVATAR_COLLECTION)
 
 
+TEAM_LOGO_COLLECTION = "队标"
+
+
+def ensure_team_logo_collection() -> Collection:
+    """Where team logos live (219). They used to land in the root collection,
+    among the pictures the editors upload, which left no way to tell the ones
+    a replaced logo may take with it."""
+    root = Collection.get_first_root_node()
+    if root is None:
+        root = Collection.add_root(name=ROOT_TITLE)
+    existing = root.get_children().filter(name=TEAM_LOGO_COLLECTION).first()
+    if existing is not None:
+        return existing
+    return root.add_child(name=TEAM_LOGO_COLLECTION)
+
+
 USER_AVATAR_COLLECTION = "用户头像"
 
 

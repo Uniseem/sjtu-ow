@@ -6,6 +6,8 @@ from django import forms
 from django.core.validators import MaxLengthValidator, MinLengthValidator
 
 from accounts.roles import ROLE_CHOICES, join_roles, parse_roles
+from core.uploads import TOO_MANY, UploadError, over_daily_limit
+from teams.images import clean_logo
 from teams.models import Team
 
 LOGO_MAX_BYTES = 5 * 1024 * 1024
@@ -42,8 +44,9 @@ class TeamForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 4, "maxlength": 500}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user  # whose daily pictures a new logo counts against
         self.fields["name"].validators = [MinLengthValidator(2), MaxLengthValidator(16)]
         self.fields["name"].help_text = "2 到 16 个字符，不能和现有战队重名。"
         self.fields["description"].required = False
@@ -81,7 +84,15 @@ class TeamForm(forms.ModelForm):
             content_type and content_type not in LOGO_TYPES
         ):
             raise forms.ValidationError("队标只支持 JPG、PNG 或 WebP。")
-        return uploaded
+        # Read, turned upright, shrunk and written again here, so that a bad
+        # file is a message on the field and the page never meets it (219).
+        try:
+            cleaned = clean_logo(uploaded)
+        except UploadError as error:
+            raise forms.ValidationError(str(error)) from error
+        if self.user is not None and over_daily_limit(self.user):
+            raise forms.ValidationError(TOO_MANY)
+        return cleaned
 
 
 class ApplicationForm(forms.Form):

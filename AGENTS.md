@@ -161,6 +161,7 @@ Host sjtu-ow-test
 - **找「以后再接」的占位**：M2–M4 写代码时留了不少钩子和注释等后面的里程碑来接，已经发现四处没人回来接（055、056、059）。改一个功能时搜一下相关的 `M[0-9]`、「后续里程碑」、「placeholder」
 - **只改模板时 `tailwind build` 会跳过**（「up to date」只看 CSS 入口文件）。模板里用了新的工具类，要 `tailwind build --force`，否则新类名不会进 `app.css`（065）
 - **登录入口全站唯一**（218，217 复核 04-1）：Wagtail 自带的 `/wagtail/login/`、`/_util/login/` 直接调 Django 的认证，没有 allauth 的失败限流和邮箱验证，现在只做跳转（`accounts.views.login_door`）。以后装的任何应用带了登录页，`test_every_login_address_is_served_by_allauth_or_the_side_door_redirect` 会红；别为了「方便」再给哪个后台开一个不走 allauth 的登录口。守卫按 `resolve()` 看谁在处理，不看注册了什么：Wagtail 自己那两条仍然注册着，只是被前面的遮住
+- **所有上传的图走 `core/uploads.py`**（219，217 复核 07-1/07-2/07-3）：EXIF 坏掉的图能解码、只在 Wagtail 生成缩略图时抛 `ValueError`，整页 500；原图原样存在公开的 `/media/original_images/`，GPS 跟着公开。新写的上传入口（表单、视图、管理命令）一律过 `clean_image`，别直接把 `UploadedFile` 交给 `Image(file=…)`。Wagtail 的图片表单在 `core/image_forms.py` 里统一过了（`WAGTAILIMAGES_IMAGE_FORM_BASE`），模型层不拦：脚本里 `Image.objects.create(file=…)` 不经过它。**Wagtail 8 删图片文件是排一个任务让 worker 去删**（`wagtail.tasks.delete_file_from_storage_task`），不是提交后马上删：测试里断言任务排了、再调 `.func(*args)` 执行，别断言文件马上不在了
 - **Wagtail 的富文本不包在 `.rich-text` 里**。按 `.rich-text p` 写的样式从 M2 起就没生效过，文章段落、列表一直没样式（065 修正）。给正文写样式，直接挂在外层容器（`.article-body p`）上
 - **在 `web` 里跑通不等于 `worker` 能跑**：两个容器用同一个镜像，但挂的卷不一样。053 起全量预渲染都是 `exec web` 跑的，worker 缺静态卷、事件触发的生成全部失败，11 轮没人发现（064）。验证 worker 做的事（预渲染、邮件），要在服务器上触发一次、看结果
 - **删应用之前先看迁移依赖**：`tournaments/0004` 依赖 `integrations/0001`。lfg 是叶子应用可以整个删（066），`integrations` 不行，067 只删代码，包和迁移文件留作墓碑，新迁移删表。以后要删应用先 `grep -rn "<app>" */migrations/`

@@ -492,9 +492,12 @@ uv run python manage.py restore backups/sjtu-ow-20260916-221549.tar.gz --yes  # 
 uv run python manage.py cleanup_old_data   # 任务记录、已处理的 AI 审核记录、会话、14 天没人处理的入队申请、7 天没动的空草稿（216 起）
 uv run python manage.py cleanup_static     # 不属于当前版本且超过 30 天的静态文件
 uv run python manage.py optimize_db        # PRAGMA optimize + WAL 检查点
+uv run python manage.py scrub_originals --dry-run   # 219：列出带 EXIF/GPS 的旧原图（去掉 --dry-run 才动手）
 ```
 
 `cleanup_old_data` 删已完成的任务记录（30 天）、做完事写的信（30 天，204 起）、过期会话，以及**已处理的** AI 审核记录（180 天）——`pending`（还没人复核过）的审核记录**一条都不删，不管多久以前**（设计 15.5）。141 起它还会关闭队长 14 天没处理的入队申请，并给申请人发信；145 起申请等了 7 天时先提醒队长一次（设计 7.3）。加 `--dry-run` 只统计。宿主机 cron 的完整示例见 `deploy/crontab.example`。
+
+**图片上传（219 起）**：所有上传的图都先过 `core/uploads.py`：读不出或超过 4000 万像素拒绝，重新编码成 WebP、去掉 EXIF 和 GPS、换随机文件名，每人每天最多 40 张（内容编辑 300 张，超级管理员不限）。**升级到 219 以后，库里已经存着的旧原图还带着手机拍的位置**，在服务器上跑一次 `$C exec web python manage.py scrub_originals --dry-run` 看有几张，再去掉 `--dry-run` 真的处理（只处理「投稿图片」「队标」两个集合和每支队的队标里带 EXIF 的；缩略图地址不变；之后 `prerender` 一次）。官方封面和头像不动，`--all` 才处理整个图库。
 
 `cleanup_static` 按 `staticfiles.json` 判断哪些文件还在用：**读不到清单就什么都不删**。升级后旧文件要留一个月，让还拿着缓存页面的访客能取到它引用的资源（设计 16.8）。
 
