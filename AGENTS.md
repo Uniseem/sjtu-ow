@@ -30,6 +30,7 @@ SJTU-OW（上海交通大学守望先锋社区网站；站名 208 起统一写 S
 | `sjtu_ow/settings/` | `base` / `dev` / `prod` |
 | `deploy/` | Docker Compose、Caddy、crontab 示例、维护页 |
 | `handoff/` | 进度、轮次记录、复核指南 |
+| `docs/rewrite-research/` | 重构调研和架构规划（现行站换成 Vue 3 + Go，218 起，入口 `README.md`、总纲 `12-architecture.md`）。进度仍只写 `handoff/STATUS.md` |
 
 ## 常用命令
 
@@ -115,7 +116,7 @@ Host sjtu-ow-test
 | 本机专用文件（不在仓库里） | `deploy/docker-compose.vps.yml`：`proxy` 的端口用 `!override` 换成 `22887:80`，站点地址 `:80`，挂 `Caddyfile.vps`；`deploy/Caddyfile.vps`：仓库 Caddyfile 的全局块（`admin off` 下面）加 `servers { trusted_proxies static private_ranges 100.96.0.0/12` 和 `trusted_proxies_strict }`（120 起），信任反代带来的 `X-Forwarded-Proto` 和访客 IP。另一个会话 2026-10-03 20:12（服务器时间）调过资源：`.env` 的 `GUNICORN_WORKERS=5`，`docker-compose.vps.yml` 给 `web` 加了 `cpu_shares: 2048`（CPU 争用时网站优先），改前的备份是同目录下的 `*.bak-202610032012` |
 | 域名与反代（120 起） | `sjtu.ow-shanghaiuniversity.com` → CNAME `anylocate.cc`（`189.24.110.12`，用户自己的反向代理，**在另一台机器上**）→ 经 **Cloudflare WARP 内网**连到本机 22887，来源地址 `100.96.0.x`。所以 `Caddyfile.vps` 要信任 `100.96.0.0/12`，否则反代带来的 `X-Forwarded-Proto: https` 和访客 IP 会被 Caddy 丢掉 |
 | `.env` 要点 | `DJANGO_ALLOWED_HOSTS=sjtu.ow-shanghaiuniversity.com,169.58.217.180,localhost`；`SITE_URL=https://sjtu.ow-shanghaiuniversity.com`；`DJANGO_CSRF_TRUSTED_ORIGINS=https://sjtu.ow-shanghaiuniversity.com,http://169.58.217.180:22887`（120 改，改前备份在服务器的 `/root/sjtu-ow-backups/`；备份里有密钥，别放在仓库目录里）。**域名不在 `ALLOWED_HOSTS` 里时，Django 生成的页面（后台、登录、成员个人页）全部 400，预渲染页照常**，看起来像「有些页面坏了」。改了 `SITE_URL` 要同步 Wagtail 站点地址（`content.services.sync_default_site_from_site_url()`）再全量 `prerender`。`DJANGO_SECURE_SSL_REDIRECT=false`（跳转由用户的反向代理做）；`TEST_ENVIRONMENT` 183 起删掉了（用户 10-04 说转正式站；删前的 `.env` 在 `/root/sjtu-ow-backups/env-before-golive-*`） |
-| 定时任务 | `/etc/cron.d/sjtu-ow`（不碰 root 的 crontab）。服务器时区是 **Europe/Berlin**，cron 不支持 `CRON_TZ`，模板的北京时间按夏令时减 6 小时写 |
+| 定时任务 | `/etc/cron.d/sjtu-ow`（不碰 root 的 crontab）。服务器时区是 **Europe/Berlin**，cron 不支持 `CRON_TZ`。**218 起模板（`deploy/crontab.example`）每条是「每小时一次」，由 `deploy/at-shanghai.sh` 按北京时间判断，不再换算**；正式站上现在的文件**还是旧的、按夏令时减 6 小时写死的**，**2026-10-25 柏林改冬令时之前**要换成新写法（README「把正式站的 cron 换成新写法」，要登录服务器改，得用户点头），换完把这句改掉 |
 | 登录后台 | 生产设置的 Cookie 只走 HTTPS，**直接用 `http://IP:22887` 登录不了**，要等反向代理配好 HTTPS。管理员账号由用户自己建：`… exec web python manage.py createsuperuser`。184 起它建的账号邮箱直接算已验证；183 后用户建的第一个超级管理员（`ow4sjtu@126.com`）当时卡在验证码页，是在服务器上手动标成已验证的。有人收不到验证码：`… exec web python manage.py verify_email 邮箱` |
 | 正式站（183 起） | 用户 10-04：「现在这个站点，给他变成正式的吧。封面图片之类的保留」。演示数据（40 个 `demo.example.com` 账号、战队、文章、评论、赛事、内战）已清，**图片库原样保留**（478 张、64 个集合，含默认封面、默认头像和演示用的动漫头像「头像」集合；动漫头像版权归画师，出处记在图片说明里）。演示站的最终备份在 `/root/sjtu-ow-backups/demo-final-20261004-123749.tar.gz`，旧库改名留在数据卷 `/app/data/demo-final.sqlite3`。当初灌演示数据的脚本挪进了 `/root/demo-era-scripts/`，**别再对这台机器跑**。现在库里的是真实数据：**绝不用备份整库覆盖**，升级前想留底就先 `backup`。102–182 的演示站经过见 `handoff/rounds/102-demo-site/`、`183-go-live/` |
 
@@ -159,6 +160,7 @@ Host sjtu-ow-test
 - **别只用超级管理员测权限**：超级管理员能通过所有权限检查，用它测后台等于没测。至少要有一条用「能进后台、但不该有这个权限」的人（比如内容编辑）。059 补的测试里大约一半是这类（055 的内战管理员问题也是这样藏住的）
 - **找「以后再接」的占位**：M2–M4 写代码时留了不少钩子和注释等后面的里程碑来接，已经发现四处没人回来接（055、056、059）。改一个功能时搜一下相关的 `M[0-9]`、「后续里程碑」、「placeholder」
 - **只改模板时 `tailwind build` 会跳过**（「up to date」只看 CSS 入口文件）。模板里用了新的工具类，要 `tailwind build --force`，否则新类名不会进 `app.css`（065）
+- **登录入口全站唯一**（218，217 复核 04-1）：Wagtail 自带的 `/wagtail/login/`、`/_util/login/` 直接调 Django 的认证，没有 allauth 的失败限流和邮箱验证，现在只做跳转（`accounts.views.login_door`）。以后装的任何应用带了登录页，`test_every_login_address_is_served_by_allauth_or_the_side_door_redirect` 会红；别为了「方便」再给哪个后台开一个不走 allauth 的登录口。守卫按 `resolve()` 看谁在处理，不看注册了什么：Wagtail 自己那两条仍然注册着，只是被前面的遮住
 - **Wagtail 的富文本不包在 `.rich-text` 里**。按 `.rich-text p` 写的样式从 M2 起就没生效过，文章段落、列表一直没样式（065 修正）。给正文写样式，直接挂在外层容器（`.article-body p`）上
 - **在 `web` 里跑通不等于 `worker` 能跑**：两个容器用同一个镜像，但挂的卷不一样。053 起全量预渲染都是 `exec web` 跑的，worker 缺静态卷、事件触发的生成全部失败，11 轮没人发现（064）。验证 worker 做的事（预渲染、邮件），要在服务器上触发一次、看结果
 - **删应用之前先看迁移依赖**：`tournaments/0004` 依赖 `integrations/0001`。lfg 是叶子应用可以整个删（066），`integrations` 不行，067 只删代码，包和迁移文件留作墓碑，新迁移删表。以后要删应用先 `grep -rn "<app>" */migrations/`

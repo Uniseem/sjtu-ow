@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.forms import (
@@ -33,6 +34,24 @@ from accounts.services import (
 )
 from core import autosave
 from core.ratelimit import over_limit
+
+
+def login_door(request):
+    """The only login is allauth's (218, 217 review 04-1).
+
+    Wagtail brings two login pages of its own, ``/wagtail/login/`` and
+    ``/_util/login/``. Both call Django's ``authenticate()`` directly, so they
+    skipped the two checks that live in allauth: the failed-login limit and
+    the verified email. Both addresses now only send people to the front door,
+    for any method, so nothing is ever signed in here."""
+    target = reverse("account_login")
+    after = request.GET.get("next", "")
+    if after and url_has_allowed_host_and_scheme(
+        after, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        target = f"{target}?{urlencode({'next': after})}"
+    return redirect(target)
+
 
 # (url name, label, available, icon). v3.0 marks items with icons, not numbers.
 ME_NAV = (

@@ -27,6 +27,15 @@ def _page_or_404(page_pk):
     return page
 
 
+def _comment_and_page(pk):
+    """The comment and its article, or 404 when the article is not live and
+    public. Every endpoint that takes a comment number starts here (218, 217
+    review 03-1): the number alone used to be enough to get the whole section
+    of a taken-down or private article rendered back."""
+    comment = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
+    return comment, _page_or_404(comment.page_id)
+
+
 def _login_response(request):
     login_url = reverse("account_login")
     if getattr(request, "htmx", False):
@@ -89,8 +98,7 @@ def create(request, page_pk):
 
 @require_POST
 def reply(request, pk):
-    parent = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
-    page = _page_or_404(parent.page_id)
+    parent, page = _comment_and_page(pk)
     return _post(request, page, parent=parent)
 
 
@@ -112,12 +120,12 @@ def more(request, page_pk):
 def _moderate(request, pk, action):
     if not request.user.is_authenticated:
         return _login_response(request)
-    comment = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
+    comment, page = _comment_and_page(pk)
     try:
         action(comment=comment, actor=request.user)
     except services.CommentError as exc:
         return HttpResponse(str(exc), status=403)
-    return _section_response(request, comment.page)
+    return _section_response(request, page)
 
 
 @require_POST
@@ -136,12 +144,12 @@ def unhide(request, pk):
 def _act(request, pk, action, **kwargs):
     if not request.user.is_authenticated:
         return _login_response(request)
-    comment = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
+    comment, page = _comment_and_page(pk)
     try:
         action(comment=comment, **kwargs)
     except services.CommentError as exc:
-        return _section_response(request, comment.page, exc.problems)
-    return _section_response(request, comment.page)
+        return _section_response(request, page, exc.problems)
+    return _section_response(request, page)
 
 
 @require_POST
@@ -149,8 +157,8 @@ def like(request, pk):
     if request.user.is_authenticated and over_limit(
         f"comment:like:{request.user.pk}", LIKE_LIMIT_MINUTE, 60
     ):
-        comment = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
-        return _section_response(request, comment.page, ["点赞太频繁了，稍后再试"])
+        _, page = _comment_and_page(pk)
+        return _section_response(request, page, ["点赞太频繁了，稍后再试"])
     return _act(request, pk, services.toggle_like, user=request.user)
 
 
@@ -158,8 +166,8 @@ def like(request, pk):
 def edit(request, pk):
     if request.user.is_authenticated and _too_many(request.user):
         # Editing shares the posting limit (design 5.6, 213/S1).
-        comment = get_object_or_404(Comment.objects.select_related("page"), pk=pk)
-        return _section_response(request, comment.page, ["编辑太频繁了，稍后再试"])
+        _, page = _comment_and_page(pk)
+        return _section_response(request, page, ["编辑太频繁了，稍后再试"])
     return _act(
         request,
         pk,

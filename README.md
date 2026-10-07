@@ -140,14 +140,16 @@ Caddy 用 HTTP 验证自动申请 Let's Encrypt 证书，前提是 80 端口对�
 
 容器日志用 Docker 的 `json-file` 驱动轮转，每个容器最多 5 个 10MB 的文件，写满覆盖最旧的（设计 15.5）。看日志：`docker compose -p sjtu-ow-test -f deploy/docker-compose.yml --env-file .env logs --tail 100 web`。gunicorn 的访问日志记下的来源是 Caddy 的内网地址，**不含用户 IP**，Caddy 自己不记访问日志——隐私政策是这么写的，要改先改政策。
 
-**定时任务**：模板是 `deploy/crontab.example`，改 `DC=` 那一行（正式站 `-p sjtu-ow`，测试环境 `-p sjtu-ow-test`）。Debian 12 默认**没装 cron**，而且它的 cron **不支持 `CRON_TZ`**，服务器时区一般又是 UTC，所以要把北京时间减 8 小时换算。测试机用的是独立文件 `/etc/cron.d/sjtu-ow-test`（不碰 root 的 crontab，这台机器上还有别的项目）：
+**定时任务**：模板是 `deploy/crontab.example`，改 `DC=` 和 `AT=` 两行（正式站项目名 `-p sjtu-ow`，测试环境 `-p sjtu-ow-test`，`AT=` 是 `deploy/at-shanghai.sh` 在服务器上的路径）。Debian 12 默认**没装 cron**，而且它的 cron **不支持 `CRON_TZ`**；以前把北京时间换算成服务器时区的小时写死，服务器在有夏令时的地方（正式站在 Europe/Berlin）每年两次整体差一小时（218 起不再这样）。现在每条都是「每小时的某一分钟」，由 `at-shanghai.sh 小时 [星期] -- 命令` 按北京时间判断到没到，**服务器是什么时区都不用换算**，也不需要服务器装时区数据库。测试机用的是独立文件 `/etc/cron.d/sjtu-ow-test`（不碰 root 的 crontab，这台机器上还有别的项目）：
 
 ```bash
 apt-get install -y cron
-# 按 crontab.example 写 /etc/cron.d/sjtu-ow-test：时间换成 UTC，每行在时间后面加一列用户名 root，
+# 按 crontab.example 写 /etc/cron.d/sjtu-ow-test：每行在五个时间字段后面加一列用户名 root，
 # 输出追加到 /var/log/sjtu-ow-test-cron.log。文件权限 644
-journalctl -u cron | grep CMD      # 看任务有没有按时跑
+journalctl -u cron | grep CMD      # 看任务有没有按时跑（每小时会有一行，只有北京时间到点那次真的执行了命令）
 ```
+
+**把正式站的 cron 换成新写法**（218，要在 2026-10-25 柏林改冬令时之前做）：升级到 218 以后，把 `/etc/cron.d/sjtu-ow` 里的五行换成 `deploy/crontab.example` 的新写法（`DC=`、`AT=` 两行加五条每小时的条目，每条在五个时间字段后加用户名 `root`），改之前先 `cp` 一份。换完之后在服务器上 `sh /srv/sjtu-ow/deploy/at-shanghai.sh 3 -- echo 到点了` 试一下：北京时间不是 03 点时什么都不输出。
 
 停掉 `web` 后，Caddy 对会打到后端的请求返回维护页；已经生成的预渲染公开页面仍可访问。
 
@@ -313,8 +315,7 @@ uv run python manage.py prerender --clear    # 清空，网站回落到实时渲
 宿主机 cron（设计 16.5，北京时间）：
 
 ```
-CRON_TZ=Asia/Shanghai
-15 4 * * * docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py prerender
+15 * * * * root sh /srv/sjtu-ow/deploy/at-shanghai.sh 4 -- docker compose -f /srv/sjtu-ow/deploy/docker-compose.yml exec -T web python manage.py prerender
 ```
 
 **从备份恢复数据后必须清空预渲染目录**（`manage.py prerender --clear` 或后台按钮），否则静态页面会比数据库更新。升级版本不需要清空。

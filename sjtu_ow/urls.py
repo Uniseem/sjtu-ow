@@ -5,7 +5,13 @@ from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
 
+from accounts.views import login_door
+
 urlpatterns = [
+    # Wagtail's two login pages skip allauth's limit and email check (218,
+    # 217 review 04-1). They are declared first so they win.
+    path("wagtail/login/", login_door),
+    path("_util/login/", login_door),
     # The back office (docs/admin.md, v7.0); Wagtail's own admin is the
     # superusers' fallback underneath it.
     path("admin/", include("backoffice.urls")),

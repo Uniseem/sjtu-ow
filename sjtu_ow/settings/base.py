@@ -292,6 +292,9 @@ SECURE_CSP = {
 WAGTAIL_SITE_NAME = "SJTU-OW"
 WAGTAILADMIN_BASE_URL = SITE_URL
 WAGTAILADMIN_LOGIN_URL = "account_login"
+# Pages with a view restriction send people here too, not to Wagtail's own
+# ``/_util/login/`` (218).
+WAGTAIL_FRONTEND_LOGIN_URL = "account_login"
 ADMIN_URL_PREFIX = "/admin/"
 # Wagtail's own admin, kept for superusers only (docs/admin.md 2).
 WAGTAIL_ADMIN_PREFIX = "/wagtail/"
