@@ -1,7 +1,7 @@
 # 12 · 新站架构规划（Vue 3 + Go）
 
 - **写于** 2026-10-07，基线 `ec44ae4`（217 轮）。作者 Claude，在 GLM 这套调研（00–11）之上做的。
-- **状态：D1–D4 已拍板（2026-10-07，用户全按推荐，见 12.1 末尾「拍板结果」）；D5–D7 按推荐走，D8、D9 到检查点 B 和割接前再问。** 第 12 节的决定定了以后，按硬规则 1 先改 `docs/design.md`（第 2、13.13、16、17 章重写，附录 D 记 v8.0），再开工。
+- **状态：D1–D4 已拍板（2026-10-07，用户全按推荐，见 12.1 末尾「拍板结果」）；D5–D7 按推荐走，D8、D9 到检查点 B 和割接前再问。M0 的五个实验 220 轮做完，结论已落进本文（第 15 节修订记录）。** 原来写的「先改 `docs/design.md`」改成：**设计 v8.0 草案写在 `docs/design-next.md`**（221 轮，用户同意：割接前 `design.md` 继续描述现行站，割接时按草案第 8 节合并），不再直接改 `design.md`。
 - **和 `00-plan.md` 的关系**：00 是 GLM 的计划总纲；这份是落到「怎么搭」的架构规格，和 00 不一致的地方以这份为准，差异汇总在第 14 节。
 - **读法**：先看第 1 节（对调研的核对）和第 2 节（架构不变量），再看第 3 节的总图；第 5–10 节是给写代码的人的规格；第 11–13 节是计划、决定、风险。
 
@@ -313,7 +313,8 @@ Idempotency-Key: <每次保存尝试一个，重试沿用>
 
 ### 5.6 数据库访问
 
-- **两个连接池**：写池 `MaxOpenConns(1)`，DSN `_txlock=immediate`、`_pragma=busy_timeout(5000)`、`journal_mode(WAL)`、`synchronous(NORMAL)`、`foreign_keys(ON)`；读池若干连接、只读。进程内的写由写池串行，`api` 和 `worker` 两个进程之间靠 IMMEDIATE + busy_timeout。
+- **两个连接池**：写池 `MaxOpenConns(1)`，DSN `_txlock=immediate`、`_pragma=busy_timeout(5000)`、`journal_mode(WAL)`、`synchronous(NORMAL)`、`foreign_keys(ON)`；读池若干连接、只读。进程内的写由写池串行。
+- **进程之间：先 `flock`，再 `BEGIN IMMEDIATE`**（220 轮 E3 实验）。`api` 和 `worker` 两个进程写同一个文件时，光靠 IMMEDIATE + busy_timeout 能保证不丢更新、不坏库，但 SQLite 的忙等是轮询不是排队：一个一直在写的进程能让另一个等过 `busy_timeout`，在测试机上 1 万步里出现过 1 次、8 个进程时 800 步里 8 次 `SQLITE_BUSY`。`WriteTx` 因此是「对 `<库>.wlock` 拿 `flock(LOCK_EX)` → `BEGIN IMMEDIATE` → 提交或回滚 → 放锁」，`busy_timeout` 留作兜底；同样的负载下零 busy。写进程只有 `api` 和 `worker` 两个；单写者吞吐上限约 700 事务/秒（4 核测试机），比峰值需求（每秒十来个写）高两个数量级。**两个容器共享数据卷时 `flock` 是否同样有效，M1 要在 Compose 里两个容器各压一轮来证实**（E3 用的是两个进程）。对照组：不用 IMMEDIATE（普通 `BEGIN`），同样负载下 3100/4000 步立刻 `SQLITE_BUSY`。
 - **`db.WriteTx(ctx, func(tx) error)`** 是唯一的写入口：看门狗记事务时长，开发和测试里超过 1 秒失败、生产里超过 200 毫秒记警告；事务里要入队就 `jobs.Enqueue(tx, ...)`，要发信就 `outbox.Send(tx, ...)`。
 - 「检查—写入」一律在同一个写事务里做（建队上限、审批时满员、编队、报名名额——规则 85、92、130）。事务外读到的数据只拿来展示。
 - **时间**：库里一律 UTC 文本 `YYYY-MM-DDTHH:MM:SS.ffffffZ`（可排序、命令行里看得懂）；显示和定时一律显式 `Asia/Shanghai`（二进制里嵌 `time/tzdata`，不依赖镜像里的时区文件）。
@@ -432,9 +433,10 @@ CREATE TABLE jobs (
 - 单独成行的本站图片 → `<figure>` + 图注；行内本站图片 → 小图；外站图片 → 链接
 - 单独成行的 B 站链接 → 播放器 iframe；b23 短链**只查本地缓存表 `embeds`**，没见过的记下来交给 worker 去解析（带超时、防内网地址，失败缓存 1 小时），解析完重新渲染引用它的页面。**渲染永远不联网**（15-2、01-2）
 - 引用块最后一行以「——」开头 → 出处脚注
+- 删除线要**两个**波浪线（goldmark 的 GFM 扩展一个也算，自己写行内解析器）；图注（`alt`）里的行内代码不进图注（和 markdown-it 一致）；`~~~三个~~~` 是 markdown-it 的怪癖（写成 `~<s>三个</s>~`），**声明为有意的差异**
 - 字数、阅读分钟（规则 70）在保存时算好落库
 
-**对拍**：把正式站备份里所有文章、页面、赛事、内战的正文，用旧的 `content/markdown.py` 和新的 Go 渲染器各渲染一遍，规范化后逐篇比较，**每一处差异要么修掉、要么写明是有意的**（比如 01-3 的 `&` 转义两次、01-4 的链接末尾 `)`）。旧测试里的 Markdown 用例转成 Go 的黄金用例。
+**对拍**（220 轮 E4 已做第一遍：346 份文档、345 份和 markdown-it 一致、约 420 行 Go、1139 KB 的 Markdown 共 24 毫秒；语料是仓库自己的文档和 80 份刁钻输入，程序和语料生成脚本在 `handoff/rounds/220-m0-experiments/e4-goldmark/`，M4 把它搬进 `server/` 作黄金用例）：把正式站备份里所有文章、页面、赛事、内战的正文，用旧的 `content/markdown.py` 和新的 Go 渲染器各渲染一遍，规范化后逐篇比较，**每一处差异要么修掉、要么写明是有意的**（比如 01-3 的 `&` 转义两次、01-4 的链接末尾 `)`）。旧测试里的 Markdown 用例转成 Go 的黄金用例。
 
 `body_html` 发布时生成；渲染规则改了就把 `renderer_version` 加一，worker 在慢车道把旧版本的重新渲染一遍。
 
@@ -444,8 +446,9 @@ CREATE TABLE jobs (
   1. 请求体上限 10 MB（Caddy + Go 双层），流式写进 data 卷的临时文件；
   2. 只看文件头（`image.DecodeConfig`）判格式（JPG/PNG/WebP）和尺寸，像素超上限（4000 万）、最短边不够直接拒，**不解码**；
   3. 解码在信号量里做（同时 1 个），解码失败即拒（07-1、02-12、02-8）；
-  4. 按 EXIF 方向转正，按用途裁剪（头像中心裁方），长边压到 4000 像素以内，重新编码成 WebP 存为母版 `data/originals/<id>.webp`——**上传的原文件丢弃**，GPS、设备信息随之消失（02-1/07-3）；**母版不公开**；
+  4. 按 EXIF 方向转正，按用途裁剪（头像中心裁方），长边压到 **2560** 像素以内（220 轮 E2：站上最大的缩略图 2400 宽，4000 宽的母版白占 3 倍时间和内存），重新编码成 WebP（质量 90，**方法 2**）存为母版 `data/originals/<id>.webp`——**上传的原文件丢弃**，GPS、设备信息随之消失（02-1/07-3）；**母版不公开**；
   5. 每日次数（头像 5 次，队标、投稿图各自的数字待设计定）和每人每日字节数配额；磁盘剩余低于 25% 时拒收所有上传。
+- **纯 Go 的 WebP 比 libwebp 慢 3–5 倍**（220 轮 E2，同一张 4000×3000 的照片：2560 宽方法 2 的母版 0.38 秒（本机）/ 0.60 秒（测试机），libwebp 0.14 / 0.17 秒；4000 宽方法 4 要 3.3 / 4.9 秒，所以母版取 2560 和方法 2；一张 1200 万像素的图峰值内存约 710 MB，所以解码编码放在信号量里，同时只做一张）。编码放在一个接口后面：**将来生产里首次缩略图的 p95 超过 1 秒，就换成 cgo 的 libwebp（BSD），不改别的代码**。上传请求里只做「解码 + 母版」（测试机约 1 秒），缩略图一律首次被请求时在信号量里生成、原子写盘、缓存一年。
 - **缩略图**：地址固定 `/media/r/<图片编号>/<规格>.webp`，规格只认白名单（`fill-88x88`、`fill-176x176`、`fill-288x288`、`fill-400x400`、`fill-960x540`、`fill-1280x720`、`fill-2400x1200`、`fill-2400x640`、`fill-2400x1350`、`max-1600x1600`，分享图 `fill-1200x630` 出 JPEG）。Caddy 先找文件，没有就转给 api 在信号量里生成、原子写盘、返回。母版不变，所以缩略图可以 1 年 immutable。
 - **集合**用固定的 `key` 识别（默认封面、默认头像、用户头像、投稿），名字可改不影响功能（02-10）。
 - **默认封面**「同一个对象永远同一张」的公式和排序照搬（`core/covers.py`），否则割接后全站封面会换一遍。
@@ -517,10 +520,12 @@ web/
 4. 并行跑：匹配到的路由的 `load()` + `/api/session`。接口客户端在服务端转交 `Cookie`、`X-Real-IP`、`X-Request-ID`，超时 5 秒。
 5. 结果分流：`load()` 抛 401 → 302 到 `/accounts/login/?next=`；403/404 → 渲染对应错误页并用对应状态码；api 连不上 → 503 页。
 6. `renderToString`；`@unhead/vue` 收集 `<title>`、描述、分享卡片、`canonical`。
-7. 拼 HTML：Vite 的 SSR 清单给出这一页要预加载的分块；页面数据进 `<script type="application/json" id="ow-state">`（`<`、U+2028、U+2029 转义）；`theme.js` 在 `<head>` 最前面；**没有任何可执行的内联脚本、没有 `style` 属性**。
+7. 拼 HTML：模板里**不写** `<meta charset>` 和 `viewport`（`@unhead/vue` 会写，写了就重复，220 轮 E1）；Vite 的 SSR 清单给出这一页要预加载的分块；页面数据进 `<script type="application/json" id="ow-state">`（`<`、U+2028、U+2029 转义）；`theme.js` 在 `<head>` 最前面；**没有任何可执行的内联脚本、没有 `style` 属性**。
 8. 响应头：登录用户 `Cache-Control: private, no-store`，访客 `no-cache`；`Vary: Cookie`。安全头由 Caddy 加。
 
 开发时用 Vite 的中间件模式跑同一个 `server.ts`（热更新），`/api` 代理到本机的 Go。
+
+**220 轮 E1 的实测**（真 Chrome 通过 DevTools 协议）：这套写法在 `script-src 'self'; style-src 'self'` 下激活、客户端换页、后退、无脚本横幅、404 都正常，零 CSP 违规；JS gzip 48 KB。浏览器测试里构建要打开 `__VUE_PROD_HYDRATION_MISMATCH_DETAILS__`，激活不一致直接红（生产构建默认是悄悄补上的）；容器设 `--max-old-space-size`（跑完 5000 个请求 Node 常驻 310 MB，是回收前的堆）。
 
 ### 6.3 路由与数据加载
 
@@ -587,7 +592,7 @@ export const load = defineLoader(({ params, api }) => api.page.team({ id: params
 - `/admin/*` 由 Caddy 直接给 `index.html`，不做 SSR；进来先拿 `/api/session`，没登录跳登录页，没有 `admin.enter` 显示 403 页。
 - 八个大类、标签、第二排小标签照 `docs/admin.md`；**导航由 Go 生成**（注册表里每个后台接口都声明了大类和标签），前端只负责画；没有能力的标签不出现。前端的路由守卫只是体验，**真正的门在 Go**。
 - 每页一件事、改了就存（照 `docs/admin.md` 第 1 章）。地址尽量照旧（`/admin/articles/12/`、`/admin/scrims/5/split/`……），干部收藏的地址继续能用。
-- 后台和前台用同一套严格 CSP：EasyMDE 换成 CodeMirror 6 以后不再需要 `unsafe-eval`；M0 用实验确认 CodeMirror 6 在 `style-src 'self'` 下正常（它用可构造样式表，也支持 nonce），不行就只给后台放开 `style-src` 一项。
+- 后台和前台用同一套严格 CSP：EasyMDE 换成 CodeMirror 6 以后不再需要 `unsafe-eval`。**220 轮 E5 实测：CodeMirror 6 直接放进页面，在 `style-src 'self'` 下没有样式**（style-mod 往 `document` 里插 `<style>` 元素，被拦）；**挂进 ShadowRoot 就完全正常**（`new EditorView({root: shadowRoot, parent: shadowRoot})`，style-mod 只有根不是 Document 时才用可构造样式表），零违规。所以：编辑器**必须**挂进 ShadowRoot；需要浏览器支持 `adoptedStyleSheets`（Chrome 73+、Firefox 101+、Safari 16.4+，后台是干部用电脑的工具）；页面 CSS 选择器进不了 ShadowRoot，编辑器主题用 `EditorView.theme` 写，站点的 CSS 变量会继承进去；万一碰到不支持的浏览器，退路是只给 `/admin` 放开 `style-src-elem 'unsafe-inline'`（`style-src-attr` 仍然 `none`）。依赖要显式声明 `@codemirror/streamparser`（`@codemirror/language` 6.13.0 的发布包里用了它却没声明）、提交锁文件、锁版本。包约 174 KB（gzip），只在文章、页面、赛事、内战的编辑页懒加载。真实拼音输入法、Safari、Firefox 没测，M8 开工前手工试。
 
 ### 6.9 CSP、体积、浏览器、无障碍
 
@@ -718,7 +723,7 @@ CI（GitHub Actions）：Go 一个任务（vet、staticcheck、govulncheck、tes
 
 | 阶段 | 内容 | 完成标准 | 估计轮数 |
 |---|---|---|---|
-| **M0 决定与验证** | 拍板第 12 节；改设计文档（v8.0）和 AGENTS.md；五个小实验：薄 SSR + 严格 CSP 跑通一页、纯 Go WebP 编码的速度（2400×1350 一张）、modernc SQLite 在 IMMEDIATE 下两进程并发写、goldmark 对全部正式站正文的对拍初稿、CodeMirror 6 在严格 CSP 下 | 实验结论写进报告；有一项不行就回到第 12 节重新拍板 | ~6 |
+| **M0 决定与验证**（D1–D4 218 轮拍板；五个实验 220 轮做完，结论和对本文的 5 处修订见 `handoff/rounds/220-m0-experiments/report.md`，已落进上面各节；设计草案和 AGENTS.md 的新栈一节 221 轮写，设计草案是 `docs/design-next.md`） | 拍板第 12 节；改设计文档（v8.0）和 AGENTS.md；五个小实验：薄 SSR + 严格 CSP 跑通一页、纯 Go WebP 编码的速度（2400×1350 一张）、modernc SQLite 在 IMMEDIATE 下两进程并发写、goldmark 对全部正式站正文的对拍初稿、CodeMirror 6 在严格 CSP 下 | 实验结论写进报告；有一项不行就回到第 12 节重新拍板 | ~6 |
 | **M1 Go 底座** | 配置、数据库（两池、WriteTx、看门狗）、迁移、注册表、错误形状、幂等键、限流、会话、Django 哈希、djsign、Fernet、任务队列和定时器、信纸和发信、待发信、healthz、注册表守卫测试、apigen | 守卫测试全绿；黄金用例（哈希、签名、Fernet）全过；两进程并发写测试 | ~12 |
 | **M2 前端底座** | workspace、样式搬迁、SSR 服务、路由和 loader、接口封装、布局（页头、页脚、主题、加载条、右键菜单、提示）、`/_styleguide/`、CSP/体积/SSR 测试 | 样张页和旧站并排截图一致；首页壳的体积在预算内 | ~10 |
 | **M3 账号** | 注册、验证、登录、找回、改密码、改邮箱、重新认证、个人中心全部、头像、导出、注销、停用、角色和功能限制；**用户导入** | 账号域规则（R001–R042）打钩；用正式站备份导入后真实账号能登录；新人第一晚走到「加游戏 ID」 | ~14 |
@@ -808,3 +813,12 @@ CI（GitHub Actions）：Go 一个任务（vet、staticcheck、govulncheck、tes
 | 「投稿者」等组照搬 | 交大/校外/投稿者改为派生角色 | 消掉 10-1、04-4 整类问题 |
 | 后台单独放宽 CSP（`unsafe-inline/eval`） | 后台也严格（换掉 EasyMDE 后） | 12-4 和 CSP 一起解决 |
 | 字体：Python 边车或首期降级 | 离线切片 + 在线导入成品 | 后台功能基本不变，生产没有 Python |
+
+---
+
+## 15. 修订记录
+
+| 日期（轮次） | 改了什么 | 依据 |
+|---|---|---|
+| 2026-10-07（218） | D1–D4 拍板，全按推荐 | 用户逐条选的；见 12.1 末尾 |
+| 2026-10-07（221） | 5.6 `WriteTx` 加跨进程 `flock`；5.13 母版 2560 宽、方法 2、缩略图懒生成、换 cgo 的判据；6.2 模板不写 charset/viewport、激活不一致在 CI 里算失败、Node 堆上限；6.8 CodeMirror 必须挂进 ShadowRoot；5.12 删除线要两个波浪线、图注里不进行内代码；11.2 M0 一行 | 220 轮五个实验的实测数字，各节里都写了出处 |

@@ -31,6 +31,24 @@ SJTU-OW（上海交通大学守望先锋社区网站；站名 208 起统一写 S
 | `deploy/` | Docker Compose、Caddy、crontab 示例、维护页 |
 | `handoff/` | 进度、轮次记录、复核指南 |
 | `docs/rewrite-research/` | 重构调研和架构规划（现行站换成 Vue 3 + Go，218 起，入口 `README.md`、总纲 `12-architecture.md`）。进度仍只写 `handoff/STATUS.md` |
+| `docs/design-next.md` | 新栈的设计草案 v8.0（221 起；割接前 `docs/design.md` 仍是现行站的设计） |
+
+## 重构进行中（Vue 3 + Go，218 起）
+
+用户 2026-10-07 说「开始重构吧」。**线上和这个仓库里跑的仍然是 Django 站，下面「常用命令」「测试机与部署」「硬规则」「已知的坑」都还是它的**；新栈在同一个仓库里长出来（决定 D3：`server/`、`web/`、`e2e/`），割接后删 Django 代码。读什么：
+
+| 要知道 | 读 |
+|---|---|
+| 新栈要成为什么样、哪些章节怎么变 | `docs/design-next.md`（v8.0 草案；割接前现行站仍以 `docs/design.md` 为准，割接时按它的第 8 节合并） |
+| 新栈怎么做、每个模块的规格、里程碑 | `docs/rewrite-research/12-architecture.md`（调研 00–11 是证据；237 条业务规则在 `05-business-rules.md`，是逐条打钩的验收清单） |
+| 想法、遗留、等用户的事、各里程碑开工前要做的验证 | `docs/rewrite-research/13-ideas-and-followups.md` |
+| 五个 M0 实验的结论和能重跑的程序 | `handoff/rounds/220-m0-experiments/`（`report.md`，各实验目录里有 `RESULTS.txt`） |
+
+**现行站「冻结」的意思**：不再加新功能；安全和丢数据的问题照样修。每修一个，在那一轮的报告里写一行「新站要不要跟」（新栈设计已经消除的写「不跟」，要跟的写进新栈对应里程碑的验收）。拿不准修不修就问用户。
+
+**新栈的命令和检查**从 M1（Go 底座）起写在这里：`go test`、`go vet`、`staticcheck`、`govulncheck`、`pnpm …`（占位，M1 那一轮换成真命令）。不用 `golangci-lint`（GPL-3.0，硬规则 5）。**测试机上现在还没有 Go 和 pnpm，Node 是 20**（221 核过），M1 开工前要装（见 13 号文档 C 节）。
+
+**文档分工不变**：进度只写 `handoff/STATUS.md`；新栈的设计变化先改 `docs/design-next.md`；实现规格改 12 号文档；想法和尾巴写 13 号文档。发现同一件事写了两处，删一处、指过去。
 
 ## 常用命令
 

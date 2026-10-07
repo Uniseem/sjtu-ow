@@ -1,14 +1,16 @@
 # 当前状态
 
 ```yaml
-milestone: 重构筹备（Vue 3 + Go，调研和架构在 docs/rewrite-research/，218 起；M0 的五个实验 220 做完，全部不推翻架构）；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）
-round: 220-m0-experiments
-next: claude：221 写设计 v8.0（第 2、13.13、16、17 章，附录 D）和 AGENTS.md 的新栈一节，同时把 220 report.md「对 12 号文档的修订」五条落进 12 号文档；之后 M1 Go 底座（`12-architecture.md` 11.2）。重写开工前现行站上还剩「先做」里的 R2 异地备份（用户配）。用户：10-25 前点头让我登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」），同一次登录顺手跑 `scrub_originals`（README「图片上传（219 起）」，先 --dry-run）；D8（staging 子域名）、D9（割接时间）到检查点 B 和割接前再问；217 review.md「要用户拍板的」六条、后台填 DeepSeek 接口密钥、写「关于我们」。所有测试和检查都放后台跑（AGENTS.md）
+milestone: 重构筹备（Vue 3 + Go，218 起；M0 做完：D1–D4 拍板、五个实验、设计草案 `docs/design-next.md` 和笔记 `docs/rewrite-research/13-ideas-and-followups.md`）；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**
+round: 221-rewrite-design-draft
+next: 用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。claude（用户回来后）：M1 Go 底座——先在测试机上装 Go、pnpm、Node 24（装在检查目录里，13 号文档 C 节），写 222 的 request；M1 的内容见 `12-architecture.md` 11.2。重写开工前现行站上还剩 R2 异地备份（用户配）。所有测试和检查都放后台跑（AGENTS.md）
 updated: 2026-10-07
-blocked_on: 用户点头：登录正式站换 crontab（10-25 前）、跑 scrub_originals
+blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M1 可以开工，不用等
 ```
 
 ## 现在该谁动手
+
+**221（2026-10-07）**：你说「按你的建议，先把想法什么都写一下然后 push，我过几天再搞」。只写了文档，没碰代码和正式站：**`docs/design-next.md`** 是设计 v8.0 草案（决定表、架构、13 条不变量、`design.md` 每一章在新设计里的去向、新栈独有的规则、用户能感觉到的六点变化、割接时合并的清单）；**12 号文档**落进了 220 实验的 5 处修订（`WriteTx` 加 flock、图片母版 2560 宽、CodeMirror 挂进 ShadowRoot 等）；**`docs/rewrite-research/13-ideas-and-followups.md`** 是想法和遗留（等你的事、现行站上还没修的、各里程碑开工前的验证、五个想问你的问题）；`AGENTS.md` 加了「重构进行中」一节，说明读什么、「冻结」的意思（不加新功能、安全和丢数据照修）。`docs/design.md` 没动，仍是 v7.22。**你回来要做的事在上面的 `next` 里**：10-25 前换正式站的 crontab、升级正式站到 218–221 并跑 `scrub_originals`。测试机上没有 Go 和 pnpm、Node 是 20，M1 开工前我来装。
 
 **220（2026-10-07）**：M0 的五个验证实验做完，**全部不推翻 12 号文档的架构，不需要回头重新拍板 D1–D4**。① 薄 SSR + 严格 CSP **通过**：Vue 3 服务端渲染加激活在 `script-src 'self'`、零内联、零 `style=` 下跑通，JS gzip 48 KB。② 纯 Go 的 WebP **有条件通过**：比 libwebp 慢 3–5 倍，主图缩到 2560 宽、用方法 2、缩略图首次请求时再生成，就够用；留着换回 cgo 的口子。③ SQLite（modernc 纯 Go）并发写**通过**：`IMMEDIATE` 下两个进程不丢更新、不坏；极端压力下 SQLite 的忙等不公平，**写事务前先拿一个 flock** 后一次 busy 都没有。④ Markdown 对拍**通过**：goldmark 加约 420 行变换，346 份文档 345 份和现在的渲染器一致，剩一处是 markdown-it 的怪癖。⑤ CodeMirror 6 **有条件通过**：直接放进页面在严格 CSP 下没有样式，**挂进 ShadowRoot 就完全正常**、零违规。要改 12 号文档的 5 处写在 `rounds/220-m0-experiments/report.md`，221 一并落实。实验程序和原始数字都在 `rounds/220-m0-experiments/` 的 `e1`–`e5` 目录里，没有碰正式站、没有改现行站代码。
 
@@ -708,6 +710,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 218-pre-rewrite-fixes | 重写开工前先修：登录入口唯一（04-1）、评论接口先查文章（03-1）、cron 不受夏令时影响（09-9）；重构调研入库、D1–D4 拍板（v7.21） | **自查通过**，整组 2124 条全绿，17 处变异全抓到。正式站 crontab 待用户点头 |
 | 219-upload-pipeline | 所有上传的图走一条管线（`core/uploads.py`）：查像素、只认三种格式、重编码去 EXIF/GPS、随机名、每日限次；队标进「队标」集合、换了删旧图；`scrub_originals` 清旧原图（v7.22） | **自查通过**，整组 2163 条全绿，24 处变异全抓到。正式站未升级 |
 | 220-m0-experiments | M0 的五个验证实验（薄 SSR+严格 CSP、纯 Go WebP、SQLite 并发写、goldmark 对拍、CodeMirror 6 的 CSP），结论和对 12 号文档的 5 处修订 | **自查通过**，无代码改动；全部不推翻架构，2 个有条件通过 |
+| 221-rewrite-design-draft | 设计 v8.0 草案 `docs/design-next.md`、12 号文档落实 220 的修订、想法和遗留笔记 13 号文档、AGENTS.md 加重构一节（只有文档） | **自查通过**；`design.md` 没动（仍 v7.22）；正式站未升级 |
 
 ## 当前待定问题
 
