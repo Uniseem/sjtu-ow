@@ -1,0 +1,25 @@
+E4 results (2026-10-07). goldmark v1.8.6 (MIT) + an AST transformer and node renderers (render.go, ~420 lines) against
+content/markdown.py (markdown-it-py). Corpus (corpus.py): 346 documents = 4 string literals handed to render() in the existing
+tests + 262 sections of the repository's own Markdown documents (README, design, admin, handoff, rewrite-research: tables,
+nested lists, quotes, links, strikethrough, code) + 80 awkward inputs written for this (raw HTML, unsafe links, bare
+addresses and CJK punctuation, figures and videos alone and not alone, quotes with a source, loose/tight lists with images,
+tables, entities, setext headings, tabs, empty links and images, own/foreign/absolute image addresses, ...).
+Both outputs are parsed and written back in one canonical form (tags, sorted attributes, whitespace between blocks dropped)
+before comparing. No text from the live site is in the corpus.
+
+First cut          : 300 / 313 identical; all 13 differences were <del> where markdown-it writes <s>.
+After that fix     : 344 / 346 (30 more awkward cases added):
+  - ~single~ is strikethrough in goldmark's GFM extension, not in markdown-it  -> own inline parser needing two tildes
+  - code in an image's alt text: markdown-it drops it, mine kept it            -> match markdown-it
+Now                : 345 / 346 identical. The one left: `~~~三个~~~` (three tildes) is `~<s>三个</s>~` in markdown-it and stays
+literal in mine. A markdown-it quirk nobody writes; declared an intended difference.
+Control: with the heading rule switched off the same harness reports 50 differences, so it does notice.
+Speed: goldmark rendered the 1139 KB of Markdown in the corpus in 24 ms in total (all documents, including parsing).
+Rules ported and exercised: raw HTML as text (block and inline), one newline = <br>, # and ## -> h2 and ### and below -> h3,
+image(s) alone on a line -> <figure>/<figcaption> (own images only; a foreign one makes the paragraph ordinary),
+small own inline image / foreign image as a link, Bilibili link alone (bare or as the only link) -> player with bvid/page,
+bvid from query only if it looks like one, b23 short links only from a cache map (never the network), bare addresses -> links
+with the same CJK punctuation stops and trailing punctuation trimming, quote whose last line starts with —— -> <footer>,
+table wrapper <div class="c-prose__table">, javascript:/vbscript:/file:/data: links stay text, stats (images, videos).
+Not covered: the live site's real articles (M4 repeats this on the production backup), the b23 resolution round trip,
+byte-for-byte output (compared as parsed HTML; whitespace between block elements is not compared).

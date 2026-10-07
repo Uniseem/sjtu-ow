@@ -1,0 +1,28 @@
+E1 results (2026-10-07). Vue 3.5.43 + vue-router 4.6.4 + @unhead/vue 2.1.17 + Vite 7.3.7 (all MIT), a hand-written
+Node server (server.mjs, ~60 lines) doing SSR + a mock of the Go API. Strict CSP on every response:
+default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self';
+frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'.
+
+Real Chrome (headless, foreground) driven over CDP by check.mjs:
+- hydration: the button's click handler works, `js-ready` is added; no console warnings, no hydration-mismatch
+  messages (the production build was built with __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ so a mismatch would be loud),
+  no CSP violation reports. The only console line is the favicon 404 of the mock server.
+- the policy is really on: an injected inline <script> does not run, a style="" attribute and a <style> element are
+  reported as script-src-elem / style-src-attr (/ style-src-elem) violations; el.style.color = ... (CSSOM) works.
+- client navigation to /teams/1/ and back: same document (marker kept), loader ran in the browser, <title> and
+  og:title updated by unhead, 0 violations, 0 errors.
+- /teams/2/ straight from the server: rendered and hydrated.
+- JS blocked (?nojs=1): the page is fully readable; the CSS-only banner is hidden at load and visible after 8 s.
+- unknown path: HTTP 404.
+HTML served: no inline executable script (theme.js is a file; the state is <script type="application/json">, which the
+CSP does not treat as script), 0 style= attributes, 0 <style> tags.
+
+Size (gzip): HTML 1.0 KB, JS 48.3 KB (Vue + router + unhead + the experiment pages; one chunk), CSS 0.5 KB (the real
+app.css is ~19 KB). Budget in 12-architecture 6.9: JS <= 120 KB, whole home page <= 300 KB.
+
+Speed (one Node process, mock API in the same process): / 1917 req/s at concurrency 1 (p50 0.4 ms), 3607 req/s at
+concurrency 10 (p95 7 ms); /teams/3/ 5214 req/s. Server RSS 310 MB after 5000 requests (Node's heap grows before it
+collects; set --max-old-space-size in the container).
+
+Not tested here: WebKit / iOS 15 Safari / WeChat's built-in browser (Playwright WebKit belongs to M2).
+Found on the way: unhead adds its own <meta charset> and viewport, so the template must not (they were duplicated).

@@ -1,0 +1,12 @@
+:root { --bg: #fff; --fg: #1b1f24; --accent: #d04a2a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14171a; --fg: #e8eaed; } }
+:root[data-theme="dark"] { --bg: #14171a; --fg: #e8eaed; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, "PingFang SC", sans-serif; }
+.wrap { max-width: 56rem; margin: 0 auto; padding: 1rem; }
+nav a { margin-right: 1rem; color: var(--accent); }
+button { font: inherit; padding: .4rem .9rem; border: 1px solid var(--accent); background: transparent; color: var(--fg); border-radius: .4rem; }
+.teams { list-style: none; padding: 0; display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); }
+.teams li { border: 1px solid #8884; border-radius: .6rem; padding: .6rem .8rem; }
+.noscript-banner { position: fixed; inset: auto 0 0 0; padding: .6rem 1rem; background: #fde8e0; color: #5a1d0f; visibility: hidden; animation: ow-show 0s 8s forwards; }
+html.js-ready .noscript-banner { display: none; }
+@keyframes ow-show { to { visibility: visible; } }

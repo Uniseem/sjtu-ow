@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E5 CodeMirror 6 under a strict CSP</title>
+    <link rel="stylesheet" href="/src/page.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Markdown 编辑器（CodeMirror 6）</h1>
+      <p class="bar">
+        <button type="button" data-act="bold">粗体</button>
+        <button type="button" data-act="h2">二级标题</button>
+        <button type="button" data-act="quote">引用</button>
+        <button type="button" data-act="undo">撤销</button>
+      </p>
+      <div id="editor"></div>
+      <p id="status" role="status"></p>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

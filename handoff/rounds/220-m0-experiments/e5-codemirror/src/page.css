@@ -1,0 +1,4 @@
+body { margin: 0; font: 16px/1.6 system-ui, "PingFang SC", sans-serif; }
+main { max-width: 52rem; margin: 0 auto; padding: 1rem; }
+.bar button { font: inherit; padding: .3rem .8rem; margin-right: .4rem; }
+#editor { border: 1px solid #8886; border-radius: .4rem; min-height: 14rem; }

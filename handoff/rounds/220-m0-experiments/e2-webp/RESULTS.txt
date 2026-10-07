@@ -1,0 +1,24 @@
+E2 results (2026-10-07). Source: demo-shanghai.jpg (real photo 1920x1081) stretched to a
+4000x3000 "phone photo" with sensor-like noise, saved as a 3107 KB JPEG, the same file for every row.
+Pure Go = gen2brain/webp v0.6.4, `CGO_ENABLED=0 go build -tags nodynamic` (7 MB static binary).
+libwebp reference = Pillow (C libwebp) on that same JPEG via reference.py. Medians of 5 runs.
+
+                                      Mac arm64 (10 cores)    test machine amd64 (4 cores)
+                                      pure Go    libwebp      pure Go    libwebp
+decode JPEG 4000x3000                 113 ms     35 ms        119 ms     43 ms
+master q90, 4000 wide, method 4       3.27-3.32 s  0.99 s     4.93 s     0.95 s     (2442 KB vs 2455 KB)
+master q90, 2560 wide, method 4       1.10 s     0.36 s       1.67 s     0.36 s     (650 KB vs 732 KB)
+master q90, 2560 wide, method 2       0.38 s     0.14 s       0.60 s     0.17 s
+decode master WebP (2560 / 4000)      74 / 180 ms             101 / 240 ms
+thumb fill-2400x1350 q80 (resize+encode)  0.81 s (4000 master) / 0.68 s (2560) / 0.29 s (2560, m2)
+                                                              1.29 s / 1.08 s / 0.46 s
+thumb fill-1280x720  q80              424 / 270 / 160 ms      599 / 400 / 225 ms
+thumb fill-400x400   q80              273 / 137 / 115 ms      367 / 176 / 151 ms
+thumb fill-88x88     q80              231 /  98 /  96 ms      300 / 123 / 121 ms
+whole pipeline (decode+master+decode+4 thumbs)
+   4000 wide m4                       5.3 s                   7.84 s
+   2560 wide m4                       2.47 s                  3.67 s
+   2560 wide m2                       1.21 s                  1.75 s
+memory: maximum resident set 710 MB for one 12-megapixel upload at 4000 wide (Mac, /usr/bin/time -l);
+        Go runtime reports 865 MB taken from the OS on the test machine (5 runs in one process), 693 MB at 2560 wide.
+Output sizes of the two encoders agree within 1% on the same input (2442 vs 2455 KB at 4000 wide).

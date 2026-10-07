@@ -1,0 +1,19 @@
+E3 results (2026-10-07). modernc.org/sqlite v1.60.1 (pure Go), DSN _txlock=immediate, busy_timeout 5000,
+WAL, synchronous NORMAL; write pool MaxOpenConns(1) per process, 4 writer goroutines per process, readers on a
+separate read-only pool (1 read/ms each). Each step: BEGIN IMMEDIATE; read counter; think; counter+1; insert a log
+row; COMMIT. Correct = counter == log rows == steps that returned success; no lost update.
+
+Mac arm64, 4 processes x 1000 steps, 200 us in the transaction:
+  4000 steps done, 0 failed, counter=4000 log_rows=4000, readers: 1.2 M reads, 0 failed.
+Negative control, same load, plain deferred BEGIN (-deferred):
+  900 of 4000 done, 3100 failed: "database is locked (5) (SQLITE_BUSY)" at once (a read-then-write upgrade cannot wait).
+  counter=900 = log_rows=900 (the failures were clean, no corruption).
+
+Test machine amd64 (4 cores), after throttling the readers (a spinning reader starved the writers 8x):
+  S1  2 processes (api + worker), 200 us, 5000 steps each      : 9999/10000 done, 1 SQLITE_BUSY after 5.0 s wait.
+  S2  2 processes, 20 ms in the transaction, 200 steps each    : 400/400 done, 0 failed, worst step 4.5 s (queueing).
+  S3  8 processes, 20 ms in the transaction, 100 steps each    : 792/800 done, 8 SQLITE_BUSY after 5 s waits, up to 14.9 s.
+  counters always equal the number of successful steps and the log rows.
+With a flock(2) taken on <db>.wlock around every write transaction (-flock), same loads:
+  S1 + flock : 10000/10000, 0 failed, 357 steps/s per process, worst step 1.9 s.
+  S3 + flock : 800/800, 0 failed, worst step 5.4 s.

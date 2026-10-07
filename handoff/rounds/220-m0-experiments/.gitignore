@@ -1,0 +1,6 @@
+node_modules/
+dist/
+bin/
+*.test
+corpus.json
+diff-report.txt
