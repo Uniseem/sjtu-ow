@@ -21,6 +21,7 @@ const coverNight = "/static/img/placeholders/cover-07.svg"
 const coverArticle = "/static/img/placeholders/cover-05.svg"
 </script>
 <template>
+  <main id="main" class="flex-1">
   <header class="c-pagehead">
     <div class="l-container">
       <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>设计体系样张</span></nav>
@@ -432,4 +433,5 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
       </div>
     </section>
   </div>
+  </main>
 </template>

@@ -147,6 +147,7 @@ test("the style guide is a 404 unless the viewer is staff", async () => {
   })
   expect(staff.status).toBe(200)
   const html = staff.body.replace(/<!--.*?-->/g, "")
+  expect(html).toContain('<main id="main"')
   expect(html).toContain(">设计体系样张</h1>")
   expect(html).toContain("为战队报名")
   expect(html).toContain("这个队名已经有人用了。")

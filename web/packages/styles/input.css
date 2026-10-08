@@ -20,6 +20,8 @@
 /* 231：样式从现行站原样搬来。扫描新栈的 .vue，不再扫 Django 模板。 */
 @source "../../apps/**/*.vue";
 @source "../../packages/**/*.vue";
+/* 238：样张色块的类名写在 specimen.ts，:class 绑上去，只扫 .vue 生成不出来。 */
+@source "../../apps/site/src/specimen.ts";
 
 /* ---- Tokens ------------------------------------------------------------------ */
 

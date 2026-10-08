@@ -53,6 +53,14 @@ test("decorative images use the fixed /static/img addresses", () => {
   assert.ok(compiled.includes("/static/img/placeholders/ridge.svg"));
 });
 
+test("specimen colour chips are real utilities", () => {
+  // These class names live in specimen.ts and are bound with :class.
+  // A scan that only sees .vue files drops them, and the chip stays transparent.
+  for (const name of ["bg-bg", "bg-surface", "bg-primary-hover", "bg-night-fg", "bg-on-accent-soft"]) {
+    assert.match(compiled, new RegExp(`\\.${name}\\{`));
+  }
+});
+
 test("the stylesheet does not load daisyUI", () => {
   assert.equal(css.includes("daisyui"), false);
   const flat = compiled.replaceAll(" ", "");
