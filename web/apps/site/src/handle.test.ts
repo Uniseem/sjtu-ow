@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { expect, test } from "vitest"
-import { handle, type Incoming } from "../server"
+import { CSP, handle, type Incoming } from "../server"
 import { httpError } from "./router"
 
 function incoming(method: string, url: string, headers: Record<string, string> = {}): Incoming {
@@ -17,6 +17,13 @@ function api(status: number, body: unknown, seen?: { cookie: string | null }): t
 
 const base = { apiBase: "http://api.test" }
 const ASSETS = { entry: "/assets/entry-x.js", css: ["/assets/entry-x.css"], preloads: [] }
+
+test("the content security policy is the one in section 6.9", () => {
+  expect(CSP).toBe(
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  )
+  expect(CSP).not.toContain("unsafe-")
+})
 
 test("only GET and HEAD are accepted", async () => {
   const out = await handle(incoming("POST", "/"), { ...base, fetch: api(200, { user: null }) })

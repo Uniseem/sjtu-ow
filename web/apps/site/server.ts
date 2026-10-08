@@ -5,12 +5,10 @@ import { pathToFileURL } from "node:url"
 import { render, type Rendered, type RenderOpts } from "./src/entry-server"
 
 const LOGIN = "/accounts/login/?next="
-// 12-architecture 6.9. In production Caddy adds this to every page; the
-// standalone server adds it too when STRICT_CSP=1, so the browser check
-// exercises the pages under the real policy.
-const CSP =
-  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; " +
-  "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+// 12-architecture 6.9, verbatim. Caddy sends this on every page; the
+// standalone server sends it when STRICT_CSP=1.
+export const CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
 export function escapeState(value: unknown): string {
   return JSON.stringify(value)

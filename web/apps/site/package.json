@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm --filter @sjtu-ow/styles build && vitest run && vite build --outDir dist/client --ssrManifest && vite build --ssr server.ts --outDir dist/server",
+    "test": "pnpm --filter @sjtu-ow/styles build && vitest run && vite build --outDir dist/client --ssrManifest && vite build --ssr server.ts --outDir dist/server && node budget.mjs",
     "build": "pnpm --filter @sjtu-ow/styles build && vite build --outDir dist/client --ssrManifest && vite build --ssr server.ts --outDir dist/server"
   },
   "dependencies": {
