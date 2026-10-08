@@ -22,7 +22,6 @@ export const PAGES: RouteRecordRaw[] = [
   page("/letters/", "待发信"),
   page("/letters/:batch/", "确认发信"),
   page(`/letters/:batch/${id}/`, "信件预览"),
-  page("/_styleguide/", "样式"),
   page("/_styleguide/emails/", "邮件样张"),
   page("/_styleguide/emails/:key/", "邮件预览"),
   page("/me/", "个人中心"),

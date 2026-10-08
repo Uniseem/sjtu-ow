@@ -1,0 +1,435 @@
+<script setup lang="ts">
+import { inject } from "vue"
+import { useHead } from "@unhead/vue"
+import CIcon from "../components/CIcon.vue"
+import SectionHead from "../components/SectionHead.vue"
+import { initial } from "../initial"
+import type { PageData } from "../router"
+import { COLOURS, PEOPLE, PLACEHOLDERS, ROWS, SPECIMEN_ICONS, STATUSES, rankParts, sampleClock, seats } from "../specimen"
+
+const data = inject<PageData>("page-data")
+const clock = data?.clock ?? sampleClock()
+useHead({ title: "设计体系样张 · SJTU-OW" })
+
+function rank(label: string): { none: boolean; name: string; number: string } {
+  if (!label || label === "未定级") return { none: true, name: "", number: "" }
+  const [name, number] = rankParts(label)
+  return { none: false, name, number }
+}
+const ranks = ["钻石 3", "前 500", "未定级"].map((label) => ({ label, ...rank(label) }))
+const coverNight = "/static/img/placeholders/cover-07.svg"
+const coverArticle = "/static/img/placeholders/cover-05.svg"
+</script>
+<template>
+  <header class="c-pagehead">
+    <div class="l-container">
+      <nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><span>设计体系样张</span></nav>
+      <p class="c-pagehead__meta"><span class="c-tag c-tag--accent">v3.0</span></p>
+      <h1>设计体系样张</h1>
+      <p class="c-pagehead__lede">每个组件的每种状态都排在这一页上（设计 13.2 节）。改组件先在这里看；新组件先写进设计文档再加进来。这一页只有能进后台的人能看到。</p>
+    </div>
+  </header>
+
+  <div class="l-container l-section flex flex-col gap-16">
+    <section aria-labelledby="sg-colour">
+      <SectionHead heading-id="sg-colour" title="颜色" />
+      <ul class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-10">
+        <li v-for="[label, token, cls, hex] in COLOURS" :key="token" class="c-swatch">
+          <span class="c-swatch__chip" :class="cls"></span>
+          <span class="font-semibold">{{ label }}</span>
+          <span class="font-code text-sm text-fg-2">{{ token }} {{ hex }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="sg-type">
+      <SectionHead heading-id="sg-type" title="字体与数字" />
+      <div class="grid gap-10 lg:grid-cols-2">
+        <div class="flex flex-col gap-4">
+          <p class="c-figure text-[3.5rem]">09.28</p>
+          <h1>一级标题 · 2026 秋季校内赛</h1>
+          <h2>二级标题 · 小组赛：老队的底蕴</h2>
+          <h3>三级标题 · 周五夜间内战</h3>
+          <p>正文：本学期的第一场校内赛在闵行校区学生中心落下帷幕。十二支队伍在两天里打完了四十一张地图。</p>
+          <p class="text-sm text-fg-2">小字：发布于 {{ clock.dayDate }} · 作者 夜航</p>
+          <p class="c-eyebrow">标签字号 · 眉标（只用在页脚栏目这类小标题）</p>
+          <p class="font-code">Genji#51234 · 游戏 ID</p>
+        </div>
+        <dl class="c-facts">
+          <dt>日期</dt><dd class="font-numeric">{{ clock.dayDate }}</dd>
+          <dt>同年列表</dt><dd class="font-numeric">{{ clock.dayMd }}</dd>
+          <dt>时间</dt><dd class="font-numeric">{{ clock.dayTime }}</dd>
+          <dt>星期</dt><dd>{{ clock.dayWeekday }}</dd>
+          <dt>名额</dt><dd class="font-numeric">8 / 10</dd>
+          <dt>编号</dt><dd class="font-numeric">03</dd>
+          <dt>段位</dt>
+          <dd>
+            <template v-for="item in ranks" :key="item.label">
+              <span v-if="item.none" class="c-rank c-rank--none">未定级</span>
+              <span v-else class="c-rank">{{ item.name }}<template v-if="item.number"> <span class="c-rank__div">{{ item.number }}</span></template></span>
+              {{ "　" }}
+            </template>
+          </dd>
+        </dl>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-sign">
+      <SectionHead heading-id="sg-sign" title="标志性元素" />
+      <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <p class="mb-3 text-sm text-fg-2">筛选：当前一项</p>
+          <nav class="c-tabs" aria-label="示例"><a href="#sg-sign" aria-current="page">全部</a><a href="#sg-sign">公告</a><a href="#sg-sign">战报</a></nav>
+        </div>
+        <div>
+          <p class="mb-3 text-sm text-fg-2">圆角：卡片和图片（8px）</p>
+          <span class="c-cut block h-20 bg-surface-2"></span>
+        </div>
+        <div>
+          <p class="mb-3 text-sm text-fg-2">没有图片时的占位：灰底</p>
+          <span class="c-hatch block h-20 rounded-sm border border-line"></span>
+        </div>
+        <div>
+          <p class="mb-3 text-sm text-fg-2">进度条：已报 8 / 10</p>
+          <span class="c-seats" role="img" aria-label="已报 8 人，一场需要 10 人" data-seats><i v-for="(on, i) in seats(8, 10)" :key="i" :class="{ 'is-taken': on }"></i></span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-actions">
+      <SectionHead heading-id="sg-actions" title="按钮" />
+      <div class="flex flex-wrap items-center gap-4">
+        <a href="#sg-actions" class="c-btn c-btn--primary">为战队报名</a>
+        <a href="#sg-actions" class="c-btn c-btn--tonal">加入战队</a>
+        <a href="#sg-actions" class="c-btn c-btn--secondary">个人报名</a>
+        <a href="#sg-actions" class="c-btn c-btn--quiet">查看全部<CIcon name="arrow-right" /></a>
+        <button type="button" class="c-btn c-btn--danger">取消报名</button>
+        <button type="button" class="c-btn c-btn--primary" disabled>报名已截止</button>
+        <a href="#sg-actions" class="c-btn c-btn--secondary c-btn--sm"><CIcon name="edit" />编辑</a>
+        <a href="#sg-actions" class="c-btn c-btn--primary c-btn--sm">通过</a>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-labels">
+      <SectionHead heading-id="sg-labels" title="标签、状态、段位、位置" />
+      <div class="flex flex-col gap-6">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="c-tag">战报</span><span class="c-tag">角色限定 5v5</span><span class="c-tag c-tag--strong">仅限交大</span><span class="c-tag c-tag--accent">置顶</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-6">
+          <span v-for="[kind, label] in STATUSES" :key="kind" class="c-status" :class="'c-status--' + kind">{{ label }}</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-6">
+          <span class="c-roles">
+            <span class="c-role"><CIcon name="role-tank" class="size-3.5" />坦克</span>
+            <span class="c-role"><CIcon name="role-damage" class="size-3.5" />输出</span>
+            <span class="c-role"><CIcon name="role-support" class="size-3.5" />支援</span>
+          </span>
+          <span class="c-roles"><span class="c-role"><CIcon name="role-support" class="size-3.5" />支援</span></span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-icons">
+      <SectionHead heading-id="sg-icons" title="图标" />
+      <ul class="grid grid-cols-4 gap-x-4 gap-y-6 sm:grid-cols-8 lg:grid-cols-11">
+        <li v-for="name in SPECIMEN_ICONS" :key="name" class="flex flex-col items-center gap-2 text-center">
+          <CIcon :name="name" class="size-6" />
+          <span class="font-code text-sm text-fg-2">{{ name }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="sg-lists">
+      <SectionHead heading-id="sg-lists" title="列表行" more-href="#sg-lists" more-label="全部资讯" />
+      <ol class="c-rows">
+        <li v-for="[title, cat, summary] in ROWS" :key="title" class="c-row c-row--plain">
+          <div class="c-row__main">
+            <h3 class="c-row__title"><a href="#sg-lists" class="c-stretch">{{ title }}</a></h3>
+            <p class="c-row__text">{{ summary }}</p>
+          </div>
+          <span class="c-tag">{{ cat }}</span>
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="sg-facts">
+      <SectionHead heading-id="sg-facts" title="数据、资料表、表格" />
+      <div class="grid gap-10 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <div class="flex flex-col gap-8">
+          <div class="grid grid-cols-3 gap-4">
+            <div class="c-stat"><span class="c-stat__label">已报名</span><span class="c-stat__value">12<small>队</small></span></div>
+            <div class="c-stat"><span class="c-stat__label">个人</span><span class="c-stat__value">5<small>人</small></span></div>
+            <div class="c-stat"><span class="c-stat__label">截止</span><span class="c-stat__value">{{ clock.closeMd }}</span></div>
+          </div>
+          <dl class="c-facts">
+            <dt>报名截止</dt><dd>{{ clock.closeDate }} {{ clock.closeTime }}</dd>
+            <dt>比赛时间</dt><dd>{{ clock.dayDate }} {{ clock.dayWeekday }}</dd>
+            <dt>人数</dt><dd>5–7 人</dd>
+            <dt>限制</dt><dd>仅限交大 · 个人报名</dd>
+          </dl>
+        </div>
+        <table class="c-table c-table--stack">
+          <thead><tr><th scope="col">队伍</th><th scope="col">人数</th><th scope="col">状态</th><th scope="col" class="is-num">提交时间</th></tr></thead>
+          <tbody>
+            <tr><td data-label="队伍">思源</td><td data-label="人数" class="font-numeric">6</td><td data-label="状态"><span class="c-status c-status--ok">已通过</span></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
+            <tr><td data-label="队伍">东川路电竞</td><td data-label="人数" class="font-numeric">5</td><td data-label="状态"><span class="c-status c-status--warn">待审核</span></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
+            <tr><td data-label="队伍">零点整</td><td data-label="人数" class="font-numeric">7</td><td data-label="状态"><span class="c-status c-status--rejected">已驳回</span></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-people">
+      <SectionHead heading-id="sg-people" title="图块与名片" />
+      <ul class="c-teams">
+        <li class="c-teams__item"><span class="c-teams__logo">思</span><a href="#sg-people" class="c-stretch c-teams__name">思源</a><span class="c-teams__meta">6 / 10 人</span><span class="c-status c-status--live">招募中</span></li>
+        <li class="c-teams__item"><span class="c-teams__logo">C</span><a href="#sg-people" class="c-stretch c-teams__name">Cyan Tide</a><span class="c-teams__meta">5 / 10 人</span><span class="c-status">暂不招募</span></li>
+      </ul>
+      <ul class="c-people mt-10">
+        <li v-for="[name, title, team] in PEOPLE" :key="name" class="c-person">
+          <span class="c-avatar">{{ initial(name) }}</span>
+          <span class="min-w-0">
+            <span class="c-person__name">{{ name }}</span>
+            <span v-if="title" class="c-person__title">{{ title }}</span>
+            <span class="c-person__meta">{{ team || "未加入战队" }}</span>
+          </span>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="sg-form">
+      <SectionHead heading-id="sg-form" title="表单" />
+      <form class="c-form max-w-xl" action="#sg-form">
+        <div class="c-step">
+          <div class="c-step__head"><h3>选择游戏 ID</h3></div>
+          <div class="c-field">
+            <label class="c-field__label" for="sg-account">游戏 ID<span class="c-field__req" aria-hidden="true">*</span></label>
+            <select id="sg-account"><option>Genji#51234 · 钻石 3</option><option>Player#88123</option></select>
+            <p class="c-field__help">只列出你自己绑定的游戏 ID。</p>
+          </div>
+        </div>
+        <div class="c-step">
+          <div class="c-step__head"><h3>能打的位置</h3></div>
+          <div class="c-choices">
+            <label class="c-choice"><input type="checkbox" checked><CIcon name="role-tank" class="size-4" />坦克</label>
+            <label class="c-choice"><input type="checkbox"><CIcon name="role-damage" class="size-4" />输出</label>
+            <label class="c-choice"><input type="checkbox" checked><CIcon name="role-support" class="size-4" />支援</label>
+          </div>
+          <div class="c-field is-invalid">
+            <label class="c-field__label" for="sg-name">队名<span class="c-field__req" aria-hidden="true">*</span></label>
+            <input id="sg-name" type="text" value="思源">
+            <p class="c-field__error" role="alert"><CIcon name="alert" /><span>这个队名已经有人用了。</span></p>
+          </div>
+          <div class="c-field">
+            <label class="c-field__label" for="sg-note">留言</label>
+            <textarea id="sg-note" placeholder="想对队长说的话（选填）"></textarea>
+          </div>
+          <div class="c-field">
+            <label class="c-field__label" for="sg-file">上传新头像</label>
+            <input id="sg-file" type="file" accept="image/jpeg,image/png,image/webp">
+            <p class="c-field__help">JPG、PNG 或 WebP，不超过 5MB。文件选择框（v6.11）。</p>
+          </div>
+          <div class="c-faces">
+            <figure><span class="c-avatar c-avatar--lg c-hue-2" aria-hidden="true">小</span><figcaption>现在是默认头像</figcaption></figure>
+            <figure><span class="c-avatar c-avatar--lg c-hue-4" aria-hidden="true">新</span><figcaption>审核中</figcaption></figure>
+          </div>
+          <label class="c-check"><input type="checkbox" checked>我已阅读并同意赛事规则</label>
+        </div>
+        <div class="c-formbar">
+          <button type="button" class="c-btn c-btn--primary">提交报名</button>
+          <a href="#sg-form" class="c-btn c-btn--quiet">取消</a>
+        </div>
+      </form>
+    </section>
+
+    <section aria-labelledby="sg-feedback">
+      <SectionHead heading-id="sg-feedback" title="提示、空状态、分页" />
+      <div class="grid gap-4 lg:grid-cols-2">
+        <div class="c-notice c-notice--info"><CIcon name="info" /><div class="c-notice__body">报名截止前可以修改或取消报名。</div></div>
+        <div class="c-notice c-notice--warn"><CIcon name="alert" /><div class="c-notice__body">资料还不完整：缺少联系方式。<a href="#sg-feedback">去补全</a></div></div>
+        <div class="c-notice c-notice--ok"><CIcon name="check-circle" /><div class="c-notice__body">报名已通过。</div></div>
+        <div class="c-notice c-notice--error"><CIcon name="x-circle" /><div class="c-notice__body">提交失败：名单里有人已经在别的队伍报名了这场赛事。</div></div>
+      </div>
+      <div class="c-empty mt-8">
+        <p class="c-empty__title">还没有战队</p>
+        <p class="c-empty__text">第一支战队可以由你来建。</p>
+        <a href="#sg-feedback" class="c-btn c-btn--secondary">创建战队</a>
+      </div>
+      <nav class="c-pager" aria-label="分页示例">
+        <span class="c-btn c-btn--secondary c-btn--sm" aria-disabled="true"><CIcon name="arrow-left" />上一页</span>
+        <span class="c-pager__pos"><strong>1</strong> / 7</span>
+        <a class="c-btn c-btn--secondary c-btn--sm" href="#sg-feedback">下一页<CIcon name="arrow-right" /></a>
+      </nav>
+      <div class="c-ctxmenu static mt-8 w-max" role="presentation">
+        <span class="c-ctxmenu__item"><span>在新标签页打开</span></span>
+        <span class="c-ctxmenu__item"><span>复制链接</span></span>
+        <hr>
+        <span class="c-ctxmenu__item"><span>后退</span><kbd>Alt+←</kbd></span>
+        <span class="c-ctxmenu__item"><span>前进</span><kbd>Alt+→</kbd></span>
+        <span class="c-ctxmenu__item"><span>刷新</span><kbd>F5</kbd></span>
+        <hr>
+        <span class="c-ctxmenu__item"><span>复制本页链接</span></span>
+        <p class="c-ctxmenu__foot">按住 Shift 再右键：浏览器自带的菜单</p>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-prose">
+      <SectionHead heading-id="sg-prose" title="正文" />
+      <div class="c-prose l-prose">
+        <p>本学期的第一场校内赛在闵行校区学生中心落下帷幕。十二支队伍在两天里打完了四十一张地图，从小组赛一路打到决赛。<a href="#sg-prose">完整赛程</a>在赛事页。</p>
+        <h2>小组赛：老队的底蕴</h2>
+        <p>思源在小组赛里没丢一张图。他们的辅助位是上学期从内战里挖来的新人。</p>
+        <ul><li>小组赛采用 BO3</li><li>淘汰赛 BO5，决赛 BO7</li></ul>
+        <p>报名时在游戏里输入 <code>/join sjtu</code> 进频道，原定的周六场<s>取消</s>改到周日。</p>
+        <div class="c-prose__table"><table><thead><tr><th>阶段</th><th>赛制</th><th>时间</th></tr></thead><tbody><tr><td>小组赛</td><td>BO3</td><td>周六</td></tr><tr><td>决赛</td><td>BO7</td><td>周日</td></tr></tbody></table></div>
+        <blockquote><p>我们练得最多的不是枪法，是交流。</p><footer>——思源战队队长</footer></blockquote>
+        <p>下学期的秋季赛报名已经开放，个人也可以报名。</p>
+      </div>
+    </section>
+  </div>
+
+  <section aria-labelledby="sg-night">
+    <header class="c-stage c-stage--plain">
+      <div class="l-container c-stage__body">
+        <p class="c-stage__tags"><span class="c-status c-status--live">报名中</span><span class="c-tag">仅限交大</span></p>
+        <h2 id="sg-night" class="c-stage__title">赛场横幅：内战、战队（没有封面）</h2>
+        <dl class="c-stage__facts">
+          <div><dt>报名截止</dt><dd>{{ clock.closeMd }} {{ clock.closeWeekday }} {{ clock.closeTime }}</dd></div>
+          <div><dt>每队人数</dt><dd>5–7 人</dd></div>
+          <div><dt>已通过</dt><dd>4 队</dd></div>
+        </dl>
+      </div>
+    </header>
+    <div class="l-container l-section">
+      <div class="c-upcoming c-upcoming--two">
+        <article class="c-media">
+          <div class="c-media__pic"><img :src="coverNight" width="640" height="360" alt="" loading="lazy"></div>
+          <p class="c-media__meta"><span class="c-status c-status--live">报名中</span><span>{{ clock.closeMd }} {{ clock.closeTime }} 截止</span></p>
+          <h3 class="c-media__title"><a href="#sg-night" class="c-stretch">2026 秋季校内赛</a></h3>
+          <p class="c-media__facts">5–7 人一队 · 已通过 4 队 · 仅限交大</p>
+        </article>
+        <ol class="c-rows">
+          <li class="c-row">
+            <span class="c-date"><small>{{ clock.dayMonth }}月</small><b>{{ clock.dayDom }}</b></span>
+            <div class="c-row__main">
+              <h3 class="c-row__title"><a href="#sg-night" class="c-stretch">周五夜间内战</a></h3>
+              <p class="c-row__meta">{{ clock.dayWeekday }} {{ clock.dayTime }} · 角色限定 5v5 · 已报 8 / 10</p>
+              <span class="c-seats" role="img" aria-label="已报 8 人，一场需要 10 人" data-seats><i v-for="(on, i) in seats(8, 10)" :key="'n' + i" :class="{ 'is-taken': on }"></i></span>
+            </div>
+            <span class="c-status c-status--live">报名中</span>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <div class="l-container l-section flex flex-col gap-16">
+    <section aria-labelledby="sg-panel">
+      <SectionHead heading-id="sg-panel" title="面板、链接、单选" />
+      <div class="grid gap-8 lg:grid-cols-2">
+        <article class="c-panel">
+          <div class="c-panel__head"><h3 class="font-code text-lg">Genji#51234</h3><p class="text-sm text-fg-3">段位更新于 3 天前</p></div>
+          <p class="mt-3 text-fg-2">能用发丝线分隔的就不用面板。这里是<a href="#sg-panel" class="c-link">文字链接</a>。</p>
+          <div class="c-panel__actions"><a href="#sg-panel" class="c-btn c-btn--secondary c-btn--sm">编辑</a><button type="button" class="c-btn c-btn--danger c-btn--sm">删除</button></div>
+        </article>
+        <fieldset class="c-field">
+          <legend class="c-field__label mb-2">是否来自上海交通大学</legend>
+          <label class="c-check"><input type="radio" name="sg-radio" checked>是</label>
+          <label class="c-check"><input type="radio" name="sg-radio">否</label>
+        </fieldset>
+      </div>
+    </section>
+
+    <section aria-labelledby="sg-home">
+      <SectionHead heading-id="sg-home" title="首页：数字条、大图卡、列表行、图片卡、战队" />
+      <div class="c-stats"><dl class="c-stats__list">
+        <div><dt>注册成员</dt><dd>312</dd></div>
+        <div><dt>战队</dt><dd>18</dd></div>
+        <div><dt>累计内战</dt><dd>46</dd></div>
+        <div><dt>社区已成立</dt><dd>3 年 126 天</dd></div>
+      </dl></div>
+      <div class="c-upcoming c-upcoming--two mt-8">
+        <article class="c-feature">
+          <div class="c-feature__body">
+            <span class="c-status c-status--live">报名中</span>
+            <h3 class="c-feature__title"><a href="#sg-home" class="c-stretch">2026 秋季交大守望先锋杯</a></h3>
+            <p class="c-feature__facts">报名截止 10.12 14:00 · 已通过 9 队</p>
+          </div>
+        </article>
+        <ol class="c-rows">
+          <li class="c-row">
+            <span class="c-date"><small>10月</small><b>02</b></span>
+            <div class="c-row__main">
+              <h3 class="c-row__title"><a href="#sg-home" class="c-stretch">周五晚 5v5 内战</a></h3>
+              <p class="c-row__meta">周五 19:30 · 已报 8 / 10</p>
+              <span class="c-seats" role="img" aria-label="已报 8 人，一场需要 10 人" data-seats><i v-for="(on, i) in seats(8, 10)" :key="'h' + i" :class="{ 'is-taken': on }"></i></span>
+            </div>
+            <span class="c-status c-status--live">报名中</span>
+          </li>
+          <li class="c-row">
+            <span class="c-date"><small>10月</small><b>04</b></span>
+            <div class="c-row__main">
+              <h3 class="c-row__title"><a href="#sg-home" class="c-stretch">周日 6v6 娱乐内战</a></h3>
+              <p class="c-row__meta">周日 14:00 · 已报 12 / 12</p>
+              <span class="c-seats" role="img" aria-label="已报 12 人，一场需要 12 人" data-seats><i v-for="(on, i) in seats(12, 12)" :key="'f' + i" :class="{ 'is-taken': on }"></i></span>
+            </div>
+            <span class="c-status">报名已截止</span>
+          </li>
+        </ol>
+      </div>
+      <div class="c-media-grid mt-8 lg:grid-cols-3">
+        <article class="c-media">
+          <div class="c-media__pic"><img :src="coverArticle" width="640" height="360" alt="" loading="lazy"></div>
+          <p class="c-media__meta"><span class="c-tag">战报</span><span class="c-tag c-tag--accent">置顶</span><time>09.28</time></p>
+          <h3 class="c-media__title"><a href="#sg-home" class="c-stretch">没有封面的文章：用它的占位图</a></h3>
+        </article>
+      </div>
+      <h3 id="sg-placeholders" class="mt-8 text-lg font-semibold">占位图（文章、赛事没有封面时，设计 13.2.5）</h3>
+      <ul class="c-media-grid mt-4 lg:grid-cols-4">
+        <li v-for="item in PLACEHOLDERS" :key="item.src" class="c-media">
+          <div class="c-media__pic"><img :src="item.src" width="640" height="360" alt="" loading="lazy"></div>
+          <p class="c-media__meta"><span class="c-tag">{{ item.label }}</span><span>{{ item.index }}</span></p>
+        </li>
+      </ul>
+      <ul class="c-teams mt-8">
+        <li class="c-teams__item"><span class="c-teams__logo">夜</span><a href="#sg-home" class="c-stretch c-teams__name">夜航</a><span class="c-teams__meta">6 人</span><span class="c-status c-status--live">招募中</span></li>
+        <li class="c-teams__item"><span class="c-teams__logo">思</span><a href="#sg-home" class="c-stretch c-teams__name">思源</a><span class="c-teams__meta">7 人</span></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="sg-comments">
+      <SectionHead heading-id="sg-comments" title="评论" />
+      <div class="max-w-3xl">
+        <ol class="c-comments__list">
+          <li class="c-comment is-pinned">
+            <span class="c-avatar" aria-hidden="true">小</span>
+            <div class="min-w-0">
+              <p class="c-comment__meta"><span class="c-comment__name">小满</span><time class="font-numeric">{{ clock.pastDate }} {{ clock.pastTime }}</time><span class="c-tag c-tag--accent">置顶</span></p>
+              <p class="c-comment__body">第一次参加内战，体验很好，谢谢组织的同学！</p>
+              <div class="c-comment__actions">
+                <button type="button" class="c-act" aria-pressed="true"><CIcon name="heart" />已赞 <span class="font-numeric">27</span></button>
+                <span class="c-act"><CIcon name="reply" />回复</span>
+                <span class="c-act"><CIcon name="pin" />取消置顶</span>
+              </div>
+            </div>
+            <details class="c-comment__thread" open>
+              <summary>1 条回复<CIcon name="chevron-down" /></summary>
+              <ol>
+                <li class="c-comment c-comment--reply">
+                  <span class="c-avatar c-avatar--sm" aria-hidden="true">白</span>
+                  <div class="min-w-0">
+                    <p class="c-comment__meta"><span class="c-comment__name">白露</span><time class="font-numeric">{{ clock.pastDate }}</time><span>已编辑</span></p>
+                    <p class="c-comment__body"><span class="c-comment__at">@小满</span> 下次还来</p>
+                    <div class="c-comment__actions"><span class="c-act"><CIcon name="heart" />赞 <span class="font-numeric">2</span></span></div>
+                  </div>
+                </li>
+              </ol>
+            </details>
+          </li>
+          <li class="c-comment"><p class="c-comment__placeholder">评论已删除。</p></li>
+        </ol>
+      </div>
+    </section>
+  </div>
+</template>

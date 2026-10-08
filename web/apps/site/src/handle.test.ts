@@ -101,6 +101,45 @@ test("a 401 from the loader redirects to login", async () => {
   expect(out.headers.location).toBe("/accounts/login/?next=" + encodeURIComponent("/teams/"))
 })
 
+test("the style guide is a 404 unless the viewer is staff", async () => {
+  const visitor = await handle(incoming("GET", "/_styleguide/"), {
+    ...base,
+    fetch: api(200, { user: null }),
+    assets: ASSETS,
+  })
+  expect(visitor.status).toBe(404)
+  expect(visitor.body).toContain("找不到这个页面")
+  expect(visitor.body).not.toContain("设计体系样张")
+  const member = await handle(incoming("GET", "/_styleguide/"), {
+    ...base,
+    fetch: api(200, { user: { nickname: "夜航", admin: false } }),
+    assets: ASSETS,
+  })
+  expect(member.status).toBe(404)
+  expect(member.body).not.toContain("为战队报名")
+  const emails = await handle(incoming("GET", "/_styleguide/emails/"), {
+    ...base,
+    fetch: api(200, { user: null }),
+    assets: ASSETS,
+  })
+  expect(emails.status).toBe(404)
+  const staff = await handle(incoming("GET", "/_styleguide/"), {
+    ...base,
+    fetch: api(200, { user: { nickname: "夜蛾", admin: true } }),
+    assets: ASSETS,
+  })
+  expect(staff.status).toBe(200)
+  const html = staff.body.replace(/<!--.*?-->/g, "")
+  expect(html).toContain(">设计体系样张</h1>")
+  expect(html).toContain("为战队报名")
+  expect(html).toContain("这个队名已经有人用了。")
+  expect(html).toContain("评论已删除。")
+  expect(html).toContain("/static/img/placeholders/cover-07.svg")
+  expect(html).toContain("#9B3A33")
+  expect(html).not.toContain('style="')
+  expect((html.match(/is-taken/g) ?? []).length).toBe(36)
+})
+
 test("an unreachable API is a 503 page", async () => {
   const out = await handle(incoming("GET", "/"), {
     ...base,

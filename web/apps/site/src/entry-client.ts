@@ -3,6 +3,7 @@ import { reactive } from "vue"
 import { createApp } from "./main"
 import { Loadbar, progressFromMatrix } from "./loadbar"
 import type { Load, PageData } from "./router"
+import { styleguideHidden } from "./specimen"
 import { VIEWER, type Viewer } from "./viewer"
 import { installDropdowns } from "./dropdowns"
 
@@ -34,6 +35,7 @@ router.isReady().then(() => {
 })
 
 router.beforeResolve(async (to, from) => {
+  if (styleguideHidden(to.path, viewer.user?.admin === true)) return false
   if (!from.matched.length) return
   const load = to.meta.load as Load | undefined
   if (!load) return

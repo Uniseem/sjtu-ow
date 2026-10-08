@@ -2,6 +2,7 @@ import { renderSSRHead } from "@unhead/vue/server"
 import { renderToString } from "vue/server-renderer"
 import { createApp } from "./main"
 import { httpError, type Load, type PageData } from "./router"
+import { styleguideHidden } from "./specimen"
 import { VIEWER, type Viewer } from "./viewer"
 
 export type Rendered =
@@ -63,6 +64,7 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
     if (status === 403 || status === 404) return page(status, viewer, head)
     return page(503, VISITOR, head)
   }
+  if (styleguideHidden(pathname, viewer.user?.admin === true)) return page(404, viewer, head)
   app.provide(VIEWER, viewer)
   app.provide("page-data", loadR.value)
   const html = await renderToString(app)

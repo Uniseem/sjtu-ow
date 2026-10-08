@@ -47,6 +47,7 @@ test("the listed front pages resolve", () => {
     "/accounts/signup/",
     "/accounts/password/reset/confirm/",
     "/unsubscribe/tok/",
+    "/_styleguide/",
     "/_styleguide/emails/welcome/",
   ]) {
     expect(match(url).matched.length, url).toBeGreaterThan(0)
