@@ -14,6 +14,7 @@ import (
 	// 显示和定时用 Asia/Shanghai；不依赖镜像里的时区文件（12 号文档 5.6）
 	_ "time/tzdata"
 
+	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/apigen"
@@ -75,14 +76,22 @@ func runMigrate() error {
 	return nil
 }
 
+func buildRegistry(acctSvc *accounts.Service) *api.Registry {
+	reg := &api.Registry{}
+	acctModule := accounts.NewModule(acctSvc)
+	acctModule.Routes(reg)
+	return reg
+}
+
 func runServe() error {
 	cfg, d, err := openDB()
 	if err != nil {
 		return err
 	}
 	defer d.Close()
-	reg := &api.Registry{}
-	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d),
+	acctSvc := accounts.NewService(d, nil)
+	reg := buildRegistry(acctSvc)
+	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
 		api.WithIdempotency(idempotency.NewStore(d, nil)),
@@ -113,7 +122,9 @@ func runApigen() error {
 	if dir == "" {
 		dir = filepath.Join("..", "web", "packages", "api", "src", "gen")
 	}
-	return apigen.Write(dir, &api.Registry{})
+	acctSvc := accounts.NewService(nil, nil)
+	reg := buildRegistry(acctSvc)
+	return apigen.Write(dir, reg)
 }
 
 func openDB() (*config.Config, *db.DB, error) {
@@ -140,7 +151,7 @@ func openDB() (*config.Config, *db.DB, error) {
 	return cfg, d, nil
 }
 
-func viewerOf(d *db.DB) api.ViewerResolver {
+func viewerOf(d *db.DB, acctSvc *accounts.Service) api.ViewerResolver {
 	store := auth.NewStore(d, nil)
 	return func(r *http.Request) *app.Viewer {
 		c, err := r.Cookie(auth.CookieName)
@@ -151,8 +162,11 @@ func viewerOf(d *db.DB) api.ViewerResolver {
 		if err != nil || s == nil {
 			return nil
 		}
-		// 用户表还没有（M3）。现在只能知道是哪一个编号，超管标记接上以后才看得到健康检查详情。
-		return &app.Viewer{ID: s.UserID}
+		v, err := acctSvc.BuildViewer(r.Context(), s.UserID)
+		if err != nil {
+			return nil
+		}
+		return v
 	}
 }
 

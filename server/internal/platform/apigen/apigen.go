@@ -98,7 +98,7 @@ func fields(t reflect.Type, jsonOnly bool) string {
 		if strings.Contains(opts, "omitempty") {
 			opt = "?"
 		}
-		fmt.Fprintf(&b, "  %s%s: %s\n", name, opt, tsType(f.Type))
+		fmt.Fprintf(&b, "  %s%s: %s;\n", name, opt, tsType(f.Type))
 	}
 	return b.String()
 }
@@ -151,32 +151,40 @@ func hasJSON(t reflect.Type) bool {
 }
 
 func tsType(t reflect.Type) string {
+	isPtr := t.Kind() == reflect.Pointer
 	t = deref(t)
+	var out string
 	switch t.Kind() {
 	case reflect.String:
-		return "string"
+		out = "string"
 	case reflect.Bool:
-		return "boolean"
+		out = "boolean"
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64:
-		return "number"
+		out = "number"
 	case reflect.Slice, reflect.Array:
-		return tsType(t.Elem()) + "[]"
+		out = tsType(t.Elem()) + "[]"
 	case reflect.Map:
-		return "Record<" + tsType(t.Key()) + ", " + tsType(t.Elem()) + ">"
+		out = "Record<" + tsType(t.Key()) + ", " + tsType(t.Elem()) + ">"
 	case reflect.Struct:
 		if t.PkgPath() == "time" && t.Name() == "Time" || t == reflect.TypeOf(time.Time{}) {
-			return "string"
+			out = "string"
+		} else {
+			body := fields(t, false)
+			if body == "" {
+				out = "Record<string, never>"
+			} else {
+				out = "{ " + strings.ReplaceAll(strings.TrimRight(body, "\n"), "\n", " ") + " }"
+			}
 		}
-		body := fields(t, false)
-		if body == "" {
-			return "Record<string, never>"
-		}
-		return "{ " + strings.ReplaceAll(strings.TrimRight(body, "\n"), "\n", " ") + " }"
 	default:
-		return "unknown"
+		out = "unknown"
 	}
+	if isPtr {
+		return out + " | null"
+	}
+	return out
 }
 
 func deref(t reflect.Type) reflect.Type {

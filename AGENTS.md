@@ -157,7 +157,15 @@ Host sjtu-ow-test
 
 1. **`docs/design.md` 是唯一设计依据。** 要改设计：需要用户拍板的先问；定了之后**先改文档再改代码**，在附录 D 记版本。实现和设计不一致时，要么改代码，要么改设计，不能两边各说各的
 2. **按轮次工作**（流程见 `handoff/README.md`）：先写 `request.md`，再实现，写 `report.md`，再复核写 `review.md`，更新 `STATUS.md`，**一轮一个提交**，**直接推送到 `main`**（不开分支保护、不走合并请求，设计 17.5）。推送后看一眼 CI，红了优先修
-3. **提交信息一律用中文。** 格式：第一行 `轮次号: 一句话说改了什么`（比如 `046: 提交信息改用中文`），空一行，正文说清楚为什么改、怎么验证的；最后的 `Co-Authored-By` 之类的署名行保持原样。045 及以前的提交是英文，不改写历史
+3. **提交信息一律用中文，正文必须详细，诚实附上具体 AI 模型的共同作者署名（Co-authored-by）。**
+   - **标题行**：第一行 `轮次号: 一句话说改了什么`（例如 `046: 提交信息改用中文`），空一行。
+   - **正文详细说明**：像以往轮次一样，正文详尽写清楚做了什么、为什么改、在测试机上的验证过程与测试日志（包括整组、变异、browser-check 等日志文件名与退出码），严禁只有单行标题。
+   - **具体模型如实署名（严禁只写真名或平台泛称）**：凡是 AI 编码助手参与编写、修改代码或生成的提交，提交说明末尾必须空一行，**是什么具体模型就如实署名什么模型**（例如用 3.8flash 就写 `Gemini 3.8 Flash`，用 Claude 就写 `Claude Opus 5.5`），严禁使用公司或平台代称。邮箱必须使用关联到对应平台官方认证 GitHub 账号的有效地址，以便 GitHub 识别并在 Commit 详情与贡献者列表（Contributors）中展示 AI 自己：
+     - Gemini 系列（如当前使用的 Gemini 3.8 Flash）：`Co-authored-by: Gemini 3.8 Flash <gemini-code-assist@users.noreply.github.com>`
+     - Claude 系列（如 Claude Opus 5.5、Sonnet 5.5）：`Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>`
+     - Cursor 系列：`Co-authored-by: Cursor <cursoragent@cursor.com>`
+   - **GitHub 贡献者显示机制**：GitHub 对 Commit 详情页是实时解析展示头像；仓库首页右侧的「Contributors」栏是 GitHub 后台离线异步统计缓存，更新需等待 GitHub 批处理任务聚合。
+   - 045 及以前的提交是英文，不改写历史
 4. **报告里只放真实跑过的命令输出。** 没跑的写「未验证」，不写推测结果
 5. **不扩大本轮范围，不新增依赖。** 顺带发现的问题写进报告，留给下一轮；确实要加依赖，先停下来问，并确认它的许可证：MIT、BSD、Apache 可以，**GPL、AGPL 不行**（和本项目的 PolyForm Strict 许可证冲突，设计 17.8）
 6. **分层**（设计 17.3）：业务逻辑写在各应用的 `services.py`；状态字段只能通过 service 函数改；邮件用 `transaction.on_commit` 入队；功能权限统一走 `accounts.permissions.can_use()`
