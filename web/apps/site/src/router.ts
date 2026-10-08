@@ -3,6 +3,7 @@ import { load as loadHome } from "./pages/Home.vue"
 import { load as loadTeams } from "./pages/Teams.vue"
 import Home from "./pages/Home.vue"
 import Teams from "./pages/Teams.vue"
+import { PAGES } from "./routes"
 
 export type PageData = { title: string; marker?: string }
 export type Load = (ctx: { params: Record<string, string>; url: string }) => Promise<PageData> | PageData
@@ -13,6 +14,7 @@ export function createSiteRouter(ssr: boolean) {
     routes: [
       { path: "/", component: Home, meta: { load: loadHome satisfies Load } },
       { path: "/teams/", component: Teams, meta: { load: loadTeams satisfies Load } },
+      ...PAGES,
     ],
   })
 }

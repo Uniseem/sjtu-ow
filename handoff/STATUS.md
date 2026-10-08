@@ -2,8 +2,8 @@
 
 ```yaml
 milestone: 重构 M2（前端底座）进行中——231 起；M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 233-m2-layout
-next: 接着做 M2：接口封装（fetch 封装、401 跳登录、看到 letters 跳发信确认页、幂等键；12 号文档 6.4，apigen 的类型已在 `web/packages/api`）和按现行站地址把路由补全（6.3，02 号文档第 2、3 节）。壳已立起来，页面照现行站一页页接，接一个路由就少一处全页 404。M2 还欠 `/_styleguide/`、CSP/体积进 CI、字体（D4 完成标准：样张页和旧站并排截图一致，首页壳 gzip ≤ 300 KB）。browser-check 随时可跑（AGENTS.md 新栈一节）。先读文件头上的「重构接到这里」。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
+round: 234-m2-api-routes
+next: 接着做 M2：`/_styleguide/` 的组件样张（6.5，照现行站样张页），然后 CSP/体积进 CI、字体（D4）。完成标准仍是样张页和旧站并排截图一致，首页壳 gzip ≤ 300 KB。接口封装和前台页面路由已在 234。browser-check 随时可跑（AGENTS.md 新栈一节）。先读文件头上的「重构接到这里」。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
 updated: 2026-10-08
 blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M2 继续做，不用等
 ```
@@ -14,21 +14,24 @@ blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站
 
 **M1（222–230）做完了，已在 `main`。** Go 底座：配置、数据库、迁移、注册表、错误形状、幂等键、限流、会话、Django 哈希、djsign、Fernet、任务队列和定时器、信纸和待发信、`/healthz`、apigen、`serve` / `worker`。
 
-**M2 做了三轮，已在 `main`，还没到完成标准**（样张页和旧站并排截图一致，首页壳 gzip 后不超过 300 KB）。
+**M2 做了四轮，已在 `main`，还没到完成标准**（样张页和旧站并排截图一致，首页壳 gzip 后不超过 300 KB）。
 
 | 轮次 | 提交 | 有了什么 |
 |---|---|---|
 | 231 | `e798825` | `web/` pnpm 工作区；`input.css` 原样在 `packages/styles`；Vitest 守色板、深色、`prefers-color-scheme` 只出现一次、不加载 daisyUI。CI 和测试机整组在 Go 后面加上 `pnpm install --frozen-lockfile` 和 `pnpm test` |
 | 232 | `265f6f1` | `web/apps/site/server.ts`（73 行）：只接 GET/HEAD，少斜杠且加得上就 301，并行跑 `load()` 和 `/api/session`。401 去登录，403/404 画错误页，接口连不上 503。`theme.js` 在 head 最前，`<` 转义进 `ow-state`。访客 `no-cache`，登录 `private, no-store`。无脚本横幅 8 秒后出现。路由只有 `/` 和 `/teams/` |
-| 233 | 本轮 | 页头页脚（导航带 aria-current、搜索、抽屉、账号区）、主题菜单（`window.owTheme`）、路由加载条、右键菜单、toasts；viewer（session 的 user）进 SSR 和 `ow-state`；生产 HTML 指 Vite 清单的产物（`build.manifest`，入口键是 `index.html`）；错误页成无脚本裸页；SSR 构建入口换成 `server.ts`，产物自己能跑。`browser-check.mjs` 在真浏览器里验激活/严格 CSP/换页/主题/右键/无脚本/404 |
+| 233 | `48518f5` | 页头页脚（导航带 aria-current、搜索、抽屉、账号区）、主题菜单（`window.owTheme`）、路由加载条、右键菜单、toasts；viewer（session 的 user）进 SSR 和 `ow-state`；生产 HTML 指 Vite 清单的产物（`build.manifest`，入口键是 `index.html`）；错误页成无脚本裸页；SSR 构建入口换成 `server.ts`，产物自己能跑。`browser-check.mjs` 在真浏览器里验激活/严格 CSP/换页/主题/右键/无脚本/404 |
+| 234 | 本轮 | `createClient`：`ApiError`、401 跳登录、`letters.batch` 跳确认发信、写请求带 `Idempotency-Key`。前台会打开成页的地址登记进 `routes.ts`（02 号文档第 2、3 节，外加资讯、关于、两份协议），编号 1–18 位数字。页面先只显示标题 |
 
 232 留的两件都还了：HTML 指构建产物；激活在浏览器里验过（`browser-check.mjs`，CDP 驱动无头 Chromium，零新依赖）。它头一晚就抓到一个真 bug：重写 entry-client 时丢了 `page-data` 的 provide，首屏看不出来、一换页正文就空——SSR 层的 vitest 测不到，浏览器里才现形。
 
-M2 还没做的：接口封装（401、待发信、幂等键）、按现行站地址把路由补全、`/_styleguide/`、CSP / 体积 / SSR 进 CI 的常驻测试、字体（D4）。样式守卫和薄 SSR 不要重做。
+M2 还没做的：`/_styleguide/` 的组件样张（路由在，内容还是标题）、CSP / 体积进 CI 的常驻测试、字体（D4）。样式守卫、薄 SSR、布局壳、接口封装和页面路由表不要重做。`createClient` 还没有页面调用它。
 
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**234（2026-10-08）**：M2 第四轮，**接口封装和前台路由**（12 号文档 6.4、6.3）。`createClient` 在 `web/packages/api/src/client.ts`（不改 apigen 的 `gen/`）：错误是带状态码的 `ApiError`；401 跳 `/accounts/login/?next=`；响应里有 `letters.batch` 就跳 `/letters/<batch>/?back=`（当前在 `/admin/` 下则去 `/admin/letters/<batch>/`）；POST/PUT/PATCH/DELETE 带 `Idempotency-Key`，调用方传入的键原样沿用；写成功调用 `onWrite`。前台会打开成页的地址进 `routes.ts`（02 号文档第 2、3 节，外加 `/news/`、`/about/`、`/terms/`、`/privacy/`），编号 `:id(\\d{1,18})`，页面先只显示标题。只 POST 的动作、探针、图标、地图、片段不登记。**4 处变异全部变红后恢复。**测试机日志 `20261008-200733-f0c7146`（整组、browser-check、变异同一趟），退出码 0；govulncheck 无漏洞。入口 JS gzip 48.90 kB、样式 gzip 17.11 kB。`/news/` 服务端渲染出标题。下一轮：`/_styleguide/` 的组件样张。
 
 **233（2026-10-08）**：M2 第三轮，**前台布局**（12 号文档 6.3–6.6 的布局件）＋还掉 232 的两件遗留。页头（品牌、六项导航带 aria-current、搜索、主题菜单、账号区、手机抽屉）、页脚（四栏含账号栏、上海时区年份）、路由加载条、右键菜单（行为照 contextmenu.js）、toasts；`/api/session` 的 user（昵称、是否干部）进 SSR 和 `ow-state`，登录态直接画。生产 HTML 指 `build.manifest` 清单里的哈希产物（入口键是 `index.html`，不是 `src/entry-client.ts`）；错误页改成无脚本裸页；SSR 构建入口换成 `server.ts`，产物自己能 `node` 起。**`browser-check.mjs`（CDP 驱动无头 Chromium，零新依赖）**：激活、严格 CSP 零违规、SPA 换页、主题、右键菜单、无脚本横幅、404 全部真验过——它抓到一个真 bug：entry-client 重写时丢了 `page-data` 的 provide，首屏看不出来、一换页正文就空。**7 处变异全部变红后恢复。**整组日志 `20261008-195507-50f0bde`、browser-check `20261008-195534-c28257d`、变异 `20261008-195629-38db7a6`，退出码都是 0；govulncheck 无漏洞。入口 JS gzip 48.22 kB、样式 gzip 17.11 kB。下一轮：接口封装（6.4）＋路由补全。
 
@@ -768,6 +771,8 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 230-m1-healthz-apigen | M1 收尾：/healthz（写探测、磁盘 20%、心跳 120 秒、按到期时间算积压、详情只给超管）、apigen 生成前端调用和导航、serve 与 worker 接上 | **自查通过**，测试机日志 `20261008-184217-2177b0d` 退出码 0，govulncheck 无漏洞，4 处变异全抓到。M1 清单齐了 |
 | 231-m2-workspace-styles | M2 第一轮：pnpm 工作区，样式原样搬进 `packages/styles`，Vitest 守色板和深色，CI 与整组加上 pnpm | **自查通过**，测试机日志 `20261008-185710-cd2dfa7` 退出码 0，govulncheck 无漏洞，3 处变异全抓到 |
 | 232-m2-ssr | M2 第二轮：SSR 只接 GET/HEAD、补斜杠、并行 load 和会话、状态转义、无脚本横幅；路由先有首页和战队 | **自查通过**，测试机日志 `20261008-191001-3f83467` 退出码 0，govulncheck 无漏洞，3 处变异全抓到。浏览器里没激活 |
+| 233-m2-layout | M2 第三轮：页头页脚、主题菜单、加载条、右键菜单、toasts；生产 HTML 指 Vite 清单；browser-check 在真浏览器里验激活 | **自查通过**，日志 `20261008-195507-50f0bde`、browser-check `20261008-195534-c28257d`、变异 `20261008-195629-38db7a6`，退出码都是 0，7 处变异全抓到 |
+| 234-m2-api-routes | M2 第四轮：接口封装（401、待发信、幂等键）和前台页面路由（先只显示标题） | **自查通过**，测试机日志 `20261008-200733-f0c7146` 退出码 0，govulncheck 无漏洞，4 处变异全抓到，browser-check 通过 |
 
 ## 当前待定问题
 

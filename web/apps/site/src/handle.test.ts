@@ -30,6 +30,17 @@ test("a missing trailing slash redirects when the slashed path exists", async ()
   expect(out.headers.location).toBe("/teams/?x=1")
 })
 
+test("a registered page shows its title and a non-numeric id is a 404", async () => {
+  const news = await handle(incoming("GET", "/news/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  expect(news.status).toBe(200)
+  expect(news.body.replace(/<!--.*?-->/g, "")).toContain(">资讯</h1>")
+  const bare = await handle(incoming("GET", "/news"), { ...base, fetch: api(200, { user: null }) })
+  expect(bare.status).toBe(301)
+  expect(bare.headers.location).toBe("/news/")
+  const bad = await handle(incoming("GET", "/teams/abc/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  expect(bad.status).toBe(404)
+})
+
 test("an unknown path is a 404 page without any script", async () => {
   const out = await handle(incoming("GET", "/no-such/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
   expect(out.status).toBe(404)
