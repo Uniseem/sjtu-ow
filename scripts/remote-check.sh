@@ -87,6 +87,12 @@ exec 9>"$base/lock"
 flock -n 9 || { echo "另一次检查还在跑，等它结束……"; flock 9; }
 export PATH="$base/uv/bin:\$PATH" UV_CACHE_DIR="$base/uv/cache" \
   UV_PYTHON_INSTALL_DIR="$base/uv/python"
+# 新栈的工具链（222 起装在检查目录里：go/ gobin/ node24/）；没装也不影响 Python 检查
+if [ -d "$base/go" ]; then
+  export GOROOT="$base/go" GOPATH="$base/gopath" GOCACHE="$base/gocache" \\
+    GOMODCACHE="$base/gomodcache" \\
+    PATH="$base/go/bin:$base/gobin:$base/node24/bin:\$PATH"
+fi
 cd "$base/repo"
 git fetch -q origin
 git fetch -q "$job.bundle" "+$ref:$ref"

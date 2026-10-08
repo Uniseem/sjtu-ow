@@ -1,0 +1,30 @@
+222 轮 · 两容器共享数据卷的 flock 压测（2026-10-08，测试机 kvm17243）
+
+背景：13 号文档 C 节——220 轮 E3 只验证过两个进程；api 和 worker 将来是两个容器
+挂同一个 data 卷，跨容器的 flock 没实测过。
+
+方法：在测试机上编译 tools/txhammer（CGO_ENABLED=0，静态二进制，走真实的
+platform/db.WriteTx：互斥量 + flock + BEGIN IMMEDIATE + 看门狗），用
+caddy:2.10-alpine 容器（测试机上现成）两个同时压同一个 SQLite 文件，
+各 2000 步、每容器 4 并发。脚本：drill-two-containers.sh
+（bash scripts/remote-check.sh run bash handoff/rounds/222-m1-go-foundation/drill-two-containers.sh）。
+
+真实输出（运行日志 20261008-120330-c62e8be）：
+
+    == 在测试机上编译 txhammer（CGO 关，静态二进制）
+    == 初始化
+    init ok
+    == 两个容器同时压（各 2000 步、每容器 4 并发）
+    -- 容器 a（退出码 0）
+    pid=1 done=2000 failed=0 elapsed=4.51s rate=444/s worst_step=172ms first_err=<nil>
+    -- 容器 b（退出码 0）
+    pid=1 done=2000 failed=0 elapsed=4.59s rate=436/s worst_step=190ms first_err=<nil>
+    == 核对
+    counter=4000 log_rows=4000
+    耗时 5s：两容器共享数据卷、WriteTx 的跨进程 flock 全程零 SQLITE_BUSY、零丢更新
+    FLOCK-DRILL-OK
+
+结论：跨容器的 flock 有效（Docker 卷 bind 到宿主目录，同一个内核）。
+两容器合计约 880 事务/秒（单写者上限约 700/秒的量级，两边争用下没塌），
+worst_step 190ms（对方容器握锁时的排队，正是 flock 在排队而不是忙等的证据）。
+不需要退路（fcntl 记录锁、写集中到 api 一个进程）。

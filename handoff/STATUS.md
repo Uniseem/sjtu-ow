@@ -1,14 +1,16 @@
 # 当前状态
 
 ```yaml
-milestone: 重构筹备（Vue 3 + Go，218 起；M0 做完：D1–D4 拍板、五个实验、设计草案 `docs/design-next.md` 和笔记 `docs/rewrite-research/13-ideas-and-followups.md`）；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**
-round: 221-rewrite-design-draft
-next: 用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。claude（用户回来后）：M1 Go 底座——先在测试机上装 Go、pnpm、Node 24（装在检查目录里，13 号文档 C 节），写 222 的 request；M1 的内容见 `12-architecture.md` 11.2。重写开工前现行站上还剩 R2 异地备份（用户配）。所有测试和检查都放后台跑（AGENTS.md）
-updated: 2026-10-07
-blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M1 可以开工，不用等
+milestone: 重构 M1（Go 底座）进行中——222 立起 `server/`：配置（缺必填拒启）、数据库两池 / WriteTx（互斥量 + flock + BEGIN IMMEDIATE + 看门狗）、goose 迁移、两进程并发写测试、两容器共卷 flock 实测通过；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**
+round: 222-m1-go-foundation
+next: claude：M1 第二轮——接口注册表（12 号文档 5.3：`api.Get/Post/Patch/Delete` 泛型注册、七种门、`{id}` 按 18 位编号解析、守门矩阵测试、乱填测试；TypeScript 封装的生成第二步）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑
+updated: 2026-10-08
+blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M1 继续做，不用等
 ```
 
 ## 现在该谁动手
+
+**222（2026-10-08）**：你说「开始 M1」，做了 M1 第一轮（`server/` 立起来）。**测试机工具链**装好：Go 1.26.5、Node 24.13、pnpm 11.20、staticcheck、govulncheck 全在 `/srv/sjtu-ow-check/` 下（sha256 核对，系统 Node 20 没动）。**底座三样**：配置（`SITE_URL`/`SIGNING_KEY`/`FIELD_ENCRYPTION_KEY` 缺一拒启）；数据库两池 + `WriteTx`（进程内互斥量 + 跨进程 flock + `BEGIN IMMEDIATE` + 看门狗：dev 1 秒回滚、prod 200ms 警告，慢事务在提交**前**被拦下）；goose 迁移（v3.28 的 Provider API，嵌进二进制）。**13 号 C 节的两件开工验证**做掉：两进程并发写测试进了 `go test`（零 busy 零丢更新）；两个容器共享数据卷的 flock 在测试机上实测**有效**（4000 步零失败，`RESULTS.txt`），不用退路。check.sh / remote-check.sh / CI 都接上了 Go 段（CI 的 Action 按 SHA 固定）。你中途定了条规矩已写死进 AGENTS.md：**所有编译和测试一律先在测试机上做，连不上才放本地**。整组（Python 2163 + Go 全套 + Docker）全绿，3 处变异全抓到。下一轮：接口注册表。
 
 **221（2026-10-07）**：你说「按你的建议，先把想法什么都写一下然后 push，我过几天再搞」。只写了文档，没碰代码和正式站：**`docs/design-next.md`** 是设计 v8.0 草案（决定表、架构、13 条不变量、`design.md` 每一章在新设计里的去向、新栈独有的规则、用户能感觉到的六点变化、割接时合并的清单）；**12 号文档**落进了 220 实验的 5 处修订（`WriteTx` 加 flock、图片母版 2560 宽、CodeMirror 挂进 ShadowRoot 等）；**`docs/rewrite-research/13-ideas-and-followups.md`** 是想法和遗留（等你的事、现行站上还没修的、各里程碑开工前的验证、五个想问你的问题）；`AGENTS.md` 加了「重构进行中」一节，说明读什么、「冻结」的意思（不加新功能、安全和丢数据照修）。`docs/design.md` 没动，仍是 v7.22。**你回来要做的事在上面的 `next` 里**：10-25 前换正式站的 crontab、升级正式站到 218–221 并跑 `scrub_originals`。测试机上没有 Go 和 pnpm、Node 是 20，M1 开工前我来装。
 
@@ -711,6 +713,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 219-upload-pipeline | 所有上传的图走一条管线（`core/uploads.py`）：查像素、只认三种格式、重编码去 EXIF/GPS、随机名、每日限次；队标进「队标」集合、换了删旧图；`scrub_originals` 清旧原图（v7.22） | **自查通过**，整组 2163 条全绿，24 处变异全抓到。正式站未升级 |
 | 220-m0-experiments | M0 的五个验证实验（薄 SSR+严格 CSP、纯 Go WebP、SQLite 并发写、goldmark 对拍、CodeMirror 6 的 CSP），结论和对 12 号文档的 5 处修订 | **自查通过**，无代码改动；全部不推翻架构，2 个有条件通过 |
 | 221-rewrite-design-draft | 设计 v8.0 草案 `docs/design-next.md`、12 号文档落实 220 的修订、想法和遗留笔记 13 号文档、AGENTS.md 加重构一节（只有文档） | **自查通过**；`design.md` 没动（仍 v7.22）；正式站未升级 |
+| 222-m1-go-foundation | M1 第一轮：测试机装 Go/Node24/pnpm + staticcheck/govulncheck；`server/` 骨架（config 必填拒启、两池、WriteTx=flock+IMMEDIATE+看门狗、goose 迁移、UTC 时间、查询计数）；两进程并发写测试、两容器共卷 flock 实测；check.sh/remote-check/CI 接上 Go；「编译测试优先测试机」写死 | **自查通过**，整组（Python 2163 + Go 全套）全绿，3 处变异全抓到；两容器压测零 busy 零丢更新（`RESULTS.txt`） |
 
 ## 当前待定问题
 

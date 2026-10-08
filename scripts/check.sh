@@ -49,6 +49,26 @@ fi
 step "迁移"
 uv run python manage.py makemigrations --check --dry-run
 
+step "Go（新栈）"
+# server/ 立起来（222 起）就查 Go：格式、vet、staticcheck、govulncheck、测试。
+# 写法和 CI 的 go 任务逐条一致（core/tests/test_check_script.py 盯着两处不漂移）。
+# 工具链在测试机的 PATH 里（remote-check.sh 导出）；本地兜底跑时缺什么装什么。
+if [ -f server/go.mod ] && command -v go >/dev/null 2>&1; then
+  (
+    cd server
+    command -v staticcheck >/dev/null 2>&1 || go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
+    command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+    export PATH="$(go env GOPATH)/bin:$PATH"
+    test -z "$(gofmt -l .)" || { echo "gofmt 要格式化的文件：$(gofmt -l .)"; exit 1; }
+    go vet ./...
+    staticcheck ./...
+    govulncheck ./...
+    go test ./...
+  )
+else
+  echo "（没有 server/go.mod 或找不到 go，跳过 Go 段）"
+fi
+
 step "生产配置"
 DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
   DJANGO_SECRET_KEY=ci-not-for-production-use-a-long-random-string-at-least-fifty-chars \

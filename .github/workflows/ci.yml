@@ -60,3 +60,32 @@ jobs:
 
       - name: Docker image
         run: docker build -t sjtu-ow:ci .
+
+  # 新栈（Go）的检查，222 起。14-7：Action 按 SHA 固定、permissions 只给读。
+  # staticcheck / govulncheck 用 go install 装，模块经 sumdb 核对完整性。
+  go:
+    name: gofmt, go vet, staticcheck, govulncheck, go test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: go vet
+        run: go vet ./...
+      - name: staticcheck / govulncheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
+          go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+          staticcheck ./...
+          govulncheck ./...
+      - name: go test
+        run: go test ./...
