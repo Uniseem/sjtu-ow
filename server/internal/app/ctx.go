@@ -66,6 +66,16 @@ type Ctx struct {
 	// RequestID 由服务器生成（5.15：api 只信可信代理传来的编号，那套接线
 	// 在 serve 真正起来的轮次做，现在一律自己生成）。
 	RequestID string
+	// Letters 是这一次写请求冻住的待发信批次（5.11）。nil 表示没人在场
+	// （worker、命令），信直接入队。
+	Letters *LetterBatch
+}
+
+// LetterBatch 是同一次操作写下的待发信（设计 10.5）。Key 是这批的编号。
+type LetterBatch struct {
+	Key     string
+	ActorID int64
+	Held    int
 }
 
 // Now 是全站取「现在」的口径，测试里把 Clock 换成 clock.Fixed 冻结时间。

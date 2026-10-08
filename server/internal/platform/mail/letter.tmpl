@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{.Subject}}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f6f8;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f5f6f8;font-size:1px;line-height:1px;">{{.Lead}}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f6f8;font-family:-apple-system,BlinkMacSystemFont,'Microsoft YaHei','PingFang SC','Noto Sans SC','Helvetica Neue',Arial,sans-serif;">
+  <tr>
+    <td align="center" style="padding:32px 12px 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+        <tr>
+          <td data-letter-head bgcolor="#9b3a33" style="background-color:#9b3a33;border-radius:16px 16px 0 0;padding:24px 32px 4px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td width="36" valign="middle" style="width:36px;padding:0 12px 0 0;"><a href="{{.SiteURL}}"><img src="{{.MarkCID}}" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border:0;outline:none;"></a></td>
+                <td valign="middle" style="line-height:1.35;"><a href="{{.SiteURL}}" style="color:#ffffff;text-decoration:none;font-size:18px;font-weight:700;letter-spacing:0.02em;">SJTU-OW</a><br><span style="color:#f1e0da;font-size:13px;">上海交通大学守望先锋玩家社区</span></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td data-letter-horizon bgcolor="#9b3a33" style="background-color:#9b3a33;padding:0;font-size:0;line-height:0;"><img src="{{.HorizonCID}}" width="600" height="50" alt="" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;"></td>
+        </tr>
+        <tr>
+          <td data-letter-card style="background-color:#ffffff;border-radius:0 0 16px 16px;padding:12px 32px 32px;color:#111318;font-size:15px;line-height:1.75;">
+            <p style="margin:0 0 16px;font-weight:600;">{{.Greeting}}</p>
+            {{- if .Notice}}<div data-letter-notice style="margin:0 0 16px;padding:12px 16px;background-color:#f1e0da;border-radius:12px;color:#73291f;font-size:14px;line-height:1.6;">{{.Notice}}</div>{{end}}
+            <p style="margin:0 0 16px;">{{.Lead}}</p>
+            {{- if .Facts}}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" data-letter-facts style="margin:8px 0 24px;background-color:#eef0f3;border-radius:12px;">
+              {{- range $i, $f := .Facts}}
+              <tr>
+                <td style="padding:10px 16px;width:88px;color:#5f6671;font-size:14px;vertical-align:top;white-space:nowrap;{{if gt $i 0}}border-top:2px solid #ffffff;{{end}}">{{index $f 0}}</td>
+                <td style="padding:10px 16px 10px 0;color:#111318;font-size:15px;font-weight:600;vertical-align:top;word-break:break-all;{{if gt $i 0}}border-top:2px solid #ffffff;{{end}}">{{index $f 1}}</td>
+              </tr>
+              {{- end}}
+            </table>
+            {{- end}}
+            {{- if .Code}}<div data-letter-code style="margin:8px 0 16px;padding:20px 16px;background-color:#eef0f3;border-radius:12px;text-align:center;color:#963830;font-size:32px;font-weight:700;letter-spacing:8px;font-family:Consolas,Menlo,'Courier New',monospace;">{{.Code}}</div>{{end}}
+            {{- if .Items}}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" data-letter-items style="margin:8px 0 24px;background-color:#eef0f3;border-radius:12px;">
+              {{- range $i, $it := .Items}}
+              <tr>
+                <td style="padding:12px 16px;{{if gt $i 0}}border-top:3px solid #ffffff;{{end}}font-size:14px;line-height:1.6;">{{index $it 0}}{{if index $it 1}}<br><a href="{{index $it 1}}" style="color:#963830;">{{$.ItemLink}}</a>{{end}}</td>
+              </tr>
+              {{- end}}
+            </table>
+            {{- end}}
+            {{- range .Paragraphs}}<p style="margin:0 0 16px;">{{.}}</p>
+            {{end}}
+            {{- if .HasAction}}
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 12px;">
+              <tr>
+                <td data-letter-button bgcolor="#9b3a33" style="background-color:#9b3a33;border-radius:999px;">
+                  <a href="{{.ActionURL}}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px;">{{.ActionLabel}}</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 6px;color:#5f6671;font-size:13px;line-height:1.6;">按钮打不开的话，点下面的地址，或者复制到浏览器里打开（点一下框里就是全选）：</p>
+            <div data-letter-url style="margin:0 0 16px;padding:12px 16px;background-color:#eef0f3;border-radius:12px;font-size:13px;line-height:1.6;word-break:break-all;-webkit-user-select:all;user-select:all;"><a href="{{.ActionURL}}" style="color:#963830;text-decoration:none;">{{.ActionReadable}}</a></div>
+            {{- end}}
+            {{- if .Note}}<p style="margin:16px 0 0;color:#4a505b;font-size:14px;">{{.Note}}</p>{{end}}
+            <p style="margin:32px 0 0;">祝好！</p>
+            <p style="margin:16px 0 0;font-weight:600;">SJTU-OW</p>
+            <p style="margin:0;color:#5f6671;font-size:14px;">{{.Date}}</p>
+          </td>
+        </tr>
+        <tr>
+          <td data-letter-foot style="padding:20px 32px 0;color:#5f6671;font-size:13px;line-height:1.7;">
+            {{.Reason}}{{if .Unsubscribe}}不想再收到？<a href="{{.Unsubscribe}}" style="color:#963830;">退订活动通知</a>。{{end}}这封邮件由系统自动发送，请不要直接回复。<br>
+            <a href="{{.SiteURL}}" style="color:#963830;">{{.SiteHost}}</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
