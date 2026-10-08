@@ -11,6 +11,25 @@ export function getApiSession(): Promise<GetApiSessionOut> {
   return call<GetApiSessionOut>("GET", "/api/session", {  }, undefined)
 }
 
+export interface PostApiAuthRegisterIn {
+  email: string;
+  nickname: string;
+  password: string;
+  confirm_password: string;
+  is_sjtu: boolean | null;
+  agree_terms: boolean;
+  agree_cross_border: boolean;
+}
+
+export interface PostApiAuthRegisterOut {
+  email: string;
+  message: string;
+}
+
+export function postApiAuthRegister(body: PostApiAuthRegisterIn): Promise<PostApiAuthRegisterOut> {
+  return call<PostApiAuthRegisterOut>("POST", "/api/auth/register", {  }, body)
+}
+
 export async function call<T>(method: string, path: string, params: Record<string, string>, body?: unknown): Promise<T> {
   let url = path
   for (const key of Object.keys(params)) {

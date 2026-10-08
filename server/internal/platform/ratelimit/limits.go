@@ -7,7 +7,7 @@ import "time"
 //
 // 还没进表、数字先记在这里（等对应接口的轮次再引用，免得对照时丢掉）：
 //
-//	规则 6   allauth（M3）：signup 20/分/IP、login 30/分/IP、
+//	规则 6   allauth（M3）：login 30/分/IP、
 //	         login_failed 10/分/IP + 5/300秒/账号、reset_password 20/分/IP + 5/分/账号、
 //	         confirm_email 1/10秒/账号、manage_email 10/分/人、change_password 5/分/人、
 //	         reset_password_from_key 20/分/IP、reauthenticate 10/分/人
@@ -16,6 +16,9 @@ import "time"
 //	规则 221 头像上传 5/天/人（M4 图片）
 //	规则 223 注销时试密码 5/小时/人（M3）
 var (
+	// AuthSignup 用户注册：每个 IP 每分钟 20 次（规则 6，allauth: signup 20/m/ip）
+	AuthSignup = Decl{Name: "auth_signup", Kind: PerIP, N: 20, Window: time.Minute}
+
 	// TeamApply 申请入队：每人每天 20 次（附录 C「业务操作限流」）
 	TeamApply = Decl{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour}
 

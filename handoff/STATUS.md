@@ -1,9 +1,9 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M3（账号）进行中——239；M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 239-m3-accounts-foundation
-next: 接着做 M3 第二轮：用户注册与验证码（POST /api/auth/register，邮箱全站唯一、昵称 2–16 字、密码强度校验、写 users 表未验证状态、生成并存储 6 位验证码哈希、入队发送邮件验证码信、已注册邮箱发送已注册提醒防枚举；R001–R005、R010）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
+milestone: 重构 M3（账号）进行中——240；M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 240-m3-registration
+next: 接着做 M3 第三轮：邮箱验证码核验与登录（POST /api/auth/verify-email、POST /api/auth/login，核验 6 位码、校验次数与过期时间、成功设置 email_verified_at 并发会话 Cookie ow_session；登录只认邮箱+密码、密码升级 Argon2、停用/未验证状态拦截；R002、R004、R006–R008）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
 updated: 2026-10-08
 blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M3 继续做，不用等
 ```
@@ -26,7 +26,8 @@ blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站
 | 236 | `ceef678` | 内容安全策略和 6.9 逐字一致（补了 B 站 `frame-src`）。`pnpm test` 在构建后量首页壳 gzip：HTML + CSS + 入口脚本，脚本 ≤ 120 KB，合计 ≤ 300 KB。样张懒加载块不算进首页 |
 | 237 | `4733260` | `/static/img/` 从仓库目录发出，缓存一天，路径不能越出目录。样式里 19 处装饰图改成这个固定地址。构建产物比源码深两层，查找把这层算上了 |
 | 238 | `6c1597a` | 样张和旧站并排截 `#main`：正文一致，像素差 0.0268%，高度 13026px。色块类名补进样式扫描。首页壳 gzip 73530 字节 |
-| 239 | 本轮 | 账号域基础表迁移（00008）；User/Role/Cap 领域模型；CanUse/DerivedRoles/RunsAdmin 权限与派生规则；BuildViewer 从会话读真实身份；真实实现 GET /api/session 并更新 apigen |
+| 239 | `98f1569` | 账号域基础表迁移（00008）；User/Role/Cap 领域模型；CanUse/DerivedRoles/RunsAdmin 权限与派生规则；BuildViewer 从会话读真实身份；真实实现 GET /api/session 并更新 apigen |
+| 240 | 本轮 | 用户注册与验证码（POST /api/auth/register，R001–R005、R010）；表单严格校验、Argon2 哈希、6 位安全随机码落库（15 分钟有效）、已注册发已注册提醒信（响应一致防枚举）、outbox.Send 邮件车道发信入队、IP 限流（20/分/IP）；apigen 导出前端 client |
 
 232 留的两件都还了：HTML 指构建产物；激活在浏览器里验过（`browser-check.mjs`，CDP 驱动无头 Chromium，零新依赖）。它头一晚就抓到一个真 bug：重写 entry-client 时丢了 `page-data` 的 provide，首屏看不出来、一换页正文就空——SSR 层的 vitest 测不到，浏览器里才现形。
 
@@ -35,6 +36,8 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**240（2026-10-08）**：M3 第二轮，**用户注册与验证码**（12 号文档 5.4/5.7/5.9、规则 R001–R005、R010）。实现 `POST /api/auth/register`（`api.Public`，限流 `ratelimit.AuthSignup` 20/分/IP）。表单校验（邮箱合法、昵称 2–16 字、密码非空且两次一致、auth.Validate 密码强度校验、是否交大二选一、同意两份协议，非法统一 422 `api.InvalidFields`）。事务外 Argon2 密码哈希与 6 位验证码生成，事务内写入：若已注册则发「这个邮箱已经注册过」提醒信（附找回密码链接，对客户端返回完全相同成功出参防枚举）；若未注册则建未验证用户（`email_verified_at = nil`）、写 `email_codes` 表（15 分钟有效、最多 3 次尝试），并入队发「邮箱验证码」信件（经 outbox 直接排入 `jobs.LaneMail`）。`sjtuow apigen` 更新 `web/packages/api/src/gen/index.ts`。**5 处变异全部变红后恢复。**整组日志 `20261008-220843-d29245c`、变异日志 `20261008-220916-77a7c0f`、browser-check 日志 `20261008-220942-fbd45e2`，退出码均为 0；govulncheck 零漏洞。下一轮：M3 第三轮邮箱验证码核验与登录。
 
 **239（2026-10-08）**：M3 第一轮，**用户与权限底座**（12 号文档 5.7/5.8/7、规则 R011–R013）。数据库迁移 `00008_accounts.sql`（`users`、`user_roles`、`feature_role_restrictions`、`feature_user_rules`、`email_codes`、`email_changes`）。4 个存储角色 + 3 个派生角色，15 个 Cap 矩阵与设计第 4 章逐格钉住。`can_use` 规则（未登录/停用拒绝、超管全开、单人规则覆盖角色限制、未知 feature 报错）。`BuildViewer` 从数据库组装 `*app.Viewer`。真实实现 `GET /api/session`（与前台对齐），`apigen` 支持指针 `| null` 并更新生成物。**5 处变异全部变红后恢复。**整组日志 `20261008-212124-02e2a14`、变异日志 `20261008-212205-2bb07fe`、browser-check 日志 `20261008-212232-43f21eb`，退出码均为 0；govulncheck 零漏洞。下一轮：M3 第二轮用户注册与验证码发信。
 

@@ -89,7 +89,7 @@ func runServe() error {
 		return err
 	}
 	defer d.Close()
-	acctSvc := accounts.NewService(d, nil)
+	acctSvc := accounts.NewService(d, nil, cfg.SiteURL)
 	reg := buildRegistry(acctSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
@@ -122,7 +122,7 @@ func runApigen() error {
 	if dir == "" {
 		dir = filepath.Join("..", "web", "packages", "api", "src", "gen")
 	}
-	acctSvc := accounts.NewService(nil, nil)
+	acctSvc := accounts.NewService(nil, nil, "")
 	reg := buildRegistry(acctSvc)
 	return apigen.Write(dir, reg)
 }

@@ -9,6 +9,7 @@ import (
 // 改一个数字这里就红。还没进表的（规则 6、215、216、221、223）写在 limits.go 的注释里。
 func TestTableMatchesDesign(t *testing.T) {
 	want := []Decl{
+		{Name: "auth_signup", Kind: PerIP, N: 20, Window: time.Minute},
 		{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour},
 		{Name: "team_create", Kind: PerUser, N: 3, Window: 24 * time.Hour},
 		{Name: "comment_create_minute", Kind: PerUser, N: 3, Window: time.Minute},
@@ -18,7 +19,7 @@ func TestTableMatchesDesign(t *testing.T) {
 		{Name: "account_export", Kind: PerUser, N: 5, Window: time.Hour},
 	}
 	got := []Decl{
-		TeamApply, TeamCreate, CommentCreateMinute, CommentCreateDaily,
+		AuthSignup, TeamApply, TeamCreate, CommentCreateMinute, CommentCreateDaily,
 		CommentVote, Search, AccountExport,
 	}
 	if len(got) != len(want) {

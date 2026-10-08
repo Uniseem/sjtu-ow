@@ -236,3 +236,59 @@ func (s *Store) SetFeatureRoleRestriction(ctx context.Context, tx *db.Tx, role s
 		VALUES (?, ?, ?) ON CONFLICT DO NOTHING`, role, string(feature), db.FormatUTC(createdAt))
 	return err
 }
+
+// GetByEmailNormTx 在事务内按小写规范化邮箱读用户。
+func (s *Store) GetByEmailNormTx(ctx context.Context, tx *db.Tx, emailNorm string) (*User, error) {
+	row := tx.QueryRowContext(ctx, `SELECT `+userColumns+` FROM users WHERE email_norm = ?`, emailNorm)
+	u, err := scanUser(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return u, err
+}
+
+// EmailCode 是 email_codes 表的一行。
+type EmailCode struct {
+	ID        int64
+	Purpose   string
+	EmailNorm string
+	CodeHash  string
+	Attempts  int
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+// InsertEmailCode 插入验证码哈希（15 分钟有效、最多 3 次尝试，规则 2）。
+func (s *Store) InsertEmailCode(ctx context.Context, tx *db.Tx, purpose, emailNorm, codeHash string, createdAt, expiresAt time.Time) error {
+	_, err := tx.ExecContext(ctx, `INSERT INTO email_codes (purpose, email_norm, code_hash, attempts, created_at, expires_at)
+		VALUES (?, ?, ?, 0, ?, ?)`, purpose, emailNorm, codeHash, db.FormatUTC(createdAt), db.FormatUTC(expiresAt))
+	return err
+}
+
+// DeleteEmailCodes 删除指定用途与邮箱的所有旧验证码。
+func (s *Store) DeleteEmailCodes(ctx context.Context, tx *db.Tx, purpose, emailNorm string) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM email_codes WHERE purpose = ? AND email_norm = ?`, purpose, emailNorm)
+	return err
+}
+
+// GetLatestEmailCode 读最近一条验证码记录（测试与校验用）。
+func (s *Store) GetLatestEmailCode(ctx context.Context, purpose, emailNorm string) (*EmailCode, error) {
+	row := s.d.ReadPool().QueryRowContext(ctx, `SELECT id, purpose, email_norm, code_hash, attempts, created_at, expires_at
+		FROM email_codes WHERE purpose = ? AND email_norm = ? ORDER BY id DESC LIMIT 1`, purpose, emailNorm)
+	var c EmailCode
+	var created, expires string
+	err := row.Scan(&c.ID, &c.Purpose, &c.EmailNorm, &c.CodeHash, &c.Attempts, &created, &expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if t, err := db.ParseUTC(created); err == nil {
+		c.CreatedAt = t
+	}
+	if t, err := db.ParseUTC(expires); err == nil {
+		c.ExpiresAt = t
+	}
+	return &c, nil
+}
