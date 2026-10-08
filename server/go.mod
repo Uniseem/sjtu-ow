@@ -1,6 +1,6 @@
 module github.com/Uniseem/sjtu-ow/server
 
-go 1.26.5
+go 1.26.8
 
 require (
 	github.com/pressly/goose/v3 v3.28.0

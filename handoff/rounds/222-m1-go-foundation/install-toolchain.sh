@@ -8,8 +8,8 @@ set -eu
 cd /srv/sjtu-ow-check
 export PATH="$PWD/node24/bin:$PATH"
 
-GO_TGZ=go1.26.5.linux-amd64.tar.gz
-GO_SHA256=5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053
+GO_TGZ=go1.26.8.linux-amd64.tar.gz
+GO_SHA256=d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b
 NODE_VER=v24.13.0
 NODE_TGZ=node-$NODE_VER-linux-x64.tar.xz
 NODE_SHA256=e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e
@@ -18,7 +18,7 @@ STATICCHECK_VER=v0.8.1
 GOVULNCHECK_VER=v1.8.0
 
 echo "== Go 1.26.5"
-if ! ./go/bin/go version 2>/dev/null | grep -q go1.26.5; then
+if ! ./go/bin/go version 2>/dev/null | grep -q go1.26.8; then
   [ -f "$GO_TGZ" ] || curl -fsSLO "https://go.dev/dl/$GO_TGZ"
   echo "$GO_SHA256  $GO_TGZ" | sha256sum -c -
   rm -rf go && tar -xzf "$GO_TGZ"

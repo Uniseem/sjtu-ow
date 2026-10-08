@@ -1,14 +1,16 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M1（Go 底座）进行中——222 立起 `server/`：配置（缺必填拒启）、数据库两池 / WriteTx（互斥量 + flock + BEGIN IMMEDIATE + 看门狗）、goose 迁移、两进程并发写测试、两容器共卷 flock 实测通过；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**
-round: 222-m1-go-foundation
-next: claude：M1 第二轮——接口注册表（12 号文档 5.3：`api.Get/Post/Patch/Delete` 泛型注册、七种门、`{id}` 按 18 位编号解析、守门矩阵测试、乱填测试；TypeScript 封装的生成第二步）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑
+milestone: 重构 M1（Go 底座）进行中——222 立起 `server/`（配置、两池 + WriteTx、迁移、两容器 flock 实测）；223 接口注册表（门、严格绑定、错误形状、跨站防护，守卫测试和 4 处变异）；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**
+round: 223-m1-api-registry
+next: claude：M1 第三轮——限流（5.9：`rate_counters` 表、`INSERT … ON CONFLICT` 原子计数、按可信代理取访客 IP、IPv6 取 /64、429 + Retry-After、limits.go 一张表对照设计附录 C）+ 幂等键（5.5 的 Idempotency-Key 重放回执）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑
 updated: 2026-10-08
 blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M1 继续做，不用等
 ```
 
 ## 现在该谁动手
+
+**223（2026-10-08）**：M1 第二轮，**接口注册表**（12 号文档 5.3/5.4）。`api.Get/Post/Patch/Delete` 泛型注册、处理函数签名 `func(*app.Ctx, In) (Out, error)`；门五种（`Public/Member/Verified/Feature/Cap/Superuser`，`Token` 等 djsign 轮），**没声明门注册时 panic**；`{id}` 一律 `[0-9]{1,18}`（乱填 404 不是 500，166/167 那类问题从结构上消失）；JSON 严格解析（未知字段 400）、1 MB 上限、只收 application/json；统一错误形状（400/401/403/404/422，500 固定文案不漏内部串）；整个 mux 套 `http.CrossOriginProtection`（跨站写 403）。守卫测试：守门矩阵（6 路由 × 7 身份 = 42 格）、乱填（7 种路径垃圾全 404、5 种请求体垃圾全 400）、跨站写、五种注册错误 panic。**4 处变异（不查门/不严格解析/ID 放水/不套跨站防护）全部变红后恢复。**中途 govulncheck 报标准库 `encoding/asn1` 漏洞（GO-2026-5972）：测试机 Go 升到 **1.26.8**、`go.mod` 跟到 1.26.8，重跑整组全绿（Python 2163 + Go + Docker）。下一轮：限流 + 幂等键。
 
 **222（2026-10-08）**：你说「开始 M1」，做了 M1 第一轮（`server/` 立起来）。**测试机工具链**装好：Go 1.26.5、Node 24.13、pnpm 11.20、staticcheck、govulncheck 全在 `/srv/sjtu-ow-check/` 下（sha256 核对，系统 Node 20 没动）。**底座三样**：配置（`SITE_URL`/`SIGNING_KEY`/`FIELD_ENCRYPTION_KEY` 缺一拒启）；数据库两池 + `WriteTx`（进程内互斥量 + 跨进程 flock + `BEGIN IMMEDIATE` + 看门狗：dev 1 秒回滚、prod 200ms 警告，慢事务在提交**前**被拦下）；goose 迁移（v3.28 的 Provider API，嵌进二进制）。**13 号 C 节的两件开工验证**做掉：两进程并发写测试进了 `go test`（零 busy 零丢更新）；两个容器共享数据卷的 flock 在测试机上实测**有效**（4000 步零失败，`RESULTS.txt`），不用退路。check.sh / remote-check.sh / CI 都接上了 Go 段（CI 的 Action 按 SHA 固定）。你中途定了条规矩已写死进 AGENTS.md：**所有编译和测试一律先在测试机上做，连不上才放本地**。整组（Python 2163 + Go 全套 + Docker）全绿，3 处变异全抓到。下一轮：接口注册表。
 
@@ -714,6 +716,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 220-m0-experiments | M0 的五个验证实验（薄 SSR+严格 CSP、纯 Go WebP、SQLite 并发写、goldmark 对拍、CodeMirror 6 的 CSP），结论和对 12 号文档的 5 处修订 | **自查通过**，无代码改动；全部不推翻架构，2 个有条件通过 |
 | 221-rewrite-design-draft | 设计 v8.0 草案 `docs/design-next.md`、12 号文档落实 220 的修订、想法和遗留笔记 13 号文档、AGENTS.md 加重构一节（只有文档） | **自查通过**；`design.md` 没动（仍 v7.22）；正式站未升级 |
 | 222-m1-go-foundation | M1 第一轮：测试机装 Go/Node24/pnpm + staticcheck/govulncheck；`server/` 骨架（config 必填拒启、两池、WriteTx=flock+IMMEDIATE+看门狗、goose 迁移、UTC 时间、查询计数）；两进程并发写测试、两容器共卷 flock 实测；check.sh/remote-check/CI 接上 Go；「编译测试优先测试机」写死 | **自查通过**，整组（Python 2163 + Go 全套）全绿，3 处变异全抓到；两容器压测零 busy 零丢更新（`RESULTS.txt`） |
+| 223-m1-api-registry | M1 第二轮：接口注册表（`api.Get/Post/Patch/Delete` 泛型、六种门、`{id}` 18 位解析、严格 JSON、统一错误形状、CrossOriginProtection、Budget/Limit/Nav 声明）；internal/app 的 Viewer/Ctx；守门矩阵 42 格 + 乱填 + 跨站写 + 注册 panic 守卫 | **自查通过**，整组全绿，4 处变异全抓到；govulncheck 揪出标准库漏洞 → 测试机 Go 升 1.26.8 |
 
 ## 当前待定问题
 

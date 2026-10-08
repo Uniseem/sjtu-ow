@@ -155,7 +155,7 @@ C 没有理由选：它保留了现在最复杂、出事最多的那一块，还
 
 | 部分 | 选型 | 许可证 | 理由 / 替代 |
 |---|---|---|---|
-| 后端语言 | Go（本机 1.26.5；开工时锁当时的稳定版） | BSD | 用户指定 |
+| 后端语言 | Go（测试机锁 1.26.8，223 起随安全更新走 1.26.x；本机是 brew 的更新版） | BSD | 用户指定 |
 | HTTP 路由 | 标准库 `net/http.ServeMux` | BSD | 1.22 起有方法和路径参数，够用；不要 chi |
 | CSRF | 标准库 `http.CrossOriginProtection` + 会话 Cookie `SameSite=Lax` + 写接口只收 JSON/multipart | BSD | 不再有 CSRF 令牌 |
 | SQLite 驱动 | `modernc.org/sqlite` | BSD-3 | 纯 Go，`_txlock=immediate`、`_pragma`、在线备份 API 都有；备选 `ncruces/go-sqlite3`（MIT） |
@@ -824,3 +824,4 @@ CI（GitHub Actions）：Go 一个任务（vet、staticcheck、govulncheck、tes
 | 2026-10-07（218） | D1–D4 拍板，全按推荐 | 用户逐条选的；见 12.1 末尾 |
 | 2026-10-07（221） | 5.6 `WriteTx` 加跨进程 `flock`；5.13 母版 2560 宽、方法 2、缩略图懒生成、换 cgo 的判据；6.2 模板不写 charset/viewport、激活不一致在 CI 里算失败、Node 堆上限；6.8 CodeMirror 必须挂进 ShadowRoot；5.12 删除线要两个波浪线、图注里不进行内代码；11.2 M0 一行 | 220 轮五个实验的实测数字，各节里都写了出处 |
 | 2026-10-08（222） | 5.16 加 `SJTUOW_ENV`（dev/prod，默认 dev） | M1 第一轮实现配置时定名；报告记了偏差 |
+| 2026-10-08（223） | 4 节 Go 版本：测试机锁 1.26.8（GO-2026-5972 要 1.26.6） | govulncheck |
