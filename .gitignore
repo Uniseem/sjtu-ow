@@ -28,6 +28,7 @@ static/css/app.css
 # New stack (231). The lockfile is committed; installs and built CSS are not.
 node_modules/
 web/packages/styles/dist/
+web/apps/site/dist/
 
 # Environment
 .env

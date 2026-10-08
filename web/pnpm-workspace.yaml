@@ -1,5 +1,6 @@
 packages:
   - "packages/*"
+  - "apps/*"
 # pnpm 11 用 allowBuilds。没点名的安装脚本会让 pnpm install 退出码 1。
 allowBuilds:
   esbuild: true

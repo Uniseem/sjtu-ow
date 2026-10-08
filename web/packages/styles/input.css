@@ -5956,3 +5956,16 @@
     }
   }
 }
+
+/* 232：脚本没加载上时，8 秒后显示（12 号文档 6.10）。入口脚本给 html 加上 js-ready 就不再出现。 */
+@keyframes c-nojs-show {
+  to {
+    visibility: visible;
+  }
+}
+.c-nojs {
+  visibility: hidden;
+}
+html:not(.js-ready) .c-nojs {
+  animation: c-nojs-show 0s linear 8s forwards;
+}

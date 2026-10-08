@@ -4,7 +4,7 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "scripts": {
-    "test": "pnpm --filter @sjtu-ow/styles build && vitest run"
+    "test": "pnpm --filter @sjtu-ow/styles build && vitest run && pnpm --filter @sjtu-ow/site test"
   },
   "devDependencies": {
     "vitest": "^3.2.4"

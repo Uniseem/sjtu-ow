@@ -2,13 +2,15 @@
 
 ```yaml
 milestone: 重构 M2（前端底座）进行中——231 起；M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 231-m2-workspace-styles
-next: claude：M2 继续，SSR 服务（12 号文档 6.2）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
+round: 232-m2-ssr
+next: claude：M2 继续，前台布局（页头、页脚、主题、加载条；12 号文档 6.3–6.6）。SSR 的 HTML 还指着源码入口，预加载清单下一轮一起接。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
 updated: 2026-10-08
 blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M2 继续做，不用等
 ```
 
 ## 现在该谁动手
+
+**232（2026-10-08）**：M2 第二轮，**SSR 服务**（12 号文档 6.2、6.10）。`web/apps/site/server.ts` 73 行：只接 GET/HEAD，少斜杠且加得上就 301，并行跑 `load()` 和 `/api/session`。401 去登录，403/404 画错误页，接口连不上 503。`theme.js` 在 head 最前，charset 只由 unhead 写，状态里的 `<` 转义。访客 `no-cache`，登录 `private, no-store`。无脚本横幅 8 秒后出现。路由先有 `/` 和 `/teams/`。**3 处变异全部变红后恢复。**测试机日志 `20261008-191001-3f83467`，govulncheck 无漏洞，退出码 0。客户端脚本 gzip 41 kB。HTML 还指着源码入口，浏览器里没激活。下一轮：前台布局。
 
 **231（2026-10-08）**：M2 第一轮，**pnpm 工作区和样式**（12 号文档 6.1、6.5）。`web/` 立起来，`input.css` 原样搬进 `packages/styles`，`@source` 改扫 `.vue`。Vitest 守住色板重置、每个颜色都有深色值、`prefers-color-scheme` 只出现一次、不加载 daisyUI。CI 和整组检查在 Go 后面加上 `pnpm install --frozen-lockfile` 和 `pnpm test`。pnpm 11 用 `allowBuilds` 允许 `esbuild`。**3 处变异全部变红后恢复。**测试机日志 `20261008-185710-cd2dfa7`，govulncheck 无漏洞，退出码 0。下一轮：SSR 服务（6.2）。
 
@@ -741,6 +743,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 229-ci-new-stack-only | 每次推送和测试机整组只跑新栈（gofmt、vet、staticcheck、govulncheck、go test）；现行站的 pytest、ruff、迁移、镜像从 CI 和 check.sh 拿掉 | **自查通过**，测试机日志 `20261008-183157-1ffbdad` 退出码 0，govulncheck 无漏洞，2 处变异全抓到 |
 | 230-m1-healthz-apigen | M1 收尾：/healthz（写探测、磁盘 20%、心跳 120 秒、按到期时间算积压、详情只给超管）、apigen 生成前端调用和导航、serve 与 worker 接上 | **自查通过**，测试机日志 `20261008-184217-2177b0d` 退出码 0，govulncheck 无漏洞，4 处变异全抓到。M1 清单齐了 |
 | 231-m2-workspace-styles | M2 第一轮：pnpm 工作区，样式原样搬进 `packages/styles`，Vitest 守色板和深色，CI 与整组加上 pnpm | **自查通过**，测试机日志 `20261008-185710-cd2dfa7` 退出码 0，govulncheck 无漏洞，3 处变异全抓到 |
+| 232-m2-ssr | M2 第二轮：SSR 只接 GET/HEAD、补斜杠、并行 load 和会话、状态转义、无脚本横幅；路由先有首页和战队 | **自查通过**，测试机日志 `20261008-191001-3f83467` 退出码 0，govulncheck 无漏洞，3 处变异全抓到。浏览器里没激活 |
 
 ## 当前待定问题
 
