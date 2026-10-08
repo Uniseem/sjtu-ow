@@ -29,6 +29,7 @@ static/css/app.css
 node_modules/
 web/packages/styles/dist/
 web/apps/site/dist/
+web/apps/site/screenshot-home.png
 
 # Environment
 .env
@@ -40,3 +41,4 @@ web/apps/site/dist/
 .DS_Store
 .idea/
 .vscode/
+

@@ -12,7 +12,7 @@ const data = inject<{ title: string }>("page-data")
 useHead({ title: data?.title ?? "SJTU-OW" })
 </script>
 <template>
-  <main>
+  <main id="main" class="flex-1">
     <h1>{{ data?.title }}</h1>
   </main>
 </template>

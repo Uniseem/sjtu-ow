@@ -76,6 +76,8 @@ pnpm test
 
 现行站冻结。pytest、ruff、迁移、生产配置、错误页、Docker 镜像不进每次推送，测试机上的整组也不跑。前端这一段要先有 `node24/bin` 在 PATH 最前。
 
+**前台 SSR 在真浏览器里过一遍**（233 起）：`bash scripts/remote-check.sh run bash -c 'cd web/apps/site && node browser-check.mjs /usr/bin/chromium'`（本机 Chrome 就把路径换成 `/Applications/Google Chrome.app/...`）。它起桩 API 和生产 SSR 服务（`STRICT_CSP=1` 时服务自己加 CSP 响应头）、用 CDP 驱动无头 Chromium 走激活、严格 CSP 零违规、SPA 换页、主题、右键菜单、无脚本横幅、404；要在跑它的前一步先构建（整组里 `pnpm test` 就构建了）。改了前台入口、壳或这些行为后跑一次；截图落在仓库检出里（gitignore 了）。
+
 **这组检查在测试机上跑**（2026-10-04 起，见「测试机与部署」）：
 
 ```bash
@@ -235,6 +237,7 @@ Host sjtu-ow-test
 - **和时间有关的断言要固定到整分**（217 16-13）：`test_autosave_events` 里一条比较「复制来的时间」，一边带微秒、一边被表单截到分钟，碰上就红（217 的 CI 红过一次）。造时间时用 `replace(second=0, microsecond=0)`
 - **刚推送就 `gh run watch` 可能等的是上一次运行**（217）：新运行还没出现在列表里时取到的是旧的编号，或者 `watch` 提前退出。用后台循环等最新一条的 `status` 变成 `completed` 再读结论
 - **本地全绿不等于 CI 全绿**：CI 机器上没有 gitignore 掉的编译产物，磁盘、时区、速度也和本地不同。仓库 042 轮之前从没在 GitHub 上跑过 CI，第一次跑就红了三条（044）。推送后要看 CI 结果
+- **Vue SSR 的输出里混着片段注释**（233）：`v-for`/插槽插进来的文本两边有 `<!--[-->`/`<!--]-->`，`expect(html).toContain('>首页</a>')` 这种子串断言配不上。断言前先 `replace(/<!--.*?-->/g, "")`，或者只断言开标签里的属性。Vite 的 `--ssrManifest` 写的是 `ssr-manifest.json`（资源映射），不是 `manifest.json`（块依赖图，`build.manifest: true` 才写）——拼页面要的是后者
 
 ## 改了什么，就更新哪份文档
 

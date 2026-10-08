@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run && vite build --outDir dist/client --ssrManifest && vite build --ssr src/entry-server.ts --outDir dist/server",
-    "build": "vite build --outDir dist/client --ssrManifest && vite build --ssr src/entry-server.ts --outDir dist/server"
+    "test": "pnpm --filter @sjtu-ow/styles build && vitest run && vite build --outDir dist/client --ssrManifest && vite build --ssr server.ts --outDir dist/server",
+    "build": "pnpm --filter @sjtu-ow/styles build && vite build --outDir dist/client --ssrManifest && vite build --ssr server.ts --outDir dist/server"
   },
   "dependencies": {
+    "@sjtu-ow/styles": "workspace:*",
     "@unhead/vue": "^2.0.0",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"

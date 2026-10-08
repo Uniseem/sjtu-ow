@@ -1,12 +1,33 @@
+import "@sjtu-ow/styles/dist/site.css"
 import { reactive } from "vue"
 import { createApp } from "./main"
+import { Loadbar, progressFromMatrix } from "./loadbar"
 import type { Load, PageData } from "./router"
+import { VIEWER, type Viewer } from "./viewer"
+import { installDropdowns } from "./dropdowns"
 
 const raw = document.getElementById("ow-state")?.textContent ?? "null"
-const state = JSON.parse(raw) as { data: PageData | null }
+const state = JSON.parse(raw) as { data: PageData | null; viewer?: Viewer }
 const page = reactive<PageData>(state.data ?? { title: "" })
+const viewer = reactive<Viewer>(state.viewer ?? { user: null })
 const { app, router } = createApp(false)
 app.provide("page-data", page)
+app.provide(VIEWER, viewer)
+installDropdowns()
+
+// The route loadbar: not on the first (server-rendered) page, only on
+// navigations from one page to another.
+const bar = new Loadbar(document.documentElement, () =>
+  progressFromMatrix(getComputedStyle(document.querySelector(".c-loadbar") ?? document.body).transform),
+)
+router.beforeEach((_to, from) => {
+  if (from.matched.length) bar.start()
+})
+router.afterEach((_to, from) => {
+  if (from.matched.length) bar.arrive()
+})
+router.onError(() => bar.stop())
+
 router.isReady().then(() => {
   app.mount("#app")
   document.documentElement.classList.add("js-ready")

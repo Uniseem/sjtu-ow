@@ -16,6 +16,7 @@ function api(status: number, body: unknown, seen?: { cookie: string | null }): t
 }
 
 const base = { apiBase: "http://api.test" }
+const ASSETS = { entry: "/assets/entry-x.js", css: ["/assets/entry-x.css"], preloads: [] }
 
 test("only GET and HEAD are accepted", async () => {
   const out = await handle(incoming("POST", "/"), { ...base, fetch: api(200, { user: null }) })
@@ -29,21 +30,29 @@ test("a missing trailing slash redirects when the slashed path exists", async ()
   expect(out.headers.location).toBe("/teams/?x=1")
 })
 
-test("an unknown path is a 404 page", async () => {
-  const out = await handle(incoming("GET", "/no-such/"), { ...base, fetch: api(200, { user: null }) })
+test("an unknown path is a 404 page without any script", async () => {
+  const out = await handle(incoming("GET", "/no-such/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
   expect(out.status).toBe(404)
   expect(out.body).toContain("找不到这个页面")
+  // 错误页不是 App 画出来的，不该有数据块和入口脚本
+  expect(out.body).not.toContain('id="ow-state"')
+  expect(out.body).not.toContain("entry-x.js")
+  expect(out.body).not.toContain("/src/entry-client.ts")
+  expect(out.body).not.toContain("页面脚本没有加载成功")
 })
 
 test("the shell has no executable inline script and escapes state", async () => {
-  const out = await handle(incoming("GET", "/"), { ...base, fetch: api(200, { user: null }) })
+  const out = await handle(incoming("GET", "/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
   expect(out.status).toBe(200)
   expect(out.headers["cache-control"]).toBe("no-cache")
   expect(out.headers.vary).toBe("Cookie")
   expect(out.body).not.toContain('style="')
   expect(out.body.match(/charset/g)).toHaveLength(1)
   expect(out.body.indexOf('src="/theme.js"')).toBeLessThan(out.body.indexOf("charset"))
-  expect(out.body).toContain("SJTU-OW")
+  expect(out.body).toContain('src="/assets/entry-x.js"')
+  expect(out.body).toContain('rel="stylesheet" href="/assets/entry-x.css"')
+  expect(out.body).not.toContain("/src/entry-client.ts")
+  expect(out.body).toContain('class="flex min-h-screen flex-col"')
   expect(out.body).toContain("\\u003c")
   expect(out.body).not.toContain('id="ow-state"><')
   expect(out.body).toContain("页面脚本没有加载成功")
@@ -56,7 +65,7 @@ test("a logged-in session is not cached", async () => {
   const seen = { cookie: null as string | null }
   const out = await handle(incoming("GET", "/", { cookie: "ow_session=abc" }), {
     ...base,
-    fetch: api(200, { user: { id: 1 } }, seen),
+    fetch: api(200, { user: { nickname: "夜蛾", admin: false } }, seen),
   })
   expect(out.status).toBe(200)
   expect(out.headers["cache-control"]).toBe("private, no-store")
@@ -72,7 +81,7 @@ test("HEAD has the same status and an empty body", async () => {
 test("a 401 from the loader redirects to login", async () => {
   const out = await handle(incoming("GET", "/teams/"), {
     ...base,
-    fetch: api(200, { user: { id: 1 } }),
+    fetch: api(200, { user: { nickname: "夜蛾", admin: false } }),
     load: () => {
       throw httpError(401)
     },

@@ -2,11 +2,19 @@ import { renderSSRHead } from "@unhead/vue/server"
 import { renderToString } from "vue/server-renderer"
 import { createApp } from "./main"
 import { httpError, type Load, type PageData } from "./router"
+import { VIEWER, type Viewer } from "./viewer"
 
 export type Rendered =
   | { kind: "slash"; location: string }
   | { kind: "login"; next: string }
-  | { kind: "page"; status: number; html: string; head: string; state: PageData | null; loggedIn: boolean }
+  | {
+      kind: "page"
+      status: number
+      html: string
+      head: string
+      state: { data: PageData | null; viewer: Viewer } | null
+      viewer: Viewer
+    }
 
 export type RenderOpts = {
   apiBase: string
@@ -20,6 +28,8 @@ const ERROR_HTML: Record<number, string> = {
   404: "<main><h1>找不到这个页面</h1></main>",
   503: "<main><h1>站点暂时连不上</h1></main>",
 }
+
+const VISITOR: Viewer = { user: null }
 
 function statusOf(err: unknown): number | undefined {
   return typeof err === "object" && err !== null && "status" in err ? Number((err as { status: number }).status) : undefined
@@ -42,25 +52,30 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   await router.push(url)
   await router.isReady()
   const route = router.currentRoute.value
-  if (!route.matched.length) return page(404, false, null, head)
+  if (!route.matched.length) return page(404, VISITOR, head)
 
   const [sessionR, loadR] = await Promise.allSettled([fetchSession(opts), runLoad(route, url, opts)])
-  if (sessionR.status === "rejected") return page(503, false, null, head)
+  if (sessionR.status === "rejected") return page(503, VISITOR, head)
+  const viewer = sessionR.value
   if (loadR.status === "rejected") {
     const status = statusOf(loadR.reason)
     if (status === 401) return { kind: "login", next: pathname + new URL(url, "http://site").search }
-    if (status === 403 || status === 404) return page(status, sessionR.value.loggedIn, null, head)
-    return page(503, false, null, head)
+    if (status === 403 || status === 404) return page(status, viewer, head)
+    return page(503, VISITOR, head)
   }
+  app.provide(VIEWER, viewer)
   app.provide("page-data", loadR.value)
   const html = await renderToString(app)
   const tags = await renderSSRHead(head)
-  return { kind: "page", status: 200, html, head: tags.headTags, state: loadR.value, loggedIn: sessionR.value.loggedIn }
+  return { kind: "page", status: 200, html, head: tags.headTags, state: { data: loadR.value, viewer }, viewer }
 }
 
-async function page(status: number, loggedIn: boolean, state: PageData | null, head: ReturnType<typeof createApp>["head"]): Promise<Rendered> {
+// Error pages carry no state and no entry script: their HTML is not what
+// the app would paint, so hydration would be wrong (12-architecture 6.5,
+// error pages stay without script).
+async function page(status: number, viewer: Viewer, head: ReturnType<typeof createApp>["head"]): Promise<Rendered> {
   const tags = await renderSSRHead(head)
-  return { kind: "page", status, html: ERROR_HTML[status] ?? ERROR_HTML[404], head: tags.headTags, state, loggedIn }
+  return { kind: "page", status, html: ERROR_HTML[status] ?? ERROR_HTML[404], head: tags.headTags, state: null, viewer }
 }
 
 async function runLoad(route: { meta: { load?: Load }; params: Record<string, string | string[]> }, url: string, opts: RenderOpts): Promise<PageData> {
@@ -71,7 +86,7 @@ async function runLoad(route: { meta: { load?: Load }; params: Record<string, st
   return load({ params, url })
 }
 
-async function fetchSession(opts: RenderOpts): Promise<{ loggedIn: boolean }> {
+async function fetchSession(opts: RenderOpts): Promise<Viewer> {
   let response: Response
   try {
     response = await opts.fetch(opts.apiBase + "/api/session", {
@@ -81,10 +96,12 @@ async function fetchSession(opts: RenderOpts): Promise<{ loggedIn: boolean }> {
   } catch {
     throw httpError(503)
   }
-  if (response.status === 401) return { loggedIn: false }
+  if (response.status === 401) return VISITOR
   if (!response.ok) throw httpError(503)
-  const body = (await response.json()) as { user?: unknown }
-  return { loggedIn: body.user != null }
+  const body = (await response.json()) as { user?: { nickname?: unknown; admin?: unknown } | null }
+  const user = body.user
+  if (user === null || user === undefined || typeof user.nickname !== "string") return VISITOR
+  return { user: { nickname: user.nickname, admin: user.admin === true } }
 }
 
 function forward(headers: { get(name: string): string | null }): Headers {

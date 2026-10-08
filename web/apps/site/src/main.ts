@@ -12,6 +12,9 @@ export function createApp(ssr: boolean) {
     meta: [
       { charset: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // The browser bar takes the masthead's colour; theme.js repaints both.
+      { name: "theme-color", content: "#ffffff", media: "(prefers-color-scheme: light)" },
+      { name: "theme-color", content: "#171a20", media: "(prefers-color-scheme: dark)" },
     ],
   })
   app.use(router)

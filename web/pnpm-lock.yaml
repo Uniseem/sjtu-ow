@@ -14,6 +14,9 @@ importers:
 
   apps/site:
     dependencies:
+      '@sjtu-ow/styles':
+        specifier: workspace:*
+        version: link:../../packages/styles
       '@unhead/vue':
         specifier: ^2.0.0
         version: 2.1.17(vue@3.5.43)
