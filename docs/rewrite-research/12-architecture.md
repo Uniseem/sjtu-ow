@@ -363,7 +363,7 @@ Idempotency-Key: <每次保存尝试一个，重试沿用>
 
 ### 5.9 限流
 
-- `rate_counters(key, bucket, count)` 表，整分钟（或整小时、整天）一个桶，`INSERT … ON CONFLICT DO UPDATE SET count = count + 1 RETURNING count` 原子计数；worker 每天删过期的桶。
+- `rate_counters(key, bucket, count)` 表，整分钟（或整小时、整天）一个桶，`INSERT … ON CONFLICT DO UPDATE SET count = count + 1 RETURNING count` 原子计数；worker 每天删过期的桶。时间片按窗口取（UTC，固定窗口）：≤1 分钟按整分钟，不满 24 小时按整小时，≥24 小时按整天。不能把「≤1 小时」划进分钟片，否则表里「每小时 5 次」会变成每分钟 5 次（224 轮）。
 - 访客 IP 只认可信代理（Caddy、ssr 所在的 Docker 网段）传来的 `X-Real-IP`；IPv6 取 /64。
 - 所有数字集中在 `internal/platform/ratelimit/limits.go` 一张表，和设计附录 C、规则 6、214–223 对照，测试钉住（包括现在没钉住的 allauth 那组，16 号低条目）。
 - 默认规矩：**每个写接口都要声明限流**，没声明的注册时报错；确实不需要的写 `api.NoLimit("理由")`。
@@ -825,3 +825,4 @@ CI（GitHub Actions）：Go 一个任务（vet、staticcheck、govulncheck、tes
 | 2026-10-07（221） | 5.6 `WriteTx` 加跨进程 `flock`；5.13 母版 2560 宽、方法 2、缩略图懒生成、换 cgo 的判据；6.2 模板不写 charset/viewport、激活不一致在 CI 里算失败、Node 堆上限；6.8 CodeMirror 必须挂进 ShadowRoot；5.12 删除线要两个波浪线、图注里不进行内代码；11.2 M0 一行 | 220 轮五个实验的实测数字，各节里都写了出处 |
 | 2026-10-08（222） | 5.16 加 `SJTUOW_ENV`（dev/prod，默认 dev） | M1 第一轮实现配置时定名；报告记了偏差 |
 | 2026-10-08（223） | 4 节 Go 版本：测试机锁 1.26.8（GO-2026-5972 要 1.26.6） | govulncheck |
+| 2026-10-08（224） | 5.9 时间片：≤1 分钟按分钟、不满一天按小时、≥一天按天 | 否则「每小时 5 次」会按分钟计 |

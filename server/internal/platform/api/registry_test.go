@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
 )
 
 // ---- 测试用的一组接口：每种门一条，外加一条回显绑定结果的 ----
@@ -45,12 +46,12 @@ func testRegistry(t *testing.T) (*Registry, http.Handler) {
 	Post(g, "/api/teams/{id}/applications", Feature("team_apply"),
 		func(_ *app.Ctx, in bodyIn) (echoOut, error) {
 			return echoOut{ID: int64(in.ID), Message: in.Message, Count: in.Count}, nil
-		}, Limit(PerUser, 20, 24*time.Hour))
+		}, Limit(ratelimit.Decl{Name: "test_apply", Kind: ratelimit.PerUser, N: 20, Window: 24 * time.Hour}))
 	Patch(g, "/api/admin/thing/{id}", Cap("teams.admin"),
 		func(_ *app.Ctx, in bodyIn) (echoOut, error) {
 			return echoOut{ID: int64(in.ID), Message: in.Message, Count: in.Count}, nil
-		}, Limit(PerUser, 100, time.Minute), Nav("members", "teams"))
-	Delete(g, "/api/super/thing/{id}", Superuser, ok, Limit(PerUser, 10, time.Hour))
+		}, Limit(ratelimit.Decl{Name: "test_patch", Kind: ratelimit.PerUser, N: 100, Window: time.Minute}), Nav("members", "teams"))
+	Delete(g, "/api/super/thing/{id}", Superuser, ok, Limit(ratelimit.Decl{Name: "test_del", Kind: ratelimit.PerUser, N: 10, Window: time.Hour}))
 	return g, g.Handler(testResolve)
 }
 
@@ -131,7 +132,7 @@ func TestRoutesAreRegistered(t *testing.T) {
 	for _, rt := range g.Routes() {
 		if rt.Method == http.MethodPatch {
 			seenPatch = true
-			if rt.Nav != "members/teams" || rt.Limit == nil || rt.Limit.N != 100 {
+			if rt.Nav != "members/teams" || len(rt.Limits) == 0 || rt.Limits[0].N != 100 {
 				t.Errorf("PATCH 路由的声明没记全：%+v", rt)
 			}
 		}
@@ -252,12 +253,12 @@ func TestErrorShape(t *testing.T) {
 				"name":    {"队名已被使用"},
 				"__all__": {"报名已截止"},
 			})
-		}, Limit(PerUser, 5, time.Minute))
+		}, Limit(ratelimit.Decl{Name: "test_echo", Kind: ratelimit.PerUser, N: 5, Window: time.Minute}))
 
 	// 服务层冒出的普通 error 一律 500、固定文案、不漏内部信息
 	Post(g, "/api/boom", Member, func(*app.Ctx, struct{}) (struct{}, error) {
 		return struct{}{}, errors.New("内部炸了：数据库连接串是 postgres://secret")
-	}, Limit(PerUser, 5, time.Minute))
+	}, Limit(ratelimit.Decl{Name: "test_echo", Kind: ratelimit.PerUser, N: 5, Window: time.Minute}))
 	h := g.Handler(testResolve)
 
 	rec := doReq(t, h, "POST", "/api/echo", `{}`, "member")
