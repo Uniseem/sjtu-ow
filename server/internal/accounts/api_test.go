@@ -13,6 +13,7 @@ import (
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
 )
@@ -20,7 +21,7 @@ import (
 func TestGetSessionApi(t *testing.T) {
 	d := newTestDB(t)
 	ctx := context.Background()
-	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com")
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
 	store := svc.Store()
 
 	// 准备两个测试用户
@@ -156,7 +157,7 @@ func TestGetSessionApi(t *testing.T) {
 
 func TestRegisterApi(t *testing.T) {
 	d := newTestDB(t)
-	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com")
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
 
 	reg := &api.Registry{}
 	mod := NewModule(svc)
@@ -228,12 +229,13 @@ func TestRegisterApi(t *testing.T) {
 
 func TestRegisterApiRateLimit(t *testing.T) {
 	d := newTestDB(t)
-	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com")
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
 
 	reg := &api.Registry{}
 	mod := NewModule(svc)
 	mod.Routes(reg)
-	enforcer := ratelimit.NewEnforcer(d, nil)
+	enforcer := ratelimit.NewEnforcer(d, clk)
 	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil },
 		api.WithLimiter(enforcer),
 	)
@@ -280,5 +282,273 @@ func TestRegisterApiRateLimit(t *testing.T) {
 	}
 	if rec.Header().Get("Retry-After") == "" {
 		t.Fatalf("429 响应应包含 Retry-After 头")
+	}
+}
+
+func TestVerifyEmailApi(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("123456")
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil })
+
+	// 注册拿到一条 signup 码
+	mustRegister(t, svc, "api-verify@sjtu.edu.cn", "接口验证", "Password123!@#")
+
+	// 1. 错码：422，不带 Cookie
+	body := []byte(`{"email": "api-verify@sjtu.edu.cn", "code": "000000"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/verify-email", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("错码应 422，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Header().Get("Set-Cookie"), "ow_session") {
+		t.Fatalf("错码不应发会话 Cookie")
+	}
+
+	// 2. 对的码：200 + ow_session Cookie
+	body = []byte(`{"email": "api-verify@sjtu.edu.cn", "code": "123456"}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/verify-email", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("对的码应 200，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	sc := rec.Header().Get("Set-Cookie")
+	if !strings.Contains(sc, "ow_session=") || !strings.Contains(sc, "HttpOnly") || !strings.Contains(sc, "SameSite=Lax") {
+		t.Fatalf("Cookie 属性不符: %q", sc)
+	}
+	if strings.Contains(sc, "Secure") {
+		t.Fatalf("未声明 WithSecureCookies 时不应带 Secure: %q", sc)
+	}
+	var out VerifyEmailOut
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Result != "ok" || !strings.Contains(out.Message, "游戏 ID") {
+		t.Fatalf("出参不符: %+v", out)
+	}
+
+	// 3. 响应体里不能出现令牌（只在 HttpOnly Cookie 里）
+	if strings.Contains(rec.Body.String(), sc[strings.Index(sc, "ow_session="):strings.Index(sc, ";")]) {
+		t.Fatalf("令牌泄露进 JSON")
+	}
+
+	// 4. 空体：422 字段报错
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/verify-email", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("空体应 422，得到 %d", rec.Code)
+	}
+}
+
+func TestVerifyEmailApiSecureCookie(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("123456")
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil }, api.WithSecureCookies(true))
+
+	mustRegister(t, svc, "secure@sjtu.edu.cn", "安全者", "Password123!@#")
+	body := []byte(`{"email": "secure@sjtu.edu.cn", "code": "123456"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/verify-email", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("应 200，得到 %d", rec.Code)
+	}
+	if sc := rec.Header().Get("Set-Cookie"); !strings.Contains(sc, "Secure") {
+		t.Fatalf("声明 Secure 后 Cookie 应带 Secure: %q", sc)
+	}
+}
+
+func TestLoginApi(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("123456")
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil })
+
+	newVerifiedUser(t, d, "api-login@sjtu.edu.cn", "接口登录", "Password123!@#", true)
+
+	// 1. 成功登录：result=ok + Cookie
+	body := []byte(`{"email": "api-login@sjtu.edu.cn", "password": "Password123!@#"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("登录应 200，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	var out LoginOut
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Result != "ok" {
+		t.Fatalf("result 应为 ok: %+v", out)
+	}
+	if sc := rec.Header().Get("Set-Cookie"); !strings.Contains(sc, "ow_session=") {
+		t.Fatalf("应发会话 Cookie: %q", sc)
+	}
+
+	// 2. 错密码：401 统一文案，无 Cookie
+	body = []byte(`{"email": "api-login@sjtu.edu.cn", "password": "WrongPass!@#1"}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("错密码应 401，得到 %d", rec.Code)
+	}
+	if strings.Contains(rec.Header().Get("Set-Cookie"), "ow_session") {
+		t.Fatalf("错密码不应发会话 Cookie")
+	}
+
+	// 3. 未验证用户：result=verify_required，无 Cookie，信已入队
+	mustRegister(t, svc, "api-fresh@sjtu.edu.cn", "接口新人", "Password123!@#")
+	body = []byte(`{"email": "api-fresh@sjtu.edu.cn", "password": "Password123!@#"}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("未验证登录应 200，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Result != "verify_required" {
+		t.Fatalf("result 应为 verify_required: %+v", out)
+	}
+	if strings.Contains(rec.Header().Get("Set-Cookie"), "ow_session") {
+		t.Fatalf("未验证登录不应发会话 Cookie")
+	}
+
+	// 4. 空体：422
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("空体应 422，得到 %d", rec.Code)
+	}
+}
+
+func TestLoginApiRateLimit(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	enforcer := ratelimit.NewEnforcer(d, clk)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil },
+		api.WithLimiter(enforcer),
+	)
+
+	// AuthLogin 30 次/分/IP：前 30 次 401（邮箱不存在），第 31 次 429
+	hit := func() int {
+		body := []byte(`{"email": "anyone@sjtu.edu.cn", "password": "Whatever123!@#"}`)
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "192.0.2.77:54321"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	for i := 1; i <= 30; i++ {
+		if c := hit(); c != http.StatusUnauthorized {
+			t.Fatalf("第 %d 次应 401，得到 %d", i, c)
+		}
+	}
+	if c := hit(); c != http.StatusTooManyRequests {
+		t.Fatalf("第 31 次应 429，得到 %d", c)
+	}
+}
+
+// TestSessionCookieOnlyFromAuthRoutes 钉住「唯一建会话入口」（12 号文档 5.7）：
+// 除 /api/auth/login、/api/auth/verify-email 外，任何接口的任何答复都不带
+// ow_session；这两个接口的错误答复也不带。
+func TestSessionCookieOnlyFromAuthRoutes(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil })
+
+	seen := map[string]bool{}
+	for _, rt := range reg.Routes() {
+		var req *http.Request
+		switch rt.Method {
+		case http.MethodGet:
+			req = httptest.NewRequest(http.MethodGet, rt.Pattern, nil)
+		default:
+			req = httptest.NewRequest(rt.Method, rt.Pattern, bytes.NewReader([]byte(`{}`)))
+			req.Header.Set("Content-Type", "application/json")
+		}
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		seen[rt.Method+" "+rt.Pattern] = true
+		for _, sc := range rec.Header().Values("Set-Cookie") {
+			if strings.Contains(sc, "ow_session=") {
+				t.Fatalf("%s %s 的答复不该带会话 Cookie: %q", rt.Method, rt.Pattern, sc)
+			}
+		}
+	}
+	// 路由清单里确实有这两个接口（防止路由改名后这条测试空转）
+	if !seen["POST /api/auth/login"] || !seen["POST /api/auth/verify-email"] {
+		t.Fatalf("注册表应包含 login 和 verify-email: %v", seen)
+	}
+}
+
+func TestVerifyEmailApiRateLimit(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("123456")
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	enforcer := ratelimit.NewEnforcer(d, clk)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil },
+		api.WithLimiter(enforcer),
+	)
+
+	// AuthVerifyEmail 10 次/分/IP：前 10 次 422（码不对），第 11 次 429
+	hit := func() int {
+		body := []byte(`{"email": "rl@sjtu.edu.cn", "code": "000000"}`)
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/verify-email", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "192.0.2.88:54321"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	for i := 1; i <= 10; i++ {
+		if c := hit(); c != http.StatusUnprocessableEntity {
+			t.Fatalf("第 %d 次应 422，得到 %d", i, c)
+		}
+	}
+	if c := hit(); c != http.StatusTooManyRequests {
+		t.Fatalf("第 11 次应 429，得到 %d", c)
 	}
 }

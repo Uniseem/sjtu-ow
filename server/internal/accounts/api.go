@@ -42,6 +42,33 @@ type RegisterOut struct {
 	Message string `json:"message"`
 }
 
+// VerifyEmailIn 是 POST /api/auth/verify-email 的入参（邮箱 + 6 位码，
+// 不需要会话，12 号文档 5.7）。
+type VerifyEmailIn struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+// VerifyEmailOut 是 POST /api/auth/verify-email 的出参。令牌只进
+// HttpOnly Cookie（ow_session），不出现在 JSON 里。
+type VerifyEmailOut struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// LoginIn 是 POST /api/auth/login 的入参。
+type LoginIn struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// LoginOut 是 POST /api/auth/login 的出参。Result 是 "ok" 或
+// "verify_required"（密码对但邮箱没验证过：新码已发，前端转验证页）。
+type LoginOut struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
 // Module 提供账号域接口注册。
 type Module struct {
 	svc *Service
@@ -57,6 +84,10 @@ func (m *Module) Routes(r *api.Registry) {
 	api.Get(r, "/api/session", api.Public, m.getSession)
 	api.Post(r, "/api/auth/register", api.Public, m.register,
 		api.Limit(ratelimit.AuthSignup))
+	api.Post(r, "/api/auth/verify-email", api.Public, m.verifyEmail,
+		api.Limit(ratelimit.AuthVerifyEmail))
+	api.Post(r, "/api/auth/login", api.Public, m.login,
+		api.Limit(ratelimit.AuthLogin))
 }
 
 func (m *Module) getSession(ctx *app.Ctx, _ SessionIn) (SessionOut, error) {
@@ -91,4 +122,24 @@ func (m *Module) register(ctx *app.Ctx, in RegisterIn) (RegisterOut, error) {
 		Email:   res.Email,
 		Message: res.Message,
 	}, nil
+}
+
+func (m *Module) verifyEmail(ctx *app.Ctx, in VerifyEmailIn) (VerifyEmailOut, error) {
+	res, err := m.svc.VerifyEmail(ctx.Context, VerifyEmailInput(in))
+	if err != nil {
+		return VerifyEmailOut{}, err
+	}
+	ctx.SetSessionCookie(res.Token)
+	return VerifyEmailOut{Result: "ok", Message: res.Message}, nil
+}
+
+func (m *Module) login(ctx *app.Ctx, in LoginIn) (LoginOut, error) {
+	res, err := m.svc.Login(ctx.Context, LoginInput(in))
+	if err != nil {
+		return LoginOut{}, err
+	}
+	if res.Token != "" {
+		ctx.SetSessionCookie(res.Token)
+	}
+	return LoginOut{Result: res.Result, Message: res.Message}, nil
 }

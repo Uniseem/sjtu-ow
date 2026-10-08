@@ -5,11 +5,15 @@ import (
 	"time"
 )
 
-// 表里的数字和设计附录 C、规则 214–223 里这轮先钉的那几条对上。
-// 改一个数字这里就红。还没进表的（规则 6、215、216、221、223）写在 limits.go 的注释里。
+// 表里的数字和设计附录 C、规则 214–223、规则 6（allauth 那组，241 起进表）
+// 里钉住的条目对上。改一个数字这里就红。还没进表的（规则 6 剩下的、215、216、
+// 221、223）写在 limits.go 的注释里。
 func TestTableMatchesDesign(t *testing.T) {
 	want := []Decl{
 		{Name: "auth_signup", Kind: PerIP, N: 20, Window: time.Minute},
+		{Name: "auth_login", Kind: PerIP, N: 30, Window: time.Minute},
+		{Name: "auth_login_failed_key", Kind: PerKey, N: 5, Window: 5 * time.Minute},
+		{Name: "auth_verify_email", Kind: PerIP, N: 10, Window: time.Minute},
 		{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour},
 		{Name: "team_create", Kind: PerUser, N: 3, Window: 24 * time.Hour},
 		{Name: "comment_create_minute", Kind: PerUser, N: 3, Window: time.Minute},
@@ -19,7 +23,8 @@ func TestTableMatchesDesign(t *testing.T) {
 		{Name: "account_export", Kind: PerUser, N: 5, Window: time.Hour},
 	}
 	got := []Decl{
-		AuthSignup, TeamApply, TeamCreate, CommentCreateMinute, CommentCreateDaily,
+		AuthSignup, AuthLogin, AuthLoginFailedKey, AuthVerifyEmail,
+		TeamApply, TeamCreate, CommentCreateMinute, CommentCreateDaily,
 		CommentVote, Search, AccountExport,
 	}
 	if len(got) != len(want) {

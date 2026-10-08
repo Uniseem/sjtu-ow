@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"net/http"
 	netmail "net/mail"
 	"strings"
 	"time"
@@ -18,26 +20,40 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/mail"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/outbox"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
 )
 
 // Service 是账号域的业务服务。
 type Service struct {
-	d       *db.DB
-	store   *Store
-	clock   clock.Clock
-	siteURL string
+	d        *db.DB
+	store    *Store
+	clock    clock.Clock
+	siteURL  string
+	sessions *auth.Store
+	// limiter 数登录失败（AuthLoginFailedKey 按账号，R006）；nil 表示不数
+	// （apigen 场景；测试想要失败限流时传 ratelimit.NewEnforcer）。
+	limiter *ratelimit.Enforcer
+	// codeGen 造验证码（明文 + SHA-256 哈希）；测试换成固定码。
+	codeGen func() (code, codeHash string, err error)
 }
 
-// NewService 创建账号服务。
-func NewService(d *db.DB, c clock.Clock, siteURL string) *Service {
+// NewService 创建账号服务。sessions 为 nil 时自建；limiter 为 nil 时登录失败
+// 不按账号计数（注册表层的按 IP 限流不受影响）。
+func NewService(d *db.DB, c clock.Clock, siteURL string, sessions *auth.Store, limiter *ratelimit.Enforcer) *Service {
 	if c == nil {
 		c = clock.System{}
 	}
+	if sessions == nil {
+		sessions = auth.NewStore(d, c)
+	}
 	return &Service{
-		d:       d,
-		store:   NewStore(d),
-		clock:   c,
-		siteURL: siteURL,
+		d:        d,
+		store:    NewStore(d),
+		clock:    c,
+		siteURL:  siteURL,
+		sessions: sessions,
+		limiter:  limiter,
+		codeGen:  generateEmailCode,
 	}
 }
 
@@ -151,7 +167,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (*RegisterResu
 		return nil, err
 	}
 
-	code, codeHash, err := generateEmailCode()
+	code, codeHash, err := s.codeGen()
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +245,249 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (*RegisterResu
 		Email:   trimmedEmail,
 		Message: "验证码已发送至你的邮箱，15 分钟内有效。",
 	}, nil
+}
+
+// errBadCode 是核验失败的统一口径（R004 防枚举）：码不对、过期、用尽、
+// 邮箱没注册，全都是同一句话，不泄露哪一条不成立。
+var errBadCode = api.InvalidFields(map[string][]string{
+	"code": {"验证码不正确或已过期。"},
+})
+
+// VerifyEmailInput 是邮箱验证码核验的入参。
+type VerifyEmailInput struct {
+	Email string
+	Code  string
+}
+
+// VerifyEmailResult 是核验的结果。Token 是会话令牌（只进 HttpOnly Cookie，
+// api 层负责写响应头，不进 JSON）。
+type VerifyEmailResult struct {
+	Token   string
+	Message string
+}
+
+// VerifyEmail 凭「邮箱 + 6 位码」核验（12 号文档 5.7，241 起不需要会话）。
+// 核验通过即登录：置 email_verified_at、删光该邮箱的 signup 码、建会话（R002、R008）。
+func (s *Service) VerifyEmail(ctx context.Context, in VerifyEmailInput) (*VerifyEmailResult, error) {
+	trimmedEmail := strings.TrimSpace(in.Email)
+	code := strings.TrimSpace(in.Code)
+
+	fields := make(map[string][]string)
+	if trimmedEmail == "" {
+		fields["email"] = []string{"请输入邮箱地址。"}
+	} else if !validateEmail(trimmedEmail) {
+		fields["email"] = []string{"请输入有效的邮箱地址。"}
+	}
+	if code == "" {
+		fields["code"] = []string{"请输入验证码。"}
+	}
+	if len(fields) > 0 {
+		return nil, api.InvalidFields(fields)
+	}
+
+	emailNorm := strings.ToLower(trimmedEmail)
+	now := s.clock.Now().UTC()
+
+	// codeOK 是这次事务的结论。错码时事务仍然**提交**（attempts 的递增、
+	// 用尽后的删码要保住），错误在外面报——跟着错误回滚的话计数就丢了，
+	// 同一个码可以被无限试。
+	var codeOK bool
+	var verifiedUserID int64
+	err := s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		u, err := s.store.GetByEmailNormTx(ctx, tx, emailNorm)
+		if err != nil {
+			return err
+		}
+		if u == nil {
+			return nil
+		}
+		c, err := s.store.GetLatestEmailCodeTx(ctx, tx, "signup", emailNorm)
+		if err != nil {
+			return err
+		}
+		// 过期、用尽（R002：最多 3 次尝试）、没有码：不计数，直接失败
+		if c == nil || !now.Before(c.ExpiresAt) || c.Attempts >= 3 {
+			return nil
+		}
+		sum := sha256.Sum256([]byte(code))
+		if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(sum[:])), []byte(c.CodeHash)) != 1 {
+			if err := s.store.BumpEmailCodeAttempts(ctx, tx, c.ID); err != nil {
+				return err
+			}
+			// 第 3 次错：码作废（R002）
+			if c.Attempts+1 >= 3 {
+				if err := s.store.DeleteEmailCode(ctx, tx, c.ID); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		if err := s.store.MarkEmailVerified(ctx, tx, u.ID, now); err != nil {
+			return err
+		}
+		if err := s.store.DeleteEmailCodes(ctx, tx, "signup", emailNorm); err != nil {
+			return err
+		}
+		verifiedUserID = u.ID
+		codeOK = true
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !codeOK {
+		return nil, errBadCode
+	}
+
+	token, err := s.sessions.Create(ctx, verifiedUserID)
+	if err != nil {
+		return nil, err
+	}
+	return &VerifyEmailResult{
+		Token:   token,
+		Message: "邮箱验证成功。接下来补全游戏 ID 和联系方式，就能报名内战和赛事了。",
+	}, nil
+}
+
+// LoginInput 是登录的入参。
+type LoginInput struct {
+	Email    string
+	Password string
+}
+
+// LoginResult 是登录的结果。Result 是 "ok" 或 "verify_required"
+// （密码对、邮箱没验证过：已发新码，前端转验证页，不发会话）。
+type LoginResult struct {
+	Result  string
+	Token   string
+	Message string
+}
+
+// Login 只认邮箱 + 密码（12 号文档 5.7）。错误统一「邮箱或密码不正确」（R004）；
+// 停用拒绝；未验证的发新码并提示去验证页；PBKDF2 的哈希验过即升级 Argon2。
+// 限流：注册表按 IP 30 次/分（R006）；密码错按账号 5 次/300 秒（本函数里数）。
+func (s *Service) Login(ctx context.Context, in LoginInput) (*LoginResult, error) {
+	trimmedEmail := strings.TrimSpace(in.Email)
+
+	fields := make(map[string][]string)
+	if trimmedEmail == "" {
+		fields["email"] = []string{"请输入邮箱地址。"}
+	} else if !validateEmail(trimmedEmail) {
+		fields["email"] = []string{"请输入有效的邮箱地址。"}
+	}
+	if in.Password == "" {
+		fields["password"] = []string{"请输入密码。"}
+	}
+	if len(fields) > 0 {
+		return nil, api.InvalidFields(fields)
+	}
+
+	emailNorm := strings.ToLower(trimmedEmail)
+
+	// 失败锁先查后数（R006：同账号 300 秒内 5 次失败）：锁定期内连正确密码
+	// 也拒，免得爆破者可以一直试到撞对的那一次。
+	if s.limiter != nil {
+		n, retry, err := s.limiter.Count(ctx, "email:"+emailNorm, ratelimit.AuthLoginFailedKey)
+		if err == nil && n >= int64(ratelimit.AuthLoginFailedKey.N) {
+			return nil, api.TooManyRequests(retry)
+		}
+	}
+
+	u, err := s.store.GetByEmailNorm(ctx, emailNorm)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		// 邮箱不存在也烧一遍 Argon2，让「邮箱不存在」和「密码不对」耗时一样（R004）
+		if _, _, err := auth.Verify(ctx, "", in.Password); err != nil {
+			return nil, err
+		}
+		s.hitLoginFailure(ctx, emailNorm)
+		return nil, api.Unauthorized("邮箱或密码不正确")
+	}
+
+	// Argon2 在事务外算（一次约 100 MB，别占写锁）
+	ok, upgrade, err := auth.Verify(ctx, u.PasswordHash, in.Password)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		s.hitLoginFailure(ctx, emailNorm)
+		return nil, api.Unauthorized("邮箱或密码不正确")
+	}
+
+	if !u.IsActive {
+		// 密码已经对了，身份成立，可以说明原因（12 号文档 5.7「停用账号拒绝」）
+		return nil, api.NewErr(http.StatusForbidden, "account_disabled", "这个账号已被停用，有疑问请联系管理员。")
+	}
+
+	now := s.clock.Now().UTC()
+
+	if u.EmailVerifiedAt == nil {
+		// 未验证：发一条新验证码（R002 重发），不发会话，前端转验证页
+		code, codeHash, err := s.codeGen()
+		if err != nil {
+			return nil, err
+		}
+		err = s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+			if err := s.store.DeleteEmailCodes(ctx, tx, "signup", emailNorm); err != nil {
+				return err
+			}
+			if err := s.store.InsertEmailCode(ctx, tx, "signup", emailNorm, codeHash, now, now.Add(15*time.Minute)); err != nil {
+				return err
+			}
+			letter := mail.Letter{
+				Subject: "邮箱验证码",
+				Lead:    "有人用这个邮箱登录 SJTU-OW，但它还没有验证过。请输入下面的验证码完成验证：",
+				Code:    code,
+				Note:    "验证码 15 分钟内有效。如果这不是你本人的操作，请忽略这封邮件，不会有任何变化。",
+				Reason:  "你收到这封邮件，是因为有人在本站用这个邮箱登录。",
+			}
+			siteURL := strings.TrimRight(s.siteURL, "/")
+			if siteURL == "" {
+				siteURL = "https://sjtu.ow-shanghaiuniversity.com"
+			}
+			_, err := outbox.Send(ctx, tx, nil, siteURL, letter, []mail.Person{{Address: u.Email, Name: u.Nickname}}, now)
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &LoginResult{
+			Result:  "verify_required",
+			Message: "这个邮箱还没验证过，新的验证码已发到邮箱。",
+		}, nil
+	}
+
+	// PBKDF2（或旧参数 Argon2）验过：升级成现在的 Argon2（5.7 密码）
+	if upgrade {
+		newHash, err := auth.Hash(ctx, in.Password)
+		if err != nil {
+			return nil, err
+		}
+		err = s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+			return s.store.UpdatePasswordHash(ctx, tx, u.ID, newHash, now)
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	token, err := s.sessions.Create(ctx, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &LoginResult{Result: "ok", Token: token}, nil
+}
+
+// hitLoginFailure 在密码错（含邮箱不存在）之后数一次按账号的失败计数（R006）。
+// 超没超在这里不看——锁在下次进入时由 Count 挡。计数器本身出问题不拦登录
+// （登录是主路径，限流是防线，防线坏了不能把主路径堵死）。
+func (s *Service) hitLoginFailure(ctx context.Context, emailNorm string) {
+	if s.limiter == nil {
+		return
+	}
+	_, _, _ = s.limiter.Allow(ctx, "email:"+emailNorm, ratelimit.AuthLoginFailedKey)
 }
 
 // BuildViewer 根据用户 ID 从数据库组装 *app.Viewer（12 号文档 5.2、5.8）。

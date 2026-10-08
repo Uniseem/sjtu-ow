@@ -11,6 +11,20 @@ export function getApiSession(): Promise<GetApiSessionOut> {
   return call<GetApiSessionOut>("GET", "/api/session", {  }, undefined)
 }
 
+export interface PostApiAuthLoginIn {
+  email: string;
+  password: string;
+}
+
+export interface PostApiAuthLoginOut {
+  result: string;
+  message: string;
+}
+
+export function postApiAuthLogin(body: PostApiAuthLoginIn): Promise<PostApiAuthLoginOut> {
+  return call<PostApiAuthLoginOut>("POST", "/api/auth/login", {  }, body)
+}
+
 export interface PostApiAuthRegisterIn {
   email: string;
   nickname: string;
@@ -28,6 +42,20 @@ export interface PostApiAuthRegisterOut {
 
 export function postApiAuthRegister(body: PostApiAuthRegisterIn): Promise<PostApiAuthRegisterOut> {
   return call<PostApiAuthRegisterOut>("POST", "/api/auth/register", {  }, body)
+}
+
+export interface PostApiAuthVerifyEmailIn {
+  email: string;
+  code: string;
+}
+
+export interface PostApiAuthVerifyEmailOut {
+  result: string;
+  message: string;
+}
+
+export function postApiAuthVerifyEmail(body: PostApiAuthVerifyEmailIn): Promise<PostApiAuthVerifyEmailOut> {
+  return call<PostApiAuthVerifyEmailOut>("POST", "/api/auth/verify-email", {  }, body)
 }
 
 export async function call<T>(method: string, path: string, params: Record<string, string>, body?: unknown): Promise<T> {

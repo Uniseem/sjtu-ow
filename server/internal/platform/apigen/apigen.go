@@ -220,7 +220,16 @@ func export(s string) string {
 	if s == "" {
 		return s
 	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	// 连字符分段各自首字母大写（verify-email → VerifyEmail），
+	// 不然生成的 TS 标识符带 `-`，一 import 就炸。
+	parts := strings.Split(s, "-")
+	for i, p := range parts {
+		if p == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(p[:1]) + p[1:]
+	}
+	return strings.Join(parts, "")
 }
 
 const callFn = `export async function call<T>(method: string, path: string, params: Record<string, string>, body?: unknown): Promise<T> {

@@ -69,6 +69,23 @@ type Ctx struct {
 	// Letters 是这一次写请求冻住的待发信批次（5.11）。nil 表示没人在场
 	// （worker、命令），信直接入队。
 	Letters *LetterBatch
+
+	// sessionCookies 是处理函数里要发的会话令牌（登录、验证码核验通过）。
+	// 注册表在答复前用 auth.SetCookie 写进响应头；令牌不进 JSON。
+	sessionCookies []string
+}
+
+// SetSessionCookie 登录这类动作成功后发会话 Cookie（12 号文档 5.7）。
+// 多次调用就发多个（正常流程最多一个）。
+func (c *Ctx) SetSessionCookie(token string) {
+	c.sessionCookies = append(c.sessionCookies, token)
+}
+
+// DrainSessionCookies 取走积攒的会话令牌（注册表写响应头用，之后清空）。
+func (c *Ctx) DrainSessionCookies() []string {
+	toks := c.sessionCookies
+	c.sessionCookies = nil
+	return toks
 }
 
 // LetterBatch 是同一次操作写下的待发信（设计 10.5）。Key 是这批的编号。

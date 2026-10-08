@@ -4,6 +4,8 @@ package ratelimit
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net"
 	"net/http"
 	"strconv"
@@ -16,10 +18,13 @@ import (
 // Kind 按谁数：按登录的人还是按访客 IP。
 type Kind string
 
-// 两种粒度（12 号文档 5.3）。
+// 三种粒度（12 号文档 5.3）。PerKey 的 key 由服务层自己拼好传进来
+// （比如登录失败按 "email:"+规范化邮箱 数）；注册表层算不出这种 key，
+// ClientKey 对它按 IP 兜底——声明了 PerKey 的接口别忘了在服务层计数。
 const (
 	PerUser Kind = "per_user"
 	PerIP   Kind = "per_ip"
+	PerKey  Kind = "per_key"
 )
 
 // Decl 是一条限流的声明。数字一律来自 limits.go 的表，不许在注册处内联。
@@ -69,6 +74,23 @@ func (e *Enforcer) Allow(ctx context.Context, key string, d Decl) (time.Duration
 		return untilNextSlice(now, d.Window), false, nil
 	}
 	return 0, true, nil
+}
+
+// Count 只读当前时间片的计数（不数），顺带返回到下一片还有多久。给「先查后数」
+// 的失败锁用（登录按账号，R006）：进入时先看是不是已经锁了，密码错了才数一次——
+// 不然爆破者可以一直试到撞对的那一次。
+func (e *Enforcer) Count(ctx context.Context, key string, d Decl) (count int64, retryAfter time.Duration, err error) {
+	now := e.clock.Now().UTC()
+	bucket := d.Name + "|" + sliceOf(now, d.Window)
+	err = e.db.ReadPool().QueryRowContext(ctx,
+		`SELECT count FROM rate_counters WHERE key = ? AND bucket = ?`, key, bucket).Scan(&count)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, untilNextSlice(now, d.Window), nil
+	}
+	if err != nil {
+		return 0, 0, err
+	}
+	return count, untilNextSlice(now, d.Window), nil
 }
 
 // sliceOf 取时间片（UTC，固定窗口，不是滑动窗口）。

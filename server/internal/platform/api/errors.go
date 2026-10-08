@@ -3,7 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 // Error 是接口层唯一的错误形状（12 号文档 5.4）。服务层返回它（或包着它的
@@ -53,6 +56,18 @@ func InvalidFields(fields map[string][]string) *Error {
 		Message: "有几处要改",
 		Fields:  fields,
 	}
+}
+
+// TooManyRequests 是 429：限流（带 Retry-After，5.4）。注册表的限流分支
+// 和服务层的失败计数（登录按账号）共用这一个形状。
+func TooManyRequests(retry time.Duration) *Error {
+	s := int(math.Ceil(retry.Seconds()))
+	if s < 1 {
+		s = 1
+	}
+	e := NewErr(http.StatusTooManyRequests, "rate_limited", "太快了，稍后再试")
+	e.Header = http.Header{"Retry-After": []string{strconv.Itoa(s)}}
+	return e
 }
 
 // body 是对外渲染的形状：

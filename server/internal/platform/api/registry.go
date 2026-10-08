@@ -9,14 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"math"
 	"net"
 	"net/http"
 	"reflect"
-	"strconv"
-	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/idempotency"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
@@ -49,10 +47,11 @@ type Route struct {
 
 // handlerCfg 是 Handler 装配进每条路由的依赖。
 type handlerCfg struct {
-	resolve ViewerResolver
-	limiter ratelimit.Limiter  // nil 表示这条链不限流（纯单元测试用）
-	idem    *idempotency.Store // nil 表示不管幂等键
-	trusted []*net.IPNet       // 可信代理网段，取访客 IP 用
+	resolve       ViewerResolver
+	limiter       ratelimit.Limiter  // nil 表示这条链不限流（纯单元测试用）
+	idem          *idempotency.Store // nil 表示不管幂等键
+	trusted       []*net.IPNet       // 可信代理网段，取访客 IP 用
+	secureCookies bool               // 会话 Cookie 是否带 Secure（生产为真）
 }
 
 // RouteOption 是注册接口时的可选项。
@@ -89,6 +88,12 @@ func WithIdempotency(s *idempotency.Store) HandlerOption {
 // WithTrustedProxies 声明可信代理网段（config.TrustedProxies），按它取访客 IP。
 func WithTrustedProxies(nets []*net.IPNet) HandlerOption {
 	return func(c *handlerCfg) { c.trusted = nets }
+}
+
+// WithSecureCookies 声明会话 Cookie 要不要带 Secure（生产为真；开发走 http，
+// 带 Secure 浏览器不会把 Cookie 送回来）。
+func WithSecureCookies(on bool) HandlerOption {
+	return func(c *handlerCfg) { c.secureCookies = on }
 }
 
 // Routes 返回全部路由，守卫测试用。
@@ -168,9 +173,7 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 						return
 					}
 					if !ok {
-						e := NewErr(http.StatusTooManyRequests, "rate_limited", "太快了，稍后再试")
-						e.Header = http.Header{"Retry-After": []string{retryAfterSeconds(retry)}}
-						writeError(w, e)
+						writeError(w, TooManyRequests(retry))
 						return
 					}
 				}
@@ -226,6 +229,10 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 					slog.Error("幂等回执没存上", "err", err.Error())
 				}
 			}
+			// 登录这类动作发的会话 Cookie（成功路径才有；令牌只进 HttpOnly 头）
+			for _, tok := range ctx.DrainSessionCookies() {
+				auth.SetCookie(w, tok, cfg.secureCookies)
+			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(body)
@@ -276,14 +283,6 @@ func newRequestID() string {
 		return "x"
 	}
 	return hex.EncodeToString(b[:])
-}
-
-func retryAfterSeconds(d time.Duration) string {
-	s := int(math.Ceil(d.Seconds()))
-	if s < 1 {
-		s = 1
-	}
-	return strconv.Itoa(s)
 }
 
 // pathParamsOf 抽出 pattern 里的 {参数} 名字。

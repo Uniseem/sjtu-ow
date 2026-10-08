@@ -89,12 +89,13 @@ func runServe() error {
 		return err
 	}
 	defer d.Close()
-	acctSvc := accounts.NewService(d, nil, cfg.SiteURL)
+	acctSvc := accounts.NewService(d, nil, cfg.SiteURL, auth.NewStore(d, nil), ratelimit.NewEnforcer(d, nil))
 	reg := buildRegistry(acctSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
 		api.WithIdempotency(idempotency.NewStore(d, nil)),
+		api.WithSecureCookies(cfg.Prod),
 	)
 	addr := os.Getenv("SJTUOW_HTTP_ADDR")
 	if addr == "" {
@@ -122,7 +123,7 @@ func runApigen() error {
 	if dir == "" {
 		dir = filepath.Join("..", "web", "packages", "api", "src", "gen")
 	}
-	acctSvc := accounts.NewService(nil, nil, "")
+	acctSvc := accounts.NewService(nil, nil, "", nil, nil)
 	reg := buildRegistry(acctSvc)
 	return apigen.Write(dir, reg)
 }

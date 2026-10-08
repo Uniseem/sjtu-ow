@@ -275,6 +275,18 @@ func (s *Store) DeleteEmailCodes(ctx context.Context, tx *db.Tx, purpose, emailN
 func (s *Store) GetLatestEmailCode(ctx context.Context, purpose, emailNorm string) (*EmailCode, error) {
 	row := s.d.ReadPool().QueryRowContext(ctx, `SELECT id, purpose, email_norm, code_hash, attempts, created_at, expires_at
 		FROM email_codes WHERE purpose = ? AND email_norm = ? ORDER BY id DESC LIMIT 1`, purpose, emailNorm)
+	return scanEmailCode(row)
+}
+
+// GetLatestEmailCodeTx 在事务内读最近一条验证码记录（核验走这里，检查与
+// 写尝试次数在同一个写事务里，12 号文档 5.6「检查—写入同事务」）。
+func (s *Store) GetLatestEmailCodeTx(ctx context.Context, tx *db.Tx, purpose, emailNorm string) (*EmailCode, error) {
+	row := tx.QueryRowContext(ctx, `SELECT id, purpose, email_norm, code_hash, attempts, created_at, expires_at
+		FROM email_codes WHERE purpose = ? AND email_norm = ? ORDER BY id DESC LIMIT 1`, purpose, emailNorm)
+	return scanEmailCode(row)
+}
+
+func scanEmailCode(row interface{ Scan(dest ...any) error }) (*EmailCode, error) {
 	var c EmailCode
 	var created, expires string
 	err := row.Scan(&c.ID, &c.Purpose, &c.EmailNorm, &c.CodeHash, &c.Attempts, &created, &expires)
@@ -291,4 +303,30 @@ func (s *Store) GetLatestEmailCode(ctx context.Context, purpose, emailNorm strin
 		c.ExpiresAt = t
 	}
 	return &c, nil
+}
+
+// BumpEmailCodeAttempts 核验失败时把尝试次数加一。
+func (s *Store) BumpEmailCodeAttempts(ctx context.Context, tx *db.Tx, id int64) error {
+	_, err := tx.ExecContext(ctx, `UPDATE email_codes SET attempts = attempts + 1 WHERE id = ?`, id)
+	return err
+}
+
+// DeleteEmailCode 按编号删单条验证码（3 次用尽作废）。
+func (s *Store) DeleteEmailCode(ctx context.Context, tx *db.Tx, id int64) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM email_codes WHERE id = ?`, id)
+	return err
+}
+
+// MarkEmailVerified 置邮箱已验证（核验通过的写事务里）。
+func (s *Store) MarkEmailVerified(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {
+	_, err := tx.ExecContext(ctx, `UPDATE users SET email_verified_at = ?, updated_at = ? WHERE id = ?`,
+		db.FormatUTC(at), db.FormatUTC(at), userID)
+	return err
+}
+
+// UpdatePasswordHash 换密码哈希（PBKDF2 验过后升级 Argon2；改密码轮次复用）。
+func (s *Store) UpdatePasswordHash(ctx context.Context, tx *db.Tx, userID int64, hash string, at time.Time) error {
+	_, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ?, password_changed_at = ?, updated_at = ? WHERE id = ?`,
+		hash, db.FormatUTC(at), db.FormatUTC(at), userID)
+	return err
 }
