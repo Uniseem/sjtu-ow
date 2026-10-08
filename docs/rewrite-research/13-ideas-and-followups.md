@@ -45,9 +45,9 @@
 
 ### M1（Go 底座）开工前
 
-- **测试机上装 Go、pnpm，并把 Node 升到 24**：测试机（`sjtu-ow-test`）上现在是 Node 20.19.2 和 npm，**没有 Go、没有 pnpm**（221 轮 `which go pnpm` 核过；220 的实验是在本机交叉编译成静态二进制传上去跑的）。整台机器归本项目用，装在 `/srv/sjtu-ow-check/` 下（官方 tarball，核对 sha256，和 uv 一样放在检查目录里，不动系统自带的 Node），pnpm 同理。`remote-check.sh` 改成跑新栈整组时要用
-- **两个容器共享数据卷时 `flock` 是否同样有效**：220 的 E3 用的是两个进程；`api` 和 `worker` 是两个容器、挂同一个 data 卷。`flock(2)` 在同一个内核、同一个文件系统上跨容器应当有效（Docker 卷是 bind 到宿主目录），但**没实测**。M1 要在 Compose 里起两个容器各压一轮，写成测试。如果在某些存储驱动上无效，退路是 `fcntl` 记录锁或者把写集中到 `api` 一个进程（worker 通过内部接口写）
-- **WriteTx 看门狗的阈值**：开发和测试 1 秒失败、生产 200 毫秒警告，这两个数是拍脑袋的。M1 先记录真实数据（导入后的写事务时长分布）再定
+- ~~**测试机上装 Go、pnpm，并把 Node 升到 24**~~ —— **222 轮完成**：Go 1.26.5、Node 24.13、pnpm 11.20、staticcheck、govulncheck 都在 `/srv/sjtu-ow-check/` 下（官方包核对 sha256，系统 Node 20 未动；安装脚本 `handoff/rounds/222-m1-go-foundation/install-toolchain.sh`）。踩了一个坑：npm、pnpm 的 shebang 是 `/usr/bin/env node`，必须把 `node24/bin` 放进 PATH 最前再调，否则落到系统 Node 20 上（写进了 AGENTS.md）
+- ~~**两个容器共享数据卷时 `flock` 是否同样有效**~~ —— **222 轮实测有效**：两个 caddy:2.10-alpine 容器挂同一个卷、用真实 `WriteTx`（`tools/txhammer`）各压 2000 步，零 `SQLITE_BUSY`、零丢更新、合计约 880 事务/秒，worst_step 190ms 是排队不是忙等（`handoff/rounds/222-m1-go-foundation/RESULTS.txt`）。不需要退路（`fcntl` 记录锁、写集中到 api 一个进程）；`go test` 里另有确定性守卫：对方握锁超过 busy_timeout 时必须排队成功（拆掉 flock 这条测试红，变异验证过）
+- **WriteTx 看门狗的阈值**：开发和测试 1 秒失败、生产 200 毫秒警告，这两个数是拍脑袋的。222 轮已做成可注入（`WithWatchdog`），最终数值等导入后的写事务时长分布再定
 - **sqlc 对后台列表的组合筛选写不好**（12 号文档 4 节），手写 SQL 要有统一的参数化工具，别让每页各写各的拼接
 - **`modernc.org/sqlite` 的在线备份 API 和 `VACUUM INTO` 是否可用、是否在写事务之外安全**：备份是 worker 的事，M1 的备份验收之前要实测
 - 注册表生成什么：Go 里声明、生成 TypeScript 的接口封装和类型、守门矩阵、乱填测试、OpenAPI 式的文档（可选）。先做生成路由和守门测试，TypeScript 封装第二步

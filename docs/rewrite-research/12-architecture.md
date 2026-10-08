@@ -482,6 +482,7 @@ CREATE TABLE jobs (
 | `SIGNING_KEY` | 必填，= 现在的 `DJANGO_SECRET_KEY`（5.11） |
 | `FIELD_ENCRYPTION_KEY` | 必填，沿用 |
 | `BACKUP_ENCRYPTION_KEY` | 不设就不传异地，沿用 |
+| `SJTUOW_ENV` | `dev`（默认）/ `prod`：生产模式——看门狗只警告不拦（5.6）、密钥长度检查（222 轮定名） |
 | `DATA_DIR`、`MEDIA_DIR`、`ASSETS_DIR` | 卷的位置 |
 | `TRUSTED_PROXIES` | 可信代理网段（Docker 网段；反代链路的 `100.96.0.0/12` 由 Caddy 处理，照旧） |
 | `EMAIL_ALLOWLIST`、`TEST_ENVIRONMENT` | 语义照旧 |
@@ -822,3 +823,4 @@ CI（GitHub Actions）：Go 一个任务（vet、staticcheck、govulncheck、tes
 |---|---|---|
 | 2026-10-07（218） | D1–D4 拍板，全按推荐 | 用户逐条选的；见 12.1 末尾 |
 | 2026-10-07（221） | 5.6 `WriteTx` 加跨进程 `flock`；5.13 母版 2560 宽、方法 2、缩略图懒生成、换 cgo 的判据；6.2 模板不写 charset/viewport、激活不一致在 CI 里算失败、Node 堆上限；6.8 CodeMirror 必须挂进 ShadowRoot；5.12 删除线要两个波浪线、图注里不进行内代码；11.2 M0 一行 | 220 轮五个实验的实测数字，各节里都写了出处 |
+| 2026-10-08（222） | 5.16 加 `SJTUOW_ENV`（dev/prod，默认 dev） | M1 第一轮实现配置时定名；报告记了偏差 |
