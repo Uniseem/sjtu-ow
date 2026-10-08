@@ -1,0 +1,9 @@
+{
+  "key": "test-secret-key-at-least-32-chars!!",
+  "salt_calendar": "sjtu-ow.calendar",
+  "sign_42": "NDI:TEMhUxAYk6qFcfGEtSJRQ_19Oh4t5qSlAyMrFvyW-eg",
+  "sign_pair": "WzcsMV0:xO6jFiSLwjBup_ILubbQ4gVwMlauMCABKGuQPF9ME3E",
+  "salt_unsubscribe": "core.announcements.unsubscribe",
+  "dumps_42": "NDI:1xEkld:q0A8gY07s7pBbGQYOT2aeBbJCg3Jfqh-2rP1aDTYekE",
+  "dumps_compressed": ".eJwNyMERABAMAMGG7uEkglqM_ttgn3sa0gmSQTFZbPwpdgxMHFg4ceG-DwIXCgE:1xEklm:yAAvAZbZg9P3dE-QCuiPtyyHu07uOF4S6wBxq6iz77Y"
+}

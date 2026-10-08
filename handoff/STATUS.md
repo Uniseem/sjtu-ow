@@ -1,14 +1,16 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M1（Go 底座）进行中——222 立起 `server/`；223 接口注册表；224 限流执行 + 幂等键；225 密码哈希 + 会话；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 225-m1-passwords-sessions
-next: claude：M1 第五轮——Django 签名兼容（日历、退订）和 Fernet（5.11）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑
+milestone: 重构 M1（Go 底座）进行中——222 立起 `server/`；223 接口注册表；224 限流 + 幂等键；225 密码哈希 + 会话；226 Django 签名 + Fernet；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 226-m1-djsign-fernet
+next: claude：M1 第六轮——任务队列和定时器（5.10）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑
 updated: 2026-10-08
 blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M1 继续做，不用等
 ```
 
 ## 现在该谁动手
+
+**226（2026-10-08）**：M1 第五轮，**Django 签名兼容 + Fernet**（12 号文档 5.11）。`sign_object` 和 `dumps` / `loads`（含前面带 `.` 的 zlib）用同一把钥匙：SHA-256(盐 + `signer` + 密钥)，HMAC-SHA256，URL 安全 base64。日历两种载荷和退订链接的黄金串是 Django 6 打的，对得上。Fernet 的钥匙是 SHA-256(`FIELD_ENCRYPTION_KEY`)，空串还是空串，没有新依赖。**4 处变异全部变红后恢复。**测试机 pytest 2163 四片全绿、镜像 `f1a85a6364bd`、govulncheck 无漏洞。下一轮：任务队列和定时器。
 
 **225（2026-10-08）**：M1 第四轮，**Django 兼容的密码哈希 + 会话**（12 号文档 5.7）。认 `argon2$argon2id$…` 和 `pbkdf2_sha256$…`，`!` 开头验不过；新写的用现在的 Argon2 参数（time=2、memory=102400、parallelism=8），PBKDF2 验过标成下次换成 Argon2；同时最多 2 个 Argon2。校验是至少 8 个字符、不能全数字、Django 那份常见密码表、和邮箱或昵称 `quick_ratio` ≥ 0.7。会话表只存令牌的 SHA-256，Cookie `ow_session`（HttpOnly、SameSite=Lax、14 天，生产再加 Secure）；改密码留当前删其余，停用或注销全删；重新认证 5 分钟；最后访问一小时最多写一次。登录流程是 M3 的事，这轮没有用户表。直接依赖加上 `golang.org/x/crypto v0.55.0`（goose 仍是 3.28.0）。**5 处变异全部变红后恢复。**测试机 pytest 2163 四片全绿、镜像 `c3ea742fb136`、govulncheck 无漏洞。下一轮：Django 签名和 Fernet。
 
@@ -723,6 +725,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 223-m1-api-registry | M1 第二轮：接口注册表（`api.Get/Post/Patch/Delete` 泛型、六种门、`{id}` 18 位解析、严格 JSON、统一错误形状、CrossOriginProtection、Budget/Limit/Nav 声明）；internal/app 的 Viewer/Ctx；守门矩阵 42 格 + 乱填 + 跨站写 + 注册 panic 守卫 | **自查通过**，整组全绿，4 处变异全抓到；govulncheck 揪出标准库漏洞 → 测试机 Go 升 1.26.8 |
 | 224-m1-ratelimit-idempotency | M1 第三轮：限流执行（原子计数、可信代理、IPv6 /64、429 + Retry-After、limits.go 对照附录 C）和幂等键（认领先行、24 小时重放回执） | **自查通过**，pytest 2163 全绿、Go 全绿，4 处变异全抓到；镜像这次没构建 |
 | 225-m1-passwords-sessions | M1 第四轮：Django 兼容的密码哈希（Argon2 / PBKDF2 / 不可用密码、同时最多 2 个 Argon2、常见密码和相似度）和会话表 `ow_session`（只存 SHA-256、14 天、改密码删其他会话） | **自查通过**，pytest 2163 四片全绿、镜像构建成功、govulncheck 无漏洞，5 处变异全抓到 |
+| 226-m1-djsign-fernet | M1 第五轮：Django 签名（日历 `sign_object`、退订 `dumps`、zlib 压缩标记）和 Fernet（SHA-256 派生，空串还是空串） | **自查通过**，pytest 2163 四片全绿、镜像 `f1a85a6364bd`、govulncheck 无漏洞，4 处变异全抓到 |
 
 ## 当前待定问题
 
