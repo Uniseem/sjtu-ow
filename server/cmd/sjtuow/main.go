@@ -1,19 +1,31 @@
-// sjtuow 是新栈唯一的二进制（12 号文档 5.1）。222 轮只有 migrate 真实现；
-// serve 和 worker 在 M1 后续轮次接上，现在先过一遍配置再明确说没实现，
-// 这样「缺必填环境变量拒绝启动」从第一天就是所有子命令的共同行为。
+// sjtuow 是新栈唯一的二进制（12 号文档 5.1）。
 package main
 
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"strconv"
+	"syscall"
 
 	// 显示和定时用 Asia/Shanghai；不依赖镜像里的时区文件（12 号文档 5.6）
 	_ "time/tzdata"
 
+	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/apigen"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/config"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/idempotency"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/jobs"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/mail"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/outbox"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
+	"github.com/Uniseem/sjtu-ow/server/internal/serve"
 )
 
 func main() {
@@ -21,24 +33,27 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
+	var err error
 	switch os.Args[1] {
 	case "migrate":
-		if err := runMigrate(); err != nil {
-			fatal(err)
-		}
-	case "serve", "worker":
-		if _, err := config.FromEnv(); err != nil {
-			fatal(err)
-		}
-		fatal(fmt.Errorf("%s 还没实现（M1 后续轮次）", os.Args[1]))
+		err = runMigrate()
+	case "serve":
+		err = runServe()
+	case "worker":
+		err = runWorker()
+	case "apigen":
+		err = runApigen()
 	default:
 		usage()
 		os.Exit(2)
 	}
+	if err != nil {
+		fatal(err)
+	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker>（后续里程碑会加 import、reconcile、backup 等）")
+	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen>（后续里程碑会加 import、reconcile、backup 等）")
 }
 
 func fatal(err error) {
@@ -47,12 +62,67 @@ func fatal(err error) {
 }
 
 func runMigrate() error {
-	cfg, err := config.FromEnv()
+	cfg, d, err := openDB()
 	if err != nil {
 		return err
 	}
+	defer d.Close()
+	v, err := db.Version(context.Background(), d)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("迁移完成：%s 现在在版本 %d\n", filepath.Join(cfg.DataDir, "sjtuow.sqlite3"), v)
+	return nil
+}
+
+func runServe() error {
+	cfg, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	reg := &api.Registry{}
+	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d),
+		api.WithTrustedProxies(cfg.TrustedProxies),
+		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
+		api.WithIdempotency(idempotency.NewStore(d, nil)),
+	)
+	addr := os.Getenv("SJTUOW_HTTP_ADDR")
+	if addr == "" {
+		addr = ":8080"
+	}
+	fmt.Printf("监听 %s\n", addr)
+	return http.ListenAndServe(addr, h)
+}
+
+func runWorker() error {
+	cfg, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	w := jobs.New(d, nil)
+	w.Handle(outbox.KindLetter, outbox.Handler(smtpFrom(cfg)))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return w.Run(ctx, 0)
+}
+
+func runApigen() error {
+	dir := os.Getenv("SJTUOW_APIGEN_DIR")
+	if dir == "" {
+		dir = filepath.Join("..", "web", "packages", "api", "src", "gen")
+	}
+	return apigen.Write(dir, &api.Registry{})
+}
+
+func openDB() (*config.Config, *db.DB, error) {
+	cfg, err := config.FromEnv()
+	if err != nil {
+		return nil, nil, err
+	}
 	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
-		return fmt.Errorf("建数据目录 %s：%w", cfg.DataDir, err)
+		return nil, nil, fmt.Errorf("建数据目录 %s：%w", cfg.DataDir, err)
 	}
 	path := filepath.Join(cfg.DataDir, "sjtuow.sqlite3")
 	opts := []db.Option{db.DefaultDev()}
@@ -61,17 +131,47 @@ func runMigrate() error {
 	}
 	d, err := db.Open(path, opts...)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	defer d.Close()
-	ctx := context.Background()
-	if err := db.Migrate(ctx, d); err != nil {
-		return err
+	if err := db.Migrate(context.Background(), d); err != nil {
+		d.Close()
+		return nil, nil, err
 	}
-	v, err := db.Version(ctx, d)
-	if err != nil {
-		return err
+	return cfg, d, nil
+}
+
+func viewerOf(d *db.DB) api.ViewerResolver {
+	store := auth.NewStore(d, nil)
+	return func(r *http.Request) *app.Viewer {
+		c, err := r.Cookie(auth.CookieName)
+		if err != nil {
+			return nil
+		}
+		s, err := store.Lookup(r.Context(), c.Value)
+		if err != nil || s == nil {
+			return nil
+		}
+		// 用户表还没有（M3）。现在只能知道是哪一个编号，超管标记接上以后才看得到健康检查详情。
+		return &app.Viewer{ID: s.UserID}
 	}
-	fmt.Printf("迁移完成：%s 现在在版本 %d\n", path, v)
-	return nil
+}
+
+func smtpFrom(cfg *config.Config) mail.SMTP {
+	port := 587
+	if raw := os.Getenv("SMTP_PORT"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			port = n
+		}
+	}
+	return mail.SMTP{
+		Host:      os.Getenv("SMTP_HOST"),
+		Port:      port,
+		Username:  os.Getenv("SMTP_USER"),
+		Password:  os.Getenv("SMTP_PASSWORD"),
+		FromName:  "SJTU-OW",
+		FromAddr:  os.Getenv("SMTP_FROM"),
+		Security:  os.Getenv("SMTP_SECURITY"),
+		Prefix:    mail.DefaultPrefix,
+		Allowlist: cfg.EmailAllowlist,
+	}
 }

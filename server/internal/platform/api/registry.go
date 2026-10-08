@@ -41,6 +41,8 @@ type Route struct {
 	NoLimitStr string           // NoLimit 的理由
 	Nav        string           // 后台位置「大类/标签」（M8 用）
 	PathParams []string         // pattern 里声明的参数名（注册时校验用）
+	InType     reflect.Type     // 请求类型，apigen 用来生成 TS
+	OutType    reflect.Type     // 响应类型，apigen 用来生成 TS
 
 	bind func(handlerCfg) http.HandlerFunc
 }
@@ -126,7 +128,10 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 	if gate == nil {
 		panic("接口没声明门：" + method + " " + pattern)
 	}
-	rt := &Route{Method: method, Pattern: pattern, Gate: gate}
+	rt := &Route{
+		Method: method, Pattern: pattern, Gate: gate,
+		InType: reflect.TypeOf(*new(In)), OutType: reflect.TypeOf(*new(Out)),
+	}
 	rt.PathParams = pathParamsOf(pattern)
 	validateIn[In](rt)
 	for _, opt := range opts {

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
@@ -69,6 +70,28 @@ func (w *Worker) Lock(ctx context.Context, now time.Time) error {
 		}
 		return ResetRunning(ctx, tx)
 	})
+}
+
+// Run 占锁后按 every 做一轮，直到 ctx 取消。every 为零时用 1 秒。
+func (w *Worker) Run(ctx context.Context, every time.Duration) error {
+	if every <= 0 {
+		every = time.Second
+	}
+	if err := w.Lock(ctx, w.clock.Now()); err != nil {
+		return err
+	}
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		if err := w.Tick(ctx, w.clock.Now()); err != nil {
+			slog.Error("worker 这一轮没做完", "err", err.Error())
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+		}
+	}
 }
 
 // Tick 做一轮：续心跳、每条车道取一件事、到点的定时项。

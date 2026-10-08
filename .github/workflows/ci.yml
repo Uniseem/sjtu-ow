@@ -33,3 +33,7 @@ jobs:
           govulncheck ./...
       - name: go test
         run: go test ./...
+      - name: apigen
+        run: |
+          go run ./cmd/sjtuow apigen
+          git diff --exit-code -- ../web/packages/api/src/gen
