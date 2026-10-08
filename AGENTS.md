@@ -46,7 +46,7 @@ SJTU-OW（上海交通大学守望先锋社区网站；站名 208 起统一写 S
 
 **现行站「冻结」的意思**：不再加新功能；安全和丢数据的问题照样修。每修一个，在那一轮的报告里写一行「新站要不要跟」（新栈设计已经消除的写「不跟」，要跟的写进新栈对应里程碑的验收）。拿不准修不修就问用户。
 
-**新栈的命令和检查**（222 起，`server/` 立起来了）：在 `server/` 目录里 `gofmt -l .`（应为空）、`go vet ./...`、`staticcheck ./...`、`govulncheck ./...`、`go test ./...`；这些已经并进 `scripts/check.sh` 的「Go（新栈）」一段，测试机上 `remote-check.sh` 整组自动带上。不用 `golangci-lint`（GPL-3.0，硬规则 5）。工具链装在测试机 `/srv/sjtu-ow-check/` 下（222 轮装好，安装脚本在本轮目录）：`go/`（**1.26.8**，223 轮从 1.26.5 升——govulncheck 报标准库 `encoding/asn1` 的 GO-2026-5972 要 1.26.6 修；本机是 brew 的更新版，`go.mod` 的 go 指令记测试机这版）、`node24/`（24.13）、`gobin/`（staticcheck 2026.2.1 / v0.8.1、govulncheck v1.8.0）、`gopath/ gocache/ gomodcache/`（缓存也在这块盘）；**系统自带的 Node 20 没动**，`remote-check.sh` 的任务脚本自己把这些导进 PATH（注意 npm、pnpm 的 shebang 是 `/usr/bin/env node`，用它们前必须把 `node24/bin` 放进 PATH 最前）。pnpm 的命令等 M2 `web/` 立起来再写。
+**新栈的命令和检查**（222 起，`server/` 立起来了）：在 `server/` 目录里 `gofmt -l .`（应为空）、`go vet ./...`、`staticcheck ./...`、`govulncheck ./...`、`go test ./...`；这些已经并进 `scripts/check.sh` 的「Go（新栈）」一段，测试机上 `remote-check.sh` 整组自动带上。不用 `golangci-lint`（GPL-3.0，硬规则 5）。工具链装在测试机 `/srv/sjtu-ow-check/` 下（222 轮装好，安装脚本在本轮目录）：`go/`（**1.26.8**，223 轮从 1.26.5 升——govulncheck 报标准库 `encoding/asn1` 的 GO-2026-5972 要 1.26.6 修；本机是 brew 的更新版，`go.mod` 的 go 指令记测试机这版）、`node24/`（24.13）、`gobin/`（staticcheck 2026.2.1 / v0.8.1、govulncheck v1.8.0）、`gopath/ gocache/ gomodcache/`（缓存也在这块盘）；**系统自带的 Node 20 没动**，`remote-check.sh` 的任务脚本自己把这些导进 PATH（注意 npm、pnpm 的 shebang 是 `/usr/bin/env node`，用它们前必须把 `node24/bin` 放进 PATH 最前）。231 起 `web/` 的检查是 `pnpm install --frozen-lockfile` 然后 `pnpm test`（pnpm 11.20.0），写在 `scripts/check.sh` 的「Web（新栈）」一段，和 CI 的 web 任务同一句。
 
 **文档分工不变**：进度只写 `handoff/STATUS.md`；新栈的设计变化先改 `docs/design-next.md`；实现规格改 12 号文档；想法和尾巴写 13 号文档。发现同一件事写了两处，删一处、指过去。
 
@@ -69,9 +69,12 @@ go vet ./...
 staticcheck ./...
 govulncheck ./...
 go test ./...
+cd ../web
+pnpm install --frozen-lockfile
+pnpm test
 ```
 
-现行站冻结。pytest、ruff、迁移、生产配置、错误页、Docker 镜像不进每次推送，测试机上的整组也不跑。
+现行站冻结。pytest、ruff、迁移、生产配置、错误页、Docker 镜像不进每次推送，测试机上的整组也不跑。前端这一段要先有 `node24/bin` 在 PATH 最前。
 
 **这组检查在测试机上跑**（2026-10-04 起，见「测试机与部署」）：
 

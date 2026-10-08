@@ -32,4 +32,18 @@ else
   exit 1
 fi
 
+step "Web（新栈）"
+# 写法和 CI 的 web 任务逐条一致。测试机的 node24/bin 已经在 PATH 最前。
+if [ -f web/package.json ]; then
+  (
+    cd web
+    command -v pnpm >/dev/null 2>&1 || { corepack enable && corepack prepare pnpm@11.20.0 --activate; }
+    pnpm install --frozen-lockfile
+    pnpm test
+  )
+else
+  echo "（没有 web/package.json）"
+  exit 1
+fi
+
 step "全部通过"

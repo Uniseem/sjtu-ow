@@ -1,14 +1,16 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M1（Go 底座）完成——222–230；229 起每次推送和测试机整组只跑新栈；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 230-m1-healthz-apigen
-next: claude：M2 前端底座（12 号文档 11.2）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229）
+milestone: 重构 M2（前端底座）进行中——231 起；M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 231-m2-workspace-styles
+next: claude：M2 继续，SSR 服务（12 号文档 6.2）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
 updated: 2026-10-08
-blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M1 继续做，不用等
+blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M2 继续做，不用等
 ```
 
 ## 现在该谁动手
+
+**231（2026-10-08）**：M2 第一轮，**pnpm 工作区和样式**（12 号文档 6.1、6.5）。`web/` 立起来，`input.css` 原样搬进 `packages/styles`，`@source` 改扫 `.vue`。Vitest 守住色板重置、每个颜色都有深色值、`prefers-color-scheme` 只出现一次、不加载 daisyUI。CI 和整组检查在 Go 后面加上 `pnpm install --frozen-lockfile` 和 `pnpm test`。pnpm 11 用 `allowBuilds` 允许 `esbuild`。**3 处变异全部变红后恢复。**测试机日志 `20261008-185710-cd2dfa7`，govulncheck 无漏洞，退出码 0。下一轮：SSR 服务（6.2）。
 
 **230（2026-10-08）**：M1 最后一轮，**`/healthz`、apigen、`serve` 和 `worker`**（12 号文档 5.15、5.3）。健康检查写一行再回滚，磁盘剩余要大于 20%，心跳 120 秒，积压按到期时间早于 10 分钟。对外只有真假，详情只给超管。`sjtuow apigen` 生成 `web/packages/api/src/gen/`，整组检查要求和仓库一致。`serve` 听 `:8080`，挂上注册表和健康检查；`worker` 占锁、发信、每秒一轮。**4 处变异全部变红后恢复。**测试机日志 `20261008-184217-2177b0d`，govulncheck 无漏洞，退出码 0。M1 清单里的底座到这里齐了。下一轮是 M2 前端底座。
 
@@ -738,6 +740,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 228-m1-letters-outbox | M1 第七轮：信纸（纯文本顺序、HTML 页头和两张头图、主题前缀只加一次）、SMTP 发送（20 秒、名单、没配就报错）、待发信（冻住、合并、条件更新认领一次、7 天、30 天清理） | **自查通过**，pytest 2163 四片全绿、镜像 `0917a13f4919`、govulncheck 无漏洞，4 处变异全抓到 |
 | 229-ci-new-stack-only | 每次推送和测试机整组只跑新栈（gofmt、vet、staticcheck、govulncheck、go test）；现行站的 pytest、ruff、迁移、镜像从 CI 和 check.sh 拿掉 | **自查通过**，测试机日志 `20261008-183157-1ffbdad` 退出码 0，govulncheck 无漏洞，2 处变异全抓到 |
 | 230-m1-healthz-apigen | M1 收尾：/healthz（写探测、磁盘 20%、心跳 120 秒、按到期时间算积压、详情只给超管）、apigen 生成前端调用和导航、serve 与 worker 接上 | **自查通过**，测试机日志 `20261008-184217-2177b0d` 退出码 0，govulncheck 无漏洞，4 处变异全抓到。M1 清单齐了 |
+| 231-m2-workspace-styles | M2 第一轮：pnpm 工作区，样式原样搬进 `packages/styles`，Vitest 守色板和深色，CI 与整组加上 pnpm | **自查通过**，测试机日志 `20261008-185710-cd2dfa7` 退出码 0，govulncheck 无漏洞，3 处变异全抓到 |
 
 ## 当前待定问题
 

@@ -525,7 +525,7 @@ docker compose … exec -T web python manage.py shell -c "from core.health impor
 
 ## CI
 
-使用 **GitHub Actions**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）。229 起每次推送到 `main` 只跑新栈：`gofmt`、`go vet`、`staticcheck`、`govulncheck`、`go test`。现行站冻结，ruff、pytest、迁移、生产配置、错误页和 Docker 镜像不再进这次检查。
+使用 **GitHub Actions**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）。229 起每次推送到 `main` 只跑新栈：`gofmt`、`go vet`、`staticcheck`、`govulncheck`、`go test`。231 起再加上前端的 `pnpm install --frozen-lockfile` 和 `pnpm test`。现行站冻结，ruff、pytest、迁移、生产配置、错误页和 Docker 镜像不再进这次检查。
 
 同样的检查写在 [`scripts/check.sh`](scripts/check.sh)，仓库根目录 `sh scripts/check.sh` 就能跑。测试机上的整组也是这一份，不再跑现行站。开发时不在自己电脑上跑，用 `bash scripts/remote-check.sh` 放到测试机上跑（128 起）：它把工作区连同没提交的改动传过去，`run 命令…` 只跑一条命令，`attach` 接着看最近一次。测试机上的目录和规矩见 `AGENTS.md`「测试机与部署」。
 

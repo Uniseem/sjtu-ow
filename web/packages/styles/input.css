@@ -1,0 +1,5958 @@
+@import "tailwindcss";
+
+/*
+ * Design system v5.1 (docs/design.md 13.2, round 091): cool neutral grounds,
+ * two accents (SJTU deep red for the brand and the main actions, Overwatch
+ * orange for what is live, current or counted). Pictures and content first.
+ * Light and dark: the system's by default, or the visitor's pick in the
+ * masthead (the dark variant below); everything follows the mode except the
+ * night bands (footer, banners with a cover).
+ *
+ *   Tokens      @theme (light values) + the dark override + v3 aliases
+ *   Base        elements, headings, focus, typography variables for 13.12
+ *   Layout      l-*
+ *   Components  c-*, in the order of the table in 13.2.6
+ *
+ * Templates use the semantic colour names and these classes only — never a
+ * colour value or a font name.
+ */
+
+/* 231：样式从现行站原样搬来。扫描新栈的 .vue，不再扫 Django 模板。 */
+@source "../../apps/**/*.vue";
+@source "../../packages/**/*.vue";
+
+/* ---- Tokens ------------------------------------------------------------------ */
+
+@theme {
+  /* Only our own palette: bg-orange-500 and friends do not exist here. */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* The v4.0 palette, light values (13.2.2). Dark values: the block below. */
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef0f3;
+  --color-line: #e1e4e8;
+  --color-control: #767d88;
+  --color-fg: #111318;
+  --color-fg-2: #4a505b;
+  --color-fg-3: #5f6671;
+  --color-primary: #9b3a33;
+  --color-primary-hover: #80302a;
+  --color-primary-text: #963830;
+  --color-primary-soft: #f1e0da;
+  --color-on-primary-soft: #73291f;
+  --color-ok: #3b6d4f;
+  --color-ok-soft: #dfe9e0;
+  /* Overwatch orange (v5.0): fills as is; words on the light grounds a
+     deeper orange so they read (4.5:1). */
+  --color-accent: #cf9152;
+  --color-accent-text: #8d5219;
+  /* Display-size orange (v5.1): the hero's second line and the figures. At
+     that size 3:1 is enough, so brighter than accent-text. */
+  --color-accent-display: #a86c30;
+  --color-accent-soft: #f3e3cd;
+  --color-on-accent-soft: #6b3d12;
+  --color-warn: #685513;
+  --color-warn-soft: #efe7c7;
+  --color-info: #3a5f82;
+  --color-info-soft: #e0e8ef;
+  --color-toast: #1c1f25;
+  /* The night bands stay dark in both modes (v5.0): these are the values the
+     semantic tokens take inside them (the dark mode's own values). */
+  --color-night: #141a24;
+  --color-night-2: #222a37;
+  --color-night-accent: #a8463d;
+  --color-night-surface: #1a2130;
+  --color-night-line: #2d3646;
+  --color-night-control: #6e7889;
+  --color-night-fg: #e8eaee;
+  --color-night-fg-2: #b6bcc7;
+  --color-night-fg-3: #959cab;
+  --color-night-primary-text: #ee9a90;
+  --color-night-primary-soft: #3a2226;
+  --color-night-on-primary-soft: #f5c3bc;
+  --color-night-accent-soft: #3a2d1c;
+  --color-night-on-accent-soft: #f0cb98;
+  --color-on-toast: #f2f3f5;
+
+  --radius-*: initial;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  /* v6.0: surfaces are told apart by tone, not by a line, and round
+     off like Material 3's containers. */
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* Only floating things cast a shadow (13.2.4). */
+  --shadow-*: initial;
+  --shadow-float: 0 8px 24px -6px color-mix(in oklab, var(--color-night) 26%, transparent);
+  --shadow-1: var(--shadow-float);
+  --shadow-2: var(--shadow-float);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.2, 0, 0, 1);
+  --ease-ow: cubic-bezier(0.2, 0, 0, 1);
+  --container-page: 120rem;
+  --container-prose: 44rem;
+}
+
+/* Dark (13.2.1): the visitor picked 深色 in the masthead, or left it on
+   跟随系统 and the system is dark. js/theme.js sets data-theme on <html>
+   before the page paints; without it the system decides. dark:* utilities
+   and @variant dark below both mean this. */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:not([data-theme="light"], [data-theme="light"] *) {
+      @slot;
+    }
+  }
+
+  &:is([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+}
+
+/* Dark values (13.2.2): same names, so nothing else needs to know the mode. */
+:root {
+  @variant dark {
+    color-scheme: dark;
+    --color-bg: #141a24;
+    --color-surface: #1a2130;
+    --color-surface-2: #222a37;
+    --color-line: #2d3646;
+    --color-control: #6e7889;
+    --color-fg: #e8eaee;
+    --color-fg-2: #b6bcc7;
+    --color-fg-3: #959cab;
+    --color-primary: #a8463d;
+    --color-primary-hover: #bb5449;
+    --color-primary-text: #ee9a90;
+    --color-primary-soft: #3a2226;
+    --color-on-primary-soft: #f5c3bc;
+    --color-ok: #86c49c;
+    --color-ok-soft: #1c2c25;
+    --color-accent: #d9a264;
+    --color-accent-text: #d9a264;
+    --color-accent-display: #d9a264;
+    --color-accent-soft: #3a2d1c;
+    --color-on-accent-soft: #f0cb98;
+    --color-warn: #e0cb74;
+    --color-warn-soft: #2e2a18;
+    --color-info: #94b6d8;
+    --color-info-soft: #1d2a3b;
+    --color-toast: #e8eaee;
+    --color-on-toast: #1d2531;
+  }
+}
+
+/* The fonts the utilities read (13.12). */
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
+}
+
+:root {
+  color-scheme: light;
+  /* The page's ground, kept as it is here: inside a night band --color-bg is
+     the band's, but the horizon has to match the page below it. */
+  --page-bg: var(--color-bg);
+
+  /*
+   * Typography variables (design 13.12.4). "设置 → 排版设置" overrides them
+   * in the generated fonts.<hash>.css; these are the defaults.
+   */
+  --font-fallback:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC",
+    "MiSans", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC",
+    "Source Han Sans SC", "Noto Sans SC", sans-serif;
+  --font-mono-fallback: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --font-body: var(--font-fallback);
+  --font-body-weight: 400;
+  --font-body-size: 1rem;
+  --font-body-line-height: 1.7;
+  --font-body-letter-spacing: normal;
+  --font-h1: var(--font-body);
+  --font-h1-weight: 700;
+  --font-h1-size: 2.25rem;
+  --font-h1-line-height: 1.25;
+  --font-h1-letter-spacing: normal;
+  --font-h2: var(--font-body);
+  --font-h2-weight: 700;
+  --font-h2-size: 1.5rem;
+  --font-h2-line-height: 1.35;
+  --font-h2-letter-spacing: normal;
+  --font-h3: var(--font-body);
+  --font-h3-weight: 600;
+  --font-h3-size: 1.125rem;
+  --font-h3-line-height: 1.45;
+  --font-h3-letter-spacing: normal;
+  --font-h4: var(--font-body);
+  --font-h4-weight: 600;
+  --font-h4-size: 1rem;
+  --font-h4-line-height: 1.5;
+  --font-h4-letter-spacing: normal;
+  --font-nav: var(--font-body);
+  --font-button: var(--font-body);
+  --font-numeric: var(--font-body);
+  --font-code: var(--font-mono-fallback);
+  /* Display figures (13.2.3): the 「数字与数据」 face, bold and tabular. */
+  --font-figure: var(--font-numeric);
+  /* Headings shrink to 85% on phones (design 13.12.3). */
+  --font-heading-mobile-scale: 0.85;
+}
+
+/* ---- Base -------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    background-color: var(--color-bg);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-body);
+    font-weight: var(--font-body-weight);
+    font-size: var(--font-body-size);
+    line-height: var(--font-body-line-height);
+    letter-spacing: var(--font-body-letter-spacing);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1 {
+    font-family: var(--font-h1);
+    font-weight: var(--font-h1-weight);
+    font-size: var(--font-h1-size);
+    line-height: var(--font-h1-line-height);
+    letter-spacing: var(--font-h1-letter-spacing);
+  }
+
+  h2 {
+    font-family: var(--font-h2);
+    font-weight: var(--font-h2-weight);
+    font-size: var(--font-h2-size);
+    line-height: var(--font-h2-line-height);
+    letter-spacing: var(--font-h2-letter-spacing);
+  }
+
+  h3 {
+    font-family: var(--font-h3);
+    font-weight: var(--font-h3-weight);
+    font-size: var(--font-h3-size);
+    line-height: var(--font-h3-line-height);
+    letter-spacing: var(--font-h3-letter-spacing);
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-h4);
+    font-weight: var(--font-h4-weight);
+    font-size: var(--font-h4-size);
+    line-height: var(--font-h4-line-height);
+    letter-spacing: var(--font-h4-letter-spacing);
+  }
+
+  @media (max-width: 767px) {
+    h1 {
+      font-size: calc(var(--font-h1-size) * var(--font-heading-mobile-scale));
+    }
+
+    h2 {
+      font-size: calc(var(--font-h2-size) * var(--font-heading-mobile-scale));
+    }
+
+    h3 {
+      font-size: calc(var(--font-h3-size) * var(--font-heading-mobile-scale));
+    }
+
+    h4,
+    h5,
+    h6 {
+      font-size: calc(var(--font-h4-size) * var(--font-heading-mobile-scale));
+    }
+  }
+
+  ::selection {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  img,
+  svg {
+    display: block;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  hr {
+    border-color: var(--color-line);
+  }
+
+  progress {
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: 4px;
+    border: 0;
+    border-radius: var(--radius-xs);
+    overflow: hidden;
+    background-color: var(--color-surface-2);
+    color: var(--color-accent);
+  }
+
+  progress::-webkit-progress-bar {
+    background-color: var(--color-surface-2);
+  }
+
+  progress::-webkit-progress-value {
+    border-radius: var(--radius-xs);
+    background-color: currentColor;
+  }
+
+  progress::-moz-progress-bar {
+    border-radius: var(--radius-xs);
+    background-color: currentColor;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+    }
+  }
+}
+
+/* ---- Moving between pages (design 13.2.4, v6.4) -------------------------------- */
+
+/* While the next page is on its way the masthead shows a loading bar
+   (.c-loadbar, loading.js). When it arrives the browser swaps the pages
+   with a short cross-fade: no movement, and the browser's own blending
+   keeps the brightness steady, so nothing flashes through. The masthead
+   is its own layer and stays put. Browsers without it switch at once. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
+}
+
+/* Changing colour mode cross-fades the whole page a little slower (theme.js). */
+:root.is-theme-switch::view-transition-old(root),
+:root.is-theme-switch::view-transition-new(root) {
+  animation-duration: 240ms;
+}
+
+/* The 13.12 region classes; the generated stylesheet adds overrides to them. */
+.font-nav {
+  font-family: var(--font-nav);
+}
+
+.font-button {
+  font-family: var(--font-button);
+}
+
+.font-numeric {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+.font-code {
+  font-family: var(--font-code);
+}
+
+.font-figure {
+  font-family: var(--font-figure);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Slot skeletons while the page state request is in flight (design 13.13.3). */
+.ow-state-pending [data-slot] > * {
+  visibility: hidden;
+}
+
+.ow-state-pending [data-slot] {
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-2);
+}
+
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: inline-flex;
+}
+
+@layer components {
+  /* ---- Night bands (v5.1) ------------------------------------------------------ */
+
+  /* Everything else follows the mode (light or dark, 13.2.1). Night in both:
+     the footer, and a detail page's banner with a cover, since a cover can be
+     any picture and words only read on it darkened. Inside them the semantic
+     tokens take their night values, so links, tags and rules follow. */
+  .c-stage:not(.c-stage--plain),
+  .c-footer {
+    --color-bg: var(--color-night);
+    --color-surface: var(--color-night-surface);
+    --color-surface-2: var(--color-night-2);
+    --color-line: var(--color-night-line);
+    --color-control: var(--color-night-control);
+    --color-fg: var(--color-night-fg);
+    --color-fg-2: var(--color-night-fg-2);
+    --color-fg-3: var(--color-night-fg-3);
+    --color-primary: var(--color-night-accent);
+    --color-primary-text: var(--color-night-primary-text);
+    --color-primary-soft: var(--color-night-primary-soft);
+    --color-on-primary-soft: var(--color-night-on-primary-soft);
+    --color-accent-text: var(--color-accent);
+    --color-accent-soft: var(--color-night-accent-soft);
+    --color-on-accent-soft: var(--color-night-on-accent-soft);
+    background-color: var(--color-night);
+    color: var(--color-fg);
+  }
+
+  /* ---- Layout ---------------------------------------------------------------- */
+
+  .l-container {
+    width: 100%;
+    max-width: var(--container-page);
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .l-container {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .l-container {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  /* Pages to read and act on (details, forms, the account centre, search,
+     the scrim list): one centred block at most 80rem wide, so a wide window
+     leaves no gap between the words and the sidebar (design-details 1.1).
+     Card grids keep the full width. */
+  .l-container--narrow {
+    max-width: 80rem;
+  }
+
+  .l-section {
+    padding-block: 2.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .l-section {
+      padding-block: 4rem;
+    }
+  }
+
+  /* Main column + sidebar (8 + 4). */
+  .l-split {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .l-split {
+      grid-template-columns: minmax(0, 1fr) 20rem;
+      gap: 3rem;
+    }
+
+    .l-split--wide-aside {
+      grid-template-columns: minmax(0, 1fr) 24rem;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .l-split {
+      grid-template-columns: minmax(0, 1fr) 24rem;
+      gap: 4rem;
+    }
+
+    .l-split--wide-aside {
+      grid-template-columns: minmax(0, 1fr) 28rem;
+    }
+  }
+
+  .l-prose {
+    max-width: var(--container-prose);
+  }
+
+  /* Beside a sidebar the column is already narrow enough to read (v5.2). */
+  .l-split .l-prose {
+    max-width: none;
+  }
+
+  /* ---- Utilities that belong to the system ----------------------------------- */
+
+  .c-cut {
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+  }
+
+  /* No picture: a plain block on the second surface (13.2.5), no pattern. */
+  .c-hatch {
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-3);
+  }
+
+  /* Make the whole row or card clickable through its title link. */
+  .c-stretch::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  /* A small Chinese heading over a group of links (footer, drawer). */
+  .c-eyebrow {
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  .c-figure {
+    font-family: var(--font-figure);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  /* ---- Masthead (13.3) ------------------------------------------------------- */
+
+  .c-masthead {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background-color: var(--color-surface);
+    /* Its own layer when the page changes, so it does not fade (v6.4). */
+    view-transition-name: masthead;
+  }
+
+  /* The next page is on its way (design 13.2.4, v6.4): a thin bar along the
+     masthead's lower edge from 150ms after the click (a page that is already
+     prepared never shows it), quick at first and then creeping. It fades
+     with the old page when the new one arrives. */
+  .c-loadbar {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    transform: scaleX(0);
+    transform-origin: left;
+    background-color: var(--color-accent);
+    opacity: 0;
+    pointer-events: none;
+    view-transition-name: loadbar;
+  }
+
+  .is-loading .c-loadbar {
+    opacity: 1;
+    animation: ow-loadbar 15s ease-out 150ms both;
+  }
+
+  /* The page it waited for has come (v6.6): from where the last page left
+     it (arrival.js sets --loadbar-from), quick then slow to the end, then
+     it fades. */
+  .is-arriving .c-loadbar {
+    opacity: 1;
+    animation:
+      ow-loadbar-finish 300ms cubic-bezier(0.2, 0, 0, 1) both,
+      ow-loadbar-fade 250ms ease 300ms forwards;
+  }
+
+  @keyframes ow-loadbar-finish {
+    from {
+      transform: scaleX(var(--loadbar-from, 0.6));
+    }
+
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes ow-loadbar-fade {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes ow-loadbar {
+    0% {
+      transform: scaleX(0);
+    }
+
+    4% {
+      transform: scaleX(0.3);
+    }
+
+    15% {
+      transform: scaleX(0.6);
+    }
+
+    40% {
+      transform: scaleX(0.8);
+    }
+
+    100% {
+      transform: scaleX(0.95);
+    }
+  }
+
+  .c-masthead__bar {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    height: 4rem;
+  }
+
+  .c-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--color-fg);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .c-brand__mark {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .c-nav {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .c-nav {
+      display: flex;
+      align-self: stretch;
+      gap: 1.75rem;
+    }
+
+    /* The brand, the links and the account area keep their width and stay
+       on one line; when the bar is short of room only the search box
+       narrows (112: Chinese breaks between any two characters, so a
+       shrinking link went down to one character a line, 「首/页」). */
+    .c-brand,
+    .c-nav,
+    .c-masthead__end {
+      flex-shrink: 0;
+    }
+
+    .c-nav a,
+    .c-masthead__end {
+      white-space: nowrap;
+    }
+  }
+
+  .c-nav a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition: color 150ms var(--ease-standard);
+  }
+
+  .c-nav a:hover {
+    color: var(--color-fg);
+  }
+
+  .c-nav a[aria-current="page"] {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  /* Where you are is orange (v5.0); the brand and the main action are red. */
+  .c-nav a[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background-color: var(--color-accent);
+  }
+
+  .c-masthead__end {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+  }
+
+  /* From 1280px the bar is wide enough for a search box in its middle
+     (v5.2, YouTube-like); below that the magnifier icon goes to /search/. */
+  .c-masthead__search {
+    display: none;
+  }
+
+  @media (min-width: 1280px) {
+    .c-masthead__search {
+      display: flex;
+      flex: 0 1 36rem;
+      margin-inline: auto;
+    }
+
+    .c-masthead__search + .c-masthead__end {
+      margin-left: 0;
+    }
+
+    .c-masthead__end > .c-masthead__find {
+      display: none;
+    }
+  }
+
+  .c-masthead__search input {
+    flex: 1;
+    min-width: 0;
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border: 1px solid var(--color-control);
+    border-right: 0;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+  }
+
+  .c-masthead__search input:focus {
+    outline-offset: -2px;
+  }
+
+  .c-masthead__search button {
+    display: grid;
+    place-items: center;
+    width: 3.5rem;
+    border: 1px solid var(--color-control);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    cursor: pointer;
+  }
+
+  .c-masthead__search button:hover {
+    color: var(--color-fg);
+  }
+
+  .c-iconbtn {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-2);
+    transition:
+      color 150ms var(--ease-standard),
+      background-color 150ms var(--ease-standard);
+  }
+
+  .c-iconbtn:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+  }
+
+  .c-iconbtn svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .c-account {
+    display: contents;
+  }
+
+  .c-account__link {
+    display: inline-flex;
+    align-items: center;
+    height: 2.75rem;
+    padding-inline: 0.75rem;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .c-account__link:hover {
+    color: var(--color-fg);
+  }
+
+  /* Account menu: a <details>, no script. */
+  .c-menu {
+    position: relative;
+  }
+
+  .c-menu > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.75rem;
+    padding-inline: 0.5rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .c-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-menu > summary:hover {
+    background-color: var(--color-surface-2);
+  }
+
+  .c-menu__panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    z-index: 50;
+    display: grid;
+    min-width: 12rem;
+    padding: 0.375rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-float);
+  }
+
+  .c-menu__panel a {
+    padding: 0.625rem 0.75rem;
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+  }
+
+  .c-menu__panel a:hover {
+    background-color: var(--color-surface-2);
+  }
+
+  .c-menu__panel hr {
+    margin: 0.375rem 0;
+    border-top: 2px solid var(--color-bg);
+  }
+
+  /* Colour mode (13.2.1, v5.1): 跟随系统, 浅色 or 深色, from a <details> menu
+     that js/theme.js reveals and drives; without the script the menu stays
+     hidden and the system decides. The button shows the mode in use. */
+  .c-theme {
+    position: relative;
+  }
+
+  .c-theme > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .c-theme > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-theme__light {
+    display: contents;
+
+    @variant dark {
+      display: none;
+    }
+  }
+
+  .c-theme__dark {
+    display: none;
+
+    @variant dark {
+      display: contents;
+    }
+  }
+
+  .c-theme .c-menu__panel {
+    min-width: 10rem;
+  }
+
+  .c-theme button {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .c-theme button:hover {
+    background-color: var(--color-surface-2);
+  }
+
+  .c-theme button svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--color-fg-2);
+  }
+
+  .c-theme button[aria-pressed="true"] {
+    color: var(--color-primary-text);
+    font-weight: 600;
+  }
+
+  .c-theme button[aria-pressed="true"] svg {
+    color: currentColor;
+  }
+
+  /* Right-click menu (13.2.6, v6.65): js/contextmenu.js builds it at the
+     pointer; it looks like the account menu's panel. */
+  .c-ctxmenu {
+    position: fixed;
+    z-index: 70;
+    display: grid;
+    min-width: 13rem;
+    max-width: 18rem;
+    padding: 0.375rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-float);
+  }
+
+  .c-ctxmenu hr {
+    margin: 0.375rem 0;
+    border-top: 2px solid var(--color-bg);
+  }
+
+  .c-ctxmenu__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .c-ctxmenu__item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-ctxmenu__item:hover,
+  .c-ctxmenu__item:focus-visible {
+    outline: none;
+    background-color: var(--color-surface-2);
+  }
+
+  .c-ctxmenu__item kbd {
+    color: var(--color-fg-2);
+    font-family: inherit;
+    font-size: 0.875rem;
+  }
+
+  .c-ctxmenu__foot {
+    margin-top: 0.25rem;
+    padding: 0.375rem 0.75rem 0.25rem;
+    border-top: 2px solid var(--color-bg);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .c-ctxmenu-toast {
+    position: fixed;
+    z-index: 71;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-fg);
+    color: var(--color-bg);
+    font-size: 0.875rem;
+    pointer-events: none;
+  }
+
+  /* A place's own moving scene comes twice (13.2.5, v5.1), by day and at
+     night; only the current mode's is shown. */
+  .c-scene--light {
+    @variant dark {
+      display: none;
+    }
+  }
+
+  .c-scene--dark {
+    display: none;
+
+    @variant dark {
+      display: block;
+    }
+  }
+
+  /* ---- Drawer (phones) -------------------------------------------------------- */
+
+  .c-drawer > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .c-drawer > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-drawer__close,
+  .c-drawer[open] .c-drawer__open {
+    display: none;
+  }
+
+  .c-drawer[open] .c-drawer__close {
+    display: inline;
+  }
+
+  .c-drawer__panel {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    padding: 0.5rem 1rem 1.5rem;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-float);
+  }
+
+  .c-drawer__nav {
+    display: grid;
+  }
+
+  .c-drawer__nav a {
+    display: flex;
+    align-items: center;
+    min-height: 3rem;
+    color: var(--color-fg-2);
+    font-size: 1.0625rem;
+    font-weight: 500;
+  }
+
+  .c-drawer__nav a[aria-current="page"] {
+    color: var(--color-primary-text);
+    font-weight: 600;
+  }
+
+  .c-drawer__search {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .c-drawer__search input {
+    flex: 1;
+    min-width: 0;
+    height: 2.75rem;
+    padding-inline: 0.875rem;
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+  }
+
+  /* 颜色模式 on phones (13.2.1, v5.1): no room in the bar, so three buttons
+     in a row in the drawer; the one in use is raised. */
+  .c-drawer__theme {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .c-drawer__theme button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    cursor: pointer;
+  }
+
+  .c-drawer__theme button svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .c-drawer__theme button[aria-pressed="true"] {
+    border-color: var(--color-line);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  /* ---- Footer ----------------------------------------------------------------- */
+
+  .c-footer {
+    position: relative;
+    margin-top: 2rem;
+    padding-block: 3.5rem 2rem;
+  }
+
+  /* Three ridges in the night colours rise out of the page into the footer
+     (design-details 1.9); the front one is the footer's own ground. */
+  .c-footer::before {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: calc(100% - 1px);
+    left: 0;
+    height: 3rem;
+    background: url("../img/placeholders/ridge.svg") bottom / 100% 100% no-repeat;
+    pointer-events: none;
+  }
+
+  @media (min-width: 1024px) {
+    .c-footer::before {
+      height: 5.5rem;
+    }
+  }
+
+  .c-footer__grid {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .c-footer__grid {
+      grid-template-columns: 20rem minmax(0, 1fr);
+      gap: 4rem;
+    }
+  }
+
+  .c-footer__statement {
+    max-width: 22rem;
+    margin-top: 1rem;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+  }
+
+  .c-footer__links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+  }
+
+  @media (min-width: 640px) {
+    .c-footer__links {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .c-footer__col {
+    display: grid;
+    align-content: start;
+    gap: 0.625rem;
+  }
+
+  .c-footer__col a {
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  .c-footer__col a:hover {
+    color: var(--color-fg);
+  }
+
+  .c-footer__base {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 1.5rem;
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  /* ---- Banners above the masthead -------------------------------------------- */
+
+  .c-banner {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
+  .c-banner[hidden] {
+    display: none;
+  }
+
+  .c-banner--test {
+    background-color: var(--color-warn-soft);
+    color: var(--color-warn);
+  }
+
+  .c-banner--hint {
+    background-color: var(--color-info-soft);
+    color: var(--color-info);
+  }
+
+  /* ---- Page structure --------------------------------------------------------- */
+
+  .c-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 1rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-crumbs a:hover {
+    color: var(--color-fg);
+  }
+
+  /* A band under the masthead with the page's title (v5.1). */
+  .c-pagehead {
+    padding-block: 2.5rem 2.25rem;
+    background-color: var(--color-surface);
+  }
+
+  @media (min-width: 1024px) {
+    .c-pagehead {
+      padding-block: 3.5rem 3rem;
+    }
+  }
+
+  /* Section pages (资讯, 赛事, 内战, 战队, 成员): a picture behind the head,
+     veiled in the page's own ground most on the left where the words are, so
+     it is light on a light page and dark on a dark one (v5.1, 13.2.5). */
+  .c-pagehead--picture {
+    position: relative;
+    overflow: hidden;
+  }
+
+  @media (min-width: 1024px) {
+    .c-pagehead--picture {
+      padding-block: 5.5rem 3rem;
+    }
+  }
+
+  .c-pagehead__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .c-pagehead--picture::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      to right,
+      color-mix(in oklab, var(--color-bg) 90%, transparent) 0%,
+      color-mix(in oklab, var(--color-bg) 60%, transparent) 55%,
+      color-mix(in oklab, var(--color-bg) 25%, transparent) 100%
+    );
+  }
+
+  .c-pagehead--picture > :not(.c-pagehead__img) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* The horizon (v6.0): the picture sinks into the page under two
+     ridges in the page's own colour, the far one a half-tone step, the way
+     the art fades what is far away. --page-bg is the page's ground even
+     inside a night band, where --color-bg means the band's. Each ridge is its
+     own tiling mask and they drift at different speeds, the near one twice as
+     fast (「可以改成动态的」); the site's reduced-motion rule stills them. */
+  .c-pagehead--picture::before,
+  .c-stage:not(.c-stage--plain)::before {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    z-index: 1;
+    height: 2.5rem;
+    background-color: var(--page-bg);
+    -webkit-mask:
+      url("../img/placeholders/horizon-far.svg") 0 100% / 1600px 100% repeat-x,
+      url("../img/placeholders/horizon-near.svg") 0 100% / 1600px 100% repeat-x;
+    mask:
+      url("../img/placeholders/horizon-far.svg") 0 100% / 1600px 100% repeat-x,
+      url("../img/placeholders/horizon-near.svg") 0 100% / 1600px 100% repeat-x;
+    animation: c-horizon 120s linear infinite;
+    pointer-events: none;
+  }
+
+  @media (min-width: 1024px) {
+    .c-pagehead--picture::before,
+    .c-stage:not(.c-stage--plain)::before {
+      height: 4rem;
+    }
+  }
+
+  /* One tile for the far ridge, two for the near one: both land where they
+     began, so the loop has no jump. */
+  @keyframes c-horizon {
+    to {
+      -webkit-mask-position:
+        -1600px 100%,
+        -3200px 100%;
+      mask-position:
+        -1600px 100%,
+        -3200px 100%;
+    }
+  }
+
+  /* The ridge is the edge now; no rule under it. */
+  .c-pagehead--picture,
+  .c-stage:not(.c-stage--plain) {
+    border-bottom: 0;
+  }
+
+  .c-pagehead__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+  }
+
+  .c-pagehead__lede {
+    max-width: 40rem;
+    margin-top: 0.75rem;
+    color: var(--color-fg-2);
+    font-size: 1.0625rem;
+  }
+
+  .c-pagehead__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-top: 0.75rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-pagehead__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .c-sectionhead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  /* The peaks before a section's title (v6.0): the art's far and near
+     ridge as a small mark in the accent. */
+  .c-sectionhead > h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  .c-sectionhead > h2::before {
+    content: "";
+    flex: none;
+    width: 1.5rem;
+    height: 1rem;
+    background-color: var(--color-accent);
+    -webkit-mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
+    mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
+  }
+
+  /* ---- Buttons ------------------------------------------------------------------ */
+
+  .c-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    font-family: var(--font-button);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      color 150ms var(--ease-standard),
+      background-color 150ms var(--ease-standard),
+      border-color 150ms var(--ease-standard);
+  }
+
+  .c-btn svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .c-btn--primary {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+  }
+
+  .c-btn--primary:hover {
+    background-color: var(--color-primary-hover);
+  }
+
+  .c-btn--secondary,
+  .c-btn--danger {
+    border-color: var(--color-control);
+  }
+
+  .c-btn--secondary:hover,
+  .c-btn--danger:hover {
+    background-color: var(--color-surface-2);
+  }
+
+  .c-btn--danger {
+    color: var(--color-primary-text);
+  }
+
+  .c-btn--tonal {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+  }
+
+  .c-btn--tonal:hover {
+    background-color: color-mix(in oklab, var(--color-primary-soft) 80%, var(--color-primary));
+  }
+
+  /* Text only, for 「全部 →」 and actions inside rows. */
+  .c-btn--quiet {
+    min-height: 2.75rem;
+    padding-inline: 0;
+    background-color: transparent;
+    color: var(--color-primary-text);
+  }
+
+  .c-btn--quiet:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+
+  /* White outline, only on a picture's scrim (13.2.5). */
+  .c-btn--light {
+    border-color: color-mix(in oklab, var(--color-white) 80%, transparent);
+    background-color: transparent;
+    color: var(--color-white);
+  }
+
+  .c-btn--light:hover {
+    background-color: color-mix(in oklab, var(--color-white) 14%, transparent);
+  }
+
+  .c-btn--sm {
+    min-height: 2.25rem;
+    padding: 0.25rem 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  .c-btn--sm.c-btn--quiet {
+    padding-inline: 0;
+  }
+
+  .c-btn--block {
+    width: 100%;
+  }
+
+  .c-btn:disabled,
+  .c-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .c-btn--primary:disabled,
+  .c-btn--primary[aria-disabled="true"] {
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-3);
+    opacity: 1;
+  }
+
+  /* Inline links in running text and notices. */
+  .c-link {
+    color: var(--color-primary-text);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+  }
+
+  .c-link:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* A group that has to be boxed (a game ID, a sign-up box); c-card is the
+     same box when the whole of it is a link. */
+  .c-panel,
+  .c-card {
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  .c-card {
+    position: relative;
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  /* No edge to light up: the surface itself deepens a shade. */
+  .c-card:hover {
+    background-color: color-mix(in oklab, var(--color-surface) 94%, var(--color-fg));
+  }
+
+  .c-panel__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+  }
+
+  .c-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+
+  /* ---- Tags and status (13.2.6: a word on a tone, no shape) ------------------ */
+
+  .c-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.625rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .c-tag--accent {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+  }
+
+  .c-tag--strong {
+    background-color: var(--color-fg);
+    color: var(--color-surface);
+  }
+
+  /* Status (v6.0): a word after the site's small peaks, both in the
+     status's colour; no pill. The user, 10-03, of the tinted chips: 「ai 味道
+     也很重，而且和站点的风格相违背了」. --status is the mark's colour, which
+     stays when a picture band turns the word light. */
+  .c-status {
+    --status: var(--color-fg-3);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 1.625rem;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .c-status::before {
+    content: "";
+    flex: none;
+    width: 0.875rem;
+    height: 0.625rem;
+    background-color: var(--status);
+    -webkit-mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
+    mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
+  }
+
+  /* Live (报名中, 招募中) is the sand accent. */
+  .c-status--live {
+    --status: var(--color-accent);
+    color: var(--color-accent-text);
+  }
+
+  .c-status--ok {
+    --status: var(--color-ok);
+    color: var(--color-ok);
+  }
+
+  .c-status--warn {
+    --status: var(--color-warn);
+    color: var(--color-warn);
+  }
+
+  .c-status--info {
+    --status: var(--color-info);
+    color: var(--color-info);
+  }
+
+  .c-status--rejected {
+    --status: var(--color-primary);
+    color: var(--color-primary-text);
+  }
+
+  /* On a picture (a banner, a feature card) the word is light; the mark keeps
+     the colour. */
+  .c-stage:not(.c-stage--plain) .c-status,
+  .c-feature .c-status {
+    color: var(--color-night-fg);
+  }
+
+  /* Seats (v6.0): one cell per place, taken ones in the accent — the
+     grouped list's cut tiles, small. Replaces the rounded progress bar the
+     user found 「AI 味道很重」. */
+  .c-seats {
+    display: flex;
+    gap: 3px;
+    max-width: 16rem;
+    margin-top: 0.625rem;
+  }
+
+  .c-seats > i {
+    flex: 1;
+    height: 0.375rem;
+    border-radius: 2px;
+    background-color: var(--color-surface-2);
+  }
+
+  .c-seats > i.is-taken {
+    background-color: var(--color-accent);
+  }
+
+  .c-rank {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--color-fg);
+    white-space: nowrap;
+  }
+
+  .c-rank__div {
+    font-family: var(--font-figure);
+    font-variant-numeric: tabular-nums;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .c-rank--none {
+    color: var(--color-fg-3);
+  }
+
+  .c-roles {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .c-role {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    height: 1.5rem;
+    padding-inline: 0.375rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  .c-role svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  /* A person's positions and rank on public pages (design-details 3.2, 3.3):
+     the main position filled, the others outlined, then the main rank. */
+  .c-play {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  /* The other positions: a lighter tone of the main one's chip, no outline. */
+  .c-play .c-role {
+    border: 1px solid transparent;
+    background-color: color-mix(in oklab, var(--color-surface-2) 55%, transparent);
+    color: var(--color-fg-2);
+  }
+
+  .c-play .c-role--main {
+    border-color: transparent;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .c-play__rank {
+    display: inline-flex;
+    margin-left: 0.125rem;
+  }
+
+  .c-play__rank.is-stale .c-rank {
+    color: var(--color-fg-3);
+  }
+
+  /* ---- Stats and facts --------------------------------------------------------- */
+
+  .c-stat {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.125rem;
+  }
+
+  .c-stat__label {
+    color: var(--color-fg-2);
+  }
+
+  .c-stat__value {
+    font-family: var(--font-figure);
+    font-size: 1.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* The email specimen page (design 10.3): each email framed at its own
+     address, and its plain text under it. */
+  .c-mailframe {
+    display: block;
+    width: 100%;
+    height: 56rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .c-mailtext {
+    margin-top: 0.75rem;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  /* Key on the left, value on the right, a line between rows (13.2.6). */
+  .c-facts {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 1.5rem;
+  }
+
+  .c-facts > dt,
+  .c-facts > dd {
+    padding-block: 0.75rem;
+  }
+
+  .c-facts > dt {
+    color: var(--color-fg-3);
+  }
+
+  .c-facts > dd {
+    color: var(--color-fg);
+    text-align: right;
+  }
+
+  .c-facts > dt:last-of-type,
+  .c-facts > dd:last-of-type {
+    border-bottom: 0;
+  }
+
+  .c-facts.c-panel {
+    padding-block: 0.25rem;
+  }
+
+  /* ---- Table ----------------------------------------------------------------- */
+
+  .c-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    font-size: 0.9375rem;
+    /* As a grid or flex item a table would stretch and pad out its rows. */
+    align-self: start;
+  }
+
+  .c-table th {
+    padding: 0.75rem 1rem;
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .c-table td {
+    padding: 0.875rem 1rem;
+    border-top: 2px solid var(--color-bg);
+    vertical-align: middle;
+  }
+
+  .c-table .is-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .c-table tbody tr {
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  .c-table tbody tr:hover {
+    background-color: var(--color-bg);
+  }
+
+  /* Phones: every row becomes a block of label / value lines. */
+  @media (max-width: 639px) {
+    .c-table--stack thead {
+      display: none;
+    }
+
+    .c-table--stack,
+    .c-table--stack tbody,
+    .c-table--stack tr,
+    .c-table--stack td {
+      display: block;
+    }
+
+    .c-table--stack tr {
+      padding: 0.75rem 1rem;
+    }
+
+    .c-table--stack tr + tr {
+      border-top: 2px solid var(--color-bg);
+    }
+
+    .c-table--stack td {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.25rem 0;
+      border-top: 0;
+      text-align: right;
+    }
+
+    .c-table--stack td::before {
+      content: attr(data-label);
+      color: var(--color-fg-2);
+      text-align: left;
+    }
+
+    .c-table--stack td:first-child {
+      font-weight: 600;
+    }
+
+    .c-table--stack td:first-child::before {
+      content: none;
+    }
+  }
+
+  /* ---- People ------------------------------------------------------------------- */
+
+  /* Faces are rounded squares (design-details 2.1, v5.2). */
+  .c-avatar {
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-2);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .c-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Bigger faces where there is room (v5.2). */
+  .c-avatar--xs {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-xs);
+    font-size: 0.875rem;
+  }
+
+  .c-avatar--md {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.375rem;
+  }
+
+  .c-avatar--lg {
+    width: 5.5rem;
+    height: 5.5rem;
+    font-size: 2.125rem;
+  }
+
+  /* The five 底图 (design-details 1.5, 2.2): a small still landscape behind a
+     face or a team logo without a picture, fixed by id; the label tint shows
+     while it loads. The initial is white on all five. */
+  .c-hue-1 {
+    background: var(--color-primary-soft) url("../img/placeholders/hue-1.svg") center / cover;
+  }
+
+  .c-hue-2 {
+    background: var(--color-accent-soft) url("../img/placeholders/hue-2.svg") center / cover;
+  }
+
+  .c-hue-3 {
+    background: var(--color-info-soft) url("../img/placeholders/hue-3.svg") center / cover;
+  }
+
+  .c-hue-4 {
+    background: var(--color-ok-soft) url("../img/placeholders/hue-4.svg") center / cover;
+  }
+
+  .c-hue-5 {
+    background: var(--color-warn-soft) url("../img/placeholders/hue-5.svg") center / cover;
+  }
+
+  .c-hue-1,
+  .c-hue-2,
+  .c-hue-3,
+  .c-hue-4,
+  .c-hue-5 {
+    color: var(--color-white);
+    text-shadow: 0 1px 3px color-mix(in oklab, var(--color-black) 45%, transparent);
+  }
+
+  .c-avatar--sm {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.875rem;
+    border-radius: var(--radius-xs);
+  }
+
+  /* Two across on a phone, as many as fit from 640px. */
+  .c-people {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 640px) {
+    .c-people {
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+      gap: 1rem;
+    }
+  }
+
+  /* A group on the member page (v5.2): from 1024px its name and description
+     in a column on the left, the cards beside them, so a group of three
+     does not leave the row half empty. */
+  .c-group__about {
+    max-width: 42rem;
+    margin: -0.5rem 0 1.5rem;
+    color: var(--color-fg-2);
+  }
+
+  @media (min-width: 1024px) {
+    .c-group {
+      display: grid;
+      grid-template-columns: 15rem minmax(0, 1fr);
+      align-items: start;
+      gap: 2.5rem;
+    }
+
+    .c-group__head {
+      position: sticky;
+      top: 6rem;
+    }
+
+    .c-group__about {
+      margin: 0;
+    }
+  }
+
+  /* A member in a group (design-details 4.2): picture first, a square of the
+     person's base picture with the initial large, then name, posts, motto,
+     positions and teams. */
+  /* Member cards open the member's page (design 6.4, v5.5): the name is the
+     link and stretches over the card; a card's team links stay clickable on
+     top of it. */
+  .c-person,
+  .c-roster__item,
+  .c-squad__item {
+    position: relative;
+  }
+
+  .c-person__meta a {
+    position: relative;
+    z-index: 2;
+  }
+
+  .c-person:hover .c-person__name,
+  .c-roster__item:hover .c-roster__name,
+  .c-squad__item:hover .c-squad__name a {
+    color: var(--color-primary-text);
+  }
+
+  .c-person {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    text-align: center;
+  }
+
+  .c-person__pic {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    font-size: clamp(2.5rem, 4.5vw, 4rem);
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  /* The person's own picture fills the square (design-details 2.3, v6.1). */
+  .c-person__pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @media (max-width: 639px) {
+    .c-person__pic {
+      font-size: 2.25rem;
+    }
+  }
+
+  .c-person__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0.75rem 1.25rem;
+  }
+
+  .c-person__name {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--color-fg);
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-person__titles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .c-person__title {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.125rem 0.625rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-accent-soft);
+    color: var(--color-on-accent-soft);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .c-person__more {
+    margin-top: 0.5rem;
+    padding: 0.125rem 0.375rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-person__motto {
+    display: block;
+    max-width: 100%;
+    margin-top: 0.625rem;
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-person .c-play {
+    justify-content: center;
+    margin-top: 0.75rem;
+  }
+
+  .c-person__meta {
+    display: block;
+    max-width: 100%;
+    margin-top: 0.75rem;
+    overflow: hidden;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-person__meta a:hover {
+    color: var(--color-primary-text);
+  }
+
+  /* ---- Forms ----------------------------------------------------------------------- */
+
+  .c-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .c-field__label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-fg);
+  }
+
+  .c-field__req {
+    margin-left: 0.25rem;
+    color: var(--color-primary-text);
+    font-weight: 400;
+  }
+
+  .c-field__help {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  /* Django's password help is a list. */
+  .c-field__help ul {
+    list-style: disc;
+    padding-left: 1.25em;
+  }
+
+  .c-field__error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+    color: var(--color-primary-text);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .c-field__error svg {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.125rem;
+  }
+
+  /* 自动保存的状态（design 13.17, v7.6）: one quiet line above the form,
+     drawn by static/js/autosave.js. */
+  .c-autosave {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--color-fg-3);
+  }
+
+  .c-autosave[data-state="saved"] {
+    color: var(--color-ok);
+  }
+
+  .c-autosave[data-state="partial"],
+  .c-autosave[data-state="failed"] {
+    color: var(--color-warn);
+  }
+
+  .c-field input[type="text"],
+  .c-field input[type="email"],
+  .c-field input[type="password"],
+  .c-field input[type="number"],
+  .c-field input[type="search"],
+  .c-field input[type="url"],
+  .c-field input[type="tel"],
+  .c-field input[type="date"],
+  .c-field input[type="datetime-local"],
+  .c-field select,
+  .c-field textarea,
+  .c-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    font-size: 1rem;
+    line-height: 1.5;
+    transition:
+      border-color 150ms var(--ease-standard),
+      box-shadow 150ms var(--ease-standard);
+  }
+
+  .c-field input:hover,
+  .c-field select:hover,
+  .c-field textarea:hover,
+  .c-input:hover {
+    border-color: var(--color-fg);
+  }
+
+  /* Material's focused field: a 2px primary border (drawn inside, no layout shift). */
+  .c-field input:focus,
+  .c-field select:focus,
+  .c-field textarea:focus,
+  .c-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+    outline: none;
+  }
+
+  .c-field input::placeholder,
+  .c-field textarea::placeholder,
+  .c-input::placeholder {
+    color: var(--color-fg-3);
+  }
+
+  .c-field textarea {
+    min-height: 7.5rem;
+    line-height: 1.7;
+  }
+
+  /* A file picker (v6.11, the avatar upload; team logos too): the text says
+     which file was chosen, the button looks like c-btn--secondary. */
+  .c-field input[type="file"] {
+    width: 100%;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  .c-field input[type="file"]::file-selector-button {
+    min-height: 2.75rem;
+    margin-right: 0.875rem;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    font-family: var(--font-button);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  .c-field input[type="file"]:hover::file-selector-button {
+    background-color: var(--color-surface-2);
+  }
+
+  /* The avatar block on 基本资料 (design-details 2.3, v6.11): the face now and
+     the one waiting for review side by side, a word under each. */
+  .c-faces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  .c-faces figure {
+    display: grid;
+    justify-items: center;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .c-faces figcaption {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .c-field select,
+  select.c-input {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23534341' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.875rem center;
+    background-repeat: no-repeat;
+    background-size: 1.125rem;
+  }
+
+  .c-field.is-invalid input,
+  .c-field.is-invalid select,
+  .c-field.is-invalid textarea {
+    border-color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary-soft) 35%, var(--color-surface));
+  }
+
+  .c-field ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  /* Checkboxes and radios, drawn by us. */
+  .c-field input[type="checkbox"],
+  .c-field input[type="radio"],
+  .c-check input {
+    appearance: none;
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    border: 2px solid var(--color-control);
+    border-radius: var(--radius-xs);
+    background-color: var(--color-surface);
+    background-position: center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    transition:
+      background-color 150ms var(--ease-standard),
+      border-color 150ms var(--ease-standard);
+  }
+
+  .c-field input[type="checkbox"]:checked,
+  .c-check input[type="checkbox"]:checked {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+    background-size: 0.875rem;
+  }
+
+  .c-field input[type="radio"],
+  .c-check input[type="radio"] {
+    border-radius: 999px;
+  }
+
+  .c-field input[type="radio"]:checked,
+  .c-check input[type="radio"]:checked {
+    border-color: var(--color-primary);
+    background-image: radial-gradient(circle, var(--color-primary) 0 0.25rem, transparent 0.27rem);
+    background-size: 100% 100%;
+  }
+
+  .c-check,
+  .c-field label:has(> input[type="checkbox"]),
+  .c-field label:has(> input[type="radio"]) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 44px;
+    cursor: pointer;
+    font-size: 0.9375rem;
+  }
+
+  /* Filter-chip choices such as positions. */
+  .c-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .c-choice {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding-inline: 1rem;
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    cursor: pointer;
+    font-size: 0.9375rem;
+    transition:
+      background-color 150ms var(--ease-standard),
+      border-color 150ms var(--ease-standard),
+      color 150ms var(--ease-standard);
+  }
+
+  .c-choice input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .c-choice:hover {
+    background-color: var(--color-bg);
+  }
+
+  .c-choice:has(input:checked) {
+    border-color: var(--color-primary-soft);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+    font-weight: 600;
+  }
+
+  .c-choice:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .c-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .c-step {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  @media (min-width: 640px) {
+    .c-step {
+      padding: 1.5rem;
+    }
+  }
+
+  .c-step__head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .c-formbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    padding-top: 1.5rem;
+  }
+
+  /* Sign-in, sign-up and the other account pages (allauth): a card (round 085). */
+  .c-auth {
+    width: 100%;
+    max-width: 28rem;
+    padding: 1.5rem 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  @media (min-width: 640px) {
+    .c-auth {
+      padding: 2rem 2.25rem;
+    }
+  }
+
+  /* 注册以后可以, beside the sign-in and sign-up cards. */
+  .c-why {
+    padding: 1.5rem 1.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg);
+  }
+
+  .c-why__title {
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  .c-why ul {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .c-why li {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .c-why__icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg);
+  }
+
+  .c-auth > h1 {
+    font-size: 2rem;
+  }
+
+  .c-auth > p {
+    margin-top: 0.75rem;
+    color: var(--color-fg-2);
+    line-height: 1.75;
+  }
+
+  .c-auth > h2 {
+    margin-top: 2.5rem;
+    font-size: 1.25rem;
+  }
+
+  .c-auth form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 1.75rem;
+  }
+
+  .c-auth form + form {
+    margin-top: 0.75rem;
+  }
+
+  .c-auth__foot {
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  /* ---- Feedback ------------------------------------------------------------------ */
+
+  .c-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .c-notice > svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.0625rem;
+    color: var(--color-fg-2);
+  }
+
+  .c-notice__body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .c-notice__body a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .c-notice--info {
+    background-color: var(--color-info-soft);
+  }
+
+  .c-notice--info > svg {
+    color: var(--color-info);
+  }
+
+  .c-notice--ok {
+    background-color: var(--color-ok-soft);
+  }
+
+  .c-notice--ok > svg {
+    color: var(--color-ok);
+  }
+
+  .c-notice--warn {
+    background-color: var(--color-warn-soft);
+  }
+
+  .c-notice--warn > svg {
+    color: var(--color-warn);
+  }
+
+  .c-notice--error {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+  }
+
+  .c-notice--error > svg {
+    color: var(--color-primary);
+  }
+
+  .c-toasts {
+    position: fixed;
+    z-index: 50;
+    top: 4.75rem;
+    right: 1rem;
+    left: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+
+  /* Material's snackbar on the inverse surface. */
+  .c-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    width: 100%;
+    max-width: 24rem;
+    padding: 0.875rem 1.125rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-toast);
+    color: var(--color-on-toast);
+    box-shadow: var(--shadow-2);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    pointer-events: auto;
+    animation:
+      c-toast-in 400ms var(--ease-spring),
+      c-toast-out 300ms var(--ease-standard) 6s forwards;
+  }
+
+  .c-toast svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-top: 0.125rem;
+    color: var(--color-on-toast);
+  }
+
+  .c-toast--error svg {
+    color: var(--color-primary-soft);
+  }
+
+  @keyframes c-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(-0.5rem) scale(0.98);
+    }
+  }
+
+  @keyframes c-toast-out {
+    to {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+
+  .c-empty {
+    padding: 2rem 1.5rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    text-align: center;
+  }
+
+  /* A small landscape over the words (design-details 1.9). */
+  .c-empty::before {
+    content: "";
+    display: block;
+    width: 10rem;
+    aspect-ratio: 16 / 9;
+    margin: 0 auto 1rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-ok-soft) url("../img/placeholders/hue-4.svg") center / cover;
+  }
+
+  .c-empty__title {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .c-empty__text {
+    margin-top: 0.375rem;
+    color: var(--color-fg-2);
+  }
+
+  .c-empty .c-btn {
+    margin-top: 1.25rem;
+  }
+
+  .c-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 2.5rem;
+  }
+
+  .c-pager__pos {
+    color: var(--color-fg-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .c-pager__pos strong {
+    color: var(--color-fg);
+  }
+
+  /* Filter (13.2.6): a row of links; the current one is underlined in red.
+     Links, not a script switcher; scrolls sideways on phones. */
+  .c-tabs {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .c-tabs a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+    min-height: 2.75rem;
+    color: var(--color-fg-2);
+    font-family: var(--font-nav);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 150ms var(--ease-standard);
+  }
+
+  .c-tabs a:hover {
+    color: var(--color-fg);
+  }
+
+  .c-tabs a[aria-current="page"],
+  .c-tabs a[aria-current="true"] {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .c-tabs a[aria-current="page"]::after,
+  .c-tabs a[aria-current="true"]::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background-color: var(--color-accent);
+  }
+
+  .c-tabs__count {
+    color: var(--color-fg-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Side menu (about pages, member groups, account centre): Material nav items. */
+  .c-sidenav ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .c-sidenav a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    color: var(--color-fg-2);
+    font-family: var(--font-nav);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition:
+      background-color 150ms var(--ease-standard),
+      color 150ms var(--ease-standard);
+  }
+
+  .c-sidenav a:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+  }
+
+  .c-sidenav a[aria-current="page"],
+  .c-sidenav a[aria-current="true"] {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+    font-weight: 600;
+  }
+
+  .c-sidenav__icon {
+    color: var(--color-fg-2);
+  }
+
+  .c-sidenav a[aria-current] .c-sidenav__icon {
+    color: var(--color-on-primary-soft);
+  }
+
+  /* ---- Prose (rich text, 13.2.6 c-prose) ------------------------------------------ */
+
+  .c-prose {
+    color: var(--color-fg);
+    font-size: 1.0625rem;
+    line-height: 1.85;
+    overflow-wrap: break-word;
+  }
+
+  .c-prose > :first-child {
+    margin-top: 0;
+  }
+
+  .c-prose p {
+    margin-block: 0 1em;
+  }
+
+  /* Second-level headings carry an orange bar on the left (6.4). */
+  .c-prose h2 {
+    margin: 2.5em 0 0.75em;
+    padding-left: 0.75rem;
+    border-left: 4px solid var(--color-accent);
+    font-size: 1.5rem;
+    line-height: 1.35;
+    scroll-margin-top: 6rem;
+  }
+
+  .c-prose h3 {
+    margin: 1.75em 0 0.5em;
+    font-size: 1.25rem;
+    scroll-margin-top: 6rem;
+  }
+
+  .c-prose ul,
+  .c-prose ol {
+    margin-block: 0 1em;
+    padding-left: 1.5em;
+  }
+
+  .c-prose ul {
+    list-style: disc;
+  }
+
+  .c-prose ol {
+    list-style: decimal;
+  }
+
+  .c-prose li {
+    margin-block: 0.25em;
+    padding-left: 0.25em;
+  }
+
+  .c-prose a {
+    color: var(--color-primary-text);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+  }
+
+  .c-prose a:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  .c-prose b,
+  .c-prose strong {
+    font-weight: 700;
+  }
+
+  .c-prose hr {
+    margin-block: 2.5em;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .c-prose figure {
+    margin-block: 2em;
+  }
+
+  .c-prose figure img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .c-prose figcaption {
+    margin-top: 0.625rem;
+    text-align: center;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  /* Quote: a rule down the left, no fill (13.2.6). */
+  .c-prose blockquote {
+    margin-block: 2em;
+    padding-left: 1.25em;
+    border-left: 3px solid var(--color-line);
+    color: var(--color-fg-2);
+  }
+
+  .c-prose blockquote p {
+    margin: 0;
+  }
+
+  .c-prose blockquote footer {
+    margin-top: 0.5em;
+    text-align: right;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-prose iframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    border: 0;
+    border-radius: var(--radius-sm);
+  }
+
+  /* What Markdown adds (v6.70, design-details 6.4). */
+  .c-prose s {
+    color: var(--color-fg-3);
+  }
+
+  .c-prose code {
+    padding: 0.125em 0.375em;
+    border-radius: 4px;
+    background-color: var(--color-surface-2);
+    font-size: 0.875em;
+  }
+
+  .c-prose pre {
+    margin-block: 0 1em;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    border-radius: 6px;
+    background-color: var(--color-surface-2);
+    text-align: left;
+    line-height: 1.6;
+  }
+
+  .c-prose pre code {
+    padding: 0;
+    background: none;
+  }
+
+  .c-prose__video {
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .c-prose__table {
+    margin-block: 0 1em;
+    overflow-x: auto;
+  }
+
+  .c-prose table {
+    border-collapse: collapse;
+    font-size: 0.9375em;
+    line-height: 1.6;
+  }
+
+  /* Toned apart, not ruled (13.2 纯色切割): the head and every other row
+     on the second surface. */
+  .c-prose th,
+  .c-prose td {
+    padding: 0.5em 0.875em;
+    text-align: left;
+  }
+
+  .c-prose th,
+  .c-prose tbody tr:nth-child(even) {
+    background-color: var(--color-surface-2);
+  }
+
+  .c-prose th {
+    font-weight: 700;
+  }
+
+  /* An image inside a line of text (one alone on its line is a figure). */
+  .c-prose p img {
+    display: inline;
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-sm);
+  }
+
+  /* ---- Comments (design 5.6) ------------------------------------------------------- */
+
+  .c-comments {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    scroll-margin-top: 5rem;
+  }
+
+  .c-comments__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+  }
+
+  .c-comments__head h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.625rem;
+  }
+
+  .c-comments__sort {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .c-comments__sort a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding-inline: 0.875rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    color: var(--color-fg-2);
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  .c-comments__sort a:hover {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  .c-comments__sort a[aria-current="true"] {
+    border-color: var(--color-primary-soft);
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+    font-weight: 600;
+  }
+
+  .c-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+
+  .c-composer textarea {
+    min-height: 5.5rem;
+  }
+
+  .c-composer__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-comments__list {
+    margin-top: 1.5rem;
+  }
+
+  .c-comment {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0 0.875rem;
+    padding-block: 1.25rem;
+    scroll-margin-top: 5rem;
+  }
+
+  .c-comment--reply {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    gap: 0 0.75rem;
+    padding-block: 0.875rem;
+    border-bottom: 0;
+  }
+
+  /* Pinned: a tonal wash; the 「置顶」 tag says what it is. */
+  .c-comment.is-pinned {
+    margin-inline: -0.75rem;
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-sm);
+    border-bottom-color: transparent;
+    background-color: var(--color-bg);
+  }
+
+  .c-comment__placeholder {
+    grid-column: 1 / -1;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-comment__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-fg-3);
+  }
+
+  .c-comment__name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-fg);
+  }
+
+  .c-comment__body {
+    margin-top: 0.375rem;
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  .c-comment__at {
+    color: var(--color-primary-text);
+  }
+
+  .c-comment__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 0.25rem;
+    margin: -0.25rem -0.625rem -0.625rem;
+  }
+
+  .c-comment__actions details[open] {
+    flex-basis: 100%;
+    order: 10;
+    padding-inline: 0.625rem;
+  }
+
+  /* Small text actions: 赞、回复、编辑、删除、置顶、隐藏. 44px tall (13.2.2). */
+  .c-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    min-height: 44px;
+    padding-inline: 0.625rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    color: var(--color-fg-2);
+    cursor: pointer;
+    list-style: none;
+    transition:
+      background-color 150ms var(--ease-standard),
+      color 150ms var(--ease-standard);
+  }
+
+  .c-act::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-act svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  button.c-act:hover,
+  summary.c-act:hover,
+  a.c-act:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+  }
+
+  .c-act[aria-pressed="true"] {
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  .c-act[aria-pressed="true"] svg {
+    fill: currentColor;
+  }
+
+  .c-act--danger:hover {
+    color: var(--color-primary-text) !important;
+  }
+
+  .c-comment__thread {
+    grid-column: 2;
+    margin-top: 0.5rem;
+  }
+
+  .c-comment__thread > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 40px;
+    margin-left: -0.75rem;
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-full);
+    color: var(--color-primary-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  .c-comment__thread > summary:hover {
+    background-color: color-mix(in oklab, var(--color-primary) 6%, transparent);
+  }
+
+  .c-comment__thread > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-comment__thread > summary svg {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 300ms var(--ease-emphasized);
+  }
+
+  .c-comment__thread[open] > summary svg {
+    transform: rotate(180deg);
+  }
+
+  .c-comment__thread > ol {
+    margin-top: 0.25rem;
+    padding-left: 0.875rem;
+    border-left: 2px solid var(--color-line);
+  }
+
+  /* ---- Homepage and the shared content blocks (design 5.2, 13.2.6; round 086) ---- */
+
+  /* Full screen under the 64px masthead (svh, so a phone's address bar does
+     not crop it), built like the section heads (v5.1; 5.2, 13.2.5): a
+     picture behind, veiled in the page's own ground most on the left, so it
+     is light on a light page and dark on a dark one; in the page width the
+     two-line title on the left and the SJTU emblem on the right; the
+     community's figures along the bottom edge. Phones: the emblem above, the
+     words below. */
+  .c-hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 4rem);
+    min-height: calc(100svh - 4rem);
+    overflow: hidden;
+  }
+
+  .c-hero__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Strongest behind the words, so they read on any picture; a second veil
+     along the bottom under the figures. */
+  .c-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(
+        to top,
+        color-mix(in oklab, var(--color-bg) 82%, transparent) 0%,
+        color-mix(in oklab, var(--color-bg) 0%, transparent) 10rem
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-bg) 55%, transparent) 0%,
+        color-mix(in oklab, var(--color-bg) 86%, transparent) 100%
+      );
+  }
+
+  @media (min-width: 1024px) {
+    .c-hero::after {
+      background-image:
+        linear-gradient(
+          to top,
+          color-mix(in oklab, var(--color-bg) 82%, transparent) 0%,
+          color-mix(in oklab, var(--color-bg) 0%, transparent) 10rem
+        ),
+        linear-gradient(
+          to right,
+          color-mix(in oklab, var(--color-bg) 90%, transparent) 0%,
+          color-mix(in oklab, var(--color-bg) 62%, transparent) 50%,
+          color-mix(in oklab, var(--color-bg) 40%, transparent) 100%
+        );
+    }
+  }
+
+  .c-hero__body {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    flex: 1;
+    align-content: center;
+    align-items: center;
+    gap: 2.5rem;
+    padding-block: 3rem;
+  }
+
+  @media (min-width: 1024px) {
+    .c-hero__body {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    /* On a wide screen the words sit in the middle of the left half, as the
+       emblem does in the right (v5.2), not against the edge. */
+    .c-hero__copy {
+      justify-self: center;
+    }
+  }
+
+  /* The emblem: large and see-through, so it reads as part of the picture
+     rather than a badge on it; in the text colour, its gear ring SJTU red and
+     turning slowly, both drawn as masks of the two layer files
+     (core/emblem.py), so the colours are tokens. 「减少动态效果」 stops the turn
+     (the reduced-motion rule above). */
+  .c-hero__emblem {
+    position: relative;
+    order: -1;
+    justify-self: center;
+    width: min(19rem, 72vw);
+    aspect-ratio: 1;
+  }
+
+  @media (min-width: 1024px) {
+    .c-hero__emblem {
+      order: 0;
+      width: min(48rem, 44vw, calc(100svh - 16rem));
+    }
+  }
+
+  .c-hero__emblem > span {
+    position: absolute;
+    inset: 0;
+    -webkit-mask: url("../img/sjtu-emblem-body.svg") center / contain no-repeat;
+    mask: url("../img/sjtu-emblem-body.svg") center / contain no-repeat;
+    background-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
+  }
+
+  .c-hero__emblem > .c-hero__emblem-gear {
+    -webkit-mask-image: url("../img/sjtu-emblem-gear.svg");
+    mask-image: url("../img/sjtu-emblem-gear.svg");
+    background-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+    animation: c-hero-gear 90s linear infinite;
+  }
+
+  @keyframes c-hero-gear {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* Two lines, 上海交通大学 over 守望先锋社区 (v7.13: back from the one-line
+     SJTU-OW of v7.12, at the user's word). */
+  .c-hero__title {
+    font-size: 2.5rem;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
+  }
+
+  .c-hero__title span {
+    display: block;
+  }
+
+  /* 守望先锋社区 in Overwatch orange (v5.0). */
+  .c-hero__title span + span {
+    color: var(--color-accent-display);
+  }
+
+  @media (min-width: 1024px) {
+    .c-hero__title {
+      font-size: clamp(4.25rem, 5.2vw, 6.25rem);
+      line-height: 1.12;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .c-hero__lede {
+      max-width: 32rem;
+      font-size: 1.1875rem;
+    }
+  }
+
+  .c-hero__lede {
+    max-width: 26rem;
+    margin-top: 1.25rem;
+    color: var(--color-fg-2);
+    font-size: 1.0625rem;
+  }
+
+  .c-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  /* The figures close the first screen (v5.1): on the same veil, over a
+     hairline, in orange like the second line of the title. */
+  .c-hero__foot {
+    position: relative;
+    z-index: 1;
+  }
+
+  .c-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 2rem;
+    padding-block: 1.25rem 1.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .c-stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .c-stats dd {
+      font-size: 2rem;
+    }
+  }
+
+  .c-stats > div {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.125rem;
+  }
+
+  /* Four across: each figure centred in its quarter (v5.2). */
+  @media (min-width: 768px) {
+    .c-stats > div {
+      align-items: center;
+      text-align: center;
+    }
+  }
+
+  .c-stats dt {
+    color: var(--color-fg-2);
+  }
+
+  .c-stats dd {
+    color: var(--color-accent-display);
+    font-family: var(--font-figure);
+    font-size: 1.5rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* 近期: the open tournament beside this week's scrims. */
+  .c-upcoming {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .c-upcoming--two {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    }
+
+    /* v6.0: the scrims keep their own height (stretched to the
+       picture's, each row was mostly empty: 「空白太多了」); the picture follows
+       the list instead, with a floor so it stays a picture. */
+    .c-upcoming--two > .c-feature {
+      grid-column: 1;
+      aspect-ratio: auto;
+      min-height: 18rem;
+    }
+
+    /* v6.68: the list keeps the right column with no tournament beside it. */
+    .c-upcoming--two > .c-rows {
+      grid-column: 2;
+    }
+  }
+
+  /* A picture with the words on its scrim (13.2.6 c-feature). */
+  .c-feature {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-night-2);
+    color: var(--color-white);
+  }
+
+  .c-feature__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 300ms var(--ease-standard);
+  }
+
+  .c-feature:hover .c-feature__img {
+    transform: scale(1.03);
+  }
+
+  .c-feature::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-black) 0%, transparent) 40%,
+      color-mix(in oklab, var(--color-black) 70%, transparent) 100%
+    );
+  }
+
+  .c-feature__body {
+    position: relative;
+    z-index: 1;
+    padding: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .c-feature__body {
+      padding: 1.75rem;
+    }
+  }
+
+  .c-feature__title {
+    margin-top: 0.75rem;
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+
+  .c-feature__facts {
+    margin-top: 0.375rem;
+    color: color-mix(in oklab, var(--color-white) 86%, transparent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (min-width: 640px) {
+    .c-media-grid--two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-teams--six {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
+  /* List rows: a date block, the title and one line of facts. v6.0: a
+     Material 3 grouped list — each row its own tile, a few pixels of the page
+     between them, the group's outer corners round, the inner ones tight. */
+  .c-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .c-rows > .c-row {
+    border-radius: var(--radius-xs);
+    background-color: var(--color-surface);
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  .c-rows > .c-row:first-child {
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+  }
+
+  .c-rows > .c-row:last-child {
+    border-bottom-right-radius: var(--radius-lg);
+    border-bottom-left-radius: var(--radius-lg);
+  }
+
+  .c-rows > .c-row:hover {
+    background-color: color-mix(in oklab, var(--color-surface) 94%, var(--color-fg));
+  }
+
+  .c-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .c-row + .c-row {
+  }
+
+  .c-row__title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 1rem;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    transition: color 150ms var(--ease-standard);
+  }
+
+  .c-row:hover .c-row__title {
+    color: var(--color-primary-text);
+  }
+
+  .c-row__meta {
+    margin-top: 0.125rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The date leading a row (v6.0): type, no box. The row is already a
+     tile; a grey square inside it was a box in a box. The month small in the
+     accent, the day large in the figure face. */
+  .c-date {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    width: 3rem;
+    line-height: 1;
+  }
+
+  .c-date small {
+    color: var(--color-accent-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .c-date b {
+    margin-top: 0.25rem;
+    font-family: var(--font-figure);
+    font-size: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 资讯 beside 公告. */
+  .c-homegrid {
+    display: grid;
+    gap: 2.5rem;
+    padding-block: 1rem 2.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .c-homegrid {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: 2.5rem;
+      padding-block: 1rem 4rem;
+    }
+  }
+
+  /* Picture cards fill the width (v5.2): as many columns as fit, none
+     narrower than 22rem, so a wider window shows more and bigger cards. */
+  .c-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 2rem 1.5rem;
+  }
+
+  /* A picture card (13.2.6 c-media): picture, tags and date, title. */
+  .c-media {
+    position: relative;
+  }
+
+  .c-media__pic {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-2);
+  }
+
+  .c-media__pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 300ms var(--ease-standard);
+  }
+
+  .c-media:hover .c-media__pic img {
+    transform: scale(1.03);
+  }
+
+  /* A picture from the 默认封面 pool (design 13.2.5, v6.7) drifts slowly,
+     like a camera: four ways, picked by the object's id, so neighbours move
+     apart. Only scale and translate move, so a card's hover zoom (transform)
+     still adds on top. */
+  .c-drift {
+    animation: ow-drift-1 26s ease-in-out infinite alternate;
+  }
+
+  .c-drift--2 {
+    animation-name: ow-drift-2;
+    animation-duration: 30s;
+    animation-delay: -11s;
+  }
+
+  .c-drift--3 {
+    animation-name: ow-drift-3;
+    animation-duration: 22s;
+    animation-delay: -6s;
+  }
+
+  .c-drift--4 {
+    animation-name: ow-drift-4;
+    animation-duration: 28s;
+    animation-delay: -17s;
+  }
+
+  @keyframes ow-drift-1 {
+    from {
+      scale: 1.04;
+      translate: -1.2% -0.8%;
+    }
+
+    to {
+      scale: 1.1;
+      translate: 1.2% 0.8%;
+    }
+  }
+
+  @keyframes ow-drift-2 {
+    from {
+      scale: 1.1;
+      translate: 1.4% -0.6%;
+    }
+
+    to {
+      scale: 1.04;
+      translate: -1.4% 0.6%;
+    }
+  }
+
+  @keyframes ow-drift-3 {
+    from {
+      scale: 1.05;
+      translate: 0 1%;
+    }
+
+    to {
+      scale: 1.12;
+      translate: 0 -1%;
+    }
+  }
+
+  @keyframes ow-drift-4 {
+    from {
+      scale: 1.12;
+      translate: -1% 1%;
+    }
+
+    to {
+      scale: 1.05;
+      translate: 1% -1%;
+    }
+  }
+
+  .c-media__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.875rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .c-media__title {
+    display: -webkit-box;
+    margin-top: 0.375rem;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    transition: color 150ms var(--ease-standard);
+  }
+
+  .c-media:hover .c-media__title {
+    color: var(--color-primary-text);
+  }
+
+  .c-media__summary {
+    display: -webkit-box;
+    margin-top: 0.375rem;
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Teams: logo, name, size, recruiting. */
+  .c-teams {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .c-teams {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-teams {
+      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    }
+  }
+
+  /* A team (design-details 5.1): picture first, a square of the team's base
+     picture with its logo (or initial) on it, then name, head count, intro
+     and recruiting. */
+  .c-teams__item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    text-align: center;
+    transition: border-color 150ms var(--ease-standard);
+  }
+
+  .c-teams__item:hover {
+    border-color: var(--color-control);
+  }
+
+  .c-teams__logo {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    font-size: clamp(2.5rem, 4.5vw, 4rem);
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  /* Logos are cropped square on upload (7.1): they fill the picture;
+     transparent parts show the team's base picture. */
+  .c-teams__logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 300ms var(--ease-standard);
+  }
+
+  .c-teams__item:hover .c-teams__logo img {
+    transform: scale(1.04);
+  }
+
+  .c-teams__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  .c-teams__name {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-teams__item:hover .c-teams__name {
+    color: var(--color-primary-text);
+  }
+
+  .c-teams__meta {
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-teams__about {
+    display: -webkit-box;
+    text-align: center;
+    margin-top: 0.5rem;
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .c-teams__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .c-teams__wanted,
+  .c-stage__wanted {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .c-stage__wanted {
+    margin-left: 0.5rem;
+  }
+
+  /* The team list: as many cards as fit, each at least 15rem. */
+  .c-teams--list {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  /* ---- Editorial pages (design 13.2.7 刊物; round 087) ------------------------------ */
+
+  /* The article cover (design-details 6.2, v5.2): the picture across the
+     page under a dark scrim (a cover can be any picture), the words centred
+     on it, a row of facts, and a downward arc for its lower edge. */
+  .c-cover {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 22rem;
+    overflow: hidden;
+    border-radius: 0 0 50% 50% / 0 0 1.25rem 1.25rem;
+    background-color: var(--color-night);
+    color: var(--color-white);
+  }
+
+  @media (min-width: 1024px) {
+    .c-cover {
+      min-height: clamp(28rem, 64vh, 42rem);
+      border-radius: 0 0 50% 50% / 0 0 2.5rem 2.5rem;
+    }
+  }
+
+  .c-cover__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .c-cover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-black) 50%, transparent) 0%,
+        color-mix(in oklab, var(--color-black) 0%, transparent) 30%
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-black) 30%, transparent) 30%,
+        color-mix(in oklab, var(--color-black) 75%, transparent) 100%
+      );
+  }
+
+  .c-cover__body {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 56rem;
+    padding: 3rem 1rem 3.5rem;
+    text-align: center;
+  }
+
+  .c-cover .c-crumbs,
+  .c-cover .c-crumbs a {
+    color: color-mix(in oklab, var(--color-white) 78%, transparent);
+  }
+
+  .c-cover .c-crumbs a:hover {
+    color: var(--color-white);
+  }
+
+  .c-cover__title {
+    font-size: 2rem;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  @media (min-width: 768px) {
+    .c-cover__title {
+      font-size: 2.75rem;
+      line-height: 1.2;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .c-cover__title {
+      font-size: 3.5rem;
+    }
+  }
+
+  .c-cover__summary {
+    display: -webkit-box;
+    max-width: 40rem;
+    overflow: hidden;
+    color: color-mix(in oklab, var(--color-white) 86%, transparent);
+    font-size: 1.0625rem;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  /* The row of facts: small see-through pills. */
+  .c-cover__facts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .c-cover__facts > li,
+  .c-cover__facts > li > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .c-cover__facts > li {
+    height: 2.25rem;
+    padding-inline: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--color-white) 18%, transparent);
+    border-radius: var(--radius-full);
+    background-color: color-mix(in oklab, var(--color-black) 35%, transparent);
+    color: var(--color-white);
+    font-size: 0.875rem;
+  }
+
+  .c-cover__facts > li:first-child {
+    padding-left: 0.375rem;
+  }
+
+  .c-cover__facts svg {
+    width: 1rem;
+    height: 1rem;
+    color: color-mix(in oklab, var(--color-white) 78%, transparent);
+  }
+
+  .c-cover__facts .c-article__author {
+    color: var(--color-white);
+  }
+
+  /* The text column, with the contents beside it from 1280px (6.5). */
+  .c-reading {
+    width: 100%;
+    max-width: 120rem;
+    margin-inline: auto;
+    padding: 2.5rem 1rem 3rem;
+  }
+
+  @media (min-width: 640px) {
+    .c-reading {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-reading {
+      padding: 3.5rem 2.5rem 5rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .c-reading--toc {
+      display: grid;
+      grid-template-columns:
+        minmax(0, 1fr) minmax(0, var(--container-prose))
+        minmax(0, 1fr);
+      column-gap: 3rem;
+      align-items: start;
+    }
+
+    .c-reading--toc > .c-article {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .c-reading--toc > .c-toc--side {
+      grid-column: 3;
+      grid-row: 1;
+    }
+  }
+
+  .c-reading > .c-article {
+    max-width: var(--container-prose);
+    padding: 0;
+  }
+
+  .c-reading .c-article .c-prose {
+    margin-top: 0;
+  }
+
+  /* Contents (6.5): folded above the text on narrow screens, a column that
+     stays in view on wide ones. */
+  .c-toc--fold {
+    max-width: var(--container-prose);
+    margin: 0 auto 2rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  .c-toc--fold > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .c-toc--fold > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-toc--fold svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .c-toc--fold .c-toc__list {
+    margin-top: 0.75rem;
+  }
+
+  .c-toc--side {
+    display: none;
+  }
+
+  @media (min-width: 1280px) {
+    .c-toc--fold {
+      display: none;
+    }
+
+    .c-toc--side {
+      position: sticky;
+      top: 6rem;
+      display: block;
+      max-width: 16rem;
+      padding-left: 1rem;
+    }
+  }
+
+  .c-toc__head {
+    margin-bottom: 0.75rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .c-toc__list {
+    display: grid;
+    gap: 0.375rem;
+  }
+
+  .c-toc__item a {
+    display: block;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+
+  .c-toc__item a:hover {
+    color: var(--color-primary-text);
+  }
+
+  .c-toc__item--h3 {
+    padding-left: 1rem;
+  }
+
+  /* The author at the end of the text (6.6). */
+  .c-author {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  .c-author__name {
+    font-weight: 700;
+  }
+
+  .c-author__motto {
+    margin-top: 0.125rem;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  .c-author__meta {
+    margin-top: 0.25rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  /* The article before and after (6.6). */
+  .c-sequel {
+    display: grid;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  @media (min-width: 640px) {
+    .c-sequel {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  .c-sequel__item {
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    transition: border-color 150ms var(--ease-standard);
+  }
+
+  .c-sequel__item:hover {
+    border-color: var(--color-control);
+  }
+
+  .c-sequel__item--next {
+    grid-column: -2;
+    text-align: right;
+  }
+
+  .c-sequel__dir {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-sequel__item--next .c-sequel__dir {
+    justify-content: flex-end;
+  }
+
+  .c-sequel__dir svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .c-sequel__title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-weight: 600;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .c-sequel__item:hover .c-sequel__title {
+    color: var(--color-primary-text);
+  }
+
+  /* An article (13.2.6 c-article, v5.2): the head centred, the cover wider
+     than the text, one reading column in the middle. */
+  .c-article {
+    width: 100%;
+    max-width: 76rem;
+    margin-inline: auto;
+    padding: 2.5rem 1rem 3rem;
+  }
+
+  @media (min-width: 640px) {
+    .c-article {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-article {
+      padding: 4rem 2.5rem 5rem;
+    }
+  }
+
+  .c-article > * {
+    max-width: var(--container-prose);
+    margin-inline: auto;
+  }
+
+  .c-article > .c-article__cover {
+    max-width: none;
+  }
+
+  .c-article__head {
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+    max-width: 52rem;
+    text-align: center;
+  }
+
+  .c-article__head .c-crumbs {
+    margin-bottom: 0.25rem;
+  }
+
+  .c-article__head .c-tabs {
+    justify-self: stretch;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .c-article__title {
+    font-size: 2rem;
+    line-height: 1.25;
+  }
+
+  @media (min-width: 768px) {
+    .c-article__title {
+      font-size: 2.75rem;
+      line-height: 1.2;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .c-article__title {
+      font-size: 3.25rem;
+    }
+  }
+
+  .c-article__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem 0.75rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-article__author {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .c-article__cover {
+    margin-top: 2.5rem;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .c-article__cover img {
+    width: 100%;
+    height: auto;
+  }
+
+  /* Wider than the text, so a little flatter: the text starts on the
+     first screen (v5.2). */
+  @media (min-width: 1024px) {
+    .c-article__cover img {
+      aspect-ratio: 2 / 1;
+      object-fit: cover;
+    }
+  }
+
+  .c-article .c-prose {
+    margin-top: 2.5rem;
+    text-align: justify;
+  }
+
+  @media (min-width: 1024px) {
+    .c-article .c-prose {
+      margin-top: 3rem;
+      font-size: 1.125rem;
+    }
+  }
+
+  .c-article__part {
+    margin-top: 3rem;
+    padding-top: 2rem;
+  }
+
+  .c-article__parthead {
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+  }
+
+  .c-article__more {
+    padding-bottom: 4rem;
+  }
+
+  /* Rows without a date block: search results, account security. */
+  .c-row--plain {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .c-row__text {
+    display: -webkit-box;
+    margin-top: 0.25rem;
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Search page (13.2.6 c-searchbar). */
+  .c-searchbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 44rem;
+    margin-top: 1.5rem;
+    padding: 0.375rem 0.375rem 0.375rem 1rem;
+    border: 1px solid var(--color-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-fg-3);
+  }
+
+  .c-searchbar:focus-within {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -1px;
+  }
+
+  .c-searchbar svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .c-searchbar input {
+    flex: 1;
+    min-width: 0;
+    height: 2.75rem;
+    border: 0;
+    background: none;
+    color: var(--color-fg);
+    font-size: 1rem;
+    outline: none;
+  }
+
+  /* ---- Arena and roster pages (design 13.2.7 赛场 / 名册; round 088) --------------- */
+
+  /* The banner on a detail page (13.2.6 c-stage, v5.1): the cover darkened
+     under the words (a night band, above), or without a cover a plain band
+     in the mode's colours. */
+  .c-stage {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    min-height: 360px;
+    overflow: hidden;
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+  }
+
+  .c-stage__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .c-stage:not(.c-stage--plain)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-black) 30%, transparent) 0%,
+      color-mix(in oklab, var(--color-black) 45%, transparent) 40%,
+      color-mix(in oklab, var(--color-black) 80%, transparent) 100%
+    );
+  }
+
+  /* No picture: a shorter band, no scrim. */
+  .c-stage--plain {
+    min-height: 0;
+  }
+
+  .c-stage__body {
+    position: relative;
+    z-index: 1;
+    padding-block: 2rem 2.5rem;
+  }
+
+  /* Room for the horizon under the facts. */
+  .c-stage:not(.c-stage--plain) .c-stage__body {
+    padding-bottom: 4.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .c-stage:not(.c-stage--plain) .c-stage__body {
+      padding-bottom: 6rem;
+    }
+  }
+
+  .c-stage .c-crumbs,
+  .c-stage .c-stage__facts dt {
+    color: var(--color-fg-2);
+  }
+
+  .c-stage__tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .c-stage__title {
+    margin-top: 0.75rem;
+    font-size: 1.75rem;
+    line-height: 1.25;
+  }
+
+  @media (min-width: 768px) {
+    .c-stage__title {
+      font-size: 2.5rem;
+      line-height: 1.2;
+    }
+  }
+
+  .c-stage__lede {
+    max-width: 40rem;
+    margin-top: 0.75rem;
+    font-size: 1.0625rem;
+  }
+
+  .c-stage__lede {
+    color: var(--color-fg-2);
+  }
+
+  .c-stage__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .c-stage__facts > div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .c-stage__facts dt {
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-stage__facts dd {
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  /* A rank older than 180 days (design-details 3.3), on a member's banner. */
+  .c-stage__facts dd.is-stale {
+    color: var(--color-fg-3);
+  }
+
+  .c-stage__meter {
+    max-width: 24rem;
+    margin-top: 1rem;
+  }
+
+  /* A team's banner: the logo beside the name. */
+  .c-stage__team {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1.5rem;
+  }
+
+  /* On the team banner (design-details 5.3): the logo as a framed tile on
+     the same picture. */
+  .c-teams__logo--lg {
+    flex-shrink: 0;
+    width: 7rem;
+    border: 2px solid color-mix(in oklab, var(--color-white) 70%, transparent);
+    border-radius: var(--radius-sm);
+    font-size: 3rem;
+  }
+
+  @media (min-width: 1024px) {
+    .c-teams__logo--lg {
+      width: 9rem;
+      font-size: 3.75rem;
+    }
+  }
+
+  /* The author and reading time at the foot of an article card (6.1). */
+  .c-media__byline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  .c-media__author {
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* One line of facts under a picture card's title. */
+  .c-media__facts {
+    margin-top: 0.25rem;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tank / damage / support counts on a scrim. */
+  .c-rolestats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .c-rolestats > div {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.25rem;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  .c-rolestats dt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--color-fg-2);
+  }
+
+  .c-rolestats dd {
+    font-family: var(--font-figure);
+    font-size: 1.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* 全部成员: one small card each, numbered by joining order (6.3). */
+  .c-roster {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 1rem;
+  }
+
+  .c-roster__item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  .c-roster__name {
+    display: block;
+    overflow: hidden;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-roster__groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
+  }
+
+  .c-roster__item .c-play {
+    margin-top: 0.375rem;
+  }
+
+  .c-roster__no {
+    margin-left: auto;
+    align-self: start;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- Team roster (design-details 5.3, 5.4; v5.2) ------------------------------- */
+
+  /* 现役: a card per member. */
+  .c-squad {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1rem;
+  }
+
+  .c-squad__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  .c-squad__main {
+    display: grid;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .c-squad__name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .c-squad__motto {
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-squad__meta {
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+  }
+
+  /* 退役: one compact line each. */
+  .c-alumni {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 0.5rem 1.5rem;
+  }
+
+  .c-alumni__item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+    padding-block: 0.5rem;
+  }
+
+  .c-alumni__name {
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .c-alumni__when {
+    margin-left: auto;
+    color: var(--color-fg-3);
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  /* 「显示全部 N 人」: a <details>, no script. */
+  .c-more {
+    margin-top: 0.75rem;
+  }
+
+  .c-more > summary {
+    display: inline-flex;
+    color: var(--color-primary-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .c-more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .c-more[open] > summary {
+    display: none;
+  }
+
+  /* ---- Style guide page ------------------------------------------------------------ */
+
+  .c-swatch {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .c-swatch__chip {
+    height: 4rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+  }
+
+  /* ---- 后台 (docs/admin.md 3, 5; v7.0) ------------------------------------------- */
+
+  /* The back office is a page of this site: the same tokens, type and
+     components. b-* is its own layout; forms, tables, buttons, tabs and
+     notices are the c-* ones. */
+  .b-body {
+    min-height: 100vh;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  /* The top bar: the night band of 13.2.6, in both modes. */
+  .b-top {
+    --color-bg: var(--color-night);
+    --color-surface: var(--color-night-surface);
+    --color-surface-2: var(--color-night-2);
+    --color-control: var(--color-night-control);
+    --color-fg: var(--color-night-fg);
+    --color-fg-2: var(--color-night-fg-2);
+    --color-fg-3: var(--color-night-fg-3);
+    --color-primary-text: var(--color-night-primary-text);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background-color: var(--color-night);
+    color: var(--color-fg);
+  }
+
+  .b-top__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 1.5rem;
+    max-width: var(--container-page);
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  .b-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: 3.5rem;
+    color: var(--color-fg);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .b-brand__mark {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .b-nav {
+    display: flex;
+    order: 3;
+    gap: 0.25rem;
+    width: 100%;
+    margin-inline: -0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .b-nav__link {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 0.75rem;
+    color: var(--color-fg-2);
+    font-family: var(--font-nav);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 150ms var(--ease-standard);
+  }
+
+  .b-nav__link:hover {
+    color: var(--color-fg);
+  }
+
+  .b-nav__link[aria-current="page"] {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .b-nav__link[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0;
+    left: 0.75rem;
+    height: 3px;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-accent);
+  }
+
+  .b-account {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+  }
+
+  .b-account__name {
+    display: none;
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .b-top__site {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    padding-inline: 0.5rem;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .b-top__site:hover {
+    color: var(--color-fg);
+  }
+
+  .b-top__site span {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .b-top__bar {
+      padding-inline: 1.5rem;
+    }
+
+    .b-account__name,
+    .b-top__site span {
+      display: inline;
+    }
+  }
+
+  /* Wide enough: the sections sit in the bar itself. */
+  @media (min-width: 1024px) {
+    .b-top__bar {
+      flex-wrap: nowrap;
+      padding-inline: 2.5rem;
+    }
+
+    .b-nav {
+      order: 0;
+      width: auto;
+      margin-inline: 0;
+    }
+
+    .b-nav__link {
+      min-height: 3.5rem;
+    }
+  }
+
+  /* The page head: the section, the title and its main action, the tabs. */
+  .b-head {
+    background-color: var(--color-surface);
+  }
+
+  .b-head__inner {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 1.25rem 1rem 0;
+  }
+
+  .b-head__kicker,
+  .b-head__back {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .b-head__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2rem;
+  }
+
+  .b-head__back:hover {
+    color: var(--color-fg);
+  }
+
+  .b-head__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .b-head__title {
+    min-width: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .b-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .b-head__actions:empty {
+    display: none;
+  }
+
+  .b-tabs,
+  .b-subtabs {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .b-tabs a,
+  .b-subtabs a {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    color: var(--color-fg-2);
+    font-family: var(--font-nav);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .b-tabs a:hover,
+  .b-subtabs a:hover {
+    color: var(--color-fg);
+  }
+
+  .b-tabs a[aria-current="page"] {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+
+  .b-tabs a[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-accent);
+  }
+
+  /* The second row (用户与权限): small filled chips under the head. */
+  .b-subtabs {
+    gap: 0.5rem;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 1rem 1rem 0;
+  }
+
+  .b-subtabs a {
+    min-height: 2.25rem;
+    padding-inline: 0.875rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface);
+    font-size: 0.875rem;
+  }
+
+  .b-subtabs a[aria-current="page"] {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+    font-weight: 600;
+  }
+
+  /* Status chips above a list (core/admin/_tabs.html). */
+  .b-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .b-chips a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.25rem;
+    padding-inline: 0.875rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .b-chips a:hover {
+    color: var(--color-fg);
+  }
+
+  .b-chips a[aria-current] {
+    background-color: var(--color-primary-soft);
+    color: var(--color-on-primary-soft);
+    font-weight: 600;
+  }
+
+  .b-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  @media (min-width: 640px) {
+    .b-head__inner,
+    .b-main,
+    .b-subtabs {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .b-head__inner,
+    .b-main,
+    .b-subtabs {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  .b-messages {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  /* Edit pages: the form, and the item's state beside it. */
+  .b-split {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .b-split {
+      grid-template-columns: minmax(0, 1fr) 22rem;
+      align-items: start;
+    }
+
+    .b-aside {
+      position: sticky;
+      top: 4.5rem;
+    }
+  }
+
+  .b-aside {
+    display: grid;
+    gap: 1rem;
+  }
+
+  /* A new item has no state yet: the form alone, as wide as the split's. */
+  .b-single {
+    max-width: calc(80rem - 22rem - 1.5rem);
+  }
+
+  /* Buttons and small forms in a column keep their own width. */
+  .b-section > .c-btn,
+  .b-section > form,
+  .b-form > .c-btn {
+    align-self: flex-start;
+  }
+
+  /* A search or filter line in a section takes the width it is given
+     (the people search of member groups, v7.7). */
+  .b-section > .b-filters {
+    align-self: stretch;
+  }
+
+  .b-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  @media (min-width: 640px) {
+    .b-section {
+      padding: 1.5rem;
+    }
+  }
+
+  .b-section__title {
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .b-section__text {
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  /* A group of fields in a long form. */
+  .b-fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  @media (min-width: 640px) {
+    .b-fieldset {
+      padding: 1.5rem;
+    }
+  }
+
+  .b-fieldset__legend {
+    float: left;
+    width: 100%;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .b-fieldset__legend + * {
+    clear: both;
+  }
+
+  .b-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* The buttons under a long form stay in reach. */
+  .b-formbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-float);
+  }
+
+  .b-formbar__note {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  /* Filters above a list: one line of small controls, wrapping on phones. */
+  .b-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .b-filters .c-input {
+    width: auto;
+    min-width: 9rem;
+    min-height: 2.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .b-filters input[type="search"].c-input {
+    flex: 1 1 14rem;
+  }
+
+  .b-filters .c-check {
+    min-height: 2.5rem;
+  }
+
+  .b-count {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  /* A table cell's second line: who, when, where. */
+  .b-sub {
+    display: block;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .b-title {
+    font-weight: 600;
+  }
+
+  a.b-title:hover {
+    color: var(--color-primary-text);
+  }
+
+  /* What a row can do: links, then the rest in a <details> menu. */
+  .b-rowacts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem 0.75rem;
+  }
+
+  .b-rowacts form {
+    display: inline;
+  }
+
+  /* A row of buttons under a form or a question. */
+  .b-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .b-actions form {
+    display: inline;
+  }
+
+  .b-more {
+    position: relative;
+  }
+
+  .b-more > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2.25rem;
+    padding-inline: 0.5rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .b-more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .b-more > summary:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-fg);
+  }
+
+  .b-more .c-menu__panel {
+    min-width: 11rem;
+  }
+
+  .b-more .c-menu__panel button {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .b-more .c-menu__panel button:hover {
+    background-color: var(--color-surface-2);
+  }
+
+  .b-more .is-danger {
+    color: var(--color-primary-text);
+  }
+
+  /* 名称：值 in the side column. */
+  .b-kv {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.5rem 1rem;
+    font-size: 0.9375rem;
+  }
+
+  .b-kv dt {
+    color: var(--color-fg-2);
+  }
+
+  .b-kv dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .b-list {
+    display: grid;
+    gap: 3px;
+  }
+
+  .b-list > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-bg);
+  }
+
+  /* The people in a member group (docs/admin.md 4.4, v7.7): who, their
+     post (saves itself), then up, down, out. */
+  .b-people__who {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 12rem;
+  }
+
+  .b-people__title {
+    display: flex;
+    flex: 1 1 14rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+  }
+
+  .b-people__title .c-input {
+    flex: 1 1 10rem;
+    min-height: 2.5rem;
+  }
+
+  /* Numbered steps (后台手册). */
+  .b-steps {
+    display: grid;
+    gap: 0.875rem;
+    padding-left: 1.5rem;
+    list-style: decimal;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+  }
+
+  .b-steps li::marker {
+    color: var(--color-fg-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The dashboard's cards. */
+  .b-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .b-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  a.b-card:hover {
+    background-color: color-mix(in oklab, var(--color-surface) 94%, var(--color-fg));
+  }
+
+  .b-card__count {
+    color: var(--color-primary-text);
+    font-family: var(--font-figure);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .b-card__text {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .b-card__go {
+    margin-top: auto;
+    color: var(--color-primary-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* The picture library. */
+  .b-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .b-grid__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    text-align: left;
+    transition: background-color 150ms var(--ease-standard);
+  }
+
+  .b-grid__item:hover {
+    background-color: color-mix(in oklab, var(--color-surface) 94%, var(--color-fg));
+  }
+
+  button.b-grid__item {
+    cursor: pointer;
+  }
+
+  .b-grid__pic {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .b-grid__pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .b-grid__name {
+    overflow: hidden;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .b-grid__meta {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  /* The picture field: what is chosen, 选择, 清除. */
+  .b-picker {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .b-picker__preview {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 8rem;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .b-picker__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .b-picker__body {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .b-picker__title {
+    overflow: hidden;
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .b-picker__actions {
+    display: flex;
+    gap: 1rem;
+  }
+
+  /* The picture dialog (a native <dialog>). */
+  .b-dialog {
+    width: min(64rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    margin: auto;
+    padding: 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    box-shadow: var(--shadow-float);
+  }
+
+  .b-dialog::backdrop {
+    background-color: color-mix(in oklab, var(--color-night) 55%, transparent);
+  }
+
+  .b-dialog__head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem 0.75rem 1.25rem;
+    background-color: var(--color-surface);
+  }
+
+  .b-dialog__head h2 {
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .b-dialog__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  /* The dashboard greeting. */
+  .b-hello {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .b-hello__roles {
+    color: var(--color-fg-2);
+    font-size: 0.9375rem;
+  }
+
+  /* The setup list: a mark and a sentence per item. */
+  .b-checks > li {
+    justify-content: flex-start;
+  }
+
+  .b-checks .is-done {
+    color: var(--color-ok);
+  }
+
+  .b-checks .is-open {
+    color: var(--color-warn);
+  }
+
+  .b-mono {
+    font-family: var(--font-code);
+    font-size: 0.875rem;
+  }
+
+  /* A letter shown before it is sent. */
+  .b-letter {
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  /* ---- Drag boards: scrim split and tournament teams (design 9.5, 8.8.2) ---- */
+
+  .split-teams {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .split-team {
+    flex: 1 1 22rem;
+    min-width: 0;
+  }
+
+  .split-buffer {
+    margin-top: 1rem;
+  }
+
+  .split-problem,
+  .split-warn {
+    color: var(--color-primary-text);
+    font-weight: 600;
+  }
+
+  .split-zone {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface);
+  }
+
+  .split-zone.is-over,
+  .split-zone.is-under {
+    border-color: var(--color-primary);
+  }
+
+  .split-zone.is-over .split-count,
+  .split-zone.is-under .split-count {
+    color: var(--color-primary-text);
+    font-weight: 700;
+  }
+
+  .split-zone-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem;
+    font-weight: 700;
+  }
+
+  .split-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .split-list {
+    display: grid;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+  }
+
+  .split-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg);
+    cursor: grab;
+  }
+
+  .split-card.is-dragging {
+    opacity: 0.4;
+  }
+
+  .split-card.is-blocked {
+    background-color: var(--color-surface-2);
+    cursor: not-allowed;
+  }
+
+  .split-card-name {
+    font-weight: 600;
+  }
+
+  .split-card-rank {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .split-card-roles,
+  .split-card-blocked {
+    flex-basis: 100%;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+
+  .split-card-blocked {
+    color: var(--color-primary-text);
+  }
+
+  .split-card-flag {
+    padding: 0 0.375rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-surface-2);
+    font-size: 0.875rem;
+  }
+
+  .split-card-moves {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .split-name {
+    max-width: 12rem;
+    margin-left: 0.5rem;
+  }
+
+  .split-dissolve {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.25rem 0;
+  }
+
+  .split-copy {
+    width: 100%;
+    font-family: var(--font-code);
+  }
+
+  /* ---- Uploaded faces (design-details 2.3) ---- */
+
+  .avatar-review {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .avatar-review__item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+  }
+
+  .avatar-review__picture {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 7.5rem;
+    height: 7.5rem;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+  }
+
+  .avatar-review__picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-review__body {
+    display: grid;
+    align-content: start;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .avatar-review__form {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  /* ---- 排版设置 (design 13.12.3): the settings and a live preview ---- */
+
+  .typography-row {
+    padding-block: 0.5rem 1rem;
+  }
+
+  .typography-row + .typography-row {
+    border-top: 2px solid var(--color-bg);
+  }
+
+  .typography-row .fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .typography-row .fields > * {
+    min-width: 9rem;
+  }
+
+  #typography-preview {
+    --font-body: var(--font-fallback);
+    --font-code: var(--font-mono-fallback);
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+    font-family: var(--font-body);
+    font-weight: var(--font-body-weight, 400);
+    font-size: var(--font-body-size, 1rem);
+    line-height: var(--font-body-line-height, 1.6);
+    letter-spacing: var(--font-body-letter-spacing, normal);
+  }
+
+  #typography-preview .p-h1 { font-family: var(--font-h1, var(--font-body)); font-weight: var(--font-h1-weight, 700); font-size: var(--font-h1-size, 2rem); line-height: var(--font-h1-line-height, 1.3); letter-spacing: var(--font-h1-letter-spacing, normal); margin: 0 0 0.5rem; }
+  #typography-preview .p-h2 { font-family: var(--font-h2, var(--font-body)); font-weight: var(--font-h2-weight, 600); font-size: var(--font-h2-size, 1.5rem); line-height: var(--font-h2-line-height, 1.3); letter-spacing: var(--font-h2-letter-spacing, normal); margin: 1rem 0 0.5rem; }
+  #typography-preview .p-h3 { font-family: var(--font-h3, var(--font-body)); font-weight: var(--font-h3-weight, 600); font-size: var(--font-h3-size, 1.25rem); line-height: var(--font-h3-line-height, 1.3); letter-spacing: var(--font-h3-letter-spacing, normal); margin: 1rem 0 0.5rem; }
+  #typography-preview .p-h4 { font-family: var(--font-h4, var(--font-body)); font-weight: var(--font-h4-weight, 600); font-size: var(--font-h4-size, 1.125rem); line-height: var(--font-h4-line-height, 1.3); letter-spacing: var(--font-h4-letter-spacing, normal); margin: 1rem 0 0.5rem; }
+  #typography-preview .p-nav { font-family: var(--font-nav, var(--font-body)); font-weight: var(--font-nav-weight, 400); font-size: var(--font-nav-size, 1rem); letter-spacing: var(--font-nav-letter-spacing, normal); display: flex; gap: 1rem; }
+  #typography-preview .p-button { font-family: var(--font-button, var(--font-body)); font-weight: var(--font-button-weight, 400); font-size: var(--font-button-size, 1rem); letter-spacing: var(--font-button-letter-spacing, normal); padding: 0.375rem 1rem; border-radius: var(--radius-full); background-color: var(--color-surface-2); }
+  #typography-preview .p-numeric { font-family: var(--font-numeric, var(--font-body)); font-weight: var(--font-numeric-weight, 400); font-size: var(--font-numeric-size, 1rem); letter-spacing: var(--font-numeric-letter-spacing, normal); font-variant-numeric: tabular-nums; }
+  #typography-preview .p-code { font-family: var(--font-code, var(--font-mono-fallback)); font-weight: var(--font-code-weight, 400); font-size: var(--font-code-size, 1rem); letter-spacing: var(--font-code-letter-spacing, normal); }
+
+  @media (min-width: 1200px) {
+    .typography-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(20rem, 30rem);
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .typography-aside {
+      position: sticky;
+      top: 4.5rem;
+    }
+  }
+}

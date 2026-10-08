@@ -1,0 +1,12 @@
+{
+  "name": "@sjtu-ow/styles",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tailwindcss -i ./input.css -o ./dist/site.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.13",
+    "tailwindcss": "^4.1.13"
+  }
+}

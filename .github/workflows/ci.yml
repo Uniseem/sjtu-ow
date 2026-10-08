@@ -37,3 +37,22 @@ jobs:
         run: |
           go run ./cmd/sjtuow apigen
           git diff --exit-code -- ../web/packages/api/src/gen
+  web:
+    name: pnpm install, pnpm test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: pnpm
+        run: corepack enable && corepack prepare pnpm@11.20.0 --activate
+      - name: install
+        run: pnpm install --frozen-lockfile
+      - name: test
+        run: pnpm test

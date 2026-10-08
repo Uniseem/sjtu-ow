@@ -21,7 +21,11 @@ func TestCIOnlyRunsTheNewStack(t *testing.T) {
 			}
 		}
 	}
-	for _, need := range []string{"gofmt -l", "go vet ./...", "staticcheck ./...", "govulncheck ./...", "go test ./..."} {
+	for _, need := range []string{
+		"gofmt -l", "go vet ./...", "staticcheck ./...", "govulncheck ./...", "go test ./...",
+		"corepack enable && corepack prepare pnpm@11.20.0 --activate",
+		"pnpm install --frozen-lockfile", "pnpm test",
+	} {
 		if !strings.Contains(ci, need) || !strings.Contains(script, need) {
 			t.Fatalf("新栈检查缺 %s", need)
 		}

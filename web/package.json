@@ -1,0 +1,12 @@
+{
+  "name": "sjtu-ow-web",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "scripts": {
+    "test": "pnpm --filter @sjtu-ow/styles build && vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
