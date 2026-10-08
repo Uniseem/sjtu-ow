@@ -1,7 +1,7 @@
 import { createServer } from "node:http"
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs"
-import { extname, join, resolve } from "node:path"
-import { pathToFileURL } from "node:url"
+import { extname, join, resolve, sep } from "node:path"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { render, type Rendered, type RenderOpts } from "./src/entry-server"
 
 const LOGIN = "/accounts/login/?next="
@@ -9,6 +9,48 @@ const LOGIN = "/accounts/login/?next="
 // standalone server sends it when STRICT_CSP=1.
 export const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+// 12-architecture 3.4: fixed addresses (icons, share images, old mail), one day.
+export const STATIC_IMG = "/static/img/"
+export const STATIC_IMG_CACHE = "public, max-age=86400"
+
+export function staticImgRoot(): string {
+  // Source lives in web/apps/site (three levels under the repo). The built
+  // file is web/apps/site/dist/server (five). The process is started in the
+  // site directory, so cwd is a third place to look.
+  const starts = [fileURLToPath(new URL(".", import.meta.url)), process.cwd()]
+  const rels = ["../../../static/img", "../../../../static/img", "../../../../../static/img"]
+  for (const start of starts) {
+    for (const rel of rels) {
+      const dir = resolve(start, rel)
+      if (existsSync(join(dir, "placeholders", "cover-07.svg"))) return dir
+    }
+  }
+  return ""
+}
+
+export function staticImgPath(urlPath: string, root: string): string | null {
+  if (!root) return null
+  let pathname: string
+  try {
+    pathname = new URL(urlPath, "http://site").pathname
+  } catch {
+    return null
+  }
+  if (!pathname.startsWith(STATIC_IMG)) return null
+  let rel: string
+  try {
+    rel = decodeURIComponent(pathname.slice(STATIC_IMG.length))
+  } catch {
+    return null
+  }
+  if (rel.includes("\0")) return null
+  const file = resolve(root, rel)
+  const base = resolve(root)
+  if (file !== base && !file.startsWith(base + sep)) return null
+  if (!existsSync(file) || !statSync(file).isFile()) return null
+  return file
+}
 
 export function escapeState(value: unknown): string {
   return JSON.stringify(value)
@@ -122,6 +164,16 @@ function serveStatic(req: { method?: string; url?: string }, res: import("node:h
     pathname = new URL(req.url ?? "/", "http://site").pathname
   } catch {
     return false
+  }
+  const imgFile = staticImgPath(req.url ?? "/", staticImgRoot())
+  if (imgFile) {
+    res.writeHead(200, {
+      "content-type": MIME[extname(imgFile)] ?? "application/octet-stream",
+      "cache-control": STATIC_IMG_CACHE,
+    })
+    if (req.method === "HEAD") res.end()
+    else createReadStream(imgFile).pipe(res)
+    return true
   }
   if (pathname !== "/theme.js" && !pathname.startsWith("/assets/")) return false
   const file = resolve(join(dist, decodeURIComponent(pathname.slice(1))))

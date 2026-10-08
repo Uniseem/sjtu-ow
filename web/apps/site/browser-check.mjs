@@ -265,6 +265,15 @@ async function main() {
   if (unknown.status !== 404 || !unknownBody.includes("找不到这个页面")) fail("404", { status: unknown.status })
   if (unknownBody.includes("ow-state")) fail("404 不该有数据块", {})
 
+  const cover = await fetch(base + "/static/img/placeholders/cover-07.svg")
+  const coverBody = await cover.text()
+  const coverType = cover.headers.get("content-type") ?? ""
+  const coverCache = cover.headers.get("cache-control") ?? ""
+  if (cover.status !== 200 || !coverType.includes("image/svg+xml") || !coverBody.includes("<svg")) {
+    fail("占位图", { status: cover.status, coverType })
+  }
+  if (!coverCache.includes("max-age=86400")) fail("占位图缓存", coverCache)
+
   console.log(failures.length ? `\n${failures.length} 项没过` : "\nBROWSER-CHECK-OK")
 }
 

@@ -1149,7 +1149,7 @@
     bottom: calc(100% - 1px);
     left: 0;
     height: 3rem;
-    background: url("../img/placeholders/ridge.svg") bottom / 100% 100% no-repeat;
+    background: url("/static/img/placeholders/ridge.svg") bottom / 100% 100% no-repeat;
     pointer-events: none;
   }
 
@@ -1323,11 +1323,11 @@
     height: 2.5rem;
     background-color: var(--page-bg);
     -webkit-mask:
-      url("../img/placeholders/horizon-far.svg") 0 100% / 1600px 100% repeat-x,
-      url("../img/placeholders/horizon-near.svg") 0 100% / 1600px 100% repeat-x;
+      url("/static/img/placeholders/horizon-far.svg") 0 100% / 1600px 100% repeat-x,
+      url("/static/img/placeholders/horizon-near.svg") 0 100% / 1600px 100% repeat-x;
     mask:
-      url("../img/placeholders/horizon-far.svg") 0 100% / 1600px 100% repeat-x,
-      url("../img/placeholders/horizon-near.svg") 0 100% / 1600px 100% repeat-x;
+      url("/static/img/placeholders/horizon-far.svg") 0 100% / 1600px 100% repeat-x,
+      url("/static/img/placeholders/horizon-near.svg") 0 100% / 1600px 100% repeat-x;
     animation: c-horizon 120s linear infinite;
     pointer-events: none;
   }
@@ -1412,8 +1412,8 @@
     width: 1.5rem;
     height: 1rem;
     background-color: var(--color-accent);
-    -webkit-mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
-    mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
+    -webkit-mask: url("/static/img/placeholders/peaks.svg") center / contain no-repeat;
+    mask: url("/static/img/placeholders/peaks.svg") center / contain no-repeat;
   }
 
   /* ---- Buttons ------------------------------------------------------------------ */
@@ -1624,8 +1624,8 @@
     width: 0.875rem;
     height: 0.625rem;
     background-color: var(--status);
-    -webkit-mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
-    mask: url("../img/placeholders/peaks.svg") center / contain no-repeat;
+    -webkit-mask: url("/static/img/placeholders/peaks.svg") center / contain no-repeat;
+    mask: url("/static/img/placeholders/peaks.svg") center / contain no-repeat;
   }
 
   /* Live (报名中, 招募中) is the sand accent. */
@@ -1966,23 +1966,23 @@
      face or a team logo without a picture, fixed by id; the label tint shows
      while it loads. The initial is white on all five. */
   .c-hue-1 {
-    background: var(--color-primary-soft) url("../img/placeholders/hue-1.svg") center / cover;
+    background: var(--color-primary-soft) url("/static/img/placeholders/hue-1.svg") center / cover;
   }
 
   .c-hue-2 {
-    background: var(--color-accent-soft) url("../img/placeholders/hue-2.svg") center / cover;
+    background: var(--color-accent-soft) url("/static/img/placeholders/hue-2.svg") center / cover;
   }
 
   .c-hue-3 {
-    background: var(--color-info-soft) url("../img/placeholders/hue-3.svg") center / cover;
+    background: var(--color-info-soft) url("/static/img/placeholders/hue-3.svg") center / cover;
   }
 
   .c-hue-4 {
-    background: var(--color-ok-soft) url("../img/placeholders/hue-4.svg") center / cover;
+    background: var(--color-ok-soft) url("/static/img/placeholders/hue-4.svg") center / cover;
   }
 
   .c-hue-5 {
-    background: var(--color-warn-soft) url("../img/placeholders/hue-5.svg") center / cover;
+    background: var(--color-warn-soft) url("/static/img/placeholders/hue-5.svg") center / cover;
   }
 
   .c-hue-1,
@@ -2713,7 +2713,7 @@
     aspect-ratio: 16 / 9;
     margin: 0 auto 1rem;
     border-radius: var(--radius-sm);
-    background: var(--color-ok-soft) url("../img/placeholders/hue-4.svg") center / cover;
+    background: var(--color-ok-soft) url("/static/img/placeholders/hue-4.svg") center / cover;
   }
 
   .c-empty__title {
@@ -3374,14 +3374,14 @@
   .c-hero__emblem > span {
     position: absolute;
     inset: 0;
-    -webkit-mask: url("../img/sjtu-emblem-body.svg") center / contain no-repeat;
-    mask: url("../img/sjtu-emblem-body.svg") center / contain no-repeat;
+    -webkit-mask: url("/static/img/sjtu-emblem-body.svg") center / contain no-repeat;
+    mask: url("/static/img/sjtu-emblem-body.svg") center / contain no-repeat;
     background-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
   }
 
   .c-hero__emblem > .c-hero__emblem-gear {
-    -webkit-mask-image: url("../img/sjtu-emblem-gear.svg");
-    mask-image: url("../img/sjtu-emblem-gear.svg");
+    -webkit-mask-image: url("/static/img/sjtu-emblem-gear.svg");
+    mask-image: url("/static/img/sjtu-emblem-gear.svg");
     background-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
     animation: c-hero-gear 90s linear infinite;
   }

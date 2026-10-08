@@ -10,7 +10,12 @@ const SHELL_GZIP_MAX = 300 * 1024
 
 const dist = join(import.meta.dirname, "dist/client")
 const manifest = JSON.parse(readFileSync(join(dist, ".vite/manifest.json"), "utf8"))
-const { assetsFromManifest, handle } = await import("./dist/server/server.js")
+const { assetsFromManifest, handle, staticImgPath, staticImgRoot } = await import("./dist/server/server.js")
+const imgRoot = staticImgRoot()
+if (!staticImgPath("/static/img/placeholders/cover-07.svg", imgRoot)) {
+  console.error("构建后的服务找不到 /static/img/placeholders/cover-07.svg")
+  process.exit(1)
+}
 const assets = assetsFromManifest(manifest)
 if (!assets?.entry) {
   console.error("清单里没有入口脚本")

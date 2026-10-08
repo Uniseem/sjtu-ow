@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { expect, test } from "vitest"
-import { CSP, handle, type Incoming } from "../server"
+import { CSP, STATIC_IMG_CACHE, handle, staticImgPath, staticImgRoot, type Incoming } from "../server"
 import { httpError } from "./router"
 
 function incoming(method: string, url: string, headers: Record<string, string> = {}): Incoming {
@@ -23,6 +23,16 @@ test("the content security policy is the one in section 6.9", () => {
     "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
   )
   expect(CSP).not.toContain("unsafe-")
+})
+
+test("static images stay inside static/img and are cached for a day", () => {
+  const root = staticImgRoot()
+  expect(root).not.toBe("")
+  const file = staticImgPath("/static/img/placeholders/cover-07.svg", root)
+  expect(file?.endsWith("/placeholders/cover-07.svg")).toBe(true)
+  expect(staticImgPath("/static/img/placeholders/..%2f..%2f..%2fweb/package.json", root)).toBeNull()
+  expect(staticImgPath("/static/img/no-such.svg", root)).toBeNull()
+  expect(STATIC_IMG_CACHE).toBe("public, max-age=86400")
 })
 
 test("only GET and HEAD are accepted", async () => {

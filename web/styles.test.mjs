@@ -48,6 +48,11 @@ test("dark values follow the visitor or the system, not a raw media query", () =
   assert.match(flat, new RegExp(chosen + darkBg));
 });
 
+test("decorative images use the fixed /static/img addresses", () => {
+  assert.equal(css.includes('url("../img/'), false);
+  assert.ok(compiled.includes("/static/img/placeholders/ridge.svg"));
+});
+
 test("the stylesheet does not load daisyUI", () => {
   assert.equal(css.includes("daisyui"), false);
   const flat = compiled.replaceAll(" ", "");
