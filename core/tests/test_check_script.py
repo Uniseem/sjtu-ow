@@ -1,15 +1,10 @@
-"""Round 128: scripts/check.sh runs what CI runs (AGENTS.md「常用命令」).
-
-The checks are written down twice, in .github/workflows/ci.yml and in the
-script the test machine runs; this keeps the two from drifting apart.
-"""
+"""scripts/check.sh 和 CI、测试机整组说的是同一件事（128 起，229 起只剩新栈）。"""
 
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# The script tags its image sjtu-ow:check and installs its own way.
-NOT_IN_SCRIPT = ("docker build", "uv sync")
+GONE = ("uv run pytest", "ruff check", "manage.py", "docker build", "CHECK_LEGACY", "CHECK_DOCKER")
 
 
 def _ci():
@@ -18,6 +13,10 @@ def _ci():
 
 def _script():
     return (ROOT / "scripts/check.sh").read_text(encoding="utf-8")
+
+
+def _remote():
+    return (ROOT / "scripts/remote-check.sh").read_text(encoding="utf-8")
 
 
 def ci_commands():
@@ -36,21 +35,19 @@ def ci_commands():
                 block = len(match.group(1))
             elif rest:
                 commands.append(rest)
-    return [c for c in commands if not c.startswith(("#", *NOT_IN_SCRIPT))]
+    return [c for c in commands if not c.startswith("#")]
 
 
 def test_every_ci_command_is_in_the_script():
     commands = ci_commands()
-    assert len(commands) >= 8, commands
+    assert len(commands) >= 5, commands
     script = _script()
     missing = [command for command in commands if command not in script]
     assert not missing
-    assert "docker build -q -t sjtu-ow:check ." in script
 
 
-def test_the_script_sets_the_same_environment():
-    pairs = re.findall(r"^\s+([A-Z][A-Z_]+): (.+)$", _ci(), flags=re.MULTILINE)
-    assert len(pairs) >= 8, pairs
-    script = _script()
-    missing = [f"{k}={v}" for k, v in pairs if f"{k}={v.strip('"')}" not in script]
-    assert not missing
+def test_ci_and_the_test_machine_skip_the_old_stack():
+    for name, text in (("CI", _ci()), ("check.sh", _script()), ("remote-check.sh", _remote())):
+        for gone in GONE:
+            assert gone not in text, f"{name} 还有 {gone}"
+    assert "sh scripts/check.sh" in _remote()

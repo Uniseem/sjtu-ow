@@ -525,9 +525,9 @@ docker compose … exec -T web python manage.py shell -c "from core.health impor
 
 ## CI
 
-使用 **GitHub Actions**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)），每次推送到 `main` 时执行：ruff、编译 Tailwind、pytest、`makemigrations --check`、生产配置下的 `check --deploy`、重新生成错误页后 `git diff` 必须为空、`docker build`。
+使用 **GitHub Actions**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）。229 起每次推送到 `main` 只跑新栈：`gofmt`、`go vet`、`staticcheck`、`govulncheck`、`go test`。现行站冻结，ruff、pytest、迁移、生产配置、错误页和 Docker 镜像不再进这次检查。
 
-同样的检查写在 [`scripts/check.sh`](scripts/check.sh)，任何一台 Linux 机器在仓库根目录 `sh scripts/check.sh` 就能跑（`CHECK_DOCKER=1` 才构建镜像）；`core/tests/test_check_script.py` 保证它和 CI 的命令、环境变量一致。开发时不在自己电脑上跑，用 `bash scripts/remote-check.sh` 放到测试机上跑（128 起）：它把工作区连同没提交的改动传过去，pytest 按测试机的核数分片并行（`scripts/pytest-shards.sh`，每片一个 git worktree），`docker build` 同时在后台构建，`run 命令…` 只跑一条命令，`attach` 接着看最近一次。测试机上的目录和规矩见 `AGENTS.md`「测试机与部署」。
+同样的检查写在 [`scripts/check.sh`](scripts/check.sh)，仓库根目录 `sh scripts/check.sh` 就能跑。测试机上的整组也是这一份，不再跑现行站。开发时不在自己电脑上跑，用 `bash scripts/remote-check.sh` 放到测试机上跑（128 起）：它把工作区连同没提交的改动传过去，`run 命令…` 只跑一条命令，`attach` 接着看最近一次。测试机上的目录和规矩见 `AGENTS.md`「测试机与部署」。
 
 Django 渲染的 404 / 403 / 429 / 500 引用 `static/css/error.css`。给 Caddy 的维护页是自包含 HTML（生成时把 `error.css` 内联进去），提交在 `deploy/error_pages/maintenance.html`。改错误页模板或 `error.css` 后运行：
 

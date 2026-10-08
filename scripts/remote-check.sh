@@ -4,10 +4,9 @@
 # git bundle, so the server checks out exactly what is here: LF line endings,
 # new files in, deleted files gone. Nothing is staged or committed locally.
 #
-#   scripts/remote-check.sh            # the whole set, same as CI (scripts/check.sh),
-#                                      # pytest split over one worktree per CPU,
-#                                      # docker build alongside
-#   scripts/remote-check.sh run uv run pytest -q core/tests/test_announcements.py
+#   scripts/remote-check.sh            # the whole set, same as CI (scripts/check.sh):
+#                                      # the Go stack only (229)
+#   scripts/remote-check.sh run go test ./internal/platform/config/
 #   scripts/remote-check.sh run uv run python handoff/rounds/NNN-name/mutate.py
 #   scripts/remote-check.sh attach     # follow the latest run again
 #
@@ -53,7 +52,7 @@ follow() {
 }
 
 case "${1:-check}" in
-check) command="CHECK_SHARDS=${CHECK_SHARDS:-auto} CHECK_DOCKER=${CHECK_DOCKER:-1} sh scripts/check.sh" ;;
+check) command="sh scripts/check.sh" ;;
 run)
   shift
   [ $# -gt 0 ] || { echo "run 后面要跟命令" >&2; exit 2; }

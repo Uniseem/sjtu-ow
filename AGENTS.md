@@ -60,26 +60,23 @@ uv run python manage.py init_site
 uv run python manage.py tailwind runserver   # 另开终端：uv run python manage.py run_worker
 ```
 
-每轮提交前必须全绿（和 CI 一致）：
+每轮提交前必须全绿（和 CI 一致，229 起只跑新栈）：
 
 ```bash
-uv run ruff check . && uv run ruff format --check .
-uv run python manage.py tailwind build   # 测试要读 static/css/app.css，CI 也先编译
-uv run pytest -q
-uv run python manage.py makemigrations --check --dry-run
-DJANGO_SETTINGS_MODULE=sjtu_ow.settings.prod \
-  DJANGO_SECRET_KEY=ci-not-for-production-use-a-long-random-string-at-least-fifty-chars \
-  FIELD_ENCRYPTION_KEY=ci-not-for-production DJANGO_ALLOWED_HOSTS=example.com \
-  DJANGO_CSRF_TRUSTED_ORIGINS=https://example.com SITE_URL=https://example.com \
-  DJANGO_SECURE_SSL_REDIRECT=true \
-  uv run python manage.py check --deploy
+cd server
+test -z "$(gofmt -l .)"
+go vet ./...
+staticcheck ./...
+govulncheck ./...
+go test ./...
 ```
+
+现行站冻结。pytest、ruff、迁移、生产配置、错误页、Docker 镜像不进每次推送，测试机上的整组也不跑。
 
 **这组检查在测试机上跑**（2026-10-04 起，见「测试机与部署」）：
 
 ```bash
-bash scripts/remote-check.sh                  # 整组，和 CI 一样（scripts/check.sh），pytest 按核数分片、镜像同时构建
-bash scripts/remote-check.sh run uv run pytest -q core/tests/test_announcements.py
+bash scripts/remote-check.sh                  # 整组，和 CI 一样（scripts/check.sh）：只跑新栈
 bash scripts/remote-check.sh run uv run python handoff/rounds/NNN-名字/mutate.py
 bash scripts/remote-check.sh attach           # 本机这边断了，接着看最近一次
 ```

@@ -1,14 +1,16 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M1（Go 底座）进行中——222–228 做到信纸、发信和待发信；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 228-m1-letters-outbox
-next: claude：M1 第八轮——/healthz、apigen、把 serve 和 worker 挂上（5.15、5.3）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑
+milestone: 重构 M1（Go 底座）进行中——222–228 做到信纸、发信和待发信；229 起每次推送和测试机整组只跑新栈；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 229-ci-new-stack-only
+next: claude：M1 第八轮——/healthz、apigen、把 serve 和 worker 挂上（5.15、5.3）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229）
 updated: 2026-10-08
 blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M1 继续做，不用等
 ```
 
 ## 现在该谁动手
+
+**229（2026-10-08）**：每次推送的 CI 和测试机整组**只跑新栈**。GitHub Actions、`scripts/check.sh`、`remote-check.sh` 不带参数时都是 gofmt、vet、staticcheck、govulncheck、`go test`。现行站的 pytest、ruff、迁移、生产配置、错误页、Docker 镜像从这三处拿掉，没有开关可以再打开。**2 处变异全部变红后恢复。**测试机日志 `20261008-183157-1ffbdad`，govulncheck 无漏洞，退出码 0。下一轮：`/healthz`、apigen、把 `serve` 和 `worker` 挂上。
 
 **228（2026-10-08）**：M1 第七轮，**信纸、发信和待发信**（12 号文档 5.11）。纯文本和现行站同一顺序，HTML 是交大红页头加两张随信的头图；主题前缀 `[SJTU-OW]` 只加一次。SMTP 20 秒超时，没配主机报「后台尚未配置 SMTP」，名单外的地址跳过。有批次就冻进 `held_letters`，同一封合并收件人；没有批次直接进邮件车道。确认用条件更新认领一次，第二次点不再发。7 天内才问，30 天前的由 04:00 清掉。**4 处变异全部变红后恢复。**测试机 pytest 2163 四片全绿、镜像 `0917a13f4919`、govulncheck 无漏洞。下一轮：`/healthz`、apigen、把 `serve` 和 `worker` 挂上。
 
@@ -732,6 +734,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 226-m1-djsign-fernet | M1 第五轮：Django 签名（日历 `sign_object`、退订 `dumps`、zlib 压缩标记）和 Fernet（SHA-256 派生，空串还是空串） | **自查通过**，pytest 2163 四片全绿、镜像 `f1a85a6364bd`、govulncheck 无漏洞，4 处变异全抓到 |
 | 227-m1-jobs | M1 第六轮：任务队列（三条车道、EnqueueOnce、邮件 1/5/30 分钟、单 worker 锁、启动复位）和上海时区定时器（错过补一次；04:00 清过期会话、回执、限流桶） | **自查通过**，pytest 2163 四片全绿、镜像 `a2a0c4273791`、govulncheck 无漏洞，4 处变异全抓到 |
 | 228-m1-letters-outbox | M1 第七轮：信纸（纯文本顺序、HTML 页头和两张头图、主题前缀只加一次）、SMTP 发送（20 秒、名单、没配就报错）、待发信（冻住、合并、条件更新认领一次、7 天、30 天清理） | **自查通过**，pytest 2163 四片全绿、镜像 `0917a13f4919`、govulncheck 无漏洞，4 处变异全抓到 |
+| 229-ci-new-stack-only | 每次推送和测试机整组只跑新栈（gofmt、vet、staticcheck、govulncheck、go test）；现行站的 pytest、ruff、迁移、镜像从 CI 和 check.sh 拿掉 | **自查通过**，测试机日志 `20261008-183157-1ffbdad` 退出码 0，govulncheck 无漏洞，2 处变异全抓到 |
 
 ## 当前待定问题
 

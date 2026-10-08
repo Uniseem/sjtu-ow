@@ -5,64 +5,8 @@ on:
     branches: [main]
   pull_request:
 
+# 229 起只跑新栈。现行站冻结，不再进每次推送的检查。
 jobs:
-  test:
-    name: ruff, pytest, migrations, deploy check
-    runs-on: ubuntu-latest
-    env:
-      DJANGO_SETTINGS_MODULE: sjtu_ow.settings.dev
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.13"
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Ruff
-        run: |
-          uv run ruff check .
-          uv run ruff format --check .
-
-      # static/css/app.css is gitignored build output. The homepage weight test
-      # refuses to skip assets it cannot find, so build it the way the
-      # Dockerfile does.
-      - name: Build Tailwind CSS
-        run: |
-          uv run python manage.py tailwind download_cli
-          uv run python manage.py tailwind build
-
-      - name: Tests
-        run: uv run pytest
-
-      - name: Missing migrations
-        run: uv run python manage.py makemigrations --check --dry-run
-
-      - name: Production deploy check
-        env:
-          DJANGO_SETTINGS_MODULE: sjtu_ow.settings.prod
-          DJANGO_SECRET_KEY: ci-not-for-production-use-a-long-random-string-at-least-fifty-chars
-          FIELD_ENCRYPTION_KEY: ci-not-for-production
-          DJANGO_ALLOWED_HOSTS: example.com
-          DJANGO_CSRF_TRUSTED_ORIGINS: https://example.com
-          SITE_URL: https://example.com
-          DJANGO_SECURE_SSL_REDIRECT: "true"
-        run: uv run python manage.py check --deploy
-
-      - name: Error pages match templates
-        run: |
-          uv run python manage.py render_error_pages
-          git diff --exit-code -- deploy/error_pages
-
-      - name: Docker image
-        run: docker build -t sjtu-ow:ci .
-
-  # 新栈（Go）的检查，222 起。14-7：Action 按 SHA 固定、permissions 只给读。
-  # staticcheck / govulncheck 用 go install 装，模块经 sumdb 核对完整性。
   go:
     name: gofmt, go vet, staticcheck, govulncheck, go test
     runs-on: ubuntu-latest
