@@ -234,7 +234,7 @@ if (mode === "newbie") {
   // === 新人的第一晚 ===
   const EMAIL = "newbie@journey.test"
   const NICKNAME = "新来的"
-  const PASSWORD = "Journey-Pass-2026!"
+  const PASSWORD = "SJTU-Ow-Player#2026!Sec"
 
   await go("/accounts/signup/")
   await fillAndSubmit(`(() => {
@@ -244,19 +244,18 @@ if (mode === "newbie") {
     window.__setVal(f.querySelector('[name=password1]'), ${JSON.stringify(PASSWORD)});
     window.__setVal(f.querySelector('[name=password2]'), ${JSON.stringify(PASSWORD)});
     const sjtu = f.querySelector('[name=is_sjtu][value=true]');
-    if (sjtu) {
-      sjtu.checked = true;
-      sjtu.dispatchEvent(new Event('change', { bubbles: true }));
+    if (sjtu && !sjtu.checked) {
+      sjtu.click();
     }
     f.querySelectorAll('input[type=checkbox]').forEach(b => {
-      b.checked = true;
-      b.dispatchEvent(new Event('change', { bubbles: true }));
+      if (!b.checked) b.click();
     });
     f.setAttribute('data-journey', '1');
   })()`)
-  await sleep(1200)
+  await sleep(1500)
   const signupPath = await evaluate("location.pathname")
-  step("注册表单提交", signupPath === "/accounts/confirm-email/", signupPath)
+  const signupErr = (await evaluate("document.querySelector('.c-notice--err')?.textContent")) ?? ""
+  step("注册表单提交", signupPath === "/accounts/confirm-email/", signupPath + (signupErr ? ` (${signupErr})` : ""))
 
   // 从 jobs 表中读取邮件车道上的验证码明文
   let code = ""

@@ -1,7 +1,7 @@
 # 当前状态
 
 ```yaml
-milestone: 前台 16 页面与专用组件全量移植上线！首页聚合接口 GET /api/page/home 完工；对照旧站的真浏览器测试套件 scripts/journey.mjs 与全站截图套件 scripts/screens.mjs 落地；正式站生产升级完成并保持 200 OK 健康运行。
+milestone: 前台 16 页面与专用组件全量移植上线！首页聚合接口 GET /api/page/home 完工；旧站历史备份全量设置为永久留存不自动删除（BACKUP_KEEP_DAYS=0，服务器创建只读归档）；对照旧站的真浏览器测试套件落地；正式站生产升级完成并保持 200 OK 健康运行。
 round: 260-frontend-pages-and-tests-live
 next: 运行新栈自动化端到端测试与全页面巡检、桌面/移动端全量截图。
 updated: 2026-10-09
@@ -53,7 +53,8 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 - 通用业务组件封装：`CSeats.vue`（内战席位格）、`PostCard.vue`（媒体卡片）、`TeamTile.vue`（战队卡片）；
 - Go 服务端支撑：新增公开聚合接口 `GET /api/page/home` 并补充单测；新增 `sjtuow seed` 生成全套端到端种子数据与会话 Token；
 - 一一对照测试与巡检体系：创建 `scripts/journey.mjs`（新人的第一晚、pages 全页面巡检、admin 干部操作）与 `scripts/screens.mjs`（全站 1280 与 375 真实截图工具）；
-- 生产环境安全升级与上线：在生产机器 169.58.217.180 执行镜像构建与平滑重启；服务全绿正常运行。下一步：运行端到端测试与全页面巡检。
+- 生产环境安全升级与上线：在生产机器 169.58.217.180 执行镜像构建与平滑重启；解决命名卷静态资产遮蔽并实现启动自动同步；公网实测渲染 200 OK 并通过真浏览器截图验证通过；
+- 旧站备份永久保留设置（用户「旧站的备份设置成不自动删除」）：将 `BACKUP_KEEP_DAYS` 默认设为 0（永久保留），在 `backup.py` 与 `offsite.py` 中增加保底规则禁止自动清理；并在正式服务器将全量历史备份与只读数据库快照归档到 `/root/legacy-backups-permanent/` 设置只读权限保护，同时禁用旧 cron 清理任务。下一步：端到端与巡检测试。
 
 **259（2026-10-09）**：生产正式停机割接完成！Vue 3 + Go 新栈集群正式上线接管生产环境（用户「那就正式替换」）。
 - 生产环境安全快照与镜像构建：在 VPS `169.58.217.180` 制作旧库最终只读快照 `/root/sjtu-ow-backups/legacy-final-20261009134549.sqlite3`（及前置全量配置备份 `/root/cutover-safety-backup/`）；

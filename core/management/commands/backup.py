@@ -153,18 +153,22 @@ class Command(BaseCommand):
         except offsite.OffsiteError as exc:
             # A failed upload must not look like a successful backup.
             raise CommandError(f"本地备份已生成，但上传失败：{exc}") from exc
-        self.stdout.write(self.style.SUCCESS(f"已加密并上传到 {config.bucket}/{key}"))
-        try:
-            removed = offsite.prune(keep_days, config=config)
-        except offsite.OffsiteError as exc:
-            # Nothing is lost if the old copies stay one more day.
-            self.stdout.write(self.style.WARNING(f"异地旧备份没清理掉：{exc}"))
+        if keep_days > 0:
+            try:
+                removed = offsite.prune(keep_days, config=config)
+            except offsite.OffsiteError as exc:
+                # Nothing is lost if the old copies stay one more day.
+                self.stdout.write(self.style.WARNING(f"异地旧备份没清理掉：{exc}"))
+            else:
+                if removed:
+                    self.stdout.write(f"已清理异地 {removed} 个超过 {keep_days} 天的旧备份")
         else:
-            if removed:
-                self.stdout.write(f"已清理异地 {removed} 个超过 {keep_days} 天的旧备份")
+            self.stdout.write("异地备份保留策略：永久保留，不自动删除。")
         return "uploaded"
 
     def prune(self, root: Path, keep_days: int) -> int:
+        if keep_days <= 0:
+            return 0
         cutoff = timezone.now() - timedelta(days=keep_days)
         removed = 0
         for path in existing_backups(root):

@@ -234,10 +234,8 @@ def prune(keep_days: int, *, config: Config | None = None, now=None) -> int:
     Until round 063 only the local copies were pruned; the bucket kept every
     upload for ever.
     """
-    from datetime import timedelta
-
-    from django.utils import timezone
-
+    if keep_days <= 0:
+        return 0
     config = config or load_config()
     if config.missing:
         raise OffsiteError(f"异地备份还缺这些设置：{'、'.join(config.missing)}")
