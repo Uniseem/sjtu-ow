@@ -21,6 +21,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/comments"
 	"github.com/Uniseem/sjtu-ow/server/internal/content"
 	"github.com/Uniseem/sjtu-ow/server/internal/members"
+	"github.com/Uniseem/sjtu-ow/server/internal/moderation"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/apigen"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
@@ -100,6 +101,7 @@ func buildRegistry(
 	membersSvc *members.Service,
 	tournamentsSvc *tournaments.Service,
 	scrimsSvc *scrims.Service,
+	moderationSvc *moderation.Service,
 ) *api.Registry {
 	reg := &api.Registry{}
 	if acctSvc != nil {
@@ -129,6 +131,9 @@ func buildRegistry(
 	if scrimsSvc != nil {
 		scrims.NewModule(scrimsSvc).Routes(reg)
 	}
+	if moderationSvc != nil {
+		moderation.NewModule(moderationSvc).Routes(reg)
+	}
 	return reg
 }
 
@@ -149,8 +154,16 @@ func runServe() error {
 	membersSvc := members.NewService(d)
 	tournamentsSvc := newTournaments(d, cfg.SiteURL, acctSvc, teamsSvc)
 	scrimsSvc := newScrims(d, cfg.SiteURL, acctSvc)
+	moderationSvc := moderation.NewService(d, cfg.SiteURL)
+	// 各域改了内容就送审（规则 186）；开关没开或没配好时 Submit 什么都不做
+	acctSvc.SetModeration(moderationSvc)
+	commentsSvc.SetModeration(moderationSvc)
+	contentSvc.SetModeration(moderationSvc)
+	scrimsSvc.SetModeration(moderationSvc)
+	teamsSvc.SetModeration(moderationSvc)
+	tournamentsSvc.SetModeration(moderationSvc)
 
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
@@ -199,6 +212,9 @@ func runWorker() error {
 		if _, err := teamsSvc.CloseStaleApplications(ctx, now); err != nil {
 			return fmt.Errorf("关闭过期申请：%w", err)
 		}
+		if _, err := moderation.NewService(d, cfg.SiteURL).Cleanup(ctx, now); err != nil {
+			return fmt.Errorf("清理审核记录：%w", err)
+		}
 		return nil
 	})
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -220,7 +236,8 @@ func runApigen() error {
 	membersSvc := members.NewService(nil)
 	tournamentsSvc := tournaments.NewService(nil, "")
 	scrimsSvc := scrims.NewService(nil, "")
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc)
+	moderationSvc := moderation.NewService(nil, "")
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc)
 	return apigen.Write(dir, reg)
 }
 
@@ -329,6 +346,10 @@ func runImport() error {
 		return fmt.Errorf("导入内战失败: %w", err)
 	}
 	fmt.Println("内战数据导入成功。")
+	if err := moderation.ImportLegacyModeration(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入审核记录失败: %w", err)
+	}
+	fmt.Println("审核记录导入成功。")
 	return nil
 }
 

@@ -2,6 +2,7 @@ package comments
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -326,5 +327,47 @@ func TestCommentsLifecycleAndTombstone(t *testing.T) {
 	c1InMod := modList.Comments[1]
 	if len(c1InMod.Replies) != 1 || !c1InMod.Replies[0].IsHidden {
 		t.Fatalf("mod 视角下 c1 的被隐藏回复应可见且 IsHidden=true")
+	}
+}
+
+type recordSink struct{ got []string }
+
+func (r *recordSink) Submit(_ context.Context, targetType string, targetID int64, field, text, url string, authorID int64) error {
+	r.got = append(r.got, fmt.Sprintf("%s#%d:%s=%s", targetType, targetID, field, text))
+	return nil
+}
+
+// 契约 R173、R177：评论先发后审，发表和编辑后都送审；没接送审入口时照常发表
+func TestCommentsAreSubmittedForReview(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(NewStore(d))
+	insertTestUser(t, d, 1, "u1@sjtu.edu.cn", "选手1")
+	setupTestArticle(t, d, 10, true, true)
+	uc := newTestCtx(ctx, 1, false)
+	if _, err := svc.CreateComment(uc, CreateCommentInput{ArticleID: 10, Content: "没接送审也能发"}); err != nil {
+		t.Fatal(err)
+	}
+	sink := &recordSink{}
+	svc.SetModeration(sink)
+	c, err := svc.CreateComment(uc, CreateCommentInput{ArticleID: 10, Content: "第一条"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.got) != 1 || sink.got[0] != fmt.Sprintf("comment#%d:body=第一条", c.ID) {
+		t.Fatalf("发表后送审：%v", sink.got)
+	}
+	if _, err := svc.EditComment(uc, c.ID, EditCommentInput{Content: "改过的"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.got) != 2 || !strings.HasSuffix(sink.got[1], "body=改过的") {
+		t.Fatalf("编辑后正文重新送审：%v", sink.got)
+	}
+	// 被拦下的评论（空正文）不送审
+	if _, err := svc.CreateComment(uc, CreateCommentInput{ArticleID: 10, Content: " "}); err == nil {
+		t.Fatal("空评论应被拦")
+	}
+	if len(sink.got) != 2 {
+		t.Fatalf("被拦下的不送审：%v", sink.got)
 	}
 }

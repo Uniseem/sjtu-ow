@@ -271,3 +271,30 @@ func TestScrimCopy(t *testing.T) {
 		t.Fatal("报名不带")
 	}
 }
+
+type recordSink struct{ got []string }
+
+func (r *recordSink) Submit(_ context.Context, targetType string, targetID int64, field, text, url string, authorID int64) error {
+	r.got = append(r.got, targetType+":"+text)
+	return nil
+}
+
+// 契约 R186：内战说明变更后送审；改别的字段不送
+func TestScrimDescriptionGoesToModeration(t *testing.T) {
+	e := newEnv(t)
+	s := &recordSink{}
+	e.svc.SetModeration(s)
+	d := e.draft()
+	e.patch(d, Changes{Title: str("只改标题")})
+	if len(s.got) != 0 {
+		t.Fatalf("没改说明不送：%v", s.got)
+	}
+	e.patch(d, Changes{Description: str("欢迎来玩")})
+	if len(s.got) != 1 || s.got[0] != "scrim_description:欢迎来玩" {
+		t.Fatalf("改了说明送审：%v", s.got)
+	}
+	e.patch(d, Changes{Description: str("")})
+	if len(s.got) != 1 {
+		t.Fatalf("清空说明不送：%v", s.got)
+	}
+}

@@ -21,7 +21,7 @@ M = [
     ("R161 先比位置分差", S / "teaming.go", "return [2]int{abs(a.Total - b.Total), gap}", "return [2]int{gap, abs(a.Total - b.Total)}", PS, "TestTeamingMatchesBruteForce"),
     ("R162 配对不二分定位", S / "teaming.go", "position := sort.SearchInts(totals, a.Total)", "position := 0", PS, "TestTeamingMatchesBruteForce"),
     ("R163 不提醒没段位的位置", S / "teaming.go", "if _, ok := p.Ratings[role]; !ok {", "if false {", PS, "TestUnratedPlacements"),
-    ("R163 按最高分算角色限定", S / "teaming.go", "used[id] = p.Rating(role)", "used[id] = p.Best", PS, "TestUnratedPlacements"),
+    ("R163 按最高分算角色限定", S / "teaming.go", "used[id] = p.Rating(role)", "_ = role\n\t\t\t\t\tused[id] = p.Best", PS, "TestUnratedPlacements"),
     ("R144 已结束可再发布", S / "service.go", "case StatusFinished:\n\t\t\treturn \"\", refuse(\"已结束的内战不能再发布。\")", "case \"nope\":\n\t\t\treturn \"\", refuse(\"已结束的内战不能再发布。\")", PS, "TestScrimLifecycle"),
     ("R145 发布不看缺什么", S / "service.go", "if gaps := Missing(sc); len(gaps) > 0 {\n\t\t\treturn \"\", refuse(\"还没填好：", "if gaps := Missing(sc); false {\n\t\t\treturn \"\", refuse(\"还没填好：", PS, "TestScrimLifecycle"),
     ("R146 有人报名也能删", S / "service.go", "if n > 0 {\n\t\t\treturn refuse(\"已经有人报名，不能删除。\")", "if false {\n\t\t\treturn refuse(\"已经有人报名，不能删除。\")", PS, "TestScrimLifecycle"),

@@ -29,7 +29,11 @@ type Service struct {
 	siteURL string
 	viewers ViewerBuilder
 	rng     *rand.Rand
+	mod     app.ModerationSink
 }
+
+// SetModeration 接上内容审核的送审入口（内战说明，规则 186）。
+func (s *Service) SetModeration(m app.ModerationSink) { s.mod = m }
 
 // NewService 造内战服务；d 可以是 nil（apigen）。
 func NewService(d *db.DB, siteURL string) *Service {
@@ -156,12 +160,14 @@ func sameTime(a, b *time.Time) bool {
 
 // UpdateScrim 按字段保存：合法的存，不合法的留旧值。改期按规则 152。
 func (s *Service) UpdateScrim(ctx *app.Ctx, id, baseVersion int64, ch Changes) (*SaveResult, error) {
-	if _, err := requireManager(ctx); err != nil {
+	v, err := requireManager(ctx)
+	if err != nil {
 		return nil, err
 	}
+	var descText *string
 	now := ctx.Now().UTC()
 	res := &SaveResult{Fields: map[string][]string{}, SavedAt: now}
-	err := s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
 		sc, err := GetScrim(txCtx, tx, id)
 		if err != nil {
 			return err
@@ -191,6 +197,8 @@ func (s *Service) UpdateScrim(ctx *app.Ctx, id, baseVersion int64, ch Changes) (
 		if ch.Description != nil && *ch.Description != sc.Description {
 			_, plain, _, _, _, _ := markdown.Facts(*ch.Description, s.siteURL, nil)
 			set("description", "description", *ch.Description)
+			d := *ch.Description
+			descText = &d
 			sets = append(sets, "description_plain = ?")
 			args = append(args, plain)
 		}
@@ -251,6 +259,12 @@ func (s *Service) UpdateScrim(ctx *app.Ctx, id, baseVersion int64, ch Changes) (
 	}
 	if len(res.Fields) == 0 {
 		res.Fields = nil
+	}
+	if descText != nil && s.mod != nil && *descText != "" {
+		if err := s.mod.Submit(ctx.Context, "scrim_description", id, "description", *descText,
+			fmt.Sprintf("/scrims/%d/", id), v.ID); err != nil {
+			slog.Warn("内战说明送审失败", "id", id, "err", err.Error())
+		}
 	}
 	return res, nil
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -18,6 +20,20 @@ const CapCommentsModerate app.Cap = "comments.moderate"
 // Service 协调评论业务规则。
 type Service struct {
 	store *Store
+	mod   app.ModerationSink
+}
+
+// SetModeration 接上内容审核的送审入口：评论先发后审，提交后送审，失败只记日志（规则 173）。
+func (s *Service) SetModeration(m app.ModerationSink) { s.mod = m }
+
+func (s *Service) submitModeration(ctx *app.Ctx, c *Comment) {
+	if s.mod == nil || c == nil {
+		return
+	}
+	if err := s.mod.Submit(ctx.Context, "comment", c.ID, "body", c.Content,
+		fmt.Sprintf("/news/%d/#comment-%d", c.ArticleID, c.ID), ctx.Viewer.ID); err != nil {
+		slog.Warn("评论送审失败", "id", c.ID, "err", err.Error())
+	}
 }
 
 // NewService 创建评论服务。
@@ -140,7 +156,11 @@ func (s *Service) CreateComment(ctx *app.Ctx, in CreateCommentInput) (*Comment, 
 		return nil, err
 	}
 
-	return s.store.GetCommentByID(ctx.Context, c.ID)
+	created, err := s.store.GetCommentByID(ctx.Context, c.ID)
+	if err == nil {
+		s.submitModeration(ctx, created)
+	}
+	return created, err
 }
 
 // EditCommentInput 修改评论入参。
@@ -185,7 +205,11 @@ func (s *Service) EditComment(ctx *app.Ctx, id int64, in EditCommentInput) (*Com
 		return nil, err
 	}
 
-	return s.store.GetCommentByID(ctx.Context, id)
+	edited, err := s.store.GetCommentByID(ctx.Context, id)
+	if err == nil {
+		s.submitModeration(ctx, edited) // 编辑后正文重新送审（规则 177）
+	}
+	return edited, err
 }
 
 // DeleteComment 作者软删除评论（规则 178）。

@@ -44,3 +44,7 @@
 ## 改动文件
 
 `server/db/migrations/00013_scrims.sql`；`server/internal/scrims/`（model、teaming、store、service、signup、board、views、api、import 及测试）；`server/internal/accounts/`（`store.go`、`m5_hooks_test.go`）；`server/cmd/sjtuow/main.go`；`web/packages/api/src/gen/`；本目录。
+
+## 250 轮更正
+
+上面「37 处变异全部变红」有一处是假红：「R163 按最高分算角色限定」把 `used[id] = p.Rating(role)` 换成 `p.Best` 后，`role` 变量没用到，编译失败，测试包 `build failed`，被脚本算成「抓到」。250 轮把变异改成 `_ = role` 加 `p.Best` 重跑，`TestUnratedPlacements` 因 `P1=2500 P2=2600`（应为 0 和 2600）变红，才是真的抓到。以后写变异时，替换掉的代码里的变量要保持被用到，否则编译失败会冒充测试失败。

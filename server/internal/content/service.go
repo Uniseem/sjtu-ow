@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -26,7 +27,11 @@ const (
 type Service struct {
 	store   *Store
 	siteURL string
+	mod     app.ModerationSink
 }
+
+// SetModeration 接上内容审核的送审入口：文章发布时把标题、摘要、正文（Markdown 原文）送审（规则 186）。
+func (s *Service) SetModeration(m app.ModerationSink) { s.mod = m }
 
 // NewService 创建内容域服务。
 func NewService(store *Store, siteURL string) *Service {
@@ -493,6 +498,17 @@ func (s *Service) Publish(ctx *app.Ctx, pageID int64, in PublishInput) (*Article
 
 	if err := s.store.PublishArticle(ctx.Context, pageID, &p, &a, latestRev.ID); err != nil {
 		return nil, err
+	}
+
+	if s.mod != nil {
+		text := strings.TrimSpace(strings.Join([]string{title, revContent.Summary, revContent.BodyMD}, "\n\n"))
+		var author int64
+		if a.AuthorID != nil {
+			author = *a.AuthorID
+		}
+		if err := s.mod.Submit(ctx.Context, "article", pageID, "content", text, "/news/"+uniqueSlug+"/", author); err != nil {
+			slog.Warn("文章送审失败", "id", pageID, "err", err.Error())
+		}
 	}
 
 	return s.store.GetArticleByID(ctx.Context, pageID)

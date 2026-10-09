@@ -220,3 +220,43 @@ func TestDeleteAccountRemovesScrimSignups(t *testing.T) {
 		t.Fatal("没被安排过的人注销，不用打标记")
 	}
 }
+
+type recordSink struct{ got []string }
+
+func (r *recordSink) Submit(_ context.Context, targetType string, targetID int64, field, text, url string, authorID int64) error {
+	r.got = append(r.got, targetType+":"+text)
+	return nil
+}
+
+// 契约 R186：昵称、宣言变更后送审；没变的不送
+func TestProfileChangesAreSubmittedForReview(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	sess := auth.NewStore(d, nil)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", sess, nil)
+	sink := &recordSink{}
+	svc.SetModeration(sink)
+	u := newVerifiedUser(t, d, "mod@sjtu.edu.cn", "旧昵称", "Password123!@#", true)
+	tok, _ := sess.Create(ctx, u.ID)
+	uc := newTestCtx(ctx, u, tok, false)
+
+	if _, err := svc.UpdateProfile(uc, UpdateProfileInput{Nickname: "新昵称", Motto: "来打内战"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.got) != 2 || sink.got[0] != "nickname:新昵称" || sink.got[1] != "motto:来打内战" {
+		t.Fatalf("昵称和宣言都送审：%v", sink.got)
+	}
+	sink.got = nil
+	if _, err := svc.UpdateProfile(uc, UpdateProfileInput{Nickname: "新昵称", Motto: "来打内战"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.got) != 0 {
+		t.Fatalf("没变的不送：%v", sink.got)
+	}
+	if _, err := svc.UpdateProfile(uc, UpdateProfileInput{Nickname: "新昵称", Motto: ""}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.got) != 0 {
+		t.Fatalf("清空宣言不送：%v", sink.got)
+	}
+}

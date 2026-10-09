@@ -229,6 +229,38 @@ export function getApiAdminMemberGroupsIdPeople(id: string): Promise<GetApiAdmin
   return call<GetApiAdminMemberGroupsIdPeopleOut>("GET", "/api/admin/member-groups/{id}/people", { id }, undefined)
 }
 
+export interface GetApiAdminModerationIn {
+}
+
+export interface GetApiAdminModerationOut {
+  items: {   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null[];
+  total: number;
+  page: number;
+  page_size: number;
+  enabled: boolean;
+  waiting: number;
+  failed: number;
+  last_error: string;
+}
+
+export function getApiAdminModeration(): Promise<GetApiAdminModerationOut> {
+  return call<GetApiAdminModerationOut>("GET", "/api/admin/moderation", {  }, undefined)
+}
+
+export interface GetApiAdminModerationIdIn {
+}
+
+export interface GetApiAdminModerationIdOut {
+  item: {   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
+  author_flags: number;
+  author_problem: string;
+  history: {   id: number;   actor_id: number | null;   action: string;   object_type: string;   object_id: number;   data: number[];   created_at: string; }[];
+}
+
+export function getApiAdminModerationId(id: string): Promise<GetApiAdminModerationIdOut> {
+  return call<GetApiAdminModerationIdOut>("GET", "/api/admin/moderation/{id}", { id }, undefined)
+}
+
 export interface GetApiAdminScrimsIn {
 }
 
@@ -986,6 +1018,31 @@ export interface PostApiAdminMemberGroupsIdPeopleOut {
 
 export function postApiAdminMemberGroupsIdPeople(id: string, body: PostApiAdminMemberGroupsIdPeopleIn): Promise<PostApiAdminMemberGroupsIdPeopleOut> {
   return call<PostApiAdminMemberGroupsIdPeopleOut>("POST", "/api/admin/member-groups/{id}/people", { id }, body)
+}
+
+export interface PostApiAdminModerationIdAskAuthorIn {
+  message: string;
+}
+
+export interface PostApiAdminModerationIdAskAuthorOut {
+  item: {   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
+}
+
+export function postApiAdminModerationIdAskAuthor(id: string, body: PostApiAdminModerationIdAskAuthorIn): Promise<PostApiAdminModerationIdAskAuthorOut> {
+  return call<PostApiAdminModerationIdAskAuthorOut>("POST", "/api/admin/moderation/{id}/ask-author", { id }, body)
+}
+
+export interface PostApiAdminModerationIdHandleIn {
+  action: string;
+  note: string;
+}
+
+export interface PostApiAdminModerationIdHandleOut {
+  item: {   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
+}
+
+export function postApiAdminModerationIdHandle(id: string, body: PostApiAdminModerationIdHandleIn): Promise<PostApiAdminModerationIdHandleOut> {
+  return call<PostApiAdminModerationIdHandleOut>("POST", "/api/admin/moderation/{id}/handle", { id }, body)
 }
 
 export interface PostApiAdminRegistrationsIdApproveIn {

@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"net/http"
 	netmail "net/mail"
@@ -30,12 +31,17 @@ type Service struct {
 	clock    clock.Clock
 	siteURL  string
 	sessions *auth.Store
+	// mod 把昵称、宣言送审（规则 186）；nil 表示不送。
+	mod app.ModerationSink
 	// limiter 数登录失败（AuthLoginFailedKey 按账号，R006）；nil 表示不数
 	// （apigen 场景；测试想要失败限流时传 ratelimit.NewEnforcer）。
 	limiter *ratelimit.Enforcer
 	// codeGen 造验证码（明文 + SHA-256 哈希）；测试换成固定码。
 	codeGen func() (code, codeHash string, err error)
 }
+
+// SetModeration 接上内容审核的送审入口。
+func (s *Service) SetModeration(m app.ModerationSink) { s.mod = m }
 
 // NewService 创建账号服务。sessions 为 nil 时自建；limiter 为 nil 时登录失败
 // 不按账号计数（注册表层的按 IP 限流不受影响）。
@@ -1356,6 +1362,20 @@ func (s *Service) UpdateProfile(ctx *app.Ctx, in UpdateProfileInput) (*UpdatePro
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// 昵称和宣言每次变更都送审；失败只记日志（规则 107 同款口径）。
+	if s.mod != nil {
+		if trimmedNickname != u.Nickname {
+			if err := s.mod.Submit(ctx.Context, "nickname", u.ID, "nickname", trimmedNickname, "", u.ID); err != nil {
+				slog.Warn("昵称送审失败", "user", u.ID, "err", err.Error())
+			}
+		}
+		if trimmedMotto != "" && trimmedMotto != u.Motto {
+			if err := s.mod.Submit(ctx.Context, "motto", u.ID, "motto", trimmedMotto, "/members/", u.ID); err != nil {
+				slog.Warn("宣言送审失败", "user", u.ID, "err", err.Error())
+			}
+		}
 	}
 
 	return &UpdateProfileResult{
