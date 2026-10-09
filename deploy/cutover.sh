@@ -24,35 +24,58 @@ if [[ -f "$ENV_FILE" ]]; then
     COMPOSE_NEW="$COMPOSE_NEW --env-file $ENV_FILE"
 fi
 
-# 1. 确认割接意向
-echo "警告: 即将执行停机割接流水线！旧栈写入服务将被停止，数据将导入新栈。"
-read -p "是否确认开始执行割接? [y/N] " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "割接已取消。"
-    exit 0
+AUTO_CONFIRM=0
+if [[ "${1:-}" == "--yes" || "${1:-}" == "-y" ]]; then
+    AUTO_CONFIRM=1
+fi
+
+if [[ $AUTO_CONFIRM -eq 0 ]]; then
+    echo "警告: 即将执行停机割接流水线！旧栈写入服务将被停止，数据将导入新栈。"
+    read -p "是否确认开始执行割接? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "割接已取消。"
+        exit 0
+    fi
 fi
 
 START_TIME=$(date +%s)
 
-# 2. 停用旧栈写入服务（进入只读维护）
-echo "[1/6] 停止旧栈写入服务..."
-if docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" ps -q web 2>/dev/null | grep -q .; then
-    docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" stop web worker || true
+# 1. 预先构建新栈容器镜像（缩短停机时间）
+echo "[1/6] 构建新栈应用镜像..."
+$COMPOSE_NEW build
+
+# 2. 停用旧栈服务（进入只读维护）
+echo "[2/6] 停止旧栈运行容器..."
+if docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" ps -q 2>/dev/null | grep -q .; then
+    docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" down || true
 else
     echo "  旧栈服务未在运行，继续割接流程..."
 fi
 
 # 3. 创建旧库最终快照
-echo "[2/6] 创建旧库只读快照..."
-LEGACY_DB="/srv/sjtu-ow/data/sjtuow.sqlite3"
-SNAPSHOT_DB="/srv/sjtu-ow/data/legacy-final-$(date +%Y%m%d%H%M%S).sqlite3"
+echo "[3/6] 创建旧库只读快照..."
+LEGACY_DB=""
+for cand in \
+    "/var/lib/docker/volumes/sjtu-ow_data/_data/db.sqlite3" \
+    "/srv/sjtu-ow/data/db.sqlite3" \
+    "/srv/sjtu-ow/data/sjtuow.sqlite3" \
+    "${REPO_DIR}/data/db.sqlite3"; do
+    if [[ -f "$cand" ]]; then
+        LEGACY_DB="$cand"
+        break
+    fi
+done
 
-if [[ -f "$LEGACY_DB" ]]; then
+SNAPSHOT_DIR="/root/sjtu-ow-backups"
+mkdir -p "$SNAPSHOT_DIR" 2>/dev/null || SNAPSHOT_DIR="/tmp"
+SNAPSHOT_DB="${SNAPSHOT_DIR}/legacy-final-$(date +%Y%m%d%H%M%S).sqlite3"
+
+if [[ -n "$LEGACY_DB" && -f "$LEGACY_DB" ]]; then
     cp "$LEGACY_DB" "$SNAPSHOT_DB"
-    echo "  已创建最终快照: $SNAPSHOT_DB"
+    echo "  已从 $LEGACY_DB 创建最终快照: $SNAPSHOT_DB"
 else
-    echo "  注意: 未检测到宿主 $LEGACY_DB，使用临时空白测试快照"
+    echo "  注意: 未检测到宿主旧库，使用临时测试快照"
     SNAPSHOT_DB="/tmp/legacy-empty.sqlite3"
     touch "$SNAPSHOT_DB"
 fi
