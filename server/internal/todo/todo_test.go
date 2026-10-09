@@ -24,6 +24,7 @@ func newTestDB(t *testing.T) *db.DB {
 	return d
 }
 
+// 契约 R142、R168、R205：管理员待办聚合（赛事待审/编队、内战未分队、AI 异常与 Worker 心跳）
 func TestTodoDuties(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewService(d)

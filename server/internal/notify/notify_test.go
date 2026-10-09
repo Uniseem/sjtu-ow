@@ -167,8 +167,7 @@ func (e *env) hold(actor int64, to1, to2 []mail.Person, now time.Time) *app.Lett
 	return batch
 }
 
-// --- 待发信的确认（规则 206–208）------------------------------------------
-
+// 契约 R206–R208：待发信确认、代发与清理
 func TestHeldDecideSendsOnlyTheTickedOnesAndOnlyOnce(t *testing.T) {
 	e := newEnv(t)
 	actor := e.user("队长")
@@ -450,8 +449,7 @@ func TestRegistrySendsForTheActorWhoQuitDuringTheRequest(t *testing.T) {
 	}
 }
 
-// --- 通知全体成员（规则 73–79）-----------------------------------------------
-
+// 契约 R073–R079、R209、R210：通知全体成员（权限门槛、定时发布上线通知、30分钟冷却、受众动态核算、前缀统一、历史记录与重试）
 func TestAnnounceGatesAndConditions(t *testing.T) {
 	e := newEnv(t)
 	e.user("甲")
@@ -716,8 +714,7 @@ func TestRecordParticipantsCountsEveryEarlierMailAndWritesTheNotice(t *testing.T
 	}
 }
 
-// --- 退订（规则 212、213）---------------------------------------------------
-
+// 契约 R212、R213：退订体系（签名 Token、一键退订与本人有关信件不可退）
 func TestUnsubscribeByLinkIsSignedIdempotentAndOnlyForActiveAccounts(t *testing.T) {
 	e := newEnv(t)
 	id := e.user("乙")

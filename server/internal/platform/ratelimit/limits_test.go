@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-// 表里的数字和设计附录 C、规则 214–223、规则 6（allauth 那组，241 起进表）
-// 里钉住的条目对上。改一个数字这里就红。还没进表的（规则 6 剩下的、215、216、
-// 221、223）写在 limits.go 的注释里。
+// 契约 R006、R214–R224：全站限流声明与时间片核验（设计附录 C、规则 214–224、allauth 规则 6）
 func TestTableMatchesDesign(t *testing.T) {
 	want := []Decl{
 		{Name: "auth_signup", Kind: PerIP, N: 20, Window: time.Minute},

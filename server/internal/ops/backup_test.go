@@ -130,6 +130,7 @@ func TestBackupAndRestore(t *testing.T) {
 	}
 }
 
+// 契约 R015：服务端背书的邮箱（createsuperuser、verify_email）直接记为已验证并置为主邮箱
 func TestCreateSuperuser(t *testing.T) {
 	ctx := context.Background()
 	d, _ := setupTestDB(t)

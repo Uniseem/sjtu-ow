@@ -68,6 +68,7 @@ func TestCapsForRole(t *testing.T) {
 	}
 }
 
+// 契约 R009、R013、R014：派生角色与投稿者组资格同步
 func TestDerivedRoles(t *testing.T) {
 	cases := []struct {
 		name             string
@@ -137,6 +138,7 @@ func TestDerivedRoles(t *testing.T) {
 	}
 }
 
+// 契约 R011、R012：can_use 判定顺序（停用拒、单人优先、组限制、默认允许）与固定拒绝文案
 func TestCanUse(t *testing.T) {
 	verified := time.Now()
 	activeUser := &User{ID: 1, IsActive: true, IsSJTU: true, EmailVerifiedAt: &verified}

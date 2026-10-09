@@ -135,7 +135,7 @@ func validSplit(t *testing.T, sp *Split, players []Player, format string) {
 	}
 }
 
-// 契约 R161、R162：分队的得分和暴力穷举一致（总分差最小，再各位置分差之和最小）
+// 契约 R160、R161、R162：每队位置需求（5v5 1/2/2, 6v6 2/2/2）与分队得分和暴力穷举一致（总分差最小，再各位置分差之和最小）
 func TestTeamingMatchesBruteForce(t *testing.T) {
 	rng := rand.New(rand.NewSource(42))
 	checked := 0

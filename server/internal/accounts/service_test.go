@@ -314,6 +314,7 @@ func TestRegisterFieldValidation(t *testing.T) {
 	}
 }
 
+// 契约 R004、R005、R008：防账号枚举同形响应、注册限流与注册资料补充
 func TestRegisterAntiEnumeration(t *testing.T) {
 	d := newTestDB(t)
 	ctx := context.Background()

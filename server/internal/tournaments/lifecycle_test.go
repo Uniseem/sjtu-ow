@@ -339,7 +339,7 @@ func TestCancelNotifies(t *testing.T) {
 	}
 }
 
-// 契约 R143：复制只抄指定字段，状态/报名/提醒不带，三个时间整体平移整周且最早的落在未来（至少一周）
+// 契约 R143、R225：复制只抄指定字段，状态/报名/提醒不带，三个时间整体平移整周且最早的落在未来（至少一周）
 func TestCopy(t *testing.T) {
 	e := newEnv(t)
 	a, b := e.user("甲"), e.user("乙")

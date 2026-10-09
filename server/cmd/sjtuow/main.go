@@ -78,6 +78,8 @@ func main() {
 		err = runCreateSuperuser()
 	case "reconcile":
 		err = runReconcile()
+	case "rulecheck":
+		err = runRulecheck()
 	default:
 		usage()
 		os.Exit(2)
@@ -88,7 +90,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|verify-email|backup|restore|createsuperuser|reconcile>")
+	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|verify-email|backup|restore|createsuperuser|reconcile|rulecheck>")
 }
 
 func fatal(err error) {
@@ -641,4 +643,47 @@ func runReconcile() error {
 		return fmt.Errorf("数据库一致性检查未完全通过")
 	}
 	return nil
+}
+
+func runRulecheck() error {
+	fs := flag.NewFlagSet("rulecheck", flag.ContinueOnError)
+	docPath := fs.String("doc", "", "业务规则契约文档路径（默认查找 docs/rewrite-research/05-business-rules.md）")
+	repoDir := fs.String("repo", "", "代码仓库根目录（默认向上查找含有 AGENTS.md 的目录）")
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		return err
+	}
+
+	targetRepo := *repoDir
+	if targetRepo == "" {
+		targetRepo = findRepoRoot()
+	}
+
+	targetDoc := *docPath
+	if targetDoc == "" {
+		targetDoc = filepath.Join(targetRepo, "docs/rewrite-research/05-business-rules.md")
+	}
+
+	res, err := ops.RuleCheck(targetDoc, targetRepo)
+	if err != nil {
+		return err
+	}
+	fmt.Print(res.FormatReport())
+	return nil
+}
+
+func findRepoRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "AGENTS.md")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "."
+		}
+		dir = parent
+	}
 }

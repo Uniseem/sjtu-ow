@@ -71,6 +71,7 @@ func newAvatarTestEnv(t *testing.T) (*Service, *dummyMedia, *db.DB) {
 	return svc, dm, d
 }
 
+// 契约 R022–R027：头像上传、自动清旧图、管理员下架与本人移除
 func TestSubmitAndRemoveAvatar(t *testing.T) {
 	svc, dm, d := newAvatarTestEnv(t)
 
