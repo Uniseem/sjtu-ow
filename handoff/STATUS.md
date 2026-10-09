@@ -1,11 +1,11 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M3（账号）进行中——244；M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 244-m3-change-password-logout
-next: 接着做 M3 第七轮：改邮箱与重新认证（POST /api/auth/reauthenticate 输密码重认证拿 5 分钟窗口、POST /api/auth/email/change 申请改邮箱向新邮箱发码、POST /api/auth/email/change/confirm 核验新邮箱 6 位码替换邮箱，R006、R007、12 号文档 5.7）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
+milestone: 重构 M3（账号）已完成（239–245）；M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 245-m3-accounts-completion
+next: 接着做 M4：内容（页面和修订、定时发布、Markdown 对拍、图片管线与缩略图、外链解析、首页、资讯、普通页、评论、搜索、sitemap/robots、存量内容导入，R043–R082、R171–R183、R233）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
 updated: 2026-10-09
-blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M3 继续做，不用等
+blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M4 继续做，不用等
 ```
 
 ## 重构接到这里（2026-10-08）
@@ -31,7 +31,8 @@ blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站
 | 241 | `504506b` | 邮箱验证码核验与登录（POST /api/auth/verify-email、POST /api/auth/login，R002、R004、R006–R008）；半登录取消（注册不发会话、凭邮箱+码核验即登录）；登录密码正确但未验证发新码返回 verify_required；统一错误文案防枚举；同账号失败锁（5次/300秒，锁定期全拒）；PBKDF2 自动升级 Argon2；WithSecureCookies 支持生产 Secure Cookie；apigen 连字符路径支持 |
 | 242 | `5326850` | 重新发送邮箱验证码（POST /api/auth/resend-code，R002、R004、R006）；未注册/停用/已验证防枚举响应同形；未验证作废旧码发新码；已验证发提示信；ratelimit 支持秒级时间片（1/10秒/账号与 10/分/IP）；升级测试机 Go 1.26.9 修复标准库已知漏洞 |
 | 243 | `f2732f6` | 找回密码（POST /api/auth/reset-password 发 6 位码与 POST /api/auth/reset-password/confirm 核验重置，R003、R004、R006）；3 分钟有效、3 次作废；未注册发提醒信防枚举；事务外 Argon2 哈希；重设密码作废旧会话；严格不发会话 Cookie |
-| 244 | 本轮 | 修改密码与退出登录（POST /api/auth/change-password 已登录修改密码并作废其他会话、POST /api/auth/logout 退出作废当前会话并清除 Cookie，R006、12 号文档 5.4、5.7、5.9）；Member 门；5次/分/人限流；新密码强度与新旧查重；事务外 Argon2id；DeleteOthersTx 原子删其他会话 |
+| 244 | `d27997e` | 修改密码与退出登录（POST /api/auth/change-password 已登录修改密码并作废其他会话、POST /api/auth/logout 退出作废当前会话并清除 Cookie，R006、12 号文档 5.4、5.7、5.9）；Member 门；5次/分/人限流；新密码强度与新旧查重；事务外 Argon2id；DeleteOthersTx 原子删其他会话 |
+| 245 | 本轮 | M3 账号域收尾：完成 R001–R042 全量业务规则；重认证与改邮箱（POST /api/auth/reauthenticate、change、confirm）；个人资料/段位/联系方式（GET/PATCH /api/me/profile、POST/PATCH/DELETE game-accounts、contacts）；账号原地匿名化注销（POST /api/auth/delete-account，在任队长拦截）；停用启用与导出（deactivate、activate、export）；后台用户管理与角色能力控制；存量 Django SQLite 数据导入（sjtuow import）与直接邮箱验证（sjtuow verify-email）。M3 全部达成 |
 
 232 留的两件都还了：HTML 指构建产物；激活在浏览器里验过（`browser-check.mjs`，CDP 驱动无头 Chromium，零新依赖）。它头一晚就抓到一个真 bug：重写 entry-client 时丢了 `page-data` 的 provide，首屏看不出来、一换页正文就空——SSR 层的 vitest 测不到，浏览器里才现形。
 
@@ -41,7 +42,7 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 
 ## 现在该谁动手
 
-**244（2026-10-09）**：M3 第六轮，**修改密码与退出登录**（12 号文档 5.4/5.7/5.9、规则 R006）。接口 `POST /api/auth/change-password`（`api.Member`，限流 `AuthChangePassword` 5/分/人，旧密码核验、新密码强度校验与一致性、新旧不得相同、事务外 Argon2id 哈希、事务内 `DeleteOthersTx` 作废其他会话保留当前会话）与 `POST /api/auth/logout`（`api.Member`，`api.NoLimit`，`Delete` 物理删除当前会话，下发 `Max-Age: -1` 清除 `ow_session` Cookie）。扩展 `app.Ctx` 会话管理与 `registry.go` Cookie 管道支持。`sjtuow apigen` 更新前端 client。**7 处变异全部变红后恢复。**整组日志 `20261009-083530-3e0cc45`、变异日志 `20261009-083713-cd1dd03`、browser-check 日志 `20261009-083741-b2bd6a0`，退出码均为 0；govulncheck 零漏洞。下一轮：M3 第七轮改邮箱与重新认证。
+**245（2026-10-09）**：M3 终局轮次，**账号域收尾与全量对齐**（用户要求「把 M3 一次性做完，少测试，多写代码」）。实现全部剩余规则 R001–R042：① 重认证（`POST /api/auth/reauthenticate`，5 分钟窗口）与改邮箱（`POST /api/auth/email/change` 发 6 位码、`/confirm` 核验换绑）；② 个人中心与资料（`GET/PATCH /api/me/profile` 昵称、正则拦截宣言外链与域名、主/补位置、公开最高段位与 >180 天过期标记、资料完整判定）；③ 游戏 ID（`POST/PATCH/DELETE /api/me/game-accounts` 大小写不敏感唯一、上限 5 个）；④ 联系方式（`POST/DELETE /api/me/contacts` 每种限一条，QQ/微信/大陆手机严格校验）；⑤ 原地匿名化注销（`POST /api/auth/delete-account`，队长拦截，清空全部自有数据，作废会话）；⑥ 停用与启用（`deactivate` 必须填原因、`activate` 清原因禁启用已注销）；⑦ 导出（`GET /api/me/export` 覆盖 15 自有数据域）；⑧ 后台用户管理（仅超管见邮箱、仅 CapContactsView 见联系方式、角色与功能规则配置）；⑨ 存量 Django 数据导入（`sjtuow import`，ID 严格沿用、时间转标准 UTC）与服务端邮箱验证命令（`sjtuow verify-email`）。平台层增加 `api.Put`、`query:"..."` 参数绑定、`DeleteAllTx`。`sjtuow apigen` 更新 TypeScript client 与后台导航。**M3 账号域全部通过。**整组日志 `20261009-085710-bc6fba5` 全绿，退出码 0；govulncheck 零漏洞。下一轮：M4 内容（页面和修订、定时发布、Markdown 对拍等）。
 
 **242（2026-10-09）**：M3 第四轮，**重新发送邮箱验证码**（12 号文档 5.7/5.9、规则 R002、R004、R006）。实现 `POST /api/auth/resend-code`（`api.Public`，限流 `AuthResendEmailCode` 10/分/IP）。防账号枚举（R004）：未注册、停用、已验证、未验证均返回统一成功出参（同形 message）。作废旧码生成新码发信（R002）：未验证账号事务内作废旧 signup 码（`DeleteEmailCodes`）、生成 6 位新随机码与 SHA-256 哈希、插入 `email_codes`（15 分钟有效、attempts=0）、通过 outbox 发验证码邮件。已验证账号发送提示信告知已验证，无需重发。限流（R006）：接口层 10/分/IP；服务层在查用户前执行账号级 1/10秒/账号（`AuthResendEmailCodeKey`，allauth: `confirm_email 1/10s/key`），超限返回 429。扩展 `ratelimit` 支持秒级时间片截断（`Truncate(window)` 与 `20060102T150405`）。升级测试机 Go 工具链至 1.26.9 修复 net/http 等 9 项已知漏洞，更新 `server/go.mod` 与 `AGENTS.md`。`sjtuow apigen` 更新 `web/packages/api/src/gen/index.ts`。**7 处变异全部变红后恢复。**整组日志 `20261009-080910-71b4404`、变异日志 `20261009-080946-70390db`、browser-check 日志 `20261009-081015-2a2e29b`，退出码均为 0；govulncheck 零漏洞。下一轮：M3 第五轮找回密码。
 

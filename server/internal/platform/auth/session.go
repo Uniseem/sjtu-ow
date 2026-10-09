@@ -135,11 +135,16 @@ func (s *Store) DeleteOthers(ctx context.Context, userID int64, keepCookie strin
 	})
 }
 
+// DeleteAllTx 在已有写事务里删掉这个人的全部会话。
+func (s *Store) DeleteAllTx(ctx context.Context, tx *db.Tx, userID int64) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
+	return err
+}
+
 // DeleteAll 停用、注销时删掉这个人的全部会话。
 func (s *Store) DeleteAll(ctx context.Context, userID int64) error {
 	return s.db.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
-		_, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
-		return err
+		return s.DeleteAllTx(ctx, tx, userID)
 	})
 }
 

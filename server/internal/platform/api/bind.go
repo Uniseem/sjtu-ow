@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -12,7 +13,7 @@ import (
 const maxBody = 1 << 20
 
 // bindRequest 把请求绑到 In 上：`path:"id"` 标签的字段从路径参数取（一律过
-// ParseID，不合格 404），其余带 `json` 标签的字段从请求体取。
+// ParseID，不合格 404），`query:"name"` 从 URL 查询参数取，其余带 `json` 标签的字段从请求体取。
 //
 // 顺序是先 JSON 后路径：就算有人在 JSON 里塞了和路径同名的字段，最后也会被
 // 路径值覆盖，改不了地址里指向的对象。
@@ -30,6 +31,9 @@ func bindRequest(w http.ResponseWriter, req *http.Request, rt *Route, in any) er
 		if _, isPath := f.Tag.Lookup("path"); isPath {
 			continue
 		}
+		if _, isQuery := f.Tag.Lookup("query"); isQuery {
+			continue
+		}
 		if _, hasJSON := f.Tag.Lookup("json"); hasJSON {
 			hasBody = true
 		}
@@ -39,6 +43,32 @@ func bindRequest(w http.ResponseWriter, req *http.Request, rt *Route, in any) er
 			return err
 		}
 	}
+
+	// 查询参数绑定
+	q := req.URL.Query()
+	for i := range t.NumField() {
+		f := t.Field(i)
+		key, isQuery := f.Tag.Lookup("query")
+		if !isQuery {
+			continue
+		}
+		val := q.Get(key)
+		if val == "" {
+			continue
+		}
+		fieldVal := v.Field(i)
+		switch fieldVal.Kind() {
+		case reflect.String:
+			fieldVal.SetString(val)
+		case reflect.Int, reflect.Int64:
+			if n, err := strconv.ParseInt(val, 10, 64); err == nil {
+				fieldVal.SetInt(n)
+			}
+		case reflect.Bool:
+			fieldVal.SetBool(val == "true" || val == "1")
+		}
+	}
+
 	// 路径参数最后写，覆盖 JSON 里可能混进来的同名字段。
 	for i := range t.NumField() {
 		f := t.Field(i)

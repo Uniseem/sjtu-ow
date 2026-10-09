@@ -120,6 +120,13 @@ func Patch[In, Out any](g *Registry, pattern string, gate Gate,
 	handle[In, Out](g, http.MethodPatch, pattern, gate, h, opts...)
 }
 
+// Put 注册一个 PUT 接口（写；必须声明限流）。
+func Put[In, Out any](g *Registry, pattern string, gate Gate,
+	h func(*app.Ctx, In) (Out, error), opts ...RouteOption,
+) {
+	handle[In, Out](g, http.MethodPut, pattern, gate, h, opts...)
+}
+
 // Delete 注册一个 DELETE 接口（写；必须声明限流）。
 func Delete[In, Out any](g *Registry, pattern string, gate Gate,
 	h func(*app.Ctx, In) (Out, error), opts ...RouteOption,

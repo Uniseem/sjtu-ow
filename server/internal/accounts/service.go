@@ -1017,3 +1017,1213 @@ func (s *Service) BuildViewer(ctx context.Context, userID int64) (*app.Viewer, e
 		FeatureDenied: deniedMap,
 	}, nil
 }
+
+// -------------------------------------------------------------
+// 重新认证与改邮箱 (Reauthentication & Email Change, 规则 6、7)
+// -------------------------------------------------------------
+
+// ReauthInput 重新认证入参。
+type ReauthInput struct {
+	Password string `json:"password"`
+}
+
+// ReauthResult 重新认证出参。
+type ReauthResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// Reauthenticate 重新认证当前会话（输密码，规则 6、7）。
+func (s *Service) Reauthenticate(ctx *app.Ctx, in ReauthInput) (*ReauthResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+	u, err := s.store.GetByID(ctx.Context, ctx.Viewer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || !u.IsActive {
+		return nil, api.Unauthorized("账号不存在或已停用")
+	}
+
+	match, _, err := auth.Verify(ctx.Context, u.PasswordHash, in.Password)
+	if err != nil || !match {
+		return nil, api.InvalidFields(map[string][]string{"password": {"当前密码不正确。"}})
+	}
+
+	if ctx.SessionToken != "" {
+		if err := s.sessions.MarkReauth(ctx.Context, ctx.SessionToken); err != nil {
+			return nil, err
+		}
+	}
+
+	return &ReauthResult{
+		Result:  "ok",
+		Message: "重新认证成功。",
+	}, nil
+}
+
+// RequestEmailChangeInput 请求换绑邮箱入参。
+type RequestEmailChangeInput struct {
+	NewEmail string `json:"new_email"`
+}
+
+// RequestEmailChangeResult 请求换绑邮箱出参。
+type RequestEmailChangeResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// RequestEmailChange 申请更换登录邮箱（发码至新邮箱，规则 7）。
+func (s *Service) RequestEmailChange(ctx *app.Ctx, in RequestEmailChangeInput) (*RequestEmailChangeResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	// 5 分钟内必须重新认证过（规则 7）
+	if ctx.SessionToken != "" {
+		sess, err := s.sessions.Lookup(ctx.Context, ctx.SessionToken)
+		if err != nil || sess == nil || !sess.RecentlyReauthed(s.clock.Now()) {
+			return nil, api.Invalid("请先重新认证当前密码（5 分钟内有效）。")
+		}
+	}
+
+	trimmedEmail := strings.TrimSpace(in.NewEmail)
+	if !validateEmail(trimmedEmail) {
+		return nil, api.InvalidFields(map[string][]string{"new_email": {"请输入有效的邮箱地址。"}})
+	}
+
+	u, err := s.store.GetByID(ctx.Context, ctx.Viewer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || !u.IsActive {
+		return nil, api.Unauthorized("账号不存在或已停用")
+	}
+
+	newEmailNorm := NormalizeEmail(trimmedEmail)
+	if newEmailNorm == u.EmailNorm {
+		return nil, api.InvalidFields(map[string][]string{"new_email": {"新邮箱不能与当前邮箱相同。"}})
+	}
+
+	existing, err := s.store.GetByEmailNorm(ctx.Context, newEmailNorm)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil && existing.ID != u.ID {
+		return nil, api.InvalidFields(map[string][]string{"new_email": {"该邮箱已被其他账号占用。"}})
+	}
+
+	code, codeHash, err := s.codeGen()
+	if err != nil {
+		return nil, err
+	}
+
+	now := s.clock.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		ec := &EmailChange{
+			UserID:       u.ID,
+			NewEmail:     trimmedEmail,
+			NewEmailNorm: newEmailNorm,
+			CodeHash:     codeHash,
+			CreatedAt:    now,
+			ExpiresAt:    now.Add(15 * time.Minute),
+		}
+		if err := s.store.InsertEmailChange(txCtx, tx, ec); err != nil {
+			return err
+		}
+
+		letter := mail.Letter{
+			Subject: "验证你的新邮箱",
+			Lead:    "你正在更换 SJTU-OW 账号的登录邮箱。请在页面上输入下面的验证码：",
+			Code:    code,
+			Note:    "验证码 15 分钟内有效、最多尝试 3 次。如果这不是你本人的操作，请忽略这封邮件。",
+			Reason:  "你收到这封邮件，是因为有人申请将此邮箱绑定为 SJTU-OW 账号。",
+		}
+		_, err := outbox.Send(txCtx, tx, nil, s.siteURL, letter, []mail.Person{{Address: trimmedEmail, Name: u.Nickname}}, now)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &RequestEmailChangeResult{
+		Result:  "ok",
+		Message: "验证码已发送至新邮箱。",
+	}, nil
+}
+
+// ConfirmEmailChangeInput 确认换绑邮箱入参。
+type ConfirmEmailChangeInput struct {
+	Code string `json:"code"`
+}
+
+// ConfirmEmailChangeResult 确认换绑邮箱出参。
+type ConfirmEmailChangeResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// ConfirmEmailChange 核验新邮箱验证码并替换主邮箱（规则 7）。
+func (s *Service) ConfirmEmailChange(ctx *app.Ctx, in ConfirmEmailChangeInput) (*ConfirmEmailChangeResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	trimmedCode := strings.TrimSpace(in.Code)
+	if len(trimmedCode) != 6 {
+		return nil, api.InvalidFields(map[string][]string{"code": {"请输入 6 位数字验证码。"}})
+	}
+
+	now := s.clock.Now().UTC()
+	err := s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		ec, err := s.store.GetEmailChangeTx(txCtx, tx, ctx.Viewer.ID)
+		if err != nil {
+			return err
+		}
+		if ec == nil || !now.Before(ec.ExpiresAt) {
+			return api.InvalidFields(map[string][]string{"code": {"验证码已失效，请重新申请。"}})
+		}
+		if ec.Attempts >= 3 {
+			_ = s.store.DeleteEmailChange(txCtx, tx, ctx.Viewer.ID)
+			return api.InvalidFields(map[string][]string{"code": {"验证码尝试次数过多，请重新申请。"}})
+		}
+
+		sum := sha256.Sum256([]byte(trimmedCode))
+		codeHash := hex.EncodeToString(sum[:])
+		if subtle.ConstantTimeCompare([]byte(codeHash), []byte(ec.CodeHash)) != 1 {
+			_ = s.store.BumpEmailChangeAttempts(txCtx, tx, ctx.Viewer.ID)
+			if ec.Attempts+1 >= 3 {
+				_ = s.store.DeleteEmailChange(txCtx, tx, ctx.Viewer.ID)
+			}
+			return api.InvalidFields(map[string][]string{"code": {"验证码不正确。"}})
+		}
+
+		// 检查新邮箱是否在核验期间被其他人占用
+		existing, err := s.store.GetByEmailNormTx(txCtx, tx, ec.NewEmailNorm)
+		if err != nil {
+			return err
+		}
+		if existing != nil && existing.ID != ctx.Viewer.ID {
+			return api.InvalidFields(map[string][]string{"code": {"该邮箱已被占用。"}})
+		}
+
+		if err := s.store.UpdateUserEmail(txCtx, tx, ctx.Viewer.ID, ec.NewEmail, ec.NewEmailNorm, now); err != nil {
+			return err
+		}
+		return s.store.DeleteEmailChange(txCtx, tx, ctx.Viewer.ID)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ConfirmEmailChangeResult{
+		Result:  "ok",
+		Message: "邮箱修改成功。",
+	}, nil
+}
+
+// -------------------------------------------------------------
+// 个人资料 (Profile, 规则 18–21)
+// -------------------------------------------------------------
+
+// ProfileResult 个人资料详情出参。
+type ProfileResult struct {
+	ID           int64               `json:"id"`
+	Nickname     string              `json:"nickname"`
+	Email        string              `json:"email"`
+	IsSJTU       bool                `json:"is_sjtu"`
+	Motto        string              `json:"motto"`
+	MainRole     string              `json:"main_role"`
+	FlexRoles    string              `json:"flex_roles"`
+	ShowRank     bool                `json:"show_rank"`
+	IsComplete   bool                `json:"is_complete"`
+	PublicRanks  PublicRanksResult   `json:"public_ranks"`
+	GameAccounts []GameAccountResult `json:"game_accounts"`
+	Contacts     []ContactResult     `json:"contacts"`
+}
+
+// UpdateProfileInput 更新资料入参。
+type UpdateProfileInput struct {
+	Nickname  string `json:"nickname"`
+	Motto     string `json:"motto"`
+	MainRole  string `json:"main_role"`
+	FlexRoles string `json:"flex_roles"`
+	ShowRank  bool   `json:"show_rank"`
+	IsSJTU    *bool  `json:"is_sjtu"`
+}
+
+// UpdateProfileResult 更新资料出参。
+type UpdateProfileResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// GetProfile 读当前登录用户的个人资料、游戏 ID、联系方式与段位。
+func (s *Service) GetProfile(ctx *app.Ctx) (*ProfileResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+	u, err := s.store.GetByID(ctx.Context, ctx.Viewer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || !u.IsActive {
+		return nil, api.Unauthorized("账号不存在或已停用")
+	}
+
+	gas, err := s.store.GetGameAccountsByUserID(ctx.Context, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	contacts, err := s.store.GetContactsByUserID(ctx.Context, u.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := s.clock.Now().UTC()
+	pubRanks := CalculatePublicRanks(gas, u.ShowRank, now)
+	isComplete := IsProfileComplete(len(gas), len(contacts))
+
+	var gaResults []GameAccountResult
+	for _, ga := range gas {
+		gaResults = append(gaResults, toGameAccountResult(ga))
+	}
+
+	var contactResults []ContactResult
+	for _, c := range contacts {
+		contactResults = append(contactResults, toContactResult(c))
+	}
+
+	return &ProfileResult{
+		ID:           u.ID,
+		Nickname:     u.Nickname,
+		Email:        u.Email,
+		IsSJTU:       u.IsSJTU,
+		Motto:        u.Motto,
+		MainRole:     u.MainRole,
+		FlexRoles:    u.FlexRoles,
+		ShowRank:     u.ShowRank,
+		IsComplete:   isComplete,
+		PublicRanks:  pubRanks,
+		GameAccounts: gaResults,
+		Contacts:     contactResults,
+	}, nil
+}
+
+// UpdateProfile 更新个人资料（昵称、宣言、主位置、副位置、段位公开，规则 18–20）。
+func (s *Service) UpdateProfile(ctx *app.Ctx, in UpdateProfileInput) (*UpdateProfileResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+	u, err := s.store.GetByID(ctx.Context, ctx.Viewer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || !u.IsActive {
+		return nil, api.Unauthorized("账号不存在或已停用")
+	}
+
+	fieldErrs := make(map[string][]string)
+
+	trimmedNickname := strings.TrimSpace(in.Nickname)
+	if err := ValidateNickname(trimmedNickname); err != nil {
+		fieldErrs["nickname"] = []string{err.Error()}
+	}
+
+	trimmedMotto := strings.TrimSpace(in.Motto)
+	if err := ValidateMotto(trimmedMotto); err != nil {
+		fieldErrs["motto"] = []string{err.Error()}
+	}
+
+	mainRole := strings.TrimSpace(in.MainRole)
+	if mainRole != "" && mainRole != "tank" && mainRole != "damage" && mainRole != "support" {
+		fieldErrs["main_role"] = []string{"主位置必须是 tank、damage、support 之一。"}
+	}
+
+	if len(fieldErrs) > 0 {
+		return nil, api.InvalidFields(fieldErrs)
+	}
+
+	isSJTU := u.IsSJTU
+	if in.IsSJTU != nil {
+		isSJTU = *in.IsSJTU
+	}
+
+	now := s.clock.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.UpdateUserProfile(txCtx, tx, u.ID, trimmedNickname, trimmedMotto, mainRole, in.FlexRoles, in.ShowRank, isSJTU, now)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &UpdateProfileResult{
+		Result:  "ok",
+		Message: "资料已保存。",
+	}, nil
+}
+
+// -------------------------------------------------------------
+// 游戏 ID (GameAccount, 规则 16–17)
+// -------------------------------------------------------------
+
+// AddGameAccountInput 绑定游戏 ID 入参。
+type AddGameAccountInput struct {
+	Battletag   string `json:"battletag"`
+	RankTank    *int   `json:"rank_tank"`
+	RankDamage  *int   `json:"rank_damage"`
+	RankSupport *int   `json:"rank_support"`
+}
+
+// UpdateGameAccountInput 更新游戏 ID 入参。
+type UpdateGameAccountInput struct {
+	ID          api.ID `path:"id"`
+	RankTank    *int   `json:"rank_tank"`
+	RankDamage  *int   `json:"rank_damage"`
+	RankSupport *int   `json:"rank_support"`
+}
+
+// GameAccountResult 游戏 ID 出参。
+type GameAccountResult struct {
+	ID             int64     `json:"id"`
+	Battletag      string    `json:"battletag"`
+	RankTank       *int      `json:"rank_tank"`
+	RankDamage     *int      `json:"rank_damage"`
+	RankSupport    *int      `json:"rank_support"`
+	TankLabel      string    `json:"tank_label"`
+	DamageLabel    string    `json:"damage_label"`
+	SupportLabel   string    `json:"support_label"`
+	RanksUpdatedAt time.Time `json:"ranks_updated_at"`
+}
+
+func toGameAccountResult(ga GameAccount) GameAccountResult {
+	return GameAccountResult{
+		ID:             ga.ID,
+		Battletag:      ga.Battletag,
+		RankTank:       ga.RankTank,
+		RankDamage:     ga.RankDamage,
+		RankSupport:    ga.RankSupport,
+		TankLabel:      FormatRank(ga.RankTank),
+		DamageLabel:    FormatRank(ga.RankDamage),
+		SupportLabel:   FormatRank(ga.RankSupport),
+		RanksUpdatedAt: ga.RanksUpdatedAt,
+	}
+}
+
+// AddGameAccount 绑定新游戏 ID（每人最多 5 个，全站唯一，规则 16–17）。
+func (s *Service) AddGameAccount(ctx *app.Ctx, in AddGameAccountInput) (*GameAccountResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	cnt, err := s.store.CountGameAccountsByUserID(ctx.Context, ctx.Viewer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if cnt >= 5 {
+		return nil, api.Invalid("每人最多绑定 5 个游戏 ID。")
+	}
+
+	trimmedTag := strings.TrimSpace(in.Battletag)
+	if err := ValidateBattletag(trimmedTag); err != nil {
+		return nil, api.InvalidFields(map[string][]string{"battletag": {err.Error()}})
+	}
+
+	norm := NormalizeBattletag(trimmedTag)
+	existing, err := s.store.GetGameAccountByBattletagNorm(ctx.Context, norm)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, api.InvalidFields(map[string][]string{"battletag": {"该游戏 ID 已被其他账号绑定，如有疑问请联系管理员"}})
+	}
+
+	for field, score := range map[string]*int{"rank_tank": in.RankTank, "rank_damage": in.RankDamage, "rank_support": in.RankSupport} {
+		if score != nil && (*score < 0 || *score > Top500Score) {
+			return nil, api.InvalidFields(map[string][]string{field: {"非法段位分数"}})
+		}
+	}
+
+	now := s.clock.Now().UTC()
+	ga := &GameAccount{
+		UserID:         ctx.Viewer.ID,
+		Battletag:      trimmedTag,
+		BattletagNorm:  norm,
+		RankTank:       in.RankTank,
+		RankDamage:     in.RankDamage,
+		RankSupport:    in.RankSupport,
+		RanksUpdatedAt: now,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		id, err := s.store.InsertGameAccount(txCtx, tx, ga)
+		if err != nil {
+			return err
+		}
+		ga.ID = id
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	res := toGameAccountResult(*ga)
+	return &res, nil
+}
+
+// UpdateGameAccount 更新游戏 ID 的段位信息。
+func (s *Service) UpdateGameAccount(ctx *app.Ctx, in UpdateGameAccountInput) (*GameAccountResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	ga, err := s.store.GetGameAccountByID(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	if ga == nil || ga.UserID != ctx.Viewer.ID {
+		return nil, api.NotFound("游戏 ID 不存在")
+	}
+
+	for field, score := range map[string]*int{"rank_tank": in.RankTank, "rank_damage": in.RankDamage, "rank_support": in.RankSupport} {
+		if score != nil && (*score < 0 || *score > Top500Score) {
+			return nil, api.InvalidFields(map[string][]string{field: {"非法段位分数"}})
+		}
+	}
+
+	now := s.clock.Now().UTC()
+	changed := (ga.RankTank != in.RankTank) || (ga.RankDamage != in.RankDamage) || (ga.RankSupport != in.RankSupport)
+	if changed {
+		ga.RanksUpdatedAt = now
+	}
+	ga.RankTank = in.RankTank
+	ga.RankDamage = in.RankDamage
+	ga.RankSupport = in.RankSupport
+	ga.UpdatedAt = now
+
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.UpdateGameAccount(txCtx, tx, ga)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	res := toGameAccountResult(*ga)
+	return &res, nil
+}
+
+// DeleteResult 通用删除出参。
+type DeleteResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// DeleteGameAccount 删除绑定的游戏 ID。
+func (s *Service) DeleteGameAccount(ctx *app.Ctx, id int64) (*DeleteResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	ga, err := s.store.GetGameAccountByID(ctx.Context, id)
+	if err != nil {
+		return nil, err
+	}
+	if ga == nil || ga.UserID != ctx.Viewer.ID {
+		return nil, api.NotFound("游戏 ID 不存在")
+	}
+
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.DeleteGameAccount(txCtx, tx, id, ctx.Viewer.ID)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &DeleteResult{
+		Result:  "ok",
+		Message: "游戏 ID 已删除。",
+	}, nil
+}
+
+// -------------------------------------------------------------
+// 联系方式 (Contact, 规则 18–19)
+// -------------------------------------------------------------
+
+// AddContactInput 添加联系方式入参。
+type AddContactInput struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+// ContactResult 联系方式出参。
+type ContactResult struct {
+	ID        int64     `json:"id"`
+	Type      string    `json:"type"`
+	TypeLabel string    `json:"type_label"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func toContactResult(c Contact) ContactResult {
+	label := AllContactTypes[c.Type]
+	if label == "" {
+		label = c.Type
+	}
+	return ContactResult{
+		ID:        c.ID,
+		Type:      c.Type,
+		TypeLabel: label,
+		Value:     c.Value,
+		CreatedAt: c.CreatedAt,
+	}
+}
+
+// AddContact 添加联系方式（每种类型限 1 条，规则 19）。
+func (s *Service) AddContact(ctx *app.Ctx, in AddContactInput) (*ContactResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	cType := strings.TrimSpace(in.Type)
+	if !IsValidContactType(cType) {
+		return nil, api.InvalidFields(map[string][]string{"type": {"未知的联系方式类型。"}})
+	}
+
+	val := strings.TrimSpace(in.Value)
+	if err := ValidateContact(cType, val); err != nil {
+		return nil, api.InvalidFields(map[string][]string{"value": {err.Error()}})
+	}
+
+	existing, err := s.store.GetContactByUserAndType(ctx.Context, ctx.Viewer.ID, cType)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, api.InvalidFields(map[string][]string{"type": {"每种联系方式只能填写一次。"}})
+	}
+
+	now := s.clock.Now().UTC()
+	contact := &Contact{
+		UserID:    ctx.Viewer.ID,
+		Type:      cType,
+		Value:     val,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		id, err := s.store.InsertContact(txCtx, tx, contact)
+		if err != nil {
+			return err
+		}
+		contact.ID = id
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	res := toContactResult(*contact)
+	return &res, nil
+}
+
+// DeleteContact 删除联系方式。
+func (s *Service) DeleteContact(ctx *app.Ctx, id int64) (*DeleteResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	c, err := s.store.GetContactByID(ctx.Context, id)
+	if err != nil {
+		return nil, err
+	}
+	if c == nil || c.UserID != ctx.Viewer.ID {
+		return nil, api.NotFound("联系方式不存在")
+	}
+
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.DeleteContact(txCtx, tx, id, ctx.Viewer.ID)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &DeleteResult{
+		Result:  "ok",
+		Message: "联系方式已删除。",
+	}, nil
+}
+
+// -------------------------------------------------------------
+// 账号注销 (Account Deletion & Anonymization, 规则 28–32)
+// -------------------------------------------------------------
+
+// DeleteAccountInput 注销账号入参。
+type DeleteAccountInput struct {
+	Password string `json:"password"`
+}
+
+// DeleteAccountResult 注销账号出参。
+type DeleteAccountResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+func (s *Service) isTeamCaptain(ctx context.Context, userID int64) (bool, error) {
+	var count int
+	err := s.d.ReadPool().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='teams'`).Scan(&count)
+	if err != nil || count == 0 {
+		return false, nil
+	}
+	var teamCount int
+	err = s.d.ReadPool().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM teams WHERE captain_id = ? AND disbanded_at IS NULL`, userID).Scan(&teamCount)
+	if err != nil {
+		return false, nil
+	}
+	return teamCount > 0, nil
+}
+
+// DeleteAccount 原地匿名化注销账号（规则 28–32）。
+func (s *Service) DeleteAccount(ctx *app.Ctx, in DeleteAccountInput) (*DeleteAccountResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	u, err := s.store.GetByID(ctx.Context, ctx.Viewer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || !u.IsActive {
+		return nil, api.Unauthorized("账号不存在或已停用")
+	}
+
+	match, _, err := auth.Verify(ctx.Context, u.PasswordHash, in.Password)
+	if err != nil || !match {
+		return nil, api.InvalidFields(map[string][]string{"password": {"当前密码不正确。"}})
+	}
+
+	// 在任队长的用户不能注销（规则 29）
+	isCaptain, err := s.isTeamCaptain(ctx.Context, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	if isCaptain {
+		return nil, api.Invalid("你仍担任未解散战队的队长，必须先转让队长或解散战队才能注销账号。")
+	}
+
+	now := s.clock.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		if err := s.store.AnonymizeUserTx(txCtx, tx, u.ID, now); err != nil {
+			return err
+		}
+		if err := s.store.DeleteUserDataTx(txCtx, tx, u.ID); err != nil {
+			return err
+		}
+		if s.sessions != nil {
+			return s.sessions.DeleteAllTx(txCtx, tx, u.ID)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	ctx.ClearSessionCookie()
+
+	return &DeleteAccountResult{
+		Result:  "ok",
+		Message: "账号已注销。",
+	}, nil
+}
+
+// -------------------------------------------------------------
+// 导出个人信息 (Account Export, 规则 37–38)
+// -------------------------------------------------------------
+
+// AccountExportData 导出个人数据的 JSON 结构（规则 38）。
+type AccountExportData struct {
+	User         *User               `json:"user"`
+	GameAccounts []GameAccountResult `json:"game_accounts"`
+	Contacts     []ContactResult     `json:"contacts"`
+	Roles        []string            `json:"roles"`
+	ExportedAt   time.Time           `json:"exported_at"`
+}
+
+// ExportAccount 导出当前用户的完整自有数据。
+func (s *Service) ExportAccount(ctx *app.Ctx) (*AccountExportData, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	u, err := s.store.GetByID(ctx.Context, ctx.Viewer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || !u.IsActive {
+		return nil, api.Unauthorized("账号不存在或已停用")
+	}
+
+	gas, err := s.store.GetGameAccountsByUserID(ctx.Context, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	var gaResults []GameAccountResult
+	for _, ga := range gas {
+		gaResults = append(gaResults, toGameAccountResult(ga))
+	}
+
+	contacts, err := s.store.GetContactsByUserID(ctx.Context, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	var contactResults []ContactResult
+	for _, c := range contacts {
+		contactResults = append(contactResults, toContactResult(c))
+	}
+
+	roles, err := s.store.GetUserRoles(ctx.Context, u.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AccountExportData{
+		User:         u,
+		GameAccounts: gaResults,
+		Contacts:     contactResults,
+		Roles:        roles,
+		ExportedAt:   s.clock.Now().UTC(),
+	}, nil
+}
+
+// -------------------------------------------------------------
+// 停用与启用 (Deactivation & Activation, 规则 33–36)
+// -------------------------------------------------------------
+
+// DeactivateUserInput 停用入参。
+type DeactivateUserInput struct {
+	ID     api.ID `path:"id"`
+	Reason string `json:"reason"`
+}
+
+// DeactivateResult 停用出参。
+type DeactivateResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// DeactivateUser 管理员停用用户（必填原因，规则 33–34）。
+func (s *Service) DeactivateUser(ctx *app.Ctx, in DeactivateUserInput) (*DeactivateResult, error) {
+	reason := strings.TrimSpace(in.Reason)
+	if reason == "" {
+		return nil, api.InvalidFields(map[string][]string{"reason": {"停用原因必填。"}})
+	}
+	if len(reason) > 200 {
+		return nil, api.InvalidFields(map[string][]string{"reason": {"停用原因最多 200 字。"}})
+	}
+
+	u, err := s.store.GetByID(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		return nil, api.NotFound("用户不存在")
+	}
+
+	now := s.clock.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		if err := s.store.DeactivateUserTx(txCtx, tx, int64(in.ID), reason, now); err != nil {
+			return err
+		}
+		if s.sessions != nil {
+			return s.sessions.DeleteAllTx(txCtx, tx, int64(in.ID))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &DeactivateResult{
+		Result:  "ok",
+		Message: "账号已停用。",
+	}, nil
+}
+
+// ReactivateUserInput 启用入参。
+type ReactivateUserInput struct {
+	ID api.ID `path:"id"`
+}
+
+// ReactivateResult 启用出参。
+type ReactivateResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// ReactivateUser 管理员重新启用用户（注销账号不能启用，清空停用原因，规则 35–36）。
+func (s *Service) ReactivateUser(ctx *app.Ctx, in ReactivateUserInput) (*ReactivateResult, error) {
+	u, err := s.store.GetByID(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		return nil, api.NotFound("用户不存在")
+	}
+
+	if strings.HasSuffix(u.Email, "@deleted.invalid") {
+		return nil, api.Invalid("注销账号不能重新启用。")
+	}
+
+	now := s.clock.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.ReactivateUserTx(txCtx, tx, int64(in.ID), now)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReactivateResult{
+		Result:  "ok",
+		Message: "账号已重新启用。",
+	}, nil
+}
+
+// -------------------------------------------------------------
+// 后台用户管理 (Admin User Management, 规则 39–42)
+// -------------------------------------------------------------
+
+// ListUsersInput 后台查询用户列表入参。
+type ListUsersInput struct {
+	Page     int    `query:"page"`
+	PageSize int    `query:"page_size"`
+	Search   string `query:"search"`
+}
+
+// AdminUserSummary 用户概要出参。
+type AdminUserSummary struct {
+	ID               int64     `json:"id"`
+	Email            string    `json:"email"`
+	Nickname         string    `json:"nickname"`
+	IsSJTU           bool      `json:"is_sjtu"`
+	IsActive         bool      `json:"is_active"`
+	IsSuperuser      bool      `json:"is_superuser"`
+	EmailVerified    bool      `json:"email_verified"`
+	DeactivationNote string    `json:"deactivation_note"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+// ListUsersResult 用户列表出参。
+type ListUsersResult struct {
+	Total int                `json:"total"`
+	Users []AdminUserSummary `json:"users"`
+}
+
+// ListUsers 后台分页列出用户（只有超管能搜邮箱和看邮箱，规则 39）。
+func (s *Service) ListUsers(ctx *app.Ctx, in ListUsersInput) (*ListUsersResult, error) {
+	page := in.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := in.PageSize
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	isSuperuser := ctx.Viewer != nil && ctx.Viewer.Superuser
+	total, err := s.store.CountUsers(ctx.Context, in.Search, isSuperuser)
+	if err != nil {
+		return nil, err
+	}
+
+	users, err := s.store.ListUsers(ctx.Context, pageSize, offset, in.Search, isSuperuser)
+	if err != nil {
+		return nil, err
+	}
+
+	var summaries []AdminUserSummary
+	for _, u := range users {
+		email := u.Email
+		if !isSuperuser {
+			email = "" // 非超管隐藏邮箱（规则 39）
+		}
+		summaries = append(summaries, AdminUserSummary{
+			ID:               u.ID,
+			Email:            email,
+			Nickname:         u.Nickname,
+			IsSJTU:           u.IsSJTU,
+			IsActive:         u.IsActive,
+			IsSuperuser:      u.IsSuperuser,
+			EmailVerified:    u.EmailVerified(),
+			DeactivationNote: u.DeactivationNote,
+			CreatedAt:        u.CreatedAt,
+		})
+	}
+
+	return &ListUsersResult{
+		Total: total,
+		Users: summaries,
+	}, nil
+}
+
+// UserDetailInput 用户详情入参。
+type UserDetailInput struct {
+	ID api.ID `path:"id"`
+}
+
+// UserDetailResult 用户详情出参。
+type UserDetailResult struct {
+	User         *User               `json:"user"`
+	Roles        []string            `json:"roles"`
+	Rules        map[string]bool     `json:"rules"`
+	GameAccounts []GameAccountResult `json:"game_accounts"`
+	Contacts     []ContactResult     `json:"contacts"`
+}
+
+// GetUserDetail 后台查看单个用户完整详情。
+func (s *Service) GetUserDetail(ctx *app.Ctx, in UserDetailInput) (*UserDetailResult, error) {
+	u, err := s.store.GetByID(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		return nil, api.NotFound("用户不存在")
+	}
+
+	roles, err := s.store.GetUserRoles(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	rulesMap, err := s.store.GetFeatureUserRules(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	rulesStr := make(map[string]bool)
+	for f, allowed := range rulesMap {
+		rulesStr[string(f)] = allowed
+	}
+
+	gas, err := s.store.GetGameAccountsByUserID(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	var gaResults []GameAccountResult
+	for _, ga := range gas {
+		gaResults = append(gaResults, toGameAccountResult(ga))
+	}
+
+	var contactResults []ContactResult
+	// 联系方式只对超管或有 contacts.view 权限者显示（规则 40）
+	canViewContacts := ctx.Viewer != nil && (ctx.Viewer.Superuser || ctx.Viewer.HasCap(CapContactsView))
+	if canViewContacts {
+		contacts, err := s.store.GetContactsByUserID(ctx.Context, int64(in.ID))
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range contacts {
+			contactResults = append(contactResults, toContactResult(c))
+		}
+	}
+
+	if ctx.Viewer != nil && !ctx.Viewer.Superuser {
+		u.Email = ""
+		u.EmailNorm = ""
+	}
+
+	return &UserDetailResult{
+		User:         u,
+		Roles:        roles,
+		Rules:        rulesStr,
+		GameAccounts: gaResults,
+		Contacts:     contactResults,
+	}, nil
+}
+
+// UpdateUserRolesInput 更新用户角色入参。
+type UpdateUserRolesInput struct {
+	ID    api.ID   `path:"id"`
+	Roles []string `json:"roles"`
+}
+
+// UpdateUserRolesResult 更新用户角色出参。
+type UpdateUserRolesResult struct {
+	Result  string   `json:"result"`
+	Roles   []string `json:"roles"`
+	Message string   `json:"message"`
+}
+
+// UpdateUserRoles 更新用户的管理角色（仅限 4 个存库角色）。
+func (s *Service) UpdateUserRoles(ctx *app.Ctx, in UpdateUserRolesInput) (*UpdateUserRolesResult, error) {
+	for _, r := range in.Roles {
+		valid := false
+		for _, sr := range AllStoredRoles {
+			if r == sr {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return nil, api.Invalid("未知或非存库角色: " + r)
+		}
+	}
+
+	u, err := s.store.GetByID(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		return nil, api.NotFound("用户不存在")
+	}
+
+	now := s.clock.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.SetUserRolesTx(txCtx, tx, int64(in.ID), in.Roles, now)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &UpdateUserRolesResult{
+		Result:  "ok",
+		Roles:   in.Roles,
+		Message: "角色已更新。",
+	}, nil
+}
+
+// UpdateUserRulesInput 更新用户规则入参。
+type UpdateUserRulesInput struct {
+	ID    api.ID          `path:"id"`
+	Rules map[string]bool `json:"rules"`
+}
+
+// UpdateUserRulesResult 更新用户规则出参。
+type UpdateUserRulesResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// UpdateUserRules 更新用户的单人功能规则。
+func (s *Service) UpdateUserRules(ctx *app.Ctx, in UpdateUserRulesInput) (*UpdateUserRulesResult, error) {
+	rules := make(map[app.Feature]bool)
+	for fStr, allowed := range in.Rules {
+		feat := app.Feature(fStr)
+		if !IsValidFeature(feat) {
+			return nil, api.Invalid("未知的功能标识: " + fStr)
+		}
+		rules[feat] = allowed
+	}
+
+	u, err := s.store.GetByID(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		return nil, api.NotFound("用户不存在")
+	}
+
+	now := s.clock.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.SetUserRulesTx(txCtx, tx, int64(in.ID), rules, now)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &UpdateUserRulesResult{
+		Result:  "ok",
+		Message: "规则已更新。",
+	}, nil
+}
+
+// RoleRestrictionItem 单条角色功能限制。
+type RoleRestrictionItem struct {
+	Role    string `json:"role"`
+	Feature string `json:"feature"`
+}
+
+// FeatureRoleRestrictionsResult 角色限制出参。
+type FeatureRoleRestrictionsResult struct {
+	Restrictions []RoleRestrictionItem `json:"restrictions"`
+}
+
+// GetFeatureRoleRestrictions 读全站所有角色功能限制。
+func (s *Service) GetFeatureRoleRestrictions(ctx *app.Ctx) (*FeatureRoleRestrictionsResult, error) {
+	restrs, err := s.store.GetFeatureRoleRestrictions(ctx.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	var list []RoleRestrictionItem
+	for role, feats := range restrs {
+		for feat, restricted := range feats {
+			if restricted {
+				list = append(list, RoleRestrictionItem{Role: role, Feature: string(feat)})
+			}
+		}
+	}
+
+	return &FeatureRoleRestrictionsResult{
+		Restrictions: list,
+	}, nil
+}
+
+// SetFeatureRoleRestrictionsInput 更新角色限制入参。
+type SetFeatureRoleRestrictionsInput struct {
+	Restrictions []RoleRestrictionItem `json:"restrictions"`
+}
+
+// SetFeatureRoleRestrictionsResult 更新角色限制出参。
+type SetFeatureRoleRestrictionsResult struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// SetFeatureRoleRestrictions 全量替换全站角色限制。
+func (s *Service) SetFeatureRoleRestrictions(ctx *app.Ctx, in SetFeatureRoleRestrictionsInput) (*SetFeatureRoleRestrictionsResult, error) {
+	restrs := make(map[string]map[app.Feature]bool)
+	for _, item := range in.Restrictions {
+		feat := app.Feature(item.Feature)
+		if !IsValidFeature(feat) {
+			return nil, api.Invalid("未知的功能标识: " + item.Feature)
+		}
+		if restrs[item.Role] == nil {
+			restrs[item.Role] = make(map[app.Feature]bool)
+		}
+		restrs[item.Role][feat] = true
+	}
+
+	now := s.clock.Now().UTC()
+	err := s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.ReplaceRoleRestrictionsTx(txCtx, tx, restrs, now)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &SetFeatureRoleRestrictionsResult{
+		Result:  "ok",
+		Message: "角色限制已更新。",
+	}, nil
+}
+
+// VerifyUserEmailDirectly 服务端直接将用户邮箱标记为已验证（命令用，规则 15）。
+func (s *Service) VerifyUserEmailDirectly(ctx context.Context, email string) error {
+	norm := NormalizeEmail(email)
+	u, err := s.store.GetByEmailNorm(ctx, norm)
+	if err != nil {
+		return err
+	}
+	if u == nil {
+		return fmt.Errorf("用户 %s 不存在", email)
+	}
+	now := s.clock.Now().UTC()
+	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.MarkEmailVerified(txCtx, tx, u.ID, now)
+	})
+}

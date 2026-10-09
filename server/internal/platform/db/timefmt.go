@@ -14,7 +14,16 @@ func FormatUTC(t time.Time) string {
 // ParseUTC 解析库里的时间文本。别的合理写法（别的时区偏移、没有微秒）也认，
 // 因为导入旧库时会遇到。
 func ParseUTC(s string) (time.Time, error) {
-	for _, layout := range []string{utcLayout + "Z07:00", utcLayout, "2006-01-02T15:04:05Z07:00"} {
+	for _, layout := range []string{
+		utcLayout + "Z07:00",
+		utcLayout,
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05.000000Z07:00",
+		"2006-01-02 15:04:05.000000",
+		"2006-01-02 15:04:05Z07:00",
+		"2006-01-02 15:04:05",
+	} {
 		if t, err := time.Parse(layout, s); err == nil {
 			return t.UTC(), nil
 		}

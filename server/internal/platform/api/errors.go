@@ -22,6 +22,9 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
+	if len(e.Fields) > 0 {
+		return fmt.Sprintf("api %d %s: %s %v", e.Status, e.Code, e.Message, e.Fields)
+	}
 	return fmt.Sprintf("api %d %s: %s", e.Status, e.Code, e.Message)
 }
 

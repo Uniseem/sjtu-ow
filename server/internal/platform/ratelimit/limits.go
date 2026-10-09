@@ -7,11 +7,9 @@ import "time"
 //
 // 还没进表、数字先记在这里（等对应接口的轮次再引用，免得对照时丢掉）：
 //
-//	规则 6   allauth（M3）：manage_email 10/分/人、reauthenticate 10/分/人
 //	规则 215 页面状态片段 120/分/IP（新栈没有预渲染片段，接口落地时再定要不要）
 //	规则 216 日历订阅 30/分/IP
 //	规则 221 头像上传 5/天/人（M4 图片）
-//	规则 223 注销时试密码 5/小时/人（M3）
 //
 // login_failed 的 10/分/IP（规则 6）没有单独建桶（241）：30/分/IP 的总量和
 // 5 次/300 秒/账号的定向爆破防线合起来已覆盖它的语义，多一条同维度的 IP 桶
@@ -52,6 +50,15 @@ var (
 
 	// AuthChangePassword 修改密码：每人每分钟 5 次（规则 6，allauth: change_password 5/m/user）。
 	AuthChangePassword = Decl{Name: "auth_change_password", Kind: PerUser, N: 5, Window: time.Minute}
+
+	// AuthReauthenticate 重新认证：每人每分钟 10 次（规则 6，allauth: reauthenticate 10/m/user）。
+	AuthReauthenticate = Decl{Name: "auth_reauthenticate", Kind: PerUser, N: 10, Window: time.Minute}
+
+	// AuthManageEmail 改邮箱发码/核验：每人每分钟 10 次（规则 6，allauth: manage_email 10/m/user）。
+	AuthManageEmail = Decl{Name: "auth_manage_email", Kind: PerUser, N: 10, Window: time.Minute}
+
+	// AccountDeleteTry 注销时重输密码尝试：每人每小时 5 次（规则 28/223）。
+	AccountDeleteTry = Decl{Name: "account_delete_try", Kind: PerUser, N: 5, Window: time.Hour}
 
 	// TeamApply 申请入队：每人每天 20 次（附录 C「业务操作限流」）
 	TeamApply = Decl{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour}

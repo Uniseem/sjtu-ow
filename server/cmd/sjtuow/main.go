@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -44,6 +45,10 @@ func main() {
 		err = runWorker()
 	case "apigen":
 		err = runApigen()
+	case "import":
+		err = runImport()
+	case "verify-email":
+		err = runVerifyEmail()
 	default:
 		usage()
 		os.Exit(2)
@@ -54,7 +59,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen>（后续里程碑会加 import、reconcile、backup 等）")
+	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|verify-email>（后续里程碑会加 reconcile、backup 等）")
 }
 
 func fatal(err error) {
@@ -189,4 +194,47 @@ func smtpFrom(cfg *config.Config) mail.SMTP {
 		Prefix:    mail.DefaultPrefix,
 		Allowlist: cfg.EmailAllowlist,
 	}
+}
+
+func runImport() error {
+	if len(os.Args) < 3 {
+		return fmt.Errorf("用法：sjtuow import <legacy-sqlite-db-path>")
+	}
+	legacyPath := os.Args[2]
+	legacyDB, err := sql.Open("sqlite", fmt.Sprintf("file:%s?mode=ro", legacyPath))
+	if err != nil {
+		return fmt.Errorf("打开旧库失败: %w", err)
+	}
+	defer legacyDB.Close()
+
+	_, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+
+	ctx := context.Background()
+	if err := accounts.ImportLegacyAccounts(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入账号失败: %w", err)
+	}
+	fmt.Println("账号域数据导入成功。")
+	return nil
+}
+
+func runVerifyEmail() error {
+	if len(os.Args) < 3 {
+		return fmt.Errorf("用法：sjtuow verify-email <email>")
+	}
+	email := os.Args[2]
+	cfg, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	acctSvc := accounts.NewService(d, nil, cfg.SiteURL, nil, nil)
+	if err := acctSvc.VerifyUserEmailDirectly(context.Background(), email); err != nil {
+		return err
+	}
+	fmt.Printf("用户 %s 邮箱已标记为已验证。\n", email)
+	return nil
 }

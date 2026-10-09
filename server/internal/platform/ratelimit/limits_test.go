@@ -20,6 +20,9 @@ func TestTableMatchesDesign(t *testing.T) {
 		{Name: "auth_reset_password_key", Kind: PerKey, N: 5, Window: time.Minute},
 		{Name: "auth_reset_password_confirm", Kind: PerIP, N: 20, Window: time.Minute},
 		{Name: "auth_change_password", Kind: PerUser, N: 5, Window: time.Minute},
+		{Name: "auth_reauthenticate", Kind: PerUser, N: 10, Window: time.Minute},
+		{Name: "auth_manage_email", Kind: PerUser, N: 10, Window: time.Minute},
+		{Name: "account_delete_try", Kind: PerUser, N: 5, Window: time.Hour},
 		{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour},
 		{Name: "team_create", Kind: PerUser, N: 3, Window: 24 * time.Hour},
 		{Name: "comment_create_minute", Kind: PerUser, N: 3, Window: time.Minute},
@@ -32,7 +35,7 @@ func TestTableMatchesDesign(t *testing.T) {
 		AuthSignup, AuthLogin, AuthLoginFailedKey, AuthVerifyEmail,
 		AuthResendEmailCode, AuthResendEmailCodeKey,
 		AuthResetPassword, AuthResetPasswordKey, AuthResetPasswordConfirm,
-		AuthChangePassword,
+		AuthChangePassword, AuthReauthenticate, AuthManageEmail, AccountDeleteTry,
 		TeamApply, TeamCreate, CommentCreateMinute, CommentCreateDaily,
 		CommentVote, Search, AccountExport,
 	}

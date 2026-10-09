@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
@@ -22,7 +24,7 @@ func NewStore(d *db.DB) *Store {
 
 const userColumns = `id, email, email_norm, password_hash, nickname, is_sjtu,
 	agreed_terms_at, agreed_cross_border_at, email_verified_at, password_changed_at,
-	version, is_active, is_superuser, deactivation_note, motto, show_rank,
+	version, is_active, is_superuser, deactivation_note, motto, main_role, flex_roles, show_rank,
 	created_at, updated_at`
 
 func scanUser(row interface {
@@ -48,6 +50,8 @@ func scanUser(row interface {
 		&isSuperuser,
 		&u.DeactivationNote,
 		&u.Motto,
+		&u.MainRole,
+		&u.FlexRoles,
 		&showRank,
 		&created,
 		&updated,
@@ -192,12 +196,12 @@ func (s *Store) InsertUser(ctx context.Context, tx *db.Tx, u *User) (int64, erro
 	res, err := tx.ExecContext(ctx, `INSERT INTO users (
 		email, email_norm, password_hash, nickname, is_sjtu,
 		agreed_terms_at, agreed_cross_border_at, email_verified_at, password_changed_at,
-		version, is_active, is_superuser, deactivation_note, motto, show_rank,
+		version, is_active, is_superuser, deactivation_note, motto, main_role, flex_roles, show_rank,
 		created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		u.Email, u.EmailNorm, u.PasswordHash, u.Nickname, isSJTU,
 		db.FormatUTC(u.AgreedTermsAt), db.FormatUTC(u.AgreedCrossBorderAt), verifiedStr, pwdChangedStr,
-		version, isActive, isSuperuser, u.DeactivationNote, u.Motto, showRank,
+		version, isActive, isSuperuser, u.DeactivationNote, u.Motto, u.MainRole, u.FlexRoles, showRank,
 		db.FormatUTC(u.CreatedAt), db.FormatUTC(u.UpdatedAt),
 	)
 	if err != nil {
@@ -247,6 +251,16 @@ func (s *Store) GetByEmailNormTx(ctx context.Context, tx *db.Tx, emailNorm strin
 	return u, err
 }
 
+// GetByIDTx 在事务内按 ID 读用户。
+func (s *Store) GetByIDTx(ctx context.Context, tx *db.Tx, id int64) (*User, error) {
+	row := tx.QueryRowContext(ctx, `SELECT `+userColumns+` FROM users WHERE id = ?`, id)
+	u, err := scanUser(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return u, err
+}
+
 // EmailCode 是 email_codes 表的一行。
 type EmailCode struct {
 	ID        int64
@@ -278,8 +292,7 @@ func (s *Store) GetLatestEmailCode(ctx context.Context, purpose, emailNorm strin
 	return scanEmailCode(row)
 }
 
-// GetLatestEmailCodeTx 在事务内读最近一条验证码记录（核验走这里，检查与
-// 写尝试次数在同一个写事务里，12 号文档 5.6「检查—写入同事务」）。
+// GetLatestEmailCodeTx 在事务内读最近一条验证码记录。
 func (s *Store) GetLatestEmailCodeTx(ctx context.Context, tx *db.Tx, purpose, emailNorm string) (*EmailCode, error) {
 	row := tx.QueryRowContext(ctx, `SELECT id, purpose, email_norm, code_hash, attempts, created_at, expires_at
 		FROM email_codes WHERE purpose = ? AND email_norm = ? ORDER BY id DESC LIMIT 1`, purpose, emailNorm)
@@ -324,9 +337,501 @@ func (s *Store) MarkEmailVerified(ctx context.Context, tx *db.Tx, userID int64, 
 	return err
 }
 
-// UpdatePasswordHash 换密码哈希（PBKDF2 验过后升级 Argon2；改密码轮次复用）。
+// UpdatePasswordHash 换密码哈希。
 func (s *Store) UpdatePasswordHash(ctx context.Context, tx *db.Tx, userID int64, hash string, at time.Time) error {
 	_, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ?, password_changed_at = ?, updated_at = ? WHERE id = ?`,
 		hash, db.FormatUTC(at), db.FormatUTC(at), userID)
 	return err
+}
+
+// -------------------------------------------------------------
+// 个人资料 (Profile)、游戏 ID (GameAccount) 与联系方式 (Contact)
+// -------------------------------------------------------------
+
+// UpdateUserProfile 更新用户个人资料（昵称、宣言、位置、段位公开、交大标志等）。
+func (s *Store) UpdateUserProfile(ctx context.Context, tx *db.Tx, userID int64, nickname, motto, mainRole, flexRoles string, showRank, isSJTU bool, at time.Time) error {
+	showRankInt := 0
+	if showRank {
+		showRankInt = 1
+	}
+	isSJTUInt := 0
+	if isSJTU {
+		isSJTUInt = 1
+	}
+	_, err := tx.ExecContext(ctx, `UPDATE users SET
+		nickname = ?,
+		motto = ?,
+		main_role = ?,
+		flex_roles = ?,
+		show_rank = ?,
+		is_sjtu = ?,
+		version = version + 1,
+		updated_at = ?
+		WHERE id = ?`,
+		nickname, motto, mainRole, flexRoles, showRankInt, isSJTUInt, db.FormatUTC(at), userID)
+	return err
+}
+
+func scanGameAccount(row interface{ Scan(dest ...any) error }) (*GameAccount, error) {
+	var ga GameAccount
+	var tank, damage, support sql.NullInt64
+	var stamped, created, updated string
+	err := row.Scan(&ga.ID, &ga.UserID, &ga.Battletag, &ga.BattletagNorm, &tank, &damage, &support, &stamped, &created, &updated)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if tank.Valid {
+		v := int(tank.Int64)
+		ga.RankTank = &v
+	}
+	if damage.Valid {
+		v := int(damage.Int64)
+		ga.RankDamage = &v
+	}
+	if support.Valid {
+		v := int(support.Int64)
+		ga.RankSupport = &v
+	}
+	if t, err := db.ParseUTC(stamped); err == nil {
+		ga.RanksUpdatedAt = t
+	}
+	if t, err := db.ParseUTC(created); err == nil {
+		ga.CreatedAt = t
+	}
+	if t, err := db.ParseUTC(updated); err == nil {
+		ga.UpdatedAt = t
+	}
+	return &ga, nil
+}
+
+const gameAccountCols = `id, user_id, battletag, battletag_norm, rank_tank, rank_damage, rank_support, ranks_updated_at, created_at, updated_at`
+
+// GetGameAccountsByUserID 读用户的所有游戏 ID。
+func (s *Store) GetGameAccountsByUserID(ctx context.Context, userID int64) ([]GameAccount, error) {
+	rows, err := s.d.ReadPool().QueryContext(ctx, `SELECT `+gameAccountCols+` FROM game_accounts WHERE user_id = ? ORDER BY id ASC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []GameAccount
+	for rows.Next() {
+		ga, err := scanGameAccount(rows)
+		if err != nil {
+			return nil, err
+		}
+		if ga != nil {
+			list = append(list, *ga)
+		}
+	}
+	return list, rows.Err()
+}
+
+// GetGameAccountByID 按 ID 读单个游戏 ID。
+func (s *Store) GetGameAccountByID(ctx context.Context, id int64) (*GameAccount, error) {
+	row := s.d.ReadPool().QueryRowContext(ctx, `SELECT `+gameAccountCols+` FROM game_accounts WHERE id = ?`, id)
+	return scanGameAccount(row)
+}
+
+// GetGameAccountByBattletagNorm 按规范化 BattleTag 查找游戏 ID（唯一性检查，规则 17）。
+func (s *Store) GetGameAccountByBattletagNorm(ctx context.Context, norm string) (*GameAccount, error) {
+	row := s.d.ReadPool().QueryRowContext(ctx, `SELECT `+gameAccountCols+` FROM game_accounts WHERE battletag_norm = ?`, norm)
+	return scanGameAccount(row)
+}
+
+// CountGameAccountsByUserID 计算用户已绑定的游戏 ID 数量（上限 5 个，规则 16）。
+func (s *Store) CountGameAccountsByUserID(ctx context.Context, userID int64) (int, error) {
+	var cnt int
+	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT COUNT(*) FROM game_accounts WHERE user_id = ?`, userID).Scan(&cnt)
+	return cnt, err
+}
+
+// InsertGameAccount 插入新游戏 ID。
+func (s *Store) InsertGameAccount(ctx context.Context, tx *db.Tx, ga *GameAccount) (int64, error) {
+	res, err := tx.ExecContext(ctx, `INSERT INTO game_accounts (
+		user_id, battletag, battletag_norm, rank_tank, rank_damage, rank_support, ranks_updated_at, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		ga.UserID, ga.Battletag, ga.BattletagNorm, ga.RankTank, ga.RankDamage, ga.RankSupport,
+		db.FormatUTC(ga.RanksUpdatedAt), db.FormatUTC(ga.CreatedAt), db.FormatUTC(ga.UpdatedAt))
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	ga.ID = id
+	return id, nil
+}
+
+// UpdateGameAccount 更新游戏 ID 的段位信息。
+func (s *Store) UpdateGameAccount(ctx context.Context, tx *db.Tx, ga *GameAccount) error {
+	_, err := tx.ExecContext(ctx, `UPDATE game_accounts SET
+		rank_tank = ?,
+		rank_damage = ?,
+		rank_support = ?,
+		ranks_updated_at = ?,
+		updated_at = ?
+		WHERE id = ? AND user_id = ?`,
+		ga.RankTank, ga.RankDamage, ga.RankSupport,
+		db.FormatUTC(ga.RanksUpdatedAt), db.FormatUTC(ga.UpdatedAt), ga.ID, ga.UserID)
+	return err
+}
+
+// DeleteGameAccount 删除游戏 ID。
+func (s *Store) DeleteGameAccount(ctx context.Context, tx *db.Tx, id int64, userID int64) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM game_accounts WHERE id = ? AND user_id = ?`, id, userID)
+	return err
+}
+
+const contactCols = `id, user_id, type, value, created_at, updated_at`
+
+func scanContact(row interface{ Scan(dest ...any) error }) (*Contact, error) {
+	var c Contact
+	var created, updated string
+	err := row.Scan(&c.ID, &c.UserID, &c.Type, &c.Value, &created, &updated)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if t, err := db.ParseUTC(created); err == nil {
+		c.CreatedAt = t
+	}
+	if t, err := db.ParseUTC(updated); err == nil {
+		c.UpdatedAt = t
+	}
+	return &c, nil
+}
+
+// GetContactsByUserID 读用户的所有联系方式。
+func (s *Store) GetContactsByUserID(ctx context.Context, userID int64) ([]Contact, error) {
+	rows, err := s.d.ReadPool().QueryContext(ctx, `SELECT `+contactCols+` FROM contacts WHERE user_id = ? ORDER BY id ASC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []Contact
+	for rows.Next() {
+		c, err := scanContact(rows)
+		if err != nil {
+			return nil, err
+		}
+		if c != nil {
+			list = append(list, *c)
+		}
+	}
+	return list, rows.Err()
+}
+
+// GetContactByID 按 ID 读单个联系方式。
+func (s *Store) GetContactByID(ctx context.Context, id int64) (*Contact, error) {
+	row := s.d.ReadPool().QueryRowContext(ctx, `SELECT `+contactCols+` FROM contacts WHERE id = ?`, id)
+	return scanContact(row)
+}
+
+// GetContactByUserAndType 按用户和类型查找联系方式（每种只能填一条，规则 19）。
+func (s *Store) GetContactByUserAndType(ctx context.Context, userID int64, cType string) (*Contact, error) {
+	row := s.d.ReadPool().QueryRowContext(ctx, `SELECT `+contactCols+` FROM contacts WHERE user_id = ? AND type = ?`, userID, cType)
+	return scanContact(row)
+}
+
+// InsertContact 插入联系方式。
+func (s *Store) InsertContact(ctx context.Context, tx *db.Tx, c *Contact) (int64, error) {
+	res, err := tx.ExecContext(ctx, `INSERT INTO contacts (
+		user_id, type, value, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?)`,
+		c.UserID, c.Type, c.Value, db.FormatUTC(c.CreatedAt), db.FormatUTC(c.UpdatedAt))
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	c.ID = id
+	return id, nil
+}
+
+// DeleteContact 删除联系方式。
+func (s *Store) DeleteContact(ctx context.Context, tx *db.Tx, id int64, userID int64) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM contacts WHERE id = ? AND user_id = ?`, id, userID)
+	return err
+}
+
+// -------------------------------------------------------------
+// 改邮箱 (Email Change)
+// -------------------------------------------------------------
+
+// EmailChange 是 email_changes 表的一行。
+type EmailChange struct {
+	UserID       int64
+	NewEmail     string
+	NewEmailNorm string
+	CodeHash     string
+	Attempts     int
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
+}
+
+func scanEmailChange(row interface{ Scan(dest ...any) error }) (*EmailChange, error) {
+	var ec EmailChange
+	var created, expires string
+	err := row.Scan(&ec.UserID, &ec.NewEmail, &ec.NewEmailNorm, &ec.CodeHash, &ec.Attempts, &created, &expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if t, err := db.ParseUTC(created); err == nil {
+		ec.CreatedAt = t
+	}
+	if t, err := db.ParseUTC(expires); err == nil {
+		ec.ExpiresAt = t
+	}
+	return &ec, nil
+}
+
+// InsertEmailChange 插入或替换换绑邮箱的中间记录。
+func (s *Store) InsertEmailChange(ctx context.Context, tx *db.Tx, ec *EmailChange) error {
+	_, err := tx.ExecContext(ctx, `INSERT INTO email_changes (
+		user_id, new_email, new_email_norm, code_hash, attempts, created_at, expires_at
+	) VALUES (?, ?, ?, ?, 0, ?, ?)
+	ON CONFLICT (user_id) DO UPDATE SET
+		new_email = excluded.new_email,
+		new_email_norm = excluded.new_email_norm,
+		code_hash = excluded.code_hash,
+		attempts = 0,
+		created_at = excluded.created_at,
+		expires_at = excluded.expires_at`,
+		ec.UserID, ec.NewEmail, ec.NewEmailNorm, ec.CodeHash,
+		db.FormatUTC(ec.CreatedAt), db.FormatUTC(ec.ExpiresAt))
+	return err
+}
+
+// GetEmailChangeTx 在事务内读当前用户的换绑记录。
+func (s *Store) GetEmailChangeTx(ctx context.Context, tx *db.Tx, userID int64) (*EmailChange, error) {
+	row := tx.QueryRowContext(ctx, `SELECT user_id, new_email, new_email_norm, code_hash, attempts, created_at, expires_at
+		FROM email_changes WHERE user_id = ?`, userID)
+	return scanEmailChange(row)
+}
+
+// BumpEmailChangeAttempts 增加换绑邮箱尝试次数。
+func (s *Store) BumpEmailChangeAttempts(ctx context.Context, tx *db.Tx, userID int64) error {
+	_, err := tx.ExecContext(ctx, `UPDATE email_changes SET attempts = attempts + 1 WHERE user_id = ?`, userID)
+	return err
+}
+
+// DeleteEmailChange 删除换绑邮箱记录。
+func (s *Store) DeleteEmailChange(ctx context.Context, tx *db.Tx, userID int64) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM email_changes WHERE user_id = ?`, userID)
+	return err
+}
+
+// UpdateUserEmail 更新用户的登录邮箱（换绑成功时调用）。
+func (s *Store) UpdateUserEmail(ctx context.Context, tx *db.Tx, userID int64, email, emailNorm string, at time.Time) error {
+	_, err := tx.ExecContext(ctx, `UPDATE users SET
+		email = ?,
+		email_norm = ?,
+		email_verified_at = ?,
+		updated_at = ?
+		WHERE id = ?`,
+		email, emailNorm, db.FormatUTC(at), db.FormatUTC(at), userID)
+	return err
+}
+
+// -------------------------------------------------------------
+// 账号停用、启用与注销 (Deactivation, Activation & Anonymization)
+// -------------------------------------------------------------
+
+// DeactivateUserTx 停用账号（设置 is_active=0，记录原因，规则 33）。
+func (s *Store) DeactivateUserTx(ctx context.Context, tx *db.Tx, userID int64, note string, at time.Time) error {
+	_, err := tx.ExecContext(ctx, `UPDATE users SET
+		is_active = 0,
+		deactivation_note = ?,
+		updated_at = ?
+		WHERE id = ?`,
+		note, db.FormatUTC(at), userID)
+	return err
+}
+
+// ReactivateUserTx 重新启用账号（清空停用原因，置 is_active=1，规则 36）。
+func (s *Store) ReactivateUserTx(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {
+	_, err := tx.ExecContext(ctx, `UPDATE users SET
+		is_active = 1,
+		deactivation_note = '',
+		updated_at = ?
+		WHERE id = ?`,
+		db.FormatUTC(at), userID)
+	return err
+}
+
+// AnonymizeUserTx 原地匿名化注销用户（规则 30）。
+// email -> deleted-{id}@deleted.invalid
+// nickname -> 已注销用户
+// password_hash -> ! (unusable password)
+// 清除个人设置与管理权限，is_active=0, is_superuser=0。
+func (s *Store) AnonymizeUserTx(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {
+	deletedEmail := fmt.Sprintf("deleted-%d@deleted.invalid", userID)
+	_, err := tx.ExecContext(ctx, `UPDATE users SET
+		email = ?,
+		email_norm = ?,
+		password_hash = '!',
+		nickname = '已注销用户',
+		is_sjtu = 0,
+		is_active = 0,
+		is_superuser = 0,
+		deactivation_note = '用户自行注销',
+		motto = '',
+		main_role = '',
+		flex_roles = '',
+		show_rank = 0,
+		version = version + 1,
+		updated_at = ?
+		WHERE id = ?`,
+		deletedEmail, deletedEmail, db.FormatUTC(at), userID)
+	return err
+}
+
+// DeleteUserDataTx 清除注销用户的自有数据（规则 31）。
+func (s *Store) DeleteUserDataTx(ctx context.Context, tx *db.Tx, userID int64) error {
+	queries := []string{
+		`DELETE FROM game_accounts WHERE user_id = ?`,
+		`DELETE FROM contacts WHERE user_id = ?`,
+		`DELETE FROM user_roles WHERE user_id = ?`,
+		`DELETE FROM feature_user_rules WHERE user_id = ?`,
+		`DELETE FROM email_changes WHERE user_id = ?`,
+	}
+	for _, q := range queries {
+		if _, err := tx.ExecContext(ctx, q, userID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// -------------------------------------------------------------
+// 后台用户管理 (Admin User Management)
+// -------------------------------------------------------------
+
+// ListUsers 分页查询用户列表。根据 searchEmail 决定是否支持按邮箱搜索（规则 39）。
+func (s *Store) ListUsers(ctx context.Context, limit, offset int, search string, searchEmail bool) ([]*User, error) {
+	search = strings.TrimSpace(search)
+	var query string
+	var args []any
+
+	if search != "" {
+		if searchEmail {
+			query = `SELECT ` + userColumns + ` FROM users WHERE nickname LIKE ? OR email LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?`
+			term := "%" + search + "%"
+			args = []any{term, term, limit, offset}
+		} else {
+			query = `SELECT ` + userColumns + ` FROM users WHERE nickname LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?`
+			term := "%" + search + "%"
+			args = []any{term, limit, offset}
+		}
+	} else {
+		query = `SELECT ` + userColumns + ` FROM users ORDER BY id DESC LIMIT ? OFFSET ?`
+		args = []any{limit, offset}
+	}
+
+	rows, err := s.d.ReadPool().QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*User
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		if u != nil {
+			list = append(list, u)
+		}
+	}
+	return list, rows.Err()
+}
+
+// CountUsers 统计满足条件的用户总数。
+func (s *Store) CountUsers(ctx context.Context, search string, searchEmail bool) (int, error) {
+	search = strings.TrimSpace(search)
+	var query string
+	var args []any
+
+	if search != "" {
+		if searchEmail {
+			query = `SELECT COUNT(*) FROM users WHERE nickname LIKE ? OR email LIKE ?`
+			term := "%" + search + "%"
+			args = []any{term, term}
+		} else {
+			query = `SELECT COUNT(*) FROM users WHERE nickname LIKE ?`
+			term := "%" + search + "%"
+			args = []any{term}
+		}
+	} else {
+		query = `SELECT COUNT(*) FROM users`
+	}
+
+	var cnt int
+	err := s.d.ReadPool().QueryRowContext(ctx, query, args...).Scan(&cnt)
+	return cnt, err
+}
+
+// SetUserRolesTx 全量替换用户的管理角色。
+func (s *Store) SetUserRolesTx(ctx context.Context, tx *db.Tx, userID int64, roles []string, at time.Time) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM user_roles WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	atStr := db.FormatUTC(at)
+	for _, r := range roles {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO user_roles (user_id, role, created_at) VALUES (?, ?, ?)`,
+			userID, r, atStr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SetUserRulesTx 全量替换用户的单人功能规则。
+func (s *Store) SetUserRulesTx(ctx context.Context, tx *db.Tx, userID int64, rules map[app.Feature]bool, at time.Time) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM feature_user_rules WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	atStr := db.FormatUTC(at)
+	for feat, allowed := range rules {
+		denied := 0
+		if !allowed {
+			denied = 1
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO feature_user_rules (user_id, feature, denied, created_at) VALUES (?, ?, ?, ?)`,
+			userID, string(feat), denied, atStr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ReplaceRoleRestrictionsTx 全量替换角色级功能限制。
+func (s *Store) ReplaceRoleRestrictionsTx(ctx context.Context, tx *db.Tx, restrictions map[string]map[app.Feature]bool, at time.Time) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM feature_role_restrictions`); err != nil {
+		return err
+	}
+	atStr := db.FormatUTC(at)
+	for role, feats := range restrictions {
+		for feat, restricted := range feats {
+			if restricted {
+				if _, err := tx.ExecContext(ctx, `INSERT INTO feature_role_restrictions (role, feature, created_at) VALUES (?, ?, ?)`,
+					role, string(feat), atStr); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
