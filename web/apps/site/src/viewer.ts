@@ -5,7 +5,14 @@ import { inject, type InjectionKey } from "vue"
 // is runs_admin (core templatetags ow.py): the account menu links to the
 // back office only for people with a job there. Callers provide it on the
 // app instance (app.provide(VIEWER, viewer)); pages read useViewer().
-export type ViewerUser = { nickname: string; admin: boolean }
+export type ViewerUser = {
+  id?: number
+  nickname: string
+  email?: string
+  admin: boolean
+  superuser?: boolean
+  caps?: string[]
+}
 export type Viewer = { user: ViewerUser | null }
 
 export const VIEWER: InjectionKey<Viewer> = Symbol("viewer")

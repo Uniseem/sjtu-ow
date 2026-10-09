@@ -53,3 +53,45 @@ test("the listed front pages resolve", () => {
     expect(match(url).matched.length, url).toBeGreaterThan(0)
   }
 })
+
+test("admin pages resolve cleanly", () => {
+  for (const url of [
+    "/admin/",
+    "/admin/letters/",
+    "/admin/articles/",
+    "/admin/articles/new/",
+    "/admin/articles/12/",
+    "/admin/categories/",
+    "/admin/home-pins/",
+    "/admin/images/",
+    "/admin/tournaments/",
+    "/admin/tournaments/new/",
+    "/admin/tournaments/5/",
+    "/admin/tournaments/5/board/",
+    "/admin/tournaments/5/review/",
+    "/admin/scrims/",
+    "/admin/scrims/new/",
+    "/admin/scrims/8/",
+    "/admin/scrims/8/split/",
+    "/admin/users/",
+    "/admin/users/1/",
+    "/admin/roles/",
+    "/admin/teams/",
+    "/admin/teams/3/",
+    "/admin/member-groups/",
+    "/admin/member-groups/new/",
+    "/admin/member-groups/2/",
+    "/admin/registrations/",
+    "/admin/moderation/",
+    "/admin/avatars/",
+    "/admin/comments/",
+    "/admin/activity/",
+    "/admin/settings/",
+    "/admin/settings/site/",
+    "/admin/log/",
+    "/admin/manual/",
+  ]) {
+    expect(match(url).matched.length, url).toBeGreaterThan(0)
+  }
+})
+

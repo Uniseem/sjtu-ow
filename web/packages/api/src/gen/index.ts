@@ -882,7 +882,7 @@ export interface GetApiSessionIn {
 }
 
 export interface GetApiSessionOut {
-  user: {   id: number;   nickname: string;   email: string;   admin: boolean;   email_verified: boolean;   is_sjtu: boolean; } | null;
+  user: {   id: number;   nickname: string;   email: string;   admin: boolean;   superuser: boolean;   caps: string[];   email_verified: boolean;   is_sjtu: boolean; } | null;
 }
 
 export function getApiSession(): Promise<GetApiSessionOut> {

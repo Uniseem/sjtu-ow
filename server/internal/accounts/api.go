@@ -12,12 +12,14 @@ type SessionIn struct{}
 
 // SessionUser 是 GET /api/session 返回的用户信息。
 type SessionUser struct {
-	ID            int64  `json:"id"`
-	Nickname      string `json:"nickname"`
-	Email         string `json:"email"`
-	Admin         bool   `json:"admin"`
-	EmailVerified bool   `json:"email_verified"`
-	IsSJTU        bool   `json:"is_sjtu"`
+	ID            int64    `json:"id"`
+	Nickname      string   `json:"nickname"`
+	Email         string   `json:"email"`
+	Admin         bool     `json:"admin"`
+	Superuser     bool     `json:"superuser"`
+	Caps          []string `json:"caps"`
+	EmailVerified bool     `json:"email_verified"`
+	IsSJTU        bool     `json:"is_sjtu"`
 }
 
 // SessionOut 是 GET /api/session 的出参。访客为 { "user": null }。
@@ -396,12 +398,23 @@ func (m *Module) getSession(ctx *app.Ctx, _ SessionIn) (SessionOut, error) {
 	if u == nil || !u.IsActive {
 		return SessionOut{User: nil}, nil
 	}
+	var caps []string
+	if ctx.Viewer != nil && ctx.Viewer.Caps != nil {
+		for c := range ctx.Viewer.Caps {
+			caps = append(caps, string(c))
+		}
+	}
+	if caps == nil {
+		caps = []string{}
+	}
 	return SessionOut{
 		User: &SessionUser{
 			ID:            u.ID,
 			Nickname:      u.Nickname,
 			Email:         u.Email,
 			Admin:         RunsAdmin(u, ctx.Viewer),
+			Superuser:     u.IsSuperuser || (ctx.Viewer != nil && ctx.Viewer.Superuser),
+			Caps:          caps,
 			EmailVerified: ctx.Viewer.EmailVerified,
 			IsSJTU:        u.IsSJTU,
 		},

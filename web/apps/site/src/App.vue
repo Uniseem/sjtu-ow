@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { RouterView } from "vue-router"
+import { computed } from "vue"
+import { RouterView, useRoute } from "vue-router"
+import AdminLayout from "./admin/AdminLayout.vue"
 import CContextMenu from "./components/CContextMenu.vue"
 import SiteFooter from "./components/SiteFooter.vue"
 import SiteHeader from "./components/SiteHeader.vue"
 import Toasts from "./components/Toasts.vue"
 import WeChatHint from "./components/WeChatHint.vue"
+
+const route = useRoute()
+const isAdmin = computed(() => route.path.startsWith("/admin"))
 </script>
 <template>
   <a
@@ -13,10 +18,18 @@ import WeChatHint from "./components/WeChatHint.vue"
   >
     跳到正文
   </a>
-  <WeChatHint />
-  <SiteHeader />
-  <RouterView />
-  <SiteFooter />
+  <template v-if="!isAdmin">
+    <WeChatHint />
+    <SiteHeader />
+    <RouterView />
+    <SiteFooter />
+  </template>
+  <template v-else>
+    <AdminLayout>
+      <RouterView />
+    </AdminLayout>
+  </template>
   <Toasts />
   <CContextMenu />
 </template>
+

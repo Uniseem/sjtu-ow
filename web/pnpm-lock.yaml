@@ -14,6 +14,9 @@ importers:
 
   apps/site:
     dependencies:
+      '@sjtu-ow/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@sjtu-ow/styles':
         specifier: workspace:*
         version: link:../../packages/styles

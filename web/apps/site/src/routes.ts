@@ -62,3 +62,54 @@ export const PAGES: RouteRecordRaw[] = [
   page("/accounts/password/reset/done/", "密码已重置"),
   page("/accounts/login/code/confirm/", "登录"),
 ]
+
+function admin(path: string, comp: () => Promise<any>, title: string): RouteRecordRaw {
+  const load: Load = () => ({ title })
+  return { path, component: comp, meta: { load, admin: true } }
+}
+
+export const ADMIN_PAGES: RouteRecordRaw[] = [
+  admin("/admin/", () => import("./pages/admin/AdminHome.vue"), "管理后台首页"),
+  admin("/admin/letters/", () => import("./pages/admin/AdminLetters.vue"), "待发信管理"),
+  admin("/admin/letters/:batch/", () => import("./pages/admin/AdminLetters.vue"), "确认发信批次"),
+  admin(`/admin/letters/:batch/${id}/`, () => import("./pages/admin/AdminLetters.vue"), "信件预览"),
+  admin("/admin/articles/", () => import("./pages/admin/AdminArticles.vue"), "文章管理"),
+  admin("/admin/articles/new/", () => import("./pages/admin/AdminArticleEdit.vue"), "写新文章"),
+  admin(`/admin/articles/${id}/`, () => import("./pages/admin/AdminArticleEdit.vue"), "编辑文章"),
+  admin("/admin/categories/", () => import("./pages/admin/AdminCategories.vue"), "分类管理"),
+  admin("/admin/categories/new/", () => import("./pages/admin/AdminCategories.vue"), "新建分类"),
+  admin(`/admin/categories/${id}/`, () => import("./pages/admin/AdminCategories.vue"), "编辑分类"),
+  admin("/admin/home-pins/", () => import("./pages/admin/AdminHomePins.vue"), "首页置顶文章"),
+  admin("/admin/images/", () => import("./pages/admin/AdminImages.vue"), "图片媒体库"),
+  admin("/admin/tournaments/", () => import("./pages/admin/AdminTournaments.vue"), "赛事管理"),
+  admin("/admin/tournaments/new/", () => import("./pages/admin/AdminTournamentEdit.vue"), "新建赛事"),
+  admin(`/admin/tournaments/${id}/`, () => import("./pages/admin/AdminTournamentEdit.vue"), "编辑赛事"),
+  admin(`/admin/tournaments/${id}/board/`, () => import("./pages/admin/AdminTournamentBoard.vue"), "队伍编排板"),
+  admin(`/admin/tournaments/${id}/review/`, () => import("./pages/admin/AdminTournamentReview.vue"), "报名审核"),
+  admin("/admin/scrims/", () => import("./pages/admin/AdminScrims.vue"), "内战管理"),
+  admin("/admin/scrims/new/", () => import("./pages/admin/AdminScrimEdit.vue"), "新建内战"),
+  admin(`/admin/scrims/${id}/`, () => import("./pages/admin/AdminScrimEdit.vue"), "编辑内战"),
+  admin(`/admin/scrims/${id}/split/`, () => import("./pages/admin/AdminScrimBoard.vue"), "内战分队板"),
+  admin("/admin/users/", () => import("./pages/admin/AdminUsers.vue"), "用户管理"),
+  admin(`/admin/users/${id}/`, () => import("./pages/admin/AdminUserDetail.vue"), "用户详情与权限"),
+  admin("/admin/roles/", () => import("./pages/admin/AdminRoles.vue"), "角色与功能限制"),
+  admin("/admin/teams/", () => import("./pages/admin/AdminTeams.vue"), "战队管理"),
+  admin(`/admin/teams/${id}/`, () => import("./pages/admin/AdminTeams.vue"), "战队详情"),
+  admin("/admin/member-groups/", () => import("./pages/admin/AdminMemberGroups.vue"), "成员分组管理"),
+  admin("/admin/member-groups/new/", () => import("./pages/admin/AdminMemberGroups.vue"), "新建成员分组"),
+  admin(`/admin/member-groups/${id}/`, () => import("./pages/admin/AdminMemberGroups.vue"), "编辑成员分组"),
+  admin("/admin/registrations/", () => import("./pages/admin/AdminRegistrations.vue"), "赛事报名审核"),
+  admin(`/admin/registrations/${id}/`, () => import("./pages/admin/AdminRegistrations.vue"), "赛事报名审核"),
+  admin("/admin/moderation/", () => import("./pages/admin/AdminModeration.vue"), "内容巡查与审核"),
+  admin(`/admin/moderation/${id}/`, () => import("./pages/admin/AdminModeration.vue"), "审核处置详情"),
+  admin("/admin/avatars/", () => import("./pages/admin/AdminAvatars.vue"), "头像审核"),
+  admin("/admin/comments/", () => import("./pages/admin/AdminComments.vue"), "评论管理"),
+  admin("/admin/activity/", () => import("./pages/admin/AdminActivity.vue"), "活动数据统计"),
+  admin("/admin/settings/", () => import("./pages/admin/AdminSettings.vue"), "全站设置"),
+  admin("/admin/settings/site/", () => import("./pages/admin/AdminSettings.vue"), "全站设置"),
+  admin("/admin/log/", () => import("./pages/admin/AdminAuditLog.vue"), "操作记录与审计日志"),
+  admin("/admin/manual/", () => import("./pages/admin/AdminManual.vue"), "干部操作手册"),
+]
+
+PAGES.push(...ADMIN_PAGES)
+
