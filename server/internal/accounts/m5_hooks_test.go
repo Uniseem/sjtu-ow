@@ -188,3 +188,35 @@ func TestDeleteAccountLeavesTournaments(t *testing.T) {
 		t.Fatal("最后一人退出，临时队伍自动解散并记 SYSTEM 日志")
 	}
 }
+
+// 契约 R031、R158：注销时撤内战报名；已分队或进了替补的，给那场内战打「名单有变动」标记
+func TestDeleteAccountRemovesScrimSignups(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	sess := auth.NewStore(d, nil)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", sess, nil)
+	u := newVerifiedUser(t, d, "scrim@sjtu.edu.cn", "内战人", "Password123!@#", true)
+	w := newVerifiedUser(t, d, "bench@sjtu.edu.cn", "没排上", "Password123!@#", true)
+	execAll(t, d,
+		`INSERT INTO scrims (id, title, status, created_at, updated_at) VALUES (1, '甲', 'published', 'x', 'x'), (2, '乙', 'published', 'x', 'x')`,
+		`INSERT INTO scrim_signups (scrim_id, user_id, role_tank, is_selected, team, assigned_role, created_at, updated_at) VALUES (1, `+itoa(u.ID)+`, 1, 1, 'a', 'tank', 'x', 'x')`,
+		`INSERT INTO scrim_signups (scrim_id, user_id, role_tank, created_at, updated_at) VALUES (2, `+itoa(w.ID)+`, 1, 'x', 'x')`,
+	)
+	del := func(u *User) {
+		tok, _ := sess.Create(ctx, u.ID)
+		if _, err := svc.DeleteAccount(newTestCtx(ctx, u, tok, false), DeleteAccountInput{Password: "Password123!@#"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	del(u)
+	del(w)
+	if countOf(t, d, `SELECT COUNT(*) FROM scrim_signups`) != 0 {
+		t.Fatal("内战报名都该撤掉")
+	}
+	if countOf(t, d, `SELECT COUNT(*) FROM scrims WHERE id = 1 AND roster_changed_at IS NOT NULL`) != 1 {
+		t.Fatal("已分队的人注销，那场内战要打名单变动标记")
+	}
+	if countOf(t, d, `SELECT COUNT(*) FROM scrims WHERE id = 2 AND roster_changed_at IS NULL`) != 1 {
+		t.Fatal("没被安排过的人注销，不用打标记")
+	}
+}

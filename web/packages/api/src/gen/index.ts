@@ -34,6 +34,17 @@ export function deleteApiAdminMemberGroupsId(id: string): Promise<DeleteApiAdmin
   return call<DeleteApiAdminMemberGroupsIdOut>("DELETE", "/api/admin/member-groups/{id}", { id }, undefined)
 }
 
+export interface DeleteApiAdminScrimsIdIn {
+}
+
+export interface DeleteApiAdminScrimsIdOut {
+  result: string;
+}
+
+export function deleteApiAdminScrimsId(id: string): Promise<DeleteApiAdminScrimsIdOut> {
+  return call<DeleteApiAdminScrimsIdOut>("DELETE", "/api/admin/scrims/{id}", { id }, undefined)
+}
+
 export interface DeleteApiAdminTournamentsIdIn {
 }
 
@@ -100,6 +111,17 @@ export interface DeleteApiMeGameAccountsIdOut {
 
 export function deleteApiMeGameAccountsId(id: string): Promise<DeleteApiMeGameAccountsIdOut> {
   return call<DeleteApiMeGameAccountsIdOut>("DELETE", "/api/me/game-accounts/{id}", { id }, undefined)
+}
+
+export interface DeleteApiScrimsIdSignupIn {
+}
+
+export interface DeleteApiScrimsIdSignupOut {
+  result: string;
+}
+
+export function deleteApiScrimsIdSignup(id: string): Promise<DeleteApiScrimsIdSignupOut> {
+  return call<DeleteApiScrimsIdSignupOut>("DELETE", "/api/scrims/{id}/signup", { id }, undefined)
 }
 
 export interface DeleteApiTournamentsIdSignupIn {
@@ -205,6 +227,52 @@ export interface GetApiAdminMemberGroupsIdPeopleOut {
 
 export function getApiAdminMemberGroupsIdPeople(id: string): Promise<GetApiAdminMemberGroupsIdPeopleOut> {
   return call<GetApiAdminMemberGroupsIdPeopleOut>("GET", "/api/admin/member-groups/{id}/people", { id }, undefined)
+}
+
+export interface GetApiAdminScrimsIn {
+}
+
+export interface GetApiAdminScrimsOut {
+  scrims: {   Card: {   id: number;   title: string;   starts_at: string | null;   signup_deadline: string | null;   format: string;   format_label: string;   sjtu_only: boolean;   status: string;   signup_open: boolean;   signup_total: number;   players_needed: number; };   missing: string[];   can_delete: boolean;   teams_stale: boolean; }[];
+}
+
+export function getApiAdminScrims(): Promise<GetApiAdminScrimsOut> {
+  return call<GetApiAdminScrimsOut>("GET", "/api/admin/scrims", {  }, undefined)
+}
+
+export interface GetApiAdminScrimsIdIn {
+}
+
+export interface GetApiAdminScrimsIdOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+  row: {   Card: {   id: number;   title: string;   starts_at: string | null;   signup_deadline: string | null;   format: string;   format_label: string;   sjtu_only: boolean;   status: string;   signup_open: boolean;   signup_total: number;   players_needed: number; };   missing: string[];   can_delete: boolean;   teams_stale: boolean; } | null;
+}
+
+export function getApiAdminScrimsId(id: string): Promise<GetApiAdminScrimsIdOut> {
+  return call<GetApiAdminScrimsIdOut>("GET", "/api/admin/scrims/{id}", { id }, undefined)
+}
+
+export interface GetApiAdminScrimsIdBoardIn {
+}
+
+export interface GetApiAdminScrimsIdBoardOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+  order: string;
+  signups: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[];
+  selected_count: number;
+  needed: number;
+  teams: {   team: string;   label: string;   total: number;   problems: string[];   members: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[]; }[];
+  bench: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[];
+  gap: number;
+  has_teams: boolean;
+  teams_stale: boolean;
+  copy_text: string;
+  board_version: number;
+  warnings?: string[];
+}
+
+export function getApiAdminScrimsIdBoard(id: string): Promise<GetApiAdminScrimsIdBoardOut> {
+  return call<GetApiAdminScrimsIdBoardOut>("GET", "/api/admin/scrims/{id}/board", { id }, undefined)
 }
 
 export interface GetApiAdminTeamsIn {
@@ -521,6 +589,33 @@ export function getApiRegistrationsId(id: string): Promise<GetApiRegistrationsId
   return call<GetApiRegistrationsIdOut>("GET", "/api/registrations/{id}", { id }, undefined)
 }
 
+export interface GetApiScrimsIn {
+}
+
+export interface GetApiScrimsOut {
+  scrims: {   id: number;   title: string;   starts_at: string | null;   signup_deadline: string | null;   format: string;   format_label: string;   sjtu_only: boolean;   status: string;   signup_open: boolean;   signup_total: number;   players_needed: number; }[];
+}
+
+export function getApiScrims(): Promise<GetApiScrimsOut> {
+  return call<GetApiScrimsOut>("GET", "/api/scrims", {  }, undefined)
+}
+
+export interface GetApiScrimsIdIn {
+}
+
+export interface GetApiScrimsIdOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+  card: {   id: number;   title: string;   starts_at: string | null;   signup_deadline: string | null;   format: string;   format_label: string;   sjtu_only: boolean;   status: string;   signup_open: boolean;   signup_total: number;   players_needed: number; };
+  counts: {   total: number;   tank: number;   damage: number;   support: number; };
+  signups: {   nickname: string;   roles: string[]; }[];
+  mine: {   id: number;   game_account_id: number | null;   roles: string[];   placement: string;   can_cancel: boolean; } | null;
+  problems: string[];
+}
+
+export function getApiScrimsId(id: string): Promise<GetApiScrimsIdOut> {
+  return call<GetApiScrimsIdOut>("GET", "/api/scrims/{id}", { id }, undefined)
+}
+
 export interface GetApiSearchIn {
 }
 
@@ -654,6 +749,22 @@ export interface PatchApiAdminMemberGroupsIdOut {
 
 export function patchApiAdminMemberGroupsId(id: string, body: PatchApiAdminMemberGroupsIdIn): Promise<PatchApiAdminMemberGroupsIdOut> {
   return call<PatchApiAdminMemberGroupsIdOut>("PATCH", "/api/admin/member-groups/{id}", { id }, body)
+}
+
+export interface PatchApiAdminScrimsIdIn {
+  base_version: number;
+  changes: {   title?: string | null;   description?: string | null;   starts_at?: string | null;   signup_closes_at?: string | null;   format?: string | null;   sjtu_only?: boolean | null; };
+}
+
+export interface PatchApiAdminScrimsIdOut {
+  version: number;
+  saved: string[];
+  fields?: Record<string, string[]>;
+  saved_at: string;
+}
+
+export function patchApiAdminScrimsId(id: string, body: PatchApiAdminScrimsIdIn): Promise<PatchApiAdminScrimsIdOut> {
+  return call<PatchApiAdminScrimsIdOut>("PATCH", "/api/admin/scrims/{id}", { id }, body)
 }
 
 export interface PatchApiAdminTeamsIdIn {
@@ -909,6 +1020,138 @@ export interface PostApiAdminRegistrationsIdRejectOut {
 
 export function postApiAdminRegistrationsIdReject(id: string, body: PostApiAdminRegistrationsIdRejectIn): Promise<PostApiAdminRegistrationsIdRejectOut> {
   return call<PostApiAdminRegistrationsIdRejectOut>("POST", "/api/admin/registrations/{id}/reject", { id }, body)
+}
+
+export interface PostApiAdminScrimsIn {
+}
+
+export interface PostApiAdminScrimsOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminScrims(): Promise<PostApiAdminScrimsOut> {
+  return call<PostApiAdminScrimsOut>("POST", "/api/admin/scrims", {  }, undefined)
+}
+
+export interface PostApiAdminScrimsIdBoardGenerateIn {
+  signup_ids: number[];
+  base_board_version: number;
+}
+
+export interface PostApiAdminScrimsIdBoardGenerateOut {
+  board: {   scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;   order: string;   signups: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[];   selected_count: number;   needed: number;   teams: {   team: string;   label: string;   total: number;   problems: string[];   members: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[]; }[];   bench: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[];   gap: number;   has_teams: boolean;   teams_stale: boolean;   copy_text: string;   board_version: number;   warnings?: string[]; } | null;
+  score: number[];
+  unrated: string[];
+}
+
+export function postApiAdminScrimsIdBoardGenerate(id: string, body: PostApiAdminScrimsIdBoardGenerateIn): Promise<PostApiAdminScrimsIdBoardGenerateOut> {
+  return call<PostApiAdminScrimsIdBoardGenerateOut>("POST", "/api/admin/scrims/{id}/board/generate", { id }, body)
+}
+
+export interface PostApiAdminScrimsIdBoardSelectionIn {
+  signup_ids: number[];
+  base_board_version: number;
+}
+
+export interface PostApiAdminScrimsIdBoardSelectionOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+  order: string;
+  signups: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[];
+  selected_count: number;
+  needed: number;
+  teams: {   team: string;   label: string;   total: number;   problems: string[];   members: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[]; }[];
+  bench: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[];
+  gap: number;
+  has_teams: boolean;
+  teams_stale: boolean;
+  copy_text: string;
+  board_version: number;
+  warnings?: string[];
+}
+
+export function postApiAdminScrimsIdBoardSelection(id: string, body: PostApiAdminScrimsIdBoardSelectionIn): Promise<PostApiAdminScrimsIdBoardSelectionOut> {
+  return call<PostApiAdminScrimsIdBoardSelectionOut>("POST", "/api/admin/scrims/{id}/board/selection", { id }, body)
+}
+
+export interface PostApiAdminScrimsIdBoardTeamsIn {
+  placements: {   signup_id: number;   team: string;   role: string; }[];
+  base_board_version: number;
+}
+
+export interface PostApiAdminScrimsIdBoardTeamsOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+  order: string;
+  signups: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[];
+  selected_count: number;
+  needed: number;
+  teams: {   team: string;   label: string;   total: number;   problems: string[];   members: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[]; }[];
+  bench: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   ratings: Record<string, number>;   rank_text: Record<string, string>;   best_rating: number | null;   is_selected: boolean;   team: string;   assigned_role: string;   rating_used: number | null;   contacts?: string[];   created_at: string; }[];
+  gap: number;
+  has_teams: boolean;
+  teams_stale: boolean;
+  copy_text: string;
+  board_version: number;
+  warnings?: string[];
+}
+
+export function postApiAdminScrimsIdBoardTeams(id: string, body: PostApiAdminScrimsIdBoardTeamsIn): Promise<PostApiAdminScrimsIdBoardTeamsOut> {
+  return call<PostApiAdminScrimsIdBoardTeamsOut>("POST", "/api/admin/scrims/{id}/board/teams", { id }, body)
+}
+
+export interface PostApiAdminScrimsIdCancelIn {
+}
+
+export interface PostApiAdminScrimsIdCancelOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminScrimsIdCancel(id: string): Promise<PostApiAdminScrimsIdCancelOut> {
+  return call<PostApiAdminScrimsIdCancelOut>("POST", "/api/admin/scrims/{id}/cancel", { id }, undefined)
+}
+
+export interface PostApiAdminScrimsIdCopyIn {
+}
+
+export interface PostApiAdminScrimsIdCopyOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminScrimsIdCopy(id: string): Promise<PostApiAdminScrimsIdCopyOut> {
+  return call<PostApiAdminScrimsIdCopyOut>("POST", "/api/admin/scrims/{id}/copy", { id }, undefined)
+}
+
+export interface PostApiAdminScrimsIdFinishIn {
+}
+
+export interface PostApiAdminScrimsIdFinishOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminScrimsIdFinish(id: string): Promise<PostApiAdminScrimsIdFinishOut> {
+  return call<PostApiAdminScrimsIdFinishOut>("POST", "/api/admin/scrims/{id}/finish", { id }, undefined)
+}
+
+export interface PostApiAdminScrimsIdNotifyIn {
+  note: string;
+}
+
+export interface PostApiAdminScrimsIdNotifyOut {
+  recipients: number;
+}
+
+export function postApiAdminScrimsIdNotify(id: string, body: PostApiAdminScrimsIdNotifyIn): Promise<PostApiAdminScrimsIdNotifyOut> {
+  return call<PostApiAdminScrimsIdNotifyOut>("POST", "/api/admin/scrims/{id}/notify", { id }, body)
+}
+
+export interface PostApiAdminScrimsIdPublishIn {
+}
+
+export interface PostApiAdminScrimsIdPublishOut {
+  scrim: {   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminScrimsIdPublish(id: string): Promise<PostApiAdminScrimsIdPublishOut> {
+  return call<PostApiAdminScrimsIdPublishOut>("POST", "/api/admin/scrims/{id}/publish", { id }, undefined)
 }
 
 export interface PostApiAdminTeamsIdAssignCaptainIn {
@@ -1360,6 +1603,20 @@ export interface PostApiRegistrationsIdWithdrawOut {
 
 export function postApiRegistrationsIdWithdraw(id: string): Promise<PostApiRegistrationsIdWithdrawOut> {
   return call<PostApiRegistrationsIdWithdrawOut>("POST", "/api/registrations/{id}/withdraw", { id }, undefined)
+}
+
+export interface PostApiScrimsIdSignupIn {
+  game_account_id: number;
+  roles: string[];
+}
+
+export interface PostApiScrimsIdSignupOut {
+  signup_id: number;
+  roles: string[];
+}
+
+export function postApiScrimsIdSignup(id: string, body: PostApiScrimsIdSignupIn): Promise<PostApiScrimsIdSignupOut> {
+  return call<PostApiScrimsIdSignupOut>("POST", "/api/scrims/{id}/signup", { id }, body)
 }
 
 export interface PostApiTeamAlumniIdRemoveIn {

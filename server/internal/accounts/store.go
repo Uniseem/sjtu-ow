@@ -739,6 +739,15 @@ func (s *Store) LeaveTeamsAndGroupsTx(ctx context.Context, tx *db.Tx, userID int
 // LeaveTournamentsTx 注销账号时退出所有进行中的临时队伍并删个人报名（规则 31）。整队报名的
 // 名单快照保留（昵称、游戏 ID 都是当时定格的）。退出后没人的临时队伍自动解散。
 func (s *Store) LeaveTournamentsTx(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {
+	// 内战报名：先撤（报名占着游戏 ID）；已被分队或进了替补的，给那场内战打「名单有变动」标记（规则 31、158）。
+	if _, err := tx.ExecContext(ctx, `UPDATE scrims SET roster_changed_at = ?, board_version = board_version + 1
+		WHERE id IN (SELECT scrim_id FROM scrim_signups WHERE user_id = ? AND (is_selected = 1 OR team <> ''))`,
+		db.FormatUTC(at), userID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM scrim_signups WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
 	rows, err := tx.QueryContext(ctx, `SELECT DISTINCT m.registration_id FROM registration_members m
 		JOIN registrations r ON r.id = m.registration_id
 		WHERE m.user_id = ? AND m.is_active = 1 AND r.team_id IS NULL AND r.status IN ('pending', 'approved')`, userID)

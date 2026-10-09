@@ -32,6 +32,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/outbox"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
+	"github.com/Uniseem/sjtu-ow/server/internal/scrims"
 	"github.com/Uniseem/sjtu-ow/server/internal/search"
 	"github.com/Uniseem/sjtu-ow/server/internal/serve"
 	"github.com/Uniseem/sjtu-ow/server/internal/teams"
@@ -98,6 +99,7 @@ func buildRegistry(
 	teamsSvc *teams.Service,
 	membersSvc *members.Service,
 	tournamentsSvc *tournaments.Service,
+	scrimsSvc *scrims.Service,
 ) *api.Registry {
 	reg := &api.Registry{}
 	if acctSvc != nil {
@@ -124,6 +126,9 @@ func buildRegistry(
 	if tournamentsSvc != nil {
 		tournaments.NewModule(tournamentsSvc).Routes(reg)
 	}
+	if scrimsSvc != nil {
+		scrims.NewModule(scrimsSvc).Routes(reg)
+	}
 	return reg
 }
 
@@ -143,8 +148,9 @@ func runServe() error {
 	teamsSvc := teams.NewService(d, cfg.SiteURL, ratelimit.NewEnforcer(d, nil), mediaSvc)
 	membersSvc := members.NewService(d)
 	tournamentsSvc := newTournaments(d, cfg.SiteURL, acctSvc, teamsSvc)
+	scrimsSvc := newScrims(d, cfg.SiteURL, acctSvc)
 
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
@@ -172,6 +178,7 @@ func runWorker() error {
 	teamsSvc := teams.NewService(d, cfg.SiteURL, nil, nil)
 	tournamentsSvc := newTournaments(d, cfg.SiteURL, acctSvc, teamsSvc)
 	contentSvc := content.NewService(content.NewStore(d), cfg.SiteURL)
+	scrimsSvc := newScrims(d, cfg.SiteURL, acctSvc)
 	// 每 30 秒：文章定时上线和到期撤下（规则 54–57）、赛事开赛提醒（规则 138–140）。
 	w.OnSchedule(jobs.SchedPublish, func(ctx context.Context, _ *db.DB, now time.Time) error {
 		if err := contentSvc.CheckScheduledWorker(ctx, now); err != nil {
@@ -179,6 +186,9 @@ func runWorker() error {
 		}
 		if _, err := tournamentsSvc.SendDueReminders(ctx, now); err != nil {
 			return fmt.Errorf("赛事提醒：%w", err)
+		}
+		if err := scrimsSvc.Tick(ctx, now); err != nil {
+			return fmt.Errorf("内战自动结束与提醒：%w", err)
 		}
 		return nil
 	})
@@ -209,7 +219,8 @@ func runApigen() error {
 	teamsSvc := teams.NewService(nil, "", nil, nil)
 	membersSvc := members.NewService(nil)
 	tournamentsSvc := tournaments.NewService(nil, "")
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc)
+	scrimsSvc := scrims.NewService(nil, "")
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc)
 	return apigen.Write(dir, reg)
 }
 
@@ -314,6 +325,10 @@ func runImport() error {
 		return fmt.Errorf("导入赛事失败: %w", err)
 	}
 	fmt.Println("赛事数据导入成功。")
+	if err := scrims.ImportLegacyScrims(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入内战失败: %w", err)
+	}
+	fmt.Println("内战数据导入成功。")
 	return nil
 }
 
@@ -360,4 +375,11 @@ func (rosterGuard) EntriesStillListing(ctx context.Context, q db.DBTX, teamID, u
 		out = append(out, teams.ListedEntry{Title: r.Title, ClosesAt: r.ClosesAt, DetailURL: r.DetailURL})
 	}
 	return out, nil
+}
+
+// newScrims 造内战服务并接上用户的 can_use（账号域）。
+func newScrims(d *db.DB, siteURL string, acctSvc *accounts.Service) *scrims.Service {
+	svc := scrims.NewService(d, siteURL)
+	svc.SetViewerBuilder(acctSvc.BuildViewer)
+	return svc
 }
