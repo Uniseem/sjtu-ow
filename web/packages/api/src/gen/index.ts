@@ -34,6 +34,17 @@ export function deleteApiAdminMemberGroupsId(id: string): Promise<DeleteApiAdmin
   return call<DeleteApiAdminMemberGroupsIdOut>("DELETE", "/api/admin/member-groups/{id}", { id }, undefined)
 }
 
+export interface DeleteApiAdminTournamentsIdIn {
+}
+
+export interface DeleteApiAdminTournamentsIdOut {
+  result: string;
+}
+
+export function deleteApiAdminTournamentsId(id: string): Promise<DeleteApiAdminTournamentsIdOut> {
+  return call<DeleteApiAdminTournamentsIdOut>("DELETE", "/api/admin/tournaments/{id}", { id }, undefined)
+}
+
 export interface DeleteApiArticlesIdIn {
 }
 
@@ -89,6 +100,17 @@ export interface DeleteApiMeGameAccountsIdOut {
 
 export function deleteApiMeGameAccountsId(id: string): Promise<DeleteApiMeGameAccountsIdOut> {
   return call<DeleteApiMeGameAccountsIdOut>("DELETE", "/api/me/game-accounts/{id}", { id }, undefined)
+}
+
+export interface DeleteApiTournamentsIdSignupIn {
+}
+
+export interface DeleteApiTournamentsIdSignupOut {
+  result: string;
+}
+
+export function deleteApiTournamentsIdSignup(id: string): Promise<DeleteApiTournamentsIdSignupOut> {
+  return call<DeleteApiTournamentsIdSignupOut>("DELETE", "/api/tournaments/{id}/signup", { id }, undefined)
 }
 
 export interface GetApiAdminArticlesIn {
@@ -194,6 +216,58 @@ export interface GetApiAdminTeamsOut {
 
 export function getApiAdminTeams(): Promise<GetApiAdminTeamsOut> {
   return call<GetApiAdminTeamsOut>("GET", "/api/admin/teams", {  }, undefined)
+}
+
+export interface GetApiAdminTournamentsIn {
+}
+
+export interface GetApiAdminTournamentsOut {
+  tournaments: {   Card: {   id: number;   title: string;   summary: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   registration_mode: string;   sjtu_only: boolean;   status: string;   phase: string;   approved_count: number; };   pending_count: number;   waiting_for_team: number;   missing: string[]; }[];
+}
+
+export function getApiAdminTournaments(): Promise<GetApiAdminTournamentsOut> {
+  return call<GetApiAdminTournamentsOut>("GET", "/api/admin/tournaments", {  }, undefined)
+}
+
+export interface GetApiAdminTournamentsIdIn {
+}
+
+export interface GetApiAdminTournamentsIdOut {
+  tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
+  missing: string[];
+  has_entries: boolean;
+  has_registrations: boolean;
+  can_delete: boolean;
+  team_max_members: number;
+}
+
+export function getApiAdminTournamentsId(id: string): Promise<GetApiAdminTournamentsIdOut> {
+  return call<GetApiAdminTournamentsIdOut>("GET", "/api/admin/tournaments/{id}", { id }, undefined)
+}
+
+export interface GetApiAdminTournamentsIdBoardIn {
+}
+
+export interface GetApiAdminTournamentsIdBoardOut {
+  tournament: {   id: number;   title: string;   summary: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   registration_mode: string;   sjtu_only: boolean;   status: string;   phase: string;   approved_count: number; } | null;
+  roster_max: number;
+  entries: {   signup_id: number;   user_id: number;   nickname: string;   battletag: string;   roles: string[];   rank_tank: number | null;   rank_damage: number | null;   rank_support: number | null;   registration_id: number | null;   conflict?: string; }[];
+  teams: {   registration_id: number;   name: string;   roster_version: number;   signup_ids: number[]; }[];
+}
+
+export function getApiAdminTournamentsIdBoard(id: string): Promise<GetApiAdminTournamentsIdBoardOut> {
+  return call<GetApiAdminTournamentsIdBoardOut>("GET", "/api/admin/tournaments/{id}/board", { id }, undefined)
+}
+
+export interface GetApiAdminTournamentsIdRegistrationsIn {
+}
+
+export interface GetApiAdminTournamentsIdRegistrationsOut {
+  registrations: {   registration: {   id: number;   tournament_id: number;   team_id: number | null;   status: string;   team_name: string;   roster_version: number;   submitted_by?: number | null;   submitted_at: string;   status_note: string;   created_at: string;   updated_at: string; };   roster: {   id: number;   user_id: number;   game_account_id: number | null;   nickname: string;   battletag: string;   is_sjtu: boolean;   rank_tank: number | null;   rank_damage: number | null;   rank_support: number | null;   is_captain: boolean;   is_active: boolean; }[];   logs: {   id: number;   action: string;   from_status: string;   to_status: string;   actor_type: string;   actor_user_id?: number | null;   roster_version: number;   note: string;   created_at: string; }[]; }[];
+}
+
+export function getApiAdminTournamentsIdRegistrations(id: string): Promise<GetApiAdminTournamentsIdRegistrationsOut> {
+  return call<GetApiAdminTournamentsIdRegistrationsOut>("GET", "/api/admin/tournaments/{id}/registrations", { id }, undefined)
 }
 
 export interface GetApiAdminUsersIn {
@@ -309,6 +383,17 @@ export function getApiMeProfile(): Promise<GetApiMeProfileOut> {
   return call<GetApiMeProfileOut>("GET", "/api/me/profile", {  }, undefined)
 }
 
+export interface GetApiMeRegistrationsIn {
+}
+
+export interface GetApiMeRegistrationsOut {
+  registrations: {   registration_id: number;   tournament_id: number;   title: string;   team_name: string;   status: string;   submitted_at: string; }[];
+}
+
+export function getApiMeRegistrations(): Promise<GetApiMeRegistrationsOut> {
+  return call<GetApiMeRegistrationsOut>("GET", "/api/me/registrations", {  }, undefined)
+}
+
 export interface GetApiMeTeamsIn {
 }
 
@@ -416,6 +501,26 @@ export function getApiPageSlug(slug: string): Promise<GetApiPageSlugOut> {
   return call<GetApiPageSlugOut>("GET", "/api/page/{slug}", { slug }, undefined)
 }
 
+export interface GetApiRegistrationsIdIn {
+}
+
+export interface GetApiRegistrationsIdOut {
+  registration: {   id: number;   tournament_id: number;   team_id: number | null;   status: string;   team_name: string;   roster_version: number;   submitted_by?: number | null;   submitted_at: string;   status_note: string;   created_at: string;   updated_at: string; } | null;
+  tournament: {   id: number;   title: string;   summary: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   registration_mode: string;   sjtu_only: boolean;   status: string;   phase: string;   approved_count: number; } | null;
+  roster: {   id: number;   user_id: number;   game_account_id: number | null;   nickname: string;   battletag: string;   is_sjtu: boolean;   rank_tank: number | null;   rank_damage: number | null;   rank_support: number | null;   is_captain: boolean;   is_active: boolean; }[];
+  logs: {   id: number;   action: string;   from_status: string;   to_status: string;   actor_type: string;   actor_user_id?: number | null;   roster_version: number;   note: string;   created_at: string; }[];
+  is_captain: boolean;
+  can_withdraw: boolean;
+  can_resubmit: boolean;
+  roster_differs: boolean;
+  can_leave: boolean;
+  participant_contact?: string;
+}
+
+export function getApiRegistrationsId(id: string): Promise<GetApiRegistrationsIdOut> {
+  return call<GetApiRegistrationsIdOut>("GET", "/api/registrations/{id}", { id }, undefined)
+}
+
 export interface GetApiSearchIn {
 }
 
@@ -491,6 +596,33 @@ export function getApiTeamsIdManage(id: string): Promise<GetApiTeamsIdManageOut>
   return call<GetApiTeamsIdManageOut>("GET", "/api/teams/{id}/manage", { id }, undefined)
 }
 
+export interface GetApiTournamentsIn {
+}
+
+export interface GetApiTournamentsOut {
+  groups: {   phase: string;   label: string;   tournaments: {   id: number;   title: string;   summary: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   registration_mode: string;   sjtu_only: boolean;   status: string;   phase: string;   approved_count: number; }[]; }[];
+}
+
+export function getApiTournaments(): Promise<GetApiTournamentsOut> {
+  return call<GetApiTournamentsOut>("GET", "/api/tournaments", {  }, undefined)
+}
+
+export interface GetApiTournamentsIdIn {
+}
+
+export interface GetApiTournamentsIdOut {
+  tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
+  phase: string;
+  phase_label: string;
+  approved_teams: {   registration_id: number;   team_id: number | null;   team_name: string;   member_count: number;   is_adhoc: boolean; }[];
+  pool?: {   total: number;   tank: number;   damage: number;   support: number;   entries: {   signup_id: number;   user_id: number;   nickname: string;   roles: string[]; }[]; } | null;
+  viewer: {   registration_open: boolean;   captain_teams: {   team_id: number;   name: string;   registration: {   id: number;   status: string; } | null;   problems: string[]; }[];   on_roster: {   id: number;   status: string; } | null;   my_signup: {   id: number;   game_account_id: number | null;   roles: string[];   placed: boolean;   registration_id: number | null;   created_at: string; } | null;   individual_problems: string[];   is_manager: boolean; };
+}
+
+export function getApiTournamentsId(id: string): Promise<GetApiTournamentsIdOut> {
+  return call<GetApiTournamentsIdOut>("GET", "/api/tournaments/{id}", { id }, undefined)
+}
+
 export interface PatchApiAdminCategoriesIdIn {
   name: string;
   slug: string;
@@ -538,6 +670,22 @@ export interface PatchApiAdminTeamsIdOut {
 
 export function patchApiAdminTeamsId(id: string, body: PatchApiAdminTeamsIdIn): Promise<PatchApiAdminTeamsIdOut> {
   return call<PatchApiAdminTeamsIdOut>("PATCH", "/api/admin/teams/{id}", { id }, body)
+}
+
+export interface PatchApiAdminTournamentsIdIn {
+  base_version: number;
+  changes: {   title?: string | null;   summary?: string | null;   description?: string | null;   cover_image_id?: number | null;   remove_cover?: boolean | null;   starts_at?: string | null;   registration_opens_at?: string | null;   registration_closes_at?: string | null;   roster_min?: number | null;   roster_max?: number | null;   sjtu_only?: boolean | null;   registration_mode?: string | null;   auto_approve?: boolean | null;   participant_contact?: string | null; };
+}
+
+export interface PatchApiAdminTournamentsIdOut {
+  version: number;
+  saved: string[];
+  fields?: Record<string, string[]>;
+  saved_at: string;
+}
+
+export function patchApiAdminTournamentsId(id: string, body: PatchApiAdminTournamentsIdIn): Promise<PatchApiAdminTournamentsIdOut> {
+  return call<PatchApiAdminTournamentsIdOut>("PATCH", "/api/admin/tournaments/{id}", { id }, body)
 }
 
 export interface PatchApiAdminUsersIdRolesIn {
@@ -729,6 +877,40 @@ export function postApiAdminMemberGroupsIdPeople(id: string, body: PostApiAdminM
   return call<PostApiAdminMemberGroupsIdPeopleOut>("POST", "/api/admin/member-groups/{id}/people", { id }, body)
 }
 
+export interface PostApiAdminRegistrationsIdApproveIn {
+}
+
+export interface PostApiAdminRegistrationsIdApproveOut {
+  registration: {   id: number;   tournament_id: number;   team_id: number | null;   status: string;   team_name: string;   roster_version: number;   submitted_by?: number | null;   submitted_at: string;   status_note: string;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminRegistrationsIdApprove(id: string): Promise<PostApiAdminRegistrationsIdApproveOut> {
+  return call<PostApiAdminRegistrationsIdApproveOut>("POST", "/api/admin/registrations/{id}/approve", { id }, undefined)
+}
+
+export interface PostApiAdminRegistrationsIdDissolveIn {
+}
+
+export interface PostApiAdminRegistrationsIdDissolveOut {
+  result: string;
+}
+
+export function postApiAdminRegistrationsIdDissolve(id: string): Promise<PostApiAdminRegistrationsIdDissolveOut> {
+  return call<PostApiAdminRegistrationsIdDissolveOut>("POST", "/api/admin/registrations/{id}/dissolve", { id }, undefined)
+}
+
+export interface PostApiAdminRegistrationsIdRejectIn {
+  note: string;
+}
+
+export interface PostApiAdminRegistrationsIdRejectOut {
+  registration: {   id: number;   tournament_id: number;   team_id: number | null;   status: string;   team_name: string;   roster_version: number;   submitted_by?: number | null;   submitted_at: string;   status_note: string;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminRegistrationsIdReject(id: string, body: PostApiAdminRegistrationsIdRejectIn): Promise<PostApiAdminRegistrationsIdRejectOut> {
+  return call<PostApiAdminRegistrationsIdRejectOut>("POST", "/api/admin/registrations/{id}/reject", { id }, body)
+}
+
 export interface PostApiAdminTeamsIdAssignCaptainIn {
   user_id: number;
 }
@@ -750,6 +932,89 @@ export interface PostApiAdminTeamsIdDisbandOut {
 
 export function postApiAdminTeamsIdDisband(id: string): Promise<PostApiAdminTeamsIdDisbandOut> {
   return call<PostApiAdminTeamsIdDisbandOut>("POST", "/api/admin/teams/{id}/disband", { id }, undefined)
+}
+
+export interface PostApiAdminTournamentsIn {
+}
+
+export interface PostApiAdminTournamentsOut {
+  tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminTournaments(): Promise<PostApiAdminTournamentsOut> {
+  return call<PostApiAdminTournamentsOut>("POST", "/api/admin/tournaments", {  }, undefined)
+}
+
+export interface PostApiAdminTournamentsIdBoardIn {
+  teams: {   registration_id: number | null;   name: string;   signup_ids: number[];   base_version: number; }[];
+}
+
+export interface PostApiAdminTournamentsIdBoardOut {
+  created: number;
+  updated: number;
+  dissolved: number;
+  returned: number;
+}
+
+export function postApiAdminTournamentsIdBoard(id: string, body: PostApiAdminTournamentsIdBoardIn): Promise<PostApiAdminTournamentsIdBoardOut> {
+  return call<PostApiAdminTournamentsIdBoardOut>("POST", "/api/admin/tournaments/{id}/board", { id }, body)
+}
+
+export interface PostApiAdminTournamentsIdCancelIn {
+  reason: string;
+}
+
+export interface PostApiAdminTournamentsIdCancelOut {
+  tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminTournamentsIdCancel(id: string, body: PostApiAdminTournamentsIdCancelIn): Promise<PostApiAdminTournamentsIdCancelOut> {
+  return call<PostApiAdminTournamentsIdCancelOut>("POST", "/api/admin/tournaments/{id}/cancel", { id }, body)
+}
+
+export interface PostApiAdminTournamentsIdCopyIn {
+}
+
+export interface PostApiAdminTournamentsIdCopyOut {
+  tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminTournamentsIdCopy(id: string): Promise<PostApiAdminTournamentsIdCopyOut> {
+  return call<PostApiAdminTournamentsIdCopyOut>("POST", "/api/admin/tournaments/{id}/copy", { id }, undefined)
+}
+
+export interface PostApiAdminTournamentsIdFinishIn {
+}
+
+export interface PostApiAdminTournamentsIdFinishOut {
+  tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminTournamentsIdFinish(id: string): Promise<PostApiAdminTournamentsIdFinishOut> {
+  return call<PostApiAdminTournamentsIdFinishOut>("POST", "/api/admin/tournaments/{id}/finish", { id }, undefined)
+}
+
+export interface PostApiAdminTournamentsIdNotifyIn {
+  note: string;
+}
+
+export interface PostApiAdminTournamentsIdNotifyOut {
+  recipients: number;
+}
+
+export function postApiAdminTournamentsIdNotify(id: string, body: PostApiAdminTournamentsIdNotifyIn): Promise<PostApiAdminTournamentsIdNotifyOut> {
+  return call<PostApiAdminTournamentsIdNotifyOut>("POST", "/api/admin/tournaments/{id}/notify", { id }, body)
+}
+
+export interface PostApiAdminTournamentsIdPublishIn {
+}
+
+export interface PostApiAdminTournamentsIdPublishOut {
+  tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminTournamentsIdPublish(id: string): Promise<PostApiAdminTournamentsIdPublishOut> {
+  return call<PostApiAdminTournamentsIdPublishOut>("POST", "/api/admin/tournaments/{id}/publish", { id }, undefined)
 }
 
 export interface PostApiAdminUsersIdActivateIn {
@@ -1075,6 +1340,28 @@ export function postApiMeGameAccounts(body: PostApiMeGameAccountsIn): Promise<Po
   return call<PostApiMeGameAccountsOut>("POST", "/api/me/game-accounts", {  }, body)
 }
 
+export interface PostApiRegistrationsIdLeaveIn {
+}
+
+export interface PostApiRegistrationsIdLeaveOut {
+  dissolved: boolean;
+}
+
+export function postApiRegistrationsIdLeave(id: string): Promise<PostApiRegistrationsIdLeaveOut> {
+  return call<PostApiRegistrationsIdLeaveOut>("POST", "/api/registrations/{id}/leave", { id }, undefined)
+}
+
+export interface PostApiRegistrationsIdWithdrawIn {
+}
+
+export interface PostApiRegistrationsIdWithdrawOut {
+  registration: {   id: number;   tournament_id: number;   team_id: number | null;   status: string;   team_name: string;   roster_version: number;   submitted_by?: number | null;   submitted_at: string;   status_note: string;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiRegistrationsIdWithdraw(id: string): Promise<PostApiRegistrationsIdWithdrawOut> {
+  return call<PostApiRegistrationsIdWithdrawOut>("POST", "/api/registrations/{id}/withdraw", { id }, undefined)
+}
+
 export interface PostApiTeamAlumniIdRemoveIn {
 }
 
@@ -1192,6 +1479,32 @@ export interface PostApiTeamsIdTransferOut {
 
 export function postApiTeamsIdTransfer(id: string, body: PostApiTeamsIdTransferIn): Promise<PostApiTeamsIdTransferOut> {
   return call<PostApiTeamsIdTransferOut>("POST", "/api/teams/{id}/transfer", { id }, body)
+}
+
+export interface PostApiTournamentsIdRegistrationsIn {
+  team_id: number;
+  accounts: Record<string, number>;
+}
+
+export interface PostApiTournamentsIdRegistrationsOut {
+  registration: {   id: number;   tournament_id: number;   team_id: number | null;   status: string;   team_name: string;   roster_version: number;   submitted_by?: number | null;   submitted_at: string;   status_note: string;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiTournamentsIdRegistrations(id: string, body: PostApiTournamentsIdRegistrationsIn): Promise<PostApiTournamentsIdRegistrationsOut> {
+  return call<PostApiTournamentsIdRegistrationsOut>("POST", "/api/tournaments/{id}/registrations", { id }, body)
+}
+
+export interface PostApiTournamentsIdSignupIn {
+  game_account_id: number;
+  roles: string[];
+}
+
+export interface PostApiTournamentsIdSignupOut {
+  signup: {   id: number;   game_account_id: number | null;   roles: string[];   placed: boolean;   registration_id: number | null;   created_at: string; } | null;
+}
+
+export function postApiTournamentsIdSignup(id: string, body: PostApiTournamentsIdSignupIn): Promise<PostApiTournamentsIdSignupOut> {
+  return call<PostApiTournamentsIdSignupOut>("POST", "/api/tournaments/{id}/signup", { id }, body)
 }
 
 export interface PutApiAdminFeatureRoleRestrictionsIn {

@@ -736,6 +736,61 @@ func (s *Store) LeaveTeamsAndGroupsTx(ctx context.Context, tx *db.Tx, userID int
 	return nil
 }
 
+// LeaveTournamentsTx 注销账号时退出所有进行中的临时队伍并删个人报名（规则 31）。整队报名的
+// 名单快照保留（昵称、游戏 ID 都是当时定格的）。退出后没人的临时队伍自动解散。
+func (s *Store) LeaveTournamentsTx(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {
+	rows, err := tx.QueryContext(ctx, `SELECT DISTINCT m.registration_id FROM registration_members m
+		JOIN registrations r ON r.id = m.registration_id
+		WHERE m.user_id = ? AND m.is_active = 1 AND r.team_id IS NULL AND r.status IN ('pending', 'approved')`, userID)
+	if err != nil {
+		return err
+	}
+	var regs []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return err
+		}
+		regs = append(regs, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	stamp := db.FormatUTC(at)
+	for _, id := range regs {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM registration_members WHERE registration_id = ? AND user_id = ?`, id, userID); err != nil {
+			return err
+		}
+		var left int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM registration_members WHERE registration_id = ?`, id).Scan(&left); err != nil {
+			return err
+		}
+		if left > 0 {
+			continue
+		}
+		var from string
+		var version int64
+		if err := tx.QueryRowContext(ctx, `SELECT status, roster_version FROM registrations WHERE id = ?`, id).Scan(&from, &version); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE registrations SET status = 'withdrawn', status_note = '最后一名成员退出，队伍自动解散', updated_at = ? WHERE id = ?`, stamp, id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO registration_status_logs
+			(registration_id, action, from_status, to_status, actor_type, roster_version, note, created_at)
+			VALUES (?, 'dissolve', ?, 'withdrawn', 'system', ?, '最后一名成员退出，队伍自动解散', ?)`, id, from, version, stamp); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE individual_signups SET registration_id = NULL WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `DELETE FROM individual_signups WHERE user_id = ?`, userID)
+	return err
+}
+
 // SuspendTeamActivityTx 停用账号时撤回它的待审入队申请，并让它任队长的战队停止招募
 // （规则 35：队长账号停了，战队收不了申请，就别再显示成招募中；下一任队长再打开）。
 func (s *Store) SuspendTeamActivityTx(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {

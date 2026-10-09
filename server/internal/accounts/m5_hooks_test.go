@@ -153,3 +153,38 @@ func isInvalid(err error) bool {
 	ae, ok := err.(*api.Error)
 	return ok && ae.Status == 400
 }
+
+// 契约 R031：注销时退出进行中的临时队伍、删个人报名；最后一人退出时队伍自动解散；整队报名的名单快照保留
+func TestDeleteAccountLeavesTournaments(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	sess := auth.NewStore(d, nil)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", sess, nil)
+	u1 := newVerifiedUser(t, d, "one@sjtu.edu.cn", "一号", "Password123!@#", true)
+	u2 := newVerifiedUser(t, d, "two@sjtu.edu.cn", "二号", "Password123!@#", true)
+	execAll(t, d,
+		`INSERT INTO tournaments (id, title, status, registration_mode, created_at, updated_at) VALUES (1, '赛', 'published', 'individual', 'x', 'x')`,
+		`INSERT INTO registrations (id, tournament_id, team_id, status, team_name, submitted_at, created_at, updated_at) VALUES (1, 1, NULL, 'approved', '临时队', 'x', 'x', 'x')`,
+		`INSERT INTO registration_members (registration_id, tournament_id, user_id, nickname, battletag, is_active) VALUES (1, 1, `+itoa(u1.ID)+`, '一号', 'a#1', 1), (1, 1, `+itoa(u2.ID)+`, '二号', 'b#2', 1)`,
+		`INSERT INTO individual_signups (tournament_id, user_id, role_tank, registration_id, created_at, updated_at) VALUES (1, `+itoa(u1.ID)+`, 1, 1, 'x', 'x'), (1, `+itoa(u2.ID)+`, 1, 1, 'x', 'x')`,
+	)
+	del := func(u *User) {
+		tok, _ := sess.Create(ctx, u.ID)
+		if _, err := svc.DeleteAccount(newTestCtx(ctx, u, tok, false), DeleteAccountInput{Password: "Password123!@#"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	del(u1)
+	if countOf(t, d, `SELECT COUNT(*) FROM individual_signups WHERE user_id = ?`, u1.ID) != 0 ||
+		countOf(t, d, `SELECT COUNT(*) FROM registration_members WHERE user_id = ?`, u1.ID) != 0 {
+		t.Fatal("个人报名和临时队名单行应删除")
+	}
+	if countOf(t, d, `SELECT COUNT(*) FROM registrations WHERE id = 1 AND status = 'approved'`) != 1 {
+		t.Fatal("队里还有人，不解散")
+	}
+	del(u2)
+	if countOf(t, d, `SELECT COUNT(*) FROM registrations WHERE id = 1 AND status = 'withdrawn'`) != 1 ||
+		countOf(t, d, `SELECT COUNT(*) FROM registration_status_logs WHERE registration_id = 1 AND action = 'dissolve' AND actor_type = 'system'`) != 1 {
+		t.Fatal("最后一人退出，临时队伍自动解散并记 SYSTEM 日志")
+	}
+}

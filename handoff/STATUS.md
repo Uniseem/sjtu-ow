@@ -1,11 +1,11 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M5（战队、成员展示、分组）已完成（247）；M4（内容与媒体、评论、搜索）已完成（246）；M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 247-m5-teams-members
-next: M5 已经一次性全部做完并全绿。下一步可以进入 M6（赛事、内战，约 20 轮；先接上 M5 留的两个接口 `teams.RosterGuard` 和 `teams.ModerationSink`）或检查点 A（公开页只读对拍，现在公开页的数据域 M3–M5 都有了）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
+milestone: 重构 M6 上半（赛事）已完成（248）；M5（战队、成员展示、分组）已完成（247）；M4（内容与媒体、评论、搜索）已完成（246）；M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 248-m6-tournaments
+next: M6 下半：内战（249，规则 R144–R170：内战生命周期、报名、分队算法与暴力穷举对拍、分队板、提醒、复制）。之后 M7 通知、检查点 A。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。正式站这轮先不动。**所有编译和测试一律先在测试机上做**、一律放后台跑
 updated: 2026-10-09
-blocked_on: 待用户决定下一阶段方向（M6 赛事内战，或检查点 A 只读对拍）；换 crontab（10-25 前）、升级正式站；先不继续做
+blocked_on: 无（用户设了目标「自己继续开发，及时 push，有不确定的地方自己决定」）；换 crontab（10-25 前）、升级正式站等用户
 ```
 
 ## 重构接到这里（2026-10-08）
@@ -34,7 +34,8 @@ blocked_on: 待用户决定下一阶段方向（M6 赛事内战，或检查点 A
 | 244 | `d27997e` | 修改密码与退出登录（POST /api/auth/change-password 已登录修改密码并作废其他会话、POST /api/auth/logout 退出作废当前会话并清除 Cookie，R006、12 号文档 5.4、5.7、5.9）；Member 门；5次/分/人限流；新密码强度与新旧查重；事务外 Argon2id；DeleteOthersTx 原子删其他会话 |
 | 245 | `1442eea` | M3 账号域收尾：完成 R001–R042 全量业务规则；重认证与改邮箱（POST /api/auth/reauthenticate、change、confirm）；个人资料/段位/联系方式（GET/PATCH /api/me/profile、POST/PATCH/DELETE game-accounts、contacts）；账号原地匿名化注销（POST /api/auth/delete-account，在任队长拦截）；停用启用与导出（deactivate、activate、export）；后台用户管理与角色能力控制；存量 Django SQLite 数据导入（sjtuow import）与直接邮箱验证（sjtuow verify-email）。M3 全部达成 |
 | 246 | `e3f563d` | M4 内容、媒体、评论、搜索与存量导入全量完成：数据库迁移 00010（14张表）；goldmark Markdown 引擎与外链对拍（R061–R072）；WebP 图片管线与白名单缩略图；自动保存 v2、草稿复用与单调版本、权限控制与定时发布/到期撤下 Worker；全员广播通知（30分钟冷却）；首页置顶（上限3篇）；评论生命周期、一层回复扁平化、作者软删除与墓碑、管理员置顶/隐藏、点赞与 new/top 排序；大小写折叠搜索；存量 Wagtail 迁移（sjtuow import）与 sitemap/robots 自动生成。M4 全部达成 |
-| 247 | 本轮 | M5 战队、成员展示、分组一次做完：迁移 00011（`site_settings`、战队四张表、成员分组两张表、队标集合）；`internal/teams`（建队 R83–R86、自动保存协议 v2 改资料 R87、入队申请 R88–R96、退队/移除/转让/指定队长/解散/退役记录 R97–R105、队标 R106、送审接口 R107、无队长战队 R108、夜任务提醒与自动关闭、信件）；`internal/members`（已加入 R236、成员墙与筛选、成员主页、后台分组 R237）；注销/停用/导出接上战队与分组；搜索补成员；`sjtuow import` 接上战队与分组；apigen 重新生成。37 处变异全部变红 |
+| 247 | `42dc967` | M5 战队、成员展示、分组一次做完：迁移 00011（`site_settings`、战队四张表、成员分组两张表、队标集合）；`internal/teams`（建队 R83–R86、自动保存协议 v2 改资料 R87、入队申请 R88–R96、退队/移除/转让/指定队长/解散/退役记录 R97–R105、队标 R106、送审接口 R107、无队长战队 R108、夜任务提醒与自动关闭、信件）；`internal/members`（已加入 R236、成员墙与筛选、成员主页、后台分组 R237）；注销/停用/导出接上战队与分组；搜索补成员；`sjtuow import` 接上战队与分组；apigen 重新生成。37 处变异全部变红 |
+| 248 | 本轮 | M6 上半：赛事一次做完：迁移 00012；`internal/tournaments`（生命周期含自动保存协议 v2 与整组校验、整队报名预检/快照/状态机/日志、散人池与编队板两阶段写、临时队退出与自动解散、改期与通知、开赛提醒、取消通知、复制、信件、导入）；战队解散拦截与退队信接上赛事域（M5 留的 `RosterGuard`）；注销退出临时队；worker 的 `publish` 接上 M4 的文章定时发布和赛事提醒。49 处变异全部变红 |
 
 232 留的两件都还了：HTML 指构建产物；激活在浏览器里验过（`browser-check.mjs`，CDP 驱动无头 Chromium，零新依赖）。它头一晚就抓到一个真 bug：重写 entry-client 时丢了 `page-data` 的 provide，首屏看不出来、一换页正文就空——SSR 层的 vitest 测不到，浏览器里才现形。
 
@@ -43,6 +44,8 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**248（2026-10-09）**：M6 上半，**赛事**（用户设了目标「自己继续开发，及时 push」，按 12 号文档 11.2 往下做）。规则 R109–R141、R143 有测试（R142 管理员待办属 M8）：迁移 `00012_tournaments.sql`；`internal/tournaments` 全套；`main.go` 里 `rosterGuard` 把赛事域接到 `teams.RosterGuard`；worker 的 30 秒 `publish` 上接了 `content.CheckScheduledWorker`（M4 写了没接）和 `SendDueReminders`。设计偏差：编队板「换队」不再发「回池」信；编队板加 `base_version`。**M4 的 `CheckScheduledWorker` 用 RFC3339Nano 比较时间，和其他域的 `db.FormatUTC` 格式混用，最多错 1 秒，留待复核。**整组全绿，变异 49 处全红。下一步：249 内战。
 
 **247（2026-10-09）**：M5 终局轮次，**战队、成员展示、分组**（用户「继续开发」，按 12 号文档 11.2 的顺序）。规则 R083–R108、R236–R237 全部有测试：① 迁移 `00011_teams_members.sql`；② `internal/teams`：建队（队名 2–16 字不分大小写查重 + 唯一索引兜底、每天 3 次只数合法的、同时担任队长上限、人数上限都读 `site_settings`）、`PATCH` 改资料走自动保存协议 v2（按字段存、`base_version` 落后 409）、入队申请全流程（可申请条件逐条、每天 20 次、通过时事务内重查：申请人停用/已是成员先关申请再报错、满员拒绝）、退队/移除/转让/超管指定队长（目标不在队先入队，转让被拒整体回滚）/解散（拦进行中的报名）、退役记录、夜任务 `RemindCaptains` / `CloseStaleApplications`（挂在 worker 的 04:00 `cleanup` 上）、10 种信；③ `internal/members`：已加入判定（R236）、成员墙（分组、职务标签、加入序号、按位置/只看没队的筛选）、成员主页、后台分组（空白新组、改名查重、排序、职务 ≤20/≤10 字、搜人 10 条、邮箱只有超管能搜）；④ 账号域：在任队长拦截改查真表（原来查的 `teams.captain_id` 是占位），注销退队/删退役/撤申请/移出分组，停用撤申请并停招，导出补四项；⑤ 搜索补成员、战队改查 `description`；⑥ 两个导入器接进 `sjtuow import`。**M5 留给 M6 的两个接口**：`teams.RosterGuard`（解散拦进行中的报名、退队信列名单）和 `teams.ModerationSink`（送审），见 13 号文档 C 节；队标上传的 multipart 传输也还没有（图片上传同一个缺口，M8 补）。测试机整组全绿（日志 `20261009-103622-7c66d55`）；变异 37 处：35 处第一次就红；「预查重」是与唯一索引等价的变异、「非超管指定队长」第一次是编译失败不算数，两处改过后单独重跑都红。下一步：M6 或检查点 A。
 

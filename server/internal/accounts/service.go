@@ -1719,6 +1719,9 @@ func (s *Service) DeleteAccount(ctx *app.Ctx, in DeleteAccountInput) (*DeleteAcc
 		if err := s.store.DeleteUserDataTx(txCtx, tx, u.ID); err != nil {
 			return err
 		}
+		if err := s.store.LeaveTournamentsTx(txCtx, tx, u.ID, now); err != nil {
+			return err
+		}
 		if err := s.store.LeaveTeamsAndGroupsTx(txCtx, tx, u.ID, now); err != nil {
 			return err
 		}

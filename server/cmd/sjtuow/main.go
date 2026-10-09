@@ -35,6 +35,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/search"
 	"github.com/Uniseem/sjtu-ow/server/internal/serve"
 	"github.com/Uniseem/sjtu-ow/server/internal/teams"
+	"github.com/Uniseem/sjtu-ow/server/internal/tournaments"
 )
 
 func main() {
@@ -96,6 +97,7 @@ func buildRegistry(
 	mediaSvc *media.Service,
 	teamsSvc *teams.Service,
 	membersSvc *members.Service,
+	tournamentsSvc *tournaments.Service,
 ) *api.Registry {
 	reg := &api.Registry{}
 	if acctSvc != nil {
@@ -119,6 +121,9 @@ func buildRegistry(
 	if membersSvc != nil {
 		members.NewModule(membersSvc).Routes(reg)
 	}
+	if tournamentsSvc != nil {
+		tournaments.NewModule(tournamentsSvc).Routes(reg)
+	}
 	return reg
 }
 
@@ -137,8 +142,9 @@ func runServe() error {
 	mediaSvc := media.NewService(d, cfg.DataDir, cfg.MediaDir)
 	teamsSvc := teams.NewService(d, cfg.SiteURL, ratelimit.NewEnforcer(d, nil), mediaSvc)
 	membersSvc := members.NewService(d)
+	tournamentsSvc := newTournaments(d, cfg.SiteURL, acctSvc, teamsSvc)
 
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
@@ -162,7 +168,20 @@ func runWorker() error {
 	w := jobs.New(d, nil)
 	w.Handle(outbox.KindLetter, outbox.Handler(smtpFrom(cfg)))
 	// 每天 04:00 的夜任务：战队的申请提醒和自动关闭（规则 94、95）。后面的里程碑往里加。
+	acctSvc := accounts.NewService(d, nil, cfg.SiteURL, auth.NewStore(d, nil), nil)
 	teamsSvc := teams.NewService(d, cfg.SiteURL, nil, nil)
+	tournamentsSvc := newTournaments(d, cfg.SiteURL, acctSvc, teamsSvc)
+	contentSvc := content.NewService(content.NewStore(d), cfg.SiteURL)
+	// 每 30 秒：文章定时上线和到期撤下（规则 54–57）、赛事开赛提醒（规则 138–140）。
+	w.OnSchedule(jobs.SchedPublish, func(ctx context.Context, _ *db.DB, now time.Time) error {
+		if err := contentSvc.CheckScheduledWorker(ctx, now); err != nil {
+			return fmt.Errorf("定时发布：%w", err)
+		}
+		if _, err := tournamentsSvc.SendDueReminders(ctx, now); err != nil {
+			return fmt.Errorf("赛事提醒：%w", err)
+		}
+		return nil
+	})
 	w.OnSchedule(jobs.SchedCleanup, func(ctx context.Context, _ *db.DB, now time.Time) error {
 		if _, err := teamsSvc.RemindCaptains(ctx, now); err != nil {
 			return fmt.Errorf("提醒队长：%w", err)
@@ -189,7 +208,8 @@ func runApigen() error {
 	mediaSvc := media.NewService(nil, "", "")
 	teamsSvc := teams.NewService(nil, "", nil, nil)
 	membersSvc := members.NewService(nil)
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc)
+	tournamentsSvc := tournaments.NewService(nil, "")
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc)
 	return apigen.Write(dir, reg)
 }
 
@@ -290,6 +310,10 @@ func runImport() error {
 		return fmt.Errorf("导入成员分组失败: %w", err)
 	}
 	fmt.Println("成员分组数据导入成功。")
+	if err := tournaments.ImportLegacyTournaments(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入赛事失败: %w", err)
+	}
+	fmt.Println("赛事数据导入成功。")
 	return nil
 }
 
@@ -309,4 +333,31 @@ func runVerifyEmail() error {
 	}
 	fmt.Printf("用户 %s 邮箱已标记为已验证。\n", email)
 	return nil
+}
+
+// newTournaments 造赛事服务并接上它依赖的两头：用户的 can_use（账号域）和战队的解散拦截（赛事域）。
+func newTournaments(d *db.DB, siteURL string, acctSvc *accounts.Service, teamsSvc *teams.Service) *tournaments.Service {
+	svc := tournaments.NewService(d, siteURL)
+	svc.SetViewerBuilder(acctSvc.BuildViewer)
+	teamsSvc.SetRosterGuard(rosterGuard{})
+	return svc
+}
+
+// rosterGuard 把赛事域的两个查询接到战队服务的 RosterGuard 上（战队包不引用赛事包）。
+type rosterGuard struct{}
+
+func (rosterGuard) LiveRegistrations(ctx context.Context, q db.DBTX, teamID int64) ([]string, error) {
+	return tournaments.LiveRegistrations(ctx, q, teamID)
+}
+
+func (rosterGuard) EntriesStillListing(ctx context.Context, q db.DBTX, teamID, userID int64) ([]teams.ListedEntry, error) {
+	rows, err := tournaments.EntriesStillListing(ctx, q, teamID, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]teams.ListedEntry, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, teams.ListedEntry{Title: r.Title, ClosesAt: r.ClosesAt, DetailURL: r.DetailURL})
+	}
+	return out, nil
 }
