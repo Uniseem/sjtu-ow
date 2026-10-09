@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Uniseem/sjtu-ow/server/internal/notify"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 )
@@ -519,6 +520,11 @@ func (s *Store) PublishArticle(ctx context.Context, pageID int64, p *Page, a *Ar
 			WHERE page_id = ?
 		`, a.CategoryID, a.CoverImageID, a.Summary, a.BodyMD, a.BodyHTML, a.BodyPlain,
 			a.CharCount, a.ReadingTime, a.AuthorID, comments, a.RelatedTournamentID, a.SearchText, pageID)
+		if err != nil || !p.Live {
+			return err
+		}
+		// 安排过「上线时通知」的文章，这一次发布让它上线了（规则 55、74）
+		_, err = notify.SendWaiting(txCtx, tx, notify.KindArticle, pageID, time.Now().UTC())
 		return err
 	})
 }
@@ -708,52 +714,6 @@ func (s *Store) SetHomePins(ctx context.Context, articleIDs []int64) error {
 				return err
 			}
 		}
-		return nil
-	})
-}
-
-// GetLastBroadcast 读文章最后一次群发通知记录。
-func (s *Store) GetLastBroadcast(ctx context.Context, articleID int64) (*Broadcast, error) {
-	var b Broadcast
-	var senderID sql.NullInt64
-	var created string
-
-	err := s.d.ReadPool().QueryRowContext(ctx, `
-		SELECT id, article_id, sender_id, recipient_count, created_at
-		FROM broadcasts
-		WHERE article_id = ?
-		ORDER BY id DESC LIMIT 1
-	`, articleID).Scan(&b.ID, &b.ArticleID, &senderID, &b.RecipientCount, &created)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	if senderID.Valid {
-		b.SenderID = &senderID.Int64
-	}
-	b.CreatedAt, _ = db.ParseUTC(created)
-	return &b, nil
-}
-
-// CreateBroadcast 写入群发历史。
-func (s *Store) CreateBroadcast(ctx context.Context, b *Broadcast, now time.Time) error {
-	nowStr := now.UTC().Format(time.RFC3339Nano)
-	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
-		res, err := tx.ExecContext(txCtx, `
-			INSERT INTO broadcasts (article_id, sender_id, recipient_count, created_at)
-			VALUES (?, ?, ?, ?)
-		`, b.ArticleID, b.SenderID, b.RecipientCount, nowStr)
-		if err != nil {
-			return err
-		}
-		id, err := res.LastInsertId()
-		if err != nil {
-			return err
-		}
-		b.ID = id
-		b.CreatedAt, _ = db.ParseUTC(nowStr)
 		return nil
 	})
 }

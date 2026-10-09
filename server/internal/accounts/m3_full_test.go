@@ -561,6 +561,8 @@ func TestImportLegacyAccounts(t *testing.T) {
 		main_role TEXT NOT NULL DEFAULT '',
 		flex_roles TEXT NOT NULL DEFAULT '',
 		show_rank INTEGER NOT NULL DEFAULT 0,
+		accepts_announcements INTEGER NOT NULL DEFAULT 1,
+		calendar_version INTEGER NOT NULL DEFAULT 0,
 		email TEXT NOT NULL
 	);
 	CREATE TABLE account_emailaddress (

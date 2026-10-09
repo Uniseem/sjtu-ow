@@ -60,7 +60,7 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 		id, email, password, nickname, is_sjtu,
 		agreed_terms_at, agreed_cross_border_at, date_joined,
 		is_active, is_superuser, deactivation_note, motto,
-		main_role, flex_roles, show_rank
+		main_role, flex_roles, show_rank, accepts_announcements, calendar_version
 		FROM accounts_user ORDER BY id ASC`)
 	if err != nil {
 		return fmt.Errorf("读取旧库 accounts_user 失败: %w", err)
@@ -71,14 +71,14 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 		for userRows.Next() {
 			var id int64
 			var email, password, nickname, deactivationNote, motto, mainRole, flexRoles string
-			var isSJTU, isActive, isSuperuser, showRank int
+			var isSJTU, isActive, isSuperuser, showRank, acceptsAnnouncements, calendarVersion int
 			var agreedTerms, agreedCB, dateJoined string
 
 			if err := userRows.Scan(
 				&id, &email, &password, &nickname, &isSJTU,
 				&agreedTerms, &agreedCB, &dateJoined,
 				&isActive, &isSuperuser, &deactivationNote, &motto,
-				&mainRole, &flexRoles, &showRank,
+				&mainRole, &flexRoles, &showRank, &acceptsAnnouncements, &calendarVersion,
 			); err != nil {
 				return fmt.Errorf("解析 accounts_user 行失败: %w", err)
 			}
@@ -98,8 +98,8 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 				id, email, email_norm, password_hash, nickname, is_sjtu,
 				agreed_terms_at, agreed_cross_border_at, email_verified_at, password_changed_at,
 				version, is_active, is_superuser, deactivation_note, motto, main_role, flex_roles, show_rank,
-				created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				accepts_announcements, calendar_version, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				email = excluded.email,
 				email_norm = excluded.email_norm,
@@ -116,11 +116,13 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 				main_role = excluded.main_role,
 				flex_roles = excluded.flex_roles,
 				show_rank = excluded.show_rank,
+				accepts_announcements = excluded.accepts_announcements,
+				calendar_version = excluded.calendar_version,
 				updated_at = excluded.updated_at`,
 				id, email, emailNorm, password, nickname, isSJTU,
 				agreedTermsUTC, agreedCBUTC, emailVerifiedStr,
 				isActive, isSuperuser, deactivationNote, motto, mainRole, flexRoles, showRank,
-				dateJoinedUTC, dateJoinedUTC,
+				acceptsAnnouncements, calendarVersion, dateJoinedUTC, dateJoinedUTC,
 			)
 			if err != nil {
 				return fmt.Errorf("写入 users 用户 %d 失败: %w", id, err)

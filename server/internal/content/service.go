@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/notify"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/markdown"
@@ -554,67 +555,6 @@ func (s *Service) Delete(ctx *app.Ctx, pageID int64) error {
 	return s.store.DeleteArticle(ctx.Context, pageID)
 }
 
-// BroadcastArticle 群发通知全体成员（规则 73–79）。
-func (s *Service) BroadcastArticle(ctx *app.Ctx, pageID int64) (*Broadcast, error) {
-	if ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
-		return nil, api.Unauthorized("要先登录")
-	}
-	// 规则 73：只有能改作者的人（内容编辑/超管）可用
-	if !s.canEditAuthor(ctx.Viewer) {
-		return nil, api.Forbidden()
-	}
-
-	article, err := s.store.GetArticleByID(ctx.Context, pageID)
-	if err != nil {
-		return nil, err
-	}
-	if article == nil {
-		return nil, api.NotFound("文章不存在")
-	}
-
-	// 规则 74：必须已发布或已安排定时上线
-	isScheduled := article.GoLiveAt != nil && article.GoLiveAt.After(ctx.Now())
-	if !article.Live && !isScheduled {
-		return nil, api.Invalid("文章必须已发布或已安排定时上线才能群发通知")
-	}
-
-	// 规则 75：同篇文章 30 分钟冷却
-	lastBroadcast, err := s.store.GetLastBroadcast(ctx.Context, pageID)
-	if err != nil {
-		return nil, err
-	}
-	if lastBroadcast != nil {
-		elapsed := ctx.Now().Sub(lastBroadcast.CreatedAt)
-		if elapsed < 30*time.Minute {
-			waitMin := int((30*time.Minute - elapsed).Minutes()) + 1
-			return nil, api.Invalid(fmt.Sprintf("距上次群发不足 30 分钟，请在 %d 分钟后再试", waitMin))
-		}
-	}
-
-	// 统计符合条件的收件人数（启用中且已验证）
-	var count int
-	err = s.store.d.ReadPool().QueryRowContext(ctx.Context, `
-		SELECT COUNT(*) FROM users
-		WHERE is_active = 1 AND email_verified_at IS NOT NULL
-	`).Scan(&count)
-	if err != nil {
-		return nil, err
-	}
-
-	senderID := ctx.Viewer.ID
-	b := &Broadcast{
-		ArticleID:      pageID,
-		SenderID:       &senderID,
-		RecipientCount: count,
-	}
-
-	if err := s.store.CreateBroadcast(ctx.Context, b, ctx.Now()); err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
 // CheckScheduledWorker 由后台 worker 每 30 秒执行一次定时发布与到期撤下（规则 54–57）。
 func (s *Service) CheckScheduledWorker(ctx context.Context, now time.Time) error {
 	nowStr := now.UTC().Format(time.RFC3339Nano)
@@ -636,10 +576,14 @@ func (s *Service) CheckScheduledWorker(ctx context.Context, now time.Time) error
 		}
 		for _, id := range ids {
 			_ = s.store.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
-				_, err := tx.ExecContext(txCtx, `
+				if _, err := tx.ExecContext(txCtx, `
 					UPDATE pages SET live = 1, last_published_at = ?, version = version + 1
 					WHERE id = ?
-				`, nowStr, id)
+				`, nowStr, id); err != nil {
+					return err
+				}
+				// 上线那一刻放出「上线时通知全体成员」（规则 55）
+				_, err := notify.SendWaiting(txCtx, tx, notify.KindArticle, id, now)
 				return err
 			})
 		}

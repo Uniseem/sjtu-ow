@@ -109,15 +109,6 @@ type HomePin struct {
 	Article       *Article `json:"article,omitempty"`
 }
 
-// Broadcast 记录文章群发通知历史。
-type Broadcast struct {
-	ID             int64     `json:"id"`
-	ArticleID      int64     `json:"article_id"`
-	SenderID       *int64    `json:"sender_id,omitempty"`
-	RecipientCount int       `json:"recipient_count"`
-	CreatedAt      time.Time `json:"created_at"`
-}
-
 // Redirect 表示网址重定向。
 type Redirect struct {
 	ID          int64  `json:"id"`

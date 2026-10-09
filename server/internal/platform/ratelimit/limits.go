@@ -8,7 +8,6 @@ import "time"
 // 还没进表、数字先记在这里（等对应接口的轮次再引用，免得对照时丢掉）：
 //
 //	规则 215 页面状态片段 120/分/IP（新栈没有预渲染片段，接口落地时再定要不要）
-//	规则 216 日历订阅 30/分/IP
 //	规则 221 头像上传 5/天/人（M4 图片）
 //
 // login_failed 的 10/分/IP（规则 6）没有单独建桶（241）：30/分/IP 的总量和
@@ -79,4 +78,11 @@ var (
 
 	// AccountExport 导出个人信息：每人每小时 5 次（设计 3.8）
 	AccountExport = Decl{Name: "account_export", Kind: PerUser, N: 5, Window: time.Hour}
+
+	// CalendarFeed 日历订阅地址：每个 IP 每分钟 30 次（规则 216）
+	CalendarFeed = Decl{Name: "calendar_feed", Kind: PerIP, N: 30, Window: time.Minute}
+
+	// Unsubscribe 退订链接（页面查看和一键退订）：每个 IP 每分钟 30 次。
+	// 现行站没限；链接是签名的、不可猜，这一条只挡拿它试探的脚本。
+	Unsubscribe = Decl{Name: "unsubscribe", Kind: PerIP, N: 30, Window: time.Minute}
 )

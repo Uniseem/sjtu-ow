@@ -4,6 +4,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -12,11 +13,14 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"strconv"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/idempotency"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/outbox"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
 )
 
@@ -27,6 +31,20 @@ type ViewerResolver func(*http.Request) *app.Viewer
 // Registry 收集路由。零值可用；一个进程一个。
 type Registry struct {
 	routes []*Route
+	raws   []*rawRoute
+}
+
+// rawRoute 是不走 JSON 的接口（日历订阅的 .ics、邮件客户端的一键退订）。
+// 它们不在 Routes() 里：没有门、没有 TS 类型，只有限流。
+type rawRoute struct {
+	method, pattern string
+	limits          []ratelimit.Decl
+	h               http.HandlerFunc
+}
+
+// Raw 注册一个非 JSON 的接口。限流照样数（规则 216），其余自己负责。
+func Raw(g *Registry, method, pattern string, limits []ratelimit.Decl, h http.HandlerFunc) {
+	g.raws = append(g.raws, &rawRoute{method: method, pattern: pattern, limits: limits, h: h})
 }
 
 // Route 是一条注册了的接口。守卫测试遍历它做矩阵和乱填。
@@ -52,6 +70,8 @@ type handlerCfg struct {
 	idem          *idempotency.Store // nil 表示不管幂等键
 	trusted       []*net.IPNet       // 可信代理网段，取访客 IP 用
 	secureCookies bool               // 会话 Cookie 是否带 Secure（生产为真）
+	db            *db.DB             // 待发信的系统代发用（规则 208）；nil 就不代发
+	siteURL       string
 }
 
 // RouteOption 是注册接口时的可选项。
@@ -88,6 +108,12 @@ func WithIdempotency(s *idempotency.Store) HandlerOption {
 // WithTrustedProxies 声明可信代理网段（config.TrustedProxies），按它取访客 IP。
 func WithTrustedProxies(nets []*net.IPNet) HandlerOption {
 	return func(c *handlerCfg) { c.trusted = nets }
+}
+
+// WithLetters 接上待发信的代发：做事的人在这次请求里把账号注销了（会话被清掉），
+// 这批信没人可问，由系统照发（规则 208）。
+func WithLetters(d *db.DB, siteURL string) HandlerOption {
+	return func(c *handlerCfg) { c.db = d; c.siteURL = siteURL }
 }
 
 // WithSecureCookies 声明会话 Cookie 要不要带 Secure（生产为真；开发走 http，
@@ -166,6 +192,10 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 				writeError(w, err)
 				return
 			}
+			// 登录的人做写动作，动作带出来的信先冻住等他点头（规则 206）。
+			if method != http.MethodGet && viewer != nil && viewer.ID > 0 && !viewer.Disabled {
+				ctx.Letters = outbox.Open(viewer.ID)
+			}
 
 			// 限流：声明的每条都数一遍，最先超的那条决定答复（429 + Retry-After）。
 			if cfg.limiter != nil {
@@ -232,6 +262,9 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 				writeError(w, asAPIError(err))
 				return
 			}
+			if ctx.Letters != nil && ctx.Letters.Held > 0 {
+				body = settleLetters(cfg, ctx, body)
+			}
 			if claimed {
 				if err := cfg.idem.Complete(ctx.Context, viewer.ID, idemKey, http.StatusOK, body); err != nil {
 					slog.Error("幂等回执没存上", "err", err.Error())
@@ -263,6 +296,9 @@ func (g *Registry) Handler(resolve ViewerResolver, opts ...HandlerOption) http.H
 	mux := http.NewServeMux()
 	for _, rt := range g.routes {
 		mux.HandleFunc(rt.Method+" "+rt.Pattern, rt.bind(cfg))
+	}
+	for _, rr := range g.raws {
+		mux.HandleFunc(rr.method+" "+rr.pattern, rr.serve(cfg))
 	}
 	return http.NewCrossOriginProtection().Handler(mux)
 }
@@ -354,4 +390,62 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// serve 给非 JSON 接口套上限流：最先超的那条答 429 + Retry-After。
+func (rr *rawRoute) serve(cfg handlerCfg) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if cfg.limiter != nil {
+			for _, d := range rr.limits {
+				key := ratelimit.ClientKey(req, cfg.trusted, 0, d.Kind)
+				retry, ok, err := cfg.limiter.Allow(req.Context(), key, d)
+				if err != nil {
+					slog.Error("限流出错", "err", err.Error())
+					http.Error(w, "服务器开小差了，稍后再试", http.StatusInternalServerError)
+					return
+				}
+				if !ok {
+					secs := int(retry.Seconds())
+					if secs < 1 {
+						secs = 1
+					}
+					w.Header().Set("Retry-After", strconv.Itoa(secs))
+					http.Error(w, "请求太频繁，稍后再试", http.StatusTooManyRequests)
+					return
+				}
+			}
+		}
+		rr.h(w, req)
+	}
+}
+
+// settleLetters 在答复里加上 letters 一项，前端据此跳到「发信」页（规则 207）。
+// 做事的人在这次请求里注销了账号（会话被清）就没人可问，由系统代发（规则 208）。
+// 答复不是 JSON 对象就原样放过（没有地方放；现在的接口都返回对象）。
+func settleLetters(cfg handlerCfg, ctx *app.Ctx, body []byte) []byte {
+	batch := ctx.Letters
+	if ctx.ShouldClearSessionCookie() {
+		if cfg.db == nil {
+			return body
+		}
+		err := cfg.db.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+			_, _, err := outbox.SendAll(txCtx, tx, batch.Key, cfg.siteURL, ctx.Now())
+			return err
+		})
+		if err != nil {
+			slog.Error("待发信没有代发出去", "err", err.Error())
+		}
+		return body
+	}
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(body, &obj); err != nil || obj == nil {
+		return body
+	}
+	info, _ := json.Marshal(map[string]any{"batch": batch.Key, "count": batch.Held})
+	obj["letters"] = info
+	merged, err := json.Marshal(obj)
+	if err != nil {
+		return body
+	}
+	return merged
 }

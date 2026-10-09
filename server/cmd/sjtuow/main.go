@@ -17,11 +17,13 @@ import (
 	_ "time/tzdata"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
+	"github.com/Uniseem/sjtu-ow/server/internal/agenda"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/comments"
 	"github.com/Uniseem/sjtu-ow/server/internal/content"
 	"github.com/Uniseem/sjtu-ow/server/internal/members"
 	"github.com/Uniseem/sjtu-ow/server/internal/moderation"
+	"github.com/Uniseem/sjtu-ow/server/internal/notify"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/apigen"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
@@ -102,6 +104,8 @@ func buildRegistry(
 	tournamentsSvc *tournaments.Service,
 	scrimsSvc *scrims.Service,
 	moderationSvc *moderation.Service,
+	notifySvc *notify.Service,
+	agendaSvc *agenda.Service,
 ) *api.Registry {
 	reg := &api.Registry{}
 	if acctSvc != nil {
@@ -134,6 +138,12 @@ func buildRegistry(
 	if moderationSvc != nil {
 		moderation.NewModule(moderationSvc).Routes(reg)
 	}
+	if notifySvc != nil {
+		notify.NewModule(notifySvc).Routes(reg)
+	}
+	if agendaSvc != nil {
+		agenda.NewModule(agendaSvc).Routes(reg)
+	}
 	return reg
 }
 
@@ -162,13 +172,16 @@ func runServe() error {
 	scrimsSvc.SetModeration(moderationSvc)
 	teamsSvc.SetModeration(moderationSvc)
 	tournamentsSvc.SetModeration(moderationSvc)
+	notifySvc := newNotify(d, cfg, contentSvc, tournamentsSvc, scrimsSvc)
+	agendaSvc := agenda.NewService(d, cfg.SiteURL, cfg.SigningKey)
 
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
 		api.WithIdempotency(idempotency.NewStore(d, nil)),
 		api.WithSecureCookies(cfg.Prod),
+		api.WithLetters(d, cfg.SiteURL),
 	)
 	addr := os.Getenv("SJTUOW_HTTP_ADDR")
 	if addr == "" {
@@ -192,6 +205,8 @@ func runWorker() error {
 	tournamentsSvc := newTournaments(d, cfg.SiteURL, acctSvc, teamsSvc)
 	contentSvc := content.NewService(content.NewStore(d), cfg.SiteURL)
 	scrimsSvc := newScrims(d, cfg.SiteURL, acctSvc)
+	notifySvc := newNotify(d, cfg, contentSvc, tournamentsSvc, scrimsSvc)
+	w.Handle(notify.JobDeliver, notifySvc.Deliver())
 	// 每 30 秒：文章定时上线和到期撤下（规则 54–57）、赛事开赛提醒（规则 138–140）。
 	w.OnSchedule(jobs.SchedPublish, func(ctx context.Context, _ *db.DB, now time.Time) error {
 		if err := contentSvc.CheckScheduledWorker(ctx, now); err != nil {
@@ -215,6 +230,12 @@ func runWorker() error {
 		if _, err := moderation.NewService(d, cfg.SiteURL).Cleanup(ctx, now); err != nil {
 			return fmt.Errorf("清理审核记录：%w", err)
 		}
+		if err := d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+			_, err := notify.CleanupHeld(txCtx, tx, now)
+			return err
+		}); err != nil {
+			return fmt.Errorf("清理待发信：%w", err)
+		}
 		return nil
 	})
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -237,7 +258,9 @@ func runApigen() error {
 	tournamentsSvc := tournaments.NewService(nil, "")
 	scrimsSvc := scrims.NewService(nil, "")
 	moderationSvc := moderation.NewService(nil, "")
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc)
+	notifySvc := notify.NewService(nil, "", "", nil)
+	agendaSvc := agenda.NewService(nil, "", "")
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc)
 	return apigen.Write(dir, reg)
 }
 
@@ -282,6 +305,19 @@ func viewerOf(d *db.DB, acctSvc *accounts.Service) api.ViewerResolver {
 		}
 		return v
 	}
+}
+
+// newNotify 造通知服务并挂上三类能被「通知全体成员」的内容。
+func newNotify(d *db.DB, cfg *config.Config, contentSvc *content.Service, tournamentsSvc *tournaments.Service, scrimsSvc *scrims.Service) *notify.Service {
+	ready := func() bool {
+		smtp := smtpFrom(cfg)
+		return smtp.Host != "" && smtp.FromAddr != ""
+	}
+	n := notify.NewService(d, cfg.SiteURL, cfg.SigningKey, ready)
+	n.Register(contentSvc.AnnounceKind())
+	n.Register(tournamentsSvc.AnnounceKind())
+	n.Register(scrimsSvc.AnnounceKind())
+	return n
 }
 
 func smtpFrom(cfg *config.Config) mail.SMTP {

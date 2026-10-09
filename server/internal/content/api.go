@@ -181,16 +181,6 @@ type SetHomePinsOut struct {
 	Result string `json:"result"`
 }
 
-// BroadcastIn 是 POST /api/admin/articles/{id}/broadcast 的入参。
-type BroadcastIn struct {
-	ID api.ID `path:"id"`
-}
-
-// BroadcastOut 是 POST /api/admin/articles/{id}/broadcast 的出参。
-type BroadcastOut struct {
-	Broadcast *Broadcast `json:"broadcast"`
-}
-
 // CreateArticleIn 是 POST /api/articles 的入参。
 type CreateArticleIn = CreateDraftInput
 
@@ -263,8 +253,6 @@ func (m *Module) Routes(r *api.Registry) {
 		api.Nav("content", "articles"))
 	api.Get(r, "/api/admin/articles/{id}", api.Cap(app.Cap("admin.enter")), m.adminGetArticleDetail,
 		api.Nav("content", "article_edit"))
-	api.Post(r, "/api/admin/articles/{id}/broadcast", api.Cap(CapArticlesEditAuthor), m.broadcastArticle,
-		api.NoLimit("群发有30分钟冷却控制"))
 
 	// 分类管理
 	api.Get(r, "/api/admin/categories", api.Cap(app.Cap("admin.enter")), m.listCategories,
@@ -498,14 +486,6 @@ func (m *Module) adminGetArticleDetail(ctx *app.Ctx, in AdminArticleDetailIn) (A
 		Revision: revContent,
 		Version:  ver,
 	}, nil
-}
-
-func (m *Module) broadcastArticle(ctx *app.Ctx, in BroadcastIn) (BroadcastOut, error) {
-	b, err := m.svc.BroadcastArticle(ctx, int64(in.ID))
-	if err != nil {
-		return BroadcastOut{}, err
-	}
-	return BroadcastOut{Broadcast: b}, nil
 }
 
 func (m *Module) listCategories(ctx *app.Ctx, _ CategoryListIn) (CategoryListOut, error) {

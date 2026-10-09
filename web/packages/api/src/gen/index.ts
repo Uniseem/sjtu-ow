@@ -135,6 +135,20 @@ export function deleteApiTournamentsIdSignup(id: string): Promise<DeleteApiTourn
   return call<DeleteApiTournamentsIdSignupOut>("DELETE", "/api/tournaments/{id}/signup", { id }, undefined)
 }
 
+export interface GetApiAdminAnnounceKindIdIn {
+}
+
+export interface GetApiAdminAnnounceKindIdOut {
+  problem: string;
+  recipients: number;
+  will_wait: boolean;
+  history: {   id: number;   audience: string;   subject: string;   recipient_count: number;   waiting: boolean;   created_at: string; }[];
+}
+
+export function getApiAdminAnnounceKindId(kind: string, id: string): Promise<GetApiAdminAnnounceKindIdOut> {
+  return call<GetApiAdminAnnounceKindIdOut>("GET", "/api/admin/announce/{kind}/{id}", { kind, id }, undefined)
+}
+
 export interface GetApiAdminArticlesIn {
 }
 
@@ -397,6 +411,18 @@ export function getApiAdminUsersId(id: string): Promise<GetApiAdminUsersIdOut> {
   return call<GetApiAdminUsersIdOut>("GET", "/api/admin/users/{id}", { id }, undefined)
 }
 
+export interface GetApiAnnouncementsUnsubscribeTokenIn {
+}
+
+export interface GetApiAnnouncementsUnsubscribeTokenOut {
+  nickname?: string;
+  accepts: boolean;
+}
+
+export function getApiAnnouncementsUnsubscribeToken(token: string): Promise<GetApiAnnouncementsUnsubscribeTokenOut> {
+  return call<GetApiAnnouncementsUnsubscribeTokenOut>("GET", "/api/announcements/unsubscribe/{token}", { token }, undefined)
+}
+
 export interface GetApiArticlesIdCommentsIn {
 }
 
@@ -440,6 +466,67 @@ export interface GetApiImagesIdOut {
 
 export function getApiImagesId(id: string): Promise<GetApiImagesIdOut> {
   return call<GetApiImagesIdOut>("GET", "/api/images/{id}", { id }, undefined)
+}
+
+export interface GetApiLettersIn {
+}
+
+export interface GetApiLettersOut {
+  batches: {   batch: string;   subjects: string[];   people: number;   at: string;   in_back_office: boolean; }[];
+}
+
+export function getApiLetters(): Promise<GetApiLettersOut> {
+  return call<GetApiLettersOut>("GET", "/api/letters", {  }, undefined)
+}
+
+export interface GetApiLettersBatchIn {
+}
+
+export interface GetApiLettersBatchOut {
+  batch: string;
+  state: string;
+  letters: {   id: number;   subject: string;   who: string;   count: number; }[];
+  back: string;
+  in_back_office: boolean;
+}
+
+export function getApiLettersBatch(batch: string): Promise<GetApiLettersBatchOut> {
+  return call<GetApiLettersBatchOut>("GET", "/api/letters/{batch}", { batch }, undefined)
+}
+
+export interface GetApiMeAgendaIn {
+}
+
+export interface GetApiMeAgendaOut {
+  items: {   kind: string;   title: string;   url: string;   when: string | null;   note: string; }[];
+}
+
+export function getApiMeAgenda(): Promise<GetApiMeAgendaOut> {
+  return call<GetApiMeAgendaOut>("GET", "/api/me/agenda", {  }, undefined)
+}
+
+export interface GetApiMeAnnouncementsIn {
+}
+
+export interface GetApiMeAnnouncementsOut {
+  nickname?: string;
+  accepts: boolean;
+}
+
+export function getApiMeAnnouncements(): Promise<GetApiMeAnnouncementsOut> {
+  return call<GetApiMeAnnouncementsOut>("GET", "/api/me/announcements", {  }, undefined)
+}
+
+export interface GetApiMeCalendarIn {
+}
+
+export interface GetApiMeCalendarOut {
+  url: string;
+  webcal: string;
+}
+
+export function getApiMeCalendar(): Promise<GetApiMeCalendarOut> {
+  return call<GetApiMeCalendarOut>("GET", "/api/me/calendar", {  }, undefined)
 }
 
 export interface GetApiMeExportIn {
@@ -943,15 +1030,17 @@ export function patchApiTeamsId(id: string, body: PatchApiTeamsIdIn): Promise<Pa
   return call<PatchApiTeamsIdOut>("PATCH", "/api/teams/{id}", { id }, body)
 }
 
-export interface PostApiAdminArticlesIdBroadcastIn {
+export interface PostApiAdminAnnounceKindIdIn {
 }
 
-export interface PostApiAdminArticlesIdBroadcastOut {
-  broadcast: {   id: number;   article_id: number;   sender_id?: number | null;   recipient_count: number;   created_at: string; } | null;
+export interface PostApiAdminAnnounceKindIdOut {
+  broadcast_id: number;
+  recipients: number;
+  waiting: boolean;
 }
 
-export function postApiAdminArticlesIdBroadcast(id: string): Promise<PostApiAdminArticlesIdBroadcastOut> {
-  return call<PostApiAdminArticlesIdBroadcastOut>("POST", "/api/admin/articles/{id}/broadcast", { id }, undefined)
+export function postApiAdminAnnounceKindId(kind: string, id: string): Promise<PostApiAdminAnnounceKindIdOut> {
+  return call<PostApiAdminAnnounceKindIdOut>("POST", "/api/admin/announce/{kind}/{id}", { kind, id }, undefined)
 }
 
 export interface PostApiAdminCategoriesIn {
@@ -1342,6 +1431,18 @@ export function postApiAdminUsersIdDeactivate(id: string, body: PostApiAdminUser
   return call<PostApiAdminUsersIdDeactivateOut>("POST", "/api/admin/users/{id}/deactivate", { id }, body)
 }
 
+export interface PostApiAnnouncementsUnsubscribeTokenIn {
+}
+
+export interface PostApiAnnouncementsUnsubscribeTokenOut {
+  nickname?: string;
+  accepts: boolean;
+}
+
+export function postApiAnnouncementsUnsubscribeToken(token: string): Promise<PostApiAnnouncementsUnsubscribeTokenOut> {
+  return call<PostApiAnnouncementsUnsubscribeTokenOut>("POST", "/api/announcements/unsubscribe/{token}", { token }, undefined)
+}
+
 export interface PostApiArticlesIn {
   title: string;
   category_id: number | null;
@@ -1598,6 +1699,45 @@ export interface PostApiCommentsIdPinOut {
 
 export function postApiCommentsIdPin(id: string, body: PostApiCommentsIdPinIn): Promise<PostApiCommentsIdPinOut> {
   return call<PostApiCommentsIdPinOut>("POST", "/api/comments/{id}/pin", { id }, body)
+}
+
+export interface PostApiLettersBatchIn {
+  send: number[];
+  skip: boolean;
+}
+
+export interface PostApiLettersBatchOut {
+  letters: number;
+  people: number;
+}
+
+export function postApiLettersBatch(batch: string, body: PostApiLettersBatchIn): Promise<PostApiLettersBatchOut> {
+  return call<PostApiLettersBatchOut>("POST", "/api/letters/{batch}", { batch }, body)
+}
+
+export interface PostApiMeAnnouncementsIn {
+  accepts: boolean;
+}
+
+export interface PostApiMeAnnouncementsOut {
+  nickname?: string;
+  accepts: boolean;
+}
+
+export function postApiMeAnnouncements(body: PostApiMeAnnouncementsIn): Promise<PostApiMeAnnouncementsOut> {
+  return call<PostApiMeAnnouncementsOut>("POST", "/api/me/announcements", {  }, body)
+}
+
+export interface PostApiMeCalendarRenewIn {
+}
+
+export interface PostApiMeCalendarRenewOut {
+  url: string;
+  webcal: string;
+}
+
+export function postApiMeCalendarRenew(): Promise<PostApiMeCalendarRenewOut> {
+  return call<PostApiMeCalendarRenewOut>("POST", "/api/me/calendar/renew", {  }, undefined)
 }
 
 export interface PostApiMeContactsIn {

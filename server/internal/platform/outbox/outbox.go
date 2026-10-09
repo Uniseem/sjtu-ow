@@ -146,6 +146,29 @@ func Decide(ctx context.Context, tx *db.Tx, actorID int64, batchKey string, keep
 	return letters, people, nil
 }
 
+// SendAll 把这批还等着的信全发出去，不问人。做事的人已经注销、没人可问的时候由系统代发（规则 208）。
+func SendAll(ctx context.Context, tx *db.Tx, batchKey, siteURL string, now time.Time) (letters, people int, err error) {
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM held_letters WHERE batch = ? AND state = 'waiting'`, batchKey)
+	if err != nil {
+		return 0, 0, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			_ = rows.Close()
+			return 0, 0, err
+		}
+		ids = append(ids, id)
+	}
+	err = rows.Err()
+	_ = rows.Close()
+	if err != nil {
+		return 0, 0, err
+	}
+	return Decide(ctx, tx, 0, batchKey, ids, true, siteURL, now)
+}
+
 // MarkBack 记下做完事本来要去的地址，确认页发完再回去。
 func MarkBack(ctx context.Context, tx *db.Tx, batchKey, back string, inBackOffice bool) error {
 	flag := 0

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/notify"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/mail"
@@ -653,7 +654,15 @@ func (s *Service) NotifyParticipants(ctx *app.Ctx, id int64, note string) (int, 
 			return err
 		}
 		count = len(people)
-		if err := s.send(txCtx, tx, ctx, s.updateLetter(t, t.MovedFrom, note), people, now); err != nil {
+		letter := s.updateLetter(t, t.MovedFrom, note)
+		letter.Notice, err = notify.RecordParticipants(txCtx, tx, notify.ParticipantsNote{
+			Kind: notify.KindTournament, ObjectID: id, Noun: "这场赛事", Title: t.Title,
+			Subject: letter.Subject, Note: note, Actor: ctx.Viewer.ID, Recipients: count,
+		}, now)
+		if err != nil {
+			return err
+		}
+		if err := s.send(txCtx, tx, ctx, letter, people, now); err != nil {
 			return err
 		}
 		_, err = tx.ExecContext(txCtx, `UPDATE tournaments SET moved_from = NULL WHERE id = ?`, id)

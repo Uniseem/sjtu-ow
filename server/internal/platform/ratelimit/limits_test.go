@@ -30,6 +30,8 @@ func TestTableMatchesDesign(t *testing.T) {
 		{Name: "comment_vote", Kind: PerUser, N: 60, Window: time.Minute},
 		{Name: "search", Kind: PerIP, N: 30, Window: time.Minute},
 		{Name: "account_export", Kind: PerUser, N: 5, Window: time.Hour},
+		{Name: "calendar_feed", Kind: PerIP, N: 30, Window: time.Minute},
+		{Name: "unsubscribe", Kind: PerIP, N: 30, Window: time.Minute},
 	}
 	got := []Decl{
 		AuthSignup, AuthLogin, AuthLoginFailedKey, AuthVerifyEmail,
@@ -37,7 +39,7 @@ func TestTableMatchesDesign(t *testing.T) {
 		AuthResetPassword, AuthResetPasswordKey, AuthResetPasswordConfirm,
 		AuthChangePassword, AuthReauthenticate, AuthManageEmail, AccountDeleteTry,
 		TeamApply, TeamCreate, CommentCreateMinute, CommentCreateDaily,
-		CommentVote, Search, AccountExport,
+		CommentVote, Search, AccountExport, CalendarFeed, Unsubscribe,
 	}
 	if len(got) != len(want) {
 		t.Fatalf("表有 %d 条，对照 %d 条", len(got), len(want))
