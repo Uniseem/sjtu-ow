@@ -22,8 +22,9 @@ export type SampleClock = {
   pastTime: string
 }
 
-export type PageData = { title: string; marker?: string; clock?: SampleClock }
-export type Load = (ctx: { params: Record<string, string>; url: string }) => Promise<PageData> | PageData
+export type PageData = { title: string; marker?: string; clock?: SampleClock; [key: string]: any }
+export type LoadCtx = { params: Record<string, string>; url: string; fetch?: typeof fetch; apiBase?: string }
+export type Load = (ctx: LoadCtx) => Promise<PageData> | PageData
 
 export function createSiteRouter(ssr: boolean) {
   return createRouter({

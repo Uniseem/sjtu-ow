@@ -205,6 +205,21 @@ if (isMain) {
   console.log(`site ssr on :${port} (api ${apiBase}, ${assets ? "built assets" : "dev entry"})`)
   createServer((req, res) => {
     if (serveStatic(req, res, dist)) return
+    if (req.url?.startsWith("/api/")) {
+      fetch(apiBase + req.url, {
+        method: req.method,
+        headers: req.headers as HeadersInit,
+      }).then(async (apiRes) => {
+        const h: Record<string, string> = {}
+        apiRes.headers.forEach((v, k) => { h[k] = v })
+        res.writeHead(apiRes.status, h)
+        res.end(Buffer.from(await apiRes.arrayBuffer()))
+      }).catch(() => {
+        res.writeHead(502)
+        res.end()
+      })
+      return
+    }
     const headers = {
       get(name: string) {
         const value = req.headers[name.toLowerCase()]

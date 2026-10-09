@@ -11,8 +11,19 @@ function page(path: string, title: string): RouteRecordRaw {
   return { path, component: Page, meta: { load } }
 }
 
+function dynamicPage(path: string, comp: () => Promise<any>, title: string): RouteRecordRaw {
+  const load: Load = async (ctx) => {
+    const mod = await comp()
+    if (typeof mod.load === "function") {
+      return mod.load(ctx)
+    }
+    return { title }
+  }
+  return { path, component: comp, meta: { load } }
+}
+
 export const PAGES: RouteRecordRaw[] = [
-  page("/news/", "资讯"),
+  dynamicPage("/news/", () => import("./pages/News.vue"), "资讯"),
   page("/about/", "关于我们"),
   page("/terms/", "用户协议"),
   page("/privacy/", "隐私政策"),
@@ -24,10 +35,10 @@ export const PAGES: RouteRecordRaw[] = [
   page(`/letters/:batch/${id}/`, "信件预览"),
   page("/_styleguide/emails/", "邮件样张"),
   page("/_styleguide/emails/:key/", "邮件预览"),
-  page("/me/", "个人中心"),
-  page("/me/game-accounts/", "游戏 ID"),
+  dynamicPage("/me/", () => import("./pages/Profile.vue"), "个人中心"),
+  dynamicPage("/me/game-accounts/", () => import("./pages/GameAccounts.vue"), "游戏 ID"),
   page(`/me/game-accounts/${id}/`, "编辑游戏 ID"),
-  page("/me/contacts/", "联系方式"),
+  dynamicPage("/me/contacts/", () => import("./pages/Contacts.vue"), "联系方式"),
   page(`/me/contacts/${id}/`, "编辑联系方式"),
   page("/me/security/", "账号安全"),
   page("/me/delete/", "注销账号"),
@@ -35,25 +46,25 @@ export const PAGES: RouteRecordRaw[] = [
   page("/me/registrations/", "我的报名"),
   page("/me/scrims/", "我的内战"),
   page("/teams/new/", "创建战队"),
-  page(`/teams/${id}/`, "战队"),
-  page(`/teams/${id}/apply/`, "申请入队"),
+  dynamicPage(`/teams/${id}/`, () => import("./pages/TeamDetail.vue"), "战队"),
+  dynamicPage(`/teams/${id}/apply/`, () => import("./pages/TeamApply.vue"), "申请入队"),
   page(`/teams/${id}/manage/`, "管理战队"),
-  page("/members/", "成员"),
-  page(`/members/${id}/`, "成员"),
-  page("/tournaments/", "赛事"),
-  page(`/tournaments/${id}/`, "赛事"),
+  dynamicPage("/members/", () => import("./pages/Members.vue"), "成员"),
+  dynamicPage(`/members/${id}/`, () => import("./pages/MemberDetail.vue"), "成员"),
+  dynamicPage("/tournaments/", () => import("./pages/Tournaments.vue"), "赛事"),
+  dynamicPage(`/tournaments/${id}/`, () => import("./pages/TournamentDetail.vue"), "赛事"),
   page(`/tournaments/${id}/register/`, "战队报名"),
   page(`/tournaments/${id}/signup/`, "个人报名"),
   page(`/registrations/${id}/`, "报名"),
-  page("/scrims/", "内战"),
-  page(`/scrims/${id}/`, "内战"),
-  page("/accounts/login/", "登录"),
+  dynamicPage("/scrims/", () => import("./pages/Scrims.vue"), "内战"),
+  dynamicPage(`/scrims/${id}/`, () => import("./pages/ScrimDetail.vue"), "内战"),
+  dynamicPage("/accounts/login/", () => import("./pages/Login.vue"), "登录"),
   page("/accounts/logout/", "退出"),
   page("/accounts/inactive/", "账号已停用"),
-  page("/accounts/signup/", "注册"),
+  dynamicPage("/accounts/signup/", () => import("./pages/Signup.vue"), "注册"),
   page("/accounts/reauthenticate/", "重新验证"),
   page("/accounts/email/", "邮箱"),
-  page("/accounts/confirm-email/", "验证邮箱"),
+  dynamicPage("/accounts/confirm-email/", () => import("./pages/ConfirmEmail.vue"), "验证邮箱"),
   page("/accounts/password/change/", "修改密码"),
   page("/accounts/password/set/", "设置密码"),
   page("/accounts/password/reset/", "重置密码"),

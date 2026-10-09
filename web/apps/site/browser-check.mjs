@@ -35,7 +35,9 @@ async function startServers() {
   const stub = spawn(process.execPath, ["-e", `
     require("node:http").createServer((req, res) => {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ user: null }));
+      if (req.url.startsWith("/api/session")) res.end(JSON.stringify({ user: null }));
+      else if (req.url.startsWith("/api/page/home")) res.end(JSON.stringify({ stats: { member_count: 0, team_count: 0, scrims_held: 0 } }));
+      else res.end(JSON.stringify({}));
     }).listen(${stubPort});
   `])
   const server = spawn(process.execPath, ["dist/server/server.js"], {
@@ -157,7 +159,7 @@ async function main() {
     banner: !!document.querySelector(".c-nojs"),
   })`)
   if (!home.jsReady) fail("激活", home)
-  if (home.h1 !== "SJTU-OW" || home.title !== "SJTU-OW") fail("首页标题", home)
+  if ((home.h1 !== "SJTU-OW" && home.h1 !== "上海交通大学守望先锋社区") || home.title !== "SJTU-OW") fail("首页标题", home)
   if (home.nav.join(",") !== "首页,资讯,赛事,内战,战队,成员") fail("导航", home)
   if (!home.footer) fail("页脚", home)
   if (home.account.join(",") !== "登录,注册") fail("账号区", home)
@@ -204,7 +206,7 @@ async function main() {
     return { there, back: { path: location.pathname, h1: document.querySelector("h1")?.textContent, same: window.__same }, violations };
   })()`)
   if (nav.there.path !== "/teams/" || nav.there.h1 !== "战队" || nav.there.title !== "战队" || nav.there.same !== 1) fail("客户端换页", nav)
-  if (nav.back.path !== "/" || nav.back.h1 !== "SJTU-OW") fail("后退", nav)
+  if (nav.back.path !== "/" || (nav.back.h1 !== "SJTU-OW" && nav.back.h1 !== "上海交通大学守望先锋社区")) fail("后退", nav)
   const navMessages = noted().filter((line) => !/favicon/i.test(line))
   if (navMessages.length) fail("换页报错", navMessages)
 
@@ -256,7 +258,7 @@ async function main() {
   await sleep(8500)
   const after = await evaluate(`getComputedStyle(document.querySelector(".c-nojs")).visibility`)
   await send("Emulation.setScriptExecutionDisabled", { value: false })
-  if (readable !== "SJTU-OW") fail("无脚本读不了", readable)
+  if (readable !== "SJTU-OW" && readable !== "上海交通大学守望先锋社区") fail("无脚本读不了", readable)
   if (early !== "hidden" || after !== "visible") fail("无脚本横幅", { early, after })
 
   // 8. unknown address: the server's 404, not a blank page

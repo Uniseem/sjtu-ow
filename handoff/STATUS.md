@@ -1,11 +1,11 @@
 # 当前状态
 
 ```yaml
-milestone: 生产正式停机割接完成！Vue 3 + Go 新栈集群全面接管正式站（169.58.217.180:22887 与外部反代域名），实测停机耗时仅 16 秒；全量历史数据零丢失，12 项业务实体 100% 对账 MATCH；/healthz 与前台 SSR/API 冒烟全 PASS（259）；割接全真演练与存量导入全栈加固（258）；全量 163 个接口手册派生（257）；M0–M11 全部交付达成。
-round: 259-production-cutover-live
-next: 生产上线初期运行观察与日志监控；旧栈镜像与只读快照留存观察两周。
+milestone: 前台 16 页面与专用组件全量移植上线！首页聚合接口 GET /api/page/home 完工；对照旧站的真浏览器测试套件 scripts/journey.mjs 与全站截图套件 scripts/screens.mjs 落地；正式站生产升级完成并保持 200 OK 健康运行。
+round: 260-frontend-pages-and-tests-live
+next: 运行新栈自动化端到端测试与全页面巡检、桌面/移动端全量截图。
 updated: 2026-10-09
-blocked_on: 无（新栈已正式上线运行）
+blocked_on: 无
 ```
 
 ## 重构接到这里（2026-10-08）
@@ -47,6 +47,13 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**260（2026-10-09）**：前台全量页面与专用组件编写完成并生产升级上线（用户「先上线站点然后再测试」）。
+- 前台全量页面移植（消除空白占位符）：实现 `Home.vue`（交大齿轮 Hero、全站统计、近期焦点赛、内战席位格、资讯公告双列、活跃战队）、`News.vue` & `ArticleDetail.vue`、`Tournaments.vue` & `TournamentDetail.vue`、`Scrims.vue` & `ScrimDetail.vue`、`Teams.vue`、`TeamDetail.vue` & `TeamApply.vue`、`Members.vue` & `MemberDetail.vue`、`Signup.vue`、`ConfirmEmail.vue`、`Login.vue`、`Profile.vue`（宣言自动保存 autosave）、`GameAccounts.vue`、`Contacts.vue`；
+- 通用业务组件封装：`CSeats.vue`（内战席位格）、`PostCard.vue`（媒体卡片）、`TeamTile.vue`（战队卡片）；
+- Go 服务端支撑：新增公开聚合接口 `GET /api/page/home` 并补充单测；新增 `sjtuow seed` 生成全套端到端种子数据与会话 Token；
+- 一一对照测试与巡检体系：创建 `scripts/journey.mjs`（新人的第一晚、pages 全页面巡检、admin 干部操作）与 `scripts/screens.mjs`（全站 1280 与 375 真实截图工具）；
+- 生产环境安全升级与上线：在生产机器 169.58.217.180 执行镜像构建与平滑重启；服务全绿正常运行。下一步：运行端到端测试与全页面巡检。
 
 **259（2026-10-09）**：生产正式停机割接完成！Vue 3 + Go 新栈集群正式上线接管生产环境（用户「那就正式替换」）。
 - 生产环境安全快照与镜像构建：在 VPS `169.58.217.180` 制作旧库最终只读快照 `/root/sjtu-ow-backups/legacy-final-20261009134549.sqlite3`（及前置全量配置备份 `/root/cutover-safety-backup/`）；

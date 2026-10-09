@@ -7,3 +7,8 @@ export function initial(value: string | null | undefined): string {
   }
   return "?"
 }
+
+export function hue(id: number | null | undefined): number {
+  return ((Number(id) || 0) % 5) + 1
+}
+

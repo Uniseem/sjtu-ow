@@ -55,7 +55,17 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   const route = router.currentRoute.value
   if (!route.matched.length) return page(404, VISITOR, head)
 
-  const [sessionR, loadR] = await Promise.allSettled([fetchSession(opts), runLoad(route, url, opts)])
+  const ssrFetch: typeof fetch = (input, init) => {
+    const h = forward(opts.headers)
+    if (init?.headers) {
+      const extra = new Headers(init.headers)
+      extra.forEach((v, k) => h.set(k, v))
+    }
+    return opts.fetch(input, { ...init, headers: h })
+  }
+  const ssrOpts = { ...opts, fetch: ssrFetch }
+
+  const [sessionR, loadR] = await Promise.allSettled([fetchSession(ssrOpts), runLoad(route, url, ssrOpts)])
   if (sessionR.status === "rejected") return page(503, VISITOR, head)
   const viewer = sessionR.value
   if (loadR.status === "rejected") {
@@ -85,7 +95,7 @@ async function runLoad(route: { meta: { load?: Load }; params: Record<string, st
   if (!load) return { title: "" }
   const params: Record<string, string> = {}
   for (const [key, value] of Object.entries(route.params)) params[key] = Array.isArray(value) ? value[0] : value
-  return load({ params, url })
+  return load({ params, url, fetch: opts.fetch, apiBase: opts.apiBase })
 }
 
 async function fetchSession(opts: RenderOpts): Promise<Viewer> {

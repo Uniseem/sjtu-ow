@@ -256,7 +256,7 @@ export interface GetApiAdminHomePinsIn {
 }
 
 export interface GetApiAdminHomePinsOut {
-  items: {   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null; } | null[];
+  items: {   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null[];
 }
 
 export function getApiAdminHomePins(): Promise<GetApiAdminHomePinsOut> {
@@ -568,7 +568,7 @@ export interface GetApiHomePinsIn {
 }
 
 export interface GetApiHomePinsOut {
-  items: {   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null; } | null[];
+  items: {   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null[];
 }
 
 export function getApiHomePins(): Promise<GetApiHomePinsOut> {
@@ -764,6 +764,22 @@ export function getApiMembersId(id: string): Promise<GetApiMembersIdOut> {
   return call<GetApiMembersIdOut>("GET", "/api/members/{id}", { id }, undefined)
 }
 
+export interface GetApiPageHomeIn {
+}
+
+export interface GetApiPageHomeOut {
+  stats: {   member_count: number;   team_count: number;   scrims_held: number;   founded_on?: string;   age?: {   years: number;   days: number; } | null;   hero_image_id?: number | null;   qq_group_url?: string; } | null;
+  feature_tournament?: {   id: number;   title: string;   phase: string;   phase_label: string;   registration_mode: string;   takes_individuals: boolean;   approved_teams: number;   starts_at?: string;   registration_opens_at?: string;   registration_closes_at?: string;   cover_image_id?: number | null;   facts: string; } | null;
+  scrims: {   id: number;   title: string;   starts_at: string;   month: number;   day: number;   weekday: string;   time: string;   count: number;   capacity: number;   signup_open: boolean; } | null[];
+  news: {   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null[];
+  notices: {   id: number;   slug: string;   title: string;   month: number;   day: number;   published_at_raw: string; } | null[];
+  teams: {   id: number;   name: string;   logo_image_id?: number | null;   member_count: number;   is_recruiting: boolean;   wanted_roles?: string;   created_at_month: string; } | null[];
+}
+
+export function getApiPageHome(): Promise<GetApiPageHomeOut> {
+  return call<GetApiPageHomeOut>("GET", "/api/page/home", {  }, undefined)
+}
+
 export interface GetApiPageNewsIn {
 }
 
@@ -771,7 +787,7 @@ export interface GetApiPageNewsOut {
   total: number;
   page: number;
   page_size: number;
-  items: {   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null; } | null[];
+  items: {   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null[];
 }
 
 export function getApiPageNews(): Promise<GetApiPageNewsOut> {

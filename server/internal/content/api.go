@@ -36,6 +36,7 @@ type NewsItemOut struct {
 	ReadingTime      int        `json:"reading_time"`
 	AuthorName       string     `json:"author_name"`
 	FirstPublishedAt *time.Time `json:"first_published_at,omitempty"`
+	Pinned           bool       `json:"pinned,omitempty"`
 }
 
 // NewsListOut 是 GET /api/page/news 的出参。
@@ -231,6 +232,7 @@ type DeleteArticleOut struct {
 // Routes 注册内容域所有接口。
 func (m *Module) Routes(r *api.Registry) {
 	// 公开页面接口
+	api.Get(r, "/api/page/home", api.Public, m.getHomePage)
 	api.Get(r, "/api/page/news", api.Public, m.listNews)
 	api.Get(r, "/api/page/news/{slug}", api.Public, m.getNewsDetail)
 	api.Get(r, "/api/page/{slug}", api.Public, m.getSitePage)
@@ -542,4 +544,8 @@ func (m *Module) setHomePins(ctx *app.Ctx, in SetHomePinsIn) (SetHomePinsOut, er
 		return SetHomePinsOut{}, err
 	}
 	return SetHomePinsOut{Result: "ok"}, nil
+}
+
+func (m *Module) getHomePage(ctx *app.Ctx, _ HomePageIn) (*HomePageOut, error) {
+	return m.svc.HomePage(ctx)
 }

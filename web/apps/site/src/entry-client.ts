@@ -41,5 +41,5 @@ router.beforeResolve(async (to, from) => {
   if (!load) return
   const params: Record<string, string> = {}
   for (const [key, value] of Object.entries(to.params)) params[key] = Array.isArray(value) ? value[0] : value
-  Object.assign(page, await load({ params, url: to.fullPath }))
+  Object.assign(page, await load({ params, url: to.fullPath, fetch, apiBase: "" }))
 })
