@@ -7,9 +7,8 @@ import "time"
 //
 // 还没进表、数字先记在这里（等对应接口的轮次再引用，免得对照时丢掉）：
 //
-//	规则 6   allauth（M3）：reset_password 20/分/IP + 5/分/账号、
-//	         manage_email 10/分/人、change_password 5/分/人、
-//	         reset_password_from_key 20/分/IP、reauthenticate 10/分/人
+//	规则 6   allauth（M3）：manage_email 10/分/人、change_password 5/分/人、
+//	         reauthenticate 10/分/人
 //	规则 215 页面状态片段 120/分/IP（新栈没有预渲染片段，接口落地时再定要不要）
 //	规则 216 日历订阅 30/分/IP
 //	规则 221 头像上传 5/天/人（M4 图片）
@@ -41,6 +40,16 @@ var (
 	// AuthResendEmailCodeKey 重新发送邮箱验证码：同一账号 10 秒内最多 1 次（规则 6，allauth:
 	// confirm_email 1/10s/key）。key 由服务层拼（"email:"+规范化邮箱）；第 2 次起 429。
 	AuthResendEmailCodeKey = Decl{Name: "auth_resend_email_code_key", Kind: PerKey, N: 1, Window: 10 * time.Second}
+
+	// AuthResetPassword 找回密码发码：每个 IP 每分钟 20 次（规则 6，allauth: reset_password 20/m/ip）。
+	AuthResetPassword = Decl{Name: "auth_reset_password", Kind: PerIP, N: 20, Window: time.Minute}
+
+	// AuthResetPasswordKey 找回密码发码：同一账号每分钟最多 5 次（规则 6，allauth: reset_password 5/m/key）。
+	// key 由服务层拼（"email:"+规范化邮箱）；第 6 次起 429。
+	AuthResetPasswordKey = Decl{Name: "auth_reset_password_key", Kind: PerKey, N: 5, Window: time.Minute}
+
+	// AuthResetPasswordConfirm 核验重置密码：每个 IP 每分钟 20 次（规则 6，allauth: reset_password_from_key 20/m/ip）。
+	AuthResetPasswordConfirm = Decl{Name: "auth_reset_password_confirm", Kind: PerIP, N: 20, Window: time.Minute}
 
 	// TeamApply 申请入队：每人每天 20 次（附录 C「业务操作限流」）
 	TeamApply = Decl{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour}

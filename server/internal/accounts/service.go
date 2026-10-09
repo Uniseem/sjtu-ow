@@ -601,6 +601,245 @@ func (s *Service) hitLoginFailure(ctx context.Context, emailNorm string) {
 	_, _, _ = s.limiter.Allow(ctx, "email:"+emailNorm, ratelimit.AuthLoginFailedKey)
 }
 
+// ResetPasswordInput 是找回密码发码请求的入参。
+type ResetPasswordInput struct {
+	Email string
+}
+
+// ResetPasswordResult 是找回密码发码请求的统一出参（R004 防枚举）。
+type ResetPasswordResult struct {
+	Email   string
+	Message string
+}
+
+// ResetPasswordConfirmInput 是找回密码核验与重设密码的入参。
+type ResetPasswordConfirmInput struct {
+	Email           string
+	Code            string
+	Password        string
+	ConfirmPassword string
+}
+
+// ResetPasswordConfirmResult 是找回密码核验与重设密码的出参。
+type ResetPasswordConfirmResult struct {
+	Result  string
+	Message string
+}
+
+// RequestPasswordReset 请求发送找回密码验证码（POST /api/auth/reset-password，12 号文档 5.7）。
+// 业务契约：
+// - R003：3 分钟有效、最多 3 次尝试
+// - R004：防止账号枚举（不存在、已停用均返回完全相同的成功响应；不存在账号发送「这个邮箱还没有注册」提醒信）
+// - R006：限流 5/分/账号（AuthResetPasswordKey）；接口层 20/分/IP（AuthResetPassword）
+func (s *Service) RequestPasswordReset(ctx context.Context, in ResetPasswordInput) (*ResetPasswordResult, error) {
+	trimmedEmail := strings.TrimSpace(in.Email)
+
+	fields := make(map[string][]string)
+	if trimmedEmail == "" {
+		fields["email"] = []string{"请输入邮箱地址。"}
+	} else if !validateEmail(trimmedEmail) {
+		fields["email"] = []string{"请输入有效的邮箱地址。"}
+	}
+	if len(fields) > 0 {
+		return nil, api.InvalidFields(fields)
+	}
+
+	emailNorm := strings.ToLower(trimmedEmail)
+
+	// 先按账号限流（R006：5 次/分/账号，在查库之前数，防枚举）
+	if s.limiter != nil {
+		retry, ok, err := s.limiter.Allow(ctx, "email:"+emailNorm, ratelimit.AuthResetPasswordKey)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, api.TooManyRequests(retry)
+		}
+	}
+
+	successRes := &ResetPasswordResult{
+		Email:   trimmedEmail,
+		Message: "如果该邮箱已注册，我们已向其发送了找回密码验证码。",
+	}
+
+	now := s.clock.Now().UTC()
+	siteURL := strings.TrimRight(s.siteURL, "/")
+	if siteURL == "" {
+		siteURL = "https://sjtu.ow-shanghaiuniversity.com"
+	}
+
+	u, err := s.store.GetByEmailNorm(ctx, emailNorm)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		// 邮箱未注册：发「这个邮箱还没有注册」提醒信（附注册链接），返回统一响应防枚举（R004）
+		err = s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+			letter := mail.Letter{
+				Subject:    "这个邮箱还没有注册",
+				Lead:       "有人用这个邮箱在 SJTU-OW 申请了账号操作（比如找回密码），但这个邮箱还没有注册过。",
+				Paragraphs: []string{"如果不是你本人的操作，请忽略这封邮件。想加入的话，可以用这个邮箱注册："},
+				Action:     []string{"注册", siteURL + "/accounts/signup/"},
+				Note:       "如果这不是你本人的操作，请忽略这封邮件。",
+				Reason:     "你收到这封邮件，是因为有人在本站填写了这个邮箱。",
+			}
+			_, err := outbox.Send(ctx, tx, nil, siteURL, letter, []mail.Person{{Address: trimmedEmail, Name: ""}}, now)
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+		return successRes, nil
+	}
+
+	if !u.IsActive {
+		// 已停用账号：静默成功，不发信（R004 防枚举）
+		return successRes, nil
+	}
+
+	// 正常账号：作废旧 password_reset 码、生成新码入库（3 分钟有效，R003）、发信
+	code, codeHash, err := s.codeGen()
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		if err := s.store.DeleteEmailCodes(ctx, tx, "password_reset", emailNorm); err != nil {
+			return err
+		}
+		if err := s.store.InsertEmailCode(ctx, tx, "password_reset", emailNorm, codeHash, now, now.Add(3*time.Minute)); err != nil {
+			return err
+		}
+		letter := mail.Letter{
+			Subject: "找回密码验证码",
+			Lead:    "你正在重置 SJTU-OW 账号的密码。请在页面上输入下面的验证码：",
+			Code:    code,
+			Note:    "验证码 3 分钟内有效。如果这不是你本人的操作，请忽略这封邮件，你的密码不会改变。",
+			Reason:  "你收到这封邮件，是因为有人用这个邮箱申请了找回密码。",
+		}
+		_, err := outbox.Send(ctx, tx, nil, siteURL, letter, []mail.Person{{Address: u.Email, Name: u.Nickname}}, now)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return successRes, nil
+}
+
+// ResetPasswordConfirm 核验验证码并重置密码（POST /api/auth/reset-password/confirm，12 号文档 5.7）。
+// 业务契约：
+// - R003：核验 3 分钟内有效、最多 3 次尝试（错码加 attempts，达到 3 次物理删除作废）
+// - R004：防止账号枚举（统一报错 errBadCode）
+// - 密码强度与一致性校验
+// - 事务外计算 Argon2id 哈希
+// - 事务内更新密码，若此前未验证邮箱则置为已验证，删除该邮箱所有重置码，清空该用户所有现有会话（5.7）
+// - 严格不发会话 Cookie
+func (s *Service) ResetPasswordConfirm(ctx context.Context, in ResetPasswordConfirmInput) (*ResetPasswordConfirmResult, error) {
+	trimmedEmail := strings.TrimSpace(in.Email)
+	code := strings.TrimSpace(in.Code)
+
+	fields := make(map[string][]string)
+	if trimmedEmail == "" {
+		fields["email"] = []string{"请输入邮箱地址。"}
+	} else if !validateEmail(trimmedEmail) {
+		fields["email"] = []string{"请输入有效的邮箱地址。"}
+	}
+	if code == "" {
+		fields["code"] = []string{"请输入验证码。"}
+	}
+	if in.Password == "" {
+		fields["password"] = []string{"请输入新密码。"}
+	} else if in.Password != in.ConfirmPassword {
+		fields["confirm_password"] = []string{"两次输入的密码不一致。"}
+	} else {
+		pwdErrs := auth.Validate(in.Password, trimmedEmail, "")
+		if len(pwdErrs) > 0 {
+			fields["password"] = pwdErrs
+		}
+	}
+	if len(fields) > 0 {
+		return nil, api.InvalidFields(fields)
+	}
+
+	// 事务外计算 Argon2 哈希，避免长事务持有写锁
+	pwdHash, err := auth.Hash(ctx, in.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	emailNorm := strings.ToLower(trimmedEmail)
+	now := s.clock.Now().UTC()
+
+	var codeOK bool
+	err = s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		u, err := s.store.GetByEmailNormTx(ctx, tx, emailNorm)
+		if err != nil {
+			return err
+		}
+		if u == nil || !u.IsActive {
+			return nil
+		}
+		c, err := s.store.GetLatestEmailCodeTx(ctx, tx, "password_reset", emailNorm)
+		if err != nil {
+			return err
+		}
+		// 过期、用尽（最多 3 次尝试）、没有码：直接失败，不自增 attempts
+		if c == nil || !now.Before(c.ExpiresAt) || c.Attempts >= 3 {
+			return nil
+		}
+		sum := sha256.Sum256([]byte(code))
+		if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(sum[:])), []byte(c.CodeHash)) != 1 {
+			if err := s.store.BumpEmailCodeAttempts(ctx, tx, c.ID); err != nil {
+				return err
+			}
+			// 第 3 次错：码作废（R003）
+			if c.Attempts+1 >= 3 {
+				if err := s.store.DeleteEmailCode(ctx, tx, c.ID); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		// 验证码通过：
+		// 1. 删除该邮箱的所有 password_reset 验证码
+		if err := s.store.DeleteEmailCodes(ctx, tx, "password_reset", emailNorm); err != nil {
+			return err
+		}
+		// 2. 更新密码，如果原先未验证邮箱则置为已验证
+		_, err = tx.ExecContext(ctx, `UPDATE users SET
+			password_hash = ?,
+			password_changed_at = ?,
+			email_verified_at = COALESCE(email_verified_at, ?),
+			updated_at = ?
+			WHERE id = ?`,
+			pwdHash, db.FormatUTC(now), db.FormatUTC(now), db.FormatUTC(now), u.ID)
+		if err != nil {
+			return err
+		}
+		// 3. 删掉该用户的所有现有会话（改密码作废其他会话，12 号文档 5.7）
+		_, err = tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, u.ID)
+		if err != nil {
+			return err
+		}
+
+		codeOK = true
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !codeOK {
+		return nil, errBadCode
+	}
+
+	return &ResetPasswordConfirmResult{
+		Result:  "ok",
+		Message: "密码重置成功，请使用新密码登录。",
+	}, nil
+}
+
 // BuildViewer 根据用户 ID 从数据库组装 *app.Viewer（12 号文档 5.2、5.8）。
 // 未登录或账号不存在返回 nil。停用账号返回 Disabled: true 的 Viewer。
 func (s *Service) BuildViewer(ctx context.Context, userID int64) (*app.Viewer, error) {

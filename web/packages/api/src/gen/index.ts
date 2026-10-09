@@ -57,6 +57,35 @@ export function postApiAuthResendCode(body: PostApiAuthResendCodeIn): Promise<Po
   return call<PostApiAuthResendCodeOut>("POST", "/api/auth/resend-code", {  }, body)
 }
 
+export interface PostApiAuthResetPasswordIn {
+  email: string;
+}
+
+export interface PostApiAuthResetPasswordOut {
+  email: string;
+  message: string;
+}
+
+export function postApiAuthResetPassword(body: PostApiAuthResetPasswordIn): Promise<PostApiAuthResetPasswordOut> {
+  return call<PostApiAuthResetPasswordOut>("POST", "/api/auth/reset-password", {  }, body)
+}
+
+export interface PostApiAuthResetPasswordConfirmIn {
+  email: string;
+  code: string;
+  password: string;
+  confirm_password: string;
+}
+
+export interface PostApiAuthResetPasswordConfirmOut {
+  result: string;
+  message: string;
+}
+
+export function postApiAuthResetPasswordConfirm(body: PostApiAuthResetPasswordConfirmIn): Promise<PostApiAuthResetPasswordConfirmOut> {
+  return call<PostApiAuthResetPasswordConfirmOut>("POST", "/api/auth/reset-password/confirm", {  }, body)
+}
+
 export interface PostApiAuthVerifyEmailIn {
   email: string;
   code: string;

@@ -16,6 +16,9 @@ func TestTableMatchesDesign(t *testing.T) {
 		{Name: "auth_verify_email", Kind: PerIP, N: 10, Window: time.Minute},
 		{Name: "auth_resend_email_code", Kind: PerIP, N: 10, Window: time.Minute},
 		{Name: "auth_resend_email_code_key", Kind: PerKey, N: 1, Window: 10 * time.Second},
+		{Name: "auth_reset_password", Kind: PerIP, N: 20, Window: time.Minute},
+		{Name: "auth_reset_password_key", Kind: PerKey, N: 5, Window: time.Minute},
+		{Name: "auth_reset_password_confirm", Kind: PerIP, N: 20, Window: time.Minute},
 		{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour},
 		{Name: "team_create", Kind: PerUser, N: 3, Window: 24 * time.Hour},
 		{Name: "comment_create_minute", Kind: PerUser, N: 3, Window: time.Minute},
@@ -27,6 +30,7 @@ func TestTableMatchesDesign(t *testing.T) {
 	got := []Decl{
 		AuthSignup, AuthLogin, AuthLoginFailedKey, AuthVerifyEmail,
 		AuthResendEmailCode, AuthResendEmailCodeKey,
+		AuthResetPassword, AuthResetPasswordKey, AuthResetPasswordConfirm,
 		TeamApply, TeamCreate, CommentCreateMinute, CommentCreateDaily,
 		CommentVote, Search, AccountExport,
 	}

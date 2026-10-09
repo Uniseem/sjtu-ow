@@ -1090,3 +1090,401 @@ func TestResendCodeRateLimitKey(t *testing.T) {
 		t.Fatalf("11 秒后重发应成功: %v", err)
 	}
 }
+
+func TestRequestPasswordResetFieldValidation(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	for _, tc := range []struct {
+		name  string
+		email string
+	}{
+		{"邮箱为空", ""},
+		{"邮箱仅空格", "   "},
+		{"邮箱格式非法", "not-an-email"},
+		{"缺少顶级域", "user@domain"},
+	} {
+		_, err := svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: tc.email})
+		var apiErr *api.Error
+		if !errors.As(err, &apiErr) || apiErr.Status != 422 {
+			t.Fatalf("%s: 应返回 422，得到 %v", tc.name, err)
+		}
+		if len(apiErr.Fields["email"]) == 0 {
+			t.Fatalf("%s: fields['email'] 应包含错误信息", tc.name)
+		}
+	}
+}
+
+func TestRequestPasswordResetUnknownEmailAntiEnumeration(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	// 未注册邮箱请求找回密码：返回统一成功响应（R004 防枚举）
+	res, err := svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "unknown@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("未注册邮箱找回密码应返回成功: %v", err)
+	}
+	if res.Email != "unknown@sjtu.edu.cn" || !strings.Contains(res.Message, "验证码") {
+		t.Fatalf("出参不符: %+v", res)
+	}
+
+	// 库里不生成 password_reset 验证码
+	var codeCount int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM email_codes WHERE purpose = 'password_reset'").Scan(&codeCount); err != nil {
+		t.Fatal(err)
+	}
+	if codeCount != 0 {
+		t.Fatalf("未注册邮箱不该生成验证码，得到 %d 条", codeCount)
+	}
+
+	// 但入队了一封「这个邮箱还没有注册」提醒信（附带注册链接）
+	var jobArgs string
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT args FROM jobs WHERE kind = ?", outbox.KindLetter).Scan(&jobArgs); err != nil {
+		t.Fatalf("未注册邮箱应入队提醒信: %v", err)
+	}
+	if !strings.Contains(jobArgs, "这个邮箱还没有注册") || !strings.Contains(jobArgs, "/accounts/signup/") {
+		t.Fatalf("信件内容不符: %s", jobArgs)
+	}
+}
+
+func TestRequestPasswordResetInactiveAccountAntiEnumeration(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	newVerifiedUser(t, d, "inactive@sjtu.edu.cn", "停用用户", "Password123!@#", false)
+
+	// 停用账号请求重置密码：静默成功，不发信（防枚举）
+	res, err := svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "inactive@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("停用账号找回密码应成功: %v", err)
+	}
+	if res.Email != "inactive@sjtu.edu.cn" || !strings.Contains(res.Message, "验证码") {
+		t.Fatalf("出参不符: %+v", res)
+	}
+
+	// 既不存码也不发信
+	var codeCount, jobCount int
+	_ = d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM email_codes WHERE purpose = 'password_reset'").Scan(&codeCount)
+	_ = d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM jobs WHERE kind = ?", outbox.KindLetter).Scan(&jobCount)
+	if codeCount != 0 || jobCount != 0 {
+		t.Fatalf("停用账号不应生成码或信件: codes=%d, jobs=%d", codeCount, jobCount)
+	}
+}
+
+func TestRequestPasswordResetActiveUserCodeAndLetter(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	store := NewStore(d)
+	t0 := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	clk := &testClock{t: t0}
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("112233")
+
+	newVerifiedUser(t, d, "active@sjtu.edu.cn", "活跃用户", "Password123!@#", true)
+
+	// 首次请求找回密码
+	res, err := svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "active@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("找回密码发码应成功: %v", err)
+	}
+	if res.Email != "active@sjtu.edu.cn" {
+		t.Fatalf("出参邮箱不符: %+v", res)
+	}
+
+	// 验证生成了 3 分钟有效期的验证码（R003）
+	code1, err := store.GetLatestEmailCode(ctx, "password_reset", "active@sjtu.edu.cn")
+	if err != nil || code1 == nil {
+		t.Fatalf("应生成重置码: %v", err)
+	}
+	if code1.Attempts != 0 {
+		t.Fatalf("尝试次数应为 0，得到 %d", code1.Attempts)
+	}
+	if code1.ExpiresAt.Sub(code1.CreatedAt) != 3*time.Minute {
+		t.Fatalf("重置验证码有效期应为 3 分钟（R003），得到 %v", code1.ExpiresAt.Sub(code1.CreatedAt))
+	}
+
+	// 再次请求：作废旧码并生成新码，库中仍只有 1 条记录
+	svc.codeGen = fixedCode("445566")
+	clk.t = t0.Add(time.Minute)
+	_, err = svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "active@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("第二次找回密码发码应成功: %v", err)
+	}
+
+	code2, err := store.GetLatestEmailCode(ctx, "password_reset", "active@sjtu.edu.cn")
+	if err != nil || code2 == nil {
+		t.Fatalf("应有新码: %v", err)
+	}
+	if code2.ID == code1.ID {
+		t.Fatalf("新码 ID 不该等于旧码 ID")
+	}
+
+	var codeCount int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM email_codes WHERE purpose = 'password_reset' AND email_norm = 'active@sjtu.edu.cn'").Scan(&codeCount); err != nil {
+		t.Fatal(err)
+	}
+	if codeCount != 1 {
+		t.Fatalf("旧码应被彻底作废，库里该邮箱应恰好有 1 条 password_reset 码，得到 %d", codeCount)
+	}
+
+	// 检查入队信件
+	var letters []string
+	rows, err := d.ReadPool().QueryContext(ctx, "SELECT args FROM jobs WHERE kind = ? ORDER BY id", outbox.KindLetter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a string
+		if err := rows.Scan(&a); err != nil {
+			t.Fatal(err)
+		}
+		letters = append(letters, a)
+	}
+	if len(letters) != 2 {
+		t.Fatalf("应入队 2 封找回密码信件，得到 %d 封", len(letters))
+	}
+	if !strings.Contains(letters[0], "找回密码验证码") || !strings.Contains(letters[0], "112233") || !strings.Contains(letters[0], "3 分钟内有效") {
+		t.Fatalf("第一封信内容不符: %s", letters[0])
+	}
+}
+
+func TestRequestPasswordResetRateLimitKey(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	t0 := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	clk := &testClock{t: t0}
+	enforcer := ratelimit.NewEnforcer(d, clk)
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, enforcer)
+
+	newVerifiedUser(t, d, "limit1@sjtu.edu.cn", "限流用户一", "Password123!@#", true)
+	newVerifiedUser(t, d, "limit2@sjtu.edu.cn", "限流用户二", "Password123!@#", true)
+
+	// AuthResetPasswordKey: 同一账号每分钟最多 5 次（R006）
+	for i := 1; i <= 5; i++ {
+		_, err := svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "limit1@sjtu.edu.cn"})
+		if err != nil {
+			t.Fatalf("第 %d 次请求应成功: %v", i, err)
+		}
+	}
+
+	// 第 6 次触发 429
+	_, err := svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "limit1@sjtu.edu.cn"})
+	var apiErr *api.Error
+	if !errors.As(err, &apiErr) || apiErr.Status != 429 {
+		t.Fatalf("第 6 次应 429，得到 %v", err)
+	}
+	if apiErr.Header.Get("Retry-After") == "" {
+		t.Fatalf("429 应包含 Retry-After")
+	}
+
+	// limit2 不受影响（按 key 隔离）
+	_, err = svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "limit2@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("不同账号应成功: %v", err)
+	}
+
+	// 时间片翻页（61 秒后）恢复
+	clk.t = t0.Add(61 * time.Second)
+	_, err = svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "limit1@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("翻页后应放行: %v", err)
+	}
+}
+
+func TestResetPasswordConfirmFieldValidation(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	for _, tc := range []struct {
+		name       string
+		in         ResetPasswordConfirmInput
+		wantFields []string
+	}{
+		{
+			"全部为空",
+			ResetPasswordConfirmInput{},
+			[]string{"email", "code", "password"},
+		},
+		{
+			"邮箱非法且码空",
+			ResetPasswordConfirmInput{Email: "bad", Code: "", Password: "Password123!@#", ConfirmPassword: "Password123!@#"},
+			[]string{"email", "code"},
+		},
+		{
+			"两次密码不一致",
+			ResetPasswordConfirmInput{Email: "test@sjtu.edu.cn", Code: "123456", Password: "Password123!@#", ConfirmPassword: "Mismatch123!@#"},
+			[]string{"confirm_password"},
+		},
+		{
+			"密码太短或纯数字弱密码",
+			ResetPasswordConfirmInput{Email: "test@sjtu.edu.cn", Code: "123456", Password: "123", ConfirmPassword: "123"},
+			[]string{"password"},
+		},
+		{
+			"密码与邮箱过于相似",
+			ResetPasswordConfirmInput{Email: "myuser@sjtu.edu.cn", Code: "123456", Password: "myuser123", ConfirmPassword: "myuser123"},
+			[]string{"password"},
+		},
+	} {
+		_, err := svc.ResetPasswordConfirm(ctx, tc.in)
+		var apiErr *api.Error
+		if !errors.As(err, &apiErr) || apiErr.Status != 422 {
+			t.Fatalf("%s: 应 422，得到 %v", tc.name, err)
+		}
+		for _, f := range tc.wantFields {
+			if len(apiErr.Fields[f]) == 0 {
+				t.Fatalf("%s: fields[%s] 应该有错误信息", tc.name, f)
+			}
+		}
+	}
+}
+
+func TestResetPasswordConfirmCodeAttemptsAndExpiry(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	store := NewStore(d)
+	t0 := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	clk := &testClock{t: t0}
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("654321")
+
+	newVerifiedUser(t, d, "confirm-test@sjtu.edu.cn", "核验用户", "OldPassword123!@#", true)
+	_, _ = svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "confirm-test@sjtu.edu.cn"})
+
+	// 1. 未注册邮箱核验报错与错码一致（防枚举 R004）
+	_, errUnknown := svc.ResetPasswordConfirm(ctx, ResetPasswordConfirmInput{
+		Email: "ghost@sjtu.edu.cn", Code: "654321", Password: "NewPassword123!@#", ConfirmPassword: "NewPassword123!@#",
+	})
+	if errString(errUnknown) != errString(errBadCode) {
+		t.Fatalf("未注册邮箱报错不符: %v", errUnknown)
+	}
+
+	// 2. 第一次输错码：attempts 变成 1，返回 errBadCode
+	_, err := svc.ResetPasswordConfirm(ctx, ResetPasswordConfirmInput{
+		Email: "confirm-test@sjtu.edu.cn", Code: "000000", Password: "NewPassword123!@#", ConfirmPassword: "NewPassword123!@#",
+	})
+	if errString(err) != errString(errBadCode) {
+		t.Fatalf("第一次错码应返回统一错误: %v", err)
+	}
+	c, _ := store.GetLatestEmailCode(ctx, "password_reset", "confirm-test@sjtu.edu.cn")
+	if c == nil || c.Attempts != 1 {
+		t.Fatalf("第一次错码后 attempts 应为 1: %+v", c)
+	}
+
+	// 3. 第二次输错码：attempts 变成 2
+	_, _ = svc.ResetPasswordConfirm(ctx, ResetPasswordConfirmInput{
+		Email: "confirm-test@sjtu.edu.cn", Code: "111111", Password: "NewPassword123!@#", ConfirmPassword: "NewPassword123!@#",
+	})
+	c, _ = store.GetLatestEmailCode(ctx, "password_reset", "confirm-test@sjtu.edu.cn")
+	if c == nil || c.Attempts != 2 {
+		t.Fatalf("第二次错码后 attempts 应为 2: %+v", c)
+	}
+
+	// 4. 第三次输错码：达到 3 次尝试上限，直接物理删除作废（R003）
+	_, _ = svc.ResetPasswordConfirm(ctx, ResetPasswordConfirmInput{
+		Email: "confirm-test@sjtu.edu.cn", Code: "222222", Password: "NewPassword123!@#", ConfirmPassword: "NewPassword123!@#",
+	})
+	c, _ = store.GetLatestEmailCode(ctx, "password_reset", "confirm-test@sjtu.edu.cn")
+	if c != nil {
+		t.Fatalf("3 次尝试用尽后码应被删除作废，仍然存在: %+v", c)
+	}
+
+	// 5. 过期测试（> 3 分钟失效，R003）
+	svc.codeGen = fixedCode("778899")
+	_, _ = svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "confirm-test@sjtu.edu.cn"})
+	clk.t = t0.Add(3*time.Minute + time.Second) // 超过 3 分钟
+
+	_, errExpired := svc.ResetPasswordConfirm(ctx, ResetPasswordConfirmInput{
+		Email: "confirm-test@sjtu.edu.cn", Code: "778899", Password: "NewPassword123!@#", ConfirmPassword: "NewPassword123!@#",
+	})
+	if errString(errExpired) != errString(errBadCode) {
+		t.Fatalf("过期验证码应返回统一错误: %v", errExpired)
+	}
+}
+
+func TestResetPasswordConfirmSuccess(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	store := NewStore(d)
+	t0 := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	clk := &testClock{t: t0}
+	sessions := auth.NewStore(d, clk)
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", sessions, nil)
+	svc.codeGen = fixedCode("998877")
+
+	u := newVerifiedUser(t, d, "success-reset@sjtu.edu.cn", "成功用户", "OldPassword123!@#", true)
+
+	// 先建立一个活跃会话
+	oldToken, err := sessions.Create(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sess, err := sessions.Lookup(ctx, oldToken)
+	if err != nil || sess == nil {
+		t.Fatalf("旧会话应存在")
+	}
+
+	// 请求重置密码
+	_, err = svc.RequestPasswordReset(ctx, ResetPasswordInput{Email: "success-reset@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("请求发码应成功: %v", err)
+	}
+
+	// 提交重置密码
+	clk.t = t0.Add(time.Minute)
+	res, err := svc.ResetPasswordConfirm(ctx, ResetPasswordConfirmInput{
+		Email:           "success-reset@sjtu.edu.cn",
+		Code:            "998877",
+		Password:        "NewPassword123!@#",
+		ConfirmPassword: "NewPassword123!@#",
+	})
+	if err != nil {
+		t.Fatalf("重置密码应成功: %v", err)
+	}
+	if res.Result != "ok" || !strings.Contains(res.Message, "成功") {
+		t.Fatalf("出参不符: %+v", res)
+	}
+
+	// 1. 旧会话已被彻底作废（5.7 改密码删所有会话）
+	sess, err = sessions.Lookup(ctx, oldToken)
+	if err != nil || sess != nil {
+		t.Fatalf("重置密码后原有会话应被全部作废")
+	}
+
+	// 2. 验证码已被删除
+	c, _ := store.GetLatestEmailCode(ctx, "password_reset", "success-reset@sjtu.edu.cn")
+	if c != nil {
+		t.Fatalf("重置成功后验证码应被删除")
+	}
+
+	// 3. 用户密码已更新为新密码哈希且 password_changed_at 已更新
+	updatedUser, err := store.GetByID(ctx, u.ID)
+	if err != nil || updatedUser == nil {
+		t.Fatal(err)
+	}
+	okOld, _, _ := auth.Verify(ctx, updatedUser.PasswordHash, "OldPassword123!@#")
+	if okOld {
+		t.Fatalf("旧密码不应再能通过验证")
+	}
+	okNew, _, _ := auth.Verify(ctx, updatedUser.PasswordHash, "NewPassword123!@#")
+	if !okNew {
+		t.Fatalf("新密码应该验证通过")
+	}
+	if updatedUser.PasswordChangedAt == nil || !updatedUser.PasswordChangedAt.Equal(clk.t) {
+		t.Fatalf("password_changed_at 应更新为当前时间: %+v", updatedUser.PasswordChangedAt)
+	}
+
+	// 4. 可以用新密码登录
+	loginRes, err := svc.Login(ctx, LoginInput{
+		Email:    "success-reset@sjtu.edu.cn",
+		Password: "NewPassword123!@#",
+	})
+	if err != nil || loginRes.Result != "ok" || loginRes.Token == "" {
+		t.Fatalf("新密码应能正常登录: %+v, err=%v", loginRes, err)
+	}
+}

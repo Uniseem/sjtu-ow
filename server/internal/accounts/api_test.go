@@ -513,9 +513,9 @@ func TestSessionCookieOnlyFromAuthRoutes(t *testing.T) {
 			}
 		}
 	}
-	// 路由清单里确实有这三个接口（防止路由改名后这条测试空转）
-	if !seen["POST /api/auth/login"] || !seen["POST /api/auth/verify-email"] || !seen["POST /api/auth/resend-code"] {
-		t.Fatalf("注册表应包含 login、verify-email 和 resend-code: %v", seen)
+	// 路由清单里确实有这些接口（防止路由改名后这条测试空转）
+	if !seen["POST /api/auth/login"] || !seen["POST /api/auth/verify-email"] || !seen["POST /api/auth/resend-code"] || !seen["POST /api/auth/reset-password"] || !seen["POST /api/auth/reset-password/confirm"] {
+		t.Fatalf("注册表应包含 login、verify-email、resend-code、reset-password 和 reset-password/confirm: %v", seen)
 	}
 }
 
@@ -674,5 +674,143 @@ func TestVerifyEmailApiRateLimit(t *testing.T) {
 	}
 	if c := hit(); c != http.StatusTooManyRequests {
 		t.Fatalf("第 11 次应 429，得到 %d", c)
+	}
+}
+
+func TestResetPasswordApi(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("654321")
+
+	newVerifiedUser(t, d, "rp-api@sjtu.edu.cn", "重置接口", "Password123!@#", true)
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil })
+
+	// 1. 正常请求重置：200，无会话 Cookie，返回 message
+	body := []byte(`{"email": "rp-api@sjtu.edu.cn"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/reset-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("找回密码应 200，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	for _, sc := range rec.Header().Values("Set-Cookie") {
+		if strings.Contains(sc, "ow_session=") {
+			t.Fatalf("找回密码绝对不发会话 Cookie: %q", sc)
+		}
+	}
+	var out ResetPasswordOut
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("反序列化失败: %v", err)
+	}
+	if out.Email != "rp-api@sjtu.edu.cn" || !strings.Contains(out.Message, "验证码") {
+		t.Fatalf("出参不符: %+v", out)
+	}
+
+	// 2. 参数非法（邮箱格式错误）：422
+	badReq := httptest.NewRequest(http.MethodPost, "/api/auth/reset-password", bytes.NewReader([]byte(`{"email": "bad-email"}`)))
+	badReq.Header.Set("Content-Type", "application/json")
+	badRec := httptest.NewRecorder()
+	handler.ServeHTTP(badRec, badReq)
+	if badRec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("非法邮箱应 422，得到 %d: %s", badRec.Code, badRec.Body.String())
+	}
+}
+
+func TestResetPasswordApiRateLimit(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("654321")
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	enforcer := ratelimit.NewEnforcer(d, clk)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil },
+		api.WithLimiter(enforcer),
+	)
+
+	// AuthResetPassword: 20 次/分/IP
+	for i := 1; i <= 20; i++ {
+		body := []byte(fmt.Sprintf(`{"email": "user%d@sjtu.edu.cn"}`, i))
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/reset-password", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "192.0.2.77:12345"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("第 %d 次应成功，得到 %d: %s", i, rec.Code, rec.Body.String())
+		}
+	}
+
+	// 第 21 次应被 IP 限流 429
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/reset-password", bytes.NewReader([]byte(`{"email": "user21@sjtu.edu.cn"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "192.0.2.77:12345"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("第 21 次应 429，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("429 应包含 Retry-After")
+	}
+}
+
+func TestResetPasswordConfirmApi(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("123456")
+
+	newVerifiedUser(t, d, "confirm-api@sjtu.edu.cn", "确认接口", "OldPass123!@#", true)
+	_, _ = svc.RequestPasswordReset(context.Background(), ResetPasswordInput{Email: "confirm-api@sjtu.edu.cn"})
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil })
+
+	// 1. 错码：422，无 Cookie
+	badBody := []byte(`{"email": "confirm-api@sjtu.edu.cn", "code": "000000", "password": "NewPassword123!@#", "confirm_password": "NewPassword123!@#"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/reset-password/confirm", bytes.NewReader(badBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("错码应 422，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	for _, sc := range rec.Header().Values("Set-Cookie") {
+		if strings.Contains(sc, "ow_session=") {
+			t.Fatalf("核验失败不该发会话 Cookie: %q", sc)
+		}
+	}
+
+	// 2. 正确重置：200，依然绝对不发会话 Cookie（5.7 唯一入口规则）
+	okBody := []byte(`{"email": "confirm-api@sjtu.edu.cn", "code": "123456", "password": "NewPassword123!@#", "confirm_password": "NewPassword123!@#"}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/reset-password/confirm", bytes.NewReader(okBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("成功重置应 200，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	for _, sc := range rec.Header().Values("Set-Cookie") {
+		if strings.Contains(sc, "ow_session=") {
+			t.Fatalf("重置密码成功绝对不发会话 Cookie（必须去登录页登录）: %q", sc)
+		}
+	}
+	var out ResetPasswordConfirmOut
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("反序列化失败: %v", err)
+	}
+	if out.Result != "ok" || !strings.Contains(out.Message, "成功") {
+		t.Fatalf("出参不符: %+v", out)
 	}
 }

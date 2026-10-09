@@ -80,6 +80,31 @@ type ResendCodeOut struct {
 	Message string `json:"message"`
 }
 
+// ResetPasswordIn 是 POST /api/auth/reset-password 的入参。
+type ResetPasswordIn struct {
+	Email string `json:"email"`
+}
+
+// ResetPasswordOut 是 POST /api/auth/reset-password 的出参。
+type ResetPasswordOut struct {
+	Email   string `json:"email"`
+	Message string `json:"message"`
+}
+
+// ResetPasswordConfirmIn 是 POST /api/auth/reset-password/confirm 的入参。
+type ResetPasswordConfirmIn struct {
+	Email           string `json:"email"`
+	Code            string `json:"code"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirm_password"`
+}
+
+// ResetPasswordConfirmOut 是 POST /api/auth/reset-password/confirm 的出参。
+type ResetPasswordConfirmOut struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
 // Module 提供账号域接口注册。
 type Module struct {
 	svc *Service
@@ -99,6 +124,10 @@ func (m *Module) Routes(r *api.Registry) {
 		api.Limit(ratelimit.AuthVerifyEmail))
 	api.Post(r, "/api/auth/resend-code", api.Public, m.resendCode,
 		api.Limit(ratelimit.AuthResendEmailCode))
+	api.Post(r, "/api/auth/reset-password", api.Public, m.resetPassword,
+		api.Limit(ratelimit.AuthResetPassword))
+	api.Post(r, "/api/auth/reset-password/confirm", api.Public, m.resetPasswordConfirm,
+		api.Limit(ratelimit.AuthResetPasswordConfirm))
 	api.Post(r, "/api/auth/login", api.Public, m.login,
 		api.Limit(ratelimit.AuthLogin))
 }
@@ -153,6 +182,28 @@ func (m *Module) resendCode(ctx *app.Ctx, in ResendCodeIn) (ResendCodeOut, error
 	}
 	return ResendCodeOut{
 		Email:   res.Email,
+		Message: res.Message,
+	}, nil
+}
+
+func (m *Module) resetPassword(ctx *app.Ctx, in ResetPasswordIn) (ResetPasswordOut, error) {
+	res, err := m.svc.RequestPasswordReset(ctx.Context, ResetPasswordInput(in))
+	if err != nil {
+		return ResetPasswordOut{}, err
+	}
+	return ResetPasswordOut{
+		Email:   res.Email,
+		Message: res.Message,
+	}, nil
+}
+
+func (m *Module) resetPasswordConfirm(ctx *app.Ctx, in ResetPasswordConfirmIn) (ResetPasswordConfirmOut, error) {
+	res, err := m.svc.ResetPasswordConfirm(ctx.Context, ResetPasswordConfirmInput(in))
+	if err != nil {
+		return ResetPasswordConfirmOut{}, err
+	}
+	return ResetPasswordConfirmOut{
+		Result:  res.Result,
 		Message: res.Message,
 	}, nil
 }
