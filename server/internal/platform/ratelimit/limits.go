@@ -35,6 +35,13 @@ var (
 	// （allauth 的 confirm_email 1/10s/key 是确认链接，语义不同，不照搬）。
 	AuthVerifyEmail = Decl{Name: "auth_verify_email", Kind: PerIP, N: 10, Window: time.Minute}
 
+	// AuthResendEmailCode 重新发送邮箱验证码：每个 IP 每分钟 10 次（防发信轰炸）。
+	AuthResendEmailCode = Decl{Name: "auth_resend_email_code", Kind: PerIP, N: 10, Window: time.Minute}
+
+	// AuthResendEmailCodeKey 重新发送邮箱验证码：同一账号 10 秒内最多 1 次（规则 6，allauth:
+	// confirm_email 1/10s/key）。key 由服务层拼（"email:"+规范化邮箱）；第 2 次起 429。
+	AuthResendEmailCodeKey = Decl{Name: "auth_resend_email_code_key", Kind: PerKey, N: 1, Window: 10 * time.Second}
+
 	// TeamApply 申请入队：每人每天 20 次（附录 C「业务操作限流」）
 	TeamApply = Decl{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour}
 

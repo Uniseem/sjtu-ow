@@ -69,6 +69,17 @@ type LoginOut struct {
 	Message string `json:"message"`
 }
 
+// ResendCodeIn 是 POST /api/auth/resend-code 的入参。
+type ResendCodeIn struct {
+	Email string `json:"email"`
+}
+
+// ResendCodeOut 是 POST /api/auth/resend-code 的出参。
+type ResendCodeOut struct {
+	Email   string `json:"email"`
+	Message string `json:"message"`
+}
+
 // Module 提供账号域接口注册。
 type Module struct {
 	svc *Service
@@ -86,6 +97,8 @@ func (m *Module) Routes(r *api.Registry) {
 		api.Limit(ratelimit.AuthSignup))
 	api.Post(r, "/api/auth/verify-email", api.Public, m.verifyEmail,
 		api.Limit(ratelimit.AuthVerifyEmail))
+	api.Post(r, "/api/auth/resend-code", api.Public, m.resendCode,
+		api.Limit(ratelimit.AuthResendEmailCode))
 	api.Post(r, "/api/auth/login", api.Public, m.login,
 		api.Limit(ratelimit.AuthLogin))
 }
@@ -131,6 +144,17 @@ func (m *Module) verifyEmail(ctx *app.Ctx, in VerifyEmailIn) (VerifyEmailOut, er
 	}
 	ctx.SetSessionCookie(res.Token)
 	return VerifyEmailOut{Result: "ok", Message: res.Message}, nil
+}
+
+func (m *Module) resendCode(ctx *app.Ctx, in ResendCodeIn) (ResendCodeOut, error) {
+	res, err := m.svc.ResendCode(ctx.Context, ResendCodeInput(in))
+	if err != nil {
+		return ResendCodeOut{}, err
+	}
+	return ResendCodeOut{
+		Email:   res.Email,
+		Message: res.Message,
+	}, nil
 }
 
 func (m *Module) login(ctx *app.Ctx, in LoginIn) (LoginOut, error) {

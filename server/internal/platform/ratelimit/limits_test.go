@@ -14,6 +14,8 @@ func TestTableMatchesDesign(t *testing.T) {
 		{Name: "auth_login", Kind: PerIP, N: 30, Window: time.Minute},
 		{Name: "auth_login_failed_key", Kind: PerKey, N: 5, Window: 5 * time.Minute},
 		{Name: "auth_verify_email", Kind: PerIP, N: 10, Window: time.Minute},
+		{Name: "auth_resend_email_code", Kind: PerIP, N: 10, Window: time.Minute},
+		{Name: "auth_resend_email_code_key", Kind: PerKey, N: 1, Window: 10 * time.Second},
 		{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour},
 		{Name: "team_create", Kind: PerUser, N: 3, Window: 24 * time.Hour},
 		{Name: "comment_create_minute", Kind: PerUser, N: 3, Window: time.Minute},
@@ -24,6 +26,7 @@ func TestTableMatchesDesign(t *testing.T) {
 	}
 	got := []Decl{
 		AuthSignup, AuthLogin, AuthLoginFailedKey, AuthVerifyEmail,
+		AuthResendEmailCode, AuthResendEmailCodeKey,
 		TeamApply, TeamCreate, CommentCreateMinute, CommentCreateDaily,
 		CommentVote, Search, AccountExport,
 	}
@@ -40,6 +43,12 @@ func TestTableMatchesDesign(t *testing.T) {
 // 三种窗口各落进对应的时间片。小时级若被算成分钟，account_export 就每分钟 5 次。
 func TestSliceMatchesWindow(t *testing.T) {
 	t0 := time.Date(2026, 10, 8, 12, 34, 56, 0, time.UTC)
+	if g := sliceOf(t0, 10*time.Second); g != "20261008T123450" {
+		t.Errorf("10秒片：%s", g)
+	}
+	if d := untilNextSlice(t0, 10*time.Second); d != 4*time.Second {
+		t.Errorf("到下一10秒片应是 4 秒，得到 %s", d)
+	}
 	if g := sliceOf(t0, time.Minute); g != "20261008T1234" {
 		t.Errorf("分钟片：%s", g)
 	}

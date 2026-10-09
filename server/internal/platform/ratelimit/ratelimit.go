@@ -94,10 +94,13 @@ func (e *Enforcer) Count(ctx context.Context, key string, d Decl) (count int64, 
 }
 
 // sliceOf 取时间片（UTC，固定窗口，不是滑动窗口）。
-// 表里实际就三种窗口：≤1 分钟按分钟、不满 24 小时按小时、≥24 小时按天。
-// 「≤1 小时按分钟」会把「每小时 5 次」算成每分钟 5 次，所以小时级走小时片。
+// <1 分钟按秒片（如 10 秒片）、≤1 分钟按分钟、不满 24 小时按小时、≥24 小时按天。
+// 「≤1 小时按分钟」会把「每小时 5 次」算成每分钟 5 次，所以小时级走小时片；
+// 秒片用 Truncate(window) 保证 10 秒窗口不会被扩大为 1 分钟。
 func sliceOf(t time.Time, window time.Duration) string {
 	switch {
+	case window < time.Minute:
+		return t.Truncate(window).Format("20060102T150405")
 	case window <= time.Minute:
 		return t.Format("20060102T1504")
 	case window < 24*time.Hour:
@@ -110,6 +113,8 @@ func sliceOf(t time.Time, window time.Duration) string {
 func untilNextSlice(t time.Time, window time.Duration) time.Duration {
 	var next time.Time
 	switch {
+	case window < time.Minute:
+		next = t.Truncate(window).Add(window)
 	case window <= time.Minute:
 		next = t.Truncate(time.Minute).Add(time.Minute)
 	case window < 24*time.Hour:

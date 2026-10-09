@@ -1,9 +1,9 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M3（账号）进行中——241；M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.8；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 241-m3-verify-login
-next: 接着做 M3 第四轮：重新发送邮箱验证码（POST /api/auth/resend-code，限流 AuthResendEmailCode 1/10秒/账号与 10/分/IP；核验前防枚举响应；作废旧码生成新码发信；R002、R006）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
+milestone: 重构 M3（账号）进行中——242；M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 242-m3-resend-code
+next: 接着做 M3 第五轮：找回密码（POST /api/auth/reset-password 发 6 位码与核验重置、R003、R004、R006）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
 updated: 2026-10-09
 blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M3 继续做，不用等
 ```
@@ -28,7 +28,8 @@ blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站
 | 238 | `6c1597a` | 样张和旧站并排截 `#main`：正文一致，像素差 0.0268%，高度 13026px。色块类名补进样式扫描。首页壳 gzip 73530 字节 |
 | 239 | `98f1569` | 账号域基础表迁移（00008）；User/Role/Cap 领域模型；CanUse/DerivedRoles/RunsAdmin 权限与派生规则；BuildViewer 从会话读真实身份；真实实现 GET /api/session 并更新 apigen |
 | 240 | `a48da0d` | 用户注册与验证码（POST /api/auth/register，R001–R005、R010）；表单严格校验、Argon2 哈希、6 位安全随机码落库（15 分钟有效）、已注册发已注册提醒信（响应一致防枚举）、outbox.Send 邮件车道发信入队、IP 限流（20/分/IP）；apigen 导出前端 client |
-| 241 | 本轮 | 邮箱验证码核验与登录（POST /api/auth/verify-email、POST /api/auth/login，R002、R004、R006–R008）；半登录取消（注册不发会话、凭邮箱+码核验即登录）；登录密码正确但未验证发新码返回 verify_required；统一错误文案防枚举；同账号失败锁（5次/300秒，锁定期全拒）；PBKDF2 自动升级 Argon2；WithSecureCookies 支持生产 Secure Cookie；apigen 连字符路径支持 |
+| 241 | `504506b` | 邮箱验证码核验与登录（POST /api/auth/verify-email、POST /api/auth/login，R002、R004、R006–R008）；半登录取消（注册不发会话、凭邮箱+码核验即登录）；登录密码正确但未验证发新码返回 verify_required；统一错误文案防枚举；同账号失败锁（5次/300秒，锁定期全拒）；PBKDF2 自动升级 Argon2；WithSecureCookies 支持生产 Secure Cookie；apigen 连字符路径支持 |
+| 242 | 本轮 | 重新发送邮箱验证码（POST /api/auth/resend-code，R002、R004、R006）；未注册/停用/已验证防枚举响应同形；未验证作废旧码发新码；已验证发提示信；ratelimit 支持秒级时间片（1/10秒/账号与 10/分/IP）；升级测试机 Go 1.26.9 修复标准库已知漏洞 |
 
 232 留的两件都还了：HTML 指构建产物；激活在浏览器里验过（`browser-check.mjs`，CDP 驱动无头 Chromium，零新依赖）。它头一晚就抓到一个真 bug：重写 entry-client 时丢了 `page-data` 的 provide，首屏看不出来、一换页正文就空——SSR 层的 vitest 测不到，浏览器里才现形。
 
@@ -37,6 +38,8 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**242（2026-10-09）**：M3 第四轮，**重新发送邮箱验证码**（12 号文档 5.7/5.9、规则 R002、R004、R006）。实现 `POST /api/auth/resend-code`（`api.Public`，限流 `AuthResendEmailCode` 10/分/IP）。防账号枚举（R004）：未注册、停用、已验证、未验证均返回统一成功出参（同形 message）。作废旧码生成新码发信（R002）：未验证账号事务内作废旧 signup 码（`DeleteEmailCodes`）、生成 6 位新随机码与 SHA-256 哈希、插入 `email_codes`（15 分钟有效、attempts=0）、通过 outbox 发验证码邮件。已验证账号发送提示信告知已验证，无需重发。限流（R006）：接口层 10/分/IP；服务层在查用户前执行账号级 1/10秒/账号（`AuthResendEmailCodeKey`，allauth: `confirm_email 1/10s/key`），超限返回 429。扩展 `ratelimit` 支持秒级时间片截断（`Truncate(window)` 与 `20060102T150405`）。升级测试机 Go 工具链至 1.26.9 修复 net/http 等 9 项已知漏洞，更新 `server/go.mod` 与 `AGENTS.md`。`sjtuow apigen` 更新 `web/packages/api/src/gen/index.ts`。**7 处变异全部变红后恢复。**整组日志 `20261009-080910-71b4404`、变异日志 `20261009-080946-70390db`、browser-check 日志 `20261009-081015-2a2e29b`，退出码均为 0；govulncheck 零漏洞。下一轮：M3 第五轮找回密码。
 
 **241（2026-10-09）**：M3 第三轮，**邮箱验证码核验与登录**（12 号文档 5.4/5.7/5.9、规则 R002、R004、R006–R008）。先改 12 号文档取消「半登录」会话（注册不发会话防枚举响应差、验证页凭邮箱+6位码核验成功建会话发 `ow_session` Cookie、未验证登录返回 `verify_required` 不发会话）。接口 `POST /api/auth/verify-email`（限流 `AuthVerifyEmail` 10/分/IP，3 次作废）、`POST /api/auth/login`（限流 `AuthLogin` 30/分/IP，同账号失败 5 次/300 秒锁定期先查全拒，PBKDF2 升级 Argon2）。修 apigen 连字符路径 TS 标识符问题；`app.Ctx` 补充会话 Cookie 管道，`Registry` 支持 `WithSecureCookies`。自查修复 staticcheck S1016，限流测试注入 `clock.Fixed` 消除时间片翻页抖动。**9 处变异全部变红后恢复。**整组日志 `20261009-002744-73925f7`、变异日志 `20261009-002821-f28f50d`、browser-check 日志 `20261009-002902-532ed03`，退出码均为 0；govulncheck 零漏洞。下一轮：M3 第四轮重新发送邮箱验证码。
 

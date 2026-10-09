@@ -859,3 +859,234 @@ func TestLoginFieldValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestResendCodeFieldValidation(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	for _, tc := range []struct {
+		name       string
+		email      string
+		wantFields []string
+	}{
+		{"邮箱空", "", []string{"email"}},
+		{"邮箱纯空格", "   ", []string{"email"}},
+		{"邮箱非法无域名", "bad-email", []string{"email"}},
+		{"邮箱非法无点", "bad@domain", []string{"email"}},
+	} {
+		_, err := svc.ResendCode(ctx, ResendCodeInput{Email: tc.email})
+		var apiErr *api.Error
+		if !errors.As(err, &apiErr) || apiErr.Status != 422 {
+			t.Fatalf("%s: 应 422，得到 %v", tc.name, err)
+		}
+		for _, f := range tc.wantFields {
+			if len(apiErr.Fields[f]) == 0 {
+				t.Fatalf("%s: fields[%s] 应有错误", tc.name, f)
+			}
+		}
+	}
+}
+
+func TestResendCodeUnregisteredEmail(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	res, err := svc.ResendCode(ctx, ResendCodeInput{Email: "ghost@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("未注册邮箱不应报错（防枚举 R004）: %v", err)
+	}
+	if res.Email != "ghost@sjtu.edu.cn" || res.Message == "" {
+		t.Fatalf("出参不符: %+v", res)
+	}
+
+	// 不得向未注册邮箱发信
+	var letters int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM jobs WHERE kind = ?", outbox.KindLetter).Scan(&letters); err != nil {
+		t.Fatal(err)
+	}
+	if letters != 0 {
+		t.Fatalf("未注册邮箱不应发信，得到 %d 封", letters)
+	}
+}
+
+func TestResendCodeDeactivatedUser(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	newVerifiedUser(t, d, "disabled@sjtu.edu.cn", "停用用户", "Password123!@#", false)
+
+	res, err := svc.ResendCode(ctx, ResendCodeInput{Email: "disabled@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("停用账号不应报错（防枚举 R004）: %v", err)
+	}
+	if res.Message == "" {
+		t.Fatalf("出参消息不应为空: %+v", res)
+	}
+
+	// 停用账号不发信
+	var letters int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM jobs WHERE kind = ?", outbox.KindLetter).Scan(&letters); err != nil {
+		t.Fatal(err)
+	}
+	if letters != 0 {
+		t.Fatalf("停用账号不应发信，得到 %d 封", letters)
+	}
+}
+
+func TestResendCodeAlreadyVerifiedUser(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	newVerifiedUser(t, d, "verified@sjtu.edu.cn", "已验证", "Password123!@#", true)
+
+	res, err := svc.ResendCode(ctx, ResendCodeInput{Email: "verified@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("已验证账号不应报错（防枚举 R004）: %v", err)
+	}
+	if res.Message == "" {
+		t.Fatalf("出参消息不应为空: %+v", res)
+	}
+
+	// 应入队 1 封提示信（告知已验证过，可直接登录）
+	var letters int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM jobs WHERE kind = ?", outbox.KindLetter).Scan(&letters); err != nil {
+		t.Fatal(err)
+	}
+	if letters != 1 {
+		t.Fatalf("已验证账号应发 1 封提示信，得到 %d 封", letters)
+	}
+
+	// 不得生成 signup 验证码
+	var codes int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM email_codes WHERE email_norm = ?", "verified@sjtu.edu.cn").Scan(&codes); err != nil {
+		t.Fatal(err)
+	}
+	if codes != 0 {
+		t.Fatalf("已验证账号不应生成验证码，得到 %d 条", codes)
+	}
+}
+
+func TestResendCodeUnverifiedUser(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	store := svc.Store()
+	svc.codeGen = fixedCode("111111")
+
+	// 注册时生成第一个码
+	mustRegister(t, svc, "resend@sjtu.edu.cn", "重发者", "Password123!@#")
+
+	// 模拟旧码被尝试过 1 次
+	oldCode, err := store.GetLatestEmailCode(ctx, "signup", "resend@sjtu.edu.cn")
+	if err != nil || oldCode == nil {
+		t.Fatalf("注册应生成码: %v", err)
+	}
+	err = d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		return store.BumpEmailCodeAttempts(ctx, tx, oldCode.ID)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 换固定新码
+	svc.codeGen = fixedCode("222222")
+
+	// 请求重发验证码（R002、R006）
+	res, err := svc.ResendCode(ctx, ResendCodeInput{Email: "resend@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("重发验证码应成功: %v", err)
+	}
+	if res.Email != "resend@sjtu.edu.cn" || res.Message == "" {
+		t.Fatalf("出参不符: %+v", res)
+	}
+
+	// 验证旧码被作废、新码已写入且 attempts 为 0
+	newCode, err := store.GetLatestEmailCode(ctx, "signup", "resend@sjtu.edu.cn")
+	if err != nil || newCode == nil {
+		t.Fatalf("应有新码: %v", err)
+	}
+	if newCode.ID == oldCode.ID {
+		t.Fatalf("新码 ID 不该等于旧码 ID")
+	}
+	if newCode.Attempts != 0 {
+		t.Fatalf("新码 attempts 应为 0，得到 %d", newCode.Attempts)
+	}
+	if newCode.ExpiresAt.Sub(newCode.CreatedAt) != 15*time.Minute {
+		t.Fatalf("新码应为 15 分钟有效: %+v", newCode)
+	}
+
+	// 验证旧码被作废：库里该邮箱的 signup 码恰好只有 1 条（旧码已被彻底删除，作废 R002）
+	var codeCount int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM email_codes WHERE purpose = 'signup' AND email_norm = ?", "resend@sjtu.edu.cn").Scan(&codeCount); err != nil {
+		t.Fatal(err)
+	}
+	if codeCount != 1 {
+		t.Fatalf("重发后该邮箱应只有 1 条有效验证码，得到 %d 条", codeCount)
+	}
+
+	// 信件入队：注册 1 封 + 重发 1 封 = 2 封
+	var letters int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT count(*) FROM jobs WHERE kind = ?", outbox.KindLetter).Scan(&letters); err != nil {
+		t.Fatal(err)
+	}
+	if letters != 2 {
+		t.Fatalf("应入队 2 封信，得到 %d", letters)
+	}
+
+	// 用新码核验应成功并建会话
+	vres, err := svc.VerifyEmail(ctx, VerifyEmailInput{Email: "resend@sjtu.edu.cn", Code: "222222"})
+	if err != nil || vres.Token == "" {
+		t.Fatalf("新码核验应成功: %+v, err=%v", vres, err)
+	}
+}
+
+type testClock struct {
+	t time.Time
+}
+
+func (c *testClock) Now() time.Time { return c.t }
+
+func TestResendCodeRateLimitKey(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	t0 := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	clk := &testClock{t: t0}
+	enforcer := ratelimit.NewEnforcer(d, clk)
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, enforcer)
+
+	newVerifiedUser(t, d, "user1@sjtu.edu.cn", "用户一", "Password123!@#", true)
+	newVerifiedUser(t, d, "user2@sjtu.edu.cn", "用户二", "Password123!@#", true)
+
+	// 第一次：成功
+	_, err := svc.ResendCode(ctx, ResendCodeInput{Email: "user1@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("第 1 次应成功: %v", err)
+	}
+
+	// 同一时间片内（10 秒内）第 2 次：429（R006: confirm_email 1/10s/key）
+	_, err = svc.ResendCode(ctx, ResendCodeInput{Email: "user1@sjtu.edu.cn"})
+	var apiErr *api.Error
+	if !errors.As(err, &apiErr) || apiErr.Status != 429 {
+		t.Fatalf("第 2 次应 429，得到 %v", err)
+	}
+	if apiErr.Header.Get("Retry-After") == "" {
+		t.Fatalf("429 应带 Retry-After")
+	}
+
+	// 此时不同账号不受影响（per-key 隔离）
+	_, err = svc.ResendCode(ctx, ResendCodeInput{Email: "user2@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("不同账号第 1 次应成功: %v", err)
+	}
+
+	// 时钟推进 11 秒后，user1 翻页恢复放行
+	clk.t = t0.Add(11 * time.Second)
+	_, err = svc.ResendCode(ctx, ResendCodeInput{Email: "user1@sjtu.edu.cn"})
+	if err != nil {
+		t.Fatalf("11 秒后重发应成功: %v", err)
+	}
+}

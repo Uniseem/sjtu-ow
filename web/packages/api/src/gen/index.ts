@@ -44,6 +44,19 @@ export function postApiAuthRegister(body: PostApiAuthRegisterIn): Promise<PostAp
   return call<PostApiAuthRegisterOut>("POST", "/api/auth/register", {  }, body)
 }
 
+export interface PostApiAuthResendCodeIn {
+  email: string;
+}
+
+export interface PostApiAuthResendCodeOut {
+  email: string;
+  message: string;
+}
+
+export function postApiAuthResendCode(body: PostApiAuthResendCodeIn): Promise<PostApiAuthResendCodeOut> {
+  return call<PostApiAuthResendCodeOut>("POST", "/api/auth/resend-code", {  }, body)
+}
+
 export interface PostApiAuthVerifyEmailIn {
   email: string;
   code: string;

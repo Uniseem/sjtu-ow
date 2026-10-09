@@ -247,6 +247,117 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (*RegisterResu
 	}, nil
 }
 
+// ResendCodeInput 是重新发送邮箱验证码的入参。
+type ResendCodeInput struct {
+	Email string
+}
+
+// ResendCodeResult 是重新发送邮箱验证码的结果。
+type ResendCodeResult struct {
+	Email   string
+	Message string
+}
+
+// ResendCode 重新发送邮箱验证码（POST /api/auth/resend-code，12 号文档 5.7）。
+// 业务契约：
+// - R002：15 分钟有效、最多 3 次尝试、作废旧码发新码
+// - R004：防止账号枚举（不存在、已停用、已验证、未验证均返回完全相同的成功响应）
+// - R006：限流 1/10秒/账号（AuthResendEmailCodeKey）；接口层 10/分/IP（AuthResendEmailCode）
+func (s *Service) ResendCode(ctx context.Context, in ResendCodeInput) (*ResendCodeResult, error) {
+	trimmedEmail := strings.TrimSpace(in.Email)
+
+	fields := make(map[string][]string)
+	if trimmedEmail == "" {
+		fields["email"] = []string{"请输入邮箱地址。"}
+	} else if !validateEmail(trimmedEmail) {
+		fields["email"] = []string{"请输入有效的邮箱地址。"}
+	}
+	if len(fields) > 0 {
+		return nil, api.InvalidFields(fields)
+	}
+
+	emailNorm := strings.ToLower(trimmedEmail)
+
+	// 先按账号限流（R006：10 秒内最多 1 次，在查库之前数，防枚举）
+	if s.limiter != nil {
+		retry, ok, err := s.limiter.Allow(ctx, "email:"+emailNorm, ratelimit.AuthResendEmailCodeKey)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, api.TooManyRequests(retry)
+		}
+	}
+
+	successRes := &ResendCodeResult{
+		Email:   trimmedEmail,
+		Message: "验证码已发送至你的邮箱，15 分钟内有效。",
+	}
+
+	u, err := s.store.GetByEmailNorm(ctx, emailNorm)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || !u.IsActive {
+		// 账号不存在或已停用：静默成功，不发信（R004 防枚举）
+		return successRes, nil
+	}
+
+	now := s.clock.Now().UTC()
+	siteURL := strings.TrimRight(s.siteURL, "/")
+	if siteURL == "" {
+		siteURL = "https://sjtu.ow-shanghaiuniversity.com"
+	}
+
+	if u.EmailVerifiedAt != nil {
+		// 账号已验证过：发提示信告知无需再次验证，不生成验证码（防枚举）
+		err = s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+			letter := mail.Letter{
+				Subject: "你的邮箱已完成验证",
+				Lead:    "有人在 SJTU-OW 尝试为这个邮箱重新发送验证码，但该邮箱此前已经完成了验证，无需再次验证。",
+				Action:  []string{"登录账号", siteURL + "/accounts/login/"},
+				Note:    "如果你忘记了密码，可以通过找回密码重新设置。如果这不是你本人的操作，请忽略这封邮件，你的账号很安全。",
+				Reason:  "你收到这封邮件，是因为有人在 SJTU-OW 尝试重新发送邮箱验证码。",
+			}
+			_, err := outbox.Send(ctx, tx, nil, siteURL, letter, []mail.Person{{Address: u.Email, Name: u.Nickname}}, now)
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+		return successRes, nil
+	}
+
+	// 未验证账号：作废旧码、生成新码入库、发信（R002）
+	code, codeHash, err := s.codeGen()
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		if err := s.store.DeleteEmailCodes(ctx, tx, "signup", emailNorm); err != nil {
+			return err
+		}
+		if err := s.store.InsertEmailCode(ctx, tx, "signup", emailNorm, codeHash, now, now.Add(15*time.Minute)); err != nil {
+			return err
+		}
+		letter := mail.Letter{
+			Subject: "邮箱验证码",
+			Lead:    "你的 SJTU-OW 邮箱验证码如下：",
+			Code:    code,
+			Note:    "验证码 15 分钟内有效。如果这不是你本人的操作，请忽略这封邮件，不会有任何变化。",
+			Reason:  "你收到这封邮件，是因为有人在 SJTU-OW 申请重新发送邮箱验证码。",
+		}
+		_, err := outbox.Send(ctx, tx, nil, siteURL, letter, []mail.Person{{Address: u.Email, Name: u.Nickname}}, now)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return successRes, nil
+}
+
 // errBadCode 是核验失败的统一口径（R004 防枚举）：码不对、过期、用尽、
 // 邮箱没注册，全都是同一句话，不泄露哪一条不成立。
 var errBadCode = api.InvalidFields(map[string][]string{

@@ -513,9 +513,133 @@ func TestSessionCookieOnlyFromAuthRoutes(t *testing.T) {
 			}
 		}
 	}
-	// 路由清单里确实有这两个接口（防止路由改名后这条测试空转）
-	if !seen["POST /api/auth/login"] || !seen["POST /api/auth/verify-email"] {
-		t.Fatalf("注册表应包含 login 和 verify-email: %v", seen)
+	// 路由清单里确实有这三个接口（防止路由改名后这条测试空转）
+	if !seen["POST /api/auth/login"] || !seen["POST /api/auth/verify-email"] || !seen["POST /api/auth/resend-code"] {
+		t.Fatalf("注册表应包含 login、verify-email 和 resend-code: %v", seen)
+	}
+}
+
+func TestResendCodeApi(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	svc.codeGen = fixedCode("654321")
+
+	// 注册一个未验证账号
+	mustRegister(t, svc, "unverified@sjtu.edu.cn", "未验用户", "Password123!@#")
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil })
+
+	// 1. 未验证账号请求重发：200，无会话 Cookie，返回 message
+	body := []byte(`{"email": "unverified@sjtu.edu.cn"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/resend-code", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("重发验证码应 200，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	for _, sc := range rec.Header().Values("Set-Cookie") {
+		if strings.Contains(sc, "ow_session=") {
+			t.Fatalf("重发验证码绝对不发会话 Cookie: %q", sc)
+		}
+	}
+	var out ResendCodeOut
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Email != "unverified@sjtu.edu.cn" || out.Message == "" {
+		t.Fatalf("出参不符: %+v", out)
+	}
+
+	// 2. 未注册账号请求重发：静默 200，防止账号枚举（R004）
+	body = []byte(`{"email": "nobody@sjtu.edu.cn"}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/resend-code", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("未注册账号应 200（防枚举），得到 %d", rec.Code)
+	}
+
+	// 3. 入参非法（空邮箱）：422
+	body = []byte(`{"email": ""}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/resend-code", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("邮箱空应 422，得到 %d", rec.Code)
+	}
+}
+
+func TestResendCodeApiRateLimitIP(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	enforcer := ratelimit.NewEnforcer(d, clk)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil },
+		api.WithLimiter(enforcer),
+	)
+
+	// AuthResendEmailCode 10 次/分/IP：前 10 次成功，第 11 次 429
+	hit := func(idx int) int {
+		email := fmt.Sprintf("rl%d@sjtu.edu.cn", idx)
+		body := []byte(fmt.Sprintf(`{"email": %q}`, email))
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/resend-code", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "192.0.2.77:54321"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	for i := 1; i <= 10; i++ {
+		if c := hit(i); c != http.StatusOK {
+			t.Fatalf("第 %d 次应 200，得到 %d", i, c)
+		}
+	}
+	if c := hit(11); c != http.StatusTooManyRequests {
+		t.Fatalf("第 11 次应 429，得到 %d", c)
+	}
+}
+
+func TestResendCodeApiRateLimitKey(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	enforcer := ratelimit.NewEnforcer(d, clk)
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, enforcer)
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return nil },
+		api.WithLimiter(enforcer),
+	)
+
+	hit := func(ip string) int {
+		body := []byte(`{"email": "perkey@sjtu.edu.cn"}`)
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/resend-code", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = ip
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	// 第一次从 IP A：成功
+	if c := hit("192.0.2.1:1111"); c != http.StatusOK {
+		t.Fatalf("第 1 次应 200，得到 %d", c)
+	}
+	// 第二次即使从不同 IP B：仍被同一账号的 1/10s 限制挡住（R006）
+	if c := hit("192.0.2.2:2222"); c != http.StatusTooManyRequests {
+		t.Fatalf("第 2 次换 IP 也应 429，得到 %d", c)
 	}
 }
 
