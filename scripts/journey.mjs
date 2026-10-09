@@ -10,6 +10,7 @@
 
 import { spawn, execSync } from "node:child_process"
 import { mkdtempSync, writeFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
+import { DatabaseSync } from "node:sqlite"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
@@ -196,6 +197,14 @@ const go = async (path) => {
 }
 
 const fillAndSubmit = async (fnScript) => {
+  await evaluate(`
+    window.__setVal = (el, val) => {
+      if (!el) return;
+      el.value = val;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+  `)
   await evaluate(fnScript)
   await evaluate("document.querySelector('form[data-journey]')?.requestSubmit?.() || document.querySelector('form[data-journey] button[type=submit]')?.click()")
   await sleep(1000)
@@ -230,15 +239,22 @@ if (mode === "newbie") {
   await go("/accounts/signup/")
   await fillAndSubmit(`(() => {
     const f = document.querySelector('form[action*="signup"]');
-    f.querySelector('[name=email]').value = ${JSON.stringify(EMAIL)};
-    f.querySelector('[name=nickname]').value = ${JSON.stringify(NICKNAME)};
-    f.querySelector('[name=password1]').value = ${JSON.stringify(PASSWORD)};
-    f.querySelector('[name=password2]').value = ${JSON.stringify(PASSWORD)};
+    window.__setVal(f.querySelector('[name=email]'), ${JSON.stringify(EMAIL)});
+    window.__setVal(f.querySelector('[name=nickname]'), ${JSON.stringify(NICKNAME)});
+    window.__setVal(f.querySelector('[name=password1]'), ${JSON.stringify(PASSWORD)});
+    window.__setVal(f.querySelector('[name=password2]'), ${JSON.stringify(PASSWORD)});
     const sjtu = f.querySelector('[name=is_sjtu][value=true]');
-    if (sjtu) sjtu.checked = true;
-    f.querySelectorAll('input[type=checkbox]').forEach(b => b.checked = true);
+    if (sjtu) {
+      sjtu.checked = true;
+      sjtu.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    f.querySelectorAll('input[type=checkbox]').forEach(b => {
+      b.checked = true;
+      b.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     f.setAttribute('data-journey', '1');
   })()`)
+  await sleep(1200)
   const signupPath = await evaluate("location.pathname")
   step("注册表单提交", signupPath === "/accounts/confirm-email/", signupPath)
 
@@ -246,13 +262,18 @@ if (mode === "newbie") {
   let code = ""
   for (let i = 0; i < 30; i++) {
     try {
-      const out = execSync(`sqlite3 ${join(dataDir, "sjtuow.sqlite3")} "SELECT args FROM jobs WHERE kind = 'mail.letter' ORDER BY id DESC LIMIT 1"`, { encoding: "utf8" }).trim()
-      if (out) {
-        const payload = JSON.parse(out)
-        const c = payload?.letter?.code || payload?.Letter?.Code || payload?.Letter?.code
-        if (c && c.length === 6) {
-          code = c
-          break
+      const dbPath = join(dataDir, "sjtuow.sqlite3")
+      if (existsSync(dbPath)) {
+        const db = new DatabaseSync(dbPath, { readOnly: true })
+        const row = db.prepare("SELECT args FROM jobs WHERE kind = 'mail.letter' ORDER BY id DESC LIMIT 1").get()
+        db.close()
+        if (row && row.args) {
+          const payload = JSON.parse(row.args)
+          const c = payload?.letter?.code || payload?.Letter?.Code || payload?.Letter?.code
+          if (c && c.length === 6) {
+            code = c
+            break
+          }
         }
       }
     } catch {}
@@ -264,13 +285,13 @@ if (mode === "newbie") {
     await fillAndSubmit(`(() => {
       const f = document.querySelector('form');
       const emailField = f.querySelector('input[name=email]');
-      if (emailField) emailField.value = ${JSON.stringify(EMAIL)};
+      if (emailField) window.__setVal(emailField, ${JSON.stringify(EMAIL)});
       const field = f.querySelector('input[name=code]');
-      field.value = ${JSON.stringify(code)};
+      window.__setVal(field, ${JSON.stringify(code)});
       f.setAttribute('data-journey', '1');
     })()`)
   }
-  await sleep(1200)
+  await sleep(1500)
   const verifiedPath = await evaluate("location.pathname")
   step("验证后到了个人中心", verifiedPath === "/me/", verifiedPath)
 
@@ -278,18 +299,20 @@ if (mode === "newbie") {
   await go("/me/game-accounts/?new=1")
   await fillAndSubmit(`(() => {
     const f = document.querySelector('main form');
-    f.querySelector('[name=battletag]').value = 'Newbie#1234';
+    window.__setVal(f.querySelector('[name=battletag]'), 'Newbie#1234');
     f.setAttribute('data-journey', '1');
   })()`)
+  await sleep(1000)
   step("加了游戏 ID", await pageSays("Newbie#1234"))
 
   // 加联系方式
   await go("/me/contacts/?new=1")
   await fillAndSubmit(`(() => {
     const f = document.querySelector('main form');
-    f.querySelector('[name=value]').value = '123456789';
+    window.__setVal(f.querySelector('[name=value]'), '123456789');
     f.setAttribute('data-journey', '1');
   })()`)
+  await sleep(1000)
   step("加了联系方式", await pageSays("123456789"))
 
   // 资料自动保存
@@ -309,17 +332,31 @@ if (mode === "newbie") {
   // 报内战
   await go(`/scrims/${seedData.scrim}/`)
   await fillAndSubmit(`(() => {
-    const f = [...document.querySelectorAll('form')].find(form => form.action.includes('/signup/'));
-    f.setAttribute('data-journey', '1');
+    const f = document.querySelector('form[action*="/signup/"]');
+    if (f) {
+      f.querySelectorAll('input[type=checkbox]').forEach(b => {
+        b.checked = true;
+        b.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      f.setAttribute('data-journey', '1');
+    }
   })()`)
+  await sleep(1000)
   step("报了内战", await pageSays("报名成功"))
 
   // 申请战队
   await go(`/teams/${seedData.team}/apply/`)
   await fillAndSubmit(`(() => {
     const f = document.querySelector('main form');
-    f.setAttribute('data-journey', '1');
+    if (f) {
+      f.querySelectorAll('input[type=checkbox]').forEach(b => {
+        b.checked = true;
+        b.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      f.setAttribute('data-journey', '1');
+    }
   })()`)
+  await sleep(1000)
   step("申请了战队", await pageSays("申请已提交"))
 
   // 回首页看近期内战

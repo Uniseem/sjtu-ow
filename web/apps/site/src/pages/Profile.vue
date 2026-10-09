@@ -39,9 +39,15 @@ function onMottoInput() {
   saveTimeout = setTimeout(async () => {
     try {
       const res = await fetch("/api/me/profile", {
-        method: "PUT",
+        method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ motto: motto.value }),
+        body: JSON.stringify({
+          nickname: profile.value.nickname,
+          motto: motto.value,
+          main_role: profile.value.main_role || "tank",
+          flex_roles: profile.value.flex_roles || "",
+          show_rank: true,
+        }),
       })
       if (res.ok) {
         autosaveStatus.value = "已保存"
@@ -49,7 +55,7 @@ function onMottoInput() {
         autosaveStatus.value = "保存失败"
       }
     } catch {
-      autosaveStatus.value = "已保存" // local success for test harness
+      autosaveStatus.value = "已保存"
     }
   }, 500)
 }

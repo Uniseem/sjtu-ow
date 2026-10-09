@@ -64,13 +64,14 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.web
     restart: unless-stopped
+    command: ["sh", "-c", "mkdir -p /var/assets/img && cp -a /app/web/apps/site/dist/client/. /var/assets/ && cp -a /app/static/img/. /var/assets/img/ && exec node dist/server/server.js"]
     environment:
       - NODE_ENV=production
       - PORT=5173
       - API_BASE=http://server:8080
       - STRICT_CSP=1
     volumes:
-      - sjtuow_assets:/app/web/apps/site/dist/client
+      - sjtuow_assets:/var/assets
     networks:
       - internal
 
