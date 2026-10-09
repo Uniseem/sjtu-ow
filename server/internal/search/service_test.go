@@ -108,3 +108,49 @@ func TestSearchService(t *testing.T) {
 		t.Fatalf("未命中的关键词应返回空结果: %+v", resMiss.Articles)
 	}
 }
+
+// 契约 R233、R236：搜索覆盖战队（未解散的，名字或简介）和成员（只有已加入的，只搜昵称）
+func TestSearchTeamsAndMembers(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d)
+	now := "2026-10-09T00:00:00.000000Z"
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if err := d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+			_, err := tx.ExecContext(txCtx, q, args...)
+			return err
+		}); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	user := func(id int64, nick string, active int, verified any) {
+		exec(`INSERT INTO users (id, email, email_norm, password_hash, nickname, is_sjtu, agreed_terms_at,
+			agreed_cross_border_at, email_verified_at, is_active, motto, created_at, updated_at)
+			VALUES (?, ?, ?, 'h', ?, 1, ?, ?, ?, ?, '座右铭', ?, ?)`,
+			id, nick+"@x.com", nick+"@x.com", nick, now, now, verified, active, now, now)
+	}
+	user(1, "Dva小姐", 1, now)
+	user(2, "停用的Dva", 0, now)
+	user(3, "没验证的Dva", 1, nil)
+	exec(`INSERT INTO teams (id, name, description, is_recruiting, created_at, updated_at)
+		VALUES (1, 'Dva 战队', '', 1, ?, ?), (2, '另一队', '我们喜欢 DVA', 0, ?, ?), (3, '散伙的 Dva 队', '', 1, ?, ?)`,
+		now, now, now, now, now, now)
+	exec(`UPDATE teams SET disbanded_at = ? WHERE id = 3`, now)
+
+	res, err := svc.Search(ctx, "dva")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Teams) != 2 {
+		t.Fatalf("战队：名字或简介命中，解散的不算：%+v", res.Teams)
+	}
+	if len(res.Members) != 1 || res.Members[0].ID != 1 || res.Members[0].Motto != "座右铭" {
+		t.Fatalf("成员：只有已加入的，大小写不分：%+v", res.Members)
+	}
+	// 搜简介里的词不会命中成员（只搜昵称）
+	res, _ = svc.Search(ctx, "座右铭")
+	if len(res.Members) != 0 {
+		t.Fatalf("成员只搜昵称：%+v", res.Members)
+	}
+}

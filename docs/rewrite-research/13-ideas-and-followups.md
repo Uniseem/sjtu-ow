@@ -68,6 +68,8 @@
 - **Markdown 对拍**：M4 用正式站备份里所有正文把 220 的对拍再做一遍；220 的程序（`handoff/rounds/220-m0-experiments/e4-goldmark/`）搬进 `server/` 作黄金用例起点。b23 短链的解析往返（worker 查、写 `embeds` 表、渲染只查缓存、解析完重新渲染引用它的页面）是 220 没验证的一块
 - **账号域的第一个验收**：用正式站备份导入后，真实账号能用原密码登录（PBKDF2 登录后升级）；**测试账号割接前设好密码**
 - **日历订阅地址和退订链接**：割接前从旧站取 3 个真实的订阅地址（新、旧签名格式各取），新站要返回同样的 ICS；发出去的信里的退订链接要继续能用（`GET` 只问、`POST` 才退订）
+- **M5（247）留给 M6 接的两处**：战队服务里的两个接口 `teams.RosterGuard`（规则 104 解散拦「进行中的报名」、规则 99 退队信里写「还在哪些名单里」）和 `teams.ModerationSink`（规则 90、107 送 AI 审核；M6 的审核域落地后接）在 `cmd/sjtuow/main.go` 里 `SetRosterGuard` / `SetModeration`。没接时解散不受拦、退队信不附名单、不送审，是 M5 在没有赛事表和审核表时的行为，**接线是 M6 验收的一项**；测试里的桩在 `server/internal/teams/harness_test.go`
+- **队标上传的 HTTP 传输**：`teams.Service.UploadLogo` 已有（规则 106：JPG/PNG/WebP、≤5MB、放进 `team_logo` 集合），但注册表只收 JSON、请求体上限 1 MB，没有 multipart 的入口；图片上传（`media.UploadImageIn` 也没有路由）同一个缺口，M8 做后台选图时一起补一个 multipart 入口，再把队标接上
 - **34 种信**逐封对样张页 `/_styleguide/emails/`；新旧信规范化后比较
 
 ### M8（后台）

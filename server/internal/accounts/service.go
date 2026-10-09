@@ -1673,19 +1673,14 @@ type DeleteAccountResult struct {
 }
 
 func (s *Service) isTeamCaptain(ctx context.Context, userID int64) (bool, error) {
-	var count int
-	err := s.d.ReadPool().QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='teams'`).Scan(&count)
-	if err != nil || count == 0 {
-		return false, nil
-	}
-	var teamCount int
-	err = s.d.ReadPool().QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM teams WHERE captain_id = ? AND disbanded_at IS NULL`, userID).Scan(&teamCount)
+	var n int
+	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT COUNT(*) FROM team_memberships m
+		JOIN teams t ON t.id = m.team_id
+		WHERE m.user_id = ? AND m.role = 'captain' AND t.disbanded_at IS NULL`, userID).Scan(&n)
 	if err != nil {
-		return false, nil
+		return false, err
 	}
-	return teamCount > 0, nil
+	return n > 0, nil
 }
 
 // DeleteAccount 原地匿名化注销账号（规则 28–32）。
@@ -1724,6 +1719,9 @@ func (s *Service) DeleteAccount(ctx *app.Ctx, in DeleteAccountInput) (*DeleteAcc
 		if err := s.store.DeleteUserDataTx(txCtx, tx, u.ID); err != nil {
 			return err
 		}
+		if err := s.store.LeaveTeamsAndGroupsTx(txCtx, tx, u.ID, now); err != nil {
+			return err
+		}
 		if s.sessions != nil {
 			return s.sessions.DeleteAllTx(txCtx, tx, u.ID)
 		}
@@ -1751,7 +1749,12 @@ type AccountExportData struct {
 	GameAccounts []GameAccountResult `json:"game_accounts"`
 	Contacts     []ContactResult     `json:"contacts"`
 	Roles        []string            `json:"roles"`
-	ExportedAt   time.Time           `json:"exported_at"`
+	// 战队和成员展示的自有数据（规则 38：战队、退役记录、入队申请、成员分组）。
+	Teams            []ExportTeam        `json:"teams"`
+	TeamApplications []ExportApplication `json:"team_applications"`
+	TeamAlumni       []ExportAlumnus     `json:"team_alumni"`
+	MemberGroups     []ExportGroup       `json:"member_groups"`
+	ExportedAt       time.Time           `json:"exported_at"`
 }
 
 // ExportAccount 导出当前用户的完整自有数据。
@@ -1791,13 +1794,17 @@ func (s *Service) ExportAccount(ctx *app.Ctx) (*AccountExportData, error) {
 		return nil, err
 	}
 
-	return &AccountExportData{
+	out := &AccountExportData{
 		User:         u,
 		GameAccounts: gaResults,
 		Contacts:     contactResults,
 		Roles:        roles,
 		ExportedAt:   s.clock.Now().UTC(),
-	}, nil
+	}
+	if err := s.store.fillTeamExport(ctx.Context, u.ID, out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // -------------------------------------------------------------
@@ -1837,6 +1844,9 @@ func (s *Service) DeactivateUser(ctx *app.Ctx, in DeactivateUserInput) (*Deactiv
 	now := s.clock.Now().UTC()
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
 		if err := s.store.DeactivateUserTx(txCtx, tx, int64(in.ID), reason, now); err != nil {
+			return err
+		}
+		if err := s.store.SuspendTeamActivityTx(txCtx, tx, int64(in.ID), now); err != nil {
 			return err
 		}
 		if s.sessions != nil {

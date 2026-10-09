@@ -24,9 +24,17 @@ type ArticleResult struct {
 
 // TeamResult 是战队搜索结果项。
 type TeamResult struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-	Bio  string `json:"bio"`
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Recruiting  bool   `json:"is_recruiting"`
+}
+
+// MemberResult 是成员搜索结果项（只搜昵称，只有已加入的成员，规则 236）。
+type MemberResult struct {
+	ID       int64  `json:"id"`
+	Nickname string `json:"nickname"`
+	Motto    string `json:"motto"`
 }
 
 // TournamentResult 是赛事搜索结果项。
@@ -47,6 +55,7 @@ type Result struct {
 	Query       string              `json:"query"`
 	Articles    []*ArticleResult    `json:"articles"`
 	Teams       []*TeamResult       `json:"teams"`
+	Members     []*MemberResult     `json:"members"`
 	Tournaments []*TournamentResult `json:"tournaments"`
 	Scrims      []*ScrimResult      `json:"scrims"`
 }
@@ -76,6 +85,7 @@ func (s *Service) Search(ctx context.Context, rawQuery string) (*Result, error) 
 			Query:       "",
 			Articles:    []*ArticleResult{},
 			Teams:       []*TeamResult{},
+			Members:     []*MemberResult{},
 			Tournaments: []*TournamentResult{},
 			Scrims:      []*ScrimResult{},
 		}, nil
@@ -96,6 +106,7 @@ func (s *Service) Search(ctx context.Context, rawQuery string) (*Result, error) 
 		Query:       q,
 		Articles:    []*ArticleResult{},
 		Teams:       []*TeamResult{},
+		Members:     []*MemberResult{},
 		Tournaments: []*TournamentResult{},
 		Scrims:      []*ScrimResult{},
 	}
@@ -136,19 +147,19 @@ func (s *Service) Search(ctx context.Context, rawQuery string) (*Result, error) 
 		}
 	}
 
-	// 2. 搜索战队（若已建表，M5）：name 或 bio
+	// 2. 搜索战队（M5）：未解散的，name 或 description；最近更新的在前
 	if s.hasTable(ctx, "teams") {
 		var whereClauses []string
 		var args []any
 		whereClauses = append(whereClauses, "disbanded_at IS NULL")
 		for _, w := range words {
-			whereClauses = append(whereClauses, "(instr(lower(name), ?) > 0 OR instr(lower(bio), ?) > 0)")
+			whereClauses = append(whereClauses, "(instr(lower(name), ?) > 0 OR instr(lower(description), ?) > 0)")
 			args = append(args, w, w)
 		}
 		query := fmt.Sprintf(`
-			SELECT id, name, bio FROM teams
+			SELECT id, name, description, is_recruiting FROM teams
 			WHERE %s
-			ORDER BY id ASC
+			ORDER BY updated_at DESC, id DESC
 			LIMIT 20
 		`, strings.Join(whereClauses, " AND "))
 		rows, err := s.d.ReadPool().QueryContext(ctx, query, args...)
@@ -156,8 +167,37 @@ func (s *Service) Search(ctx context.Context, rawQuery string) (*Result, error) 
 			defer rows.Close()
 			for rows.Next() {
 				var item TeamResult
-				if err := rows.Scan(&item.ID, &item.Name, &item.Bio); err == nil {
+				var recruiting int
+				if err := rows.Scan(&item.ID, &item.Name, &item.Description, &recruiting); err == nil {
+					item.Recruiting = recruiting == 1
 					res.Teams = append(res.Teams, &item)
+				}
+			}
+		}
+	}
+
+	// 2b. 搜索成员（M5）：只搜昵称，只有已加入的成员（账号没停用且邮箱验证过，规则 236）
+	if s.hasTable(ctx, "team_memberships") {
+		var whereClauses []string
+		var args []any
+		whereClauses = append(whereClauses, "is_active = 1", "email_verified_at IS NOT NULL")
+		for _, w := range words {
+			whereClauses = append(whereClauses, "instr(lower(nickname), ?) > 0")
+			args = append(args, w)
+		}
+		query := fmt.Sprintf(`
+			SELECT id, nickname, motto FROM users
+			WHERE %s
+			ORDER BY nickname, id
+			LIMIT 20
+		`, strings.Join(whereClauses, " AND "))
+		rows, err := s.d.ReadPool().QueryContext(ctx, query, args...)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var item MemberResult
+				if err := rows.Scan(&item.ID, &item.Nickname, &item.Motto); err == nil {
+					res.Members = append(res.Members, &item)
 				}
 			}
 		}

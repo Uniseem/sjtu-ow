@@ -11,6 +11,29 @@ export function deleteApiAdminCategoriesId(id: string): Promise<DeleteApiAdminCa
   return call<DeleteApiAdminCategoriesIdOut>("DELETE", "/api/admin/categories/{id}", { id }, undefined)
 }
 
+export interface DeleteApiAdminMemberGroupPeopleIdIn {
+}
+
+export interface DeleteApiAdminMemberGroupPeopleIdOut {
+  group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
+  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+}
+
+export function deleteApiAdminMemberGroupPeopleId(id: string): Promise<DeleteApiAdminMemberGroupPeopleIdOut> {
+  return call<DeleteApiAdminMemberGroupPeopleIdOut>("DELETE", "/api/admin/member-group-people/{id}", { id }, undefined)
+}
+
+export interface DeleteApiAdminMemberGroupsIdIn {
+}
+
+export interface DeleteApiAdminMemberGroupsIdOut {
+  result: string;
+}
+
+export function deleteApiAdminMemberGroupsId(id: string): Promise<DeleteApiAdminMemberGroupsIdOut> {
+  return call<DeleteApiAdminMemberGroupsIdOut>("DELETE", "/api/admin/member-groups/{id}", { id }, undefined)
+}
+
 export interface DeleteApiArticlesIdIn {
 }
 
@@ -128,6 +151,51 @@ export function getApiAdminHomePins(): Promise<GetApiAdminHomePinsOut> {
   return call<GetApiAdminHomePinsOut>("GET", "/api/admin/home-pins", {  }, undefined)
 }
 
+export interface GetApiAdminMemberGroupsIn {
+}
+
+export interface GetApiAdminMemberGroupsOut {
+  groups: {   Group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };   member_count: number; }[];
+}
+
+export function getApiAdminMemberGroups(): Promise<GetApiAdminMemberGroupsOut> {
+  return call<GetApiAdminMemberGroupsOut>("GET", "/api/admin/member-groups", {  }, undefined)
+}
+
+export interface GetApiAdminMemberGroupsIdIn {
+}
+
+export interface GetApiAdminMemberGroupsIdOut {
+  group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
+  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+}
+
+export function getApiAdminMemberGroupsId(id: string): Promise<GetApiAdminMemberGroupsIdOut> {
+  return call<GetApiAdminMemberGroupsIdOut>("GET", "/api/admin/member-groups/{id}", { id }, undefined)
+}
+
+export interface GetApiAdminMemberGroupsIdPeopleIn {
+}
+
+export interface GetApiAdminMemberGroupsIdPeopleOut {
+  results: {   user_id: number;   nickname: string;   email?: string; }[];
+}
+
+export function getApiAdminMemberGroupsIdPeople(id: string): Promise<GetApiAdminMemberGroupsIdPeopleOut> {
+  return call<GetApiAdminMemberGroupsIdPeopleOut>("GET", "/api/admin/member-groups/{id}/people", { id }, undefined)
+}
+
+export interface GetApiAdminTeamsIn {
+}
+
+export interface GetApiAdminTeamsOut {
+  teams: {   id: number;   name: string;   member_count: number;   captain_id: number | null;   captain_name: string;   captain_active: boolean;   no_captain: boolean;   disbanded_at?: string | null;   created_at: string; }[];
+}
+
+export function getApiAdminTeams(): Promise<GetApiAdminTeamsOut> {
+  return call<GetApiAdminTeamsOut>("GET", "/api/admin/teams", {  }, undefined)
+}
+
 export interface GetApiAdminUsersIn {
 }
 
@@ -208,6 +276,10 @@ export interface GetApiMeExportOut {
   game_accounts: {   id: number;   battletag: string;   rank_tank: number | null;   rank_damage: number | null;   rank_support: number | null;   tank_label: string;   damage_label: string;   support_label: string;   ranks_updated_at: string; }[];
   contacts: {   id: number;   type: string;   type_label: string;   value: string;   created_at: string; }[];
   roles: string[];
+  teams: {   team_id: number;   name: string;   role: string;   joined_at: string; }[];
+  team_applications: {   id: number;   team_id: number;   team_name: string;   roles: string[];   message: string;   status: string;   created_at: string; }[];
+  team_alumni: {   team_id: number;   team_name: string;   role: string;   joined_at: string;   left_at: string;   reason: string; }[];
+  member_groups: {   group_id: number;   name: string;   title: string; }[];
   exported_at: string;
 }
 
@@ -237,6 +309,18 @@ export function getApiMeProfile(): Promise<GetApiMeProfileOut> {
   return call<GetApiMeProfileOut>("GET", "/api/me/profile", {  }, undefined)
 }
 
+export interface GetApiMeTeamsIn {
+}
+
+export interface GetApiMeTeamsOut {
+  teams: {   team_id: number;   name: string;   logo_image_id: number | null;   role: string;   member_count: number;   joined_at: string; }[];
+  applications: {   id: number;   team_id: number;   team_name: string;   roles: string[];   status: string;   decision_note: string;   created_at: string;   decided_at?: string | null; }[];
+}
+
+export function getApiMeTeams(): Promise<GetApiMeTeamsOut> {
+  return call<GetApiMeTeamsOut>("GET", "/api/me/teams", {  }, undefined)
+}
+
 export interface GetApiMediaRIdSpecIn {
 }
 
@@ -246,6 +330,39 @@ export interface GetApiMediaRIdSpecOut {
 
 export function getApiMediaRIdSpec(id: string, spec: string): Promise<GetApiMediaRIdSpecOut> {
   return call<GetApiMediaRIdSpecOut>("GET", "/api/media/r/{id}/{spec}", { id, spec }, undefined)
+}
+
+export interface GetApiMembersIn {
+}
+
+export interface GetApiMembersOut {
+  sections: {   id: number;   name: string;   description: string;   entries: {   titles: string[];   member: {   user_id: number;   number: number;   nickname: string;   motto: string;   main_role: string;   roles: string[];   ranks: {   tank: {   score: number | null;   label: string;   is_expired: boolean; };   damage: {   score: number | null;   label: string;   is_expired: boolean; };   support: {   score: number | null;   label: string;   is_expired: boolean; }; };   teams: {   id: number;   name: string; }[];   groups: string[];   titles: string[]; }; }[]; }[];
+  members: {   user_id: number;   number: number;   nickname: string;   motto: string;   main_role: string;   roles: string[];   ranks: {   tank: {   score: number | null;   label: string;   is_expired: boolean; };   damage: {   score: number | null;   label: string;   is_expired: boolean; };   support: {   score: number | null;   label: string;   is_expired: boolean; }; };   teams: {   id: number;   name: string; }[];   groups: string[];   titles: string[]; }[];
+  total: number;
+  role: string;
+  free: boolean;
+  filtering: boolean;
+}
+
+export function getApiMembers(): Promise<GetApiMembersOut> {
+  return call<GetApiMembersOut>("GET", "/api/members", {  }, undefined)
+}
+
+export interface GetApiMembersIdIn {
+}
+
+export interface GetApiMembersIdOut {
+  card: {   user_id: number;   number: number;   nickname: string;   motto: string;   main_role: string;   roles: string[];   ranks: {   tank: {   score: number | null;   label: string;   is_expired: boolean; };   damage: {   score: number | null;   label: string;   is_expired: boolean; };   support: {   score: number | null;   label: string;   is_expired: boolean; }; };   teams: {   id: number;   name: string; }[];   groups: string[];   titles: string[]; };
+  groups: {   id: number;   name: string;   titles: string[]; }[];
+  teams: {   TeamRef: {   id: number;   name: string; };   member_count: number;   is_captain: boolean; }[];
+  alumni: {   team_id: number;   team_name: string;   role: string;   left_at: string;   reason: string; }[];
+  articles: {   id: number;   slug: string;   title: string;   first_published_at?: string | null; }[];
+  article_count: number;
+  is_owner: boolean;
+}
+
+export function getApiMembersId(id: string): Promise<GetApiMembersIdOut> {
+  return call<GetApiMembersIdOut>("GET", "/api/members/{id}", { id }, undefined)
 }
 
 export interface GetApiPageNewsIn {
@@ -305,7 +422,8 @@ export interface GetApiSearchIn {
 export interface GetApiSearchOut {
   query: string;
   articles: {   id: number;   slug: string;   title: string;   summary: string;   category_name: string;   first_published_at?: string | null; } | null[];
-  teams: {   id: number;   name: string;   bio: string; } | null[];
+  teams: {   id: number;   name: string;   description: string;   is_recruiting: boolean; } | null[];
+  members: {   id: number;   nickname: string;   motto: string; } | null[];
   tournaments: {   id: number;   title: string;   summary: string; } | null[];
   scrims: {   id: number;   title: string; } | null[];
 }
@@ -325,6 +443,54 @@ export function getApiSession(): Promise<GetApiSessionOut> {
   return call<GetApiSessionOut>("GET", "/api/session", {  }, undefined)
 }
 
+export interface GetApiTeamsIn {
+}
+
+export interface GetApiTeamsOut {
+  teams: {   id: number;   name: string;   description: string;   logo_image_id: number | null;   is_recruiting: boolean;   wanted_roles: string[];   member_count: number;   is_full: boolean; }[];
+  team_total: number;
+  recruiting_total: number;
+  role_counts: Record<string, number>;
+  max_members: number;
+  recruiting_only: boolean;
+  role: string;
+}
+
+export function getApiTeams(): Promise<GetApiTeamsOut> {
+  return call<GetApiTeamsOut>("GET", "/api/teams", {  }, undefined)
+}
+
+export interface GetApiTeamsIdIn {
+}
+
+export interface GetApiTeamsIdOut {
+  team: {   id: number;   name: string;   description: string;   logo_image_id: number | null;   is_recruiting: boolean;   recruiting_roles: string[];   member_contact?: string;   disbanded_at?: string | null;   version: number;   created_at: string;   updated_at: string; } | null;
+  members: {   Person: {   user_id: number;   nickname: string;   is_active: boolean;   main_role: string;   roles: string[];   ranks: {   tank: {   score: number | null;   label: string;   is_expired: boolean; };   damage: {   score: number | null;   label: string;   is_expired: boolean; };   support: {   score: number | null;   label: string;   is_expired: boolean; }; }; };   role: string;   joined_at: string; }[];
+  alumni: {   id: number;   Person: {   user_id: number;   nickname: string;   is_active: boolean;   main_role: string;   roles: string[];   ranks: {   tank: {   score: number | null;   label: string;   is_expired: boolean; };   damage: {   score: number | null;   label: string;   is_expired: boolean; };   support: {   score: number | null;   label: string;   is_expired: boolean; }; }; };   role: string;   joined_at: string;   left_at: string;   reason: string;   can_remove: boolean; }[];
+  max_members: number;
+  viewer: {   is_member: boolean;   is_captain: boolean;   is_superuser: boolean;   can_apply: boolean;   apply_reason?: string;   needs_game_account: boolean; };
+}
+
+export function getApiTeamsId(id: string): Promise<GetApiTeamsIdOut> {
+  return call<GetApiTeamsIdOut>("GET", "/api/teams/{id}", { id }, undefined)
+}
+
+export interface GetApiTeamsIdManageIn {
+}
+
+export interface GetApiTeamsIdManageOut {
+  team: {   id: number;   name: string;   description: string;   logo_image_id: number | null;   is_recruiting: boolean;   recruiting_roles: string[];   member_contact?: string;   disbanded_at?: string | null;   version: number;   created_at: string;   updated_at: string; } | null;
+  members: {   Person: {   user_id: number;   nickname: string;   is_active: boolean;   main_role: string;   roles: string[];   ranks: {   tank: {   score: number | null;   label: string;   is_expired: boolean; };   damage: {   score: number | null;   label: string;   is_expired: boolean; };   support: {   score: number | null;   label: string;   is_expired: boolean; }; }; };   role: string;   joined_at: string; }[];
+  alumni: {   id: number;   Person: {   user_id: number;   nickname: string;   is_active: boolean;   main_role: string;   roles: string[];   ranks: {   tank: {   score: number | null;   label: string;   is_expired: boolean; };   damage: {   score: number | null;   label: string;   is_expired: boolean; };   support: {   score: number | null;   label: string;   is_expired: boolean; }; }; };   role: string;   joined_at: string;   left_at: string;   reason: string;   can_remove: boolean; }[];
+  pending: {   id: number;   applicant: {   user_id: number;   nickname: string;   is_active: boolean;   main_role: string;   roles: string[];   ranks: {   tank: {   score: number | null;   label: string;   is_expired: boolean; };   damage: {   score: number | null;   label: string;   is_expired: boolean; };   support: {   score: number | null;   label: string;   is_expired: boolean; }; }; };   roles: string[];   message: string;   created_at: string;   game_ids: string[];   reminded: boolean; }[];
+  disband_blockers: string[];
+  max_members: number;
+}
+
+export function getApiTeamsIdManage(id: string): Promise<GetApiTeamsIdManageOut> {
+  return call<GetApiTeamsIdManageOut>("GET", "/api/teams/{id}/manage", { id }, undefined)
+}
+
 export interface PatchApiAdminCategoriesIdIn {
   name: string;
   slug: string;
@@ -340,6 +506,38 @@ export interface PatchApiAdminCategoriesIdOut {
 
 export function patchApiAdminCategoriesId(id: string, body: PatchApiAdminCategoriesIdIn): Promise<PatchApiAdminCategoriesIdOut> {
   return call<PatchApiAdminCategoriesIdOut>("PATCH", "/api/admin/categories/{id}", { id }, body)
+}
+
+export interface PatchApiAdminMemberGroupsIdIn {
+  base_version: number;
+  changes: {   name?: string | null;   description?: string | null;   is_visible?: boolean | null;   sort_order?: number | null; };
+}
+
+export interface PatchApiAdminMemberGroupsIdOut {
+  version: number;
+  saved: string[];
+  fields?: Record<string, string[]>;
+  saved_at: string;
+}
+
+export function patchApiAdminMemberGroupsId(id: string, body: PatchApiAdminMemberGroupsIdIn): Promise<PatchApiAdminMemberGroupsIdOut> {
+  return call<PatchApiAdminMemberGroupsIdOut>("PATCH", "/api/admin/member-groups/{id}", { id }, body)
+}
+
+export interface PatchApiAdminTeamsIdIn {
+  base_version: number;
+  changes: {   name?: string | null;   description?: string | null;   is_recruiting?: boolean | null;   recruiting_roles?: string[] | null;   member_contact?: string | null;   logo_image_id?: number | null;   remove_logo?: boolean | null; };
+}
+
+export interface PatchApiAdminTeamsIdOut {
+  version: number;
+  saved: string[];
+  fields?: Record<string, string[]>;
+  saved_at: string;
+}
+
+export function patchApiAdminTeamsId(id: string, body: PatchApiAdminTeamsIdIn): Promise<PatchApiAdminTeamsIdOut> {
+  return call<PatchApiAdminTeamsIdOut>("PATCH", "/api/admin/teams/{id}", { id }, body)
 }
 
 export interface PatchApiAdminUsersIdRolesIn {
@@ -438,6 +636,22 @@ export function patchApiMeProfile(body: PatchApiMeProfileIn): Promise<PatchApiMe
   return call<PatchApiMeProfileOut>("PATCH", "/api/me/profile", {  }, body)
 }
 
+export interface PatchApiTeamsIdIn {
+  base_version: number;
+  changes: {   name?: string | null;   description?: string | null;   is_recruiting?: boolean | null;   recruiting_roles?: string[] | null;   member_contact?: string | null;   logo_image_id?: number | null;   remove_logo?: boolean | null; };
+}
+
+export interface PatchApiTeamsIdOut {
+  version: number;
+  saved: string[];
+  fields?: Record<string, string[]>;
+  saved_at: string;
+}
+
+export function patchApiTeamsId(id: string, body: PatchApiTeamsIdIn): Promise<PatchApiTeamsIdOut> {
+  return call<PatchApiTeamsIdOut>("PATCH", "/api/teams/{id}", { id }, body)
+}
+
 export interface PostApiAdminArticlesIdBroadcastIn {
 }
 
@@ -463,6 +677,79 @@ export interface PostApiAdminCategoriesOut {
 
 export function postApiAdminCategories(body: PostApiAdminCategoriesIn): Promise<PostApiAdminCategoriesOut> {
   return call<PostApiAdminCategoriesOut>("POST", "/api/admin/categories", {  }, body)
+}
+
+export interface PostApiAdminMemberGroupPeopleIdMoveIn {
+  step: number;
+}
+
+export interface PostApiAdminMemberGroupPeopleIdMoveOut {
+  group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
+  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+}
+
+export function postApiAdminMemberGroupPeopleIdMove(id: string, body: PostApiAdminMemberGroupPeopleIdMoveIn): Promise<PostApiAdminMemberGroupPeopleIdMoveOut> {
+  return call<PostApiAdminMemberGroupPeopleIdMoveOut>("POST", "/api/admin/member-group-people/{id}/move", { id }, body)
+}
+
+export interface PostApiAdminMemberGroupPeopleIdTitleIn {
+  title: string;
+}
+
+export interface PostApiAdminMemberGroupPeopleIdTitleOut {
+  group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
+  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+}
+
+export function postApiAdminMemberGroupPeopleIdTitle(id: string, body: PostApiAdminMemberGroupPeopleIdTitleIn): Promise<PostApiAdminMemberGroupPeopleIdTitleOut> {
+  return call<PostApiAdminMemberGroupPeopleIdTitleOut>("POST", "/api/admin/member-group-people/{id}/title", { id }, body)
+}
+
+export interface PostApiAdminMemberGroupsIn {
+}
+
+export interface PostApiAdminMemberGroupsOut {
+  group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiAdminMemberGroups(): Promise<PostApiAdminMemberGroupsOut> {
+  return call<PostApiAdminMemberGroupsOut>("POST", "/api/admin/member-groups", {  }, undefined)
+}
+
+export interface PostApiAdminMemberGroupsIdPeopleIn {
+  user_id: number;
+}
+
+export interface PostApiAdminMemberGroupsIdPeopleOut {
+  group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
+  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+}
+
+export function postApiAdminMemberGroupsIdPeople(id: string, body: PostApiAdminMemberGroupsIdPeopleIn): Promise<PostApiAdminMemberGroupsIdPeopleOut> {
+  return call<PostApiAdminMemberGroupsIdPeopleOut>("POST", "/api/admin/member-groups/{id}/people", { id }, body)
+}
+
+export interface PostApiAdminTeamsIdAssignCaptainIn {
+  user_id: number;
+}
+
+export interface PostApiAdminTeamsIdAssignCaptainOut {
+  result: string;
+}
+
+export function postApiAdminTeamsIdAssignCaptain(id: string, body: PostApiAdminTeamsIdAssignCaptainIn): Promise<PostApiAdminTeamsIdAssignCaptainOut> {
+  return call<PostApiAdminTeamsIdAssignCaptainOut>("POST", "/api/admin/teams/{id}/assign-captain", { id }, body)
+}
+
+export interface PostApiAdminTeamsIdDisbandIn {
+}
+
+export interface PostApiAdminTeamsIdDisbandOut {
+  result: string;
+}
+
+export function postApiAdminTeamsIdDisband(id: string): Promise<PostApiAdminTeamsIdDisbandOut> {
+  return call<PostApiAdminTeamsIdDisbandOut>("POST", "/api/admin/teams/{id}/disband", { id }, undefined)
 }
 
 export interface PostApiAdminUsersIdActivateIn {
@@ -786,6 +1073,125 @@ export interface PostApiMeGameAccountsOut {
 
 export function postApiMeGameAccounts(body: PostApiMeGameAccountsIn): Promise<PostApiMeGameAccountsOut> {
   return call<PostApiMeGameAccountsOut>("POST", "/api/me/game-accounts", {  }, body)
+}
+
+export interface PostApiTeamAlumniIdRemoveIn {
+}
+
+export interface PostApiTeamAlumniIdRemoveOut {
+  result: string;
+}
+
+export function postApiTeamAlumniIdRemove(id: string): Promise<PostApiTeamAlumniIdRemoveOut> {
+  return call<PostApiTeamAlumniIdRemoveOut>("POST", "/api/team-alumni/{id}/remove", { id }, undefined)
+}
+
+export interface PostApiTeamApplicationsIdApproveIn {
+}
+
+export interface PostApiTeamApplicationsIdApproveOut {
+  application: {   id: number;   team_id: number;   applicant_id: number;   role_tank: boolean;   role_damage: boolean;   role_support: boolean;   message: string;   status: string;   decided_by?: number | null;   decided_at?: string | null;   decision_note: string;   captain_reminded_at?: string | null;   created_at: string; } | null;
+}
+
+export function postApiTeamApplicationsIdApprove(id: string): Promise<PostApiTeamApplicationsIdApproveOut> {
+  return call<PostApiTeamApplicationsIdApproveOut>("POST", "/api/team-applications/{id}/approve", { id }, undefined)
+}
+
+export interface PostApiTeamApplicationsIdCancelIn {
+}
+
+export interface PostApiTeamApplicationsIdCancelOut {
+  application: {   id: number;   team_id: number;   applicant_id: number;   role_tank: boolean;   role_damage: boolean;   role_support: boolean;   message: string;   status: string;   decided_by?: number | null;   decided_at?: string | null;   decision_note: string;   captain_reminded_at?: string | null;   created_at: string; } | null;
+}
+
+export function postApiTeamApplicationsIdCancel(id: string): Promise<PostApiTeamApplicationsIdCancelOut> {
+  return call<PostApiTeamApplicationsIdCancelOut>("POST", "/api/team-applications/{id}/cancel", { id }, undefined)
+}
+
+export interface PostApiTeamApplicationsIdRejectIn {
+  note: string;
+}
+
+export interface PostApiTeamApplicationsIdRejectOut {
+  application: {   id: number;   team_id: number;   applicant_id: number;   role_tank: boolean;   role_damage: boolean;   role_support: boolean;   message: string;   status: string;   decided_by?: number | null;   decided_at?: string | null;   decision_note: string;   captain_reminded_at?: string | null;   created_at: string; } | null;
+}
+
+export function postApiTeamApplicationsIdReject(id: string, body: PostApiTeamApplicationsIdRejectIn): Promise<PostApiTeamApplicationsIdRejectOut> {
+  return call<PostApiTeamApplicationsIdRejectOut>("POST", "/api/team-applications/{id}/reject", { id }, body)
+}
+
+export interface PostApiTeamsIn {
+  name: string;
+  description: string;
+  is_recruiting?: boolean | null;
+  recruiting_roles?: string[];
+  logo_image_id?: number | null;
+}
+
+export interface PostApiTeamsOut {
+  team: {   id: number;   name: string;   description: string;   logo_image_id: number | null;   is_recruiting: boolean;   recruiting_roles: string[];   member_contact?: string;   disbanded_at?: string | null;   version: number;   created_at: string;   updated_at: string; } | null;
+}
+
+export function postApiTeams(body: PostApiTeamsIn): Promise<PostApiTeamsOut> {
+  return call<PostApiTeamsOut>("POST", "/api/teams", {  }, body)
+}
+
+export interface PostApiTeamsIdApplicationsIn {
+  roles: string[];
+  message: string;
+}
+
+export interface PostApiTeamsIdApplicationsOut {
+  application: {   id: number;   team_id: number;   applicant_id: number;   role_tank: boolean;   role_damage: boolean;   role_support: boolean;   message: string;   status: string;   decided_by?: number | null;   decided_at?: string | null;   decision_note: string;   captain_reminded_at?: string | null;   created_at: string; } | null;
+}
+
+export function postApiTeamsIdApplications(id: string, body: PostApiTeamsIdApplicationsIn): Promise<PostApiTeamsIdApplicationsOut> {
+  return call<PostApiTeamsIdApplicationsOut>("POST", "/api/teams/{id}/applications", { id }, body)
+}
+
+export interface PostApiTeamsIdDisbandIn {
+}
+
+export interface PostApiTeamsIdDisbandOut {
+  result: string;
+}
+
+export function postApiTeamsIdDisband(id: string): Promise<PostApiTeamsIdDisbandOut> {
+  return call<PostApiTeamsIdDisbandOut>("POST", "/api/teams/{id}/disband", { id }, undefined)
+}
+
+export interface PostApiTeamsIdLeaveIn {
+}
+
+export interface PostApiTeamsIdLeaveOut {
+  result: string;
+}
+
+export function postApiTeamsIdLeave(id: string): Promise<PostApiTeamsIdLeaveOut> {
+  return call<PostApiTeamsIdLeaveOut>("POST", "/api/teams/{id}/leave", { id }, undefined)
+}
+
+export interface PostApiTeamsIdMembersUser_idRemoveIn {
+}
+
+export interface PostApiTeamsIdMembersUser_idRemoveOut {
+  result: string;
+}
+
+export function postApiTeamsIdMembersUser_idRemove(id: string, user_id: string): Promise<PostApiTeamsIdMembersUser_idRemoveOut> {
+  return call<PostApiTeamsIdMembersUser_idRemoveOut>("POST", "/api/teams/{id}/members/{user_id}/remove", { id, user_id }, undefined)
+}
+
+export interface PostApiTeamsIdTransferIn {
+  user_id: number;
+}
+
+export interface PostApiTeamsIdTransferOut {
+  result: string;
+}
+
+export function postApiTeamsIdTransfer(id: string, body: PostApiTeamsIdTransferIn): Promise<PostApiTeamsIdTransferOut> {
+  return call<PostApiTeamsIdTransferOut>("POST", "/api/teams/{id}/transfer", { id }, body)
 }
 
 export interface PutApiAdminFeatureRoleRestrictionsIn {

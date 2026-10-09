@@ -714,6 +714,42 @@ func (s *Store) DeleteUserDataTx(ctx context.Context, tx *db.Tx, userID int64) e
 	return nil
 }
 
+// LeaveTeamsAndGroupsTx 注销账号时退出所有战队、删退役记录、撤回待审申请、移出所有成员分组
+// （规则 31：现行站 leave_all_teams 加 MemberGroupMembership）。在任队长的人进不到这里，
+// 服务层先拦下了（规则 29）。
+func (s *Store) LeaveTeamsAndGroupsTx(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {
+	stmts := []struct {
+		q    string
+		args []any
+	}{
+		{`DELETE FROM team_memberships WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM team_alumni WHERE user_id = ?`, []any{userID}},
+		{`UPDATE team_applications SET status = 'cancelled', decided_at = ?
+			WHERE applicant_id = ? AND status = 'pending'`, []any{db.FormatUTC(at), userID}},
+		{`DELETE FROM member_group_memberships WHERE user_id = ?`, []any{userID}},
+	}
+	for _, st := range stmts {
+		if _, err := tx.ExecContext(ctx, st.q, st.args...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SuspendTeamActivityTx 停用账号时撤回它的待审入队申请，并让它任队长的战队停止招募
+// （规则 35：队长账号停了，战队收不了申请，就别再显示成招募中；下一任队长再打开）。
+func (s *Store) SuspendTeamActivityTx(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE team_applications SET status = 'cancelled', decided_at = ?
+		WHERE applicant_id = ? AND status = 'pending'`, db.FormatUTC(at), userID); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx, `UPDATE teams SET is_recruiting = 0, version = version + 1, updated_at = ?
+		WHERE disbanded_at IS NULL AND is_recruiting = 1 AND id IN
+			(SELECT team_id FROM team_memberships WHERE user_id = ? AND role = 'captain')`,
+		db.FormatUTC(at), userID)
+	return err
+}
+
 // -------------------------------------------------------------
 // 后台用户管理 (Admin User Management)
 // -------------------------------------------------------------

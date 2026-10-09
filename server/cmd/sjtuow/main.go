@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 
 	// 显示和定时用 Asia/Shanghai；不依赖镜像里的时区文件（12 号文档 5.6）
 	_ "time/tzdata"
@@ -19,6 +20,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/comments"
 	"github.com/Uniseem/sjtu-ow/server/internal/content"
+	"github.com/Uniseem/sjtu-ow/server/internal/members"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/apigen"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
@@ -32,6 +34,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
 	"github.com/Uniseem/sjtu-ow/server/internal/search"
 	"github.com/Uniseem/sjtu-ow/server/internal/serve"
+	"github.com/Uniseem/sjtu-ow/server/internal/teams"
 )
 
 func main() {
@@ -91,6 +94,8 @@ func buildRegistry(
 	commentsSvc *comments.Service,
 	searchSvc *search.Service,
 	mediaSvc *media.Service,
+	teamsSvc *teams.Service,
+	membersSvc *members.Service,
 ) *api.Registry {
 	reg := &api.Registry{}
 	if acctSvc != nil {
@@ -108,6 +113,12 @@ func buildRegistry(
 	if mediaSvc != nil {
 		media.NewModule(mediaSvc).Routes(reg)
 	}
+	if teamsSvc != nil {
+		teams.NewModule(teamsSvc).Routes(reg)
+	}
+	if membersSvc != nil {
+		members.NewModule(membersSvc).Routes(reg)
+	}
 	return reg
 }
 
@@ -124,8 +135,10 @@ func runServe() error {
 	commentsSvc := comments.NewService(commentsStore)
 	searchSvc := search.NewService(d)
 	mediaSvc := media.NewService(d, cfg.DataDir, cfg.MediaDir)
+	teamsSvc := teams.NewService(d, cfg.SiteURL, ratelimit.NewEnforcer(d, nil), mediaSvc)
+	membersSvc := members.NewService(d)
 
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
@@ -148,6 +161,17 @@ func runWorker() error {
 	defer d.Close()
 	w := jobs.New(d, nil)
 	w.Handle(outbox.KindLetter, outbox.Handler(smtpFrom(cfg)))
+	// 每天 04:00 的夜任务：战队的申请提醒和自动关闭（规则 94、95）。后面的里程碑往里加。
+	teamsSvc := teams.NewService(d, cfg.SiteURL, nil, nil)
+	w.OnSchedule(jobs.SchedCleanup, func(ctx context.Context, _ *db.DB, now time.Time) error {
+		if _, err := teamsSvc.RemindCaptains(ctx, now); err != nil {
+			return fmt.Errorf("提醒队长：%w", err)
+		}
+		if _, err := teamsSvc.CloseStaleApplications(ctx, now); err != nil {
+			return fmt.Errorf("关闭过期申请：%w", err)
+		}
+		return nil
+	})
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return w.Run(ctx, 0)
@@ -163,7 +187,9 @@ func runApigen() error {
 	commentsSvc := comments.NewService(comments.NewStore(nil))
 	searchSvc := search.NewService(nil)
 	mediaSvc := media.NewService(nil, "", "")
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc)
+	teamsSvc := teams.NewService(nil, "", nil, nil)
+	membersSvc := members.NewService(nil)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc)
 	return apigen.Write(dir, reg)
 }
 
@@ -256,6 +282,14 @@ func runImport() error {
 		return fmt.Errorf("导入内容域失败: %w", err)
 	}
 	fmt.Println("内容域数据导入成功。")
+	if err := teams.ImportLegacyTeams(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入战队失败: %w", err)
+	}
+	fmt.Println("战队数据导入成功。")
+	if err := members.ImportLegacyGroups(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入成员分组失败: %w", err)
+	}
+	fmt.Println("成员分组数据导入成功。")
 	return nil
 }
 
