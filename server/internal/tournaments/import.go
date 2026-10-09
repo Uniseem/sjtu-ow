@@ -45,10 +45,52 @@ func ImportLegacyTournaments(ctx context.Context, d *db.DB, legacy *sql.DB) erro
 			err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM `+table+` WHERE id = ?`, id).Scan(&n)
 			return n > 0, err
 		}
-		rows, err := legacy.QueryContext(ctx, `SELECT id, title, summary, description, description_plain, cover_id, starts_at,
-			registration_opens_at, registration_closes_at, roster_min, roster_max, sjtu_only, registration_mode, auto_approve,
-			status, created_by_id, published_at, reminder_sent_at, moved_from, participant_contact, created_at, updated_at
-			FROM tournaments_tournament ORDER BY id`)
+		tournCols := make(map[string]bool)
+		{
+			tRows, err := legacy.QueryContext(ctx, `PRAGMA table_info(tournaments_tournament)`)
+			if err == nil {
+				defer tRows.Close()
+				for tRows.Next() {
+					var cid, notnull, pk int
+					var name, ctype string
+					var dflt any
+					if err := tRows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+						tournCols[name] = true
+					}
+				}
+			}
+		}
+		plainCol := "'' AS description_plain"
+		if tournCols["description_plain"] {
+			plainCol = "description_plain"
+		}
+		modeCol := "'team' AS registration_mode"
+		if tournCols["registration_mode"] {
+			modeCol = "registration_mode"
+		}
+		autoCol := "0 AS auto_approve"
+		if tournCols["auto_approve"] {
+			autoCol = "auto_approve"
+		} else if tournCols["review_mode"] {
+			autoCol = "CASE WHEN review_mode = 'auto' THEN 1 ELSE 0 END AS auto_approve"
+		}
+		remindedCol := "NULL AS reminder_sent_at"
+		if tournCols["reminder_sent_at"] {
+			remindedCol = "reminder_sent_at"
+		}
+		movedCol := "NULL AS moved_from"
+		if tournCols["moved_from"] {
+			movedCol = "moved_from"
+		}
+		contactCol := "'' AS participant_contact"
+		if tournCols["participant_contact"] {
+			contactCol = "participant_contact"
+		}
+
+		rows, err := legacy.QueryContext(ctx, fmt.Sprintf(`SELECT id, title, summary, description, %s, cover_id, starts_at,
+			registration_opens_at, registration_closes_at, roster_min, roster_max, sjtu_only, %s, %s,
+			status, created_by_id, published_at, %s, %s, %s, created_at, updated_at
+			FROM tournaments_tournament ORDER BY id`, plainCol, modeCol, autoCol, remindedCol, movedCol, contactCol))
 		if err != nil {
 			return fmt.Errorf("读旧库 tournaments_tournament：%w", err)
 		}

@@ -116,7 +116,7 @@ func Reconcile(ctx context.Context, d *db.DB, legacyPath string) (*ReconcileResu
 		{"评论", "comments", "comments_comment"},
 		{"图片母版", "images", "wagtailimages_image"},
 		{"成员分组", "member_groups", "members_membergroup"},
-		{"审核记录", "moderation_records", "moderation_moderationrecord"},
+		{"审核记录", "moderation_items", "moderation_moderationitem"},
 	}
 
 	var legacyDB *sql.DB

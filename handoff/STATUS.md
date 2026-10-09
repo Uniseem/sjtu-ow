@@ -1,11 +1,11 @@
 # 当前状态
 
 ```yaml
-milestone: 重构收尾与文档派生（全量 163 个接口 API 与权限全景手册自动派生、M1–M11 全部里程碑与演练体系落地）已完成（257）；M11（256）、M10（255）、M9（254）、M8（252、253）、M7（251）、M6（248、249）、审核记录与操作记录（250）、M5（247）、M4（246）、M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 257-api-docs-generator
-next: 停机割接执行与上线观察（按 docs/cutover.md 择机执行正式切换，旧站镜像只读留存两周）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。正式站这轮先不动。**所有编译和测试一律先在测试机上做**、一律放后台跑
+milestone: 割接全真演练与存量导入全栈加固（基于正式站 4.6MB 真实数据无损演练成功，12 项实体 100% 对账 MATCH，完整性与契约对拍全绿，实测耗时 < 1 秒）已完成（258）；全量 163 个接口手册派生（257）；M11（256）、M10（255）、M9（254）、M8（252、253）、M7（251）、M6（248、249）、审核记录与操作记录（250）、M5（247）、M4（246）、M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 258-m11-full-cutover-rehearsal
+next: 生产正式停机割接执行与上线观察（按 docs/cutover.md 执行切换，旧站镜像只读留存两周）。用户待办：①正式割接时登录正式站切换 crontab 与 Docker Compose；②正式割接执行确认。**所有编译和测试一律先在测试机上做**、一律放后台跑
 updated: 2026-10-09
-blocked_on: 无（用户设了目标「多写代码少测试，push 时记得看看署名要求」）；换 crontab（10-25 前）、升级正式站等用户
+blocked_on: 无（用户设了目标「多写代码少测试，push 时记得看看署名要求」）；生产割接等待执行指令
 ```
 
 ## 重构接到这里（2026-10-08）
@@ -47,6 +47,13 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**258（2026-10-09）**：M11 割接全真演练与存量导入全栈加固（用户「开始吧」与「全部」）。
+- 历史模式跨版本兼容性动态适配（`server/internal/*/import.go`）：使用 `PRAGMA table_info` 动态检测旧库字段并注入安全默认回退值，解决历史版本缺少后期迁移字段问题；
+- 用户与图片双向循环外键解耦（`server/internal/accounts/import.go` 与 `server/cmd/sjtuow/main.go`）：两阶段解耦写入（先写入用户，后导入媒体图片，再由 `LinkLegacyUserAvatars` 安全回填头像外键）；
+- 存量评论与点赞记录全量导入补齐（`server/internal/content/import.go`）：实现 `comments_comment` 与 `comments_commentlike` 拓扑顺序导入与外键校验；
+- 审核记录对账表名修正（`server/internal/ops/reconcile.go`）：更正为 `moderation_items` / `moderation_moderationitem`；
+- 全真割接演练实测通过（`deploy/rehearse.sh` 基于正式服务器同步的 4.6MB `demo-final.sqlite3` 运行）：全域 12 项实体行数 100% MATCH；完整性检查 PASS；237 条规则 100.0% 合规；对拍 PASS；实测耗时 < 1 秒。测试机整组全绿。下一步：生产正式停机割接执行与上线观察。
 
 **257（2026-10-09）**：架构落地：接口注册表自动生成全景 API 参考手册与干部能力对照表（用户「接着往下做，多写代码少测试，push 时记得看看署名要求」）。
 - 门禁描述与架构文档派生（`server/internal/platform/api/gates.go`、`server/internal/platform/apigen/docgen.go` 与 `docs/api-reference.md`）：实现 `Gate.Describe()`；实现 `RenderMarkdown` 与 `WriteMarkdown`；`sjtuow apigen` 一键生成前端 TypeScript 客户端代码与 163 个接口 Markdown 全景手册（方法、路径、准入门禁、集中限流规则、查询预算、后台大类标签与 Who Can Do What 权限能力矩阵）；`apigen_test.go` 测试通过。测试机整组全绿。下一步：停机割接执行与上线观察。

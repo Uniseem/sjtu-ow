@@ -51,9 +51,37 @@ func ImportLegacyScrims(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 				return err
 			}
 		}
-		rows, err := legacy.QueryContext(ctx, `SELECT id, title, description, description_plain, starts_at, signup_closes_at, format,
-			sjtu_only, status, teams_generated_at, roster_changed_at, reminder_sent_at, moved_from, created_by_id, created_at, updated_at
-			FROM scrims_scrim ORDER BY id`)
+		scrimCols := make(map[string]bool)
+		{
+			sRows, err := legacy.QueryContext(ctx, `PRAGMA table_info(scrims_scrim)`)
+			if err == nil {
+				defer sRows.Close()
+				for sRows.Next() {
+					var cid, notnull, pk int
+					var name, ctype string
+					var dflt any
+					if err := sRows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+						scrimCols[name] = true
+					}
+				}
+			}
+		}
+		plainCol := "'' AS description_plain"
+		if scrimCols["description_plain"] {
+			plainCol = "description_plain"
+		}
+		remindedCol := "NULL AS reminder_sent_at"
+		if scrimCols["reminder_sent_at"] {
+			remindedCol = "reminder_sent_at"
+		}
+		movedCol := "NULL AS moved_from"
+		if scrimCols["moved_from"] {
+			movedCol = "moved_from"
+		}
+
+		rows, err := legacy.QueryContext(ctx, fmt.Sprintf(`SELECT id, title, description, %s, starts_at, signup_closes_at, format,
+			sjtu_only, status, teams_generated_at, roster_changed_at, %s, %s, created_by_id, created_at, updated_at
+			FROM scrims_scrim ORDER BY id`, plainCol, remindedCol, movedCol))
 		if err != nil {
 			return fmt.Errorf("读旧库 scrims_scrim：%w", err)
 		}

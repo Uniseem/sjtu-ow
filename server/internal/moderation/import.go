@@ -38,6 +38,12 @@ func nullID(n sql.NullInt64) any {
 // ImportLegacyModeration 从现行站的 Django 库读审核记录，编号原样沿用；割接前的后台只读显示
 // （决定 D5）。legacy 要以只读方式打开；反复导入同一份库得到同样的结果，出错一律报出来。
 func ImportLegacyModeration(ctx context.Context, d *db.DB, legacy *sql.DB) error {
+	var hasTable bool
+	_ = legacy.QueryRowContext(ctx, `SELECT 1 FROM sqlite_master WHERE type='table' AND name='moderation_moderationitem'`).Scan(&hasTable)
+	if !hasTable {
+		return nil
+	}
+
 	now := time.Now().UTC()
 	return d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
 		exists := func(id int64) (bool, error) {
@@ -45,9 +51,60 @@ func ImportLegacyModeration(ctx context.Context, d *db.DB, legacy *sql.DB) error
 			err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM users WHERE id = ?`, id).Scan(&n)
 			return n > 0, err
 		}
-		rows, err := legacy.QueryContext(ctx, `SELECT id, target_type, target_id, field, url, author_id, excerpt, full_text, text_hash, risk,
-			categories, reason, quote, model, input_tokens, output_tokens, status, reviewed_by_id, reviewed_at, handling_note,
-			checked_at, notified_at, attempts, last_error, failed_at, created_at FROM moderation_moderationitem ORDER BY id`)
+
+		modCols := make(map[string]bool)
+		{
+			mRows, err := legacy.QueryContext(ctx, `PRAGMA table_info(moderation_moderationitem)`)
+			if err == nil {
+				defer mRows.Close()
+				for mRows.Next() {
+					var cid, notnull, pk int
+					var name, ctype string
+					var dflt any
+					if err := mRows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+						modCols[name] = true
+					}
+				}
+			}
+		}
+
+		fullTextCol := "'' AS full_text"
+		if modCols["full_text"] {
+			fullTextCol = "full_text"
+		}
+		quoteCol := "'' AS quote"
+		if modCols["quote"] {
+			quoteCol = "quote"
+		}
+		modelCol := "'' AS model"
+		if modCols["model"] {
+			modelCol = "model"
+		}
+		inCol := "0 AS input_tokens"
+		if modCols["input_tokens"] {
+			inCol = "input_tokens"
+		}
+		outCol := "0 AS output_tokens"
+		if modCols["output_tokens"] {
+			outCol = "output_tokens"
+		}
+		attemptsCol := "0 AS attempts"
+		if modCols["attempts"] {
+			attemptsCol = "attempts"
+		}
+		lastErrorCol := "'' AS last_error"
+		if modCols["last_error"] {
+			lastErrorCol = "last_error"
+		}
+		failedCol := "NULL AS failed_at"
+		if modCols["failed_at"] {
+			failedCol = "failed_at"
+		}
+
+		rows, err := legacy.QueryContext(ctx, fmt.Sprintf(`SELECT id, target_type, target_id, field, url, author_id, excerpt, %s, text_hash, risk,
+			categories, reason, %s, %s, %s, %s, status, reviewed_by_id, reviewed_at, handling_note,
+			checked_at, notified_at, %s, %s, %s, created_at FROM moderation_moderationitem ORDER BY id`,
+			fullTextCol, quoteCol, modelCol, inCol, outCol, attemptsCol, lastErrorCol, failedCol))
 		if err != nil {
 			return fmt.Errorf("读旧库 moderation_moderationitem：%w", err)
 		}

@@ -56,7 +56,7 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 	}
 
 	// 2. 导入用户表 (accounts_user -> users)
-	var hasAvatarCol bool
+	userCols := make(map[string]bool)
 	{
 		rows, err := legacy.QueryContext(ctx, `PRAGMA table_info(accounts_user)`)
 		if err == nil {
@@ -66,24 +66,52 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 				var name, ctype string
 				var dflt any
 				if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
-					if name == "avatar_id" {
-						hasAvatarCol = true
-						break
-					}
+					userCols[name] = true
 				}
 			}
 		}
 	}
+	deactCol := "'' AS deactivation_note"
+	if userCols["deactivation_note"] {
+		deactCol = "deactivation_note"
+	}
+	mottoCol := "'' AS motto"
+	if userCols["motto"] {
+		mottoCol = "motto"
+	}
+	mainRoleCol := "'' AS main_role"
+	if userCols["main_role"] {
+		mainRoleCol = "main_role"
+	}
+	flexRolesCol := "'' AS flex_roles"
+	if userCols["flex_roles"] {
+		flexRolesCol = "flex_roles"
+	}
+	showRankCol := "0 AS show_rank"
+	if userCols["show_rank"] {
+		showRankCol = "show_rank"
+	}
+	acceptsAnnouncementsCol := "1 AS accepts_announcements"
+	if userCols["accepts_announcements"] {
+		acceptsAnnouncementsCol = "accepts_announcements"
+	}
+	calendarVersionCol := "1 AS calendar_version"
+	if userCols["calendar_version"] {
+		calendarVersionCol = "calendar_version"
+	}
 	avatarCol := "NULL AS avatar_id"
-	if hasAvatarCol {
+	if userCols["avatar_id"] {
 		avatarCol = "avatar_id"
 	}
+
 	query := fmt.Sprintf(`SELECT
 		id, email, password, nickname, is_sjtu,
 		agreed_terms_at, agreed_cross_border_at, date_joined,
-		is_active, is_superuser, deactivation_note, motto,
-		main_role, flex_roles, show_rank, accepts_announcements, calendar_version, %s
-		FROM accounts_user ORDER BY id ASC`, avatarCol)
+		is_active, is_superuser, %s, %s,
+		%s, %s, %s, %s, %s, %s
+		FROM accounts_user ORDER BY id ASC`,
+		deactCol, mottoCol, mainRoleCol, flexRolesCol, showRankCol,
+		acceptsAnnouncementsCol, calendarVersionCol, avatarCol)
 	userRows, err := legacy.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("读取旧库 accounts_user 失败: %w", err)
@@ -120,7 +148,11 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 
 			var avatarVal any
 			if avatarID.Valid {
-				avatarVal = avatarID.Int64
+				var n int
+				_ = tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM images WHERE id = ?`, avatarID.Int64).Scan(&n)
+				if n > 0 {
+					avatarVal = avatarID.Int64
+				}
 			}
 
 			_, err := tx.ExecContext(txCtx, `INSERT INTO users (
@@ -418,5 +450,71 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 		}
 	}
 
+	return nil
+}
+
+// LinkLegacyUserAvatars 在内容域与媒体图片导入后，关联用户的头像与头像审核记录（解决循环外键依赖）。
+func LinkLegacyUserAvatars(ctx context.Context, d *db.DB, legacy *sql.DB) error {
+	now := time.Now().UTC()
+	// 1. 关联 users.avatar_image_id
+	var hasAvatarCol bool
+	{
+		rows, err := legacy.QueryContext(ctx, `PRAGMA table_info(accounts_user)`)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var cid, notnull, pk int
+				var name, ctype string
+				var dflt any
+				if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+					if name == "avatar_id" {
+						hasAvatarCol = true
+						break
+					}
+				}
+			}
+		}
+	}
+	if hasAvatarCol {
+		rows, err := legacy.QueryContext(ctx, `SELECT id, avatar_id FROM accounts_user WHERE avatar_id IS NOT NULL`)
+		if err == nil {
+			defer rows.Close()
+			_ = d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+				for rows.Next() {
+					var uid, avatarID int64
+					if err := rows.Scan(&uid, &avatarID); err == nil {
+						var n int
+						if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM images WHERE id = ?`, avatarID).Scan(&n); err == nil && n > 0 {
+							_, _ = tx.ExecContext(txCtx, `UPDATE users SET avatar_image_id = ? WHERE id = ?`, avatarID, uid)
+						}
+					}
+				}
+				return nil
+			})
+		}
+	}
+
+	// 2. 补齐/校验 avatar_submissions 中的 image_id
+	var hasAvatarSub bool
+	_ = legacy.QueryRowContext(ctx, `SELECT 1 FROM sqlite_master WHERE type='table' AND name='accounts_avatarsubmission'`).Scan(&hasAvatarSub)
+	if hasAvatarSub {
+		asRows, err := legacy.QueryContext(ctx, `SELECT id, image_id FROM accounts_avatarsubmission WHERE image_id IS NOT NULL`)
+		if err == nil {
+			defer asRows.Close()
+			_ = d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+				for asRows.Next() {
+					var id, imgID int64
+					if err := asRows.Scan(&id, &imgID); err == nil {
+						var n int
+						if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM images WHERE id = ?`, imgID).Scan(&n); err == nil && n > 0 {
+							_, _ = tx.ExecContext(txCtx, `UPDATE avatar_submissions SET image_id = ? WHERE id = ?`, imgID, id)
+						}
+					}
+				}
+				return nil
+			})
+		}
+	}
+	_ = now
 	return nil
 }

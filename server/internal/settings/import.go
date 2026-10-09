@@ -17,15 +17,82 @@ func ImportLegacySettings(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 		return nil
 	}
 
-	row := legacy.QueryRowContext(ctx, `SELECT
+	setCols := make(map[string]bool)
+	{
+		sRows, err := legacy.QueryContext(ctx, `PRAGMA table_info(core_sitesettings)`)
+		if err == nil {
+			defer sRows.Close()
+			for sRows.Next() {
+				var cid, notnull, pk int
+				var name, ctype string
+				var dflt any
+				if err := sRows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+					setCols[name] = true
+				}
+			}
+		}
+	}
+	colHero := "NULL AS hero_image_id"
+	if setCols["hero_image_id"] {
+		colHero = "hero_image_id"
+	}
+	colBNews := "NULL AS banner_news_id"
+	if setCols["banner_news_id"] {
+		colBNews = "banner_news_id"
+	}
+	colBTourn := "NULL AS banner_tournaments_id"
+	if setCols["banner_tournaments_id"] {
+		colBTourn = "banner_tournaments_id"
+	}
+	colBScrim := "NULL AS banner_scrims_id"
+	if setCols["banner_scrims_id"] {
+		colBScrim = "banner_scrims_id"
+	}
+	colBTeams := "NULL AS banner_teams_id"
+	if setCols["banner_teams_id"] {
+		colBTeams = "banner_teams_id"
+	}
+	colBMemb := "NULL AS banner_members_id"
+	if setCols["banner_members_id"] {
+		colBMemb = "banner_members_id"
+	}
+	colModEnabled := "0 AS moderation_enabled"
+	if setCols["moderation_enabled"] {
+		colModEnabled = "moderation_enabled"
+	}
+	colModKey := "NULL AS moderation_api_key"
+	if setCols["moderation_api_key"] {
+		colModKey = "moderation_api_key"
+	}
+	colModBaseURL := "NULL AS moderation_base_url"
+	if setCols["moderation_base_url"] {
+		colModBaseURL = "moderation_base_url"
+	}
+	colModModel := "NULL AS moderation_model"
+	if setCols["moderation_model"] {
+		colModModel = "moderation_model"
+	}
+	colModLimit := "0 AS moderation_daily_limit"
+	if setCols["moderation_daily_limit"] {
+		colModLimit = "moderation_daily_limit"
+	}
+	colModAlert := "NULL AS moderation_alert_email"
+	if setCols["moderation_alert_email"] {
+		colModAlert = "moderation_alert_email"
+	}
+
+	row := legacy.QueryRowContext(ctx, fmt.Sprintf(`SELECT
 		site_description, from_name, email_subject_prefix,
 		smtp_host, smtp_port, smtp_security, smtp_username, smtp_password, from_address,
-		founded_on, default_share_image_id, hero_image_id,
-		banner_news_id, banner_tournaments_id, banner_scrims_id, banner_teams_id, banner_members_id,
+		founded_on, default_share_image_id, %s,
+		%s, %s, %s, %s, %s,
 		qq_group_url, team_max_members, team_max_captained, tournament_reminder_hours, scrim_reminder_hours,
-		moderation_enabled, moderation_api_key, moderation_base_url, moderation_model,
-		moderation_daily_limit, moderation_alert_email
-		FROM core_sitesettings LIMIT 1`)
+		%s, %s, %s, %s,
+		%s, %s
+		FROM core_sitesettings LIMIT 1`,
+		colHero, colBNews, colBTourn, colBScrim, colBTeams, colBMemb,
+		colModEnabled, colModKey, colModBaseURL, colModModel,
+		colModLimit, colModAlert))
 
 	var siteDesc, fromName, prefix string
 	var smtpHost, smtpSecurity, smtpUser, smtpPass, fromAddr string

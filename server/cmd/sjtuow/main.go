@@ -427,6 +427,9 @@ func runImport() error {
 		return fmt.Errorf("导入内容域失败: %w", err)
 	}
 	fmt.Println("内容域数据导入成功。")
+	if err := accounts.LinkLegacyUserAvatars(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("关联用户头像失败: %w", err)
+	}
 	if err := teams.ImportLegacyTeams(ctx, d, legacyDB); err != nil {
 		return fmt.Errorf("导入战队失败: %w", err)
 	}

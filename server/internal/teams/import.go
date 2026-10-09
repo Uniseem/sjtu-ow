@@ -53,8 +53,32 @@ func ImportLegacyTeams(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 			}
 		}
 
-		rows, err := legacy.QueryContext(ctx, `SELECT id, name, description, logo_id, is_recruiting, recruiting_roles,
-			member_contact, disbanded_at, created_at, updated_at FROM teams_team ORDER BY id`)
+		teamCols := make(map[string]bool)
+		{
+			tRows, err := legacy.QueryContext(ctx, `PRAGMA table_info(teams_team)`)
+			if err == nil {
+				defer tRows.Close()
+				for tRows.Next() {
+					var cid, notnull, pk int
+					var name, ctype string
+					var dflt any
+					if err := tRows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+						teamCols[name] = true
+					}
+				}
+			}
+		}
+		rolesCol := "'' AS recruiting_roles"
+		if teamCols["recruiting_roles"] {
+			rolesCol = "recruiting_roles"
+		}
+		contactCol := "'' AS member_contact"
+		if teamCols["member_contact"] {
+			contactCol = "member_contact"
+		}
+
+		rows, err := legacy.QueryContext(ctx, fmt.Sprintf(`SELECT id, name, description, logo_id, is_recruiting, %s,
+			%s, disbanded_at, created_at, updated_at FROM teams_team ORDER BY id`, rolesCol, contactCol))
 		if err != nil {
 			return fmt.Errorf("读旧库 teams_team：%w", err)
 		}

@@ -124,16 +124,48 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 
 	// 4. 导入文章页面 (content_articlepage + wagtailcore_page)
 	{
-		rows, err := legacy.QueryContext(ctx, `
+		artCols := make(map[string]bool)
+		{
+			aRows, err := legacy.QueryContext(ctx, `PRAGMA table_info(content_articlepage)`)
+			if err == nil {
+				defer aRows.Close()
+				for aRows.Next() {
+					var cid, notnull, pk int
+					var name, ctype string
+					var dflt any
+					if err := aRows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+						artCols[name] = true
+					}
+				}
+			}
+		}
+		plainCol := "'' AS body_plain"
+		if artCols["body_plain"] {
+			plainCol = "a.body_plain"
+		}
+		wordsCol := "0 AS body_words"
+		if artCols["body_words"] {
+			wordsCol = "a.body_words"
+		}
+		minsCol := "1 AS body_minutes"
+		if artCols["body_minutes"] {
+			minsCol = "a.body_minutes"
+		}
+		tourCol := "NULL AS tournament_id"
+		if artCols["tournament_id"] {
+			tourCol = "a.tournament_id"
+		}
+
+		rows, err := legacy.QueryContext(ctx, fmt.Sprintf(`
 			SELECT p.id, p.slug, p.title, p.live, p.has_unpublished_changes,
 			       p.go_live_at, p.expire_at, p.first_published_at, p.last_published_at,
 			       p.live_revision_id, p.owner_id, p.seo_title, p.search_description,
-			       a.category_id, a.cover_id, a.summary, a.body, a.body_plain, a.body_words, a.body_minutes,
-			       a.author_id, a.comments_enabled, a.tournament_id
+			       a.category_id, a.cover_id, a.summary, a.body, %s, %s, %s,
+			       a.author_id, a.comments_enabled, %s
 			FROM content_articlepage a
 			JOIN wagtailcore_page p ON p.id = a.page_ptr_id
 			ORDER BY p.id ASC
-		`)
+		`, plainCol, wordsCol, minsCol, tourCol))
 		if err == nil {
 			defer rows.Close()
 			_ = d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
@@ -235,13 +267,33 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 
 	// 5. 导入单页 (content_sitepage + wagtailcore_page)
 	{
-		rows, err := legacy.QueryContext(ctx, `
+		spCols := make(map[string]bool)
+		{
+			spRows, err := legacy.QueryContext(ctx, `PRAGMA table_info(content_sitepage)`)
+			if err == nil {
+				defer spRows.Close()
+				for spRows.Next() {
+					var cid, notnull, pk int
+					var name, ctype string
+					var dflt any
+					if err := spRows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+						spCols[name] = true
+					}
+				}
+			}
+		}
+		spPlainCol := "'' AS body_plain"
+		if spCols["body_plain"] {
+			spPlainCol = "sp.body_plain"
+		}
+
+		rows, err := legacy.QueryContext(ctx, fmt.Sprintf(`
 			SELECT p.id, p.slug, p.title, p.live, p.has_unpublished_changes,
-			       sp.body, sp.body_plain
+			       sp.body, %s
 			FROM content_sitepage sp
 			JOIN wagtailcore_page p ON p.id = sp.page_ptr_id
 			ORDER BY p.id ASC
-		`)
+		`, spPlainCol))
 		if err == nil {
 			defer rows.Close()
 			_ = d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
@@ -333,6 +385,106 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 				}
 				return nil
 			})
+		}
+	}
+
+	// 8. 导入评论 (comments_comment -> comments)
+	{
+		var hasCommentsTable bool
+		_ = legacy.QueryRowContext(ctx, `SELECT 1 FROM sqlite_master WHERE type='table' AND name='comments_comment'`).Scan(&hasCommentsTable)
+		if hasCommentsTable {
+			cRows, err := legacy.QueryContext(ctx, `
+				SELECT id, page_id, author_id, parent_id, reply_to_user_id, body,
+				       is_pinned, is_hidden, is_deleted, like_count, created_at, edited_at
+				FROM comments_comment ORDER BY COALESCE(parent_id, 0) ASC, id ASC
+			`)
+			if err == nil {
+				defer cRows.Close()
+				_ = d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+					for cRows.Next() {
+						var id, pageID int64
+						var authorID, parentID, replyTo sql.NullInt64
+						var body, createdAt string
+						var editedAt sql.NullString
+						var isPinned, isHidden, isDeleted, likeCount int
+						if err := cRows.Scan(
+							&id, &pageID, &authorID, &parentID, &replyTo, &body,
+							&isPinned, &isHidden, &isDeleted, &likeCount, &createdAt, &editedAt,
+						); err == nil {
+							var authorVal, parentVal, replyToVal any
+							if authorID.Valid {
+								var n int
+								if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM users WHERE id = ?`, authorID.Int64).Scan(&n); err == nil && n > 0 {
+									authorVal = authorID.Int64
+								}
+							}
+							if parentID.Valid {
+								var n int
+								if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM comments WHERE id = ?`, parentID.Int64).Scan(&n); err == nil && n > 0 {
+									parentVal = parentID.Int64
+								}
+							}
+							if replyTo.Valid {
+								var n int
+								if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM users WHERE id = ?`, replyTo.Int64).Scan(&n); err == nil && n > 0 {
+									replyToVal = replyTo.Int64
+								}
+							}
+							createdUTC := parseAndFormatUTC(createdAt, now)
+							updatedUTC := createdUTC
+							if editedAt.Valid && editedAt.String != "" {
+								updatedUTC = parseAndFormatUTC(editedAt.String, now)
+							}
+							_, _ = tx.ExecContext(txCtx, `
+								INSERT INTO comments (
+									id, article_id, user_id, parent_id, reply_to_user_id,
+									content, is_pinned, is_hidden, is_deleted, like_count,
+									version, created_at, updated_at
+								) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+								ON CONFLICT (id) DO NOTHING
+							`, id, pageID, authorVal, parentVal, replyToVal,
+								body, isPinned, isHidden, isDeleted, likeCount,
+								createdUTC, updatedUTC)
+						}
+					}
+					return nil
+				})
+			}
+		}
+	}
+
+	// 9. 导入评论点赞 (comments_commentlike -> comment_likes)
+	{
+		var hasLikesTable bool
+		_ = legacy.QueryRowContext(ctx, `SELECT 1 FROM sqlite_master WHERE type='table' AND name='comments_commentlike'`).Scan(&hasLikesTable)
+		if hasLikesTable {
+			lRows, err := legacy.QueryContext(ctx, `
+				SELECT comment_id, user_id, created_at
+				FROM comments_commentlike
+			`)
+			if err == nil {
+				defer lRows.Close()
+				_ = d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+					for lRows.Next() {
+						var commentID, userID int64
+						var createdAt string
+						if err := lRows.Scan(&commentID, &userID, &createdAt); err == nil {
+							var cExists, uExists int
+							_ = tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM comments WHERE id = ?`, commentID).Scan(&cExists)
+							_ = tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM users WHERE id = ?`, userID).Scan(&uExists)
+							if cExists > 0 && uExists > 0 {
+								createdUTC := parseAndFormatUTC(createdAt, now)
+								_, _ = tx.ExecContext(txCtx, `
+									INSERT INTO comment_likes (comment_id, user_id, created_at)
+									VALUES (?, ?, ?)
+									ON CONFLICT DO NOTHING
+								`, commentID, userID, createdUTC)
+							}
+						}
+					}
+					return nil
+				})
+			}
 		}
 	}
 
