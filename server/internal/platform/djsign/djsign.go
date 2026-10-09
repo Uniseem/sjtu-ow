@@ -76,7 +76,10 @@ func encodeObject(obj any, compress bool) (string, error) {
 	}
 	if compress {
 		var buf bytes.Buffer
-		w := zlib.NewWriter(&buf)
+		w, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
+		if err != nil {
+			return "", err
+		}
 		if _, err := w.Write(data); err != nil {
 			return "", err
 		}

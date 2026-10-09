@@ -76,11 +76,19 @@ func bindRequest(w http.ResponseWriter, req *http.Request, rt *Route, in any) er
 		if !isPath {
 			continue
 		}
-		id, ok := ParseID(req.PathValue(p))
-		if !ok {
-			return NotFound("地址不对")
+		rawVal := req.PathValue(p)
+		if f.Type == reflect.TypeOf(ID(0)) {
+			id, ok := ParseID(rawVal)
+			if !ok {
+				return NotFound("地址不对")
+			}
+			v.Field(i).SetInt(int64(id))
+		} else if f.Type.Kind() == reflect.String {
+			if rawVal == "" {
+				return NotFound("地址不对")
+			}
+			v.Field(i).SetString(rawVal)
 		}
-		v.Field(i).SetInt(int64(id))
 	}
 	return nil
 }

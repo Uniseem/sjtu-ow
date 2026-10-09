@@ -11,7 +11,7 @@ htmlcov/
 # Django
 data/*.sqlite3
 data/*.sqlite3-*
-media/
+/media/
 staticfiles/
 prerendered/
 

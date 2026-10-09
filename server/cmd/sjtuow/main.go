@@ -17,6 +17,8 @@ import (
 
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/comments"
+	"github.com/Uniseem/sjtu-ow/server/internal/content"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/apigen"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
@@ -25,8 +27,10 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/idempotency"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/jobs"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/mail"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/outbox"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
+	"github.com/Uniseem/sjtu-ow/server/internal/search"
 	"github.com/Uniseem/sjtu-ow/server/internal/serve"
 )
 
@@ -81,10 +85,29 @@ func runMigrate() error {
 	return nil
 }
 
-func buildRegistry(acctSvc *accounts.Service) *api.Registry {
+func buildRegistry(
+	acctSvc *accounts.Service,
+	contentSvc *content.Service,
+	commentsSvc *comments.Service,
+	searchSvc *search.Service,
+	mediaSvc *media.Service,
+) *api.Registry {
 	reg := &api.Registry{}
-	acctModule := accounts.NewModule(acctSvc)
-	acctModule.Routes(reg)
+	if acctSvc != nil {
+		accounts.NewModule(acctSvc).Routes(reg)
+	}
+	if contentSvc != nil {
+		content.NewModule(contentSvc).Routes(reg)
+	}
+	if commentsSvc != nil {
+		comments.NewModule(commentsSvc).Routes(reg)
+	}
+	if searchSvc != nil {
+		search.NewModule(searchSvc).Routes(reg)
+	}
+	if mediaSvc != nil {
+		media.NewModule(mediaSvc).Routes(reg)
+	}
 	return reg
 }
 
@@ -95,7 +118,14 @@ func runServe() error {
 	}
 	defer d.Close()
 	acctSvc := accounts.NewService(d, nil, cfg.SiteURL, auth.NewStore(d, nil), ratelimit.NewEnforcer(d, nil))
-	reg := buildRegistry(acctSvc)
+	contentStore := content.NewStore(d)
+	contentSvc := content.NewService(contentStore, cfg.SiteURL)
+	commentsStore := comments.NewStore(d)
+	commentsSvc := comments.NewService(commentsStore)
+	searchSvc := search.NewService(d)
+	mediaSvc := media.NewService(d, cfg.DataDir, cfg.MediaDir)
+
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
@@ -129,7 +159,11 @@ func runApigen() error {
 		dir = filepath.Join("..", "web", "packages", "api", "src", "gen")
 	}
 	acctSvc := accounts.NewService(nil, nil, "", nil, nil)
-	reg := buildRegistry(acctSvc)
+	contentSvc := content.NewService(content.NewStore(nil), "")
+	commentsSvc := comments.NewService(comments.NewStore(nil))
+	searchSvc := search.NewService(nil)
+	mediaSvc := media.NewService(nil, "", "")
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc)
 	return apigen.Write(dir, reg)
 }
 
@@ -207,7 +241,7 @@ func runImport() error {
 	}
 	defer legacyDB.Close()
 
-	_, d, err := openDB()
+	cfg, d, err := openDB()
 	if err != nil {
 		return err
 	}
@@ -218,6 +252,10 @@ func runImport() error {
 		return fmt.Errorf("导入账号失败: %w", err)
 	}
 	fmt.Println("账号域数据导入成功。")
+	if err := content.ImportLegacyContent(ctx, d, legacyDB, cfg.SiteURL); err != nil {
+		return fmt.Errorf("导入内容域失败: %w", err)
+	}
+	fmt.Println("内容域数据导入成功。")
 	return nil
 }
 

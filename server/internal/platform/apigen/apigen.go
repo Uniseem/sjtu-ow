@@ -70,10 +70,23 @@ func writeStruct(b *strings.Builder, name string, t reflect.Type, jsonOnly bool)
 }
 
 func fields(t reflect.Type, jsonOnly bool) string {
+	return fieldsWithVisited(t, jsonOnly, make(map[reflect.Type]bool))
+}
+
+func copyVisited(m map[reflect.Type]bool) map[reflect.Type]bool {
+	cp := make(map[reflect.Type]bool, len(m))
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
+}
+
+func fieldsWithVisited(t reflect.Type, jsonOnly bool, visited map[reflect.Type]bool) string {
 	t = deref(t)
 	if t.Kind() != reflect.Struct {
 		return ""
 	}
+	visited[t] = true
 	var b strings.Builder
 	for i := range t.NumField() {
 		f := t.Field(i)
@@ -98,7 +111,7 @@ func fields(t reflect.Type, jsonOnly bool) string {
 		if strings.Contains(opts, "omitempty") {
 			opt = "?"
 		}
-		fmt.Fprintf(&b, "  %s%s: %s;\n", name, opt, tsType(f.Type))
+		fmt.Fprintf(&b, "  %s%s: %s;\n", name, opt, tsTypeWithVisited(f.Type, copyVisited(visited)))
 	}
 	return b.String()
 }
@@ -150,7 +163,7 @@ func hasJSON(t reflect.Type) bool {
 	return false
 }
 
-func tsType(t reflect.Type) string {
+func tsTypeWithVisited(t reflect.Type, visited map[reflect.Type]bool) string {
 	isPtr := t.Kind() == reflect.Pointer
 	t = deref(t)
 	var out string
@@ -164,14 +177,16 @@ func tsType(t reflect.Type) string {
 		reflect.Float32, reflect.Float64:
 		out = "number"
 	case reflect.Slice, reflect.Array:
-		out = tsType(t.Elem()) + "[]"
+		out = tsTypeWithVisited(t.Elem(), visited) + "[]"
 	case reflect.Map:
-		out = "Record<" + tsType(t.Key()) + ", " + tsType(t.Elem()) + ">"
+		out = "Record<" + tsTypeWithVisited(t.Key(), visited) + ", " + tsTypeWithVisited(t.Elem(), visited) + ">"
 	case reflect.Struct:
 		if t.PkgPath() == "time" && t.Name() == "Time" || t == reflect.TypeOf(time.Time{}) {
 			out = "string"
+		} else if visited[t] {
+			out = "any"
 		} else {
-			body := fields(t, false)
+			body := fieldsWithVisited(t, false, visited)
 			if body == "" {
 				out = "Record<string, never>"
 			} else {

@@ -333,8 +333,8 @@ func validateIn[In any](rt *Route) {
 	for i := range t.NumField() {
 		f := t.Field(i)
 		if p, ok := f.Tag.Lookup("path"); ok {
-			if f.Type != reflect.TypeOf(ID(0)) {
-				panic("path 字段的类型必须是 api.ID：" + rt.Method + " " + rt.Pattern + " 字段 " + f.Name)
+			if f.Type != reflect.TypeOf(ID(0)) && f.Type.Kind() != reflect.String {
+				panic("path 字段的类型必须是 api.ID 或 string：" + rt.Method + " " + rt.Pattern + " 字段 " + f.Name)
 			}
 			if !contains(rt.PathParams, p) {
 				panic("path 标签的参数不在地址里：" + rt.Method + " " + rt.Pattern + " 字段 " + f.Name)

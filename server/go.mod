@@ -3,13 +3,17 @@ module github.com/Uniseem/sjtu-ow/server
 go 1.26.9
 
 require (
+	github.com/gen2brain/webp v0.6.4
 	github.com/pressly/goose/v3 v3.28.0
+	github.com/yuin/goldmark v1.8.6
 	golang.org/x/crypto v0.55.0
+	golang.org/x/image v0.46.0
 	modernc.org/sqlite v1.60.1
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/ebitengine/purego v0.10.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect

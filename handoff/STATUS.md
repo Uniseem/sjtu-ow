@@ -1,11 +1,11 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M3（账号）已完成（239–245）；M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 245-m3-accounts-completion
-next: 接着做 M4：内容（页面和修订、定时发布、Markdown 对拍、图片管线与缩略图、外链解析、首页、资讯、普通页、评论、搜索、sitemap/robots、存量内容导入，R043–R082、R171–R183、R233）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
+milestone: 重构 M4（内容与媒体、评论、搜索）已完成（246）；M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 246-m4-content-completion
+next: M4 已经一次性全部做完并全绿。下一步可以进入 M5（战队、成员展示、分组）或检查点 A。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。重写开工前现行站上还剩 R2 异地备份（用户配）。正式站这轮先不动。**所有编译和测试一律先在测试机上做**（用户 2026-10-08 写死，AGENTS.md）、一律放后台跑。测试机整组和 CI 只跑新栈（229，231 起含前端）
 updated: 2026-10-09
-blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站；M4 继续做，不用等
+blocked_on: 待用户决定下一阶段方向（进入 M5 战队成员，或进行检查点 A 只读对拍）；换 crontab（10-25 前）、升级正式站；先不继续做
 ```
 
 ## 重构接到这里（2026-10-08）
@@ -32,7 +32,8 @@ blocked_on: 用户（过几天）：换 crontab（10-25 前）、升级正式站
 | 242 | `5326850` | 重新发送邮箱验证码（POST /api/auth/resend-code，R002、R004、R006）；未注册/停用/已验证防枚举响应同形；未验证作废旧码发新码；已验证发提示信；ratelimit 支持秒级时间片（1/10秒/账号与 10/分/IP）；升级测试机 Go 1.26.9 修复标准库已知漏洞 |
 | 243 | `f2732f6` | 找回密码（POST /api/auth/reset-password 发 6 位码与 POST /api/auth/reset-password/confirm 核验重置，R003、R004、R006）；3 分钟有效、3 次作废；未注册发提醒信防枚举；事务外 Argon2 哈希；重设密码作废旧会话；严格不发会话 Cookie |
 | 244 | `d27997e` | 修改密码与退出登录（POST /api/auth/change-password 已登录修改密码并作废其他会话、POST /api/auth/logout 退出作废当前会话并清除 Cookie，R006、12 号文档 5.4、5.7、5.9）；Member 门；5次/分/人限流；新密码强度与新旧查重；事务外 Argon2id；DeleteOthersTx 原子删其他会话 |
-| 245 | 本轮 | M3 账号域收尾：完成 R001–R042 全量业务规则；重认证与改邮箱（POST /api/auth/reauthenticate、change、confirm）；个人资料/段位/联系方式（GET/PATCH /api/me/profile、POST/PATCH/DELETE game-accounts、contacts）；账号原地匿名化注销（POST /api/auth/delete-account，在任队长拦截）；停用启用与导出（deactivate、activate、export）；后台用户管理与角色能力控制；存量 Django SQLite 数据导入（sjtuow import）与直接邮箱验证（sjtuow verify-email）。M3 全部达成 |
+| 245 | `1442eea` | M3 账号域收尾：完成 R001–R042 全量业务规则；重认证与改邮箱（POST /api/auth/reauthenticate、change、confirm）；个人资料/段位/联系方式（GET/PATCH /api/me/profile、POST/PATCH/DELETE game-accounts、contacts）；账号原地匿名化注销（POST /api/auth/delete-account，在任队长拦截）；停用启用与导出（deactivate、activate、export）；后台用户管理与角色能力控制；存量 Django SQLite 数据导入（sjtuow import）与直接邮箱验证（sjtuow verify-email）。M3 全部达成 |
+| 246 | 本轮 | M4 内容、媒体、评论、搜索与存量导入全量完成：数据库迁移 00010（14张表）；goldmark Markdown 引擎与外链对拍（R061–R072）；WebP 图片管线与白名单缩略图；自动保存 v2、草稿复用与单调版本、权限控制与定时发布/到期撤下 Worker；全员广播通知（30分钟冷却）；首页置顶（上限3篇）；评论生命周期、一层回复扁平化、作者软删除与墓碑、管理员置顶/隐藏、点赞与 new/top 排序；大小写折叠搜索；存量 Wagtail 迁移（sjtuow import）与 sitemap/robots 自动生成。M4 全部达成 |
 
 232 留的两件都还了：HTML 指构建产物；激活在浏览器里验过（`browser-check.mjs`，CDP 驱动无头 Chromium，零新依赖）。它头一晚就抓到一个真 bug：重写 entry-client 时丢了 `page-data` 的 provide，首屏看不出来、一换页正文就空——SSR 层的 vitest 测不到，浏览器里才现形。
 
@@ -41,6 +42,8 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**246（2026-10-09）**：M4 终局轮次，**内容、媒体、评论、搜索与存量导入全量对齐**（用户要求「把 M4 也给我一次性做完」）。实现全部规则 R043–R082、R171–R183、R233：① 数据库迁移 `00010_content_media_comments.sql` 创建 14 张核心业务表与索引；② goldmark Markdown 引擎与外链解析（R061–R072，标题转换、图注 figure、B 站 iframe、字数与阅读时长、h2/h3 锚点目录生成）；③ 媒体与图片处理管线（母版 WebP、白名单缩略图、防越界清理）；④ 内容服务与接口（自动保存协议 v2、草稿覆写与单调版本增长、落后版本 409 stale、权限定时上线与到期撤下 Worker、全员广播 30 分钟冷却、首页置顶上限 3 篇、sitemap/robots 生成）；⑤ 评论服务与接口（已发布校验、500 字上限、单层回复扁平化、作者软删除墓碑 `[该评论已删除]`、管理员置顶/隐藏、点赞、new/top 排序）；⑥ 全站大小写折叠搜索（`instr` 多词联合搜索）；⑦ 存量 Wagtail 迁移（`sjtuow import`）无损导入图片集、图片、分类、页面与修订。`sjtuow apigen` 更新 TypeScript client 与后台导航。**M4 内容域全部通过。**整组日志 `20261009-092424-eedce66` 全绿，退出码 0；govulncheck 零漏洞。下一阶段：M5 战队成员或检查点 A。
 
 **245（2026-10-09）**：M3 终局轮次，**账号域收尾与全量对齐**（用户要求「把 M3 一次性做完，少测试，多写代码」）。实现全部剩余规则 R001–R042：① 重认证（`POST /api/auth/reauthenticate`，5 分钟窗口）与改邮箱（`POST /api/auth/email/change` 发 6 位码、`/confirm` 核验换绑）；② 个人中心与资料（`GET/PATCH /api/me/profile` 昵称、正则拦截宣言外链与域名、主/补位置、公开最高段位与 >180 天过期标记、资料完整判定）；③ 游戏 ID（`POST/PATCH/DELETE /api/me/game-accounts` 大小写不敏感唯一、上限 5 个）；④ 联系方式（`POST/DELETE /api/me/contacts` 每种限一条，QQ/微信/大陆手机严格校验）；⑤ 原地匿名化注销（`POST /api/auth/delete-account`，队长拦截，清空全部自有数据，作废会话）；⑥ 停用与启用（`deactivate` 必须填原因、`activate` 清原因禁启用已注销）；⑦ 导出（`GET /api/me/export` 覆盖 15 自有数据域）；⑧ 后台用户管理（仅超管见邮箱、仅 CapContactsView 见联系方式、角色与功能规则配置）；⑨ 存量 Django 数据导入（`sjtuow import`，ID 严格沿用、时间转标准 UTC）与服务端邮箱验证命令（`sjtuow verify-email`）。平台层增加 `api.Put`、`query:"..."` 参数绑定、`DeleteAllTx`。`sjtuow apigen` 更新 TypeScript client 与后台导航。**M3 账号域全部通过。**整组日志 `20261009-085710-bc6fba5` 全绿，退出码 0；govulncheck 零漏洞。下一轮：M4 内容（页面和修订、定时发布、Markdown 对拍等）。
 
