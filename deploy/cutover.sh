@@ -19,7 +19,7 @@ if [[ ! -f "$NEW_COMPOSE" ]]; then
     exit 1
 fi
 
-COMPOSE_NEW="docker compose -f $NEW_COMPOSE"
+COMPOSE_NEW="docker compose -p sjtu-ow -f $NEW_COMPOSE"
 if [[ -f "$ENV_FILE" ]]; then
     COMPOSE_NEW="$COMPOSE_NEW --env-file $ENV_FILE"
 fi
@@ -47,7 +47,9 @@ $COMPOSE_NEW build
 
 # 2. 停用旧栈服务（进入只读维护）
 echo "[2/6] 停止旧栈运行容器..."
-if docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" ps -q 2>/dev/null | grep -q .; then
+if docker compose -p sjtu-ow -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" ps -q 2>/dev/null | grep -q .; then
+    docker compose -p sjtu-ow -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" down || true
+elif docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" ps -q 2>/dev/null | grep -q .; then
     docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" down || true
 else
     echo "  旧栈服务未在运行，继续割接流程..."
@@ -81,33 +83,34 @@ else
 fi
 
 # 4. 初始化新库模式
-echo "[3/6] 初始化新栈数据库模式..."
-$COMPOSE_NEW run --rm server /srv/sjtuow/sjtuow migrate
+echo "[4/6] 初始化新栈数据库模式..."
+$COMPOSE_NEW run --rm server migrate
 
 # 5. 执行全领域数据导入
-echo "[4/6] 导入存量历史数据..."
+echo "[5/6] 导入存量历史数据..."
 if [[ -s "$SNAPSHOT_DB" ]]; then
-    $COMPOSE_NEW run --rm -v "$(realpath "$SNAPSHOT_DB")":/tmp/legacy.sqlite3:ro server /srv/sjtuow/sjtuow import /tmp/legacy.sqlite3
+    $COMPOSE_NEW run --rm -v "$(realpath "$SNAPSHOT_DB")":/tmp/legacy.sqlite3:ro server import /tmp/legacy.sqlite3
 fi
 
 # 6. 全量数据对账自检（门禁红线）
-echo "[5/6] 运行对账自检与一致性核验..."
+echo "[6/6] 运行对账自检与一致性核验..."
 if [[ -s "$SNAPSHOT_DB" ]]; then
-    $COMPOSE_NEW run --rm -v "$(realpath "$SNAPSHOT_DB")":/tmp/legacy.sqlite3:ro server /srv/sjtuow/sjtuow reconcile /tmp/legacy.sqlite3
+    $COMPOSE_NEW run --rm -v "$(realpath "$SNAPSHOT_DB")":/tmp/legacy.sqlite3:ro server reconcile /tmp/legacy.sqlite3
 else
-    $COMPOSE_NEW run --rm server /srv/sjtuow/sjtuow reconcile
+    $COMPOSE_NEW run --rm server reconcile
 fi
 
 # 7. 启动新栈全量容器集群
-echo "[6/6] 启动新栈应用集群 (Server + Worker + SSR + Caddy)..."
+echo "启动新栈应用集群 (Server + Worker + Web + Proxy)..."
 $COMPOSE_NEW up -d
 
 # 8. 冒烟健康检查
 echo "等待新栈就绪与健康检查..."
 MAX_RETRIES=20
 READY=0
+PORT_CHECK="${PORT:-22887}"
 for i in $(seq 1 $MAX_RETRIES); do
-    if $COMPOSE_NEW exec -T server /srv/sjtuow/sjtuow reconcile > /dev/null 2>&1; then
+    if curl -fsSL "http://127.0.0.1:${PORT_CHECK}/healthz" > /dev/null 2>&1; then
         READY=1
         break
     fi

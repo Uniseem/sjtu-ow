@@ -25,6 +25,7 @@ ENV TZ=Asia/Shanghai
 WORKDIR /srv/sjtuow
 
 COPY --from=builder /out/sjtuow /srv/sjtuow/sjtuow
+RUN ln -s /srv/sjtuow/sjtuow /usr/local/bin/sjtuow
 
 USER 10001:10001
 
