@@ -20,7 +20,7 @@ fi
 
 # 1. 升级前安全热备份（自动保存至 data/backups/）
 echo "1. 执行升级前数据热备份..."
-$COMPOSE_CMD exec -T server backup || {
+$COMPOSE_CMD exec -T server sjtuow backup || {
     echo "警告：容器未运行或备份命令执行失败，尝试以一次性容器执行备份..."
     $COMPOSE_CMD run --rm server backup || true
 }
@@ -42,7 +42,7 @@ echo "5. 等待服务就绪并执行健康检查..."
 MAX_RETRIES=15
 SUCCESS=0
 for i in $(seq 1 $MAX_RETRIES); do
-    if $COMPOSE_CMD exec -T server reconcile > /dev/null 2>&1; then
+    if $COMPOSE_CMD exec -T server sjtuow reconcile > /dev/null 2>&1; then
         SUCCESS=1
         break
     fi
@@ -52,7 +52,7 @@ done
 
 if [[ $SUCCESS -eq 1 ]]; then
     echo "=== 升级成功！所有服务已健康就绪 ==="
-    $COMPOSE_CMD exec -T server reconcile
+    $COMPOSE_CMD exec -T server sjtuow reconcile
 else
     echo "错误：升级后健康检查未能在预定时间内通过！" >&2
     exit 1
