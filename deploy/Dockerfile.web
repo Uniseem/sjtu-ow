@@ -1,0 +1,36 @@
+# 多阶段构建：Vue 3 前端 SSR 与静态资产镜像（12 号文档 6.2）
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@11.20.0 --activate
+
+COPY web/ ./web/
+COPY static/img/ ./static/img/
+
+WORKDIR /app/web
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @sjtu-ow/styles build
+RUN pnpm --filter @sjtu-ow/site build
+
+# 运行时阶段：轻量 Node 24、无 root 权限
+FROM node:24-alpine
+
+RUN addgroup -g 10001 -S app && \
+    adduser -u 10001 -S app -G app
+
+WORKDIR /app/web/apps/site
+
+COPY --from=builder --chown=app:app /app/web/apps/site/dist ./dist
+COPY --from=builder --chown=app:app /app/web/apps/site/package.json ./package.json
+COPY --from=builder --chown=app:app /app/static/img /app/static/img
+
+ENV NODE_ENV=production \
+    PORT=5173 \
+    TZ=Asia/Shanghai
+
+USER 10001:10001
+
+EXPOSE 5173
+
+CMD ["node", "dist/server/server.js"]

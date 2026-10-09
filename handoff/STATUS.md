@@ -1,9 +1,9 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M8（后台管理 API、平台服务与前端页面全量闭环）已完成（252、253）；M7（251）、M6（248、249）、审核记录与操作记录（250）、M5（247）、M4（246）、M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 253-m8-admin-frontend
-next: M9 运维（备份恢复、升级脚本、镜像构建与 Compose、CI）与加固。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。正式站这轮先不动。**所有编译和测试一律先在测试机上做**、一律放后台跑
+milestone: 重构 M9（运维体系：备份恢复、运维管理命令、容器化与升级演练）已完成（254）；M8（252、253）、M7（251）、M6（248、249）、审核记录与操作记录（250）、M5（247）、M4（246）、M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 254-m9-ops
+next: M10 演练与割接准备（全站对账脚本、真实数据全量演练、停机割接剧本）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。正式站这轮先不动。**所有编译和测试一律先在测试机上做**、一律放后台跑
 updated: 2026-10-09
 blocked_on: 无（用户设了目标「多写代码少测试，push 时记得看看署名要求」）；换 crontab（10-25 前）、升级正式站等用户
 ```
@@ -47,6 +47,12 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**254（2026-10-09）**：M9 运维体系：备份恢复、运维命令、容器化与升级演练（用户「接着往下做，多写代码少测试，push 时记得看看署名要求」）。
+- 备份恢复（`server/internal/ops/`）：`Backup` 利用 `VACUUM INTO` 进行零锁表原子快照，打包 `sjtuow.sqlite3`、元数据 `manifest.json`、原图 `originals/` 与缩略图 `media/`，严格遵循 09-1 先临时名后 fsync 再改名；`Restore` 严格遵循 09-5 准则，在 `dataDir` 私有临时目录（0700 权限）解包（不落 `/tmp`），`safeJoin` 防目录遍历，校验 SHA256 与 `PRAGMA integrity_check`、`PRAGMA foreign_key_check`，默认 dry-run 演练，`--yes` 执行原子替换；`backup_test.go` 单元测试通过。
+- 运维子命令挂载（`server/cmd/sjtuow/`）：`sjtuow backup`、`sjtuow restore`、`sjtuow createsuperuser`（Argon2id 哈希、Django 兼容密码规则校验、规则 15 服务端背书直接已验证）、`sjtuow reconcile`（自检完整性与外键、用户统计、新旧库表行数对比与关键用户抽样比对）。
+- 容器部署与配置（`deploy/`）：`Dockerfile.server`（Go 1.26 静态构建，Alpine 运行时，UID 10001 `app` 无 root 用户，内置上海时区）；`Dockerfile.web`（Node 24 LTS 构建 Vue 3 SSR 生产镜像）；`Caddyfile.new`（完全匹配 12 号文档 3.4 路由：静态资源 immutable 1 年、固定静态图 1 天、新缩略图 1 年/404 转后端懒生成、其余 media 404 隐藏原图、API/healthz 转 Go、页面转 SSR）；`docker-compose.new.yml`（server, worker, web, proxy 四个容器配合三大卷）；`upgrade.sh`（自动前置备份 -> 构建 -> 迁移 -> 重启 -> 冒烟检查）与 `restore.sh`（一键灾备演练与还原）。
+测试机整组全绿。下一步：M10 演练与割接准备。
 
 **253（2026-10-09）**：M8 下半，**后台管理前端页面全面排版与前后端联调**（用户「接着往下做，多写代码少测试，push 时记得看看署名要求」）。增强 `/api/session`（`SessionUser` 增加 `superuser` 与 `caps`，更新 `sjtuow apigen`）；后台独立 SPA 页面骨架与导航权限元数据（`web/apps/site/src/admin/nav.ts`、`AdminLayout.vue`、`AdminHead.vue`），支持未登录引导与 403 权限阻断；实现八个大类 20+ 个管理页面及全部对应路由注册与代码分包（首页与待发信、文章与编辑双栏、分类、首页置顶、图片媒体库、赛事与队伍编排、报名审核、内战与分队板算法、用户与权限、角色限制、战队与队长指定、成员分组与搜人、内容巡查处置、头像审核与违规下架、评论管理、活动数据与 CSV 导出、全站设置与测试邮件、审计日志、干部手册）；`App.vue` 前后台无缝区分与 `routes.ts` 路由注册；`routes.test.ts` 页面解析测试通过。测试机整组全绿（日志 `20261009-150327-504a6b5`，首页壳 gzip 79593 字节，BUDGET-OK）。M8 整体圆满完成。下一步：M9 运维与加固。
 

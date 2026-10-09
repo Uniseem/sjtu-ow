@@ -1,0 +1,70 @@
+{
+    admin off
+}
+
+:80 {
+    # 压缩支持
+    encode zstd gzip
+
+    # 静态前端资源分块 (1 年缓存，immutable，12 号文档 3.4)
+    handle /assets/* {
+        root * /var/assets
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+
+    # 固定静态图片兼容路径 (1 天缓存)
+    handle_path /static/img/* {
+        root * /var/assets/img
+        header Cache-Control "public, max-age=86400"
+        file_server
+    }
+
+    # 新缩略图：若存在直接分发 (1 年缓存)；不存在转发后端 Go 懒生成
+    handle /media/r/* {
+        root * /var/media
+        header Cache-Control "public, max-age=31536000, immutable"
+        try_files {path} @api
+        file_server
+    }
+
+    # 旧缩略图兼容路径 (1 年缓存)
+    handle /media/images/* {
+        root * /var/media
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+
+    # 字体子集与分片 (1 年缓存)
+    handle /media/fonts/* {
+        root * /var/media
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+
+    # 其余 media 严禁对外公开 (原图防泄漏，12 号文档 3.4)
+    handle /media/* {
+        respond "Not Found" 404
+    }
+
+    # API、健康检查、日历、Sitemap、Robots 路由至后端 Go
+    @api {
+        path /api/* /healthz /calendar/* /sitemap.xml /robots.txt
+    }
+    handle @api {
+        reverse_proxy server:8080 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # 所有前台页面请求转 SSR 服务 (Node 24)
+    handle {
+        reverse_proxy web:5173 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+}

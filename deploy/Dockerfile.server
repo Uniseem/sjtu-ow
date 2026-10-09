@@ -1,0 +1,34 @@
+# 多阶段构建：Go 后端服务镜像（12 号文档 5.1）
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /src/server
+
+# 安装基础依赖与 CA 证书
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+
+COPY server/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/sjtuow ./cmd/sjtuow
+
+# 运行时阶段：轻量安全、无 root 权限
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -g 10001 -S app && \
+    adduser -u 10001 -S app -G app && \
+    mkdir -p /srv/sjtuow/data /srv/sjtuow/media && \
+    chown -R app:app /srv/sjtuow
+
+ENV TZ=Asia/Shanghai
+WORKDIR /srv/sjtuow
+
+COPY --from=builder /out/sjtuow /srv/sjtuow/sjtuow
+
+USER 10001:10001
+
+EXPOSE 8080
+
+ENTRYPOINT ["/srv/sjtuow/sjtuow"]
+CMD ["serve"]

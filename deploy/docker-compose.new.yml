@@ -1,0 +1,99 @@
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    restart: unless-stopped
+    command: ["serve"]
+    environment:
+      - SJTUOW_ENV=prod
+      - SITE_URL=${SITE_URL:-https://sjtu.ow-shanghaiuniversity.com}
+      - SIGNING_KEY=${SIGNING_KEY}
+      - FIELD_ENCRYPTION_KEY=${FIELD_ENCRYPTION_KEY}
+      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
+      - DATA_DIR=/srv/sjtuow/data
+      - MEDIA_DIR=/srv/sjtuow/media
+      - TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1/32
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_SECURITY=${SMTP_SECURITY:-starttls}
+    volumes:
+      - sjtuow_data:/srv/sjtuow/data
+      - sjtuow_media:/srv/sjtuow/media
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "/srv/sjtuow/sjtuow", "reconcile"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    restart: unless-stopped
+    command: ["worker"]
+    environment:
+      - SJTUOW_ENV=prod
+      - SITE_URL=${SITE_URL:-https://sjtu.ow-shanghaiuniversity.com}
+      - SIGNING_KEY=${SIGNING_KEY}
+      - FIELD_ENCRYPTION_KEY=${FIELD_ENCRYPTION_KEY}
+      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
+      - DATA_DIR=/srv/sjtuow/data
+      - MEDIA_DIR=/srv/sjtuow/media
+      - TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1/32
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_SECURITY=${SMTP_SECURITY:-starttls}
+    volumes:
+      - sjtuow_data:/srv/sjtuow/data
+      - sjtuow_media:/srv/sjtuow/media
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=5173
+      - API_BASE=http://server:8080
+      - STRICT_CSP=1
+    volumes:
+      - sjtuow_assets:/app/web/apps/site/dist/client
+    networks:
+      - internal
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${PORT:-22887}:80"
+    volumes:
+      - ./Caddyfile.new:/etc/caddy/Caddyfile:ro
+      - sjtuow_media:/var/media:ro
+      - sjtuow_assets:/var/assets:ro
+    depends_on:
+      - server
+      - web
+    networks:
+      - internal
+
+volumes:
+  sjtuow_data:
+  sjtuow_media:
+  sjtuow_assets:
+
+networks:
+  internal:
+    driver: bridge

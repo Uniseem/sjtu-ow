@@ -2,14 +2,17 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -26,6 +29,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/members"
 	"github.com/Uniseem/sjtu-ow/server/internal/moderation"
 	"github.com/Uniseem/sjtu-ow/server/internal/notify"
+	"github.com/Uniseem/sjtu-ow/server/internal/ops"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/apigen"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/audit"
@@ -66,6 +70,14 @@ func main() {
 		err = runImport()
 	case "verify-email":
 		err = runVerifyEmail()
+	case "backup":
+		err = runBackup()
+	case "restore":
+		err = runRestore()
+	case "createsuperuser":
+		err = runCreateSuperuser()
+	case "reconcile":
+		err = runReconcile()
 	default:
 		usage()
 		os.Exit(2)
@@ -76,7 +88,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|verify-email>（后续里程碑会加 reconcile、backup 等）")
+	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|verify-email|backup|restore|createsuperuser|reconcile>")
 }
 
 func fatal(err error) {
@@ -479,4 +491,154 @@ func newScrims(d *db.DB, siteURL string, acctSvc *accounts.Service) *scrims.Serv
 	svc := scrims.NewService(d, siteURL)
 	svc.SetViewerBuilder(acctSvc.BuildViewer)
 	return svc
+}
+
+func runBackup() error {
+	cfg, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+
+	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
+	outPath := fs.String("out", "", "输出备份文件路径（默认为 data/backups/sjtuow-<timestamp>.tar.gz，- 为标准输出）")
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		return err
+	}
+
+	targetOut := *outPath
+	if targetOut == "" {
+		targetOut = filepath.Join(cfg.DataDir, "backups", fmt.Sprintf("sjtuow-%s.tar.gz", time.Now().Format("20060102-150405")))
+	}
+
+	manifest, err := ops.Backup(context.Background(), d, ops.BackupOptions{
+		DataDir:  cfg.DataDir,
+		MediaDir: cfg.MediaDir,
+		OutPath:  targetOut,
+	})
+	if err != nil {
+		return err
+	}
+	if targetOut != "-" {
+		fmt.Printf("备份完成：%s (大小: %d 字节, 媒体文件: %d 个, 库校验和: %s)\n",
+			targetOut, manifest.DatabaseSize, manifest.MediaFilesCount, manifest.DatabaseChecksum)
+	}
+	return nil
+}
+
+func runRestore() error {
+	cfg, err := config.FromEnv()
+	if err != nil {
+		return err
+	}
+
+	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
+	yes := fs.Bool("yes", false, "确认真正恢复替换现有数据（默认只演练校验）")
+	archive := fs.String("archive", "", "备份归档文件路径")
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		return err
+	}
+
+	archivePath := *archive
+	if archivePath == "" && len(fs.Args()) > 0 {
+		archivePath = fs.Arg(0)
+	}
+	if archivePath == "" {
+		return fmt.Errorf("用法：sjtuow restore <archive.tar.gz> [--yes]")
+	}
+
+	res, err := ops.Restore(context.Background(), ops.RestoreOptions{
+		ArchivePath: archivePath,
+		DataDir:     cfg.DataDir,
+		MediaDir:    cfg.MediaDir,
+		Apply:       *yes,
+	})
+	if err != nil {
+		return err
+	}
+
+	if res.DryRun {
+		fmt.Printf("演练成功：归档完整有效 (数据库校验和: %s, 媒体文件: %d 个)。未执行任何替换。\n如需真正还原，请追加 --yes 参数。\n",
+			res.Manifest.DatabaseChecksum, res.Manifest.MediaFilesCount)
+	} else {
+		fmt.Printf("恢复完成：已还原至 %s (数据库校验和: %s, 恢复文件: %d 个)\n",
+			cfg.DataDir, res.Manifest.DatabaseChecksum, res.FilesRestored)
+	}
+	return nil
+}
+
+func runCreateSuperuser() error {
+	_, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+
+	fs := flag.NewFlagSet("createsuperuser", flag.ContinueOnError)
+	email := fs.String("email", "", "超级管理员邮箱")
+	nickname := fs.String("nickname", "", "昵称（默认：超级管理员）")
+	password := fs.String("password", "", "登录密码")
+	isSJTU := fs.Bool("is-sjtu", true, "是否交大校内人员")
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		return err
+	}
+
+	targetEmail := strings.TrimSpace(*email)
+	targetNickname := strings.TrimSpace(*nickname)
+	targetPassword := strings.TrimSpace(*password)
+
+	reader := bufio.NewReader(os.Stdin)
+	if targetEmail == "" {
+		fmt.Print("邮箱: ")
+		line, _ := reader.ReadString('\n')
+		targetEmail = strings.TrimSpace(line)
+	}
+	if targetNickname == "" {
+		fmt.Print("昵称 (默认: 超级管理员): ")
+		line, _ := reader.ReadString('\n')
+		targetNickname = strings.TrimSpace(line)
+		if targetNickname == "" {
+			targetNickname = "超级管理员"
+		}
+	}
+	if targetPassword == "" {
+		fmt.Print("密码: ")
+		line, _ := reader.ReadString('\n')
+		targetPassword = strings.TrimSpace(line)
+	}
+
+	err = ops.CreateSuperuser(context.Background(), d, ops.SuperuserOptions{
+		Email:    targetEmail,
+		Nickname: targetNickname,
+		Password: targetPassword,
+		IsSJTU:   *isSJTU,
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("超级管理员 %s 创建成功。\n", targetEmail)
+	return nil
+}
+
+func runReconcile() error {
+	_, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+
+	legacyPath := ""
+	if len(os.Args) >= 3 {
+		legacyPath = os.Args[2]
+	}
+
+	res, err := ops.Reconcile(context.Background(), d, legacyPath)
+	if err != nil {
+		return err
+	}
+	fmt.Print(res.FormatReport())
+	if !res.IntegrityOK || !res.FKCheckOK {
+		return fmt.Errorf("数据库一致性检查未完全通过")
+	}
+	return nil
 }
