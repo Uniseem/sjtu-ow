@@ -313,7 +313,16 @@ func runApigen() error {
 	manualMod := manual.NewModule()
 	todoSvc := todo.NewService(nil)
 	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc, settingsSvc, auditMod, activitySvc, manualMod, todoSvc)
-	return apigen.Write(dir, reg)
+	if err := apigen.Write(dir, reg); err != nil {
+		return err
+	}
+	repoDir := findRepoRoot()
+	docPath := filepath.Join(repoDir, "docs", "api-reference.md")
+	if err := apigen.WriteMarkdown(docPath, reg); err != nil {
+		return fmt.Errorf("生成 API 手册失败: %w", err)
+	}
+	fmt.Printf("API 客户端代码与参考手册生成完成：%s\n", docPath)
+	return nil
 }
 
 func openDB() (*config.Config, *db.DB, error) {

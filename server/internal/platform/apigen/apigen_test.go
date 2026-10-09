@@ -96,3 +96,26 @@ func TestHyphenPathMakesValidIdentifiers(t *testing.T) {
 		t.Fatalf("连字符应转成驼峰:\n%s", index)
 	}
 }
+
+func TestRenderMarkdown(t *testing.T) {
+	reg := &api.Registry{}
+	api.Post(reg, "/api/teams/{id}/applications", api.Public,
+		func(*app.Ctx, applyIn) (applyOut, error) { return applyOut{}, nil },
+		api.NoLimit("生成器样例"), api.Nav("members", "teams"))
+
+	md := RenderMarkdown(reg)
+	for _, want := range []string{
+		"# SJTU-OW 接口注册表与权限全景手册",
+		"## 1. 架构概览与指标",
+		"## 2. 全量接口清单与准入门禁",
+		"`POST`",
+		"`/api/teams/{id}/applications`",
+		"Public（公开）",
+		"members/teams",
+		"## 3. 干部角色能力对照表 (Who Can Do What)",
+	} {
+		if !strings.Contains(md, want) {
+			t.Fatalf("Markdown 手册缺少预期内容: %q\n%s", want, md)
+		}
+	}
+}

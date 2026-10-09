@@ -1,8 +1,8 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M11（割接演练与上线准备：全流程演练流水线 rehearse.sh、新旧兼容与对拍工具 parity、全库对账增强）已完成（256）；M10（255）、M9（254）、M8（252、253）、M7（251）、M6（248、249）、审核记录与操作记录（250）、M5（247）、M4（246）、M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 256-m11-rehearsal
+milestone: 重构收尾与文档派生（全量 163 个接口 API 与权限全景手册自动派生、M1–M11 全部里程碑与演练体系落地）已完成（257）；M11（256）、M10（255）、M9（254）、M8（252、253）、M7（251）、M6（248、249）、审核记录与操作记录（250）、M5（247）、M4（246）、M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 257-api-docs-generator
 next: 停机割接执行与上线观察（按 docs/cutover.md 择机执行正式切换，旧站镜像只读留存两周）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。正式站这轮先不动。**所有编译和测试一律先在测试机上做**、一律放后台跑
 updated: 2026-10-09
 blocked_on: 无（用户设了目标「多写代码少测试，push 时记得看看署名要求」）；换 crontab（10-25 前）、升级正式站等用户
@@ -47,6 +47,9 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**257（2026-10-09）**：架构落地：接口注册表自动生成全景 API 参考手册与干部能力对照表（用户「接着往下做，多写代码少测试，push 时记得看看署名要求」）。
+- 门禁描述与架构文档派生（`server/internal/platform/api/gates.go`、`server/internal/platform/apigen/docgen.go` 与 `docs/api-reference.md`）：实现 `Gate.Describe()`；实现 `RenderMarkdown` 与 `WriteMarkdown`；`sjtuow apigen` 一键生成前端 TypeScript 客户端代码与 163 个接口 Markdown 全景手册（方法、路径、准入门禁、集中限流规则、查询预算、后台大类标签与 Who Can Do What 权限能力矩阵）；`apigen_test.go` 测试通过。测试机整组全绿。下一步：停机割接执行与上线观察。
 
 **256（2026-10-09）**：M11 割接演练流水线、全栈端到端新旧兼容与对拍工具（用户「接着往下做，多写代码少测试，push 时记得看看署名要求」）。
 - 对拍与兼容性核验工具（`server/internal/ops/parity.go` 与 `sjtuow parity`）：依据 12 号文档 8.2「兼容项清单」与第 9 节实现统一核验执行器；验证日历订阅 ICS 签名（`agenda.CalendarSalt`）与邮件退订签名（`notify.UnsubscribeSalt`）互通；验证 Argon2id 密码哈希生成校验与 Django PBKDF2 存量兼容及登录自动升级触发；抽样校验 `goldmark` 渲染管线、标题降级锚点、字数与最少 1 分钟阅读时长；扫描图片表与正文引用，核验磁盘与 HTTP 可达性；核验 16 个核心公开页面状态码与 `<title>` 品牌一致性；接入 `sjtuow parity` 子命令与 `--json` 输出；`parity_test.go` 单元测试通过。

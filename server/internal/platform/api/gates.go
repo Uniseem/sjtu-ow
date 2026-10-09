@@ -1,6 +1,9 @@
 package api
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 )
 
@@ -10,6 +13,8 @@ import (
 type Gate interface {
 	// check 返回 nil 放行；返回 *Error 用它的状态码和文案拒绝。
 	check(v *app.Viewer) *Error
+	// Describe 返回人类可读的门描述，用于文档生成与审计展示。
+	Describe() string
 }
 
 type publicGate struct{}
@@ -18,6 +23,7 @@ type publicGate struct{}
 var Public Gate = publicGate{}
 
 func (publicGate) check(*app.Viewer) *Error { return nil }
+func (publicGate) Describe() string         { return "Public（公开）" }
 
 type memberGate struct{}
 
@@ -30,6 +36,7 @@ func (memberGate) check(v *app.Viewer) *Error {
 	}
 	return nil
 }
+func (memberGate) Describe() string { return "Member（登录成员）" }
 
 type verifiedGate struct{}
 
@@ -46,6 +53,7 @@ func (verifiedGate) check(v *app.Viewer) *Error {
 	}
 	return nil
 }
+func (verifiedGate) Describe() string { return "Verified（已验证成员）" }
 
 type featureGate struct{ f app.Feature }
 
@@ -61,6 +69,7 @@ func (g featureGate) check(v *app.Viewer) *Error {
 	}
 	return nil
 }
+func (g featureGate) Describe() string { return fmt.Sprintf("Feature(%s)", g.f) }
 
 type capGate struct{ caps []app.Cap }
 
@@ -78,6 +87,13 @@ func (g capGate) check(v *app.Viewer) *Error {
 	}
 	return nil
 }
+func (g capGate) Describe() string {
+	names := make([]string, len(g.caps))
+	for i, c := range g.caps {
+		names[i] = string(c)
+	}
+	return fmt.Sprintf("Cap(%s)", strings.Join(names, ", "))
+}
 
 type superuserGate struct{}
 
@@ -93,3 +109,4 @@ func (superuserGate) check(v *app.Viewer) *Error {
 	}
 	return nil
 }
+func (superuserGate) Describe() string { return "Superuser（超级管理员）" }
