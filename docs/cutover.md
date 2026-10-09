@@ -38,6 +38,20 @@
 
 ## 3. 标准割接执行步骤
 
+### 步骤零：staging 全流程模拟演练（割接前至少演练两次）
+
+依据 `12-architecture.md` 第 8.4 节要求，割接前必须在 staging（测试机）使用正式站备份完整演练至少两次：
+
+```bash
+# 执行模拟演练流水线并记录各阶段耗时
+bash deploy/rehearse.sh /srv/sjtu-ow/data/demo-final.sqlite3
+
+# 执行端到端新旧对拍与兼容性核验
+sjtuow parity --new-url http://127.0.0.1:4000 --media-dir /srv/sjtu-ow/data/media
+```
+
+演练报告输出 5 项关键指标（快照、模式迁移、全域导入、对账自检、契约审计与对拍），耗时必须严格控制在 900 秒（15 分钟）以内。
+
 ### 步骤一：前置检查（割接前 30 分钟）
 
 ```bash

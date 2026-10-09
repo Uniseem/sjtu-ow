@@ -80,6 +80,8 @@ func main() {
 		err = runReconcile()
 	case "rulecheck":
 		err = runRulecheck()
+	case "parity":
+		err = runParity()
 	default:
 		usage()
 		os.Exit(2)
@@ -90,7 +92,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|verify-email|backup|restore|createsuperuser|reconcile|rulecheck>")
+	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|verify-email|backup|restore|createsuperuser|reconcile|rulecheck|parity>")
 }
 
 func fatal(err error) {
@@ -668,6 +670,71 @@ func runRulecheck() error {
 		return err
 	}
 	fmt.Print(res.FormatReport())
+	return nil
+}
+
+func runParity() error {
+	fs := flag.NewFlagSet("parity", flag.ContinueOnError)
+	newURL := fs.String("new-url", "", "新站前端或后端地址（例如 http://127.0.0.1:4000）")
+	legacyURL := fs.String("legacy-url", "", "旧站访问地址（例如 http://127.0.0.1:22887）")
+	mediaDir := fs.String("media-dir", "", "本地 media 目录路径（例如 /srv/sjtu-ow/data/media）")
+	signingKey := fs.String("signing-key", "", "站点签名密钥（默认使用环境变量 SIGNING_KEY）")
+	jsonOutput := fs.Bool("json", false, "以 JSON 格式输出审计结果")
+	checkRoutes := fs.Bool("routes", false, "执行端点路由对拍")
+	checkMedia := fs.Bool("media", false, "执行图片媒体可达性核对")
+
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		return err
+	}
+
+	key := *signingKey
+	if key == "" {
+		key = os.Getenv("SIGNING_KEY")
+	}
+
+	var d *db.DB
+	if cfg, dbConn, err := openDB(); err == nil {
+		d = dbConn
+		defer d.Close()
+		if key == "" {
+			key = cfg.SigningKey
+		}
+		if *mediaDir == "" {
+			*mediaDir = filepath.Join(cfg.DataDir, "media")
+		}
+	}
+
+	opts := ops.ParityOptions{
+		NewBaseURL:      *newURL,
+		LegacyBaseURL:   *legacyURL,
+		MediaDir:        *mediaDir,
+		SigningKey:      key,
+		CheckRoutes:     *checkRoutes || *newURL != "",
+		CheckMedia:      *checkMedia || *mediaDir != "",
+		CheckSignatures: true,
+		CheckPasswords:  true,
+		CheckArticles:   true,
+	}
+
+	checker := ops.NewParityChecker(opts, d)
+	res, err := checker.Run(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if *jsonOutput {
+		jsonStr, err := res.ToJSON()
+		if err != nil {
+			return err
+		}
+		fmt.Println(jsonStr)
+	} else {
+		fmt.Print(res.FormatReport())
+	}
+
+	if !res.OverallOK {
+		return fmt.Errorf("新旧对拍与兼容性核验未完全通过")
+	}
 	return nil
 }
 
