@@ -94,6 +94,23 @@ type PinCommentOut struct {
 	Result string `json:"result"`
 }
 
+// AdminListCommentsIn 是 GET /api/admin/comments 的入参。
+type AdminListCommentsIn struct {
+	Q        string `query:"q"`
+	Hidden   *bool  `query:"hidden"`
+	Pinned   *bool  `query:"pinned"`
+	Page     int    `query:"page"`
+	PageSize int    `query:"page_size"`
+}
+
+// AdminListCommentsOut 是 GET /api/admin/comments 的出参。
+type AdminListCommentsOut struct {
+	Items    []AdminCommentRow `json:"items"`
+	Total    int               `json:"total"`
+	Page     int               `json:"page"`
+	PageSize int               `json:"page_size"`
+}
+
 // Routes 注册评论域所有路由接口。
 func (m *Module) Routes(r *api.Registry) {
 	// 公开读取列表
@@ -116,6 +133,29 @@ func (m *Module) Routes(r *api.Registry) {
 		api.NoLimit("管理员隐藏评论无需限流"))
 	api.Post(r, "/api/comments/{id}/pin", api.Cap(CapCommentsModerate), m.pinComment,
 		api.NoLimit("管理员置顶评论无需限流"))
+	api.Get(r, "/api/admin/comments", api.Cap(CapCommentsModerate), m.adminListComments,
+		api.Nav("review", "comments"))
+}
+
+func (m *Module) adminListComments(ctx *app.Ctx, in AdminListCommentsIn) (AdminListCommentsOut, error) {
+	items, total, err := m.svc.ListAdminComments(ctx, in.Q, in.Hidden, in.Pinned, in.Page, in.PageSize)
+	if err != nil {
+		return AdminListCommentsOut{}, err
+	}
+	page := in.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := in.PageSize
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	return AdminListCommentsOut{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
 }
 
 func (m *Module) listComments(ctx *app.Ctx, in ListCommentsIn) (ListCommentsOut, error) {

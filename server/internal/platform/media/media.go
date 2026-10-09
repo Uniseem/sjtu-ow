@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -388,4 +389,109 @@ func (s *Service) DeleteImage(ctx *app.Ctx, id int64) error {
 	_ = os.Remove(s.MasterPath(id))
 	_ = os.RemoveAll(filepath.Join(s.mediaDir, "r", strconv.FormatInt(id, 10)))
 	return nil
+}
+
+// ListImages 分页查询图片列表。
+func (s *Service) ListImages(ctx context.Context, collectionKey string, collectionID *int64, q string, page, pageSize int) ([]Image, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 48
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	var where []string
+	var args []any
+
+	if collectionKey != "" {
+		where = append(where, "collection_id = (SELECT id FROM image_collections WHERE key = ?)")
+		args = append(args, collectionKey)
+	} else if collectionID != nil && *collectionID > 0 {
+		where = append(where, "collection_id = ?")
+		args = append(args, *collectionID)
+	}
+
+	if q != "" {
+		where = append(where, "title LIKE ?")
+		args = append(args, "%"+q+"%")
+	}
+
+	whereClause := ""
+	if len(where) > 0 {
+		whereClause = "WHERE " + strings.Join(where, " AND ")
+	}
+
+	var total int
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM images %s", whereClause)
+	if err := s.db.ReadPool().QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, collection_id, title, file_name, file_size, width, height, uploader_id, created_at, version
+		FROM images
+		%s
+		ORDER BY id DESC
+		LIMIT ? OFFSET ?
+	`, whereClause)
+
+	limitArgs := append(args, pageSize, (page-1)*pageSize)
+	rows, err := s.db.ReadPool().QueryContext(ctx, query, limitArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	items := make([]Image, 0, pageSize)
+	for rows.Next() {
+		var img Image
+		var colID, upID sql.NullInt64
+		var createdAt string
+		if err := rows.Scan(&img.ID, &colID, &img.Title, &img.FileName, &img.FileSize, &img.Width, &img.Height, &upID, &createdAt, &img.Version); err != nil {
+			return nil, 0, err
+		}
+		if colID.Valid {
+			img.CollectionID = &colID.Int64
+		}
+		if upID.Valid {
+			img.UploaderID = &upID.Int64
+		}
+		t, _ := time.Parse(time.RFC3339Nano, createdAt)
+		if t.IsZero() {
+			t, _ = db.ParseUTC(createdAt)
+		}
+		img.CreatedAt = t
+		items = append(items, img)
+	}
+	return items, total, rows.Err()
+}
+
+// ListCollections 查询所有图片集合。
+func (s *Service) ListCollections(ctx context.Context) ([]Collection, error) {
+	rows, err := s.db.ReadPool().QueryContext(ctx, `
+		SELECT id, name, key, created_at FROM image_collections ORDER BY id ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var cols []Collection
+	for rows.Next() {
+		var c Collection
+		var at string
+		if err := rows.Scan(&c.ID, &c.Name, &c.Key, &at); err != nil {
+			return nil, err
+		}
+		t, _ := time.Parse(time.RFC3339Nano, at)
+		if t.IsZero() {
+			t, _ = db.ParseUTC(at)
+		}
+		c.CreatedAt = t
+		cols = append(cols, c)
+	}
+	return cols, rows.Err()
 }

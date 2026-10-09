@@ -20,13 +20,31 @@ type Feature string
 // （测试自己造）；会话中间件（后续轮次）从 ow_session 解出来填。nil 是访客。
 type Viewer struct {
 	ID            int64
+	Nickname      string
+	Email         string
 	Disabled      bool // 停用：所有需要身份的门都当没登录拒
 	EmailVerified bool
 	Superuser     bool
 	Caps          map[Cap]struct{}
+	Roles         map[string]struct{}
 	// FeatureDenied 是单人功能限制（「谁被禁了哪项」）。can_use 的完整判定
 	// 顺序（角色级限制、派生角色）M3 随 5.8 一起进，这里是它的子集。
 	FeatureDenied map[Feature]struct{}
+}
+
+// HasRole 报这个人有没有指定角色；超管直接全有。
+func (v *Viewer) HasRole(r string) bool {
+	if v == nil || v.Disabled {
+		return false
+	}
+	if v.Superuser {
+		return true
+	}
+	if v.Roles == nil {
+		return false
+	}
+	_, ok := v.Roles[r]
+	return ok
 }
 
 // HasCap 报这个人有没有某项后台能力；超管直接全有。

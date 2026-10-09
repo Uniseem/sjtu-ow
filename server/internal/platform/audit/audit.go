@@ -4,7 +4,10 @@ package audit
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
@@ -19,6 +22,32 @@ type Entry struct {
 	ObjectID   int64           `json:"object_id"`
 	Data       json.RawMessage `json:"data"`
 	CreatedAt  time.Time       `json:"created_at"`
+}
+
+// EntryWithActor 附带操作人基础信息。
+type EntryWithActor struct {
+	Entry
+	ActorNickname string `json:"actor_nickname"`
+	ActorEmail    string `json:"actor_email"`
+}
+
+// QueryInput 是查询审计日志的条件。
+type QueryInput struct {
+	Action     string
+	ActorID    *int64
+	ObjectType string
+	Since      *time.Time
+	Until      *time.Time
+	Page       int
+	PageSize   int
+}
+
+// QueryResult 是分页查询结果。
+type QueryResult struct {
+	Items    []EntryWithActor `json:"items"`
+	Total    int              `json:"total"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"page_size"`
 }
 
 // Record 记一条。actor 为 0 表示系统。data 可以是 nil，也可以是任何能转成 JSON 的东西。
@@ -61,4 +90,100 @@ func For(ctx context.Context, q db.DBTX, objectType string, objectID int64) ([]E
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+// Query 分页查询审计日志，新的在前。
+func Query(ctx context.Context, q db.DBTX, in QueryInput) (*QueryResult, error) {
+	page := in.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := in.PageSize
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	var where []string
+	var args []any
+
+	if in.Action != "" {
+		where = append(where, "a.action = ?")
+		args = append(args, in.Action)
+	}
+	if in.ActorID != nil && *in.ActorID > 0 {
+		where = append(where, "a.actor_id = ?")
+		args = append(args, *in.ActorID)
+	}
+	if in.ObjectType != "" {
+		where = append(where, "a.object_type = ?")
+		args = append(args, in.ObjectType)
+	}
+	if in.Since != nil && !in.Since.IsZero() {
+		where = append(where, "a.created_at >= ?")
+		args = append(args, db.FormatUTC(*in.Since))
+	}
+	if in.Until != nil && !in.Until.IsZero() {
+		where = append(where, "a.created_at < ?")
+		args = append(args, db.FormatUTC(*in.Until))
+	}
+
+	whereClause := ""
+	if len(where) > 0 {
+		whereClause = "WHERE " + strings.Join(where, " AND ")
+	}
+
+	var total int
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM audit_log a %s", whereClause)
+	if err := q.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, fmt.Errorf("统计审计日志总数失败: %w", err)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT a.id, a.actor_id, a.action, a.object_type, a.object_id, a.data, a.created_at,
+		       COALESCE(u.nickname, ''), COALESCE(u.email, '')
+		FROM audit_log a
+		LEFT JOIN users u ON u.id = a.actor_id
+		%s
+		ORDER BY a.id DESC
+		LIMIT ? OFFSET ?
+	`, whereClause)
+
+	limitArgs := append(args, pageSize, (page-1)*pageSize)
+	rows, err := q.QueryContext(ctx, query, limitArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("查询审计日志列表失败: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]EntryWithActor, 0, pageSize)
+	for rows.Next() {
+		var item EntryWithActor
+		var actorID sql.NullInt64
+		var dataStr, atStr string
+
+		if err := rows.Scan(
+			&item.ID, &actorID, &item.Action, &item.ObjectType, &item.ObjectID,
+			&dataStr, &atStr, &item.ActorNickname, &item.ActorEmail,
+		); err != nil {
+			return nil, err
+		}
+
+		if actorID.Valid {
+			v := actorID.Int64
+			item.ActorID = &v
+		}
+		item.Data = json.RawMessage(dataStr)
+		item.CreatedAt, _ = db.ParseUTC(atStr)
+		items = append(items, item)
+	}
+
+	return &QueryResult{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, rows.Err()
 }

@@ -348,3 +348,11 @@ func (s *Service) ListComments(ctx *app.Ctx, articleID int64, in ListCommentsInp
 func timeFromUTC(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339Nano, s)
 }
+
+// ListAdminComments 管理员查看所有评论（规则 179–183，docs/admin.md 4.5）。
+func (s *Service) ListAdminComments(ctx *app.Ctx, q string, hidden, pinned *bool, page, pageSize int) ([]AdminCommentRow, int, error) {
+	if !s.isMod(ctx.Viewer) {
+		return nil, 0, api.Forbidden()
+	}
+	return s.store.ListAdminComments(ctx.Context, q, hidden, pinned, page, pageSize)
+}

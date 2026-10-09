@@ -1,11 +1,15 @@
 package accounts
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -20,9 +24,16 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/mail"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/outbox"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
 )
+
+// AvatarUploader 是头像图片上传器接口（由 media.Service 实现）。
+type AvatarUploader interface {
+	Upload(ctx *app.Ctx, in media.UploadInput) (*media.Image, error)
+	DeleteImage(ctx *app.Ctx, id int64) error
+}
 
 // Service 是账号域的业务服务。
 type Service struct {
@@ -33,6 +44,8 @@ type Service struct {
 	sessions *auth.Store
 	// mod 把昵称、宣言送审（规则 186）；nil 表示不送。
 	mod app.ModerationSink
+	// media 处理头像图片上传；nil 表示未接上。
+	media AvatarUploader
 	// limiter 数登录失败（AuthLoginFailedKey 按账号，R006）；nil 表示不数
 	// （apigen 场景；测试想要失败限流时传 ratelimit.NewEnforcer）。
 	limiter *ratelimit.Enforcer
@@ -42,6 +55,9 @@ type Service struct {
 
 // SetModeration 接上内容审核的送审入口。
 func (s *Service) SetModeration(m app.ModerationSink) { s.mod = m }
+
+// SetMedia 接上媒体服务的上传接口。
+func (s *Service) SetMedia(m AvatarUploader) { s.media = m }
 
 // NewService 创建账号服务。sessions 为 nil 时自建；limiter 为 nil 时登录失败
 // 不按账号计数（注册表层的按 IP 限流不受影响）。
@@ -999,7 +1015,9 @@ func (s *Service) BuildViewer(ctx context.Context, userID int64) (*app.Viewer, e
 	caps := make(map[app.Cap]struct{})
 	allRoles := append([]string(nil), storedRoles...)
 	allRoles = append(allRoles, derived...)
+	rolesMap := make(map[string]struct{})
 	for _, r := range allRoles {
+		rolesMap[r] = struct{}{}
 		for _, c := range CapsForRole(r) {
 			caps[c] = struct{}{}
 		}
@@ -1016,10 +1034,13 @@ func (s *Service) BuildViewer(ctx context.Context, userID int64) (*app.Viewer, e
 
 	return &app.Viewer{
 		ID:            u.ID,
+		Nickname:      u.Nickname,
+		Email:         u.Email,
 		Disabled:      false,
 		EmailVerified: u.EmailVerified(),
 		Superuser:     u.IsSuperuser,
 		Caps:          caps,
+		Roles:         rolesMap,
 		FeatureDenied: deniedMap,
 	}, nil
 }
@@ -2259,4 +2280,147 @@ func (s *Service) VerifyUserEmailDirectly(ctx context.Context, email string) err
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
 		return s.store.MarkEmailVerified(txCtx, tx, u.ID, now)
 	})
+}
+
+func parseDataURL(s string) ([]byte, error) {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "data:") {
+		parts := strings.SplitN(s, ",", 2)
+		if len(parts) == 2 {
+			return base64.StdEncoding.DecodeString(parts[1])
+		}
+	}
+	return base64.StdEncoding.DecodeString(s)
+}
+
+// SubmitAvatar 上传并设置个人头像（规则 221：限流 5 次/天/人）。
+func (s *Service) SubmitAvatar(ctx *app.Ctx, fileName, dataURL string) (*media.Image, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+	v := ctx.Viewer
+	if !v.CanUse(FeatureAvatarUpload) {
+		return nil, api.NewErr(http.StatusForbidden, "feature_denied", FeatureDeniedMessage)
+	}
+	if s.media == nil {
+		return nil, fmt.Errorf("图片服务尚未连接")
+	}
+
+	raw, err := parseDataURL(dataURL)
+	if err != nil || len(raw) == 0 {
+		return nil, api.Invalid("头像图片数据解析失败")
+	}
+
+	// 每日 5 次限流（规则 221）
+	if s.limiter != nil {
+		retry, ok, err := s.limiter.Allow(ctx.Context, fmt.Sprintf("avatar:%d", v.ID), ratelimit.AvatarUpload)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, api.TooManyRequests(retry)
+		}
+	}
+
+	// 上传图片到 "user_avatar" 集合
+	img, err := s.media.Upload(ctx, media.UploadInput{
+		Title:         "用户头像",
+		FileName:      fileName,
+		CollectionKey: "user_avatar",
+		Reader:        bytes.NewReader(raw),
+		FileSize:      int64(len(raw)),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := s.store.GetByID(ctx.Context, v.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	ownedIDs, _ := s.store.UserUploadedFaceIDs(ctx.Context, v.ID)
+	oldID := u.AvatarImageID
+
+	now := ctx.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		sub := &AvatarSubmission{
+			UserID:    v.ID,
+			ImageID:   &img.ID,
+			Status:    "approved",
+			CreatedAt: now,
+		}
+		if err := s.store.CreateAvatarSubmission(txCtx, tx, sub); err != nil {
+			return err
+		}
+		return s.store.SetUserAvatar(txCtx, tx, v.ID, &img.ID, now)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if oldID != nil {
+		if _, ok := ownedIDs[*oldID]; ok {
+			_ = s.media.DeleteImage(ctx, *oldID)
+		}
+	}
+
+	return img, nil
+}
+
+// RemoveAvatar 移除当前头像，恢复默认。
+func (s *Service) RemoveAvatar(ctx *app.Ctx) error {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return api.Unauthorized("要先登录")
+	}
+	v := ctx.Viewer
+
+	u, err := s.store.GetByID(ctx.Context, v.ID)
+	if err != nil {
+		return err
+	}
+	if u.AvatarImageID == nil {
+		return nil
+	}
+
+	oldID := *u.AvatarImageID
+	ownedIDs, _ := s.store.UserUploadedFaceIDs(ctx.Context, v.ID)
+
+	now := ctx.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		return s.store.SetUserAvatar(txCtx, tx, v.ID, nil, now)
+	})
+	if err != nil {
+		return err
+	}
+
+	if _, ok := ownedIDs[oldID]; ok {
+		if s.media != nil {
+			_ = s.media.DeleteImage(ctx, oldID)
+		}
+	}
+	return nil
+}
+
+// ListAvatars 管理员查看待复核/全部头像。
+func (s *Service) ListAvatars(ctx *app.Ctx, status string, page, pageSize int) ([]AvatarSubmission, int, error) {
+	if ctx.Viewer == nil || (!ctx.Viewer.Superuser && !ctx.Viewer.HasCap(CapModerationReview)) {
+		return nil, 0, api.Forbidden()
+	}
+	return s.store.ListAvatarSubmissions(ctx.Context, status, page, pageSize)
+}
+
+// TakeDownAvatar 管理员下架违规头像。
+func (s *Service) TakeDownAvatar(ctx *app.Ctx, submissionID int64, note string) error {
+	if ctx.Viewer == nil || (!ctx.Viewer.Superuser && !ctx.Viewer.HasCap(CapModerationReview)) {
+		return api.Forbidden()
+	}
+	_, err := s.store.TakeDownAvatar(ctx.Context, submissionID, note, ctx.Now().UTC())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.NotFound("头像记录不存在")
+		}
+		return err
+	}
+	return nil
 }

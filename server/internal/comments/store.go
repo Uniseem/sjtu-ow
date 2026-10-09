@@ -397,3 +397,106 @@ func (s *Store) ToggleLike(ctx context.Context, commentID int64, userID int64) (
 	}
 	return isLiked, count, nil
 }
+
+// AdminCommentRow 是后台评论列表的一行数据。
+type AdminCommentRow struct {
+	ID           int64     `json:"id"`
+	ArticleID    int64     `json:"article_id"`
+	ArticleTitle string    `json:"article_title"`
+	AuthorID     int64     `json:"author_id"`
+	AuthorName   string    `json:"author_name"`
+	Content      string    `json:"content"`
+	IsPinned     bool      `json:"is_pinned"`
+	IsHidden     bool      `json:"is_hidden"`
+	IsDeleted    bool      `json:"is_deleted"`
+	LikeCount    int       `json:"like_count"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// ListAdminComments 分页查询管理后台评论列表。
+func (s *Store) ListAdminComments(ctx context.Context, q string, hidden, pinned *bool, page, pageSize int) ([]AdminCommentRow, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	var where []string
+	var args []any
+
+	if strings.TrimSpace(q) != "" {
+		where = append(where, "c.content LIKE ?")
+		args = append(args, "%"+strings.TrimSpace(q)+"%")
+	}
+	if hidden != nil {
+		if *hidden {
+			where = append(where, "c.is_hidden = 1")
+		} else {
+			where = append(where, "c.is_hidden = 0")
+		}
+	}
+	if pinned != nil {
+		if *pinned {
+			where = append(where, "c.is_pinned = 1")
+		} else {
+			where = append(where, "c.is_pinned = 0")
+		}
+	}
+
+	whereClause := ""
+	if len(where) > 0 {
+		whereClause = "WHERE " + strings.Join(where, " AND ")
+	}
+
+	var total int
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM comments c %s", whereClause)
+	if err := s.d.ReadPool().QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT c.id, c.article_id, COALESCE(p.title, ''), COALESCE(c.user_id, 0), COALESCE(u.nickname, ''),
+		       c.content, c.is_pinned, c.is_hidden, c.is_deleted, c.like_count, c.created_at
+		FROM comments c
+		LEFT JOIN pages p ON p.id = c.article_id
+		LEFT JOIN users u ON u.id = c.user_id
+		%s
+		ORDER BY c.id DESC
+		LIMIT ? OFFSET ?
+	`, whereClause)
+
+	limitArgs := append(args, pageSize, (page-1)*pageSize)
+	rows, err := s.d.ReadPool().QueryContext(ctx, query, limitArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	items := make([]AdminCommentRow, 0, pageSize)
+	for rows.Next() {
+		var row AdminCommentRow
+		var atStr string
+		var pinInt, hideInt, delInt int
+		if err := rows.Scan(
+			&row.ID, &row.ArticleID, &row.ArticleTitle, &row.AuthorID, &row.AuthorName,
+			&row.Content, &pinInt, &hideInt, &delInt, &row.LikeCount, &atStr,
+		); err != nil {
+			return nil, 0, err
+		}
+		row.IsPinned = pinInt != 0
+		row.IsHidden = hideInt != 0
+		row.IsDeleted = delInt != 0
+		t, _ := db.ParseUTC(atStr)
+		if t.IsZero() {
+			t, _ = time.Parse(time.RFC3339Nano, atStr)
+		}
+		row.CreatedAt = t
+		items = append(items, row)
+	}
+
+	return items, total, rows.Err()
+}

@@ -89,6 +89,17 @@ export function deleteApiImagesId(id: string): Promise<DeleteApiImagesIdOut> {
   return call<DeleteApiImagesIdOut>("DELETE", "/api/images/{id}", { id }, undefined)
 }
 
+export interface DeleteApiMeAvatarIn {
+}
+
+export interface DeleteApiMeAvatarOut {
+  result: string;
+}
+
+export function deleteApiMeAvatar(): Promise<DeleteApiMeAvatarOut> {
+  return call<DeleteApiMeAvatarOut>("DELETE", "/api/me/avatar", {  }, undefined)
+}
+
 export interface DeleteApiMeContactsIdIn {
 }
 
@@ -135,6 +146,21 @@ export function deleteApiTournamentsIdSignup(id: string): Promise<DeleteApiTourn
   return call<DeleteApiTournamentsIdSignupOut>("DELETE", "/api/tournaments/{id}/signup", { id }, undefined)
 }
 
+export interface GetApiAdminActivityIn {
+}
+
+export interface GetApiAdminActivityOut {
+  period: {   start: string;   end: string; };
+  notice?: string;
+  totals: {   members: number;   sjtu_members: number;   scrims: number;   scrim_signups: number;   scrim_players: number;   scrim_people: number;   tournaments: number;   tournament_teams: number;   tournament_people: number;   articles: number;   comments: number;   teams: number; };
+  events: {   when: string;   kind: string;   title: string;   status: string;   entries: number;   players: number;   url: string; }[];
+  presets: string[];
+}
+
+export function getApiAdminActivity(): Promise<GetApiAdminActivityOut> {
+  return call<GetApiAdminActivityOut>("GET", "/api/admin/activity", {  }, undefined)
+}
+
 export interface GetApiAdminAnnounceKindIdIn {
 }
 
@@ -176,6 +202,20 @@ export function getApiAdminArticlesId(id: string): Promise<GetApiAdminArticlesId
   return call<GetApiAdminArticlesIdOut>("GET", "/api/admin/articles/{id}", { id }, undefined)
 }
 
+export interface GetApiAdminAvatarsIn {
+}
+
+export interface GetApiAdminAvatarsOut {
+  items: {   id: number;   user_id: number;   user_nickname: string;   image_id: number | null;   status: string;   handling_note: string;   reviewed_at?: string | null;   created_at: string; }[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export function getApiAdminAvatars(): Promise<GetApiAdminAvatarsOut> {
+  return call<GetApiAdminAvatarsOut>("GET", "/api/admin/avatars", {  }, undefined)
+}
+
 export interface GetApiAdminCategoriesIn {
 }
 
@@ -185,6 +225,20 @@ export interface GetApiAdminCategoriesOut {
 
 export function getApiAdminCategories(): Promise<GetApiAdminCategoriesOut> {
   return call<GetApiAdminCategoriesOut>("GET", "/api/admin/categories", {  }, undefined)
+}
+
+export interface GetApiAdminCommentsIn {
+}
+
+export interface GetApiAdminCommentsOut {
+  items: {   id: number;   article_id: number;   article_title: string;   author_id: number;   author_name: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   like_count: number;   created_at: string; }[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export function getApiAdminComments(): Promise<GetApiAdminCommentsOut> {
+  return call<GetApiAdminCommentsOut>("GET", "/api/admin/comments", {  }, undefined)
 }
 
 export interface GetApiAdminFeatureRoleRestrictionsIn {
@@ -207,6 +261,56 @@ export interface GetApiAdminHomePinsOut {
 
 export function getApiAdminHomePins(): Promise<GetApiAdminHomePinsOut> {
   return call<GetApiAdminHomePinsOut>("GET", "/api/admin/home-pins", {  }, undefined)
+}
+
+export interface GetApiAdminImageCollectionsIn {
+}
+
+export interface GetApiAdminImageCollectionsOut {
+  collections: {   id: number;   name: string;   key: string;   created_at: string; }[];
+}
+
+export function getApiAdminImageCollections(): Promise<GetApiAdminImageCollectionsOut> {
+  return call<GetApiAdminImageCollectionsOut>("GET", "/api/admin/image-collections", {  }, undefined)
+}
+
+export interface GetApiAdminImagesIn {
+}
+
+export interface GetApiAdminImagesOut {
+  items: {   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; }[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export function getApiAdminImages(): Promise<GetApiAdminImagesOut> {
+  return call<GetApiAdminImagesOut>("GET", "/api/admin/images", {  }, undefined)
+}
+
+export interface GetApiAdminLogIn {
+}
+
+export interface GetApiAdminLogOut {
+  items: {   Entry: {   id: number;   actor_id: number | null;   action: string;   object_type: string;   object_id: number;   data: number[];   created_at: string; };   actor_nickname: string;   actor_email: string; }[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export function getApiAdminLog(): Promise<GetApiAdminLogOut> {
+  return call<GetApiAdminLogOut>("GET", "/api/admin/log", {  }, undefined)
+}
+
+export interface GetApiAdminManualIn {
+}
+
+export interface GetApiAdminManualOut {
+  parts: {   key: string;   title: string;   steps: {   text: string;   link_url?: string;   link_label?: string; }[]; }[];
+}
+
+export function getApiAdminManual(): Promise<GetApiAdminManualOut> {
+  return call<GetApiAdminManualOut>("GET", "/api/admin/manual", {  }, undefined)
 }
 
 export interface GetApiAdminMemberGroupsIn {
@@ -321,6 +425,17 @@ export function getApiAdminScrimsIdBoard(id: string): Promise<GetApiAdminScrimsI
   return call<GetApiAdminScrimsIdBoardOut>("GET", "/api/admin/scrims/{id}/board", { id }, undefined)
 }
 
+export interface GetApiAdminSettingsIn {
+}
+
+export interface GetApiAdminSettingsOut {
+  settings: {   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
+}
+
+export function getApiAdminSettings(): Promise<GetApiAdminSettingsOut> {
+  return call<GetApiAdminSettingsOut>("GET", "/api/admin/settings", {  }, undefined)
+}
+
 export interface GetApiAdminTeamsIn {
 }
 
@@ -330,6 +445,18 @@ export interface GetApiAdminTeamsOut {
 
 export function getApiAdminTeams(): Promise<GetApiAdminTeamsOut> {
   return call<GetApiAdminTeamsOut>("GET", "/api/admin/teams", {  }, undefined)
+}
+
+export interface GetApiAdminTodoIn {
+}
+
+export interface GetApiAdminTodoOut {
+  has_duties: boolean;
+  items: {   text: string;   url: string;   count: number; }[];
+}
+
+export function getApiAdminTodo(): Promise<GetApiAdminTodoOut> {
+  return call<GetApiAdminTodoOut>("GET", "/api/admin/todo", {  }, undefined)
 }
 
 export interface GetApiAdminTournamentsIn {
@@ -400,7 +527,7 @@ export interface GetApiAdminUsersIdIn {
 }
 
 export interface GetApiAdminUsersIdOut {
-  user: {   ID: number;   Email: string;   EmailNorm: string;   PasswordHash: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   CreatedAt: string;   UpdatedAt: string; } | null;
+  user: {   ID: number;   Email: string;   EmailNorm: string;   PasswordHash: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   AvatarImageID: number | null;   CreatedAt: string;   UpdatedAt: string; } | null;
   roles: string[];
   rules: Record<string, boolean>;
   game_accounts: {   id: number;   battletag: string;   rank_tank: number | null;   rank_damage: number | null;   rank_support: number | null;   tank_label: string;   damage_label: string;   support_label: string;   ranks_updated_at: string; }[];
@@ -533,7 +660,7 @@ export interface GetApiMeExportIn {
 }
 
 export interface GetApiMeExportOut {
-  user: {   ID: number;   Email: string;   EmailNorm: string;   PasswordHash: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   CreatedAt: string;   UpdatedAt: string; } | null;
+  user: {   ID: number;   Email: string;   EmailNorm: string;   PasswordHash: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   AvatarImageID: number | null;   CreatedAt: string;   UpdatedAt: string; } | null;
   game_accounts: {   id: number;   battletag: string;   rank_tank: number | null;   rank_damage: number | null;   rank_support: number | null;   tank_label: string;   damage_label: string;   support_label: string;   ranks_updated_at: string; }[];
   contacts: {   id: number;   type: string;   type_label: string;   value: string;   created_at: string; }[];
   roles: string[];
@@ -886,6 +1013,51 @@ export function patchApiAdminScrimsId(id: string, body: PatchApiAdminScrimsIdIn)
   return call<PatchApiAdminScrimsIdOut>("PATCH", "/api/admin/scrims/{id}", { id }, body)
 }
 
+export interface PatchApiAdminSettingsIn {
+  site_description?: string | null;
+  from_name?: string | null;
+  email_subject_prefix?: string | null;
+  smtp_host?: string | null;
+  smtp_port?: number | null;
+  smtp_security?: string | null;
+  smtp_username?: string | null;
+  smtp_password?: string | null;
+  clear_smtp_password?: boolean | null;
+  from_address?: string | null;
+  founded_on?: string | null;
+  default_share_image_id?: number | null;
+  hero_image_id?: number | null;
+  banner_news_id?: number | null;
+  banner_tournaments_id?: number | null;
+  banner_scrims_id?: number | null;
+  banner_teams_id?: number | null;
+  banner_members_id?: number | null;
+  qq_group_url?: string | null;
+  team_max_members?: number | null;
+  team_max_captained?: number | null;
+  tournament_reminder_hours?: number | null;
+  scrim_reminder_hours?: number | null;
+  moderation_enabled?: boolean | null;
+  moderation_provider?: string | null;
+  moderation_api_key?: string | null;
+  clear_moderation_api_key?: boolean | null;
+  moderation_base_url?: string | null;
+  moderation_model?: string | null;
+  moderation_max_tokens?: number | null;
+  moderation_timeout_seconds?: number | null;
+  moderation_extra_params?: string | null;
+  moderation_daily_limit?: number | null;
+  moderation_notify_email?: string | null;
+}
+
+export interface PatchApiAdminSettingsOut {
+  settings: {   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
+}
+
+export function patchApiAdminSettings(body: PatchApiAdminSettingsIn): Promise<PatchApiAdminSettingsOut> {
+  return call<PatchApiAdminSettingsOut>("PATCH", "/api/admin/settings", {  }, body)
+}
+
 export interface PatchApiAdminTeamsIdIn {
   base_version: number;
   changes: {   name?: string | null;   description?: string | null;   is_recruiting?: boolean | null;   recruiting_roles?: string[] | null;   member_contact?: string | null;   logo_image_id?: number | null;   remove_logo?: boolean | null; };
@@ -1043,6 +1215,18 @@ export function postApiAdminAnnounceKindId(kind: string, id: string): Promise<Po
   return call<PostApiAdminAnnounceKindIdOut>("POST", "/api/admin/announce/{kind}/{id}", { kind, id }, undefined)
 }
 
+export interface PostApiAdminAvatarsIdTakeDownIn {
+  note: string;
+}
+
+export interface PostApiAdminAvatarsIdTakeDownOut {
+  result: string;
+}
+
+export function postApiAdminAvatarsIdTakeDown(id: string, body: PostApiAdminAvatarsIdTakeDownIn): Promise<PostApiAdminAvatarsIdTakeDownOut> {
+  return call<PostApiAdminAvatarsIdTakeDownOut>("POST", "/api/admin/avatars/{id}/take-down", { id }, body)
+}
+
 export interface PostApiAdminCategoriesIn {
   name: string;
   slug: string;
@@ -1057,6 +1241,21 @@ export interface PostApiAdminCategoriesOut {
 
 export function postApiAdminCategories(body: PostApiAdminCategoriesIn): Promise<PostApiAdminCategoriesOut> {
   return call<PostApiAdminCategoriesOut>("POST", "/api/admin/categories", {  }, body)
+}
+
+export interface PostApiAdminImagesUploadIn {
+  title: string;
+  collection_key: string;
+  file_name: string;
+  data_url: string;
+}
+
+export interface PostApiAdminImagesUploadOut {
+  image: {   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
+}
+
+export function postApiAdminImagesUpload(body: PostApiAdminImagesUploadIn): Promise<PostApiAdminImagesUploadOut> {
+  return call<PostApiAdminImagesUploadOut>("POST", "/api/admin/images/upload", {  }, body)
 }
 
 export interface PostApiAdminMemberGroupPeopleIdMoveIn {
@@ -1298,6 +1497,18 @@ export interface PostApiAdminScrimsIdPublishOut {
 
 export function postApiAdminScrimsIdPublish(id: string): Promise<PostApiAdminScrimsIdPublishOut> {
   return call<PostApiAdminScrimsIdPublishOut>("POST", "/api/admin/scrims/{id}/publish", { id }, undefined)
+}
+
+export interface PostApiAdminSettingsTestEmailIn {
+}
+
+export interface PostApiAdminSettingsTestEmailOut {
+  result: string;
+  message: string;
+}
+
+export function postApiAdminSettingsTestEmail(): Promise<PostApiAdminSettingsTestEmailOut> {
+  return call<PostApiAdminSettingsTestEmailOut>("POST", "/api/admin/settings/test-email", {  }, undefined)
 }
 
 export interface PostApiAdminTeamsIdAssignCaptainIn {
@@ -1728,6 +1939,19 @@ export function postApiMeAnnouncements(body: PostApiMeAnnouncementsIn): Promise<
   return call<PostApiMeAnnouncementsOut>("POST", "/api/me/announcements", {  }, body)
 }
 
+export interface PostApiMeAvatarIn {
+  file_name: string;
+  data_url: string;
+}
+
+export interface PostApiMeAvatarOut {
+  image: {   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
+}
+
+export function postApiMeAvatar(body: PostApiMeAvatarIn): Promise<PostApiMeAvatarOut> {
+  return call<PostApiMeAvatarOut>("POST", "/api/me/avatar", {  }, body)
+}
+
 export interface PostApiMeCalendarRenewIn {
 }
 
@@ -1910,6 +2134,19 @@ export interface PostApiTeamsIdLeaveOut {
 
 export function postApiTeamsIdLeave(id: string): Promise<PostApiTeamsIdLeaveOut> {
   return call<PostApiTeamsIdLeaveOut>("POST", "/api/teams/{id}/leave", { id }, undefined)
+}
+
+export interface PostApiTeamsIdLogoIn {
+  file_name: string;
+  data_url: string;
+}
+
+export interface PostApiTeamsIdLogoOut {
+  image: {   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
+}
+
+export function postApiTeamsIdLogo(id: string, body: PostApiTeamsIdLogoIn): Promise<PostApiTeamsIdLogoOut> {
+  return call<PostApiTeamsIdLogoOut>("POST", "/api/teams/{id}/logo", { id }, body)
 }
 
 export interface PostApiTeamsIdMembersUser_idRemoveIn {

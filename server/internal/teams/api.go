@@ -4,6 +4,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 // Module 负责战队域的路由。
@@ -91,6 +92,18 @@ type AlumnusIn struct {
 	ID api.ID `path:"id"`
 }
 
+// UploadLogoIn 是 POST /api/teams/{id}/logo 的入参。
+type UploadLogoIn struct {
+	ID       api.ID `path:"id"`
+	FileName string `json:"file_name"`
+	DataURL  string `json:"data_url"`
+}
+
+// UploadLogoOut 是 POST /api/teams/{id}/logo 的出参。
+type UploadLogoOut struct {
+	Image *media.Image `json:"image"`
+}
+
 // Routes 注册战队域的接口。
 func (m *Module) Routes(r *api.Registry) {
 	api.Get(r, "/api/teams", api.Public, m.list)
@@ -102,6 +115,8 @@ func (m *Module) Routes(r *api.Registry) {
 		api.NoLimit("自动保存，按字段校验；改的人要是队长"))
 	api.Post(r, "/api/teams/{id}/applications", api.Feature(accounts.FeatureTeamApply), m.apply,
 		api.NoLimit("服务层按人每天 20 次（规则 89）"))
+	api.Post(r, "/api/teams/{id}/logo", api.Member, m.uploadLogo,
+		api.NoLimit("队长上传队标"))
 	api.Get(r, "/api/teams/{id}/manage", api.Member, m.manage)
 	api.Post(r, "/api/teams/{id}/leave", api.Member, m.leave, api.NoLimit("退队没有滥用面"))
 	api.Post(r, "/api/teams/{id}/disband", api.Member, m.disband, api.NoLimit("解散有队长或超管的门"))
@@ -204,4 +219,12 @@ func (m *Module) adminList(ctx *app.Ctx, _ struct{}) (struct {
 	return struct {
 		Teams []AdminRow `json:"teams"`
 	}{Teams: rows}, err
+}
+
+func (m *Module) uploadLogo(ctx *app.Ctx, in UploadLogoIn) (UploadLogoOut, error) {
+	img, err := m.svc.SetTeamLogo(ctx, int64(in.ID), in.FileName, in.DataURL)
+	if err != nil {
+		return UploadLogoOut{}, err
+	}
+	return UploadLogoOut{Image: img}, nil
 }

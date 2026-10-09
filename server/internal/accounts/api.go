@@ -3,6 +3,7 @@ package accounts
 import (
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
 )
 
@@ -247,6 +248,48 @@ type SetRoleRestrictionsIn = SetFeatureRoleRestrictionsInput
 // SetRoleRestrictionsOut 是 PUT /api/admin/feature-role-restrictions 的出参。
 type SetRoleRestrictionsOut = SetFeatureRoleRestrictionsResult
 
+// UploadAvatarIn 是 POST /api/me/avatar 的入参。
+type UploadAvatarIn struct {
+	FileName string `json:"file_name"`
+	DataURL  string `json:"data_url"`
+}
+
+// UploadAvatarOut 是 POST /api/me/avatar 的出参。
+type UploadAvatarOut struct {
+	Image *media.Image `json:"image"`
+}
+
+// DeleteAvatarOut 是 DELETE /api/me/avatar 的出参。
+type DeleteAvatarOut struct {
+	Result string `json:"result"`
+}
+
+// ListAvatarsIn 是 GET /api/admin/avatars 的入参。
+type ListAvatarsIn struct {
+	Status   string `query:"status"`
+	Page     int    `query:"page"`
+	PageSize int    `query:"page_size"`
+}
+
+// ListAvatarsOut 是 GET /api/admin/avatars 的出参。
+type ListAvatarsOut struct {
+	Items    []AvatarSubmission `json:"items"`
+	Total    int                `json:"total"`
+	Page     int                `json:"page"`
+	PageSize int                `json:"page_size"`
+}
+
+// TakeDownAvatarIn 是 POST /api/admin/avatars/{id}/take-down 的入参。
+type TakeDownAvatarIn struct {
+	ID   api.ID `path:"id"`
+	Note string `json:"note"`
+}
+
+// TakeDownAvatarOut 是 POST /api/admin/avatars/{id}/take-down 的出参。
+type TakeDownAvatarOut struct {
+	Result string `json:"result"`
+}
+
 // Module 提供账号域接口注册。
 type Module struct {
 	svc *Service
@@ -328,6 +371,18 @@ func (m *Module) Routes(r *api.Registry) {
 		api.Nav("roles", "restrictions"))
 	api.Put(r, "/api/admin/feature-role-restrictions", api.Superuser, m.setRoleRestrictions,
 		api.NoLimit("管理员修改角色限制"))
+
+	// 头像管理 (规则 221)
+	api.Post(r, "/api/me/avatar", api.Member, m.uploadAvatar,
+		api.Limit(ratelimit.AvatarUpload))
+	api.Delete(r, "/api/me/avatar", api.Member, m.deleteAvatar,
+		api.NoLimit("移除头像无需限流"))
+
+	// 管理员头像审核 (设计 14.1)
+	api.Get(r, "/api/admin/avatars", api.Cap(CapModerationReview), m.listAvatars,
+		api.Nav("review", "avatars"))
+	api.Post(r, "/api/admin/avatars/{id}/take-down", api.Cap(CapModerationReview), m.takeDownAvatar,
+		api.Nav("review", "avatars"), api.NoLimit("下架头像"))
 }
 
 func (m *Module) getSession(ctx *app.Ctx, _ SessionIn) (SessionOut, error) {
@@ -597,4 +652,47 @@ func (m *Module) setRoleRestrictions(ctx *app.Ctx, in SetRoleRestrictionsIn) (Se
 		return SetRoleRestrictionsOut{}, err
 	}
 	return *res, nil
+}
+
+func (m *Module) uploadAvatar(ctx *app.Ctx, in UploadAvatarIn) (UploadAvatarOut, error) {
+	img, err := m.svc.SubmitAvatar(ctx, in.FileName, in.DataURL)
+	if err != nil {
+		return UploadAvatarOut{}, err
+	}
+	return UploadAvatarOut{Image: img}, nil
+}
+
+func (m *Module) deleteAvatar(ctx *app.Ctx, _ struct{}) (DeleteAvatarOut, error) {
+	if err := m.svc.RemoveAvatar(ctx); err != nil {
+		return DeleteAvatarOut{}, err
+	}
+	return DeleteAvatarOut{Result: "ok"}, nil
+}
+
+func (m *Module) listAvatars(ctx *app.Ctx, in ListAvatarsIn) (ListAvatarsOut, error) {
+	items, total, err := m.svc.ListAvatars(ctx, in.Status, in.Page, in.PageSize)
+	if err != nil {
+		return ListAvatarsOut{}, err
+	}
+	page := in.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := in.PageSize
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	return ListAvatarsOut{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
+func (m *Module) takeDownAvatar(ctx *app.Ctx, in TakeDownAvatarIn) (TakeDownAvatarOut, error) {
+	if err := m.svc.TakeDownAvatar(ctx, int64(in.ID), in.Note); err != nil {
+		return TakeDownAvatarOut{}, err
+	}
+	return TakeDownAvatarOut{Result: "ok"}, nil
 }

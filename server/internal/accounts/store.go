@@ -25,7 +25,7 @@ func NewStore(d *db.DB) *Store {
 const userColumns = `id, email, email_norm, password_hash, nickname, is_sjtu,
 	agreed_terms_at, agreed_cross_border_at, email_verified_at, password_changed_at,
 	version, is_active, is_superuser, deactivation_note, motto, main_role, flex_roles, show_rank,
-	created_at, updated_at`
+	avatar_image_id, created_at, updated_at`
 
 func scanUser(row interface {
 	Scan(dest ...any) error
@@ -34,6 +34,7 @@ func scanUser(row interface {
 	var isSJTU, isActive, isSuperuser, showRank int
 	var agreedTerms, agreedCB, created, updated string
 	var emailVerified, passwordChanged sql.NullString
+	var avatarID sql.NullInt64
 	err := row.Scan(
 		&u.ID,
 		&u.Email,
@@ -53,6 +54,7 @@ func scanUser(row interface {
 		&u.MainRole,
 		&u.FlexRoles,
 		&showRank,
+		&avatarID,
 		&created,
 		&updated,
 	)
@@ -63,6 +65,10 @@ func scanUser(row interface {
 	u.IsActive = isActive == 1
 	u.IsSuperuser = isSuperuser == 1
 	u.ShowRank = showRank == 1
+	if avatarID.Valid {
+		v := avatarID.Int64
+		u.AvatarImageID = &v
+	}
 	if t, err := db.ParseUTC(agreedTerms); err == nil {
 		u.AgreedTermsAt = t
 	}
@@ -934,4 +940,179 @@ func (s *Store) ReplaceRoleRestrictionsTx(ctx context.Context, tx *db.Tx, restri
 		}
 	}
 	return nil
+}
+
+// CreateAvatarSubmission 写入一条头像审核记录。
+func (s *Store) CreateAvatarSubmission(ctx context.Context, tx *db.Tx, sub *AvatarSubmission) error {
+	var reviewedStr sql.NullString
+	if sub.ReviewedAt != nil {
+		reviewedStr = sql.NullString{String: db.FormatUTC(*sub.ReviewedAt), Valid: true}
+	}
+	var imgVal any
+	if sub.ImageID != nil && *sub.ImageID > 0 {
+		imgVal = *sub.ImageID
+	}
+	res, err := tx.ExecContext(ctx, `
+		INSERT INTO avatar_submissions (user_id, image_id, status, handling_note, reviewed_at, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, sub.UserID, imgVal, sub.Status, sub.HandlingNote, reviewedStr, db.FormatUTC(sub.CreatedAt))
+	if err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	sub.ID = id
+	return nil
+}
+
+// SetUserAvatar 更新用户当前头像。
+func (s *Store) SetUserAvatar(ctx context.Context, tx *db.Tx, userID int64, imageID *int64, updatedAt time.Time) error {
+	var imgVal any
+	if imageID != nil && *imageID > 0 {
+		imgVal = *imageID
+	}
+	_, err := tx.ExecContext(ctx, `
+		UPDATE users SET avatar_image_id = ?, version = version + 1, updated_at = ? WHERE id = ?
+	`, imgVal, db.FormatUTC(updatedAt), userID)
+	return err
+}
+
+// UserUploadedFaceIDs 查询某个用户自己上传过的全部头像图片 ID。
+func (s *Store) UserUploadedFaceIDs(ctx context.Context, userID int64) (map[int64]struct{}, error) {
+	rows, err := s.d.ReadPool().QueryContext(ctx, `
+		SELECT DISTINCT image_id FROM avatar_submissions WHERE user_id = ? AND image_id IS NOT NULL
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[int64]struct{})
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err == nil && id > 0 {
+			out[id] = struct{}{}
+		}
+	}
+	return out, rows.Err()
+}
+
+// ListAvatarSubmissions 查询待复核或全部头像提交记录。
+func (s *Store) ListAvatarSubmissions(ctx context.Context, status string, page, pageSize int) ([]AvatarSubmission, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	whereClause := ""
+	var args []any
+	if status != "" {
+		whereClause = "WHERE s.status = ?"
+		args = append(args, status)
+	}
+
+	var total int
+	countQ := fmt.Sprintf("SELECT COUNT(*) FROM avatar_submissions s %s", whereClause)
+	if err := s.d.ReadPool().QueryRowContext(ctx, countQ, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT s.id, s.user_id, COALESCE(u.nickname, ''), s.image_id, s.status, s.handling_note, s.reviewed_at, s.created_at
+		FROM avatar_submissions s
+		LEFT JOIN users u ON u.id = s.user_id
+		%s
+		ORDER BY s.id DESC
+		LIMIT ? OFFSET ?
+	`, whereClause)
+
+	limitArgs := append(args, pageSize, (page-1)*pageSize)
+	rows, err := s.d.ReadPool().QueryContext(ctx, query, limitArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	items := make([]AvatarSubmission, 0, pageSize)
+	for rows.Next() {
+		var sub AvatarSubmission
+		var imgID sql.NullInt64
+		var revStr sql.NullString
+		var atStr string
+		if err := rows.Scan(&sub.ID, &sub.UserID, &sub.UserNickname, &imgID, &sub.Status, &sub.HandlingNote, &revStr, &atStr); err != nil {
+			return nil, 0, err
+		}
+		if imgID.Valid {
+			v := imgID.Int64
+			sub.ImageID = &v
+		}
+		if revStr.Valid && revStr.String != "" {
+			t, _ := db.ParseUTC(revStr.String)
+			sub.ReviewedAt = &t
+		}
+		t, _ := db.ParseUTC(atStr)
+		sub.CreatedAt = t
+		items = append(items, sub)
+	}
+	return items, total, rows.Err()
+}
+
+// TakeDownAvatar 下架指定头像。
+func (s *Store) TakeDownAvatar(ctx context.Context, submissionID int64, note string, reviewedAt time.Time) (*AvatarSubmission, error) {
+	var sub AvatarSubmission
+	var imgID sql.NullInt64
+	var atStr string
+	err := s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		err := tx.QueryRowContext(txCtx, `
+			SELECT id, user_id, image_id, status, handling_note, created_at
+			FROM avatar_submissions WHERE id = ?
+		`, submissionID).Scan(&sub.ID, &sub.UserID, &imgID, &sub.Status, &sub.HandlingNote, &atStr)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return sql.ErrNoRows
+			}
+			return err
+		}
+		if imgID.Valid {
+			v := imgID.Int64
+			sub.ImageID = &v
+		}
+		sub.CreatedAt, _ = db.ParseUTC(atStr)
+		sub.Status = "taken_down"
+		sub.HandlingNote = note
+		sub.ReviewedAt = &reviewedAt
+
+		// 更新 submission 状态
+		_, err = tx.ExecContext(txCtx, `
+			UPDATE avatar_submissions
+			SET status = 'taken_down', handling_note = ?, reviewed_at = ?
+			WHERE id = ?
+		`, note, db.FormatUTC(reviewedAt), submissionID)
+		if err != nil {
+			return err
+		}
+
+		// 若用户当前头像正是这张，将其重置为 NULL
+		if sub.ImageID != nil {
+			_, err = tx.ExecContext(txCtx, `
+				UPDATE users
+				SET avatar_image_id = NULL, version = version + 1, updated_at = ?
+				WHERE id = ? AND avatar_image_id = ?
+			`, db.FormatUTC(reviewedAt), sub.UserID, *sub.ImageID)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &sub, nil
 }

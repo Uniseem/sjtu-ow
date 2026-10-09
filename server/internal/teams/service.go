@@ -1,8 +1,10 @@
 package teams
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
@@ -199,6 +201,70 @@ func (s *Service) UploadLogo(ctx *app.Ctx, in UploadLogoInput) (*media.Image, er
 		Title: "队标", FileName: in.FileName, CollectionKey: "team_logo",
 		Reader: in.Reader, FileSize: in.FileSize,
 	})
+}
+
+func parseDataURL(s string) ([]byte, error) {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "data:") {
+		parts := strings.SplitN(s, ",", 2)
+		if len(parts) == 2 {
+			return base64.StdEncoding.DecodeString(parts[1])
+		}
+	}
+	return base64.StdEncoding.DecodeString(s)
+}
+
+// SetTeamLogo 设置战队队标（规则 106）。
+func (s *Service) SetTeamLogo(ctx *app.Ctx, teamID int64, fileName, dataURL string) (*media.Image, error) {
+	v, err := requireLogin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := s.store.GetTeam(ctx.Context, s.d.ReadPool(), teamID)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, api.NotFound("战队不存在")
+	}
+	mgr, err := s.isManager(ctx.Context, s.d.ReadPool(), v, teamID)
+	if err != nil {
+		return nil, err
+	}
+	if !mgr {
+		return nil, api.Forbidden()
+	}
+
+	raw, err := parseDataURL(dataURL)
+	if err != nil || len(raw) == 0 {
+		return nil, api.Invalid("队标图片数据解析失败")
+	}
+
+	img, err := s.UploadLogo(ctx, UploadLogoInput{
+		FileName: fileName,
+		FileSize: int64(len(raw)),
+		Reader:   bytes.NewReader(raw),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	oldLogo := t.LogoImageID
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		_, err := tx.ExecContext(txCtx, `UPDATE teams SET logo_image_id = ?, version = version + 1, updated_at = ? WHERE id = ?`,
+			img.ID, db.FormatUTC(ctx.Now().UTC()), teamID)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if oldLogo != nil {
+		s.discardLogo(ctx, *oldLogo)
+	}
+
+	return img, nil
 }
 
 // discardLogo 一张没有战队再用的队标连文件一起删掉（规则 106，219）。只删「队标」集合里的。

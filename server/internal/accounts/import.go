@@ -56,12 +56,35 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 	}
 
 	// 2. 导入用户表 (accounts_user -> users)
-	userRows, err := legacy.QueryContext(ctx, `SELECT
+	var hasAvatarCol bool
+	{
+		rows, err := legacy.QueryContext(ctx, `PRAGMA table_info(accounts_user)`)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var cid, notnull, pk int
+				var name, ctype string
+				var dflt any
+				if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
+					if name == "avatar_id" {
+						hasAvatarCol = true
+						break
+					}
+				}
+			}
+		}
+	}
+	avatarCol := "NULL AS avatar_id"
+	if hasAvatarCol {
+		avatarCol = "avatar_id"
+	}
+	query := fmt.Sprintf(`SELECT
 		id, email, password, nickname, is_sjtu,
 		agreed_terms_at, agreed_cross_border_at, date_joined,
 		is_active, is_superuser, deactivation_note, motto,
-		main_role, flex_roles, show_rank, accepts_announcements, calendar_version
-		FROM accounts_user ORDER BY id ASC`)
+		main_role, flex_roles, show_rank, accepts_announcements, calendar_version, %s
+		FROM accounts_user ORDER BY id ASC`, avatarCol)
+	userRows, err := legacy.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("读取旧库 accounts_user 失败: %w", err)
 	}
@@ -73,12 +96,13 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 			var email, password, nickname, deactivationNote, motto, mainRole, flexRoles string
 			var isSJTU, isActive, isSuperuser, showRank, acceptsAnnouncements, calendarVersion int
 			var agreedTerms, agreedCB, dateJoined string
+			var avatarID sql.NullInt64
 
 			if err := userRows.Scan(
 				&id, &email, &password, &nickname, &isSJTU,
 				&agreedTerms, &agreedCB, &dateJoined,
 				&isActive, &isSuperuser, &deactivationNote, &motto,
-				&mainRole, &flexRoles, &showRank, &acceptsAnnouncements, &calendarVersion,
+				&mainRole, &flexRoles, &showRank, &acceptsAnnouncements, &calendarVersion, &avatarID,
 			); err != nil {
 				return fmt.Errorf("解析 accounts_user 行失败: %w", err)
 			}
@@ -94,12 +118,17 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 				emailVerifiedStr = dateJoinedUTC
 			}
 
+			var avatarVal any
+			if avatarID.Valid {
+				avatarVal = avatarID.Int64
+			}
+
 			_, err := tx.ExecContext(txCtx, `INSERT INTO users (
 				id, email, email_norm, password_hash, nickname, is_sjtu,
 				agreed_terms_at, agreed_cross_border_at, email_verified_at, password_changed_at,
 				version, is_active, is_superuser, deactivation_note, motto, main_role, flex_roles, show_rank,
-				accepts_announcements, calendar_version, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				accepts_announcements, calendar_version, avatar_image_id, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				email = excluded.email,
 				email_norm = excluded.email_norm,
@@ -118,11 +147,12 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 				show_rank = excluded.show_rank,
 				accepts_announcements = excluded.accepts_announcements,
 				calendar_version = excluded.calendar_version,
+				avatar_image_id = excluded.avatar_image_id,
 				updated_at = excluded.updated_at`,
 				id, email, emailNorm, password, nickname, isSJTU,
 				agreedTermsUTC, agreedCBUTC, emailVerifiedStr,
 				isActive, isSuperuser, deactivationNote, motto, mainRole, flexRoles, showRank,
-				acceptsAnnouncements, calendarVersion, dateJoinedUTC, dateJoinedUTC,
+				acceptsAnnouncements, calendarVersion, avatarVal, dateJoinedUTC, dateJoinedUTC,
 			)
 			if err != nil {
 				return fmt.Errorf("写入 users 用户 %d 失败: %w", id, err)
@@ -329,6 +359,62 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 		})
 		if err != nil {
 			return err
+		}
+	}
+
+	// 8. 导入头像审核记录 (accounts_avatarsubmission -> avatar_submissions)
+	var hasAvatarSub bool
+	_ = legacy.QueryRowContext(ctx, `SELECT 1 FROM sqlite_master WHERE type='table' AND name='accounts_avatarsubmission'`).Scan(&hasAvatarSub)
+	if hasAvatarSub {
+		asRows, err := legacy.QueryContext(ctx, `SELECT
+			id, user_id, image_id, status, reason, note, reviewed_at, created_at
+			FROM accounts_avatarsubmission ORDER BY id ASC`)
+		if err == nil {
+			defer asRows.Close()
+			err = d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+				for asRows.Next() {
+					var id, uid int64
+					var imgID sql.NullInt64
+					var status, reason, note string
+					var reviewedAt sql.NullString
+					var createdAt string
+					if err := asRows.Scan(&id, &uid, &imgID, &status, &reason, &note, &reviewedAt, &createdAt); err != nil {
+						continue
+					}
+					handlingNote := note
+					if reason != "" {
+						if handlingNote != "" {
+							handlingNote = reason + ": " + handlingNote
+						} else {
+							handlingNote = reason
+						}
+					}
+					createdUTC := parseAndFormatUTC(createdAt, now)
+					var revAt any
+					if reviewedAt.Valid && reviewedAt.String != "" {
+						revAt = parseAndFormatUTC(reviewedAt.String, now)
+					}
+					var imgAny any
+					if imgID.Valid {
+						imgAny = imgID.Int64
+					}
+					_, _ = tx.ExecContext(txCtx, `INSERT INTO avatar_submissions (
+						id, user_id, image_id, status, handling_note, reviewed_at, created_at
+					) VALUES (?, ?, ?, ?, ?, ?, ?)
+					ON CONFLICT (id) DO UPDATE SET
+						user_id = excluded.user_id,
+						image_id = excluded.image_id,
+						status = excluded.status,
+						handling_note = excluded.handling_note,
+						reviewed_at = excluded.reviewed_at`,
+						id, uid, imgAny, status, handlingNote, revAt, createdUTC,
+					)
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 		}
 	}
 

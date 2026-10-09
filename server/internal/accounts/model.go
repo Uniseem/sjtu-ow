@@ -25,8 +25,21 @@ type User struct {
 	MainRole            string
 	FlexRoles           string
 	ShowRank            bool
+	AvatarImageID       *int64
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
+}
+
+// AvatarSubmission 是用户上传头像的审核记录（设计 14.1，规则 221）。
+type AvatarSubmission struct {
+	ID           int64      `json:"id"`
+	UserID       int64      `json:"user_id"`
+	UserNickname string     `json:"user_nickname"`
+	ImageID      *int64     `json:"image_id"`
+	Status       string     `json:"status"` // pending, approved, rejected, withdrawn, taken_down
+	HandlingNote string     `json:"handling_note"`
+	ReviewedAt   *time.Time `json:"reviewed_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 // EmailVerified 检查邮箱是否已验证。

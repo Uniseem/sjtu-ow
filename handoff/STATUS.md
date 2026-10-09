@@ -1,11 +1,11 @@
 # 当前状态
 
 ```yaml
-milestone: 重构 M7（通知与日程订阅）已完成（251）；M6（赛事、内战）已完成（248、249），审核记录与操作记录已完成（250）；M5（战队、成员展示、分组）已完成（247）；M4（内容与媒体、评论、搜索）已完成（246）；M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
-round: 251-m7-notify
-next: 检查点 A（按 12 号文档 11.2，M1–M7 后端业务逻辑与核心模型全面就绪，各域业务规则钉死，接下来进行端到端对齐与 M8 前台/后台页面落地）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。正式站这轮先不动。**所有编译和测试一律先在测试机上做**、一律放后台跑
+milestone: 重构 M8 上半（后台管理 API 与平台服务全量补齐）已完成（252）；M7（251）、M6（248、249）、审核记录与操作记录（250）、M5（247）、M4（246）、M3（239–245）、M2（231–238）、M1（222–230）已完成；229 起每次推送和测试机整组只跑新栈，231 起加上 pnpm；Go 工具链测试机锁 1.26.9；线上仍是 M7 正式站（183 起 169.58.217.180，演示数据已清、图片库保留，发信已配好，协议 10-05 定稿）；**正式站还停在 217，没有升级到 218–221**（这轮先不动）
+round: 252-m8-admin-backend
+next: M8 下半（后台管理前端页面全面排版与前后端联调）。用户（过几天，10-07 说的）：①10-25 前登录正式站换 `/etc/cron.d/sjtu-ow`（README「把正式站的 cron 换成新写法」）；②升级正式站到 218–221，升级后先 `scrub_originals --dry-run` 再真跑，再 `prerender`；③看 `13-ideas-and-followups.md` F 节五个问题。正式站这轮先不动。**所有编译和测试一律先在测试机上做**、一律放后台跑
 updated: 2026-10-09
-blocked_on: 无（用户设了目标「自己继续开发，及时 push，有不确定的地方自己决定」）；换 crontab（10-25 前）、升级正式站等用户
+blocked_on: 无（用户设了目标「多写代码少测试，push 时记得看看署名要求」）；换 crontab（10-25 前）、升级正式站等用户
 ```
 
 ## 重构接到这里（2026-10-08）
@@ -47,6 +47,8 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**252（2026-10-09）**：M8 后台管理 API 与平台全量服务补齐。迁移 `00016_site_settings_and_avatars.sql`（`users.avatar_image_id`、`avatar_submissions`、`site_settings` 全量字段扩展）；全站设置服务（`GET/PATCH /api/admin/settings`，敏感密码与密钥 Fernet 对称加密，脱敏输出 `has_*` 标志，留空不覆盖，写审计日志；`POST /api/admin/settings/test-email` 验证配置发信给当前管理员）；媒体与图片上传（`GET /api/admin/images`、`GET /api/admin/image-collections`、`POST /api/admin/images/upload` 支持 JSON DataURL、`POST /api/admin/images/upload-file` 支持 multipart 文件）；头像与队标（`POST/DELETE /api/me/avatar` 5次/天/人限流并自动清理旧图、`GET /api/admin/avatars`、`POST /api/admin/avatars/{id}/take-down`；`POST /api/teams/{id}/logo` 队长/超管传队标并自动清旧标）；审计日志查询（`GET /api/admin/log` 多维筛选，联查昵称与邮箱）；干部待办聚合（`GET /api/admin/todo` 汇总待办与系统异常）；活动数据统计与导出（`GET /api/admin/activity` 上海时区学年预设与逐场汇总、`GET /api/admin/activity/export` Excel UTF-8 BOM CSV）；干部手册（`GET /api/admin/manual` 按角色能力过滤板块）；评论管理（`GET /api/admin/comments` 跨文章检索与隐藏/置顶过滤）；存量旧库数据导入（头像审核记录与全站设置配置）；`sjtuow apigen` 更新前端生成物。测试机整组全绿（日志 `20261009-145056-62f317f`）。下一步：M8 下半（后台管理前端页面全面排版与前后端联调）。
 
 **251（2026-10-09）**：M7 通知域与日历订阅完成。迁移 `00015_announcements.sql`；待发信批次机制与系统代发（规则 R206–R208）；待发信确认/跳过/汇总接口；全员公告广播（文章、赛事、内战统一接入，规则 R073–R079，30 分钟冷却、定时发布激活、投递任务动态算人、专属退订链接、历史提示）；退订体系（规则 R212–R213，签名 Token、RFC 8058 一键退订、前台接口）；我的安排与手机日历订阅（规则 R216、设计 5.2/13.5，ICS 生成与 75 字节平滑折叠、地址版本作废与轮换、30/分/IP 限流）；旧库字段导入对齐；`sjtuow apigen` 更新前端生成物。测试机整组全绿（日志 `20261009-140028-f4a35e0`）。下一步：检查点 A / M8。
 

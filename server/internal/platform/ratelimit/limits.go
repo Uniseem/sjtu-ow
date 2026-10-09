@@ -85,4 +85,7 @@ var (
 	// Unsubscribe 退订链接（页面查看和一键退订）：每个 IP 每分钟 30 次。
 	// 现行站没限；链接是签名的、不可猜，这一条只挡拿它试探的脚本。
 	Unsubscribe = Decl{Name: "unsubscribe", Kind: PerIP, N: 30, Window: time.Minute}
+
+	// AvatarUpload 上传头像：每人每天 5 次（规则 221）
+	AvatarUpload = Decl{Name: "avatar_upload", Kind: PerUser, N: 5, Window: 24 * time.Hour}
 )

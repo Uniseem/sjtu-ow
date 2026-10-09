@@ -17,15 +17,18 @@ import (
 	_ "time/tzdata"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
+	"github.com/Uniseem/sjtu-ow/server/internal/activity"
 	"github.com/Uniseem/sjtu-ow/server/internal/agenda"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/comments"
 	"github.com/Uniseem/sjtu-ow/server/internal/content"
+	"github.com/Uniseem/sjtu-ow/server/internal/manual"
 	"github.com/Uniseem/sjtu-ow/server/internal/members"
 	"github.com/Uniseem/sjtu-ow/server/internal/moderation"
 	"github.com/Uniseem/sjtu-ow/server/internal/notify"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/apigen"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/audit"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/config"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
@@ -38,7 +41,9 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/scrims"
 	"github.com/Uniseem/sjtu-ow/server/internal/search"
 	"github.com/Uniseem/sjtu-ow/server/internal/serve"
+	"github.com/Uniseem/sjtu-ow/server/internal/settings"
 	"github.com/Uniseem/sjtu-ow/server/internal/teams"
+	"github.com/Uniseem/sjtu-ow/server/internal/todo"
 	"github.com/Uniseem/sjtu-ow/server/internal/tournaments"
 )
 
@@ -106,6 +111,11 @@ func buildRegistry(
 	moderationSvc *moderation.Service,
 	notifySvc *notify.Service,
 	agendaSvc *agenda.Service,
+	settingsSvc *settings.Service,
+	auditMod *audit.Module,
+	activitySvc *activity.Service,
+	manualMod *manual.Module,
+	todoSvc *todo.Service,
 ) *api.Registry {
 	reg := &api.Registry{}
 	if acctSvc != nil {
@@ -144,6 +154,21 @@ func buildRegistry(
 	if agendaSvc != nil {
 		agenda.NewModule(agendaSvc).Routes(reg)
 	}
+	if settingsSvc != nil {
+		settings.NewModule(settingsSvc).Routes(reg)
+	}
+	if auditMod != nil {
+		auditMod.Routes(reg)
+	}
+	if activitySvc != nil {
+		activity.NewModule(activitySvc).Routes(reg)
+	}
+	if manualMod != nil {
+		manualMod.Routes(reg)
+	}
+	if todoSvc != nil {
+		todo.NewModule(todoSvc).Routes(reg)
+	}
 	return reg
 }
 
@@ -160,6 +185,7 @@ func runServe() error {
 	commentsSvc := comments.NewService(commentsStore)
 	searchSvc := search.NewService(d)
 	mediaSvc := media.NewService(d, cfg.DataDir, cfg.MediaDir)
+	acctSvc.SetMedia(mediaSvc)
 	teamsSvc := teams.NewService(d, cfg.SiteURL, ratelimit.NewEnforcer(d, nil), mediaSvc)
 	membersSvc := members.NewService(d)
 	tournamentsSvc := newTournaments(d, cfg.SiteURL, acctSvc, teamsSvc)
@@ -174,8 +200,13 @@ func runServe() error {
 	tournamentsSvc.SetModeration(moderationSvc)
 	notifySvc := newNotify(d, cfg, contentSvc, tournamentsSvc, scrimsSvc)
 	agendaSvc := agenda.NewService(d, cfg.SiteURL, cfg.SigningKey)
+	settingsSvc := settings.NewService(d, cfg.SiteURL, cfg.FieldEncryptionKey)
+	auditMod := audit.NewModule(d)
+	activitySvc := activity.NewService(d, cfg.SiteURL)
+	manualMod := manual.NewModule()
+	todoSvc := todo.NewService(d)
 
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc, settingsSvc, auditMod, activitySvc, manualMod, todoSvc)
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
@@ -260,7 +291,12 @@ func runApigen() error {
 	moderationSvc := moderation.NewService(nil, "")
 	notifySvc := notify.NewService(nil, "", "", nil)
 	agendaSvc := agenda.NewService(nil, "", "")
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc)
+	settingsSvc := settings.NewService(nil, "", "")
+	auditMod := audit.NewModule(nil)
+	activitySvc := activity.NewService(nil, "")
+	manualMod := manual.NewModule()
+	todoSvc := todo.NewService(nil)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc, settingsSvc, auditMod, activitySvc, manualMod, todoSvc)
 	return apigen.Write(dir, reg)
 }
 
@@ -386,6 +422,10 @@ func runImport() error {
 		return fmt.Errorf("导入审核记录失败: %w", err)
 	}
 	fmt.Println("审核记录导入成功。")
+	if err := settings.ImportLegacySettings(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入全站设置失败: %w", err)
+	}
+	fmt.Println("全站设置数据导入成功。")
 	return nil
 }
 
