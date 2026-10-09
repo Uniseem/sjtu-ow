@@ -11,6 +11,21 @@ export function getApiSession(): Promise<GetApiSessionOut> {
   return call<GetApiSessionOut>("GET", "/api/session", {  }, undefined)
 }
 
+export interface PostApiAuthChangePasswordIn {
+  old_password: string;
+  password: string;
+  confirm_password: string;
+}
+
+export interface PostApiAuthChangePasswordOut {
+  result: string;
+  message: string;
+}
+
+export function postApiAuthChangePassword(body: PostApiAuthChangePasswordIn): Promise<PostApiAuthChangePasswordOut> {
+  return call<PostApiAuthChangePasswordOut>("POST", "/api/auth/change-password", {  }, body)
+}
+
 export interface PostApiAuthLoginIn {
   email: string;
   password: string;
@@ -23,6 +38,18 @@ export interface PostApiAuthLoginOut {
 
 export function postApiAuthLogin(body: PostApiAuthLoginIn): Promise<PostApiAuthLoginOut> {
   return call<PostApiAuthLoginOut>("POST", "/api/auth/login", {  }, body)
+}
+
+export interface PostApiAuthLogoutIn {
+}
+
+export interface PostApiAuthLogoutOut {
+  result: string;
+  message: string;
+}
+
+export function postApiAuthLogout(): Promise<PostApiAuthLogoutOut> {
+  return call<PostApiAuthLogoutOut>("POST", "/api/auth/logout", {  }, undefined)
 }
 
 export interface PostApiAuthRegisterIn {

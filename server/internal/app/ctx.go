@@ -70,9 +70,15 @@ type Ctx struct {
 	// （worker、命令），信直接入队。
 	Letters *LetterBatch
 
+	// SessionToken 是当前请求带来的会话令牌（由 api 注册表在收到请求时从 Cookie 取出）。
+	SessionToken string
+
 	// sessionCookies 是处理函数里要发的会话令牌（登录、验证码核验通过）。
 	// 注册表在答复前用 auth.SetCookie 写进响应头；令牌不进 JSON。
 	sessionCookies []string
+
+	// clearSessionCookie 指示注册表在响应头中清除会话 Cookie（退出登录等）。
+	clearSessionCookie bool
 }
 
 // SetSessionCookie 登录这类动作成功后发会话 Cookie（12 号文档 5.7）。
@@ -86,6 +92,16 @@ func (c *Ctx) DrainSessionCookies() []string {
 	toks := c.sessionCookies
 	c.sessionCookies = nil
 	return toks
+}
+
+// ClearSessionCookie 退出这类动作成功后清除会话 Cookie（12 号文档 5.7）。
+func (c *Ctx) ClearSessionCookie() {
+	c.clearSessionCookie = true
+}
+
+// ShouldClearSessionCookie 报是否需要清除会话 Cookie。
+func (c *Ctx) ShouldClearSessionCookie() bool {
+	return c.clearSessionCookie
 }
 
 // LetterBatch 是同一次操作写下的待发信（设计 10.5）。Key 是这批的编号。

@@ -116,16 +116,22 @@ func (s *Store) Delete(ctx context.Context, cookie string) error {
 	})
 }
 
-// DeleteOthers 改密码时用：删掉这个人除当前这条以外的会话。
-func (s *Store) DeleteOthers(ctx context.Context, userID int64, keepCookie string) error {
+// DeleteOthersTx 在写事务中执行：删掉这个人除当前这条以外的会话。
+func (s *Store) DeleteOthersTx(ctx context.Context, tx *db.Tx, userID int64, keepCookie string) error {
 	raw, err := decodeToken(keepCookie)
 	if err != nil {
-		return s.DeleteAll(ctx, userID)
+		_, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
+		return err
 	}
 	keep := hashToken(raw)
+	_, err = tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?`, userID, keep)
+	return err
+}
+
+// DeleteOthers 改密码时用：删掉这个人除当前这条以外的会话。
+func (s *Store) DeleteOthers(ctx context.Context, userID int64, keepCookie string) error {
 	return s.db.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
-		_, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?`, userID, keep)
-		return err
+		return s.DeleteOthersTx(ctx, tx, userID, keepCookie)
 	})
 }
 

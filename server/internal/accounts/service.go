@@ -840,6 +840,118 @@ func (s *Service) ResetPasswordConfirm(ctx context.Context, in ResetPasswordConf
 	}, nil
 }
 
+// ChangePasswordInput 是修改密码的入参。
+type ChangePasswordInput struct {
+	OldPassword     string
+	Password        string
+	ConfirmPassword string
+}
+
+// ChangePasswordResult 是修改密码的结果。
+type ChangePasswordResult struct {
+	Result  string
+	Message string
+}
+
+// LogoutResult 是退出登录的结果。
+type LogoutResult struct {
+	Result  string
+	Message string
+}
+
+// ChangePassword 处理已登录用户修改当前密码（规则 R006、12 号文档 5.4、5.7）。
+func (s *Service) ChangePassword(ctx *app.Ctx, in ChangePasswordInput) (*ChangePasswordResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	fields := make(map[string][]string)
+	if in.OldPassword == "" {
+		fields["old_password"] = []string{"请输入当前密码。"}
+	}
+	if in.Password == "" {
+		fields["password"] = []string{"请输入新密码。"}
+	}
+	if in.ConfirmPassword == "" {
+		fields["confirm_password"] = []string{"请再次输入新密码。"}
+	} else if in.Password != in.ConfirmPassword {
+		fields["confirm_password"] = []string{"两次输入的密码不一致。"}
+	}
+	if in.OldPassword != "" && in.Password != "" && in.OldPassword == in.Password {
+		fields["password"] = []string{"新密码不能与当前密码相同。"}
+	}
+	if len(fields) > 0 {
+		return nil, api.InvalidFields(fields)
+	}
+
+	u, err := s.store.GetByID(ctx.Context, ctx.Viewer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || !u.IsActive {
+		return nil, api.Unauthorized("要先登录")
+	}
+
+	ok, _, err := auth.Verify(ctx.Context, u.PasswordHash, in.OldPassword)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, api.InvalidFields(map[string][]string{"old_password": {"当前密码不正确。"}})
+	}
+
+	pwdErrs := auth.Validate(in.Password, u.Email, u.Nickname)
+	if len(pwdErrs) > 0 {
+		return nil, api.InvalidFields(map[string][]string{"password": pwdErrs})
+	}
+
+	// 事务外计算 Argon2 哈希，避免长事务持有写锁
+	pwdHash, err := auth.Hash(ctx.Context, in.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	now := s.clock.Now().UTC()
+	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		_, err := tx.ExecContext(txCtx, `UPDATE users SET
+			password_hash = ?,
+			password_changed_at = ?,
+			updated_at = ?
+			WHERE id = ?`,
+			pwdHash, db.FormatUTC(now), db.FormatUTC(now), u.ID)
+		if err != nil {
+			return err
+		}
+		// 作废该用户的其他会话，保留当前会话（12 号文档 5.7）
+		return s.sessions.DeleteOthersTx(txCtx, tx, u.ID, ctx.SessionToken)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ChangePasswordResult{
+		Result:  "ok",
+		Message: "密码修改成功。",
+	}, nil
+}
+
+// Logout 注销当前会话（作废会话行并清除 Cookie，12 号文档 5.7）。
+func (s *Service) Logout(ctx *app.Ctx) (*LogoutResult, error) {
+	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
+		return nil, api.Unauthorized("要先登录")
+	}
+	if ctx.SessionToken != "" {
+		if err := s.sessions.Delete(ctx.Context, ctx.SessionToken); err != nil {
+			return nil, err
+		}
+	}
+	ctx.ClearSessionCookie()
+	return &LogoutResult{
+		Result:  "ok",
+		Message: "已退出登录。",
+	}, nil
+}
+
 // BuildViewer 根据用户 ID 从数据库组装 *app.Viewer（12 号文档 5.2、5.8）。
 // 未登录或账号不存在返回 nil。停用账号返回 Disabled: true 的 Viewer。
 func (s *Service) BuildViewer(ctx context.Context, userID int64) (*app.Viewer, error) {

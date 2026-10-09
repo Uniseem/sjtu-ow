@@ -105,6 +105,28 @@ type ResetPasswordConfirmOut struct {
 	Message string `json:"message"`
 }
 
+// ChangePasswordIn 是 POST /api/auth/change-password 的入参。
+type ChangePasswordIn struct {
+	OldPassword     string `json:"old_password"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirm_password"`
+}
+
+// ChangePasswordOut 是 POST /api/auth/change-password 的出参。
+type ChangePasswordOut struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
+// LogoutIn 是 POST /api/auth/logout 的入参。
+type LogoutIn struct{}
+
+// LogoutOut 是 POST /api/auth/logout 的出参。
+type LogoutOut struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
 // Module 提供账号域接口注册。
 type Module struct {
 	svc *Service
@@ -128,6 +150,10 @@ func (m *Module) Routes(r *api.Registry) {
 		api.Limit(ratelimit.AuthResetPassword))
 	api.Post(r, "/api/auth/reset-password/confirm", api.Public, m.resetPasswordConfirm,
 		api.Limit(ratelimit.AuthResetPasswordConfirm))
+	api.Post(r, "/api/auth/change-password", api.Member, m.changePassword,
+		api.Limit(ratelimit.AuthChangePassword))
+	api.Post(r, "/api/auth/logout", api.Member, m.logout,
+		api.NoLimit("退出登录无需限流"))
 	api.Post(r, "/api/auth/login", api.Public, m.login,
 		api.Limit(ratelimit.AuthLogin))
 }
@@ -217,4 +243,26 @@ func (m *Module) login(ctx *app.Ctx, in LoginIn) (LoginOut, error) {
 		ctx.SetSessionCookie(res.Token)
 	}
 	return LoginOut{Result: res.Result, Message: res.Message}, nil
+}
+
+func (m *Module) changePassword(ctx *app.Ctx, in ChangePasswordIn) (ChangePasswordOut, error) {
+	res, err := m.svc.ChangePassword(ctx, ChangePasswordInput(in))
+	if err != nil {
+		return ChangePasswordOut{}, err
+	}
+	return ChangePasswordOut{
+		Result:  res.Result,
+		Message: res.Message,
+	}, nil
+}
+
+func (m *Module) logout(ctx *app.Ctx, _ LogoutIn) (LogoutOut, error) {
+	res, err := m.svc.Logout(ctx)
+	if err != nil {
+		return LogoutOut{}, err
+	}
+	return LogoutOut{
+		Result:  res.Result,
+		Message: res.Message,
+	}, nil
 }

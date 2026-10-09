@@ -345,8 +345,9 @@ Idempotency-Key: <每次保存尝试一个，重试沿用>
 | 登录 | 只认邮箱；错误统一「邮箱或密码不正确」；停用账号拒绝；未验证的（密码正确时）发新码并提示去验证页，不发会话；限流 30/分/IP + 失败 5 次/300 秒/账号（R006） |
 | 重发验证码 | POST /api/auth/resend-code；邮箱必填且有效（非法 422）；防枚举响应（未注册/停用/已验证/未验证均返回同形成功响应）；未验证账号作废旧码并生成 6 位新码发信（15 分钟有效、试 3 次，R002）；已验证账号发提示信；限流 10/分/IP（AuthResendEmailCode）+ 1/10秒/账号（AuthResendEmailCodeKey，R006）；不发会话 |
 | 找回密码 | POST /api/auth/reset-password 发 6 位码（3 分钟有效、试 3 次，R003）；未注册邮箱发「没有注册」提醒信、页面表现一样防枚举（R004）；限流 20/分/IP（AuthResetPassword）+ 5/分/账号（AuthResetPasswordKey，R006）；POST /api/auth/reset-password/confirm 核验 6 位码并重置密码（密码强度校验、Argon2 哈希、删全部现有会话、限流 20/分/IP AuthResetPasswordConfirm）；不发会话 |
+| 改密码 | `POST /api/auth/change-password`；需要登录（Member 门）；当前密码核验、新密码强度校验与一致性核验（新旧不得相同）；事务外 Argon2id 计算；事务内更新密码与 `password_changed_at`、作废该用户除当前会话外的所有其他会话（DeleteOthers）；限流 5/分/人（AuthChangePassword，R006） |
 | 改邮箱 | 5 分钟内重新认证过；新邮箱收码验证后才替换；撞上别人占着的地址给出明确错误（顺带修 10-2） |
-| 退出 | `POST /api/auth/logout` |
+| 退出 | `POST /api/auth/logout`；需要登录（Member 门）；删除当前会话（Delete）；响应管道下发 Max-Age: -1 清除 `ow_session` Cookie；写接口声明 `api.NoLimit` |
 
 **验证码**存 `email_codes` 表（用途、邮箱、码的哈希、尝试次数、过期时间），不放缓存。
 
@@ -830,3 +831,4 @@ CI（GitHub Actions）：Go 一个任务（vet、staticcheck、govulncheck、tes
 | 2026-10-08（241） | 5.7 流程表：注册成功不发会话、验证凭「邮箱+码」核验、「半登录」会话取消；建会话的接口加上 `/api/auth/verify-email` | 防枚举（R004）要求和 240 落地的注册同形响应冲突：只有新邮箱分支发 `Set-Cookie` 会泄露邮箱是否注册；未验证用户无会话更简单（门自然拒绝） |
 | 2026-10-09（242） | 5.7 流程表加「重发验证码」；5.9 时间片支持 <1 分钟秒片（如 10 秒片） | M3 第四轮：POST /api/auth/resend-code，防枚举响应与 1/10s/账号限流（R002、R006） |
 | 2026-10-09（243） | 5.7 流程表更新「找回密码」为 POST /api/auth/reset-password 发码与 /confirm 核验重置两段接口 | M3 第五轮：R003、R004、R006 |
+| 2026-10-09（244） | 5.7 流程表更新「改密码」与「退出」接口规格：POST /api/auth/change-password（Member 门，5/分/人限流，删其他会话）与 POST /api/auth/logout（Member 门，删除会话，清除 Cookie） | M3 第六轮：R006、5.4、5.7、5.9 |

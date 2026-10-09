@@ -13,6 +13,7 @@ import (
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit"
@@ -514,8 +515,8 @@ func TestSessionCookieOnlyFromAuthRoutes(t *testing.T) {
 		}
 	}
 	// 路由清单里确实有这些接口（防止路由改名后这条测试空转）
-	if !seen["POST /api/auth/login"] || !seen["POST /api/auth/verify-email"] || !seen["POST /api/auth/resend-code"] || !seen["POST /api/auth/reset-password"] || !seen["POST /api/auth/reset-password/confirm"] {
-		t.Fatalf("注册表应包含 login、verify-email、resend-code、reset-password 和 reset-password/confirm: %v", seen)
+	if !seen["POST /api/auth/login"] || !seen["POST /api/auth/verify-email"] || !seen["POST /api/auth/resend-code"] || !seen["POST /api/auth/reset-password"] || !seen["POST /api/auth/reset-password/confirm"] || !seen["POST /api/auth/change-password"] || !seen["POST /api/auth/logout"] {
+		t.Fatalf("注册表应包含 login、verify-email、resend-code、reset-password、reset-password/confirm、change-password 和 logout: %v", seen)
 	}
 }
 
@@ -812,5 +813,185 @@ func TestResetPasswordConfirmApi(t *testing.T) {
 	}
 	if out.Result != "ok" || !strings.Contains(out.Message, "成功") {
 		t.Fatalf("出参不符: %+v", out)
+	}
+}
+
+func TestChangePasswordApi(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	u := newVerifiedUser(t, d, "cp-api@sjtu.edu.cn", "改密接口", "OldPass123!@#", true)
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+
+	var currentViewer *app.Viewer
+	handler := reg.Handler(func(*http.Request) *app.Viewer {
+		return currentViewer
+	})
+
+	// 1. 访客访问：401 Unauthorized（Member 门）
+	currentViewer = nil
+	body := []byte(`{"old_password": "OldPass123!@#", "password": "NewPass123!@#", "confirm_password": "NewPass123!@#"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("访客应 401，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 2. 停用账号：401
+	currentViewer = &app.Viewer{ID: u.ID, Disabled: true}
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("停用账号应 401，得到 %d", rec.Code)
+	}
+
+	// 3. 正常成员当前密码错误：422
+	v, err := svc.BuildViewer(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentViewer = v
+	wrongBody := []byte(`{"old_password": "WrongPassword123!@#", "password": "NewPass123!@#", "confirm_password": "NewPass123!@#"}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader(wrongBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("密码错误应 422，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 4. 正常成员成功修改：200
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("修改成功应 200，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	var out ChangePasswordOut
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Result != "ok" || !strings.Contains(out.Message, "成功") {
+		t.Fatalf("出参不符: %+v", out)
+	}
+}
+
+func TestChangePasswordApiRateLimit(t *testing.T) {
+	d := newTestDB(t)
+	clk := clock.Fixed(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	u1 := newVerifiedUser(t, d, "cp-rl1@sjtu.edu.cn", "限流用户1", "OldPass123!@#", true)
+	u2 := newVerifiedUser(t, d, "cp-rl2@sjtu.edu.cn", "限流用户2", "OldPass123!@#", true)
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+	enforcer := ratelimit.NewEnforcer(d, clk)
+
+	var currentViewer *app.Viewer
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return currentViewer },
+		api.WithLimiter(enforcer),
+	)
+
+	// AuthChangePassword: 5 次/分/人（PerUser）
+	currentViewer = &app.Viewer{ID: u1.ID}
+	body := []byte(`{"old_password": "wrong", "password": "NewPass123!@#", "confirm_password": "NewPass123!@#"}`)
+	for i := 1; i <= 5; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		// 校验返回 422，但通过了限流器
+		if rec.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("第 %d 次应 422，得到 %d", i, rec.Code)
+		}
+	}
+
+	// 第 6 次：429 Too Many Requests
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("第 6 次应 429，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Retry-After") == "" {
+		t.Fatal("429 应包含 Retry-After")
+	}
+
+	// 换成用户 2，不应受用户 1 的限流影响
+	currentViewer = &app.Viewer{ID: u2.ID}
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("用户 2 首次应 422（通过限流），得到 %d", rec.Code)
+	}
+}
+
+func TestLogoutApi(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	sessions := auth.NewStore(d, nil)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", sessions, nil)
+	u := newVerifiedUser(t, d, "logout-api@sjtu.edu.cn", "退出接口", "Pass123!@#", true)
+	token, err := sessions.Create(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reg := &api.Registry{}
+	mod := NewModule(svc)
+	mod.Routes(reg)
+
+	var currentViewer *app.Viewer
+	handler := reg.Handler(func(*http.Request) *app.Viewer { return currentViewer })
+
+	// 1. 访客访问：401
+	currentViewer = nil
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("访客应 401，得到 %d", rec.Code)
+	}
+
+	// 2. 登录成员调用退出：200，且响应头包含清除 Cookie
+	currentViewer = &app.Viewer{ID: u.ID}
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/logout", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("退出应 200，得到 %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 验证 Set-Cookie 包含了清除指令（Max-Age: -1 或 Max-Age: 0，或清空值）
+	var cleared bool
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == auth.CookieName && (c.MaxAge < 0 || c.Value == "") {
+			cleared = true
+			break
+		}
+	}
+	if !cleared {
+		t.Fatalf("响应头应清除会话 Cookie: %+v", rec.Header().Values("Set-Cookie"))
+	}
+
+	// 验证库中会话已删除
+	if sess, err := sessions.Lookup(ctx, token); err != nil || sess != nil {
+		t.Fatalf("库中会话应已删除，得到 %+v", sess)
 	}
 }

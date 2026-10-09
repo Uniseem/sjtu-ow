@@ -7,8 +7,7 @@ import "time"
 //
 // 还没进表、数字先记在这里（等对应接口的轮次再引用，免得对照时丢掉）：
 //
-//	规则 6   allauth（M3）：manage_email 10/分/人、change_password 5/分/人、
-//	         reauthenticate 10/分/人
+//	规则 6   allauth（M3）：manage_email 10/分/人、reauthenticate 10/分/人
 //	规则 215 页面状态片段 120/分/IP（新栈没有预渲染片段，接口落地时再定要不要）
 //	规则 216 日历订阅 30/分/IP
 //	规则 221 头像上传 5/天/人（M4 图片）
@@ -50,6 +49,9 @@ var (
 
 	// AuthResetPasswordConfirm 核验重置密码：每个 IP 每分钟 20 次（规则 6，allauth: reset_password_from_key 20/m/ip）。
 	AuthResetPasswordConfirm = Decl{Name: "auth_reset_password_confirm", Kind: PerIP, N: 20, Window: time.Minute}
+
+	// AuthChangePassword 修改密码：每人每分钟 5 次（规则 6，allauth: change_password 5/m/user）。
+	AuthChangePassword = Decl{Name: "auth_change_password", Kind: PerUser, N: 5, Window: time.Minute}
 
 	// TeamApply 申请入队：每人每天 20 次（附录 C「业务操作限流」）
 	TeamApply = Decl{Name: "team_apply", Kind: PerUser, N: 20, Window: 24 * time.Hour}

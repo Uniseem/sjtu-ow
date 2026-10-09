@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/auth"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
@@ -1486,5 +1487,230 @@ func TestResetPasswordConfirmSuccess(t *testing.T) {
 	})
 	if err != nil || loginRes.Result != "ok" || loginRes.Token == "" {
 		t.Fatalf("新密码应能正常登录: %+v, err=%v", loginRes, err)
+	}
+}
+
+func TestChangePasswordValidation(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	u := newVerifiedUser(t, d, "cp-val@sjtu.edu.cn", "改密码校验", "OldPassword123!@#", true)
+	appCtx := &app.Ctx{
+		Context: ctx,
+		Viewer:  &app.Viewer{ID: u.ID},
+	}
+
+	for _, tc := range []struct {
+		name       string
+		old        string
+		new        string
+		confirm    string
+		wantFields []string
+	}{
+		{"当前密码空", "", "NewPass123!@#", "NewPass123!@#", []string{"old_password"}},
+		{"新密码空", "OldPassword123!@#", "", "", []string{"password", "confirm_password"}},
+		{"确认密码空", "OldPassword123!@#", "NewPass123!@#", "", []string{"confirm_password"}},
+		{"两次密码不一致", "OldPassword123!@#", "NewPass123!@#", "Mismatch123!@#", []string{"confirm_password"}},
+		{"新旧密码相同", "OldPassword123!@#", "OldPassword123!@#", "OldPassword123!@#", []string{"password"}},
+		{"新密码太弱纯数字", "OldPassword123!@#", "12345678", "12345678", []string{"password"}},
+		{"新密码太弱包含邮箱", "OldPassword123!@#", "cp-val@sjtu.edu.cn", "cp-val@sjtu.edu.cn", []string{"password"}},
+	} {
+		_, err := svc.ChangePassword(appCtx, ChangePasswordInput{
+			OldPassword:     tc.old,
+			Password:        tc.new,
+			ConfirmPassword: tc.confirm,
+		})
+		var apiErr *api.Error
+		if !errors.As(err, &apiErr) || apiErr.Status != 422 {
+			t.Fatalf("%s: 应 422，得到 %v", tc.name, err)
+		}
+		for _, f := range tc.wantFields {
+			if len(apiErr.Fields[f]) == 0 {
+				t.Fatalf("%s: fields[%s] 应有错误", tc.name, f)
+			}
+		}
+	}
+}
+
+func TestChangePasswordUnauthenticatedOrDisabled(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	u := newVerifiedUser(t, d, "cp-unauth@sjtu.edu.cn", "未登用户", "OldPassword123!@#", true)
+
+	// 1. nil app.Ctx
+	if _, err := svc.ChangePassword(nil, ChangePasswordInput{OldPassword: "x", Password: "y", ConfirmPassword: "y"}); err == nil {
+		t.Fatal("nil Ctx 应报错")
+	}
+
+	// 2. nil Viewer
+	nilViewerCtx := &app.Ctx{Context: ctx}
+	if _, err := svc.ChangePassword(nilViewerCtx, ChangePasswordInput{OldPassword: "x", Password: "y", ConfirmPassword: "y"}); err == nil {
+		t.Fatal("nil Viewer 应报错")
+	}
+
+	// 3. Disabled Viewer
+	disabledCtx := &app.Ctx{Context: ctx, Viewer: &app.Viewer{ID: u.ID, Disabled: true}}
+	if _, err := svc.ChangePassword(disabledCtx, ChangePasswordInput{OldPassword: "x", Password: "y", ConfirmPassword: "y"}); err == nil {
+		t.Fatal("Disabled Viewer 应报错")
+	}
+}
+
+func TestChangePasswordWrongOldPassword(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", nil, nil)
+	u := newVerifiedUser(t, d, "cp-wrong@sjtu.edu.cn", "错密用户", "RealOldPassword123!@#", true)
+	appCtx := &app.Ctx{
+		Context: ctx,
+		Viewer:  &app.Viewer{ID: u.ID},
+	}
+
+	_, err := svc.ChangePassword(appCtx, ChangePasswordInput{
+		OldPassword:     "WrongPassword123!@#",
+		Password:        "BrandNewPassword123!@#",
+		ConfirmPassword: "BrandNewPassword123!@#",
+	})
+	var apiErr *api.Error
+	if !errors.As(err, &apiErr) || apiErr.Status != 422 {
+		t.Fatalf("旧密码错误应 422，得到 %v", err)
+	}
+	if len(apiErr.Fields["old_password"]) == 0 || !strings.Contains(apiErr.Fields["old_password"][0], "不正确") {
+		t.Fatalf("应提示当前密码不正确: %+v", apiErr.Fields)
+	}
+}
+
+func TestChangePasswordSuccess(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	t0 := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	clk := &testClock{t: t0}
+	sessions := auth.NewStore(d, clk)
+	svc := NewService(d, clk, "https://sjtu.ow-shanghaiuniversity.com", sessions, nil)
+
+	u := newVerifiedUser(t, d, "cp-succ@sjtu.edu.cn", "成功改密", "OldPassword123!@#", true)
+	otherUser := newVerifiedUser(t, d, "other-user@sjtu.edu.cn", "他人", "OldPassword123!@#", true)
+
+	// 为 u 创建会话 A（当前会话）和会话 B（另一个设备）
+	sessA, err := sessions.Create(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessB, err := sessions.Create(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 为他人创建会话 C
+	sessC, err := sessions.Create(ctx, otherUser.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clk.t = t0.Add(10 * time.Minute)
+	appCtx := &app.Ctx{
+		Context:      ctx,
+		Viewer:       &app.Viewer{ID: u.ID},
+		Clock:        clk,
+		SessionToken: sessA,
+	}
+
+	res, err := svc.ChangePassword(appCtx, ChangePasswordInput{
+		OldPassword:     "OldPassword123!@#",
+		Password:        "NewAwesomePassword123!@#",
+		ConfirmPassword: "NewAwesomePassword123!@#",
+	})
+	if err != nil {
+		t.Fatalf("修改密码应成功: %v", err)
+	}
+	if res.Result != "ok" || !strings.Contains(res.Message, "成功") {
+		t.Fatalf("出参不符: %+v", res)
+	}
+
+	// 1. 验证会话处置（12 号文档 5.7：改密码时删掉这个人的其他会话）
+	// 会话 A（当前会话）依然有效
+	if gotA, err := sessions.Lookup(ctx, sessA); err != nil || gotA == nil {
+		t.Fatalf("当前会话 A 应该保留，得到 %+v, err=%v", gotA, err)
+	}
+	// 会话 B（同一人的其他会话）已被作废
+	if gotB, err := sessions.Lookup(ctx, sessB); err != nil || gotB != nil {
+		t.Fatalf("其他会话 B 应该被删除，得到 %+v", gotB)
+	}
+	// 会话 C（其他人的会话）不受影响
+	if gotC, err := sessions.Lookup(ctx, sessC); err != nil || gotC == nil {
+		t.Fatalf("他人会话 C 不应受影响，得到 %+v", gotC)
+	}
+
+	// 2. 验证用户数据更新
+	updated, err := svc.Store().GetByID(ctx, u.ID)
+	if err != nil || updated == nil {
+		t.Fatal(err)
+	}
+	okOld, _, _ := auth.Verify(ctx, updated.PasswordHash, "OldPassword123!@#")
+	if okOld {
+		t.Fatal("旧密码不应再能通过验证")
+	}
+	okNew, _, _ := auth.Verify(ctx, updated.PasswordHash, "NewAwesomePassword123!@#")
+	if !okNew {
+		t.Fatal("新密码应该能通过验证")
+	}
+	if updated.PasswordChangedAt == nil || !updated.PasswordChangedAt.Equal(clk.t) {
+		t.Fatalf("password_changed_at 应记录当前时间: %v", updated.PasswordChangedAt)
+	}
+
+	// 3. 可以用新密码登录
+	loginRes, err := svc.Login(ctx, LoginInput{
+		Email:    "cp-succ@sjtu.edu.cn",
+		Password: "NewAwesomePassword123!@#",
+	})
+	if err != nil || loginRes.Result != "ok" || loginRes.Token == "" {
+		t.Fatalf("新密码应能正常登录: %+v, err=%v", loginRes, err)
+	}
+}
+
+func TestLogout(t *testing.T) {
+	d := newTestDB(t)
+	ctx := context.Background()
+	sessions := auth.NewStore(d, nil)
+	svc := NewService(d, nil, "https://sjtu.ow-shanghaiuniversity.com", sessions, nil)
+
+	u := newVerifiedUser(t, d, "logout@sjtu.edu.cn", "退出用户", "Password123!@#", true)
+	sessTok, err := sessions.Create(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. 未登录调用
+	if _, err := svc.Logout(nil); err == nil {
+		t.Fatal("nil ctx 应 401")
+	}
+	if _, err := svc.Logout(&app.Ctx{Context: ctx}); err == nil {
+		t.Fatal("nil viewer 应 401")
+	}
+	if _, err := svc.Logout(&app.Ctx{Context: ctx, Viewer: &app.Viewer{ID: u.ID, Disabled: true}}); err == nil {
+		t.Fatal("disabled viewer 应 401")
+	}
+
+	// 2. 正常退出
+	appCtx := &app.Ctx{
+		Context:      ctx,
+		Viewer:       &app.Viewer{ID: u.ID},
+		SessionToken: sessTok,
+	}
+	res, err := svc.Logout(appCtx)
+	if err != nil {
+		t.Fatalf("退出登录应成功: %v", err)
+	}
+	if res.Result != "ok" || !strings.Contains(res.Message, "退出") {
+		t.Fatalf("出参不符: %+v", res)
+	}
+
+	// 验证会话在库中已删除
+	if sess, err := sessions.Lookup(ctx, sessTok); err != nil || sess != nil {
+		t.Fatalf("退出后会话应已被删除: %+v", sess)
+	}
+
+	// 验证已标记清除 Cookie
+	if !appCtx.ShouldClearSessionCookie() {
+		t.Fatal("退出登录后应标记清除会话 Cookie")
 	}
 }

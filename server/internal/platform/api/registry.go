@@ -149,10 +149,11 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 		return func(w http.ResponseWriter, req *http.Request) {
 			viewer := cfg.resolve(req)
 			ctx := &app.Ctx{
-				Context:   req.Context(),
-				Viewer:    viewer,
-				Clock:     clock.System{},
-				RequestID: newRequestID(),
+				Context:      req.Context(),
+				Viewer:       viewer,
+				Clock:        clock.System{},
+				RequestID:    newRequestID(),
+				SessionToken: auth.TokenFromRequest(req),
 			}
 			if err := gate.check(viewer); err != nil {
 				writeError(w, err)
@@ -228,6 +229,9 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 				if err := cfg.idem.Complete(ctx.Context, viewer.ID, idemKey, http.StatusOK, body); err != nil {
 					slog.Error("幂等回执没存上", "err", err.Error())
 				}
+			}
+			if ctx.ShouldClearSessionCookie() {
+				auth.ClearCookie(w, cfg.secureCookies)
 			}
 			// 登录这类动作发的会话 Cookie（成功路径才有；令牌只进 HttpOnly 头）
 			for _, tok := range ctx.DrainSessionCookies() {
