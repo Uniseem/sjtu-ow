@@ -52,6 +52,8 @@ export const ICONS: Record<string, string[]> = {
   settings: ["M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"],
   flag: ["M5 21V4h12l-2 4 2 4H5"],
   map: ["M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"],
+  list: ["M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"],
+  text: ["M5 6h14M5 10h14M5 14h10M5 18h7"],
   "role-tank": ["M5 4h14v8c0 4-3.2 7-7 8.5C8.2 19 5 16 5 12V4zM9 9h6"],
   "role-damage": ["M12 3v5M12 16v5M3 12h5M16 12h5M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
   "role-support": ["M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z"],

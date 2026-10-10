@@ -24,6 +24,8 @@ test("a numeric id matches and anything else does not", () => {
 test("the listed front pages resolve", () => {
   for (const url of [
     "/news/",
+    "/news/screens-guide/",
+    "/news/加入我们/",
     "/about/",
     "/terms/",
     "/privacy/",

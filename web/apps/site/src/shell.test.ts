@@ -9,7 +9,14 @@ import { ICONS } from "./icons"
 function at(user: unknown): Parameters<typeof render>[1] {
   return {
     apiBase: "http://api.test",
-    fetch: async () => new Response(JSON.stringify({ user }), { headers: { "content-type": "application/json" } }),
+    // Pages ask for their own endpoints now: answer per path, the session
+    // everywhere else (the old all-paths session stub painted broken homes).
+    fetch: async (input) => {
+      const path = new URL(String(input)).pathname
+      if (path === "/api/page/home") return new Response(JSON.stringify({ stats: null, scrims: [], news: [], notices: [], teams: [] }), { headers: { "content-type": "application/json" } })
+      if (path === "/api/me/agenda") return new Response(JSON.stringify({ items: [] }), { headers: { "content-type": "application/json" } })
+      return new Response(JSON.stringify({ user }), { headers: { "content-type": "application/json" } })
+    },
     headers: { get: () => null },
   }
 }
@@ -83,7 +90,11 @@ test("a member sees their own account area and footer column", async () => {
   expect(html).toContain('href="/me/teams/"')
   expect(html).toContain('href="/accounts/logout/"')
   expect(html).not.toContain("管理后台")
-  expect(html).not.toContain('href="/accounts/signup/"')
+  // The account menu never offers signup; the hero's 加入社区 stays on the
+  // home page for everyone, as the old home template drew it unconditionally.
+  const menu = html.match(/<div class="c-menu__panel">[\s\S]*?<\/div>\s*<\/details>/)
+  expect(menu?.[0] ?? "").toContain('href="/accounts/logout/"')
+  expect(menu?.[0] ?? "").not.toContain('href="/accounts/signup/"')
 })
 
 test("an admin also gets the back office link", async () => {

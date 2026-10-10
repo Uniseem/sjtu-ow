@@ -1,0 +1,483 @@
+[
+ {
+  "component": "CComments",
+  "props": {
+   "commentsEnabled": true,
+   "thread": {
+    "total": 2,
+    "page": 1,
+    "pageSize": 20,
+    "comments": [
+     {
+      "id": 3,
+      "user_id": 2,
+      "author_name": "小满",
+      "reply_to_user_name": null,
+      "content": "写得好",
+      "is_pinned": false,
+      "is_hidden": false,
+      "is_deleted": false,
+      "is_tombstone": false,
+      "like_count": 1,
+      "liked_by_me": true,
+      "replies": null,
+      "edited_at": null,
+      "created_at": "2026-10-10T13:00:00+00:00",
+      "updated_at": "2026-10-10T13:00:00+00:00"
+     },
+     {
+      "id": 4,
+      "user_id": 9,
+      "author_name": "阿白",
+      "reply_to_user_name": null,
+      "content": "学习了",
+      "is_pinned": false,
+      "is_hidden": false,
+      "is_deleted": false,
+      "is_tombstone": false,
+      "like_count": 0,
+      "liked_by_me": false,
+      "replies": null,
+      "edited_at": null,
+      "created_at": "2026-10-10T13:00:00+00:00",
+      "updated_at": "2026-10-10T13:00:00+00:00"
+     }
+    ]
+   },
+   "sort": "new",
+   "interactive": false,
+   "canPost": false,
+   "postProblems": [],
+   "canModerate": false,
+   "viewerId": null,
+   "pageUrl": "/news/weekend/",
+   "loginUrl": "/accounts/login/?next=/news/weekend/"
+  },
+  "html": "\n<section id=\"slot-article-comments\" data-slot=\"article-comments\" class=\"c-comments\">\n  \n  <div class=\"c-comments__head\">\n    <h2 id=\"comments\">2 条评论</h2>\n    \n      <nav class=\"c-comments__sort\" aria-label=\"评论排序\">\n        <a href=\"/news/weekend/?sort=new#comments\" aria-current=\"true\">最新</a>\n        <a href=\"/news/weekend/?sort=top#comments\">最热</a>\n      </nav>\n    \n  </div>\n\n  \n    <p class=\"mt-4 text-sm text-fg-2\"><a href=\"/accounts/login/?next=/news/weekend/\" class=\"font-semibold text-fg underline underline-offset-4 hover:text-primary-text\">登录后评论</a></p>\n  \n\n  <ol id=\"comment-list\" class=\"c-comments__list\">\n    \n      \n\n<li id=\"comment-3\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">小</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">小满</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n        \n      </p>\n      <p class=\"c-comment__body\">写得好</p>\n      <div class=\"c-comment__actions\">\n        \n  <span class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>1</span></span>\n\n\n        \n      </div>\n    </div>\n  \n  \n</li>\n\n\n    \n      \n\n<li id=\"comment-4\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">阿</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">阿白</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n        \n      </p>\n      <p class=\"c-comment__body\">学习了</p>\n      <div class=\"c-comment__actions\">\n        \n  <span class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>0</span></span>\n\n\n        \n      </div>\n    </div>\n  \n  \n</li>\n\n\n    \n  </ol>\n\n  <div id=\"comments-more\" class=\"mt-6\">\n    \n  </div>\n</section>\n"
+ },
+ {
+  "component": "CComments",
+  "props": {
+   "commentsEnabled": true,
+   "thread": {
+    "total": 0,
+    "page": 1,
+    "pageSize": 20,
+    "comments": []
+   },
+   "sort": "new",
+   "interactive": true,
+   "canPost": true,
+   "postProblems": [],
+   "canModerate": false,
+   "viewerId": 9,
+   "pageUrl": "/news/weekend/",
+   "loginUrl": "/accounts/login/?next=/news/weekend/"
+  },
+  "html": "\n<section id=\"slot-article-comments\" data-slot=\"article-comments\" class=\"c-comments\">\n  \n  <div class=\"c-comments__head\">\n    <h2 id=\"comments\">评论</h2>\n    \n  </div>\n\n  \n    \n    \n      \n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">写评论</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"说点什么…（最多 500 字）\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">发表评论</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n\n    \n  \n\n  <ol id=\"comment-list\" class=\"c-comments__list\">\n    \n      <li class=\"py-6 text-sm text-fg-3\">还没有评论。</li>\n    \n  </ol>\n\n  <div id=\"comments-more\" class=\"mt-6\">\n    \n  </div>\n</section>\n"
+ },
+ {
+  "component": "CComments",
+  "props": {
+   "commentsEnabled": false,
+   "thread": {
+    "total": 1,
+    "page": 1,
+    "pageSize": 20,
+    "comments": [
+     {
+      "id": 3,
+      "user_id": 2,
+      "author_name": "小满",
+      "reply_to_user_name": null,
+      "content": "写得好",
+      "is_pinned": false,
+      "is_hidden": false,
+      "is_deleted": false,
+      "is_tombstone": false,
+      "like_count": 1,
+      "liked_by_me": true,
+      "replies": null,
+      "edited_at": null,
+      "created_at": "2026-10-10T13:00:00+00:00",
+      "updated_at": "2026-10-10T13:00:00+00:00"
+     }
+    ]
+   },
+   "sort": "new",
+   "interactive": true,
+   "canPost": false,
+   "postProblems": [],
+   "canModerate": false,
+   "viewerId": 9,
+   "pageUrl": "/news/weekend/",
+   "loginUrl": "/accounts/login/?next=/news/weekend/"
+  },
+  "html": "\n<section id=\"slot-article-comments\" data-slot=\"article-comments\" class=\"c-comments\">\n  \n  <div class=\"c-comments__head\">\n    <h2 id=\"comments\">1 条评论</h2>\n    \n  </div>\n\n  \n    <p class=\"mt-4 text-sm text-fg-2\">这篇文章关闭了评论。</p>\n  \n\n  <ol id=\"comment-list\" class=\"c-comments__list\">\n    \n      \n\n<li id=\"comment-3\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">小</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">小满</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n        \n      </p>\n      <p class=\"c-comment__body\">写得好</p>\n      <div class=\"c-comment__actions\">\n        \n  <button type=\"button\" class=\"c-act\"\n          aria-pressed=\"true\">\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n已赞 <span class=\"font-numeric\" data-like-count>1</span>\n  </button>\n\n\n        \n          \n          \n\n          \n        \n      </div>\n    </div>\n  \n  \n</li>\n\n\n    \n  </ol>\n\n  <div id=\"comments-more\" class=\"mt-6\">\n    \n  </div>\n</section>\n"
+ },
+ {
+  "component": "CComments",
+  "props": {
+   "commentsEnabled": true,
+   "thread": {
+    "total": 0,
+    "page": 1,
+    "pageSize": 20,
+    "comments": []
+   },
+   "sort": "new",
+   "interactive": true,
+   "canPost": false,
+   "postProblems": [
+    "你暂时无法使用此功能，如有疑问请联系管理员"
+   ],
+   "canModerate": false,
+   "viewerId": 10,
+   "pageUrl": "/news/weekend/",
+   "loginUrl": "/accounts/login/?next=/news/weekend/"
+  },
+  "html": "\n<section id=\"slot-article-comments\" data-slot=\"article-comments\" class=\"c-comments\">\n  \n  <div class=\"c-comments__head\">\n    <h2 id=\"comments\">评论</h2>\n    \n  </div>\n\n  \n    \n      <div class=\"c-notice c-notice--info mt-4\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5v.5\"/>\n  \n</svg>\n\n        <ul class=\"c-notice__body\">\n          \n            <li>你暂时无法使用此功能，如有疑问请联系管理员</li>\n          \n        </ul>\n      </div>\n    \n    \n  \n\n  <ol id=\"comment-list\" class=\"c-comments__list\">\n    \n      <li class=\"py-6 text-sm text-fg-3\">还没有评论。</li>\n    \n  </ol>\n\n  <div id=\"comments-more\" class=\"mt-6\">\n    \n  </div>\n</section>\n"
+ },
+ {
+  "component": "CComments",
+  "props": {
+   "commentsEnabled": true,
+   "thread": {
+    "total": 25,
+    "page": 1,
+    "pageSize": 20,
+    "comments": [
+     {
+      "id": 3,
+      "user_id": 2,
+      "author_name": "小满",
+      "reply_to_user_name": null,
+      "content": "写得好",
+      "is_pinned": false,
+      "is_hidden": false,
+      "is_deleted": false,
+      "is_tombstone": false,
+      "like_count": 1,
+      "liked_by_me": true,
+      "replies": null,
+      "edited_at": null,
+      "created_at": "2026-10-10T13:00:00+00:00",
+      "updated_at": "2026-10-10T13:00:00+00:00"
+     }
+    ]
+   },
+   "sort": "new",
+   "interactive": false,
+   "canPost": false,
+   "postProblems": [],
+   "canModerate": false,
+   "viewerId": null,
+   "pageUrl": "/news/weekend/",
+   "loginUrl": "/accounts/login/?next=/news/weekend/"
+  },
+  "html": "\n<section id=\"slot-article-comments\" data-slot=\"article-comments\" class=\"c-comments\">\n  \n  <div class=\"c-comments__head\">\n    <h2 id=\"comments\">25 条评论</h2>\n    \n      <nav class=\"c-comments__sort\" aria-label=\"评论排序\">\n        <a href=\"/news/weekend/?sort=new#comments\" aria-current=\"true\">最新</a>\n        <a href=\"/news/weekend/?sort=top#comments\">最热</a>\n      </nav>\n    \n  </div>\n\n  \n    <p class=\"mt-4 text-sm text-fg-2\"><a href=\"/accounts/login/?next=/news/weekend/\" class=\"font-semibold text-fg underline underline-offset-4 hover:text-primary-text\">登录后评论</a></p>\n  \n\n  <ol id=\"comment-list\" class=\"c-comments__list\">\n    \n      \n\n<li id=\"comment-3\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">小</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">小满</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n        \n      </p>\n      <p class=\"c-comment__body\">写得好</p>\n      <div class=\"c-comment__actions\">\n        \n  <span class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>1</span></span>\n\n\n        \n      </div>\n    </div>\n  \n  \n</li>\n\n\n    \n  </ol>\n\n  <div id=\"comments-more\" class=\"mt-6\">\n    \n      \n        <a href=\"/news/weekend/?comments=2&amp;sort=new#comments\" class=\"c-btn c-btn--secondary c-btn--sm\">加载更多</a>\n      \n    \n  </div>\n</section>\n"
+ },
+ {
+  "component": "CCommentItem",
+  "props": {
+   "item": {
+    "id": 3,
+    "user_id": 2,
+    "author_name": "小满",
+    "reply_to_user_name": null,
+    "content": "写得好",
+    "is_pinned": false,
+    "is_hidden": false,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 1,
+    "liked_by_me": true,
+    "replies": null,
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": false,
+   "canPost": false,
+   "canModerate": false,
+   "viewerId": null
+  },
+  "html": "\n\n<li id=\"comment-3\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">小</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">小满</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n        \n      </p>\n      <p class=\"c-comment__body\">写得好</p>\n      <div class=\"c-comment__actions\">\n        \n  <span class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>1</span></span>\n\n\n        \n      </div>\n    </div>\n  \n  \n</li>\n\n"
+ },
+ {
+  "component": "CCommentItem",
+  "props": {
+   "item": {
+    "id": 3,
+    "user_id": 2,
+    "author_name": "小满",
+    "reply_to_user_name": null,
+    "content": "写得好",
+    "is_pinned": false,
+    "is_hidden": false,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 1,
+    "liked_by_me": true,
+    "replies": null,
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": true,
+   "canPost": true,
+   "canModerate": false,
+   "viewerId": 9
+  },
+  "html": "\n\n<li id=\"comment-3\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">小</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">小满</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n        \n      </p>\n      <p class=\"c-comment__body\">写得好</p>\n      <div class=\"c-comment__actions\">\n        \n  <button type=\"button\" class=\"c-act\"\n          aria-pressed=\"true\">\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n已赞 <span class=\"font-numeric\" data-like-count>1</span>\n  </button>\n\n\n        \n          \n            <details>\n              <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 7L4 12l5 5M4 12h10a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n回复</summary>\n              \n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">回复 小满</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"回复 小满…\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">回复</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n\n            </details>\n          \n          \n\n          \n        \n      </div>\n    </div>\n  \n  \n</li>\n\n"
+ },
+ {
+  "component": "CCommentItem",
+  "props": {
+   "item": {
+    "id": 5,
+    "user_id": 2,
+    "author_name": "置顶的",
+    "reply_to_user_name": null,
+    "content": "给大家顶起来",
+    "is_pinned": true,
+    "is_hidden": false,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 0,
+    "liked_by_me": false,
+    "replies": null,
+    "edited_at": "2026-10-10T13:00:00+00:00",
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": true,
+   "canPost": true,
+   "canModerate": false,
+   "viewerId": 9
+  },
+  "html": "\n\n<li id=\"comment-5\" class=\"c-comment is-pinned\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">置</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">置顶的</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        <span class=\"c-tag c-tag--accent\">置顶</span>\n        \n        <span>已编辑</span>\n      </p>\n      <p class=\"c-comment__body\">给大家顶起来</p>\n      <div class=\"c-comment__actions\">\n        \n  <button type=\"button\" class=\"c-act\"\n          aria-pressed=\"false\">\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>0</span>\n  </button>\n\n\n        \n          \n            <details>\n              <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 7L4 12l5 5M4 12h10a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n回复</summary>\n              \n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">回复 置顶的</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"回复 置顶的…\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">回复</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n\n            </details>\n          \n          \n\n          \n        \n      </div>\n    </div>\n  \n  \n</li>\n\n"
+ },
+ {
+  "component": "CCommentItem",
+  "props": {
+   "item": {
+    "id": 8,
+    "user_id": 2,
+    "author_name": "楼主",
+    "reply_to_user_name": null,
+    "content": "主楼",
+    "is_pinned": false,
+    "is_hidden": false,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 2,
+    "liked_by_me": false,
+    "replies": [
+     {
+      "id": 9,
+      "user_id": 9,
+      "author_name": "阿白",
+      "reply_to_user_name": "小满",
+      "content": "同问",
+      "is_pinned": false,
+      "is_hidden": false,
+      "is_deleted": false,
+      "is_tombstone": false,
+      "like_count": 0,
+      "liked_by_me": false,
+      "replies": null,
+      "edited_at": null,
+      "created_at": "2026-10-10T13:00:00+00:00",
+      "updated_at": "2026-10-10T13:00:00+00:00"
+     }
+    ],
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": true,
+   "canPost": true,
+   "canModerate": false,
+   "viewerId": 9
+  },
+  "html": "\n\n<li id=\"comment-8\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">楼</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">楼主</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n        \n      </p>\n      <p class=\"c-comment__body\">主楼</p>\n      <div class=\"c-comment__actions\">\n        \n  <button type=\"button\" class=\"c-act\"\n          aria-pressed=\"false\">\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>2</span>\n  </button>\n\n\n        \n          \n            <details>\n              <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 7L4 12l5 5M4 12h10a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n回复</summary>\n              \n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">回复 楼主</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"回复 楼主…\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">回复</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n\n            </details>\n          \n          \n\n          \n        \n      </div>\n    </div>\n  \n  \n    <details class=\"c-comment__thread\">\n      <summary>1 条回复\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M6 9l6 6 6-6\"/>\n  \n</svg>\n</summary>\n      <ol>\n        \n          \n<li id=\"comment-9\" class=\"c-comment c-comment--reply\">\n  \n    \n\n<span class=\"c-avatar c-avatar--sm\" aria-hidden=\"true\">阿</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">阿白</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n      </p>\n      <p class=\"c-comment__body\"><span class=\"c-comment__at\">@小满</span> 同问</p>\n      <div class=\"c-comment__actions\">\n        \n  <button type=\"button\" class=\"c-act\"\n          aria-pressed=\"false\">\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>0</span>\n  </button>\n\n\n        \n          \n            <details>\n              <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 7L4 12l5 5M4 12h10a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n回复</summary>\n              \n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">回复 阿白</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"回复 阿白…\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">回复</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n\n            </details>\n          \n          \n  <details>\n    <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 20h16M5 16l1-4 9-9 3 3-9 9-4 1z\"/>\n  \n</svg>\n编辑</summary>\n    <form class=\"c-composer mt-2\">\n      \n      <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" aria-label=\"修改评论\">同问</textarea>\n      <div class=\"c-composer__bar\"><button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">保存修改</button></div>\n    </form>\n  </details>\n  <button type=\"button\" class=\"c-act c-act--danger\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6\"/>\n  \n</svg>\n删除</button>\n\n\n          \n        \n      </div>\n    </div>\n  \n</li>\n\n        \n      </ol>\n    </details>\n  \n</li>\n\n"
+ },
+ {
+  "component": "CCommentItem",
+  "props": {
+   "item": {
+    "id": 7,
+    "user_id": 2,
+    "author_name": "消失的",
+    "reply_to_user_name": null,
+    "content": "这条被删除",
+    "is_pinned": false,
+    "is_hidden": false,
+    "is_deleted": true,
+    "is_tombstone": false,
+    "like_count": 0,
+    "liked_by_me": false,
+    "replies": null,
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": true,
+   "canPost": true,
+   "canModerate": false,
+   "viewerId": 9
+  },
+  "html": "\n\n<li id=\"comment-7\" class=\"c-comment\">\n  \n    <p class=\"c-comment__placeholder\">评论已删除。</p>\n  \n  \n</li>\n\n"
+ },
+ {
+  "component": "CCommentItem",
+  "props": {
+   "item": {
+    "id": 6,
+    "user_id": 2,
+    "author_name": "潜水的",
+    "reply_to_user_name": null,
+    "content": "这条被隐藏",
+    "is_pinned": false,
+    "is_hidden": true,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 0,
+    "liked_by_me": false,
+    "replies": null,
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": true,
+   "canPost": true,
+   "canModerate": false,
+   "viewerId": 9
+  },
+  "html": "\n\n<li id=\"comment-6\" class=\"c-comment\">\n  \n    <p class=\"c-comment__placeholder\">该评论已隐藏。</p>\n  \n  \n</li>\n\n"
+ },
+ {
+  "component": "CCommentItem",
+  "props": {
+   "item": {
+    "id": 6,
+    "user_id": 2,
+    "author_name": "潜水的",
+    "reply_to_user_name": null,
+    "content": "这条被隐藏",
+    "is_pinned": false,
+    "is_hidden": true,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 0,
+    "liked_by_me": false,
+    "replies": null,
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": true,
+   "canPost": true,
+   "canModerate": true,
+   "viewerId": 9
+  },
+  "html": "\n\n<li id=\"comment-6\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">潜</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">潜水的</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        <span class=\"c-status c-status--off\">已隐藏</span>\n        \n      </p>\n      <p class=\"c-comment__body\">这条被隐藏</p>\n      <div class=\"c-comment__actions\">\n        \n  <button type=\"button\" class=\"c-act\"\n          aria-pressed=\"false\">\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>0</span>\n  </button>\n\n\n        \n          \n            <details>\n              <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 7L4 12l5 5M4 12h10a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n回复</summary>\n              \n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">回复 潜水的</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"回复 潜水的…\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">回复</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n\n            </details>\n          \n          \n\n          \n            \n              <button type=\"button\" class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 4h6l-1 6 4 3v2H6v-2l4-3-1-6zM12 15v6\"/>\n  \n</svg>\n置顶</button>\n            \n            \n              <button type=\"button\" class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M2 12c1-2.5 5-7 10-7s9 4.5 10 7c-1 2.5-5 7-10 7S3 14.5 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z\"/>\n  \n</svg>\n恢复</button>\n            \n          \n        \n      </div>\n    </div>\n  \n  \n</li>\n\n"
+ },
+ {
+  "component": "CCommentItem",
+  "props": {
+   "item": {
+    "id": 4,
+    "user_id": 9,
+    "author_name": "阿白",
+    "reply_to_user_name": null,
+    "content": "学习了",
+    "is_pinned": false,
+    "is_hidden": false,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 0,
+    "liked_by_me": false,
+    "replies": null,
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": true,
+   "canPost": true,
+   "canModerate": true,
+   "viewerId": 9
+  },
+  "html": "\n\n<li id=\"comment-4\" class=\"c-comment\">\n  \n    \n\n<span class=\"c-avatar\" aria-hidden=\"true\">阿</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">阿白</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n        \n      </p>\n      <p class=\"c-comment__body\">学习了</p>\n      <div class=\"c-comment__actions\">\n        \n  <button type=\"button\" class=\"c-act\"\n          aria-pressed=\"false\">\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>0</span>\n  </button>\n\n\n        \n          \n            <details>\n              <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 7L4 12l5 5M4 12h10a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n回复</summary>\n              \n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">回复 阿白</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"回复 阿白…\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">回复</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n\n            </details>\n          \n          \n  <details>\n    <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 20h16M5 16l1-4 9-9 3 3-9 9-4 1z\"/>\n  \n</svg>\n编辑</summary>\n    <form class=\"c-composer mt-2\">\n      \n      <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" aria-label=\"修改评论\">学习了</textarea>\n      <div class=\"c-composer__bar\"><button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">保存修改</button></div>\n    </form>\n  </details>\n  <button type=\"button\" class=\"c-act c-act--danger\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6\"/>\n  \n</svg>\n删除</button>\n\n\n          \n            \n              <button type=\"button\" class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 4h6l-1 6 4 3v2H6v-2l4-3-1-6zM12 15v6\"/>\n  \n</svg>\n置顶</button>\n            \n            \n              <button type=\"button\" class=\"c-act c-act--danger\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.3 2.5-2.7 3.9M6.6 6.6C4.4 8 2.9 10.2 2 12c1 2.5 5 7 10 7 1.6 0 3.1-.5 4.4-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2\"/>\n  \n</svg>\n隐藏</button>\n            \n          \n        \n      </div>\n    </div>\n  \n  \n</li>\n\n"
+ },
+ {
+  "component": "CCommentReply",
+  "props": {
+   "reply": {
+    "id": 9,
+    "user_id": 9,
+    "author_name": "阿白",
+    "reply_to_user_name": "小满",
+    "content": "同问",
+    "is_pinned": false,
+    "is_hidden": false,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 0,
+    "liked_by_me": true,
+    "replies": null,
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": true,
+   "canPost": true,
+   "canModerate": false,
+   "viewerId": 9
+  },
+  "html": "\n<li id=\"comment-9\" class=\"c-comment c-comment--reply\">\n  \n    \n\n<span class=\"c-avatar c-avatar--sm\" aria-hidden=\"true\">阿</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">阿白</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n      </p>\n      <p class=\"c-comment__body\"><span class=\"c-comment__at\">@小满</span> 同问</p>\n      <div class=\"c-comment__actions\">\n        \n  <button type=\"button\" class=\"c-act\"\n          aria-pressed=\"true\">\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n已赞 <span class=\"font-numeric\" data-like-count>0</span>\n  </button>\n\n\n        \n          \n            <details>\n              <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9 7L4 12l5 5M4 12h10a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n回复</summary>\n              \n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">回复 阿白</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"回复 阿白…\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">回复</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n\n            </details>\n          \n          \n  <details>\n    <summary class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 20h16M5 16l1-4 9-9 3 3-9 9-4 1z\"/>\n  \n</svg>\n编辑</summary>\n    <form class=\"c-composer mt-2\">\n      \n      <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" aria-label=\"修改评论\">同问</textarea>\n      <div class=\"c-composer__bar\"><button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">保存修改</button></div>\n    </form>\n  </details>\n  <button type=\"button\" class=\"c-act c-act--danger\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6\"/>\n  \n</svg>\n删除</button>\n\n\n          \n        \n      </div>\n    </div>\n  \n</li>\n"
+ },
+ {
+  "component": "CCommentReply",
+  "props": {
+   "reply": {
+    "id": 9,
+    "user_id": 9,
+    "author_name": "阿白",
+    "reply_to_user_name": "小满",
+    "content": "同问",
+    "is_pinned": false,
+    "is_hidden": false,
+    "is_deleted": false,
+    "is_tombstone": false,
+    "like_count": 0,
+    "liked_by_me": true,
+    "replies": null,
+    "edited_at": null,
+    "created_at": "2026-10-10T13:00:00+00:00",
+    "updated_at": "2026-10-10T13:00:00+00:00"
+   },
+   "interactive": false,
+   "canPost": false,
+   "canModerate": false,
+   "viewerId": null
+  },
+  "html": "\n<li id=\"comment-9\" class=\"c-comment c-comment--reply\">\n  \n    \n\n<span class=\"c-avatar c-avatar--sm\" aria-hidden=\"true\">阿</span>\n\n    <div class=\"min-w-0\">\n      <p class=\"c-comment__meta\">\n        <span class=\"c-comment__name\">阿白</span>\n        <time datetime=\"2026-10-10T21:00:00+08:00\" class=\"font-numeric\">2026.10.10 21:00</time>\n        \n        \n      </p>\n      <p class=\"c-comment__body\"><span class=\"c-comment__at\">@小满</span> 同问</p>\n      <div class=\"c-comment__actions\">\n        \n  <span class=\"c-act\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 20s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.3-8 11-8 11z\"/>\n  \n</svg>\n赞 <span class=\"font-numeric\" data-like-count>0</span></span>\n\n\n        \n      </div>\n    </div>\n  \n</li>\n"
+ },
+ {
+  "component": "CCommentComposer",
+  "props": {
+   "draft": ""
+  },
+  "html": "\n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">写评论</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"说点什么…（最多 500 字）\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">发表评论</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n"
+ },
+ {
+  "component": "CCommentComposer",
+  "props": {
+   "parentName": "小满",
+   "draft": ""
+  },
+  "html": "\n<form\n      class=\"c-composer\">\n  \n  <label>\n    <span class=\"sr-only\">回复 小满</span>\n    <textarea name=\"body\" rows=\"3\" maxlength=\"500\" required class=\"c-input\" placeholder=\"回复 小满…\"></textarea>\n  </label>\n  <div class=\"c-composer__bar\">\n    <button type=\"submit\" class=\"c-btn c-btn--primary c-btn--sm\">回复</button>\n    <span>发出即显示；违规内容会被内容编辑隐藏。</span>\n  </div>\n</form>\n"
+ }
+]

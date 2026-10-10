@@ -1,14 +1,13 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
-import { getApiPageSlug } from "@sjtu-ow/api"
-import type { SitePage } from "../pending-api"
+import { getApiPageSlug, type GetApiPageSlugOut } from "@sjtu-ow/api"
 
 // content/templates/content/standard_page.html: /about/, /terms/, /privacy/
 // and any other page an editor made under the home page (/<slug>/). Go's 404
 // (missing or not live) goes through untouched: the router paints the 404 page.
 export async function load(ctx: LoadCtx) {
   const slug = ctx.params.slug ?? new URL(ctx.url, "http://site").pathname.split("/").filter(Boolean)[0]
-  const page: SitePage = await getApiPageSlug(ctx.api, slug)
+  const page: GetApiPageSlugOut = await getApiPageSlug(ctx.api, slug)
   return { title: page.seo_title || page.title, page }
 }
 </script>
@@ -18,7 +17,7 @@ import { useRoute } from "vue-router"
 import { owDate, owISO } from "@sjtu-ow/shared/time"
 import { usePageMeta } from "../meta"
 
-const data = inject<{ title: string; page: SitePage }>("page-data")
+const data = inject<{ title: string; page: GetApiPageSlugOut }>("page-data")
 const page = computed(() => data?.page)
 const route = useRoute()
 const updated = computed(() => (page.value?.last_published_at ? new Date(page.value.last_published_at) : null))

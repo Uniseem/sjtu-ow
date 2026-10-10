@@ -1,10 +1,10 @@
 # 当前状态
 
 ```yaml
-milestone: 正式站 265 起回到旧站（Django），新栈前台在测试机上照 docs/frontend-migration.md 重做，和旧站对拍全绿再割接。F1 关键底座补齐（262–264，细项仍见表）；F2 第一组通过（266），267 卡片/布局已有旧模板 SSR 对照，268–269 账号 14 条地址已有页面或兼容跳转，登录/注册/找回入口/改密码/邮箱/退出六页四组合对拍通过，找回密码/改邮箱 Go/Web 回归通过；F2/F3 最终验收仍未完成。270 起前端由 Claude 做、后端由 GPT 做：F4 普通页、搜索、投稿前端写好，访客投稿页对拍通过，其余卡在「交给后端（GPT）」的 BE-0/BE-2。
-round: 274-be-search-session
-next_frontend: Claude：273 文章页（含评论），再资讯列表、首页；账号组其余对拍、真实旅程、F2 样张仍待补。
-next_backend: GLM 接替 GPT 的后端范围（用户已确认），前端仍由 Claude 做。BE-0–3 后端完成，Claude 待接类型；GLM 接班先看 rounds/274-be-search-session/glm-handoff.md，优先核查文章各出口公开门、首页统计/我的安排/吞错，随后会话 B3 与页面聚合缺口。IP 试用站未部署，正式站继续 Django。
+milestone: 正式站 265 起回到旧站（Django），新栈前台在测试机上照 docs/frontend-migration.md 重做，和旧站对拍全绿再割接。F1 关键底座补齐（262–264，细项仍见表）；F2 第一组通过（266），267 卡片/布局已有旧模板 SSR 对照；F3 账号入口 268–269 有页面、登录/注册/找回/改密码/邮箱/退出对拍通过；F4 内容组 270–275 前端写齐（普通页/搜索/投稿对拍通过，文章页含评论区/资讯列表/首页照旧模板重写，剩余差异在 BE-4–8）。前端 Claude、后端 GLM（274 起）。
+round: 275-f4-articles-home
+next_frontend: Claude：BE-4–8 接入后补文章页/列表/首页的对拍缺口；账号组其余对拍、真实旅程、F2 样张仍待补。
+next_backend: GLM：275 已接 BE-0–3（前端用上了生成类型），新任务 BE-4–8（见「交给后端（GPT）」表）：文章页投影、资讯列表 categories/intro/默认封面、首页 feature 默认封面、会话 can_comment、评论 edited_at；此前给的核查方向（文章各出口公开门、首页统计/吞错、会话 B3）不变。IP 试用站未部署，正式站继续 Django。
 updated: 2026-10-10
 blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令时写法、磁盘清理、异地备份）
 ```
@@ -65,11 +65,11 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 | `/accounts/email/`、`/accounts/password/reset/` | 半（269 实现） | ✓ | ✓（269 回归） | ✓（269，四组合） | 未验 |
 | `/accounts/password/reset/confirm/`、`/complete/` | 半（269 实现） | ✓ | ✓（269 回归） | 未逐页验 | 未验 |
 | **内容** | | | | | |
-| `/` | 半 | — | 半（缺我的安排） | — | — |
-| `/news/` | 半 | — | 半（生成的函数没有查询参数） | — | — |
-| `/news/<slug>/`（含评论） | 缺（404） | — | ✓ | — | — |
-| `/about/`、`/terms/`、`/privacy/`、普通页 | 半（270 照旧模板） | ✓ | 错（BE-0 没导入、BE-1） | 不同：新站 404（BE-0） | — |
-| `/search/` | 半（270 照旧模板） | ✓ | 错（BE-2 形状不对） | 不同（BE-2） | — |
+| `/` | ✓（275 照旧模板重写） | ✓ | 半（BE-6：feature/公告缺、agenda 链接形状） | 不同（BE-6；about/search/submit 访客已过） | — |
+| `/news/` | ✓（275 照旧模板） | ✓ | 半（BE-5：分类标签、简介、默认封面） | 不同（BE-5） | — |
+| `/news/<slug>/`（含评论） | ✓（275，含评论区；BE-4 字段有就显示） | ✓（CComments 一组，17 组旧模板对照） | ✓ | 半（275 对拍：作者卡/相关文章等 BE-4；空评论区结构一致） | — |
+| `/about/`、`/terms/`、`/privacy/`、普通页 | 半（270 照旧模板） | ✓ | ✓（BE-0/1） | ✓（275，三页访客逐字通过） | — |
+| `/search/` | 半（270 照旧模板） | ✓ | ✓（BE-2） | ✓（275，访客逐字通过） | — |
 | `/submit/` | 半（270 照旧模板） | ✓ | 半（BE-3） | 访客 ✓（270，四组合）；成员 302 一致、目的地是后台写文章页（F9） | — |
 | **个人中心、发信、退订** | | | | | |
 | `/me/` | 错（会改掉公开段位） | — | ✓ | — | — |
@@ -129,10 +129,15 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 
 | 编号 | 状态 | 接口 | 要补什么（依据） | 挡住的对拍 |
 |---|---|---|---|---|
-| BE-0 | ✓ 273 | `sjtuow import`（`internal/content/import.go` 第 5 段） | **普通页一条都没导进来**：它读旧库的 `content_sitepage`，旧站的表是 `content_standardpage`（`content/models.py` `StandardPage`），`QueryContext` 报错被 `if err == nil` 吞了，`INSERT` 的错误也是 `_, _ =`。270 对拍里 `/about/`、`/terms/`、`/privacy/` 在新站都是 404。改成读 `content_standardpage`，顺带把 `seo_title`、`search_description`、`first_published_at`、`last_published_at`（`wagtailcore_page`）一起导；这一段和同文件别处吞掉的错误改成报出来（导入失败要让人看见）。正式站割接前必须修，否则三页协议在新站消失 | `about`、`terms`、`privacy` |
-| BE-1 | ✓ 273 | `GET /api/page/{slug}` | 加 `seo_title`、`search_description`、`last_published_at`（可空，RFC 3339）。`content.Page` 里都有，`SitePageOut` 没带出来（`content/models.py` `StandardPage` + `SeoPageMixin`） | `about`、`terms`、`privacy` |
-| BE-2 | ✓ 274 | `GET /api/search?q=` | 回答改成旧搜索页的分组：`{query, groups: [{key, label, hits: [{title, url, excerpt, meta}], truncated}]}`。规则逐条照 `search/services.py`：查询去空白截 50 字、按空白切最多 5 个词、大小写折叠、每个词都要命中，空查询不搜；四组顺序固定 `articles` 文章 / `events` 赛事与内战 / `teams` 战队 / `members` 成员，空组也要在（前端按位置编 `search-N`）；每组最多 20 条，多了 `truncated: true`；摘录是第一个命中词前后各 40 字，被截的一头加「…」，没命中就取开头 80 字。文章：已发布公开的，按 `last_published_at` 倒序，搜标题+摘要+`body_plain`，`meta` 是分类名（没有就「文章」），`url` `/news/<slug>/`。赛事与内战一组：先赛事（已发布、已结束，按 `updated_at` 倒序）后内战（同），搜标题+摘要+说明纯文本，`meta` 是「赛事」「内战」。战队：没解散的，按 `updated_at` 倒序，搜名字+简介，摘录取简介，`meta`「招募中」或「战队」。成员：成员墙上的人，按昵称排序，只搜昵称，摘录是宣言，`meta`「成员」，`url` `/members/<用户编号>/`。限流照旧回 429 | `search` |
-| BE-3 | ✓ 274 | `GET /api/session` | `user` 加 `can_submit_article`：`can_use(article_submit)` 本身，不看邮箱验证（`content/views.py` `submit_entry` 把「邮箱未验证」「没有投稿权限」分开列）。现在前端只能从 `caps` 里的 `articles.publish_own` 推，未验证邮箱又被禁投稿的人只看到前一条 | `submit`（只影响这一种人，种子数据里没有） |
+| BE-0 | 已接 275 | `sjtuow import`（`internal/content/import.go` 第 5 段） | **普通页一条都没导进来**：它读旧库的 `content_sitepage`，旧站的表是 `content_standardpage`（`content/models.py` `StandardPage`），`QueryContext` 报错被 `if err == nil` 吞了，`INSERT` 的错误也是 `_, _ =`。270 对拍里 `/about/`、`/terms/`、`/privacy/` 在新站都是 404。改成读 `content_standardpage`，顺带把 `seo_title`、`search_description`、`first_published_at`、`last_published_at`（`wagtailcore_page`）一起导；这一段和同文件别处吞掉的错误改成报出来（导入失败要让人看见）。正式站割接前必须修，否则三页协议在新站消失 | `about`、`terms`、`privacy` |
+| BE-1 | 已接 275 | `GET /api/page/{slug}` | 加 `seo_title`、`search_description`、`last_published_at`（可空，RFC 3339）。`content.Page` 里都有，`SitePageOut` 没带出来（`content/models.py` `StandardPage` + `SeoPageMixin`） | `about`、`terms`、`privacy` |
+| BE-2 | 已接 275 | `GET /api/search?q=` | 回答改成旧搜索页的分组：`{query, groups: [{key, label, hits: [{title, url, excerpt, meta}], truncated}]}`。规则逐条照 `search/services.py`：查询去空白截 50 字、按空白切最多 5 个词、大小写折叠、每个词都要命中，空查询不搜；四组顺序固定 `articles` 文章 / `events` 赛事与内战 / `teams` 战队 / `members` 成员，空组也要在（前端按位置编 `search-N`）；每组最多 20 条，多了 `truncated: true`；摘录是第一个命中词前后各 40 字，被截的一头加「…」，没命中就取开头 80 字。文章：已发布公开的，按 `last_published_at` 倒序，搜标题+摘要+`body_plain`，`meta` 是分类名（没有就「文章」），`url` `/news/<slug>/`。赛事与内战一组：先赛事（已发布、已结束，按 `updated_at` 倒序）后内战（同），搜标题+摘要+说明纯文本，`meta` 是「赛事」「内战」。战队：没解散的，按 `updated_at` 倒序，搜名字+简介，摘录取简介，`meta`「招募中」或「战队」。成员：成员墙上的人，按昵称排序，只搜昵称，摘录是宣言，`meta`「成员」，`url` `/members/<用户编号>/`。限流照旧回 429 | `search` |
+| BE-3 | 已接 275 | `GET /api/session` | `user` 加 `can_submit_article`：`can_use(article_submit)` 本身，不看邮箱验证（`content/views.py` `submit_entry` 把「邮箱未验证」「没有投稿权限」分开列）。现在前端只能从 `caps` 里的 `articles.publish_own` 推，未验证邮箱又被禁投稿的人只看到前一条 | `submit`（只影响这一种人，种子数据里没有） |
+| BE-4 | 待做 | `GET /api/page/news/{slug}` | 文章页正文之外的投影，逐条照 `content/models.py` `ArticlePage.get_context`：`author`（`{user_id, nickname, avatar_image_id, is_active, motto}`，作者卡用：链接 `/members/<user_id>/`、头像、宣言「…”motto“」、停用的人不显示头像）；`author_article_count`（作者已发布公开文章数）；`last_published_at`（可空；前端按「距首发超过一天」显示「更新于」）；`comment_total`（头部事实行的顶层评论数）；`older`/`newer`（同栏目按 `first_published_at` 前后最近一篇 `{slug, title}`，无首发时间时 null）；`related`（同分类排除自己、按首发时间倒序前 3 篇，形状照 `NewsItemOut` 再加 `default_cover_image_id`）；`category_slug`（面包屑和分类 tag 链接 `?category=`）；`default_cover_image_id`（分类默认封面，即 `cover_fallback`）；`tournament`（关联赛事卡，`is_public` 才给：`{id, title, phase, starts_at, registration_opens_at, registration_closes_at, cover_image_id, default_cover_image_id, roster_min, roster_max, registration_mode_label, takes_individuals, sjtu_only}`）；`seo_title`、`search_description`（页面标题和描述） | `article`（作者卡、上下篇、相关文章、关联赛事卡、SEO） |
+| BE-5 | 待做 | `GET /api/page/news` | 列表页三样（`ArticleIndexPage.get_context`）：`categories`（有名字有 slug 的分类，按 `sort_order, name`，`{slug, name}` 数组，分类标签条）；`intro_html`（栏目简介渲染后的 HTML，`c-pagehead__lede`）；items 每项补 `default_cover_image_id`（文章卡的默认封面） | `news`（分类标签、栏目简介、默认封面） |
+| BE-6 | 待做 | `GET /api/page/home`（含 `/api/me/agenda` 的组合） | 275 对拍（`/tmp/sjtu-ow-parity/out/report.md`）拿到三处：① `feature_tournament` 是空——种子里有整队赛（id 2），旧站画了「报名中 · 截图战队杯 · 已通过 0 队」大卡，新站整块没有，查选择逻辑/门；② `notices` 是空——旧站公告列出了 notice 分类文章，新站没有；③ 议程条目的报名链接形状不对：旧站是 `/registrations/1/`，新站 `/api/me/agenda` 给 `/tournaments/2/registrations/1/`。glm-handoff 5.1 让把 agenda 组合进 home、`feature_tournament` 补 `default_cover_image_id`（和 BE-5 同一个默认封面池）——这三条一起做 | `home`（访客像素差 56%、member 50%，大头是缺的大卡和公告） |
+| BE-7 | 待做 | `GET /api/session` | `user` 补 `can_comment`：`can_use("article_comment")` 本身。评论区要像旧站的 `post_problems` 一样预先显示「你暂时无法使用此功能，如有疑问请联系管理员」（`accounts/permissions.py`）；后台 caps 是另一套语义，判不了这个。和 BE-3 的 `can_submit_article` 同一模式 | `article`（功能被禁的成员，种子数据里没有） |
+| BE-8 | 待做 | `GET /api/articles/{id}/comments` 等评论接口 | `Comment` 投影补 `edited_at`（可空，RFC 3339；旧站 `comments/models.py` 有这列，Go 的 `comments/model.go` 没有）。「已编辑」标记只看它，`updated_at` 会被管理员隐藏/置顶动作带新 | `article`（编辑过的评论；种子数据里没有） |
 
 ## 交给前端（Claude）
 
@@ -143,6 +148,8 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 | （暂无） | | | |
 
 ## 最近轮次
+
+**275（2026-10-10，自查通过）**：前端（Claude）接 BE-0–3：`pending-api.ts` 三段删除，普通页/搜索/投稿换生成类型；文章页（含评论区 CComments 一组、路由 `/news/:slug/`）、资讯列表、首页照旧模板重写（260 的旧实现全部换掉：吞错误的 fetch、禁用色板、编造的结构）；首页标题照旧站改「首页 · SJTU-OW」。后端缺口登记 BE-4–8（文章页投影、列表 categories/intro/默认封面、首页聚合与 agenda 链接形状、会话 can_comment、评论 edited_at），页面全部「有就显示」。评论区 17 组旧模板真渲染对照（`legacy_fixtures.py`）全过；五处变异自查全红；换页读旧键的 TypeError（page-data 先删旧键）已修并进 AGENTS 已知的坑。测试机 `20261011-005408-8177543` 整组+budget 绿、browser-check 复跑 `20261011-005955-f6f48c4` OK；对拍 `20261011-010123-cfa1a30`：11 行 5 过（about/terms/privacy/search/submit 访客逐字通过），其余差异全部落在 BE-4/5/6 与 F9 后台（submit 成员行的目的地是后台编辑页，F9 未做）。最终整组+home 对拍见本轮报告。
 
 **274（2026-10-10，自查通过）**：GPT 完成 BE-2/BE-3：搜索附加固定四组、旧站摘录/标签/排序/截断，保留五份旧列表；Unicode casefold 映射由项目 Python 生成，13 个旧站 golden，限流 HTTP 回归；迁移 00018 和旧站祖先访问限制导入只用于搜索可见标记。会话独立返回 can_submit_article，六种实际权限组合通过。最终 `20261010-230752-2200302`：15 处变异、Go/Web 整组（15 + 171）、搜索四组合严格对拍通过，退出 0。用户指定 GLM 接替后端、Claude 继续前端，AGENTS 已记，详细指导 `rounds/274-be-search-session/glm-handoff.md`。下一轮核查文章公开门/首页等，本轮未扩大实现、未部署。
 

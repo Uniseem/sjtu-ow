@@ -16,6 +16,18 @@ function api(status: number, body: unknown, seen?: { cookie: string | null }): t
   }
 }
 
+// An empty home page as Go sends it before the site is set up, and the
+// agenda an empty member has; everything else is the session, as before.
+const EMPTY_HOME = { stats: null, scrims: [], news: [], notices: [], teams: [] }
+function apiWithHome(status: number, body: unknown, seen?: { cookie: string | null }): typeof fetch {
+  return async (input, init) => {
+    const path = new URL(String(input)).pathname
+    if (path === "/api/page/home") return new Response(JSON.stringify(EMPTY_HOME), { headers: { "content-type": "application/json" } })
+    if (path === "/api/me/agenda") return new Response(JSON.stringify({ items: [] }), { headers: { "content-type": "application/json" } })
+    return api(status, body, seen)(input, init)
+  }
+}
+
 const base = { apiBase: "http://api.test" }
 const ASSETS = { entry: "/assets/entry-x.js", css: ["/assets/entry-x.css"], preloads: [] }
 
@@ -72,7 +84,7 @@ test("an unknown path is a 404 page without any script", async () => {
 })
 
 test("the shell has no executable inline script and escapes state", async () => {
-  const out = await handle(incoming("GET", "/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  const out = await handle(incoming("GET", "/"), { ...base, fetch: apiWithHome(200, { user: null }), assets: ASSETS })
   expect(out.status).toBe(200)
   expect(out.headers["cache-control"]).toBe("no-cache")
   expect(out.headers.vary).toBe("Cookie")
@@ -95,7 +107,7 @@ test("a logged-in session is not cached", async () => {
   const seen = { cookie: null as string | null }
   const out = await handle(incoming("GET", "/", { cookie: "ow_session=abc" }), {
     ...base,
-    fetch: api(200, { user: { nickname: "夜蛾", admin: false } }, seen),
+    fetch: apiWithHome(200, { user: { nickname: "夜蛾", admin: false } }, seen),
   })
   expect(out.status).toBe(200)
   expect(out.headers["cache-control"]).toBe("private, no-store")
@@ -202,7 +214,7 @@ test("a loader's ApiError decides the status: 404, 403, 429 are pages, a dead AP
 
 test("the whole session goes into the page state, caps and all", async () => {
   const user = { id: 9, nickname: "站长", email: "a@b.c", admin: true, superuser: false, caps: ["scrims.manage"], email_verified: true, is_sjtu: true }
-  const out = await handle(incoming("GET", "/"), { ...base, fetch: api(200, { user }), assets: ASSETS })
+  const out = await handle(incoming("GET", "/"), { ...base, fetch: apiWithHome(200, { user }), assets: ASSETS })
   const state = JSON.parse(out.body.match(/id="ow-state">([\s\S]*?)<\/script>/)![1])
   expect(state.viewer.user).toEqual(user)
 })

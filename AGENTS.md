@@ -293,6 +293,7 @@ Host sjtu-ow-test
 - **Caddy 的 `redir` 第一个参数以 `/` 开头会被当成匹配条件**（263）：`redir /static/img/favicon.ico 301` 不是「跳到这个地址」，而是「对这个路径跳到 301」，图标地址一直落到 SSR。要写 `redir * /目标 301`。改了 `deploy/Caddyfile.new` 就跑 `bash scripts/remote-check.sh run bash e2e/caddy/smoke.sh`（真 Caddy 容器 + 桩服务，逐条验路由和头），只读配置看不出这类错
 - **转给上游的访客 IP 用 `{client_ip}`，不用 `{remote_host}`**（263）：正式站前面有用户的反代，`{remote_host}` 是反代的地址，Go 的限流和失败锁就成了全站共用一个计数。`{client_ip}` 认全局的 `trusted_proxies`
 - **「200 OK」不等于页面对**（261）：260 拿「公网实测渲染 200」当验收，文章页 404、半数页面只有标题都没发现。前台的完成要和旧站对拍（`docs/frontend-migration.md` 第 9 节）
+- **`page-data` 在 SPA 换页时先删旧键再填新值**（275）：`entry-client` 的换页是「删掉上一页的键、assign 新页的键」，旧页面组件在卸载前会重渲染，直接读键的 computed 会撞上 undefined（browser-check 抓到过 `reading 'stats'`）。页面的 inject 一律可空、computed 全程可选链或空形状兜底（`StandardPage.vue` 是写法样板）；守卫是 `browser-check.mjs` 的换页序列，改了页面数据读取就跑它
 
 ## 改了什么，就更新哪份文档
 

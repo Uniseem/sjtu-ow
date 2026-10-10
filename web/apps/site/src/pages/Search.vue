@@ -1,6 +1,7 @@
 <script lang="ts">
+import { computed, inject } from "vue"
+import { getApiSearch, type GetApiSearchOut } from "@sjtu-ow/api"
 import type { LoadCtx } from "../router"
-import { searchSite, type SearchGroup } from "../pending-api"
 
 // search/services.py: at most 50 characters, at most 5 words; nothing to look
 // for means no call to Go at all (and nothing counted against the limit).
@@ -13,7 +14,7 @@ export function searchTerms(raw: string | undefined): { query: string; terms: st
 // search/templates/search/results.html. Go's 429 is the 429 page, as before.
 export async function load(ctx: LoadCtx) {
   const { query, terms } = searchTerms(ctx.query.q)
-  const groups: SearchGroup[] = terms.length ? (await searchSite(ctx.api, query)).groups : []
+  const groups: GetApiSearchOut["groups"] = terms.length ? (await getApiSearch(ctx.api, { q: query })).groups : []
   return { title: query ? `搜索：${query} · 站内搜索` : "站内搜索", query, searched: terms.length > 0, groups }
 }
 </script>
@@ -23,7 +24,7 @@ import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import { usePageMeta } from "../meta"
 
-const data = inject<{ title: string; query: string; searched: boolean; groups: SearchGroup[] }>("page-data")
+const data = inject<{ title: string; query: string; searched: boolean; groups: GetApiSearchOut["groups"] }>("page-data")
 const groups = computed(() => data?.groups ?? [])
 const total = computed(() => groups.value.reduce((sum, group) => sum + group.hits.length, 0))
 usePageMeta(() => ({ title: data?.title ?? "站内搜索", description: "搜索文章、赛事与内战、战队和成员。" }))

@@ -16,3 +16,24 @@ export interface PublicPlay {
   is_flex?: boolean
   main_rank?: { label: string; role_label: string; stale: boolean; updated_at?: string | null } | null
 }
+
+// One comment as the comments API sends it (server/internal/comments/model.go),
+// replies nested one level. `edited_at` waits for the backend (STATUS BE-8);
+// until then nothing prints 已编辑.
+export interface CommentView {
+  id: number
+  user_id?: number | null
+  author_name: string
+  reply_to_user_name?: string
+  content: string
+  is_pinned: boolean
+  is_hidden: boolean
+  is_deleted: boolean
+  is_tombstone?: boolean
+  like_count: number
+  liked_by_me?: boolean
+  replies?: CommentView[]
+  edited_at?: string | null
+  created_at: string
+  updated_at: string
+}

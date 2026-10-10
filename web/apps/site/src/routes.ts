@@ -37,6 +37,9 @@ const standardPage = () => import("./pages/StandardPage.vue")
 
 export const PAGES: RouteRecordRaw[] = [
   dynamicPage("/news/", () => import("./pages/News.vue"), "资讯"),
+  // The slug follows Wagtail's (word characters and hyphens, Unicode
+  // allowed, so percent-encoded bytes too); never a dot.
+  dynamicPage(`/news/:slug([\\w%\\u0080-\\uffff-]+)/`, () => import("./pages/ArticleDetail.vue"), "文章"),
   dynamicPage("/about/", standardPage, "关于我们"),
   dynamicPage("/terms/", standardPage, "用户协议"),
   dynamicPage("/privacy/", standardPage, "隐私政策"),

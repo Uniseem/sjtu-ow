@@ -1,7 +1,6 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
 import { PageRedirect } from "@sjtu-ow/shared/navigation"
-import type { SubmitAbility } from "../pending-api"
 import type { ViewerUser } from "../viewer"
 
 export const ARTICLE_NEW = "/admin/articles/new/"
@@ -10,7 +9,7 @@ const LOGIN = "/accounts/login/?next=%2Fsubmit%2F"
 // content/views.py submit_entry: a contributor goes straight to the editor;
 // anyone else is told why not (design 5.4.3). The editor checks again in Go.
 export async function load(ctx: LoadCtx) {
-  const user = (await ctx.viewer()).user as (ViewerUser & SubmitAbility) | null
+  const user: ViewerUser | null = (await ctx.viewer()).user
   if (!user) return { title: "投稿", reasons: ["未登录"], loginUrl: LOGIN }
   const reasons: string[] = []
   if (!user.email_verified) reasons.push("邮箱未验证")

@@ -13,13 +13,10 @@ const REPO = resolve(SRC, "../../../..")
 // 260's pages and 253's back office, to be redone page family by page family
 // (frontend-migration 3, 11). Do not add to this list.
 const PENDING_REWRITE = new Set([
-  "pages/ArticleDetail.vue",
   "pages/Contacts.vue",
   "pages/GameAccounts.vue",
-  "pages/Home.vue",
   "pages/MemberDetail.vue",
   "pages/Members.vue",
-  "pages/News.vue",
   "pages/Profile.vue",
   "pages/ScrimDetail.vue",
   "pages/Scrims.vue",
@@ -111,10 +108,9 @@ rules["raw /api/ call"] = (f) => f.endsWith(".vue") && /["'`}]\/api\//.test(read
 rules["style binding"] = (f) => f.endsWith(".vue") && /(?:\s:style=|\sv-bind:style=|\sstyle=")/.test(templateOf(read(f)))
 
 // v-html only for HTML Go rendered and sanitised (I8): each page that shows
-// a body_html names itself here (the article page joins when it is
-// rewritten). No generic "render this HTML" component: that would let any
-// page pass any string through.
-const V_HTML_ALLOWED = new Set<string>(["pages/StandardPage.vue"])
+// a body_html names itself here. No generic "render this HTML" component:
+// that would let any page pass any string through.
+const V_HTML_ALLOWED = new Set<string>(["pages/StandardPage.vue", "pages/ArticleDetail.vue", "pages/News.vue"])
 rules["v-html"] = (f) => f.endsWith(".vue") && !V_HTML_ALLOWED.has(f) && /\sv-html=/.test(read(f))
 
 // Pages and components take their types from the generated API (A4). The
