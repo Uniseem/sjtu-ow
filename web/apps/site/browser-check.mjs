@@ -57,6 +57,8 @@ async function startServers() {
         if (!refresh) flash = "";
       }
       else if (req.url.startsWith("/api/page/home")) res.end(JSON.stringify({ stats: { member_count: 0, team_count: 0, scrims_held: 0 } }));
+      // Like Go: an editor's page that is not there (/<slug>/ asks for it, 270).
+      else if (req.url.startsWith("/api/page/")) { res.statusCode = 404; res.end(JSON.stringify({ error: { code: "not_found", message: "页面不存在" } })); }
       else res.end(JSON.stringify({}));
     }).listen(${stubPort});
   `])

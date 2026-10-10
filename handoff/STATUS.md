@@ -1,9 +1,9 @@
 # 当前状态
 
 ```yaml
-milestone: 正式站 265 起回到旧站（Django），新栈前台在测试机上照 docs/frontend-migration.md 重做，和旧站对拍全绿再割接。F1 关键底座补齐（262–264，细项仍见表）；F2 第一组通过（266），267 卡片/布局已有旧模板 SSR 对照，268–269 账号 14 条地址已有页面或兼容跳转，登录/注册/找回入口/改密码/邮箱/退出六页四组合对拍通过，找回密码/改邮箱 Go/Web 回归通过；F2/F3 最终验收仍未完成。
-round: 269-f3-password-reset-email
-next: 六页四组合账号对拍已通过；补其余账号地址对拍、找回密码/改邮箱的真实接口旅程与重新认证后 POST 恢复。270 普通页有本地草稿，未接路由，缺最后更新字段接口，未提交；F2 样张仍待验收。IP 试用站未部署，正式站继续跑 Django。
+milestone: 正式站 265 起回到旧站（Django），新栈前台在测试机上照 docs/frontend-migration.md 重做，和旧站对拍全绿再割接。F1 关键底座补齐（262–264，细项仍见表）；F2 第一组通过（266），267 卡片/布局已有旧模板 SSR 对照，268–269 账号 14 条地址已有页面或兼容跳转，登录/注册/找回入口/改密码/邮箱/退出六页四组合对拍通过，找回密码/改邮箱 Go/Web 回归通过；F2/F3 最终验收仍未完成。270 起前端由 Claude 做、后端由 GPT 做：F4 普通页、搜索、投稿前端写好，访客投稿页对拍通过，其余卡在「交给后端（GPT）」的 BE-0/BE-2。
+round: 270-f4-standard-pages
+next: 前端（Claude）：271 文章页（含评论），再资讯列表、首页。后端（GPT）：先做「交给后端（GPT）」表，BE-0（普通页没导入）是割接的硬阻碍。账号组其余对拍、真实旅程、F2 样张仍待补。IP 试用站未部署，正式站继续跑 Django。
 updated: 2026-10-10
 blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令时写法、磁盘清理、异地备份）
 ```
@@ -67,9 +67,9 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 | `/` | 半 | — | 半（缺我的安排） | — | — |
 | `/news/` | 半 | — | 半（生成的函数没有查询参数） | — | — |
 | `/news/<slug>/`（含评论） | 缺（404） | — | ✓ | — | — |
-| `/about/`、`/terms/`、`/privacy/`、普通页 | 缺 | — | ✓ | — | — |
-| `/search/` | 缺 | — | ✓ | — | — |
-| `/submit/` | 缺 | — | ✓ | — | — |
+| `/about/`、`/terms/`、`/privacy/`、普通页 | 半（270 照旧模板） | ✓ | 错（BE-0 没导入、BE-1） | 不同：新站 404（BE-0） | — |
+| `/search/` | 半（270 照旧模板） | ✓ | 错（BE-2 形状不对） | 不同（BE-2） | — |
+| `/submit/` | 半（270 照旧模板） | ✓ | 半（BE-3） | 访客 ✓（270，四组合）；成员 302 一致、目的地是后台写文章页（F9） | — |
 | **个人中心、发信、退订** | | | | | |
 | `/me/` | 错（会改掉公开段位） | — | ✓ | — | — |
 | `/me/game-accounts/`、`/<id>/` | 半 / 缺 | — | ✓ | — | — |
@@ -122,7 +122,20 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 | 设置：操作记录 | 半 | — | ✓ | — | — |
 | 手册 | 半 | — | ✓ | — | — |
 
+## 交给后端（GPT）
+
+用户 2026-10-10：「你把前端往下推进，后端之后让 gpt 去写」。前端轮次不改 `server/`；页面要的 Go 改动写在这里，编号和 `web/apps/site/src/pending-api.ts` 里的 `[BE-n]` 一一对应。前端已经照旧模板写好、字段有就显示。**后端做完一条**：改 Go、`apigen` 重新生成、删掉 `pending-api.ts` 里对应的那一段（页面改用生成的类型）、在这里把那一行标「✓ 轮次」，再跑对应页面的对拍（下表最后一栏）。每条照 Go 现有的标准做（注册表、守门、`// 契约`、变异）。
+
+| 编号 | 接口 | 要补什么（依据） | 挡住的对拍 |
+|---|---|---|---|
+| BE-0 | `sjtuow import`（`internal/content/import.go` 第 5 段） | **普通页一条都没导进来**：它读旧库的 `content_sitepage`，旧站的表是 `content_standardpage`（`content/models.py` `StandardPage`），`QueryContext` 报错被 `if err == nil` 吞了，`INSERT` 的错误也是 `_, _ =`。270 对拍里 `/about/`、`/terms/`、`/privacy/` 在新站都是 404。改成读 `content_standardpage`，顺带把 `seo_title`、`search_description`、`first_published_at`、`last_published_at`（`wagtailcore_page`）一起导；这一段和同文件别处吞掉的错误改成报出来（导入失败要让人看见）。正式站割接前必须修，否则三页协议在新站消失 | `about`、`terms`、`privacy` |
+| BE-1 | `GET /api/page/{slug}` | 加 `seo_title`、`search_description`、`last_published_at`（可空，RFC 3339）。`content.Page` 里都有，`SitePageOut` 没带出来（`content/models.py` `StandardPage` + `SeoPageMixin`） | `about`、`terms`、`privacy` |
+| BE-2 | `GET /api/search?q=` | 回答改成旧搜索页的分组：`{query, groups: [{key, label, hits: [{title, url, excerpt, meta}], truncated}]}`。规则逐条照 `search/services.py`：查询去空白截 50 字、按空白切最多 5 个词、大小写折叠、每个词都要命中，空查询不搜；四组顺序固定 `articles` 文章 / `events` 赛事与内战 / `teams` 战队 / `members` 成员，空组也要在（前端按位置编 `search-N`）；每组最多 20 条，多了 `truncated: true`；摘录是第一个命中词前后各 40 字，被截的一头加「…」，没命中就取开头 80 字。文章：已发布公开的，按 `last_published_at` 倒序，搜标题+摘要+`body_plain`，`meta` 是分类名（没有就「文章」），`url` `/news/<slug>/`。赛事与内战一组：先赛事（已发布、已结束，按 `updated_at` 倒序）后内战（同），搜标题+摘要+说明纯文本，`meta` 是「赛事」「内战」。战队：没解散的，按 `updated_at` 倒序，搜名字+简介，摘录取简介，`meta`「招募中」或「战队」。成员：成员墙上的人，按昵称排序，只搜昵称，摘录是宣言，`meta`「成员」，`url` `/members/<用户编号>/`。限流照旧回 429 | `search` |
+| BE-3 | `GET /api/session` | `user` 加 `can_submit_article`：`can_use(article_submit)` 本身，不看邮箱验证（`content/views.py` `submit_entry` 把「邮箱未验证」「没有投稿权限」分开列）。现在前端只能从 `caps` 里的 `articles.publish_own` 推，未验证邮箱又被禁投稿的人只看到前一条 | `submit`（只影响这一种人，种子数据里没有） |
+
 ## 最近轮次
+
+**270（2026-10-10，部分完成）**：前端改由 Claude 做（用户「你把前端往下推进，后端之后让 gpt 去写」）。F4 普通页（`/about/`、`/terms/`、`/privacy/`、`/<slug>/`）、搜索、投稿照旧模板重写；`usePageMeta` 出标题；加载器加 `viewer()`（共用一次会话请求）；`v-html` 白名单收回到具体页面，删掉 GPT 草稿的通用组件；页面要的 Go 字段写进 `pending-api.ts` 和上面「交给后端（GPT）」。最后整组 + browser-check `20261010-220454-f798313`（Web 15 + 171 条，全部通过）；12 处变异全抓到（`215811-1f94fca`）；对拍 1/6 通过（访客投稿页），**对拍发现 Go 导入程序没导普通页（BE-0）**，搜索差 BE-2。报告见 `rounds/270-f4-standard-pages/`。
 
 **269（2026-10-10，部分完成）**：三步找回密码、独立重置凭证和修改邮箱状态/取消/验证页面，修错码计数回滚。远端 `211638-defd024` Go/Web（15 + 160 条）、browser-check 已通过，六页四组合账号对拍通过（登录/注册/找回入口/改密码/邮箱/退出，任务退出 0）。真实重置/换绑旅程、重新认证后 POST 自动恢复、全账号验收待补。报告见 `rounds/269-f3-password-reset-email/`。270 普通页草稿留在本地，未接路由/未验证/未提交。
 

@@ -33,13 +33,15 @@ function dynamicPage(path: string, comp: () => Promise<any>, title: string, opts
   return { path, component: comp, meta: { load, ...opts } }
 }
 
+const standardPage = () => import("./pages/StandardPage.vue")
+
 export const PAGES: RouteRecordRaw[] = [
   dynamicPage("/news/", () => import("./pages/News.vue"), "资讯"),
-  page("/about/", "关于我们"),
-  page("/terms/", "用户协议"),
-  page("/privacy/", "隐私政策"),
-  page("/search/", "搜索"),
-  page("/submit/", "我要投稿"),
+  dynamicPage("/about/", standardPage, "关于我们"),
+  dynamicPage("/terms/", standardPage, "用户协议"),
+  dynamicPage("/privacy/", standardPage, "隐私政策"),
+  dynamicPage("/search/", () => import("./pages/Search.vue"), "站内搜索"),
+  dynamicPage("/submit/", () => import("./pages/Submit.vue"), "投稿"),
   page("/unsubscribe/:token/", "退订"),
   page("/letters/", "待发信", MEMBER),
   page("/letters/:batch/", "确认发信", MEMBER),
@@ -83,6 +85,11 @@ export const PAGES: RouteRecordRaw[] = [
   dynamicPage("/accounts/password/reset/complete/", () => import("./pages/PasswordResetComplete.vue"), "设置新密码"),
   dynamicPage("/accounts/password/reset/done/", () => import("./pages/AccountResult.vue"), "密码已更新"),
   redirected("/accounts/login/code/confirm/", "/accounts/login/", 302),
+  // Other pages an editor makes under the home page (Wagtail's /<slug>/).
+  // Fixed routes outrank it; Wagtail's slug is word characters and hyphens
+  // (Unicode allowed, so percent-encoded bytes too), never a dot: /x.php/
+  // stays a plain 404 without asking Go.
+  dynamicPage("/:slug([\\w%\\u0080-\\uffff-]+)/", standardPage, "页面"),
 ]
 
 function admin(path: string, comp: () => Promise<any>, title: string): RouteRecordRaw {

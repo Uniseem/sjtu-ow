@@ -110,9 +110,11 @@ rules["raw /api/ call"] = (f) => f.endsWith(".vue") && /["'`}]\/api\//.test(read
 // No style attributes: the policy blocks them (12-architecture 6.3, I8).
 rules["style binding"] = (f) => f.endsWith(".vue") && /(?:\s:style=|\sv-bind:style=|\sstyle=")/.test(templateOf(read(f)))
 
-// v-html only for HTML Go rendered and sanitised (I8). None of the new
-// files need it yet; the article page adds itself here when it is rewritten.
-const V_HTML_ALLOWED = new Set<string>([])
+// v-html only for HTML Go rendered and sanitised (I8): each page that shows
+// a body_html names itself here (the article page joins when it is
+// rewritten). No generic "render this HTML" component: that would let any
+// page pass any string through.
+const V_HTML_ALLOWED = new Set<string>(["pages/StandardPage.vue"])
 rules["v-html"] = (f) => f.endsWith(".vue") && !V_HTML_ALLOWED.has(f) && /\sv-html=/.test(read(f))
 
 // Pages and components take their types from the generated API (A4). The
@@ -144,9 +146,10 @@ test("the guards see what they should (each rule catches a known case)", () => {
 test("routes do not grow new title-only placeholders", () => {
   const routes = readFileSync(resolve(SRC, "routes.ts"), "utf8")
   const placeholders = [...routes.matchAll(/^ {2}page\(([^,]+),/gm)].map((m) => m[1])
-  // The 34 of 260 (frontend-migration S7). Each page family's round replaces
-  // its entries with real pages; nothing new goes in.
-  expect(placeholders.length).toBeLessThanOrEqual(34)
+  // The 34 of 260 (frontend-migration S7), 18 left after 270. Each page
+  // family's round replaces its entries with real pages and lowers this
+  // number; nothing new goes in.
+  expect(placeholders.length).toBeLessThanOrEqual(18)
 })
 
 test("every file on the pending list still needs rewriting (the list only shrinks)", () => {

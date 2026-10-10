@@ -69,16 +69,18 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
     location: () => pathname + parsed.search,
     assign: () => {},
   })
+  const session = fetchSession(api)
   const ctx: LoadCtx = {
     params: flat(route.params),
     query: flat(route.query),
     url,
     api,
+    viewer: () => session,
     fetch: ssrFetch,
     apiBase: opts.apiBase,
   }
 
-  const [sessionR, loadR] = await Promise.allSettled([fetchSession(api), runLoad(opts.load ?? route.meta.load, ctx)])
+  const [sessionR, loadR] = await Promise.allSettled([session, runLoad(opts.load ?? route.meta.load, ctx)])
   if (sessionR.status === "rejected") return error(errorStatusOf(sessionR.reason))
   const viewer = sessionR.value
   const next = pathname + parsed.search

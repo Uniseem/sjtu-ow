@@ -60,7 +60,8 @@ test("a registered page shows its title and a non-numeric id is a 404", async ()
 })
 
 test("an unknown path is a 404 page without any script", async () => {
-  const out = await handle(incoming("GET", "/no-such/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  // Two segments: one segment is an editor's page (/<slug>/) and asks Go first (content.test.ts).
+  const out = await handle(incoming("GET", "/no/such/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
   expect(out.status).toBe(404)
   expect(out.body).toContain("页面不存在")
   // 错误页不是 App 画出来的，不该有数据块和入口脚本
@@ -234,7 +235,7 @@ test("a loader gets the API client, the params and the query", async () => {
 // ---- 263: the error pages are the old site's (templates/errors) ----
 
 test("an error page is its own document: error.css, the old wording, no script", async () => {
-  const out = await handle(incoming("GET", "/no-such/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  const out = await handle(incoming("GET", "/no/such/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
   expect(out.status).toBe(404)
   expect(out.headers["cache-control"]).toBe("no-store")
   expect(out.body).toContain("<title>页面不存在 · SJTU-OW</title>")
@@ -277,7 +278,7 @@ test("a bug in a load is the 500 page", async () => {
 })
 
 test("a component that throws while rendering is the 500 page, not a hanging request", async () => {
-  const out = await handle(incoming("GET", "/about/"), {
+  const out = await handle(incoming("GET", "/unsubscribe/tok/"), {
     ...base,
     fetch: api(200, { user: null }),
     assets: ASSETS,

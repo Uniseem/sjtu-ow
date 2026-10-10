@@ -90,7 +90,7 @@ router.beforeResolve(async (to, from) => {
   if (!load) return
   let data: PageData
   try {
-    data = await load({ params: flat(to.params), query: flat(to.query), url: to.fullPath, api, fetch, apiBase: "" })
+    data = await load({ params: flat(to.params), query: flat(to.query), url: to.fullPath, api, viewer: async () => viewer, fetch, apiBase: "" })
   } catch (err) {
     if (err instanceof PageRedirect) return leave(err.location)
     const status = statusOf(err)
