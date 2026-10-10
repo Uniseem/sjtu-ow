@@ -1,0 +1,114 @@
+[
+  {
+    "name": "pagination uses Go page_size",
+    "passed": false,
+    "observed": {
+      "visibleComments": 20,
+      "total": "21 条评论",
+      "more": false
+    }
+  },
+  {
+    "name": "like reaches API",
+    "passed": false,
+    "observed": {
+      "newWrites": [],
+      "errors": []
+    }
+  },
+  {
+    "name": "delete confirmation reaches API",
+    "passed": false,
+    "observed": {
+      "newWrites": [],
+      "confirmCalls": 0,
+      "errors": [
+        "TypeError: d.confirm is not a function\n    at e.item.is_deleted.e.interactive.e.item.user_id.e.viewerId.e.item.is_hidden.n.onClick.t.<computed>.t.<computed> (http://127.0.0.1:36337/assets/ArticleDetail-BpJT59l2.js:1:7072)\n    at En (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:5:654)\n    at mt (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:5:724)\n    at HTMLButtonElement.n (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:19:39189)\n    at <anonymous>:1:92"
+      ]
+    }
+  },
+  {
+    "name": "hide confirmation reaches API",
+    "passed": false,
+    "observed": {
+      "newWrites": [],
+      "confirmCalls": 0,
+      "errors": [
+        "TypeError: d.confirm is not a function\n    at e.item.is_deleted.e.interactive.e.item.user_id.e.viewerId.e.item.is_hidden.n.onClick.t.<computed>.t.<computed> (http://127.0.0.1:36337/assets/ArticleDetail-BpJT59l2.js:1:7072)\n    at En (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:5:654)\n    at mt (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:5:724)\n    at HTMLButtonElement.n (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:19:39189)\n    at <anonymous>:1:92",
+        "TypeError: d.confirm is not a function\n    at e.item.is_deleted.e.interactive.e.canModerate.e.item.is_hidden.s.onClick.t.<computed>.t.<computed> (http://127.0.0.1:36337/assets/ArticleDetail-BpJT59l2.js:1:7825)\n    at En (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:5:654)\n    at mt (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:5:724)\n    at HTMLButtonElement.n (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:19:39189)\n    at <anonymous>:1:92"
+      ]
+    }
+  },
+  {
+    "name": "create refreshes header count and clears draft",
+    "passed": false,
+    "observed": {
+      "section": "22 条评论",
+      "header": "21 条评论",
+      "draft": "Independent review new comment"
+    }
+  },
+  {
+    "name": "pending comment blocks duplicate submission",
+    "passed": false,
+    "observed": {
+      "newWrites": [
+        {
+          "method": "POST",
+          "path": "/api/articles/1/comments",
+          "body": {
+            "content": "Independent review new comment"
+          },
+          "key": "23b888fb-c02d-4239-88d9-e8d552a28266"
+        },
+        {
+          "method": "POST",
+          "path": "/api/articles/1/comments",
+          "body": {
+            "content": "Independent review new comment"
+          },
+          "key": "82dd2173-5e06-47ba-8440-996630979d5a"
+        }
+      ]
+    }
+  },
+  {
+    "name": "same route component switches thread",
+    "passed": false,
+    "observed": {
+      "title": "Article B",
+      "comments": [
+        "Independent review new comment",
+        "Independent review new comment",
+        "Independent review new comment",
+        "A comment 1",
+        "A comment 2",
+        "A comment 3",
+        "A comment 4",
+        "A comment 5",
+        "A comment 6",
+        "A comment 7",
+        "A comment 8",
+        "A comment 9",
+        "A comment 10",
+        "A comment 11",
+        "A comment 12",
+        "A comment 13",
+        "A comment 14",
+        "A comment 15",
+        "A comment 16",
+        "A comment 17"
+      ]
+    }
+  },
+  {
+    "name": "leaving article does not throw",
+    "passed": false,
+    "observed": {
+      "title": "首页 · SJTU-OW",
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'id')\n    at wc.fn (http://127.0.0.1:36337/assets/ArticleDetail-BpJT59l2.js:1:16607)\n    at Uo (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:2:19183)\n    at get value (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:2:30367)\n    at Proxy.<anonymous> (http://127.0.0.1:36337/assets/ArticleDetail-BpJT59l2.js:1:17379)\n    at sr (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:19:11669)\n    at $o.L [as fn] (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:19:21227)\n    at $o.run (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:2:17770)\n    at $o.runIfDirty (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:2:18080)\n    at En (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:5:662)\n    at na (http://127.0.0.1:36337/assets/index-C4IJXvKi.js:5:2475)"
+      ]
+    }
+  }
+]

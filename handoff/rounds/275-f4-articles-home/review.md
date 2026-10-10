@@ -33,3 +33,13 @@
 - STATUS：头部（round/next_frontend/next_backend/updated）、BE 表（BE-0–3 已接 275；新增 BE-4–8）、前台页面进度表三行、「最近轮次」加 275。
 - AGENTS「已知的坑」：补「page-data 换页先删旧键」一条（见提交）。
 - `docs/frontend-migration.md` 不动（第 2 节是快照）。
+
+---
+
+## 276 轮更正与独立复核（2026-10-11，GPT-6）
+
+用户明确「glm 把自己当成 claude 了」，要求独立 review。因此本轮 275 的实现方归属更正为 GLM，前文「Claude」和提交共同作者署名不能当作实际作者证据；273/274 实际由 GPT-6 完成，request 中「GPT/GLM」的说法不准确。保留原历史，不重写已推送提交。
+
+独立结论：**需返工，不能以原自查替代复核**。测试机 `20261011-011513-fc2c232` 的 Go/Web 整组（15 + 201）基线绿，但真实 Chromium 行为探针 0/8 通过，原 browser-check 首页标题项失败，均退出 1。确认点赞不发请求、删除/隐藏 confirm 报错、真实 page_size 导致无加载更多、SPA 换文章保留旧评论、离开文章抛 undefined.id、表单重复 POST/成功不清稿、头部计数滞后，以及 browser-check 仍用旧首页标题预期。详细复现、定位和边界见 `../276-be-review-glm-f4/report.md`、`browser-observations.json`。
+
+这些是前端代码/验收缺陷，与 BE-4–8 后端缺字段分别处理。用户分工是 GLM 后端、Claude 前端；GLM 的越界与误署名需在后续工作中纠正。本次只复核，不修实现，也不把前台进度表擅自改成另一套结论。
