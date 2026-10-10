@@ -1,9 +1,11 @@
 import { getApiSearch, type GetApiPageSlugOut, type Requester } from "@sjtu-ow/api"
 
 // Fields the rewritten pages read that Go does not send yet. Each entry is a
-// backend task in STATUS「交给后端」(the id in brackets). The page already
-// renders them when present, as the old template did; when Go sends the field
-// and apigen regenerates, delete the entry here and use the generated type.
+// backend task in STATUS「交给后端（GPT）」(the id in brackets). The page
+// already renders them when present, as the old template did. This file is the
+// frontend's (AGENTS「Claude 和 GPT 分开做」): when the backend marks an entry
+// done and apigen has regenerated, the next frontend round deletes it here,
+// uses the generated type and runs that page's parity.
 
 /** [BE-1] GET /api/page/{slug}: content/models.py StandardPage + SeoPageMixin. */
 export type SitePage = GetApiPageSlugOut & {
