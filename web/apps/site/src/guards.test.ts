@@ -79,8 +79,8 @@ const PALETTE =
   /\b(?:bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|decoration|shadow|accent|caret)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d/
 rules["palette class"] = (f) => PALETTE.test(read(f))
 
-// c-/l-/b- classes must be in input.css or used by the old templates (hook
-// classes without styles are fine when the old site had them).
+// c-/l-/b- classes must be in input.css or used by the old templates and
+// their image helper (hook classes without styles are fine in the old site).
 const known = new Set<string>()
 const CLASS = /\b[cbl]-[a-z0-9]+(?:-[a-z0-9]+)*(?:__[a-z0-9]+(?:-[a-z0-9]+)*)?(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?/g
 for (const m of readFileSync(resolve(REPO, "web/packages/styles/input.css"), "utf8").matchAll(/\.([cbl]-[a-z0-9_-]+)/g)) {
@@ -88,6 +88,9 @@ for (const m of readFileSync(resolve(REPO, "web/packages/styles/input.css"), "ut
 }
 for (const t of globSync("{templates,*/templates}/**/*.html", { cwd: REPO })) {
   for (const m of readFileSync(resolve(REPO, t), "utf8").matchAll(CLASS)) known.add(m[0])
+}
+for (const m of readFileSync(resolve(REPO, "core/templatetags/ow.py"), "utf8").matchAll(CLASS)) {
+  known.add(m[0])
 }
 function unknownClasses(source: string): string[] {
   const out: string[] = []
@@ -136,6 +139,7 @@ test("the guards see what they should (each rule catches a known case)", () => {
   expect(unknownClasses('<template><p class="c-notice c-notice--err"></p></template>')).toEqual(["c-notice--err"])
   expect(unknownClasses('<template><p class="c-notice c-notice--error c-crumbs__sep"></p></template>')).toEqual([])
   expect(unknownClasses('<template><span :class="`c-hue-${n}`"></span></template>')).toEqual([])
+  expect(unknownClasses('<template><img class="c-pagehead__img c-scene c-scene--light"></template>')).toEqual([])
   expect(rules["raw /api/ call"]("pages/admin/AdminLetters.vue")).toBe(true)
   expect(rules["any type"]("pages/TeamDetail.vue")).toBe(true)
 })

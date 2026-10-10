@@ -1,0 +1,14 @@
+<script setup lang="ts">
+import CIcon from "./CIcon.vue"
+</script>
+<template>
+  <aside class="c-why hidden lg:block" aria-label="注册以后可以">
+    <p class="c-why__title">注册以后可以</p>
+    <ul>
+      <li><span class="c-why__icon c-quick__tile--butter"><CIcon name="calendar" class="size-5" /></span><span><span class="font-semibold">报名内战</span><span class="mt-1 block text-sm text-fg-2">填好游戏 ID 和段位，选能打的位置，管理员统一分队。</span></span></li>
+      <li><span class="c-why__icon c-quick__tile--lilac"><CIcon name="shield" class="size-5" /></span><span><span class="font-semibold">加入或组建战队</span><span class="mt-1 block text-sm text-fg-2">申请加入招募中的队伍，或者自己建一支，由队长报名赛事。</span></span></li>
+      <li><span class="c-why__icon c-quick__tile--blush"><CIcon name="pen" class="size-5" /></span><span><span class="font-semibold">评论和投稿</span><span class="mt-1 block text-sm text-fg-2">在文章下面讨论，把攻略、战报、心得投到资讯里。</span></span></li>
+    </ul>
+    <p class="mt-4 text-sm text-fg-2">注册要验证邮箱。交大邮箱和其他邮箱都可以。</p>
+  </aside>
+</template>

@@ -73,3 +73,8 @@ export function owMonthNum(date: Date): string {
 export function owDay(date: Date): string {
   return shanghaiParts(date).day
 }
+
+export function owISO(date: Date): string {
+  const p = shanghaiParts(date)
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${String(date.getUTCSeconds()).padStart(2, "0")}+08:00`
+}

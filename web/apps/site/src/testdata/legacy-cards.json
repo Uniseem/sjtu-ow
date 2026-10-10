@@ -1,0 +1,550 @@
+[
+  {
+    "component": "PostCard",
+    "props": {
+      "article": {
+        "id": 37,
+        "slug": "weekend",
+        "title": "周末回顾",
+        "category_name": "战报",
+        "summary": "一场内战",
+        "reading_time": 4,
+        "first_published_at": "2026-10-10T20:30:00+00:00",
+        "author": {
+          "id": 2,
+          "nickname": "小满",
+          "is_active": true
+        }
+      },
+      "summary": true,
+      "pinned": true
+    },
+    "html": "\n\n<article class=\"c-media\">\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-02.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\"><span class=\"c-tag\">战报</span><span class=\"c-tag c-tag--accent\">置顶</span><time datetime=\"2026-10-11T04:30:00+08:00\">10.11</time></p>\n  <h3 class=\"c-media__title\"><a href=\"/news/weekend/\" class=\"c-stretch\" title=\"周末回顾\">周末回顾</a></h3>\n  <p class=\"c-media__summary\">一场内战</p>\n  \n    <p class=\"c-media__byline\">\n\n<span class=\"c-avatar c-avatar--xs c-hue-3\" aria-hidden=\"true\">小</span>\n<span class=\"c-media__author\">小满</span><span aria-hidden=\"true\">·</span><span>约 <span class=\"font-numeric\">4</span> 分钟</span></p>\n  \n</article>\n"
+  },
+  {
+    "component": "PostCard",
+    "props": {
+      "article": {
+        "id": 37,
+        "slug": "weekend",
+        "title": "周末回顾",
+        "category_name": "战报",
+        "summary": "一场内战",
+        "reading_time": 4,
+        "first_published_at": "2026-10-10T20:30:00+00:00"
+      },
+      "summary": false,
+      "pinned": false
+    },
+    "html": "\n\n<article class=\"c-media\">\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-02.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\"><span class=\"c-tag\">战报</span><time datetime=\"2026-10-11T04:30:00+08:00\">10.11</time></p>\n  <h3 class=\"c-media__title\"><a href=\"/news/weekend/\" class=\"c-stretch\" title=\"周末回顾\">周末回顾</a></h3>\n  \n  \n</article>\n"
+  },
+  {
+    "component": "PostCard",
+    "props": {
+      "article": {
+        "id": 37,
+        "slug": "weekend",
+        "title": "周末回顾",
+        "category_name": "战报",
+        "summary": "一场内战",
+        "reading_time": 4,
+        "first_published_at": "2026-10-10T20:30:00+00:00",
+        "author": {
+          "id": 2,
+          "nickname": "小满",
+          "is_active": true
+        }
+      },
+      "summary": false,
+      "pinned": false
+    },
+    "html": "\n\n<article class=\"c-media\">\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-02.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\"><span class=\"c-tag\">战报</span><time datetime=\"2026-10-11T04:30:00+08:00\">10.11</time></p>\n  <h3 class=\"c-media__title\"><a href=\"/news/weekend/\" class=\"c-stretch\" title=\"周末回顾\">周末回顾</a></h3>\n  \n  \n    <p class=\"c-media__byline\">\n\n<span class=\"c-avatar c-avatar--xs c-hue-3\" aria-hidden=\"true\">小</span>\n<span class=\"c-media__author\">小满</span><span aria-hidden=\"true\">·</span><span>约 <span class=\"font-numeric\">4</span> 分钟</span></p>\n  \n</article>\n"
+  },
+  {
+    "component": "TeamTile",
+    "props": {
+      "team": {
+        "id": 7,
+        "name": "思源",
+        "member_count": 6,
+        "created_at": "2026-10-10T20:30:00+00:00",
+        "description": "周末一起打",
+        "is_recruiting": true,
+        "wanted_roles": [
+          "tank",
+          "support"
+        ]
+      },
+      "about": true,
+      "showClosed": false,
+      "capacity": 12
+    },
+    "html": "\n\n<li class=\"c-teams__item\">\n  <span class=\"c-teams__logo c-hue-3\">思</span>\n  <span class=\"c-teams__body\">\n    <a href=\"/teams/7/\" class=\"c-stretch c-teams__name\" title=\"思源\">思源</a>\n    <span class=\"c-teams__meta font-numeric\">6 / 12 人 · 2026.10 成立</span>\n    <span class=\"c-teams__about\">周末一起打</span>\n    \n      <span class=\"c-teams__status\"><span class=\"c-status c-status--live\">招募中</span><span class=\"c-teams__wanted\">缺 坦克、支援</span></span>\n    \n  </span>\n</li>\n"
+  },
+  {
+    "component": "TeamTile",
+    "props": {
+      "team": {
+        "id": 7,
+        "name": "思源",
+        "member_count": 6,
+        "created_at": "2026-10-10T20:30:00+00:00",
+        "description": "周末一起打",
+        "is_recruiting": false,
+        "wanted_roles": [
+          "tank",
+          "support"
+        ]
+      },
+      "about": false,
+      "showClosed": true,
+      "capacity": 0
+    },
+    "html": "\n\n<li class=\"c-teams__item\">\n  <span class=\"c-teams__logo c-hue-3\">思</span>\n  <span class=\"c-teams__body\">\n    <a href=\"/teams/7/\" class=\"c-stretch c-teams__name\" title=\"思源\">思源</a>\n    <span class=\"c-teams__meta font-numeric\">6 人 · 2026.10 成立</span>\n    \n    <span class=\"c-teams__status\"><span class=\"c-status\">暂不招募</span></span>\n  </span>\n</li>\n"
+  },
+  {
+    "component": "TeamTile",
+    "props": {
+      "team": {
+        "id": 7,
+        "name": "思源",
+        "member_count": 6,
+        "created_at": "2026-10-10T20:30:00+00:00",
+        "description": "周末一起打",
+        "is_recruiting": false,
+        "wanted_roles": [
+          "tank",
+          "support"
+        ]
+      },
+      "about": true,
+      "showClosed": false,
+      "capacity": 0
+    },
+    "html": "\n\n<li class=\"c-teams__item\">\n  <span class=\"c-teams__logo c-hue-3\">思</span>\n  <span class=\"c-teams__body\">\n    <a href=\"/teams/7/\" class=\"c-stretch c-teams__name\" title=\"思源\">思源</a>\n    <span class=\"c-teams__meta font-numeric\">6 人 · 2026.10 成立</span>\n    <span class=\"c-teams__about\">周末一起打</span>\n    \n  </span>\n</li>\n"
+  },
+  {
+    "component": "CScrimRow",
+    "props": {
+      "scrim": {
+        "id": 8,
+        "title": "周末内战",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "format_label": "角色限定 5v5",
+        "players_needed": 10,
+        "status": "published",
+        "signup_open": true
+      },
+      "signups": 12
+    },
+    "html": "\n\n<li class=\"c-row\" id=\"scrim-8\" data-scrim-row>\n  <span class=\"c-date\"><small>10月</small><b>11</b></span>\n  <div class=\"c-row__main\">\n    <h3 class=\"c-row__title\"><a href=\"/scrims/8/\" class=\"c-stretch\">周末内战</a></h3>\n    <p class=\"c-row__meta\">周日 04:30 · 角色限定 5v5 · 已报 12 / 10</p>\n    \n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 12 人，一场需要 10 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i></span>\n\n  </div>\n  <span class=\"c-status c-status--live\">报名中</span>\n  \n</li>\n"
+  },
+  {
+    "component": "CScrimRow",
+    "props": {
+      "scrim": {
+        "id": 8,
+        "title": "周末内战",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "format_label": "角色限定 5v5",
+        "players_needed": 10,
+        "status": "published",
+        "signup_open": false
+      },
+      "signups": 12
+    },
+    "html": "\n\n<li class=\"c-row\" id=\"scrim-8\" data-scrim-row>\n  <span class=\"c-date\"><small>10月</small><b>11</b></span>\n  <div class=\"c-row__main\">\n    <h3 class=\"c-row__title\"><a href=\"/scrims/8/\" class=\"c-stretch\">周末内战</a></h3>\n    <p class=\"c-row__meta\">周日 04:30 · 角色限定 5v5 · 已报 12 / 10</p>\n    \n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 12 人，一场需要 10 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i></span>\n\n  </div>\n  <span class=\"c-status\">报名已截止</span>\n</li>\n"
+  },
+  {
+    "component": "CScrimRow",
+    "props": {
+      "scrim": {
+        "id": 8,
+        "title": "周末内战",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "format_label": "角色限定 5v5",
+        "players_needed": 10,
+        "status": "finished",
+        "signup_open": true
+      },
+      "signups": 12
+    },
+    "html": "\n\n<li class=\"c-row\" id=\"scrim-8\" data-scrim-row>\n  <span class=\"c-date\"><small>10月</small><b>11</b></span>\n  <div class=\"c-row__main\">\n    <h3 class=\"c-row__title\"><a href=\"/scrims/8/\" class=\"c-stretch\">周末内战</a></h3>\n    <p class=\"c-row__meta\">周日 04:30 · 角色限定 5v5 · 已报 12 / 10</p>\n    \n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 12 人，一场需要 10 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i></span>\n\n  </div>\n  <span class=\"c-status\">已结束</span>\n  \n</li>\n"
+  },
+  {
+    "component": "CScrimRow",
+    "props": {
+      "scrim": {
+        "id": 8,
+        "title": "周末内战",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "format_label": "角色限定 5v5",
+        "players_needed": 10,
+        "status": "cancelled",
+        "signup_open": true
+      },
+      "signups": 12
+    },
+    "html": "\n\n<li class=\"c-row\" id=\"scrim-8\" data-scrim-row>\n  <span class=\"c-date\"><small>10月</small><b>11</b></span>\n  <div class=\"c-row__main\">\n    <h3 class=\"c-row__title\"><a href=\"/scrims/8/\" class=\"c-stretch\">周末内战</a></h3>\n    <p class=\"c-row__meta\">周日 04:30 · 角色限定 5v5 · 已报 12 / 10</p>\n    \n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 12 人，一场需要 10 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i></span>\n\n  </div>\n  <span class=\"c-status\">已取消</span>\n  \n</li>\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "open",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": false,
+        "registration_mode_label": "整队报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status c-status--live\">报名中</span><span>10.11 04:30 截止</span><span data-card-starts>10.11 比赛</span>\n    \n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">整队报名 · 5–7 人一队 · 已通过 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "open",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": true,
+        "registration_mode_label": "个人报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status c-status--live\">报名中</span><span>10.11 04:30 截止</span><span data-card-starts>10.11 比赛</span>\n    \n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">个人报名 · 5–7 人一队 · 已编成 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "upcoming",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": false,
+        "registration_mode_label": "整队报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status c-status--info\">即将开始报名</span><span>10.11 04:30 开放</span><span data-card-starts>10.11 比赛</span>\n    \n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">整队报名 · 5–7 人一队 · 已通过 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "upcoming",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": true,
+        "registration_mode_label": "个人报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status c-status--info\">即将开始报名</span><span>10.11 04:30 开放</span><span data-card-starts>10.11 比赛</span>\n    \n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">个人报名 · 5–7 人一队 · 已编成 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "cancelled",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": false,
+        "registration_mode_label": "整队报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status\">已取消</span>\n    \n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">整队报名 · 5–7 人一队 · 已通过 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "cancelled",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": true,
+        "registration_mode_label": "个人报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status\">已取消</span>\n    \n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">个人报名 · 5–7 人一队 · 已编成 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "finished",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": false,
+        "registration_mode_label": "整队报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status\">已结束</span><span>2026.10.11</span>\n    \n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">整队报名 · 5–7 人一队 · 已通过 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "finished",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": true,
+        "registration_mode_label": "个人报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status\">已结束</span><span>2026.10.11</span>\n    \n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">个人报名 · 5–7 人一队 · 已编成 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "closed",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": false,
+        "registration_mode_label": "整队报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status\">报名已截止</span><span>10.11 比赛</span>\n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">整队报名 · 5–7 人一队 · 已通过 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CTournamentCard",
+    "props": {
+      "tournament": {
+        "id": 7,
+        "title": "秋季赛",
+        "phase": "closed",
+        "starts_at": "2026-10-10T20:30:00+00:00",
+        "registration_closes_at": "2026-10-10T20:30:00+00:00",
+        "registration_opens_at": "2026-10-10T20:30:00+00:00",
+        "roster_min": 5,
+        "roster_max": 7,
+        "takes_individuals": true,
+        "registration_mode_label": "个人报名",
+        "sjtu_only": true
+      },
+      "approved": 0
+    },
+    "html": "\n\n\n<article class=\"c-media\" data-tournament-card>\n  <div class=\"c-media__pic\"><img src=\"/static/img/placeholders/cover-21.svg\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></div>\n  <p class=\"c-media__meta\">\n    <span class=\"c-status\">报名已截止</span><span>10.11 比赛</span>\n  </p>\n  <h3 class=\"c-media__title\"><a href=\"/tournaments/7/\" class=\"c-stretch\">秋季赛</a></h3>\n  <p class=\"c-media__facts\">个人报名 · 5–7 人一队 · 已编成 0 队 · 仅限交大</p>\n</article>\n\n"
+  },
+  {
+    "component": "CStartsAt",
+    "props": {
+      "startsAt": "2026-10-10T20:30:00+00:00"
+    },
+    "html": "2026.10.11 04:30"
+  },
+  {
+    "component": "CStartsAt",
+    "props": {
+      "startsAt": null
+    },
+    "html": "<span class=\"text-fg-3\">未定</span>"
+  },
+  {
+    "component": "CTeamLogo",
+    "props": {
+      "team": {
+        "id": 7,
+        "name": "思源"
+      }
+    },
+    "html": "\n\n<div class=\"flex items-center gap-4\" data-team-logo>\n  <span class=\"c-teams__logo c-teams__logo--lg c-hue-3\">思</span>\n  <p class=\"text-sm text-fg-2\">还没有队标，选一个图片文件就传上去。</p>\n</div>\n"
+  },
+  {
+    "component": "CPagehead",
+    "props": {
+      "section": "home"
+    },
+    "html": "\n\n<img class=\"c-pagehead__img c-scene c-scene--light\" src=\"/static/img/placeholders/section-home-light.svg\" alt=\"\" width=\"2400\" height=\"1350\"><img class=\"c-pagehead__img c-scene c-scene--dark\" src=\"/static/img/placeholders/cover-02.svg\" alt=\"\" width=\"2400\" height=\"1350\">\n"
+  },
+  {
+    "component": "CPagehead",
+    "props": {
+      "section": "news"
+    },
+    "html": "\n\n<img class=\"c-pagehead__img c-scene c-scene--light\" src=\"/static/img/placeholders/section-news-light.svg\" alt=\"\" width=\"2400\" height=\"640\"><img class=\"c-pagehead__img c-scene c-scene--dark\" src=\"/static/img/placeholders/cover-20.svg\" alt=\"\" width=\"2400\" height=\"640\">\n"
+  },
+  {
+    "component": "CPagehead",
+    "props": {
+      "section": "tournaments"
+    },
+    "html": "\n\n<img class=\"c-pagehead__img c-scene c-scene--light\" src=\"/static/img/placeholders/section-tournaments-light.svg\" alt=\"\" width=\"2400\" height=\"640\"><img class=\"c-pagehead__img c-scene c-scene--dark\" src=\"/static/img/placeholders/cover-07.svg\" alt=\"\" width=\"2400\" height=\"640\">\n"
+  },
+  {
+    "component": "CPagehead",
+    "props": {
+      "section": "scrims"
+    },
+    "html": "\n\n<img class=\"c-pagehead__img c-scene c-scene--light\" src=\"/static/img/placeholders/section-scrims-light.svg\" alt=\"\" width=\"2400\" height=\"640\"><img class=\"c-pagehead__img c-scene c-scene--dark\" src=\"/static/img/placeholders/cover-21.svg\" alt=\"\" width=\"2400\" height=\"640\">\n"
+  },
+  {
+    "component": "CPagehead",
+    "props": {
+      "section": "teams"
+    },
+    "html": "\n\n<img class=\"c-pagehead__img c-scene c-scene--light\" src=\"/static/img/placeholders/section-teams-light.svg\" alt=\"\" width=\"2400\" height=\"640\"><img class=\"c-pagehead__img c-scene c-scene--dark\" src=\"/static/img/placeholders/cover-01.svg\" alt=\"\" width=\"2400\" height=\"640\">\n"
+  },
+  {
+    "component": "CPagehead",
+    "props": {
+      "section": "members"
+    },
+    "html": "\n\n<img class=\"c-pagehead__img c-scene c-scene--light\" src=\"/static/img/placeholders/section-members-light.svg\" alt=\"\" width=\"2400\" height=\"640\"><img class=\"c-pagehead__img c-scene c-scene--dark\" src=\"/static/img/placeholders/cover-33.svg\" alt=\"\" width=\"2400\" height=\"640\">\n"
+  },
+  {
+    "component": "AuthWhy",
+    "props": {},
+    "html": "\n<aside class=\"c-why hidden lg:block\" aria-label=\"注册以后可以\">\n  <p class=\"c-why__title\">注册以后可以</p>\n  <ul>\n    <li><span class=\"c-why__icon c-quick__tile--butter\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 6h16v14H4zM4 10h16M8 3v4M16 3v4\"/>\n  \n</svg>\n</span><span><span class=\"font-semibold\">报名内战</span><span class=\"mt-1 block text-sm text-fg-2\">填好游戏 ID 和段位，选能打的位置，管理员统一分队。</span></span></li>\n    <li><span class=\"c-why__icon c-quick__tile--lilac\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3l8 3v6c0 4.5-3.4 7.8-8 9-4.6-1.2-8-4.5-8-9V6l8-3z\"/>\n  \n</svg>\n</span><span><span class=\"font-semibold\">加入或组建战队</span><span class=\"mt-1 block text-sm text-fg-2\">申请加入招募中的队伍，或者自己建一支，由队长报名赛事。</span></span></li>\n    <li><span class=\"c-why__icon c-quick__tile--blush\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 20l1-4.5L15.5 5l3.5 3.5L8.5 19 4 20zM13 7.5l3.5 3.5\"/>\n  \n</svg>\n</span><span><span class=\"font-semibold\">评论和投稿</span><span class=\"mt-1 block text-sm text-fg-2\">在文章下面讨论，把攻略、战报、心得投到资讯里。</span></span></li>\n  </ul>\n  <p class=\"mt-4 text-sm text-fg-2\">注册要验证邮箱。交大邮箱和其他邮箱都可以。</p>\n</aside>\n"
+  },
+  {
+    "component": "AuthBack",
+    "props": {
+      "here": "修改密码"
+    },
+    "html": "\n<nav class=\"c-crumbs mb-6\" aria-label=\"位置\"><a href=\"/\">首页</a><span class=\"c-crumbs__sep\">/</span><a href=\"/me/\">个人中心</a><span class=\"c-crumbs__sep\">/</span><a href=\"/me/security/\">账号安全</a><span class=\"c-crumbs__sep\">/</span><span>修改密码</span></nav>\n"
+  },
+  {
+    "component": "AuthLayout",
+    "props": {
+      "why": false
+    },
+    "html": "<main id=\"main\" class=\"flex-1\">\n  \n  <div class=\"l-container l-container--narrow pt-10 pb-20 lg:pt-16 lg:pb-28\">\n    <div class=\"grid items-start gap-12 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:gap-24\">\n      <section class=\"c-auth\">\n        <h1>登录</h1>\n      </section>\n      \n    </div>\n  </div>\n</main>",
+    "control": "<h1>登录</h1>"
+  },
+  {
+    "component": "AuthLayout",
+    "props": {
+      "why": true
+    },
+    "html": "<main id=\"main\" class=\"flex-1\">\n  \n  <div class=\"l-container l-container--narrow pt-10 pb-20 lg:pt-16 lg:pb-28\">\n    <div class=\"grid items-start gap-12 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:gap-24\">\n      <section class=\"c-auth\">\n        <h1>登录</h1>\n      </section>\n      \n<aside class=\"c-why hidden lg:block\" aria-label=\"注册以后可以\">\n  <p class=\"c-why__title\">注册以后可以</p>\n  <ul>\n    <li><span class=\"c-why__icon c-quick__tile--butter\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 6h16v14H4zM4 10h16M8 3v4M16 3v4\"/>\n  \n</svg>\n</span><span><span class=\"font-semibold\">报名内战</span><span class=\"mt-1 block text-sm text-fg-2\">填好游戏 ID 和段位，选能打的位置，管理员统一分队。</span></span></li>\n    <li><span class=\"c-why__icon c-quick__tile--lilac\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3l8 3v6c0 4.5-3.4 7.8-8 9-4.6-1.2-8-4.5-8-9V6l8-3z\"/>\n  \n</svg>\n</span><span><span class=\"font-semibold\">加入或组建战队</span><span class=\"mt-1 block text-sm text-fg-2\">申请加入招募中的队伍，或者自己建一支，由队长报名赛事。</span></span></li>\n    <li><span class=\"c-why__icon c-quick__tile--blush\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 20l1-4.5L15.5 5l3.5 3.5L8.5 19 4 20zM13 7.5l3.5 3.5\"/>\n  \n</svg>\n</span><span><span class=\"font-semibold\">评论和投稿</span><span class=\"mt-1 block text-sm text-fg-2\">在文章下面讨论，把攻略、战报、心得投到资讯里。</span></span></li>\n  </ul>\n  <p class=\"mt-4 text-sm text-fg-2\">注册要验证邮箱。交大邮箱和其他邮箱都可以。</p>\n</aside>\n\n    </div>\n  </div>\n</main>",
+    "control": "<h1>登录</h1>"
+  },
+  {
+    "component": "MeLayout",
+    "props": {
+      "title": "个人中心",
+      "user": {
+        "id": 2,
+        "nickname": "小满",
+        "is_active": true
+      },
+      "current": "/me/",
+      "nav": [
+        {
+          "href": "/me/",
+          "label": "基本资料",
+          "available": true,
+          "icon": "user"
+        },
+        {
+          "href": "/me/contacts/",
+          "label": "联系方式",
+          "available": false,
+          "icon": "phone"
+        }
+      ],
+      "waiting": 0,
+      "gaps": []
+    },
+    "html": "<main id=\"main\" class=\"flex-1\">\n  \n  <header class=\"c-pagehead\">\n    <div class=\"l-container l-container--narrow\">\n      <nav class=\"c-crumbs\" aria-label=\"位置\"><a href=\"/\">首页</a><span class=\"c-crumbs__sep\">/</span><span>个人中心</span></nav>\n      <div class=\"c-pagehead__row\">\n        <div>\n          <h1>个人中心</h1>\n          <p class=\"c-pagehead__meta gap-2\">\n\n<span class=\"c-avatar c-avatar--sm\" aria-hidden=\"true\">小</span>\n<span class=\"font-semibold text-fg\">小满</span><a href=\"/members/2/\" class=\"c-link text-sm\" data-own-page>我的主页</a></p>\n        </div>\n        <div class=\"c-pagehead__actions\"></div>\n      </div>\n    </div>\n  </header>\n\n  <div class=\"l-container l-container--narrow pt-6 pb-16 lg:pt-10 lg:pb-24\">\n    <div class=\"grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-14\">\n      \n<nav aria-label=\"个人中心\" class=\"font-nav min-w-0\">\n  <ul class=\"c-sidenav hidden self-start lg:block\">\n    \n      <li>\n        \n          <a href=\"/me/\" aria-current=\"page\">\n<svg class=\"size-5 c-sidenav__icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n基本资料</a>\n        \n      </li>\n    \n      <li>\n        \n          <span class=\"flex min-h-11 items-center pl-4 text-fg-3\">联系方式</span>\n        \n      </li>\n    \n  </ul>\n  <div class=\"c-tabs lg:hidden\">\n    \n      \n        <a href=\"/me/\" aria-current=\"page\">基本资料</a>\n      \n    \n      \n    \n  </div>\n</nav>\n\n      <div class=\"flex min-w-0 flex-col gap-10\">\n        <div id=\"profile-incomplete\" >\n  \n</div>\n\n        \n\n\n\n        <p>资料</p>\n      </div>\n    </div>\n  </div>\n</main>",
+    "control": "<p>资料</p>"
+  },
+  {
+    "component": "MeLayout",
+    "props": {
+      "title": "个人中心",
+      "user": {
+        "id": 2,
+        "nickname": "小满",
+        "is_active": true
+      },
+      "current": "/me/",
+      "nav": [
+        {
+          "href": "/me/",
+          "label": "基本资料",
+          "available": true,
+          "icon": "user"
+        },
+        {
+          "href": "/me/contacts/",
+          "label": "联系方式",
+          "available": false,
+          "icon": "phone"
+        }
+      ],
+      "waiting": 2,
+      "gaps": [
+        {
+          "label": "游戏 ID",
+          "href": "/me/game-accounts/",
+          "hint": "填一个游戏 ID"
+        }
+      ]
+    },
+    "html": "<main id=\"main\" class=\"flex-1\">\n  \n  <header class=\"c-pagehead\">\n    <div class=\"l-container l-container--narrow\">\n      <nav class=\"c-crumbs\" aria-label=\"位置\"><a href=\"/\">首页</a><span class=\"c-crumbs__sep\">/</span><span>个人中心</span></nav>\n      <div class=\"c-pagehead__row\">\n        <div>\n          <h1>个人中心</h1>\n          <p class=\"c-pagehead__meta gap-2\">\n\n<span class=\"c-avatar c-avatar--sm\" aria-hidden=\"true\">小</span>\n<span class=\"font-semibold text-fg\">小满</span><a href=\"/members/2/\" class=\"c-link text-sm\" data-own-page>我的主页</a></p>\n        </div>\n        <div class=\"c-pagehead__actions\"></div>\n      </div>\n    </div>\n  </header>\n\n  <div class=\"l-container l-container--narrow pt-6 pb-16 lg:pt-10 lg:pb-24\">\n    <div class=\"grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-14\">\n      \n<nav aria-label=\"个人中心\" class=\"font-nav min-w-0\">\n  <ul class=\"c-sidenav hidden self-start lg:block\">\n    \n      <li>\n        \n          <a href=\"/me/\" aria-current=\"page\">\n<svg class=\"size-5 c-sidenav__icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1\"/>\n  \n</svg>\n基本资料</a>\n        \n      </li>\n    \n      <li>\n        \n          <span class=\"flex min-h-11 items-center pl-4 text-fg-3\">联系方式</span>\n        \n      </li>\n    \n  </ul>\n  <div class=\"c-tabs lg:hidden\">\n    \n      \n        <a href=\"/me/\" aria-current=\"page\">基本资料</a>\n      \n    \n      \n    \n  </div>\n</nav>\n\n      <div class=\"flex min-w-0 flex-col gap-10\">\n        <div id=\"profile-incomplete\" >\n  \n    <div class=\"c-notice c-notice--warn\" role=\"status\">\n      \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3l9.5 17h-19L12 3zM12 10v4.5M12 17.5v.5\"/>\n  \n</svg>\n\n      <div class=\"c-notice__body\">\n        <p class=\"font-semibold\">资料尚未完整，报名赛事和内战前需要补全：</p>\n        <ul class=\"mt-1 list-[square] pl-5\">\n          \n            <li><a href=\"/me/game-accounts/\">游戏 ID</a><span class=\"text-fg-2\"> — 填一个游戏 ID</span></li>\n          \n        </ul>\n      </div>\n    </div>\n  \n</div>\n\n        \n\n\n  \n  <div class=\"c-notice c-notice--info\" role=\"status\" data-held-reminder>\n    \n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5v.5\"/>\n  \n</svg>\n\n    <div class=\"c-notice__body\">有 2 件事的信还没决定发不发。<a href=\"/letters/\" class=\"c-link\">去看看</a></div>\n  </div>\n\n\n        <p>资料</p>\n      </div>\n    </div>\n  </div>\n</main>",
+    "control": "<p>资料</p>"
+  }
+]

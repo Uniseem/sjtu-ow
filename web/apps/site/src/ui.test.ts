@@ -14,9 +14,24 @@ import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import CRegStatus from "@sjtu-ow/ui/CRegStatus.vue"
 import CSeats from "@sjtu-ow/ui/CSeats.vue"
 
-const components: Record<string, Component> = { CAvatar, CEmpty, CField, CPager, CRank, CRoleIcon, CPlay, CProfileGaps, CStatus, CRegStatus, CSeats }
+import CPagehead from "@sjtu-ow/ui/CPagehead.vue"
+import PostCard from "@sjtu-ow/ui/PostCard.vue"
+import TeamTile from "@sjtu-ow/ui/TeamTile.vue"
+import CTournamentCard from "@sjtu-ow/ui/CTournamentCard.vue"
+import CScrimRow from "@sjtu-ow/ui/CScrimRow.vue"
+import CStartsAt from "@sjtu-ow/ui/CStartsAt.vue"
+import CTeamLogo from "@sjtu-ow/ui/CTeamLogo.vue"
+import AuthWhy from "@sjtu-ow/ui/AuthWhy.vue"
+import AuthBack from "@sjtu-ow/ui/AuthBack.vue"
+import AuthLayout from "@sjtu-ow/ui/AuthLayout.vue"
+import MeLayout from "@sjtu-ow/ui/MeLayout.vue"
+
+const components: Record<string, Component> = { CAvatar, CEmpty, CField, CPager, CRank, CRoleIcon, CPlay, CProfileGaps, CStatus, CRegStatus, CSeats, CPagehead, PostCard, TeamTile, CTournamentCard, CScrimRow, CStartsAt, CTeamLogo, AuthWhy, AuthBack, AuthLayout, MeLayout }
 interface Fixture { component: string; props: Record<string, unknown>; html: string; control?: string; help?: string }
-const fixtures: Fixture[] = JSON.parse(readFileSync(new URL("./testdata/legacy-ui.json", import.meta.url), "utf8"))
+const fixtures: Fixture[] = [
+  ...JSON.parse(readFileSync(new URL("./testdata/legacy-ui.json", import.meta.url), "utf8")),
+  ...JSON.parse(readFileSync(new URL("./testdata/legacy-cards.json", import.meta.url), "utf8")),
+]
 
 // Attribute order, self-closing syntax, boolean attribute notation, fragment
 // comments and whitespace are serializer details. Keep every tag, attribute,
