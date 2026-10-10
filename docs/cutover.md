@@ -111,3 +111,16 @@ curl -f http://127.0.0.1:22887/healthz
 ```
 
 48 小时窗口过后，新站产生大量新业务数据，原则上不再回滚，遇问题一律向前修补升级。
+
+---
+
+## 5. 2026-10-10 的回滚（265）和学到的
+
+259 割接后前台没做完（`docs/frontend-migration.md`），用户 10-10 决定回滚，265 在窗口内做完：旧库和割接前的快照逐字节一致，新栈割接后没有写进新数据，停机约 1 分钟。经过和日志在 `handoff/rounds/265-rollback-to-legacy/`。
+
+上面第 4 节的「回滚命令」**照做会失败**：新栈和旧站用同一个 Compose 项目名 `sjtu-ow`、同样叫 `web`、`worker` 的服务，构建新栈时把旧站镜像的标签（`sjtu-ow-web:latest`、`sjtu-ow-worker:latest`）占了，`up -d` 起的「旧站」其实是新栈的镜像。265 是先重新构建旧镜像再切的。下一次割接：
+
+1. 割接前先给旧镜像另打标签：`docker tag sjtu-ow-web:latest sjtu-ow-web:legacy`（worker 同样），回滚时让旧站的 Compose 用这个标签
+2. 新栈换一个项目名或服务名（比如项目 `sjtu-ow-next`），两套不共用镜像名
+3. 停新栈、起旧站的命令都带 `--env-file /srv/sjtu-ow/.env`
+4. 恢复定时任务：割接时改过的 `/etc/cron.d/sjtu-ow` 要先备份，回滚时换回
