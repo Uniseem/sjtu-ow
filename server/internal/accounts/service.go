@@ -729,6 +729,9 @@ func (s *Service) RequestPasswordReset(ctx context.Context, in ResetPasswordInpu
 		if err := s.store.DeleteEmailCodes(ctx, tx, "password_reset", emailNorm); err != nil {
 			return err
 		}
+		if err := s.store.DeleteEmailCodes(ctx, tx, resetGrantPurpose, emailNorm); err != nil {
+			return err
+		}
 		if err := s.store.InsertEmailCode(ctx, tx, "password_reset", emailNorm, codeHash, now, now.Add(3*time.Minute)); err != nil {
 			return err
 		}
@@ -827,6 +830,9 @@ func (s *Service) ResetPasswordConfirm(ctx context.Context, in ResetPasswordConf
 		// 验证码通过：
 		// 1. 删除该邮箱的所有 password_reset 验证码
 		if err := s.store.DeleteEmailCodes(ctx, tx, "password_reset", emailNorm); err != nil {
+			return err
+		}
+		if err := s.store.DeleteEmailCodes(ctx, tx, resetGrantPurpose, emailNorm); err != nil {
 			return err
 		}
 		// 2. 更新密码，如果原先未验证邮箱则置为已验证
@@ -945,6 +951,12 @@ func (s *Service) ChangePassword(ctx *app.Ctx, in ChangePasswordInput) (*ChangeP
 			return err
 		}
 		// 作废该用户的其他会话，保留当前会话（12 号文档 5.7）
+		if err := s.store.DeleteEmailCodes(txCtx, tx, "password_reset", u.EmailNorm); err != nil {
+			return err
+		}
+		if err := s.store.DeleteEmailCodes(txCtx, tx, resetGrantPurpose, u.EmailNorm); err != nil {
+			return err
+		}
 		if err := s.sessions.DeleteOthersTx(txCtx, tx, u.ID, ctx.SessionToken); err != nil {
 			return err
 		}
@@ -1110,12 +1122,13 @@ func (s *Service) RequestEmailChange(ctx *app.Ctx, in RequestEmailChangeInput) (
 		return nil, api.Unauthorized("要先登录")
 	}
 
-	// 5 分钟内必须重新认证过（规则 7）
-	if ctx.SessionToken != "" {
-		sess, err := s.sessions.Lookup(ctx.Context, ctx.SessionToken)
-		if err != nil || sess == nil || !sess.RecentlyReauthed(s.clock.Now()) {
-			return nil, api.Invalid("请先重新认证当前密码（5 分钟内有效）。")
-		}
+	// 5 分钟内必须重新认证过（规则 7），空令牌也不能绕过。
+	sess, err := s.sessions.Lookup(ctx.Context, ctx.SessionToken)
+	if err != nil {
+		return nil, err
+	}
+	if sess == nil || sess.UserID != ctx.Viewer.ID || !sess.RecentlyReauthed(s.clock.Now()) {
+		return nil, api.NewErr(400, "reauth_required", "请先重新认证当前密码（5 分钟内有效）。")
 	}
 
 	trimmedEmail := strings.TrimSpace(in.NewEmail)
@@ -1194,63 +1207,10 @@ type ConfirmEmailChangeResult struct {
 	Message string `json:"message"`
 }
 
-// ConfirmEmailChange 核验新邮箱验证码并替换主邮箱（规则 7）。
+// ConfirmEmailChange keeps the public service entry while the transaction
+// commits failed attempts before returning their validation error.
 func (s *Service) ConfirmEmailChange(ctx *app.Ctx, in ConfirmEmailChangeInput) (*ConfirmEmailChangeResult, error) {
-	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
-		return nil, api.Unauthorized("要先登录")
-	}
-
-	trimmedCode := strings.TrimSpace(in.Code)
-	if len(trimmedCode) != 6 {
-		return nil, api.InvalidFields(map[string][]string{"code": {"请输入 6 位数字验证码。"}})
-	}
-
-	now := s.clock.Now().UTC()
-	err := s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
-		ec, err := s.store.GetEmailChangeTx(txCtx, tx, ctx.Viewer.ID)
-		if err != nil {
-			return err
-		}
-		if ec == nil || !now.Before(ec.ExpiresAt) {
-			return api.InvalidFields(map[string][]string{"code": {"验证码已失效，请重新申请。"}})
-		}
-		if ec.Attempts >= 3 {
-			_ = s.store.DeleteEmailChange(txCtx, tx, ctx.Viewer.ID)
-			return api.InvalidFields(map[string][]string{"code": {"验证码尝试次数过多，请重新申请。"}})
-		}
-
-		sum := sha256.Sum256([]byte(trimmedCode))
-		codeHash := hex.EncodeToString(sum[:])
-		if subtle.ConstantTimeCompare([]byte(codeHash), []byte(ec.CodeHash)) != 1 {
-			_ = s.store.BumpEmailChangeAttempts(txCtx, tx, ctx.Viewer.ID)
-			if ec.Attempts+1 >= 3 {
-				_ = s.store.DeleteEmailChange(txCtx, tx, ctx.Viewer.ID)
-			}
-			return api.InvalidFields(map[string][]string{"code": {"验证码不正确。"}})
-		}
-
-		// 检查新邮箱是否在核验期间被其他人占用
-		existing, err := s.store.GetByEmailNormTx(txCtx, tx, ec.NewEmailNorm)
-		if err != nil {
-			return err
-		}
-		if existing != nil && existing.ID != ctx.Viewer.ID {
-			return api.InvalidFields(map[string][]string{"code": {"该邮箱已被占用。"}})
-		}
-
-		if err := s.store.UpdateUserEmail(txCtx, tx, ctx.Viewer.ID, ec.NewEmail, ec.NewEmailNorm, now); err != nil {
-			return err
-		}
-		return s.store.DeleteEmailChange(txCtx, tx, ctx.Viewer.ID)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &ConfirmEmailChangeResult{
-		Result:  "ok",
-		Message: "邮箱修改成功。",
-	}, nil
+	return s.confirmEmailChange(ctx, in)
 }
 
 // -------------------------------------------------------------

@@ -307,6 +307,7 @@ func NewModule(svc *Service) *Module {
 
 // Routes 注册账号域接口（12 号文档 5.3）。
 func (m *Module) Routes(r *api.Registry) {
+	m.registerAccountFlows(r)
 	// 会话与认证
 	api.Get(r, "/api/session", api.Public, m.getSession)
 	api.Post(r, "/api/auth/register", api.Public, m.register,

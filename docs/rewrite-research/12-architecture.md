@@ -351,6 +351,8 @@ Idempotency-Key: <每次保存尝试一个，重试沿用>
 
 **验证码**存 `email_codes` 表（用途、邮箱、码的哈希、尝试次数、过期时间），不放缓存。
 
+旧页面的找回密码是三步：新增 `POST /api/auth/reset-password/verify` 换重置凭证、`GET /api/auth/reset-password/state` 供 SSR 读是否已核验、`POST /api/auth/reset-password/complete` 设新密码；原 combined confirm 接口兼容保留。凭证随机 32 字节，`email_codes` 的 `password_reset_grant` 用途仅存 SHA-256，截止时间沿用原验证码的 3 分钟；只经 HttpOnly/SameSite Cookie `ow_password_reset`（生产 Secure）传递，不是登录会话，不进 URL/JSON/浏览器存储。重发、改密码、换邮箱使旧凭证失效；完成事务内重验、一次性消费、删全部原会话，不自动登录。改邮箱增加 `GET /api/auth/email/state`（当前/待验证邮箱、重新认证状态）和 `DELETE /api/auth/email/change`（取消本人待验证记录）；错误验证码的计数/第三次作废先提交，再返回校验错。申请缺少重新认证返回 `reauth_required`，前端回确认身份页，邮箱草稿经站内 next 带回供本人再次提交。
+
 **唯一入口**：只有 `/api/auth/login` 和 `/api/auth/verify-email` 这两个接口能建会话（后者核验通过即登录，241 起），别的任何地方都没有；`createsuperuser`、`verify-email` 命令只改数据、不建会话。有测试遍历注册表断言这一点。
 
 ### 5.8 权限模型

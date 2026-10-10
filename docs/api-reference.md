@@ -4,9 +4,9 @@
 
 ## 1. 架构概览与指标
 
-- **注册接口总数**：163 个
-- **公开访问接口 (Public)**：25 个
-- **登录会员接口 (Member / Verified / Feature)**：60 个
+- **注册接口总数**：168 个
+- **公开访问接口 (Public)**：28 个
+- **登录会员接口 (Member / Verified / Feature)**：62 个
 - **干部管理接口 (Cap / Superuser)**：78 个
 - **限流保护**：全量写接口均显式声明 `ratelimit.Decl` 集中限流规则，杜绝内联魔法数字；
 - **查询预算**：关键列表接口显式声明 `api.Budget(n)` 查询上限，防范 N+1 慢查询。
@@ -21,6 +21,7 @@
 | `DELETE` | `/api/admin/scrims/{id}` | Cap(scrims.manage) | 不限流 (后台，有能力的门) | - | scrims/list |
 | `DELETE` | `/api/admin/tournaments/{id}` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/list |
 | `DELETE` | `/api/articles/{id}` | Member（登录成员） | 不限流 (删除文章无需限流) | - | - |
+| `DELETE` | `/api/auth/email/change` | Member（登录成员） | 不限流 (只删除当前账号的待验证邮箱) | - | - |
 | `DELETE` | `/api/comments/{id}` | Member（登录成员） | 不限流 (删除评论无需限流) | - | - |
 | `DELETE` | `/api/images/{id}` | Cap(images.manage) | 不限流 (管理员删除图片无需限流) | - | - |
 | `DELETE` | `/api/me/avatar` | Member（登录成员） | 不限流 (移除头像无需限流) | - | - |
@@ -60,6 +61,8 @@
 | `GET` | `/api/admin/users/{id}` | Superuser（超级管理员） | 默认 | - | users/detail |
 | `GET` | `/api/announcements/unsubscribe/{token}` | Public（公开） | unsubscribe (30/1m0s) | - | - |
 | `GET` | `/api/articles/{id}/comments` | Public（公开） | 默认 | - | - |
+| `GET` | `/api/auth/email/state` | Member（登录成员） | 默认 | - | - |
+| `GET` | `/api/auth/reset-password/state` | Public（公开） | auth_reset_password_confirm (20/1m0s) | - | - |
 | `GET` | `/api/home-pins` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/images/{id}` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/letters` | Member（登录成员） | 默认 | - | - |
@@ -149,7 +152,9 @@
 | `POST` | `/api/auth/register` | Public（公开） | auth_signup (20/1m0s) | - | - |
 | `POST` | `/api/auth/resend-code` | Public（公开） | auth_resend_email_code (10/1m0s) | - | - |
 | `POST` | `/api/auth/reset-password` | Public（公开） | auth_reset_password (20/1m0s) | - | - |
+| `POST` | `/api/auth/reset-password/complete` | Public（公开） | auth_reset_password_confirm (20/1m0s) | - | - |
 | `POST` | `/api/auth/reset-password/confirm` | Public（公开） | auth_reset_password_confirm (20/1m0s) | - | - |
+| `POST` | `/api/auth/reset-password/verify` | Public（公开） | auth_reset_password_confirm (20/1m0s) | - | - |
 | `POST` | `/api/auth/verify-email` | Public（公开） | auth_verify_email (10/1m0s) | - | - |
 | `POST` | `/api/comments/{id}/hide` | Cap(comments.moderate) | 不限流 (管理员隐藏评论无需限流) | - | - |
 | `POST` | `/api/comments/{id}/like` | Member（登录成员） | comment_vote (60/1m0s) | - | - |

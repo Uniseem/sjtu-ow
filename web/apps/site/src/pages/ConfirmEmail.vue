@@ -1,23 +1,29 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
 import { PageRedirect, safeNext } from "@sjtu-ow/shared/navigation"
-export function load(ctx: LoadCtx) {
+import { getApiAuthEmailState } from "@sjtu-ow/api"
+export async function load(ctx: LoadCtx) {
+  if (ctx.query.mode === "change") {
+    const state = await getApiAuthEmailState(ctx.api)
+    if (!state.pending_email) throw new PageRedirect("/accounts/email/")
+    return { title: "邮箱验证", email: state.pending_email, next: "/accounts/email/", change: true }
+  }
   const email = ctx.query.email?.trim()
   if (!email) throw new PageRedirect("/accounts/login/")
-  return { title: "邮箱验证", email, next: safeNext(ctx.query.next, "/me/"), welcome: ctx.query.welcome === "1" }
+  return { title: "邮箱验证", email, next: safeNext(ctx.query.next, "/me/"), change: false }
 }
 </script>
 <script setup lang="ts">
 import { computed, inject, ref } from "vue"
 import { useHead } from "@unhead/vue"
-import { postApiAuthVerifyEmail, postApiAuthResendCode, postApiAuthLogout, ApiError } from "@sjtu-ow/api"
+import { postApiAuthVerifyEmail, postApiAuthResendCode, postApiAuthLogout, postApiAuthEmailChange, postApiAuthEmailChangeConfirm, ApiError } from "@sjtu-ow/api"
 import AuthLayout from "@sjtu-ow/ui/AuthLayout.vue"
 import AuthError from "@sjtu-ow/ui/AuthError.vue"
 import CField from "@sjtu-ow/ui/CField.vue"
 import { useApi } from "../api"
 import { useViewer } from "../viewer"
 import { finishAccountAction, useAccountForm, useCodeCooldown } from "../account-form"
-const data = inject<{ email: string; next: string; welcome: boolean }>("page-data")
+const data = inject<{ email: string; next: string; change: boolean }>("page-data")
 const email = computed(() => data?.email ?? "")
 const api = useApi()
 const viewer = useViewer()
@@ -28,7 +34,8 @@ const { seconds, start } = useCodeCooldown()
 useHead({ title: "邮箱验证 · SJTU-OW" })
 function verify() {
   return submit(async () => {
-    await postApiAuthVerifyEmail(api, { email: email.value, code: code.value.trim() }, { unauthorized: "throw" })
+    if (data?.change) await postApiAuthEmailChangeConfirm(api, { code: code.value.trim() })
+    else await postApiAuthVerifyEmail(api, { email: email.value, code: code.value.trim() }, { unauthorized: "throw" })
     finishAccountAction(safeNext(data?.next, "/me/"))
   })
 }
@@ -36,7 +43,8 @@ function resend() {
   if (seconds.value || pending.value) return
   return submit(async () => {
     try {
-      await postApiAuthResendCode(api, { email: email.value }, { unauthorized: "throw" })
+      if (data?.change) await postApiAuthEmailChange(api, { new_email: email.value })
+      else await postApiAuthResendCode(api, { email: email.value }, { unauthorized: "throw" })
       sent.value = true
       start()
     } catch (error) {
@@ -58,6 +66,6 @@ function cancel() { return submit(async () => { if (viewer.user) await postApiAu
     </form>
     <form method="post" action="/accounts/confirm-email/" @submit.prevent="resend"><input type="hidden" name="action" value="resend"><button type="submit" class="c-btn c-btn--quiet" :disabled="pending || seconds > 0">{{ seconds ? seconds + ' 秒后可重新发送' : '重新发送验证码' }}</button></form>
     <p v-if="sent" role="status" class="text-sm text-fg-2">验证码已重新发送，请检查邮箱。</p>
-    <form method="post" action="/accounts/logout/" @submit.prevent="cancel"><input type="hidden" name="next" value="/accounts/login/"><button type="submit" class="c-btn c-btn--quiet" :disabled="pending">取消</button></form>
+    <form v-if="!data?.change" method="post" action="/accounts/logout/" @submit.prevent="cancel"><input type="hidden" name="next" value="/accounts/login/"><button type="submit" class="c-btn c-btn--quiet" :disabled="pending">取消</button></form>
   </AuthLayout>
 </template>

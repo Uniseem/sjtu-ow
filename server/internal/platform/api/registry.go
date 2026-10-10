@@ -187,6 +187,7 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 				Clock:        clock.System{},
 				RequestID:    newRequestID(),
 				SessionToken: auth.TokenFromRequest(req),
+				ResetToken:   auth.ResetTokenFromRequest(req),
 			}
 			if err := gate.check(viewer); err != nil {
 				writeError(w, err)
@@ -276,6 +277,9 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 			// 登录这类动作发的会话 Cookie（成功路径才有；令牌只进 HttpOnly 头）
 			for _, tok := range ctx.DrainSessionCookies() {
 				auth.SetCookie(w, tok, cfg.secureCookies)
+			}
+			if cookie := ctx.DrainResetCookie(); cookie != nil {
+				auth.SetResetCookie(w, cookie.Token, cookie.ExpiresAt, ctx.Now(), cfg.secureCookies)
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)

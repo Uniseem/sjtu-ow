@@ -51,6 +51,15 @@ export function deleteApiArticlesId(r: Requester, id: string | number, extras: C
   return r<DeleteApiArticlesIdOut>("DELETE", "/api/articles/{id}", { ...extras, params: { id } })
 }
 
+export interface DeleteApiAuthEmailChangeOut {
+  result: string;
+  message: string;
+}
+
+export function deleteApiAuthEmailChange(r: Requester, extras: CallExtras = {}): Promise<DeleteApiAuthEmailChangeOut> {
+  return r<DeleteApiAuthEmailChangeOut>("DELETE", "/api/auth/email/change", { ...extras })
+}
+
 export interface DeleteApiCommentsIdOut {
   result: string;
 }
@@ -505,6 +514,25 @@ export interface GetApiArticlesIdCommentsOut {
 
 export function getApiArticlesIdComments(r: Requester, id: string | number, query: GetApiArticlesIdCommentsQuery = {}, extras: CallExtras = {}): Promise<GetApiArticlesIdCommentsOut> {
   return r<GetApiArticlesIdCommentsOut>("GET", "/api/articles/{id}/comments", { ...extras, params: { id }, query })
+}
+
+export interface GetApiAuthEmailStateOut {
+  email: string;
+  pending_email?: string;
+  reauthenticated: boolean;
+}
+
+export function getApiAuthEmailState(r: Requester, extras: CallExtras = {}): Promise<GetApiAuthEmailStateOut> {
+  return r<GetApiAuthEmailStateOut>("GET", "/api/auth/email/state", { ...extras })
+}
+
+export interface GetApiAuthResetPasswordStateOut {
+  verified: boolean;
+  email?: string;
+}
+
+export function getApiAuthResetPasswordState(r: Requester, extras: CallExtras = {}): Promise<GetApiAuthResetPasswordStateOut> {
+  return r<GetApiAuthResetPasswordStateOut>("GET", "/api/auth/reset-password/state", { ...extras })
 }
 
 export interface GetApiHomePinsOut {
@@ -1680,6 +1708,20 @@ export function postApiAuthResetPassword(r: Requester, body: PostApiAuthResetPas
   return r<PostApiAuthResetPasswordOut>("POST", "/api/auth/reset-password", { ...extras, body })
 }
 
+export interface PostApiAuthResetPasswordCompleteIn {
+  password: string;
+  confirm_password: string;
+}
+
+export interface PostApiAuthResetPasswordCompleteOut {
+  Result: string;
+  Message: string;
+}
+
+export function postApiAuthResetPasswordComplete(r: Requester, body: PostApiAuthResetPasswordCompleteIn, extras: CallExtras = {}): Promise<PostApiAuthResetPasswordCompleteOut> {
+  return r<PostApiAuthResetPasswordCompleteOut>("POST", "/api/auth/reset-password/complete", { ...extras, body })
+}
+
 export interface PostApiAuthResetPasswordConfirmIn {
   email: string;
   code: string;
@@ -1694,6 +1736,20 @@ export interface PostApiAuthResetPasswordConfirmOut {
 
 export function postApiAuthResetPasswordConfirm(r: Requester, body: PostApiAuthResetPasswordConfirmIn, extras: CallExtras = {}): Promise<PostApiAuthResetPasswordConfirmOut> {
   return r<PostApiAuthResetPasswordConfirmOut>("POST", "/api/auth/reset-password/confirm", { ...extras, body })
+}
+
+export interface PostApiAuthResetPasswordVerifyIn {
+  email: string;
+  code: string;
+}
+
+export interface PostApiAuthResetPasswordVerifyOut {
+  result: string;
+  message: string;
+}
+
+export function postApiAuthResetPasswordVerify(r: Requester, body: PostApiAuthResetPasswordVerifyIn, extras: CallExtras = {}): Promise<PostApiAuthResetPasswordVerifyOut> {
+  return r<PostApiAuthResetPasswordVerifyOut>("POST", "/api/auth/reset-password/verify", { ...extras, body })
 }
 
 export interface PostApiAuthVerifyEmailIn {

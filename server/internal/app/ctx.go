@@ -90,6 +90,9 @@ type Ctx struct {
 
 	// SessionToken 是当前请求带来的会话令牌（由 api 注册表在收到请求时从 Cookie 取出）。
 	SessionToken string
+	// ResetToken is a short-lived password-reset grant, never a login token.
+	ResetToken  string
+	resetCookie *ResetCookie
 
 	// sessionCookies 是处理函数里要发的会话令牌（登录、验证码核验通过）。
 	// 注册表在答复前用 auth.SetCookie 写进响应头；令牌不进 JSON。
