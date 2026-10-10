@@ -85,6 +85,10 @@ func main() {
 		err = runParity()
 	case "seed":
 		err = runSeed()
+	case "import-media":
+		err = runImportMedia()
+	case "session":
+		err = runSession()
 	default:
 		usage()
 		os.Exit(2)
@@ -95,7 +99,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|verify-email|backup|restore|createsuperuser|reconcile|rulecheck|parity>")
+	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|import-media|verify-email|backup|restore|createsuperuser|reconcile|rulecheck|parity|seed|session>")
 }
 
 func fatal(err error) {
@@ -460,6 +464,66 @@ func runImport() error {
 		return fmt.Errorf("导入全站设置失败: %w", err)
 	}
 	fmt.Println("全站设置数据导入成功。")
+	return nil
+}
+
+// runImportMedia 把旧站的原图过新管线做成母版（导完行以后跑；可以重复跑）：
+//
+//	sjtuow import-media <旧站媒体目录>
+//
+// 找不到的原图只报不算错；有坏文件时退出码 1。
+func runImportMedia() error {
+	if len(os.Args) < 3 {
+		return fmt.Errorf("用法：sjtuow import-media <旧站媒体目录，里面有 original_images/>")
+	}
+	cfg, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	rep, err := media.NewService(d, cfg.DataDir, cfg.MediaDir).ImportLegacyMasters(context.Background(), os.Args[2])
+	if err != nil {
+		return err
+	}
+	fmt.Printf("做成母版 %d 张，已有跳过 %d 张，找不到原图 %d 张，失败 %d 张。\n", rep.Made, rep.Skipped, len(rep.Missing), len(rep.Failed))
+	for _, m := range rep.Missing {
+		fmt.Println("找不到：" + m)
+	}
+	for _, f := range rep.Failed {
+		fmt.Println("失败：" + f)
+	}
+	if len(rep.Failed) > 0 {
+		return fmt.Errorf("有 %d 张原图没能做成母版", len(rep.Failed))
+	}
+	return nil
+}
+
+// runSession 给一个已有的用户发一条会话，打印 ow_session 的值：
+//
+//	sjtuow session <邮箱>
+//
+// 给测试和对拍用（e2e/parity、journey）：在服务器上直接发，不输入任何密码
+// （AGENTS「登录后的页面截图」那条的做法）。能跑这条命令的人本来就能动数据库。
+func runSession() error {
+	if len(os.Args) < 3 {
+		return fmt.Errorf("用法：sjtuow session <邮箱>")
+	}
+	_, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	ctx := context.Background()
+	var id int64
+	err = d.ReadPool().QueryRowContext(ctx, `SELECT id FROM users WHERE email_norm = lower(?)`, os.Args[2]).Scan(&id)
+	if err != nil {
+		return fmt.Errorf("找不到邮箱是 %s 的用户", os.Args[2])
+	}
+	token, err := auth.NewStore(d, nil).Create(ctx, id)
+	if err != nil {
+		return err
+	}
+	fmt.Println(token)
 	return nil
 }
 

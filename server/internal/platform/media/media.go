@@ -147,32 +147,10 @@ func (s *Service) Upload(ctx *app.Ctx, in UploadInput) (*Image, error) {
 
 	// 2. 信号量里完整解码并编码母版
 	s.sem.Lock()
-	defer s.sem.Unlock()
-
-	img, _, err := image.Decode(bytes.NewReader(data))
+	masterBytes, w, h, err := encodeMaster(data)
+	s.sem.Unlock()
 	if err != nil {
-		return nil, api.Invalid("图片数据解析失败")
-	}
-
-	// 长边缩放到 MasterLongSide
-	w, h := img.Bounds().Dx(), img.Bounds().Dy()
-	if w > MasterLongSide || h > MasterLongSide {
-		if w >= h {
-			h = h * MasterLongSide / w
-			w = MasterLongSide
-		} else {
-			w = w * MasterLongSide / h
-			h = MasterLongSide
-		}
-		scaled := image.NewRGBA(image.Rect(0, 0, w, h))
-		draw.CatmullRom.Scale(scaled, scaled.Bounds(), img, img.Bounds(), draw.Src, nil)
-		img = scaled
-	}
-
-	// 编码为 WebP 母版（quality 90, method 2）
-	var masterBuf bytes.Buffer
-	if err := webp.Encode(&masterBuf, img, webp.Options{Quality: 90, Method: 2}); err != nil {
-		return nil, errors.New("母版转码失败")
+		return nil, err
 	}
 
 	// 3. 查 collection ID
@@ -200,7 +178,6 @@ func (s *Service) Upload(ctx *app.Ctx, in UploadInput) (*Image, error) {
 	}
 
 	now := ctx.Now().UTC().Format(time.RFC3339Nano)
-	masterBytes := masterBuf.Bytes()
 	var imgRecord Image
 
 	// 4. 插入数据库
@@ -235,16 +212,55 @@ func (s *Service) Upload(ctx *app.Ctx, in UploadInput) (*Image, error) {
 	}
 
 	// 5. 写入母版文件（原子重命名）
-	targetPath := s.MasterPath(imgRecord.ID)
-	tmpPath := targetPath + ".tmp"
-	if err := os.WriteFile(tmpPath, masterBytes, 0o644); err != nil {
-		return nil, errors.New("写入母版失败")
-	}
-	if err := os.Rename(tmpPath, targetPath); err != nil {
-		return nil, errors.New("保存母版失败")
+	if err := s.writeMaster(imgRecord.ID, masterBytes); err != nil {
+		return nil, err
 	}
 
 	return &imgRecord, nil
+}
+
+// encodeMaster 完整解码一张图，长边缩到 MasterLongSide，重新编码成 WebP 母版
+// （quality 90、method 2）。重新编码不带原文件的 EXIF、GPS（12 号文档 5.13）。
+// 调用方负责信号量。
+func encodeMaster(data []byte) (master []byte, w, h int, err error) {
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, 0, 0, api.Invalid("图片数据解析失败")
+	}
+	w, h = img.Bounds().Dx(), img.Bounds().Dy()
+	if w > MasterLongSide || h > MasterLongSide {
+		if w >= h {
+			h = h * MasterLongSide / w
+			w = MasterLongSide
+		} else {
+			w = w * MasterLongSide / h
+			h = MasterLongSide
+		}
+		scaled := image.NewRGBA(image.Rect(0, 0, w, h))
+		draw.CatmullRom.Scale(scaled, scaled.Bounds(), img, img.Bounds(), draw.Src, nil)
+		img = scaled
+	}
+	var buf bytes.Buffer
+	if err := webp.Encode(&buf, img, webp.Options{Quality: 90, Method: 2}); err != nil {
+		return nil, 0, 0, errors.New("母版转码失败")
+	}
+	return buf.Bytes(), w, h, nil
+}
+
+// writeMaster 先写临时名再改名，写一半的文件不会被当成母版。
+func (s *Service) writeMaster(id int64, master []byte) error {
+	target := s.MasterPath(id)
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return errors.New("建母版目录失败")
+	}
+	tmp := target + ".tmp"
+	if err := os.WriteFile(tmp, master, 0o644); err != nil {
+		return errors.New("写入母版失败")
+	}
+	if err := os.Rename(tmp, target); err != nil {
+		return errors.New("保存母版失败")
+	}
+	return nil
 }
 
 // GetImageByID 获取图片信息。

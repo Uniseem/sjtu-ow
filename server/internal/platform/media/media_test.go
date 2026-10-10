@@ -225,3 +225,63 @@ func TestSpecsTSListsEveryAllowedSpec(t *testing.T) {
 		}
 	}
 }
+
+// 旧原图过新管线做成母版（frontend-migration 263 发现、264 补）：做成的母版能解码、
+// 能出缩略图；重复跑跳过；找不到的、越出目录的、坏文件分别报出来，不吞。
+func TestImportLegacyMastersRunsOldOriginalsThroughThePipeline(t *testing.T) {
+	database, tmpDir := setupTestDB(t)
+	svc := NewService(database, filepath.Join(tmpDir, "data"), filepath.Join(tmpDir, "media"))
+	legacy := filepath.Join(tmpDir, "legacy-media")
+	if err := os.MkdirAll(filepath.Join(legacy, "original_images"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var jpg bytes.Buffer
+	src := image.NewRGBA(image.Rect(0, 0, 3000, 1000))
+	if err := jpeg.Encode(&jpg, src, nil); err != nil {
+		t.Fatal(err)
+	}
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(os.WriteFile(filepath.Join(legacy, "original_images", "wide.jpg"), jpg.Bytes(), 0o644))
+	must(os.WriteFile(filepath.Join(legacy, "original_images", "broken.png"), []byte("not a picture"), 0o644))
+	must(os.WriteFile(filepath.Join(tmpDir, "outside.png"), createTestImage(20, 20), 0o644))
+	must(database.WriteTx(context.Background(), func(ctx context.Context, tx *db.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO images (id, title, file_name, file_size, width, height, created_at, version) VALUES
+			(11, '宽图', 'original_images/wide.jpg', 1, 3000, 1000, 'x', 1),
+			(12, '不在了', 'original_images/gone.jpg', 1, 10, 10, 'x', 1),
+			(13, '坏的', 'original_images/broken.png', 1, 10, 10, 'x', 1),
+			(14, '越界', '../outside.png', 1, 20, 20, 'x', 1)`)
+		return err
+	}))
+
+	rep, err := svc.ImportLegacyMasters(context.Background(), legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Made != 1 || rep.Skipped != 0 || len(rep.Missing) != 1 || len(rep.Failed) != 2 {
+		t.Fatalf("报告不对：%+v", rep)
+	}
+	if !strings.HasPrefix(rep.Missing[0], "12 ") || !strings.HasPrefix(rep.Failed[0], "13 ") || !strings.HasPrefix(rep.Failed[1], "14 ") {
+		t.Fatalf("编号对不上：%+v", rep)
+	}
+	f, err := os.Open(svc.MasterPath(11))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, format, err := image.DecodeConfig(f)
+	_ = f.Close()
+	if err != nil || format != "webp" || cfg.Width != MasterLongSide || cfg.Height != 853 {
+		t.Fatalf("母版应是长边 %d 的 WebP：%v %s %dx%d", MasterLongSide, err, format, cfg.Width, cfg.Height)
+	}
+	if _, err := svc.RenderThumbnail(context.Background(), 11, "fill-88x88"); err != nil {
+		t.Fatalf("母版要能出缩略图：%v", err)
+	}
+	again, err := svc.ImportLegacyMasters(context.Background(), legacy)
+	if err != nil || again.Made != 0 || again.Skipped != 1 {
+		t.Fatalf("再跑一次应跳过已有的：%+v %v", again, err)
+	}
+}

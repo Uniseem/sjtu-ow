@@ -79,6 +79,8 @@ pnpm test
 
 **前台 SSR 在真浏览器里过一遍**（233 起）：`bash scripts/remote-check.sh run bash -c 'cd web/apps/site && node browser-check.mjs /usr/bin/chromium'`（本机 Chrome 就把路径换成 `/Applications/Google Chrome.app/...`）。它起桩 API 和生产 SSR 服务（`STRICT_CSP=1` 时服务自己加 CSP 响应头）、用 CDP 驱动无头 Chromium 走激活、严格 CSP 零违规、SPA 换页、主题、右键菜单、无脚本横幅、404；要在跑它的前一步先构建（整组里 `pnpm test` 就构建了）。改了前台入口、壳或这些行为后跑一次；截图落在仓库检出里（gitignore 了）。
 
+**和旧站逐页对拍**（264 起，`docs/frontend-migration.md` 9.2）：`bash scripts/remote-check.sh run bash e2e/parity/run.sh [--only=前缀,…] [--wide] [--strict]`。旧站用 `scripts/screens.py` 的种子数据建临时库，新站 `sjtuow import` 同一个库、`import-media` 同一个媒体目录、`session` 发会话，按正式站的样子跑（Go + SSR 生产构建 + 真 Caddy 容器），逐个「地址 × 身份」比状态、标题、正文、链接、表单、坏图、截图像素差；报告在测试机 `/tmp/sjtu-ow-parity/out/`。约 6 分钟，不进整组；做完一组页面时用 `--only=那一组 --strict` 证明「对拍通过」。改了 Caddy 跑 `e2e/caddy/smoke.sh`（263）。
+
 **这组检查在测试机上跑**（2026-10-04 起，见「测试机与部署」）：
 
 ```bash
