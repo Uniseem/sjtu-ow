@@ -751,7 +751,7 @@ CI（GitHub Actions）：Go 一个任务（vet、staticcheck、govulncheck、tes
 
 ### 11.3 每轮怎么做
 
-流程不变（`handoff/README.md`）：request → 实现 → report → review → STATUS，一轮一个提交，直接推 `main`。轮次号接着 218 往下编。M0 那一轮里把 AGENTS.md 加上新栈的一节（命令、检查、目录、新的坑），旧栈的内容割接后再删。
+流程不变（`handoff/README.md`）：request → 实现 → report → review → STATUS，一轮一个提交，直接推 `main`。轮次号接着 218 往下编。M0 的原入口在 278 轮拆分：命令和检查见 `docs/development.md`，机器运维见 `docs/operations.md`，目录导航见 `docs/README.md`，技术陷阱见 `docs/pitfalls.md`；旧站参照割接前保留，割接后按设计草案第 8 节归档。
 
 ---
 

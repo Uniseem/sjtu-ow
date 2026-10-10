@@ -1,3 +1,3 @@
 @AGENTS.md
 
-本项目的所有规则、开发流程与硬规则详见 [AGENTS.md](AGENTS.md)。请在开工前务必严格阅读并遵守。
+按 [AGENTS.md](AGENTS.md) 的开工顺序和任务导航读取对应文档，分工范围见 [handoff/OWNERSHIP.md](handoff/OWNERSHIP.md)。不需要每轮通读所有手册和历史记录。

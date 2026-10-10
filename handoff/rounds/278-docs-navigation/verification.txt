@@ -1,0 +1,30 @@
+日志：sjtu-ow-test:/srv/sjtu-ow-check/runs/20261011-021035-9ea4624.log
+LOCAL-LINKS-OK: 100 references in 17 documents
+PITFALLS-OK: 79 original entries preserved in order
+OWNERSHIP-OK: 15 original scope rows preserved
+STATUS-OK: 105 current table lines unchanged; historical tail verbatim; recent count 3
+LEGACY-GUIDE-OK: all 28 original sections retained; CI redirects to development
+DOC-AUDIT-OK
+No vulnerabilities found.
+Your code is affected by 0 vulnerabilities.
+This scan also found 0 vulnerabilities in packages you import and 3
+vulnerabilities in modules you require, but your code doesn't appear to call
+these vulnerabilities.
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+ Test Files  9 passed (9)
+      Tests  202 passed (202)
+首页壳 gzip：HTML 3126 + CSS 19936 + JS 73587 = 96649 字节（脚本上限 122880，合计上限 307200）
+BUDGET-OK
+== 全部通过 (18:11:09)
+remote-check exit code: 0
+
+日志：sjtu-ow-test:/srv/sjtu-ow-check/runs/20261011-021222-2d95457.log
+测试机 kvm17243： 7d0315d 277: 修复评论交互与换页缺陷并加入真实浏览器回归 + 工作区改动
+LOCAL-LINKS-OK: 100 references in 20 documents
+PITFALLS-OK: 79 original entries preserved in order
+OWNERSHIP-OK: 15 original scope rows preserved
+STATUS-OK: 105 current table lines unchanged; historical tail verbatim; recent count 3
+LEGACY-GUIDE-OK: all 28 original sections retained; CI redirects to development
+DOC-AUDIT-OK
+remote-check exit code: 0

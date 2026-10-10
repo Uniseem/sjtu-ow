@@ -203,8 +203,8 @@ M11 那一轮照这张表做，做完一项打一个勾：
 - [ ] 第 5 节里标「删除」的章节删掉（13.13），目录和交叉引用（全文搜 `13.13`、`半静态`、`预渲染`、`HTMX`、`Alpine`、`Wagtail`、`Django`）一并改
 - [ ] 第 6 节的新规则写进对应章节，附录 C 补常量
 - [ ] `design.md` 的版本、日期、状态；附录 D 加 v8.0 一行（写明这是换栈）
-- [ ] `AGENTS.md`：删掉现行站（Django）的命令、坑和部署说明，新栈一节转正；第二台服务器的部署说明换成新的升级脚本
-- [ ] `README.md`：运行、运维、升级、备份恢复全换成新栈
+- [ ] `docs/development.md`、`docs/operations.md`、`docs/pitfalls.md`、`docs/legacy-guide.md`：割接后归档旧站手册、命令和旧栈陷阱；运维说明换成新栈升级脚本；更新 `AGENTS.md` 和文档导航的读取入口
+- [ ] `README.md` 和 `docs/README.md`：入口指向新栈运行与运维正文；步骤维护在 `docs/development.md`、`docs/operations.md`，不复制回入口
 - [ ] `docs/admin.md`、`docs/design-details.md`：只改涉及技术实现的句子，行为描述不动
 - [ ] 删除本文和 `docs/rewrite-research/` 里已经落进设计的部分（调研文档留作历史，但要在 README 里标「已落地」）
 - [ ] Django 代码、Wagtail、迁移、模板、旧测试全部删掉（旧站镜像和数据只读保留两周可回滚，12 号文档第 13 节）
