@@ -1,18 +1,13 @@
+import type { GetApiSessionOut } from "@sjtu-ow/api"
 import { inject, type InjectionKey } from "vue"
 
-// Who is looking at the page, from GET /api/session (12-architecture 3.3):
-// the SSR paints the account area straight from this, no state.js. `admin`
-// is runs_admin (core templatetags ow.py): the account menu links to the
-// back office only for people with a job there. Callers provide it on the
-// app instance (app.provide(VIEWER, viewer)); pages read useViewer().
-export type ViewerUser = {
-  id?: number
-  nickname: string
-  email?: string
-  admin: boolean
-  superuser?: boolean
-  caps?: string[]
-}
+// Who is looking at the page: GET /api/session as Go sends it (12-architecture
+// 3.3, frontend-migration A6), into SSR and ow-state whole. `admin` is
+// runs_admin (the account menu links to the back office only for people with
+// a job there); `superuser` and `caps` decide the back office's tabs. Callers
+// provide it on the app instance (app.provide(VIEWER, viewer)); pages read
+// useViewer().
+export type ViewerUser = NonNullable<GetApiSessionOut["user"]>
 export type Viewer = { user: ViewerUser | null }
 
 export const VIEWER: InjectionKey<Viewer> = Symbol("viewer")

@@ -1,7 +1,9 @@
 import { renderSSRHead } from "@unhead/vue/server"
+import { createClient, getApiSession, type Requester } from "@sjtu-ow/api"
 import { renderToString } from "vue/server-renderer"
+import { API } from "./api"
 import { createApp } from "./main"
-import { httpError, type Load, type PageData } from "./router"
+import { flat, statusOf, type Load, type LoadCtx, type PageData } from "./router"
 import { styleguideHidden } from "./specimen"
 import { VIEWER, type Viewer } from "./viewer"
 
@@ -24,17 +26,19 @@ export type RenderOpts = {
   load?: Load
 }
 
+// Placeholder bodies until the error pages follow templates/errors
+// (frontend-migration A12).
 const ERROR_HTML: Record<number, string> = {
   403: "<main><h1>没有权限看这个页面</h1></main>",
   404: "<main><h1>找不到这个页面</h1></main>",
+  429: "<main><h1>操作太频繁</h1></main>",
   503: "<main><h1>站点暂时连不上</h1></main>",
 }
 
 const VISITOR: Viewer = { user: null }
 
-function statusOf(err: unknown): number | undefined {
-  return typeof err === "object" && err !== null && "status" in err ? Number((err as { status: number }).status) : undefined
-}
+// Go takes 5 seconds at most per call from here (12-architecture 6.2 step 4).
+const API_TIMEOUT = 5000
 
 function pathnameOf(url: string): string {
   return new URL(url, "http://site").pathname
@@ -42,12 +46,12 @@ function pathnameOf(url: string): string {
 
 export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   const { app, router, head } = createApp(true)
-  const pathname = pathnameOf(url)
+  const parsed = new URL(url, "http://site")
+  const pathname = parsed.pathname
   if (pathname !== "/" && !pathname.endsWith("/")) {
     const next = pathname + "/"
     if (router.resolve(next).matched.length > 0) {
-      const search = new URL(url, "http://site").search
-      return { kind: "slash", location: next + search }
+      return { kind: "slash", location: next + parsed.search }
     }
   }
   await router.push(url)
@@ -55,27 +59,42 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   const route = router.currentRoute.value
   if (!route.matched.length) return page(404, VISITOR, head)
 
+  // Every call to Go carries the visitor's cookie, IP and request id.
   const ssrFetch: typeof fetch = (input, init) => {
     const h = forward(opts.headers)
-    if (init?.headers) {
-      const extra = new Headers(init.headers)
-      extra.forEach((v, k) => h.set(k, v))
-    }
+    if (init?.headers) new Headers(init.headers).forEach((v, k) => h.set(k, v))
     return opts.fetch(input, { ...init, headers: h })
   }
-  const ssrOpts = { ...opts, fetch: ssrFetch }
+  const api = createClient({
+    fetch: ssrFetch,
+    base: opts.apiBase,
+    timeoutMs: API_TIMEOUT,
+    location: () => pathname + parsed.search,
+    assign: () => {},
+  })
+  const ctx: LoadCtx = {
+    params: flat(route.params),
+    query: flat(route.query),
+    url,
+    api,
+    fetch: ssrFetch,
+    apiBase: opts.apiBase,
+  }
 
-  const [sessionR, loadR] = await Promise.allSettled([fetchSession(ssrOpts), runLoad(route, url, ssrOpts)])
+  const [sessionR, loadR] = await Promise.allSettled([fetchSession(api), runLoad(opts.load ?? route.meta.load, ctx)])
   if (sessionR.status === "rejected") return page(503, VISITOR, head)
   const viewer = sessionR.value
+  const next = pathname + parsed.search
+  if (route.meta.auth === "member" && viewer.user === null) return { kind: "login", next }
   if (loadR.status === "rejected") {
     const status = statusOf(loadR.reason)
-    if (status === 401) return { kind: "login", next: pathname + new URL(url, "http://site").search }
-    if (status === 403 || status === 404) return page(status, viewer, head)
-    return page(503, VISITOR, head)
+    if (status === 401) return { kind: "login", next }
+    if (status === 403 || status === 404 || status === 429) return page(status, viewer, head)
+    return page(503, viewer, head)
   }
   if (styleguideHidden(pathname, viewer.user?.admin === true)) return page(404, viewer, head)
   app.provide(VIEWER, viewer)
+  app.provide(API, api)
   app.provide("page-data", loadR.value)
   const html = await renderToString(app)
   const tags = await renderSSRHead(head)
@@ -90,30 +109,23 @@ async function page(status: number, viewer: Viewer, head: ReturnType<typeof crea
   return { kind: "page", status, html: ERROR_HTML[status] ?? ERROR_HTML[404], head: tags.headTags, state: null, viewer }
 }
 
-async function runLoad(route: { meta: { load?: Load }; params: Record<string, string | string[]> }, url: string, opts: RenderOpts): Promise<PageData> {
-  const load = opts.load ?? route.meta.load
+async function runLoad(load: Load | undefined, ctx: LoadCtx): Promise<PageData> {
   if (!load) return { title: "" }
-  const params: Record<string, string> = {}
-  for (const [key, value] of Object.entries(route.params)) params[key] = Array.isArray(value) ? value[0] : value
-  return load({ params, url, fetch: opts.fetch, apiBase: opts.apiBase })
+  return load(ctx)
 }
 
-async function fetchSession(opts: RenderOpts): Promise<Viewer> {
-  let response: Response
+// The whole session goes to the page (frontend-migration A6): the account
+// area, the back office's tabs (superuser, caps) and the pages read it.
+async function fetchSession(api: Requester): Promise<Viewer> {
   try {
-    response = await opts.fetch(opts.apiBase + "/api/session", {
-      headers: forward(opts.headers),
-      signal: AbortSignal.timeout(5000),
-    })
-  } catch {
-    throw httpError(503)
+    const user = (await getApiSession(api)).user
+    // Go always sends a nickname; anything else is not a session to trust.
+    if (!user || typeof user.nickname !== "string") return VISITOR
+    return { user }
+  } catch (err) {
+    if (statusOf(err) === 401) return VISITOR
+    throw err
   }
-  if (response.status === 401) return VISITOR
-  if (!response.ok) throw httpError(503)
-  const body = (await response.json()) as { user?: { nickname?: unknown; admin?: unknown } | null }
-  const user = body.user
-  if (user === null || user === undefined || typeof user.nickname !== "string") return VISITOR
-  return { user: { nickname: user.nickname, admin: user.admin === true } }
 }
 
 function forward(headers: { get(name: string): string | null }): Headers {

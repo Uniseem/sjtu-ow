@@ -4,6 +4,9 @@ import { getApiAdminModeration, type GetApiAdminModerationOut } from "@sjtu-ow/a
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const reviewSection = ADMIN_SECTIONS.find((s) => s.id === "review")
 const loading = ref(true)
@@ -13,7 +16,7 @@ const error = ref<string | null>(null)
 async function loadItems() {
   loading.value = true
   try {
-    const res = await getApiAdminModeration()
+    const res = await getApiAdminModeration(api)
     items.value = res.items
   } catch (err: any) {
     error.value = err?.message ?? "加载审核记录失败"

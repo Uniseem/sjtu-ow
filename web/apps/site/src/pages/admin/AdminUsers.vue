@@ -4,6 +4,9 @@ import { getApiAdminUsers, type GetApiAdminUsersOut } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const membersSection = ADMIN_SECTIONS.find((s) => s.id === "members")
 const usersTab = membersSection?.tabs.find((t) => t.id === "users")
@@ -16,7 +19,7 @@ const search = ref("")
 async function loadUsers() {
   loading.value = true
   try {
-    const res = await getApiAdminUsers()
+    const res = await getApiAdminUsers(api)
     users.value = res.users
   } catch (err: any) {
     error.value = err?.message ?? "加载用户列表失败"

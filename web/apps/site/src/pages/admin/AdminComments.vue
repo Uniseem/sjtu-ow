@@ -4,6 +4,9 @@ import { getApiAdminComments, type GetApiAdminCommentsOut } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const reviewSection = ADMIN_SECTIONS.find((s) => s.id === "review")
 const loading = ref(true)
@@ -14,7 +17,7 @@ const search = ref("")
 async function loadComments() {
   loading.value = true
   try {
-    const res = await getApiAdminComments()
+    const res = await getApiAdminComments(api)
     comments.value = res.comments
   } catch (err: any) {
     error.value = err?.message ?? "加载评论失败"

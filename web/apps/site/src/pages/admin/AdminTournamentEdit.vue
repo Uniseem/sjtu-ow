@@ -4,6 +4,9 @@ import { useRoute } from "vue-router"
 import { getApiAdminTournamentsId, type GetApiAdminTournamentsIdOut } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const route = useRoute()
 const id = ref((route.params.id as string) || "")
@@ -21,7 +24,7 @@ const successMsg = ref<string | null>(null)
 onMounted(async () => {
   if (!isNew) {
     try {
-      const res = await getApiAdminTournamentsId(id.value)
+      const res = await getApiAdminTournamentsId(api, id.value)
       if (res.tournament) {
         title.value = res.tournament.title
         description.value = res.tournament.description ?? ""

@@ -9,6 +9,9 @@ import {
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const settingsSection = ADMIN_SECTIONS.find((s) => s.id === "settings")
 const loading = ref(true)
@@ -37,7 +40,7 @@ const aiModel = ref("")
 async function loadSettings() {
   loading.value = true
   try {
-    const res = await getApiAdminSettings()
+    const res = await getApiAdminSettings(api)
     settings.value = res.settings
     if (res.settings) {
       siteDescription.value = res.settings.site_description ?? ""
@@ -63,7 +66,7 @@ async function saveSettings() {
   successMsg.value = null
   error.value = null
   try {
-    await patchApiAdminSettings({
+    await patchApiAdminSettings(api, {
       site_description: siteDescription.value,
       founded_on: foundedOn.value,
       smtp_host: smtpHost.value,
@@ -93,7 +96,7 @@ async function testEmail() {
   successMsg.value = null
   error.value = null
   try {
-    const res = await postApiAdminSettingsTestEmail()
+    const res = await postApiAdminSettingsTestEmail(api)
     successMsg.value = res.message ?? "测试邮件发送成功，请查收邮箱！"
   } catch (err: any) {
     error.value = err?.message ?? "发送测试邮件失败，请检查 SMTP 配置"

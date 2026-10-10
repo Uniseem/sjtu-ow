@@ -4,6 +4,9 @@ import { getApiAdminTournaments, type GetApiAdminTournamentsOut } from "@sjtu-ow
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const eventsSection = ADMIN_SECTIONS.find((s) => s.id === "events")
 const loading = ref(true)
@@ -13,7 +16,7 @@ const error = ref<string | null>(null)
 async function loadTournaments() {
   loading.value = true
   try {
-    const res = await getApiAdminTournaments()
+    const res = await getApiAdminTournaments(api)
     tournaments.value = res.tournaments
   } catch (err: any) {
     error.value = err?.message ?? "加载赛事失败"

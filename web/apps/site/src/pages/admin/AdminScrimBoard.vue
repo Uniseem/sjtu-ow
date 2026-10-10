@@ -8,6 +8,9 @@ import {
 } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const route = useRoute()
 const id = ref((route.params.id as string) || "")
@@ -19,7 +22,7 @@ const generating = ref(false)
 async function loadBoard() {
   loading.value = true
   try {
-    const res = await getApiAdminScrimsIdBoard(id.value)
+    const res = await getApiAdminScrimsIdBoard(api, id.value)
     board.value = res
   } catch (err: any) {
     error.value = err?.message ?? "加载分队板失败"
@@ -31,7 +34,7 @@ async function loadBoard() {
 async function runGenerate() {
   generating.value = true
   try {
-    await postApiAdminScrimsIdBoardGenerate(id.value, {
+    await postApiAdminScrimsIdBoardGenerate(api, id.value, {
       board_version: board.value?.board_version ?? 1,
     })
     await loadBoard()

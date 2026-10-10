@@ -4,6 +4,9 @@ import { getApiAdminTeams, type GetApiAdminTeamsOut } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const membersSection = ADMIN_SECTIONS.find((s) => s.id === "members")
 const loading = ref(true)
@@ -13,7 +16,7 @@ const error = ref<string | null>(null)
 async function loadTeams() {
   loading.value = true
   try {
-    const res = await getApiAdminTeams()
+    const res = await getApiAdminTeams(api)
     teams.value = res.teams
   } catch (err: any) {
     error.value = err?.message ?? "加载战队列表失败"

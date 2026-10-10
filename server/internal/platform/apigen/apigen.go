@@ -1,8 +1,14 @@
 // Package apigen 从接口注册表生成前端调用代码（12 号文档 5.3）。
 // 守门矩阵、乱填、限流数字和查询预算已经在 Go 测试里直接读注册表，不另写一份。
+//
+// 生成的每个函数第一个参数是 `Requester`（`@sjtu-ow/api` 的 createClient 造的），
+// 幂等键、401、待发信、错误形状都在那里统一处理；生成物自己不碰 fetch
+// （frontend-migration A3）。类型照 encoding/json 的实际输出写：匿名嵌入的结构
+// 摊平、切片和映射不会是 null（注册表编码前换成空的）、指针是 `T | null`（A4）。
 package apigen
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +21,8 @@ import (
 )
 
 const header = "// 由 sjtuow apigen 生成。不要手改。\n\n"
+
+const imports = "import type { CallExtras, Requester } from \"../client.ts\"\n\n"
 
 // Write 把注册表写成 dir 下的 index.ts 和 nav.ts。
 func Write(dir string, reg *api.Registry) error {
@@ -39,21 +47,28 @@ func Render(reg *api.Registry) (index, nav string) {
 	})
 	var b strings.Builder
 	b.WriteString(header)
+	b.WriteString(imports)
 	var navItems []string
 	for _, rt := range routes {
 		name := funcName(rt.Method, rt.Pattern)
-		inName := export(name) + "In"
-		outName := export(name) + "Out"
-		writeStruct(&b, inName, rt.InType, true)
-		writeStruct(&b, outName, rt.OutType, false)
-		writeFunc(&b, name, inName, outName, rt)
+		typeName := export(name)
+		sig := signature{name: name, out: typeName + "Out", route: rt}
+		if hasJSON(rt.InType) {
+			sig.in = typeName + "In"
+			writeInterface(&b, sig.in, bodyFields(rt.InType))
+		}
+		if q := queryFields(rt.InType); q != "" {
+			sig.query = typeName + "Query"
+			writeInterface(&b, sig.query, q)
+		}
+		writeOut(&b, sig.out, rt.OutType)
+		writeFunc(&b, sig)
 		if section, tab, ok := splitNav(rt.Nav); ok {
 			navItems = append(navItems, fmt.Sprintf(
 				"  { section: %q, tab: %q, method: %q, path: %q },",
 				section, tab, rt.Method, rt.Pattern))
 		}
 	}
-	b.WriteString(callFn)
 	navFile := header + "export const nav: { section: string; tab: string; method: string; path: string }[] = [\n" +
 		strings.Join(navItems, "\n")
 	if len(navItems) > 0 {
@@ -63,108 +78,129 @@ func Render(reg *api.Registry) (index, nav string) {
 	return b.String(), navFile
 }
 
-func writeStruct(b *strings.Builder, name string, t reflect.Type, jsonOnly bool) {
+type signature struct {
+	name, in, query, out string
+	route                *api.Route
+}
+
+func writeInterface(b *strings.Builder, name, body string) {
 	b.WriteString("export interface " + name + " {\n")
-	b.WriteString(fields(t, jsonOnly))
+	b.WriteString(body)
 	b.WriteString("}\n\n")
 }
 
-func fields(t reflect.Type, jsonOnly bool) string {
-	return fieldsWithVisited(t, jsonOnly, make(map[reflect.Type]bool))
-}
-
-func copyVisited(m map[reflect.Type]bool) map[reflect.Type]bool {
-	cp := make(map[reflect.Type]bool, len(m))
-	for k, v := range m {
-		cp[k] = v
+func writeOut(b *strings.Builder, name string, t reflect.Type) {
+	if t != nil && deref(t).Kind() == reflect.Struct && !isTime(deref(t)) {
+		writeInterface(b, name, structFields(deref(t), map[reflect.Type]bool{}))
+		return
 	}
-	return cp
+	fmt.Fprintf(b, "export type %s = %s\n\n", name, tsType(t, map[reflect.Type]bool{}))
 }
 
-func fieldsWithVisited(t reflect.Type, jsonOnly bool, visited map[reflect.Type]bool) string {
+// writeFunc 写一个调用函数：Requester、路径参数、请求体、查询参数、其余选项。
+func writeFunc(b *strings.Builder, s signature) {
+	params := []string{"r: Requester"}
+	var parts []string
+	keys := pathKeys(s.route.InType)
+	for _, k := range keys {
+		params = append(params, k+": string | number")
+	}
+	if len(keys) > 0 {
+		parts = append(parts, "params: { "+strings.Join(keys, ", ")+" }")
+	}
+	if s.in != "" {
+		params = append(params, "body: "+s.in)
+		parts = append(parts, "body")
+	}
+	if s.query != "" {
+		params = append(params, "query: "+s.query+" = {}")
+		parts = append(parts, "query")
+	}
+	params = append(params, "extras: CallExtras = {}")
+	parts = append([]string{"...extras"}, parts...)
+	fmt.Fprintf(b, "export function %s(%s): Promise<%s> {\n", s.name, strings.Join(params, ", "), s.out)
+	fmt.Fprintf(b, "  return r<%s>(%q, %q, { %s })\n}\n\n", s.out, s.route.Method, s.route.Pattern, strings.Join(parts, ", "))
+}
+
+// bodyFields 是请求体里的字段：带 json 标签、不是路径或查询参数的。
+func bodyFields(t reflect.Type) string {
 	t = deref(t)
-	if t.Kind() != reflect.Struct {
-		return ""
-	}
-	visited[t] = true
 	var b strings.Builder
 	for i := range t.NumField() {
 		f := t.Field(i)
-		if f.PkgPath != "" {
+		if f.PkgPath != "" || isPath(f) || isQuery(f) {
 			continue
 		}
-		tag := f.Tag.Get("json")
-		if tag == "-" {
+		name, opts := splitTag(f.Tag.Get("json"))
+		if name == "" || name == "-" {
 			continue
 		}
-		if _, isPath := f.Tag.Lookup("path"); isPath {
-			continue
-		}
-		name, opts := splitTag(tag)
-		if name == "" {
-			if jsonOnly {
-				continue
-			}
-			name = f.Name
-		}
-		opt := ""
-		if strings.Contains(opts, "omitempty") {
-			opt = "?"
-		}
-		fmt.Fprintf(&b, "  %s%s: %s;\n", name, opt, tsTypeWithVisited(f.Type, copyVisited(visited)))
+		fmt.Fprintf(&b, "  %s%s: %s;\n", name, optional(opts), tsType(f.Type, map[reflect.Type]bool{}))
 	}
 	return b.String()
 }
 
-func writeFunc(b *strings.Builder, name, inName, outName string, rt *api.Route) {
-	params, arg := pathArgs(rt)
-	body := "undefined"
-	if hasJSON(rt.InType) {
-		params = append(params, "body: "+inName)
-		body = "body"
+// queryFields 是 `query:"…"` 标签的字段，一律可选（bind.go 空值不绑）。
+func queryFields(t reflect.Type) string {
+	if t == nil || deref(t).Kind() != reflect.Struct {
+		return ""
 	}
-	fmt.Fprintf(b, "export function %s(%s): Promise<%s> {\n", name, strings.Join(params, ", "), outName)
-	fmt.Fprintf(b, "  return call<%s>(%q, %q, { %s }, %s)\n}\n\n", outName, rt.Method, rt.Pattern, arg, body)
-}
-
-func pathArgs(rt *api.Route) (params []string, object string) {
-	t := deref(rt.InType)
-	var keys []string
-	if t.Kind() == reflect.Struct {
-		for i := range t.NumField() {
-			f := t.Field(i)
-			p, ok := f.Tag.Lookup("path")
-			if !ok {
-				continue
-			}
-			params = append(params, p+": string")
-			keys = append(keys, p)
-		}
-	}
-	return params, strings.Join(keys, ", ")
-}
-
-func hasJSON(t reflect.Type) bool {
 	t = deref(t)
-	if t.Kind() != reflect.Struct {
-		return false
+	var b strings.Builder
+	for i := range t.NumField() {
+		f := t.Field(i)
+		key, ok := f.Tag.Lookup("query")
+		if !ok || f.PkgPath != "" {
+			continue
+		}
+		ts := "string"
+		switch deref(f.Type).Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			ts = "number"
+		case reflect.Bool:
+			ts = "boolean"
+		}
+		fmt.Fprintf(&b, "  %s?: %s;\n", key, ts)
 	}
+	return b.String()
+}
+
+// structFields 照 encoding/json 的规则列出字段：没写名字的匿名结构摊平进来，
+// 其余没写 json 标签的用 Go 的字段名。
+func structFields(t reflect.Type, visited map[reflect.Type]bool) string {
+	visited = copyVisited(visited)
+	visited[t] = true
+	var b strings.Builder
 	for i := range t.NumField() {
 		f := t.Field(i)
 		tag := f.Tag.Get("json")
-		if tag == "" || tag == "-" {
+		if tag == "-" || isPath(f) || isQuery(f) {
 			continue
 		}
-		if _, isPath := f.Tag.Lookup("path"); isPath {
+		name, opts := splitTag(tag)
+		if name == "" && f.Anonymous && deref(f.Type).Kind() == reflect.Struct && !isTime(deref(f.Type)) {
+			b.WriteString(structFields(deref(f.Type), visited))
 			continue
 		}
-		return true
+		if f.PkgPath != "" {
+			continue
+		}
+		if name == "" {
+			name = f.Name
+		}
+		fmt.Fprintf(&b, "  %s%s: %s;\n", name, optional(opts), tsType(f.Type, visited))
 	}
-	return false
+	return b.String()
 }
 
-func tsTypeWithVisited(t reflect.Type, visited map[reflect.Type]bool) string {
-	isPtr := t.Kind() == reflect.Pointer
+var rawMessage = reflect.TypeOf(json.RawMessage{})
+
+func tsType(t reflect.Type, visited map[reflect.Type]bool) string {
+	if t == nil {
+		return "unknown"
+	}
+	nullable := t.Kind() == reflect.Pointer
 	t = deref(t)
 	var out string
 	switch t.Kind() {
@@ -177,16 +213,28 @@ func tsTypeWithVisited(t reflect.Type, visited map[reflect.Type]bool) string {
 		reflect.Float32, reflect.Float64:
 		out = "number"
 	case reflect.Slice, reflect.Array:
-		out = tsTypeWithVisited(t.Elem(), visited) + "[]"
+		switch {
+		case t == rawMessage:
+			out = "unknown"
+		case t.Elem().Kind() == reflect.Uint8:
+			out = "string" // []byte 编码成 base64
+		default:
+			elem := tsType(t.Elem(), visited)
+			if strings.Contains(elem, " | ") {
+				elem = "(" + elem + ")"
+			}
+			out = elem + "[]"
+		}
 	case reflect.Map:
-		out = "Record<" + tsTypeWithVisited(t.Key(), visited) + ", " + tsTypeWithVisited(t.Elem(), visited) + ">"
+		out = "Record<" + tsType(t.Key(), visited) + ", " + tsType(t.Elem(), visited) + ">"
 	case reflect.Struct:
-		if t.PkgPath() == "time" && t.Name() == "Time" || t == reflect.TypeOf(time.Time{}) {
+		switch {
+		case isTime(t):
 			out = "string"
-		} else if visited[t] {
-			out = "any"
-		} else {
-			body := fieldsWithVisited(t, false, visited)
+		case visited[t]:
+			out = "unknown"
+		default:
+			body := structFields(t, visited)
 			if body == "" {
 				out = "Record<string, never>"
 			} else {
@@ -196,10 +244,69 @@ func tsTypeWithVisited(t reflect.Type, visited map[reflect.Type]bool) string {
 	default:
 		out = "unknown"
 	}
-	if isPtr {
+	if nullable {
 		return out + " | null"
 	}
 	return out
+}
+
+func pathKeys(t reflect.Type) []string {
+	if t == nil || deref(t).Kind() != reflect.Struct {
+		return nil
+	}
+	t = deref(t)
+	var keys []string
+	for i := range t.NumField() {
+		if p, ok := t.Field(i).Tag.Lookup("path"); ok {
+			keys = append(keys, p)
+		}
+	}
+	return keys
+}
+
+func hasJSON(t reflect.Type) bool {
+	if t == nil || deref(t).Kind() != reflect.Struct {
+		return false
+	}
+	t = deref(t)
+	for i := range t.NumField() {
+		f := t.Field(i)
+		name, _ := splitTag(f.Tag.Get("json"))
+		if name == "" || name == "-" || isPath(f) || isQuery(f) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func isPath(f reflect.StructField) bool {
+	_, ok := f.Tag.Lookup("path")
+	return ok
+}
+
+func isQuery(f reflect.StructField) bool {
+	_, ok := f.Tag.Lookup("query")
+	return ok
+}
+
+func isTime(t reflect.Type) bool {
+	return t == reflect.TypeOf(time.Time{})
+}
+
+func optional(opts string) string {
+	if strings.Contains(opts, "omitempty") {
+		return "?"
+	}
+	return ""
+}
+
+func copyVisited(m map[reflect.Type]bool) map[reflect.Type]bool {
+	cp := make(map[reflect.Type]bool, len(m))
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
 }
 
 func deref(t reflect.Type) reflect.Type {
@@ -246,21 +353,3 @@ func export(s string) string {
 	}
 	return strings.Join(parts, "")
 }
-
-const callFn = `export async function call<T>(method: string, path: string, params: Record<string, string>, body?: unknown): Promise<T> {
-  let url = path
-  for (const key of Object.keys(params)) {
-    url = url.split("{" + key + "}").join(encodeURIComponent(params[key]))
-  }
-  const init: RequestInit = { method }
-  if (body !== undefined) {
-    init.headers = { "content-type": "application/json" }
-    init.body = JSON.stringify(body)
-  }
-  const response = await fetch(url, init)
-  if (!response.ok) {
-    throw new Error(await response.text())
-  }
-  return (await response.json()) as T
-}
-`

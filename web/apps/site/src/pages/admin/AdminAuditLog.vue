@@ -4,6 +4,9 @@ import { getApiAdminLog, type GetApiAdminLogOut } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const settingsSection = ADMIN_SECTIONS.find((s) => s.id === "settings")
 const loading = ref(true)
@@ -13,7 +16,7 @@ const error = ref<string | null>(null)
 async function loadLog() {
   loading.value = true
   try {
-    const res = await getApiAdminLog()
+    const res = await getApiAdminLog(api)
     logs.value = res.entries
   } catch (err: any) {
     error.value = err?.message ?? "加载审计日志失败"

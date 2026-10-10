@@ -4,6 +4,9 @@ import { getApiAdminArticles, type GetApiAdminArticlesOut } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const contentSection = ADMIN_SECTIONS.find((s) => s.id === "content")
 const loading = ref(true)
@@ -15,7 +18,7 @@ const selectedStatus = ref("")
 async function loadArticles() {
   loading.value = true
   try {
-    const res = await getApiAdminArticles()
+    const res = await getApiAdminArticles(api)
     articles.value = res.articles
   } catch (err: any) {
     error.value = err?.message ?? "加载文章失败"

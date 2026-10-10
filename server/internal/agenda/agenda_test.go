@@ -37,7 +37,8 @@ func newTestEnv(t *testing.T) *testEnv {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	svc := NewService(d, "https://sjtu.example", "test-signing-key-0123456789-abcdefghij")
+	// 日历订阅按 t0 算「现在」：测试数据都钉在 t0 附近，用墙上的钟会过期（261 CI 在 10-10 红过）。
+	svc := NewService(d, "https://sjtu.example", "test-signing-key-0123456789-abcdefghij").WithClock(clock.Fixed(t0))
 	return &testEnv{t: t, d: d, svc: svc}
 }
 

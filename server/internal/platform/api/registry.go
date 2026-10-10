@@ -256,7 +256,7 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 				writeError(w, asAPIError(err))
 				return
 			}
-			body, err := json.Marshal(out)
+			body, err := json.Marshal(nonNil(out))
 			if err != nil {
 				releaseIdempotency(cfg, ctx, viewer, claimed, idemKey)
 				writeError(w, asAPIError(err))

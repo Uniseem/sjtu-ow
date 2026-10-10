@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
@@ -29,8 +30,8 @@ func TestRenderEmitsTypesAndNav(t *testing.T) {
 		"message: string",
 		"export interface PostApiTeamsIdApplicationsOut",
 		"id: number",
-		`export function postApiTeamsIdApplications(id: string, body: PostApiTeamsIdApplicationsIn)`,
-		`call<PostApiTeamsIdApplicationsOut>("POST", "/api/teams/{id}/applications", { id }, body)`,
+		`export function postApiTeamsIdApplications(r: Requester, id: string | number, body: PostApiTeamsIdApplicationsIn, extras: CallExtras = {}): Promise<PostApiTeamsIdApplicationsOut>`,
+		`return r<PostApiTeamsIdApplicationsOut>("POST", "/api/teams/{id}/applications", { ...extras, params: { id }, body })`,
 	} {
 		if !strings.Contains(index, want) {
 			t.Fatalf("缺 %s\n%s", want, index)
@@ -46,8 +47,12 @@ func TestRenderEmitsTypesAndNav(t *testing.T) {
 
 func TestEmptyRegistryIsStable(t *testing.T) {
 	index, nav := Render(&api.Registry{})
-	if !strings.HasPrefix(index, header) || !strings.Contains(index, "export async function call") {
+	if !strings.HasPrefix(index, header) || !strings.Contains(index, `import type { CallExtras, Requester } from "../client.ts"`) {
 		t.Fatal(index)
+	}
+	// 生成物不自己发请求：幂等键、401、待发信只在 createClient 里（A3）。
+	if strings.Contains(index, "fetch(") {
+		t.Fatal("生成物里不该有 fetch")
 	}
 	if !strings.Contains(nav, "export const nav") || strings.Contains(nav, `section: "`) {
 		t.Fatal(nav)
@@ -117,5 +122,73 @@ func TestRenderMarkdown(t *testing.T) {
 		if !strings.Contains(md, want) {
 			t.Fatalf("Markdown 手册缺少预期内容: %q\n%s", want, md)
 		}
+	}
+}
+
+type person struct {
+	UserID   int64  `json:"user_id"`
+	Nickname string `json:"nickname"`
+}
+
+type memberRow struct {
+	person
+	Role string `json:"role"`
+}
+
+type rosterOut struct {
+	Members []memberRow  `json:"members"`
+	Maybe   []*memberRow `json:"maybe"`
+	Leader  *memberRow   `json:"leader"`
+	Since   time.Time    `json:"since"`
+	Note    string       `json:"note,omitempty"`
+}
+
+type listQueryIn struct {
+	Category string `query:"category"`
+	Page     int    `query:"page"`
+	Mine     bool   `query:"mine"`
+}
+
+// 类型要和 encoding/json 的实际输出一样（A4）：匿名嵌入摊平、`[]*T` 是
+// `(T | null)[]`、指针 `| null`、时间是字符串、omitempty 可选。
+func TestTypesFollowEncodingJSON(t *testing.T) {
+	reg := &api.Registry{}
+	api.Get(reg, "/api/roster", api.Public,
+		func(*app.Ctx, struct{}) (rosterOut, error) { return rosterOut{}, nil })
+	index, _ := Render(reg)
+	row := "{   user_id: number;   nickname: string;   role: string; }"
+	for _, want := range []string{
+		"  members: " + row + "[];\n",
+		"  maybe: (" + row + " | null)[];\n",
+		"  leader: " + row + " | null;\n",
+		"  since: string;\n",
+		"  note?: string;\n",
+	} {
+		if !strings.Contains(index, want) {
+			t.Fatalf("缺 %q\n%s", want, index)
+		}
+	}
+	if strings.Contains(index, "person") {
+		t.Fatalf("匿名嵌入的结构应摊平，不该出现字段名：\n%s", index)
+	}
+}
+
+// 查询参数生成成可选的 Query 类型，作为参数传给 Requester；GET 没有请求体。
+func TestQueryParamsAreGenerated(t *testing.T) {
+	reg := &api.Registry{}
+	api.Get(reg, "/api/page/news", api.Public,
+		func(*app.Ctx, listQueryIn) (applyOut, error) { return applyOut{}, nil })
+	index, _ := Render(reg)
+	for _, want := range []string{
+		"export interface GetApiPageNewsQuery {\n  category?: string;\n  page?: number;\n  mine?: boolean;\n}",
+		"export function getApiPageNews(r: Requester, query: GetApiPageNewsQuery = {}, extras: CallExtras = {}): Promise<GetApiPageNewsOut>",
+		`return r<GetApiPageNewsOut>("GET", "/api/page/news", { ...extras, query })`,
+	} {
+		if !strings.Contains(index, want) {
+			t.Fatalf("缺 %q\n%s", want, index)
+		}
+	}
+	if strings.Contains(index, "GetApiPageNewsIn") {
+		t.Fatal("只有查询参数的接口不该有请求体类型")
 	}
 }

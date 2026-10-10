@@ -13,6 +13,7 @@ import (
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/djsign"
 	"github.com/Uniseem/sjtu-ow/server/internal/scrims"
@@ -43,11 +44,19 @@ type Service struct {
 	d          *db.DB
 	siteURL    string
 	signingKey string
+	// clock 是日历订阅（没有请求上下文里的时钟）取「现在」用的；测试里换成固定时钟。
+	clock clock.Clock
 }
 
 // NewService 造安排服务。
 func NewService(d *db.DB, siteURL, signingKey string) *Service {
-	return &Service{d: d, siteURL: strings.TrimRight(siteURL, "/"), signingKey: signingKey}
+	return &Service{d: d, siteURL: strings.TrimRight(siteURL, "/"), signingKey: signingKey, clock: clock.System{}}
+}
+
+// WithClock 换掉日历订阅取「现在」的时钟（测试用）。
+func (s *Service) WithClock(c clock.Clock) *Service {
+	s.clock = c
+	return s
 }
 
 // Items 一个人的安排，有时间的按时间、没时间的排后面。limit<=0 不限条数。
@@ -319,7 +328,7 @@ func (s *Service) Serve(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now().UTC()
 	items, err := Items(r.Context(), s.d.ReadPool(), id, now, 0)
 	if err != nil {
 		http.Error(w, "服务器开小差了，稍后再试", http.StatusInternalServerError)

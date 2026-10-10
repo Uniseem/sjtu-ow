@@ -4,6 +4,9 @@ import { getApiAdminActivity, type GetApiAdminActivityOut } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const dataSection = ADMIN_SECTIONS.find((s) => s.id === "data")
 const loading = ref(true)
@@ -13,7 +16,7 @@ const error = ref<string | null>(null)
 async function loadActivity() {
   loading.value = true
   try {
-    const res = await getApiAdminActivity()
+    const res = await getApiAdminActivity(api)
     activity.value = res
   } catch (err: any) {
     error.value = err?.message ?? "加载活动数据失败"

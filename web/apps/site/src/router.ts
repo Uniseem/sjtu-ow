@@ -5,6 +5,7 @@ import Home from "./pages/Home.vue"
 import Teams from "./pages/Teams.vue"
 import { loadStyleguide } from "./specimen"
 import { PAGES } from "./routes"
+import type { Requester } from "@sjtu-ow/api"
 
 export type SampleClock = {
   dayDate: string
@@ -23,8 +24,31 @@ export type SampleClock = {
 }
 
 export type PageData = { title: string; marker?: string; clock?: SampleClock; [key: string]: any }
-export type LoadCtx = { params: Record<string, string>; url: string; fetch?: typeof fetch; apiBase?: string }
+// What a page's load() gets (frontend-migration A2). `api` is the one way to
+// Go: pass it to the generated functions (getApiTeamsId(ctx.api, id)). Errors
+// are not caught here: an ApiError's status decides the response (401 → login,
+// 403/404 → error page) in entry-server, and the navigation in entry-client.
+// `fetch` and `apiBase` are only for the 260 pages until they are rewritten.
+export type LoadCtx = {
+  params: Record<string, string>
+  query: Record<string, string>
+  url: string
+  api: Requester
+  fetch?: typeof fetch
+  apiBase?: string
+}
 export type Load = (ctx: LoadCtx) => Promise<PageData> | PageData
+
+// Route meta: `load` as above; `auth: "member"` for pages that need a login —
+// SSR sends a visitor to the login page before painting (as Django's
+// login_required did); Go stays the real gate.
+declare module "vue-router" {
+  interface RouteMeta {
+    load?: Load
+    auth?: "member"
+    admin?: boolean
+  }
+}
 
 export function createSiteRouter(ssr: boolean) {
   return createRouter({
@@ -40,4 +64,19 @@ export function createSiteRouter(ssr: boolean) {
 
 export function httpError(status: number): Error {
   return Object.assign(new Error(String(status)), { status })
+}
+
+/** The status of an error thrown by a load (ApiError or httpError); undefined for anything else. */
+export function statusOf(err: unknown): number | undefined {
+  return typeof err === "object" && err !== null && "status" in err ? Number((err as { status: number }).status) : undefined
+}
+
+/** Plain string params and query from a matched route, first value of repeated ones. */
+export function flat(values: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(values)) {
+    const first = Array.isArray(value) ? value[0] : value
+    if (typeof first === "string") out[key] = first
+  }
+  return out
 }

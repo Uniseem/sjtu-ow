@@ -325,3 +325,35 @@ func TestRegistrationPanics(t *testing.T) {
 		Get(&Registry{}, "/api/x/{id}", Public, func(*app.Ctx, wrongIn) (struct{}, error) { return struct{}{}, nil })
 	})
 }
+
+type listItem struct {
+	Tags []string `json:"tags"`
+}
+
+type listOut struct {
+	Items   []listItem        `json:"items"`
+	Nested  []listItem        `json:"nested"`
+	Labels  map[string]string `json:"labels"`
+	Parent  *listItem         `json:"parent"`
+	Owner   *listItem         `json:"owner"`
+	Raw     json.RawMessage   `json:"raw,omitempty"`
+	Skipped []string          `json:"skipped,omitempty"`
+}
+
+// 答复里没赋值的切片、映射编码成 []、{}，指针照旧是 null（frontend-migration A4：
+// apigen 生成的 `T[]` 才和实际的 JSON 一样）。拆掉 registry 里的 nonNil 这条就红。
+func TestNilListsAreEncodedAsEmpty(t *testing.T) {
+	g := &Registry{}
+	Get(g, "/api/lists", Public, func(*app.Ctx, struct{}) (listOut, error) {
+		return listOut{Nested: []listItem{{}}, Owner: &listItem{}}, nil
+	})
+	rec := httptest.NewRecorder()
+	g.Handler(testResolve).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/lists", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("状态 %d：%s", rec.Code, rec.Body.String())
+	}
+	want := `{"items":[],"nested":[{"tags":[]}],"labels":{},"parent":null,"owner":{"tags":[]}}`
+	if got := strings.TrimSpace(rec.Body.String()); got != want {
+		t.Fatalf("答复\n got %s\nwant %s", got, want)
+	}
+}

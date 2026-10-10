@@ -4,6 +4,9 @@ import { getApiAdminHomePins, putApiAdminHomePins, type GetApiAdminHomePinsOut }
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const contentSection = ADMIN_SECTIONS.find((s) => s.id === "content")
 const loading = ref(true)
@@ -15,7 +18,7 @@ const successMsg = ref<string | null>(null)
 async function loadPins() {
   loading.value = true
   try {
-    const res = await getApiAdminHomePins()
+    const res = await getApiAdminHomePins(api)
     pins.value = res.pins
   } catch (err: any) {
     error.value = err?.message ?? "加载置顶失败"
@@ -29,7 +32,7 @@ async function savePins() {
   error.value = null
   successMsg.value = null
   try {
-    await putApiAdminHomePins({
+    await putApiAdminHomePins(api, {
       article_ids: pins.value.map((p) => p.article_id),
     })
     successMsg.value = "首页置顶顺序已保存"

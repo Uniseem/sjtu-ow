@@ -4,6 +4,9 @@ import { getApiAdminMemberGroups, type GetApiAdminMemberGroupsOut } from "@sjtu-
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const membersSection = ADMIN_SECTIONS.find((s) => s.id === "members")
 const loading = ref(true)
@@ -13,7 +16,7 @@ const error = ref<string | null>(null)
 async function loadGroups() {
   loading.value = true
   try {
-    const res = await getApiAdminMemberGroups()
+    const res = await getApiAdminMemberGroups(api)
     groups.value = res.groups
   } catch (err: any) {
     error.value = err?.message ?? "加载成员分组失败"

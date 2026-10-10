@@ -9,6 +9,9 @@ import {
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const contentSection = ADMIN_SECTIONS.find((s) => s.id === "content")
 const loading = ref(true)
@@ -22,8 +25,8 @@ async function loadData() {
   loading.value = true
   try {
     const [imgRes, colRes] = await Promise.all([
-      getApiAdminImages(),
-      getApiAdminImageCollections(),
+      getApiAdminImages(api),
+      getApiAdminImageCollections(api),
     ])
     images.value = imgRes.images
     collections.value = colRes.collections

@@ -1,9 +1,9 @@
 # 当前状态
 
 ```yaml
-milestone: 前台迁移重新开始。260 说的「前台全量移植上线」不成立（文章页 404、图片坏、34 条路由只有标题、后台 17 页不能写）；261 写了前台迁移要求 docs/frontend-migration.md，之后按它逐组重做、和旧站对拍验收。
-round: 261-frontend-migration-requirements
-next: 262 起按 docs/frontend-migration.md 第 11 节做 F1 底座（激活、会话、接口客户端、加载器和错误分流、图片地址、源码守卫、对拍工具）；第 10 节第 1 件（正式站回滚）等用户拍板，窗口约 10-11 到期。
+milestone: 前台迁移重做中（要求 docs/frontend-migration.md，进度看「前台迁移」一节的两张表）。262 做完 F1 底座（一）：真激活、整份会话、生成的接口函数经 createClient、加载器不吞错误和登录门。页面本身还没开始重写。
+round: 262-f1-hydrate-session-client
+next: 263 做 F1 底座（二）：图片出图 B1、sitemap/robots/图标 B2、错误页照旧站 A12、Caddy B6、源码守卫（带待重写白名单）；然后对拍工具和种子数据。第 10 节第 1 件（正式站回滚）等用户拍板，窗口约 10-11 到期。
 updated: 2026-10-10
 blocked_on: 用户拍板 docs/frontend-migration.md 第 10 节（最急：正式站要不要回滚到旧站；新依赖 SortableJS、CodeMirror 6、vue-tsc、Playwright）
 ```
@@ -15,6 +15,18 @@ blocked_on: 用户拍板 docs/frontend-migration.md 第 10 节（最急：正式
 - 一页「完成」的定义见那份文档 9.4：不变量全满足、要点有证据、和旧站对拍通过、旅程通过、报告贴日志
 - 里程碑描述只按下面这张表说话，不再写「全量完成」这种总括句
 - 等用户拍板的六件事在那份文档第 10 节，最急的是第 1 件（正式站要不要趁回滚窗口回滚到旧站）
+
+### 底座进度（文档第 5、8 节）
+
+| 项 | 状态 |
+|---|---|
+| A1 激活（`createSSRApp`，browser-check 验 `#main` 没被换掉） | ✓ 262 |
+| A2 加载器（`ctx.api`、`ctx.query`、不吞错误、`auth: "member"`、客户端换页出错的去向） | ✓ 262（260 的页面还没换成新写法） |
+| A3 接口客户端（生成的函数经 `createClient`、查询参数、超时、连不上 `ApiError(0)`） | ✓ 262 |
+| A4 类型（嵌入摊平、`(T \| null)[]`、切片不会是 null；`vue-tsc` 等拍板） | 半 262 |
+| A6 整份会话进页面（`superuser`、`caps`） | ✓ 262；B3 的头像、资料不全、待发信数、一次性提示还没有 |
+| A5、A7–A14 | — |
+| B1–B8 | — |
 
 ### 前台页面进度
 
@@ -126,6 +138,8 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**262（2026-10-10）**：F1 底座（一）（用户「之后开始写前端吧」）。客户端改成 `createSSRApp` 真激活（browser-check 新加一项：首屏启动时装着 `#main` 的节点不许被移除，换回 `createApp` 就红）；SSR 把 `/api/session` 整份放进页面状态（后台导航要的 `superuser`、`caps` 不再丢）；apigen 重写 TS 输出：每个函数第一个参数是 `createClient` 造的 `Requester`、有查询参数类型、匿名嵌入摊平、`(T | null)[]`、生成物里没有 `fetch`；注册表编码前把 nil 切片和映射换成 `[]`、`{}`；`createClient` 加基地址、查询串、超时、连不上 `ApiError(0)`、`unauthorized: "throw"`；加载器上下文有 `api`、`query`，不吞错误，`auth: "member"` 的 23 条前台地址和全部后台地址 SSR 先送访客去登录，403/404/429 画错误页、其余 503；客户端换页出错整页去拿服务器的错误页、连不上弹提示、分块丢了重载一次。顺带修了 261 提交 CI 红的那条：日历订阅测试的数据钉在 10-09、`Serve` 用墙上的钟，给安排服务加了可换的时钟。11 处变异全红。页面本身没改（下一轮起逐组重写）。下一步：263 做 F1 底座（二）：图片出图（B1）、sitemap/robots/图标（B2）、错误页照旧站（A12）、Caddy（B6）、源码守卫（带待重写白名单）。
 
 **261（2026-10-10）**：前台迁移要求（用户「目前这个新的前端迁移的一塌糊涂。请你给出完整的迁移要求文档」「接进 STATUS 和 AGENTS，作为 261 提交推送。之后开始写前端吧」）。只有文档，没改代码、没动正式站。
 - 核查结论：260 的「前台 16 页面与专用组件全量移植上线」不成立。正式站上文章页全部 404、图片全是坏图（`<img>` 指向返回 JSON 的 `/api/images/{id}`，出图的处理函数没挂路由）、战队页数据错位、成员链接是 `/members/undefined/`、52 条前台路由里 34 条只有标题；后台 17 个该能改东西的页面零写请求，「保存草稿」不发请求就说已保存；个人中心改宣言会顺手把「公开段位」打开；动作产生的信不跳发信页、永远发不出去；客户端用 `createApp` 清空重画，不是激活；一键退订 405；`sitemap.xml`、`robots.txt`、`favicon.ico` 404；`/healthz` 503（磁盘）
@@ -957,6 +971,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 237-m2-static-img | M2 第七轮：`/static/img/` 接到新站，样式用固定地址，缓存一天 | **自查通过**，测试机日志 `20261008-203738-93d25ad` 退出码 0，govulncheck 无漏洞，4 处变异全抓到，browser-check 通过 |
 | 238-m2-styleguide-shots | M2 第八轮：样张和旧站并排截 `#main`，像素差 0.0268% | **自查通过**，截图日志 `20261008-210445-16d8905`、整组日志 `20261008-210654-cfa1fe7` 退出码都是 0，govulncheck 无漏洞，2 处变异全抓到，browser-check 通过。M2 完成标准达到 |
 | 261-frontend-migration-requirements | 前台迁移要求 `docs/frontend-migration.md`：核查正式站和代码（260 的「全量移植」不成立），定不变量、架构要求、每页验收、和旧站对拍的验收方法、待拍板、阶段计划；STATUS 加「前台迁移」一节和页面进度表（只有文档；239–260 见「现在该谁动手」） | **自查通过**，整组日志 `20261010-142854-249e71d` 退出码 0 |
+| 262-f1-hydrate-session-client | F1 底座（一）：`createSSRApp` 真激活、整份会话进页面、apigen 生成的函数经 `createClient`（查询参数、嵌入摊平、`(T \| null)[]`）、注册表 nil 切片编码成 `[]`、加载器上下文和错误分流、`auth: "member"` 登录门；修 261 CI 红的日历测试（可换的时钟） | **自查通过**，整组日志 `20261010-144417-e29bbba`、browser-check `20261010-144510-5cd9496`、变异 `20261010-144137-8de0078`（11 处全红）退出码都是 0 |
 
 ## 当前待定问题
 

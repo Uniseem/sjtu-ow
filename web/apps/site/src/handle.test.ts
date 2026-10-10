@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import { expect, test } from "vitest"
 import { CSP, STATIC_IMG_CACHE, handle, staticImgPath, staticImgRoot, type Incoming } from "../server"
+import { ApiError } from "@sjtu-ow/api"
 import { httpError } from "./router"
 
 function incoming(method: string, url: string, headers: Record<string, string> = {}): Incoming {
@@ -168,4 +169,64 @@ test("an unreachable API is a 503 page", async () => {
   expect(out.status).toBe(503)
   expect(out.body).toContain("站点暂时连不上")
   expect(out.headers["cache-control"]).toBe("no-store")
+})
+
+// ---- 262: login gate, error mapping, the whole session, the loader context ----
+
+test("a page that needs a login sends a visitor to the login page and lets a member in", async () => {
+  const visitor = await handle(incoming("GET", "/me/teams/?x=1"), { ...base, fetch: api(200, { user: null }) })
+  expect(visitor.status).toBe(302)
+  expect(visitor.headers.location).toBe("/accounts/login/?next=" + encodeURIComponent("/me/teams/?x=1"))
+  const member = await handle(incoming("GET", "/me/teams/"), {
+    ...base,
+    fetch: api(200, { user: { id: 3, nickname: "夜蛾", admin: false, superuser: false, caps: [] } }),
+    assets: ASSETS,
+  })
+  expect(member.status).toBe(200)
+  // A public page stays public.
+  const teams = await handle(incoming("GET", "/teams/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  expect(teams.status).toBe(200)
+})
+
+test("a loader's ApiError decides the status: 404, 403, 429 are pages, a dead API is 503", async () => {
+  const at = (load: () => never) =>
+    handle(incoming("GET", "/teams/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS, load })
+  expect((await at(() => { throw new ApiError(404, "not_found", "没有") })).status).toBe(404)
+  expect((await at(() => { throw new ApiError(403, "forbidden", "不行") })).status).toBe(403)
+  expect((await at(() => { throw new ApiError(429, "rate_limited", "太快") })).status).toBe(429)
+  expect((await at(() => { throw new ApiError(0, "network", "连不上") })).status).toBe(503)
+  const missing = await at(() => { throw new ApiError(404, "not_found", "没有") })
+  expect(missing.body).not.toContain('id="ow-state"')
+})
+
+test("the whole session goes into the page state, caps and all", async () => {
+  const user = { id: 9, nickname: "站长", email: "a@b.c", admin: true, superuser: false, caps: ["scrims.manage"], email_verified: true, is_sjtu: true }
+  const out = await handle(incoming("GET", "/"), { ...base, fetch: api(200, { user }), assets: ASSETS })
+  const state = JSON.parse(out.body.match(/id="ow-state">([\s\S]*?)<\/script>/)![1])
+  expect(state.viewer.user).toEqual(user)
+})
+
+test("a loader gets the API client, the params and the query", async () => {
+  const seen: { url?: string; params?: unknown; query?: unknown; got?: unknown } = {}
+  const out = await handle(incoming("GET", "/teams/12/?tab=x"), {
+    apiBase: "http://api.test",
+    fetch: (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/api/session")) return new Response(JSON.stringify({ user: null }))
+      seen.url = url
+      return new Response(JSON.stringify({ team: { name: "夜航" } }))
+    }) as typeof fetch,
+    assets: ASSETS,
+    load: async (ctx) => {
+      seen.params = ctx.params
+      seen.query = ctx.query
+      seen.got = await ctx.api("GET", "/api/teams/{id}", { params: { id: ctx.params.id } })
+      return { title: "夜航" }
+    },
+  })
+  expect(out.status).toBe(200)
+  expect(seen.params).toEqual({ id: "12" })
+  expect(seen.query).toEqual({ tab: "x" })
+  expect(seen.url).toBe("http://api.test/api/teams/12")
+  expect(seen.got).toEqual({ team: { name: "夜航" } })
 })

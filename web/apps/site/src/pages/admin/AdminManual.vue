@@ -3,6 +3,9 @@ import { ref, onMounted } from "vue"
 import { getApiAdminManual, type GetApiAdminManualOut } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const loading = ref(true)
 const sections = ref<GetApiAdminManualOut["sections"]>([])
@@ -11,7 +14,7 @@ const error = ref<string | null>(null)
 async function loadManual() {
   loading.value = true
   try {
-    const res = await getApiAdminManual()
+    const res = await getApiAdminManual(api)
     sections.value = res.sections
   } catch (err: any) {
     error.value = err?.message ?? "加载干部手册失败"

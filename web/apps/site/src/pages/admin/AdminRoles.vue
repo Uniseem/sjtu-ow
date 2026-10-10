@@ -4,6 +4,9 @@ import { getApiAdminFeatureRoleRestrictions, type GetApiAdminFeatureRoleRestrict
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const membersSection = ADMIN_SECTIONS.find((s) => s.id === "members")
 const usersTab = membersSection?.tabs.find((t) => t.id === "users")
@@ -15,7 +18,7 @@ const error = ref<string | null>(null)
 async function loadRestrictions() {
   loading.value = true
   try {
-    const res = await getApiAdminFeatureRoleRestrictions()
+    const res = await getApiAdminFeatureRoleRestrictions(api)
     restrictions.value = res.restrictions
   } catch (err: any) {
     error.value = err?.message ?? "加载角色限制失败"

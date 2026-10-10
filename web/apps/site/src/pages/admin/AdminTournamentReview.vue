@@ -9,6 +9,9 @@ import {
 } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const route = useRoute()
 const id = ref((route.params.id as string) || "")
@@ -20,7 +23,7 @@ const successMsg = ref<string | null>(null)
 async function loadRegistrations() {
   loading.value = true
   try {
-    const res = await getApiAdminTournamentsIdRegistrations(id.value)
+    const res = await getApiAdminTournamentsIdRegistrations(api, id.value)
     registrations.value = res.registrations
   } catch (err: any) {
     error.value = err?.message ?? "加载报名记录失败"
@@ -31,7 +34,7 @@ async function loadRegistrations() {
 
 async function approve(regId: number) {
   try {
-    await postApiAdminRegistrationsIdApprove(String(regId))
+    await postApiAdminRegistrationsIdApprove(api, String(regId))
     successMsg.value = `报名 #${regId} 已通过审核`
     await loadRegistrations()
   } catch (err: any) {
@@ -43,7 +46,7 @@ async function reject(regId: number) {
   const reason = prompt("请输入驳回原因：")
   if (!reason) return
   try {
-    await postApiAdminRegistrationsIdReject(String(regId), { reason })
+    await postApiAdminRegistrationsIdReject(api, String(regId), { reason })
     successMsg.value = `报名 #${regId} 已驳回`
     await loadRegistrations()
   } catch (err: any) {

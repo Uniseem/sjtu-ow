@@ -4,6 +4,9 @@ import { useRoute } from "vue-router"
 import { getApiAdminScrimsId, type GetApiAdminScrimsIdOut } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const route = useRoute()
 const id = ref((route.params.id as string) || "")
@@ -21,7 +24,7 @@ const successMsg = ref<string | null>(null)
 onMounted(async () => {
   if (!isNew) {
     try {
-      const res = await getApiAdminScrimsId(id.value)
+      const res = await getApiAdminScrimsId(api, id.value)
       if (res.scrim) {
         title.value = res.scrim.title
         format.value = res.scrim.format

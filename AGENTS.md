@@ -250,6 +250,7 @@ Host sjtu-ow-test
 - **客户端要用 `createSSRApp` 才是激活**（261）：`createApp(...).mount()` 会先把容器 `textContent` 清空再画一遍（Vue 3.5 的 `runtime-dom`），看起来和激活一样，激活不一致永远测不出来。233–260 的 `entry-client` 就是这样，`browser-check` 的「激活」一项一直是白过的
 - **`/api/images/{id}` 返回的是图片信息的 JSON，不是图**（261）：拿它当 `<img src>` 全是坏图。出图走 `/media/r/<编号>/<规格>.webp`（规格只认 `media.AllowedSpecs`），正文里旧的 `/media/images/*` 照旧
 - **前台的状态码别靠页面自己判断**（261）：260 的页面在 `load` 里 `catch {}` 把接口的 401/404 吞成 `null`，于是不存在的战队是 200 加一句「不存在」、访客能打开 `/me/`。`load` 不吞错误，交给 `server.ts` 按状态码分流
+- **测试机的 `go test` 会用缓存，依赖日期的测试在那里一直「绿」**（262）：日历订阅测试的数据钉在 10-09、`Serve` 用墙上的钟，10-10 起其实已经红了，测试机整组显示 `(cached)` 照样过，只有 CI 红。业务代码取「现在」走 `ctx.Now()` 或注入的 `clock.Clock`，别直接 `time.Now()`；改了日期相关的东西，单条跑加 `-count=1`
 - **「200 OK」不等于页面对**（261）：260 拿「公网实测渲染 200」当验收，文章页 404、半数页面只有标题都没发现。前台的完成要和旧站对拍（`docs/frontend-migration.md` 第 9 节）
 
 ## 改了什么，就更新哪份文档

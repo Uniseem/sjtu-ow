@@ -4,6 +4,9 @@ import { getApiAdminCategories, type GetApiAdminCategoriesOut } from "@sjtu-ow/a
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const contentSection = ADMIN_SECTIONS.find((s) => s.id === "content")
 const loading = ref(true)
@@ -13,7 +16,7 @@ const error = ref<string | null>(null)
 async function loadCategories() {
   loading.value = true
   try {
-    const res = await getApiAdminCategories()
+    const res = await getApiAdminCategories(api)
     categories.value = res.categories
   } catch (err: any) {
     error.value = err?.message ?? "加载分类失败"

@@ -4,6 +4,9 @@ import { useRoute } from "vue-router"
 import { getApiAdminArticlesId, type GetApiAdminArticlesIdOut } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const route = useRoute()
 const id = ref((route.params.id as string) || "")
@@ -23,7 +26,7 @@ const status = ref("draft")
 onMounted(async () => {
   if (!isNew) {
     try {
-      const res = await getApiAdminArticlesId(id.value)
+      const res = await getApiAdminArticlesId(api, id.value)
       if (res.article) {
         title.value = res.article.title
         slug.value = res.article.slug

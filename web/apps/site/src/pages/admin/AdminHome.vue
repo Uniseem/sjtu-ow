@@ -4,6 +4,9 @@ import { useViewer } from "../../viewer"
 import { getApiAdminTodo, type GetApiAdminTodoOut } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const viewer = useViewer()
 const loading = ref(true)
@@ -12,7 +15,7 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const res = await getApiAdminTodo()
+    const res = await getApiAdminTodo(api)
     todo.value = res.todo
   } catch (err: any) {
     error.value = err?.message ?? "加载待办失败"

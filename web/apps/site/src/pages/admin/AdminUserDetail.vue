@@ -4,6 +4,9 @@ import { useRoute } from "vue-router"
 import { getApiAdminUsersId, type GetApiAdminUsersIdOut } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const route = useRoute()
 const id = ref((route.params.id as string) || "")
@@ -14,7 +17,7 @@ const error = ref<string | null>(null)
 async function loadUser() {
   loading.value = true
   try {
-    const res = await getApiAdminUsersId(id.value)
+    const res = await getApiAdminUsersId(api, id.value)
     user.value = res.user
   } catch (err: any) {
     error.value = err?.message ?? "加载用户详情失败"

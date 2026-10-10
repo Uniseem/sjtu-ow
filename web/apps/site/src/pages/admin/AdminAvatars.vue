@@ -4,6 +4,9 @@ import { getApiAdminAvatars, postApiAdminAvatarsIdTakeDown, type GetApiAdminAvat
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const reviewSection = ADMIN_SECTIONS.find((s) => s.id === "review")
 const loading = ref(true)
@@ -14,7 +17,7 @@ const successMsg = ref<string | null>(null)
 async function loadAvatars() {
   loading.value = true
   try {
-    const res = await getApiAdminAvatars()
+    const res = await getApiAdminAvatars(api)
     avatars.value = res.avatars
   } catch (err: any) {
     error.value = err?.message ?? "加载头像列表失败"
@@ -27,7 +30,7 @@ async function takeDown(id: number) {
   const reason = prompt("请输入下架头像的原因：", "违反社区头像规范")
   if (!reason) return
   try {
-    await postApiAdminAvatarsIdTakeDown(String(id), { reason })
+    await postApiAdminAvatarsIdTakeDown(api, String(id), { reason })
     successMsg.value = `头像记录 #${id} 已下架`
     await loadAvatars()
   } catch (err: any) {

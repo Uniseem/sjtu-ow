@@ -4,6 +4,9 @@ import { getApiAdminScrims, type GetApiAdminScrimsOut } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const eventsSection = ADMIN_SECTIONS.find((s) => s.id === "events")
 const loading = ref(true)
@@ -13,7 +16,7 @@ const error = ref<string | null>(null)
 async function loadScrims() {
   loading.value = true
   try {
-    const res = await getApiAdminScrims()
+    const res = await getApiAdminScrims(api)
     scrims.value = res.scrims
   } catch (err: any) {
     error.value = err?.message ?? "加载内战列表失败"

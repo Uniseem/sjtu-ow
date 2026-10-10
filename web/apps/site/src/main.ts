@@ -1,11 +1,15 @@
 import { createHead as createClientHead } from "@unhead/vue/client"
 import { createHead as createServerHead } from "@unhead/vue/server"
-import { createApp as createCSR, createSSRApp, type App as VueApp } from "vue"
+import { createSSRApp } from "vue"
 import App from "./App.vue"
 import { createSiteRouter } from "./router"
 
+// Both sides use createSSRApp: on the server it renders to a string, in the
+// browser mount() hydrates the server's DOM. createApp() would clear the
+// container and paint it again, and a hydration mismatch could never show
+// (frontend-migration A1; 233–261 did that).
 export function createApp(ssr: boolean) {
-  const app: VueApp = ssr ? createSSRApp(App) : createCSR(App)
+  const app = createSSRApp(App)
   const router = createSiteRouter(ssr)
   const head = ssr ? createServerHead() : createClientHead()
   head.push({

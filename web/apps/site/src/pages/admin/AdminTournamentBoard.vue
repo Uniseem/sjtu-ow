@@ -4,6 +4,9 @@ import { useRoute } from "vue-router"
 import { getApiAdminTournamentsIdBoard, type GetApiAdminTournamentsIdBoardOut } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
 import CIcon from "../../components/CIcon.vue"
+import { useApi } from "../../api"
+
+const api = useApi()
 
 const route = useRoute()
 const id = ref((route.params.id as string) || "")
@@ -15,7 +18,7 @@ const saving = ref(false)
 async function loadBoard() {
   loading.value = true
   try {
-    const res = await getApiAdminTournamentsIdBoard(id.value)
+    const res = await getApiAdminTournamentsIdBoard(api, id.value)
     board.value = res
   } catch (err: any) {
     error.value = err?.message ?? "加载编队板失败"

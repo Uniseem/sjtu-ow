@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { ApiError, createClient } from "./src/client"
+import { ApiError, buildURL, createClient } from "./src/client"
 
 function fake(status: number, body: unknown, seen: { headers: Headers; url: string }) {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -91,4 +91,42 @@ test("a 422 keeps the field errors", async () => {
     expect(api.status).toBe(422)
     expect(api.fields).toEqual({ name: ["太短"] })
   }
+})
+
+test("the base, path params and query string are joined; empty query values are left out", async () => {
+  const seen = { headers: new Headers(), url: "" }
+  const request = createClient({ fetch: fake(200, {}, seen), base: "http://api.test" })
+  await request("GET", "/api/teams/{id}", { params: { id: 12 }, query: { page: 2, category: "公告", q: "", x: undefined } })
+  expect(seen.url).toBe("http://api.test/api/teams/12?page=2&category=" + encodeURIComponent("公告"))
+  expect(buildURL("/api/a/{id}/b", { params: { id: "1/2" } })).toBe("/api/a/1%2F2/b")
+})
+
+test("a network failure becomes an ApiError with status 0", async () => {
+  const request = createClient({
+    fetch: (async () => {
+      throw new TypeError("fetch failed")
+    }) as typeof fetch,
+  })
+  try {
+    await request("GET", "/api/session")
+    expect.fail("应该抛出")
+  } catch (err) {
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).status).toBe(0)
+    expect((err as ApiError).code).toBe("network")
+  }
+})
+
+test("unauthorized: throw leaves the page where it is", async () => {
+  const seen = { headers: new Headers(), url: "" }
+  const request = createClient({
+    fetch: fake(401, { error: { code: "unauthorized", message: "请先登录" } }, seen),
+    assign: () => {
+      throw new Error("不该跳转")
+    },
+  })
+  await expect(request("PATCH", "/api/me/profile", { body: {}, unauthorized: "throw" })).rejects.toMatchObject({
+    status: 401,
+    message: "请先登录",
+  })
 })

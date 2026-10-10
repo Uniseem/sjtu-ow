@@ -112,6 +112,15 @@ async function main() {
       "window.matchMedia = (q) => q === '(pointer: fine)' ? { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} } : realMatchMedia(q);",
   })
 
+  // Hydration keeps the server's DOM: nothing that holds #main may be removed
+  // while the first page starts. createApp() (clear and paint again) and a
+  // mismatch (node replaced) both remove it (frontend-migration A1).
+  await send("Page.addScriptToEvaluateOnNewDocument", {
+    source:
+      "window.__ssrReplaced = [];" +
+      "new MutationObserver((records) => { for (const r of records) for (const n of r.removedNodes) if (n.nodeType === 1 && (n.id === 'main' || (n.querySelector && n.querySelector('#main')))) window.__ssrReplaced.push(n.id || n.tagName); }).observe(document, { childList: true, subtree: true });",
+  })
+
   const noted = () =>
     events
       .filter((e) => ["Log.entryAdded", "Runtime.exceptionThrown", "Runtime.consoleAPICalled"].includes(e.method))
@@ -157,8 +166,10 @@ async function main() {
     entryScript: document.querySelector("script[type=module]")?.getAttribute("src"),
     themeHidden: document.querySelector(".c-theme")?.hasAttribute("hidden"),
     banner: !!document.querySelector(".c-nojs"),
+    replaced: window.__ssrReplaced,
   })`)
   if (!home.jsReady) fail("激活", home)
+  if (home.replaced?.length !== 0) fail("没有激活：服务端画的 #main 被换掉了", home)
   if ((home.h1 !== "SJTU-OW" && home.h1 !== "上海交通大学守望先锋社区") || home.title !== "SJTU-OW") fail("首页标题", home)
   if (home.nav.join(",") !== "首页,资讯,赛事,内战,战队,成员") fail("导航", home)
   if (!home.footer) fail("页脚", home)
