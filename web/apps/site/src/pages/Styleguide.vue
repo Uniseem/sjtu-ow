@@ -2,21 +2,24 @@
 import { inject } from "vue"
 import { useHead } from "@unhead/vue"
 import CIcon from "../components/CIcon.vue"
+import CRank from "@sjtu-ow/ui/CRank.vue"
+import CRoleIcon from "@sjtu-ow/ui/CRoleIcon.vue"
+import CStatus from "@sjtu-ow/ui/CStatus.vue"
+import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
+import CSeats from "@sjtu-ow/ui/CSeats.vue"
+import CField from "@sjtu-ow/ui/CField.vue"
+import CAvatar from "@sjtu-ow/ui/CAvatar.vue"
+import CRegStatus from "@sjtu-ow/ui/CRegStatus.vue"
 import SectionHead from "../components/SectionHead.vue"
 import { initial } from "../initial"
 import type { PageData } from "../router"
-import { COLOURS, PEOPLE, PLACEHOLDERS, ROWS, SPECIMEN_ICONS, STATUSES, rankParts, sampleClock, seats } from "../specimen"
+import { COLOURS, PEOPLE, PLACEHOLDERS, ROWS, SPECIMEN_ICONS, STATUSES, sampleClock } from "../specimen"
 
 const data = inject<PageData>("page-data")
 const clock = data?.clock ?? sampleClock()
 useHead({ title: "设计体系样张 · SJTU-OW" })
 
-function rank(label: string): { none: boolean; name: string; number: string } {
-  if (!label || label === "未定级") return { none: true, name: "", number: "" }
-  const [name, number] = rankParts(label)
-  return { none: false, name, number }
-}
-const ranks = ["钻石 3", "前 500", "未定级"].map((label) => ({ label, ...rank(label) }))
+const ranks = ["钻石 3", "前 500", "未定级"].map((label) => ({ label }))
 const coverNight = "/static/img/placeholders/cover-07.svg"
 const coverArticle = "/static/img/placeholders/cover-05.svg"
 </script>
@@ -66,8 +69,7 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
           <dt>段位</dt>
           <dd>
             <template v-for="item in ranks" :key="item.label">
-              <span v-if="item.none" class="c-rank c-rank--none">未定级</span>
-              <span v-else class="c-rank">{{ item.name }}<template v-if="item.number"> <span class="c-rank__div">{{ item.number }}</span></template></span>
+              <CRank :label="item.label" />
               {{ "　" }}
             </template>
           </dd>
@@ -92,7 +94,7 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
         </div>
         <div>
           <p class="mb-3 text-sm text-fg-2">进度条：已报 8 / 10</p>
-          <span class="c-seats" role="img" aria-label="已报 8 人，一场需要 10 人" data-seats><i v-for="(on, i) in seats(8, 10)" :key="i" :class="{ 'is-taken': on }"></i></span>
+          <CSeats :taken="8" :total="10" />
         </div>
       </div>
     </section>
@@ -118,15 +120,11 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
           <span class="c-tag">战报</span><span class="c-tag">角色限定 5v5</span><span class="c-tag c-tag--strong">仅限交大</span><span class="c-tag c-tag--accent">置顶</span>
         </div>
         <div class="flex flex-wrap items-center gap-6">
-          <span v-for="[kind, label] in STATUSES" :key="kind" class="c-status" :class="'c-status--' + kind">{{ label }}</span>
+          <CStatus v-for="[kind, label] in STATUSES" :key="kind" :kind="kind" :label="label" />
         </div>
         <div class="flex flex-wrap items-center gap-6">
-          <span class="c-roles">
-            <span class="c-role"><CIcon name="role-tank" class="size-3.5" />坦克</span>
-            <span class="c-role"><CIcon name="role-damage" class="size-3.5" />输出</span>
-            <span class="c-role"><CIcon name="role-support" class="size-3.5" />支援</span>
-          </span>
-          <span class="c-roles"><span class="c-role"><CIcon name="role-support" class="size-3.5" />支援</span></span>
+          <CRoleIcon tank damage support />
+          <CRoleIcon support />
         </div>
       </div>
     </section>
@@ -173,9 +171,9 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
         <table class="c-table c-table--stack">
           <thead><tr><th scope="col">队伍</th><th scope="col">人数</th><th scope="col">状态</th><th scope="col" class="is-num">提交时间</th></tr></thead>
           <tbody>
-            <tr><td data-label="队伍">思源</td><td data-label="人数" class="font-numeric">6</td><td data-label="状态"><span class="c-status c-status--ok">已通过</span></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
-            <tr><td data-label="队伍">东川路电竞</td><td data-label="人数" class="font-numeric">5</td><td data-label="状态"><span class="c-status c-status--warn">待审核</span></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
-            <tr><td data-label="队伍">零点整</td><td data-label="人数" class="font-numeric">7</td><td data-label="状态"><span class="c-status c-status--rejected">已驳回</span></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
+            <tr><td data-label="队伍">思源</td><td data-label="人数" class="font-numeric">6</td><td data-label="状态"><CRegStatus status="approved" label="已通过" /></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
+            <tr><td data-label="队伍">东川路电竞</td><td data-label="人数" class="font-numeric">5</td><td data-label="状态"><CRegStatus status="pending" label="待审核" /></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
+            <tr><td data-label="队伍">零点整</td><td data-label="人数" class="font-numeric">7</td><td data-label="状态"><CRegStatus status="rejected" label="已驳回" /></td><td data-label="提交时间" class="is-num font-numeric">{{ clock.pastMd }} {{ clock.pastTime }}</td></tr>
           </tbody>
         </table>
       </div>
@@ -217,23 +215,20 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
             <label class="c-choice"><input type="checkbox"><CIcon name="role-damage" class="size-4" />输出</label>
             <label class="c-choice"><input type="checkbox" checked><CIcon name="role-support" class="size-4" />支援</label>
           </div>
-          <div class="c-field is-invalid">
-            <label class="c-field__label" for="sg-name">队名<span class="c-field__req" aria-hidden="true">*</span></label>
+          <CField label="队名" input-id="sg-name" required :errors="['这个队名已经有人用了。']">
             <input id="sg-name" type="text" value="思源">
-            <p class="c-field__error" role="alert"><CIcon name="alert" /><span>这个队名已经有人用了。</span></p>
-          </div>
-          <div class="c-field">
-            <label class="c-field__label" for="sg-note">留言</label>
+          </CField>
+          <CField label="留言" input-id="sg-note">
             <textarea id="sg-note" placeholder="想对队长说的话（选填）"></textarea>
-          </div>
+          </CField>
           <div class="c-field">
             <label class="c-field__label" for="sg-file">上传新头像</label>
             <input id="sg-file" type="file" accept="image/jpeg,image/png,image/webp">
             <p class="c-field__help">JPG、PNG 或 WebP，不超过 5MB。文件选择框（v6.11）。</p>
           </div>
           <div class="c-faces">
-            <figure><span class="c-avatar c-avatar--lg c-hue-2" aria-hidden="true">小</span><figcaption>现在是默认头像</figcaption></figure>
-            <figure><span class="c-avatar c-avatar--lg c-hue-4" aria-hidden="true">新</span><figcaption>审核中</figcaption></figure>
+            <figure><CAvatar :person="{ id: 1, nickname: '小' }" size="lg" /><figcaption>现在是默认头像</figcaption></figure>
+            <figure><CAvatar :person="{ id: 3, nickname: '新' }" size="lg" /><figcaption>审核中</figcaption></figure>
           </div>
           <label class="c-check"><input type="checkbox" checked>我已阅读并同意赛事规则</label>
         </div>
@@ -252,11 +247,7 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
         <div class="c-notice c-notice--ok"><CIcon name="check-circle" /><div class="c-notice__body">报名已通过。</div></div>
         <div class="c-notice c-notice--error"><CIcon name="x-circle" /><div class="c-notice__body">提交失败：名单里有人已经在别的队伍报名了这场赛事。</div></div>
       </div>
-      <div class="c-empty mt-8">
-        <p class="c-empty__title">还没有战队</p>
-        <p class="c-empty__text">第一支战队可以由你来建。</p>
-        <a href="#sg-feedback" class="c-btn c-btn--secondary">创建战队</a>
-      </div>
+      <CEmpty class="mt-8" title="还没有战队" message="第一支战队可以由你来建。" action-url="#sg-feedback" action-label="创建战队" />
       <nav class="c-pager" aria-label="分页示例">
         <span class="c-btn c-btn--secondary c-btn--sm" aria-disabled="true"><CIcon name="arrow-left" />上一页</span>
         <span class="c-pager__pos"><strong>1</strong> / 7</span>
@@ -316,7 +307,7 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
             <div class="c-row__main">
               <h3 class="c-row__title"><a href="#sg-night" class="c-stretch">周五夜间内战</a></h3>
               <p class="c-row__meta">{{ clock.dayWeekday }} {{ clock.dayTime }} · 角色限定 5v5 · 已报 8 / 10</p>
-              <span class="c-seats" role="img" aria-label="已报 8 人，一场需要 10 人" data-seats><i v-for="(on, i) in seats(8, 10)" :key="'n' + i" :class="{ 'is-taken': on }"></i></span>
+              <CSeats :taken="8" :total="10" />
             </div>
             <span class="c-status c-status--live">报名中</span>
           </li>
@@ -364,7 +355,7 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
             <div class="c-row__main">
               <h3 class="c-row__title"><a href="#sg-home" class="c-stretch">周五晚 5v5 内战</a></h3>
               <p class="c-row__meta">周五 19:30 · 已报 8 / 10</p>
-              <span class="c-seats" role="img" aria-label="已报 8 人，一场需要 10 人" data-seats><i v-for="(on, i) in seats(8, 10)" :key="'h' + i" :class="{ 'is-taken': on }"></i></span>
+              <CSeats :taken="8" :total="10" />
             </div>
             <span class="c-status c-status--live">报名中</span>
           </li>
@@ -373,7 +364,7 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
             <div class="c-row__main">
               <h3 class="c-row__title"><a href="#sg-home" class="c-stretch">周日 6v6 娱乐内战</a></h3>
               <p class="c-row__meta">周日 14:00 · 已报 12 / 12</p>
-              <span class="c-seats" role="img" aria-label="已报 12 人，一场需要 12 人" data-seats><i v-for="(on, i) in seats(12, 12)" :key="'f' + i" :class="{ 'is-taken': on }"></i></span>
+              <CSeats :taken="12" :total="12" />
             </div>
             <span class="c-status">报名已截止</span>
           </li>

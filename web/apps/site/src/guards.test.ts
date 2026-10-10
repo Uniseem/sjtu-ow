@@ -60,7 +60,8 @@ const PENDING_REWRITE = new Set([
   "pages/admin/AdminUsers.vue",
 ])
 
-const files = globSync("**/*.{vue,ts}", { cwd: SRC }).filter((f) => !f.endsWith(".test.ts"))
+const siteFiles = globSync("**/*.{vue,ts}", { cwd: SRC }).filter((f) => !f.endsWith(".test.ts"))
+const files = [...siteFiles, ...globSync("web/packages/{ui,shared}/src/**/*.{vue,ts}", { cwd: REPO }).filter((f) => !f.endsWith(".test.ts")).map((f) => relative(SRC, resolve(REPO, f)))]
 const vue = files.filter((f) => f.endsWith(".vue"))
 const read = (f: string) => readFileSync(resolve(SRC, f), "utf8")
 const templateOf = (source: string) => {

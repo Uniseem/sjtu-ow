@@ -20,6 +20,12 @@ importers:
       '@sjtu-ow/styles':
         specifier: workspace:*
         version: link:../../packages/styles
+      '@sjtu-ow/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@sjtu-ow/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@unhead/vue':
         specifier: ^2.0.0
         version: 2.1.17(vue@3.5.43)
@@ -41,6 +47,21 @@ importers:
         version: 3.2.7(jiti@2.7.0)(lightningcss@1.32.0)
 
   packages/api: {}
+
+  packages/shared:
+    dependencies:
+      '@sjtu-ow/api':
+        specifier: workspace:*
+        version: link:../api
+
+  packages/ui:
+    dependencies:
+      '@sjtu-ow/shared':
+        specifier: workspace:*
+        version: link:../shared
+      vue:
+        specifier: ^3.5.0
+        version: 3.5.43
 
   packages/styles:
     devDependencies:

@@ -1,0 +1,14 @@
+{
+  "name": "@sjtu-ow/ui",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*.vue": "./src/*.vue",
+    "./icons": "./src/icons.ts",
+    "./types": "./src/types.ts"
+  },
+  "dependencies": {
+    "@sjtu-ow/shared": "workspace:*",
+    "vue": "^3.5.0"
+  }
+}

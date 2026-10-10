@@ -11,7 +11,9 @@
     "@sjtu-ow/styles": "workspace:*",
     "@unhead/vue": "^2.0.0",
     "vue": "^3.5.0",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "@sjtu-ow/ui": "workspace:*",
+    "@sjtu-ow/shared": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",

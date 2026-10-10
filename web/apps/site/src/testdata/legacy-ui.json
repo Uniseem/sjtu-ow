@@ -1,0 +1,631 @@
+[
+  {
+    "component": "CEmpty",
+    "props": {},
+    "html": "\n<div class=\"c-empty\">\n  <p class=\"c-empty__title\">暂无内容</p>\n  \n  \n</div>\n"
+  },
+  {
+    "component": "CEmpty",
+    "props": {
+      "title": "还没有战队",
+      "message": "第一支战队可以由你来建。",
+      "actionUrl": "/teams/new/",
+      "actionLabel": "创建战队"
+    },
+    "html": "\n<div class=\"c-empty\">\n  <p class=\"c-empty__title\">还没有战队</p>\n  <p class=\"c-empty__text\">第一支战队可以由你来建。</p>\n  \n    <a href=\"/teams/new/\" class=\"c-btn c-btn--secondary\">创建战队</a>\n  \n</div>\n"
+  },
+  {
+    "component": "CEmpty",
+    "props": {
+      "title": "<script>"
+    },
+    "html": "\n<div class=\"c-empty\">\n  <p class=\"c-empty__title\">&lt;script&gt;</p>\n  \n  \n</div>\n"
+  },
+  {
+    "component": "CEmpty",
+    "props": {
+      "actionUrl": "/teams/new/"
+    },
+    "html": "\n<div class=\"c-empty\">\n  <p class=\"c-empty__title\">暂无内容</p>\n  \n  \n</div>\n"
+  },
+  {
+    "component": "CRank",
+    "props": {
+      "label": ""
+    },
+    "html": "\n\n  \n    <span class=\"c-rank c-rank--none\">未定级</span>\n  \n\n"
+  },
+  {
+    "component": "CRank",
+    "props": {
+      "label": "未定级"
+    },
+    "html": "\n\n  \n    <span class=\"c-rank c-rank--none\">未定级</span>\n  \n\n"
+  },
+  {
+    "component": "CRank",
+    "props": {
+      "label": "钻石 3"
+    },
+    "html": "\n\n  \n    <span class=\"c-rank\">钻石 <span class=\"c-rank__div\">3</span></span>\n  \n\n"
+  },
+  {
+    "component": "CRank",
+    "props": {
+      "label": "前 500"
+    },
+    "html": "\n\n  \n    <span class=\"c-rank\">前 <span class=\"c-rank__div\">500</span></span>\n  \n\n"
+  },
+  {
+    "component": "CRank",
+    "props": {
+      "label": "宗师"
+    },
+    "html": "\n\n  \n    <span class=\"c-rank\">宗师</span>\n  \n\n"
+  },
+  {
+    "component": "CRank",
+    "props": {
+      "label": "大师 1"
+    },
+    "html": "\n\n  \n    <span class=\"c-rank\">大师 <span class=\"c-rank__div\">1</span></span>\n  \n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "live",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--live\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "ok",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--ok\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "warn",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--warn\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "info",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--info\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "done",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--done\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "off",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--off\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "rejected",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--rejected\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "success",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--ok\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "warning",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--warn\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "error",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--rejected\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "neutral",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--done\">状态</span>\n\n"
+  },
+  {
+    "component": "CStatus",
+    "props": {
+      "kind": "primary",
+      "label": "状态"
+    },
+    "html": "\n\n  <span class=\"c-status c-status--live\">状态</span>\n\n"
+  },
+  {
+    "component": "CRegStatus",
+    "props": {
+      "status": "approved",
+      "label": "已通过"
+    },
+    "html": "\n\n\n  <span class=\"c-status c-status--ok\">已通过</span>\n\n\n\n"
+  },
+  {
+    "component": "CRegStatus",
+    "props": {
+      "status": "pending",
+      "label": "待审核"
+    },
+    "html": "\n\n\n  <span class=\"c-status c-status--warn\">待审核</span>\n\n\n\n"
+  },
+  {
+    "component": "CRegStatus",
+    "props": {
+      "status": "rejected",
+      "label": "已驳回"
+    },
+    "html": "\n\n\n  <span class=\"c-status c-status--rejected\">已驳回</span>\n\n\n\n"
+  },
+  {
+    "component": "CRegStatus",
+    "props": {
+      "status": "withdrawn",
+      "label": "已撤销"
+    },
+    "html": "\n\n\n  <span class=\"c-status c-status--off\">已撤销</span>\n\n\n"
+  },
+  {
+    "component": "CSeats",
+    "props": {
+      "taken": 0,
+      "total": 0
+    },
+    "html": "\n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 0 人，一场需要 0 人\" data-seats></span>\n"
+  },
+  {
+    "component": "CSeats",
+    "props": {
+      "taken": 8,
+      "total": 10
+    },
+    "html": "\n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 8 人，一场需要 10 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i></i><i></i></span>\n"
+  },
+  {
+    "component": "CSeats",
+    "props": {
+      "taken": 12,
+      "total": 10
+    },
+    "html": "\n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 12 人，一场需要 10 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i></span>\n"
+  },
+  {
+    "component": "CSeats",
+    "props": {
+      "taken": -3,
+      "total": 10
+    },
+    "html": "\n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 -3 人，一场需要 10 人\" data-seats><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>\n"
+  },
+  {
+    "component": "CSeats",
+    "props": {
+      "taken": 25,
+      "total": 50
+    },
+    "html": "\n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 25 人，一场需要 50 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>\n"
+  },
+  {
+    "component": "CSeats",
+    "props": {
+      "taken": 1,
+      "total": 48
+    },
+    "html": "\n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 1 人，一场需要 48 人\" data-seats><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>\n"
+  },
+  {
+    "component": "CSeats",
+    "props": {
+      "taken": 3,
+      "total": 48
+    },
+    "html": "\n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 3 人，一场需要 48 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>\n"
+  },
+  {
+    "component": "CSeats",
+    "props": {
+      "taken": 75,
+      "total": 100
+    },
+    "html": "\n\n\n<span class=\"c-seats\" role=\"img\" aria-label=\"已报 75 人，一场需要 100 人\" data-seats><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i class=\"is-taken\"></i><i></i><i></i><i></i><i></i><i></i><i></i></span>\n"
+  },
+  {
+    "component": "CRoleIcon",
+    "props": {
+      "tank": false,
+      "damage": false,
+      "support": false
+    },
+    "html": "\n<span class=\"c-roles\">\n  \n  \n  \n</span>\n"
+  },
+  {
+    "component": "CRoleIcon",
+    "props": {
+      "tank": true,
+      "damage": false,
+      "support": false
+    },
+    "html": "\n<span class=\"c-roles\">\n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M5 4h14v8c0 4-3.2 7-7 8.5C8.2 19 5 16 5 12V4zM9 9h6\"/>\n  \n</svg>\n坦克</span>\n  \n  \n</span>\n"
+  },
+  {
+    "component": "CRoleIcon",
+    "props": {
+      "tank": false,
+      "damage": true,
+      "support": false
+    },
+    "html": "\n<span class=\"c-roles\">\n  \n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3v5M12 16v5M3 12h5M16 12h5M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z\"/>\n  \n</svg>\n输出</span>\n  \n</span>\n"
+  },
+  {
+    "component": "CRoleIcon",
+    "props": {
+      "tank": true,
+      "damage": true,
+      "support": false
+    },
+    "html": "\n<span class=\"c-roles\">\n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M5 4h14v8c0 4-3.2 7-7 8.5C8.2 19 5 16 5 12V4zM9 9h6\"/>\n  \n</svg>\n坦克</span>\n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3v5M12 16v5M3 12h5M16 12h5M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z\"/>\n  \n</svg>\n输出</span>\n  \n</span>\n"
+  },
+  {
+    "component": "CRoleIcon",
+    "props": {
+      "tank": false,
+      "damage": false,
+      "support": true
+    },
+    "html": "\n<span class=\"c-roles\">\n  \n  \n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z\"/>\n  \n</svg>\n支援</span>\n</span>\n"
+  },
+  {
+    "component": "CRoleIcon",
+    "props": {
+      "tank": true,
+      "damage": false,
+      "support": true
+    },
+    "html": "\n<span class=\"c-roles\">\n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M5 4h14v8c0 4-3.2 7-7 8.5C8.2 19 5 16 5 12V4zM9 9h6\"/>\n  \n</svg>\n坦克</span>\n  \n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z\"/>\n  \n</svg>\n支援</span>\n</span>\n"
+  },
+  {
+    "component": "CRoleIcon",
+    "props": {
+      "tank": false,
+      "damage": true,
+      "support": true
+    },
+    "html": "\n<span class=\"c-roles\">\n  \n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3v5M12 16v5M3 12h5M16 12h5M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z\"/>\n  \n</svg>\n输出</span>\n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z\"/>\n  \n</svg>\n支援</span>\n</span>\n"
+  },
+  {
+    "component": "CRoleIcon",
+    "props": {
+      "tank": true,
+      "damage": true,
+      "support": true
+    },
+    "html": "\n<span class=\"c-roles\">\n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M5 4h14v8c0 4-3.2 7-7 8.5C8.2 19 5 16 5 12V4zM9 9h6\"/>\n  \n</svg>\n坦克</span>\n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3v5M12 16v5M3 12h5M16 12h5M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z\"/>\n  \n</svg>\n输出</span>\n  <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z\"/>\n  \n</svg>\n支援</span>\n</span>\n"
+  },
+  {
+    "component": "CPager",
+    "props": {
+      "page": 1,
+      "pages": 1,
+      "extraQuery": ""
+    },
+    "html": "\n"
+  },
+  {
+    "component": "CPager",
+    "props": {
+      "page": 1,
+      "pages": 7,
+      "extraQuery": ""
+    },
+    "html": "\n  <nav class=\"c-pager\" aria-label=\"分页\">\n    \n      <span class=\"c-btn c-btn--secondary c-btn--sm\" aria-disabled=\"true\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M20 12H5M11 6l-6 6 6 6\"/>\n  \n</svg>\n上一页</span>\n    \n    <span class=\"c-pager__pos\"><strong>1</strong> / 7</span>\n    \n      <a class=\"c-btn c-btn--secondary c-btn--sm\" href=\"?page=2\" rel=\"next\">下一页\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 12h15M13 6l6 6-6 6\"/>\n  \n</svg>\n</a>\n    \n  </nav>\n\n"
+  },
+  {
+    "component": "CPager",
+    "props": {
+      "page": 4,
+      "pages": 7,
+      "extraQuery": "category=2&q=x%26y"
+    },
+    "html": "\n  <nav class=\"c-pager\" aria-label=\"分页\">\n    \n      <a class=\"c-btn c-btn--secondary c-btn--sm\" href=\"?category=2&amp;q=x%26y&amp;page=3\" rel=\"prev\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M20 12H5M11 6l-6 6 6 6\"/>\n  \n</svg>\n上一页</a>\n    \n    <span class=\"c-pager__pos\"><strong>4</strong> / 7</span>\n    \n      <a class=\"c-btn c-btn--secondary c-btn--sm\" href=\"?category=2&amp;q=x%26y&amp;page=5\" rel=\"next\">下一页\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 12h15M13 6l6 6-6 6\"/>\n  \n</svg>\n</a>\n    \n  </nav>\n\n"
+  },
+  {
+    "component": "CPager",
+    "props": {
+      "page": 7,
+      "pages": 7,
+      "extraQuery": "q=%E6%88%AA%E5%9B%BE"
+    },
+    "html": "\n  <nav class=\"c-pager\" aria-label=\"分页\">\n    \n      <a class=\"c-btn c-btn--secondary c-btn--sm\" href=\"?q=%E6%88%AA%E5%9B%BE&amp;page=6\" rel=\"prev\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M20 12H5M11 6l-6 6 6 6\"/>\n  \n</svg>\n上一页</a>\n    \n    <span class=\"c-pager__pos\"><strong>7</strong> / 7</span>\n    \n      <span class=\"c-btn c-btn--secondary c-btn--sm\" aria-disabled=\"true\">下一页\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M4 12h15M13 6l6 6-6 6\"/>\n  \n</svg>\n</span>\n    \n  </nav>\n\n"
+  },
+  {
+    "component": "CProfileGaps",
+    "props": {
+      "gaps": []
+    },
+    "html": "\n\n"
+  },
+  {
+    "component": "CProfileGaps",
+    "props": {
+      "gaps": [
+        {
+          "label": "游戏 ID",
+          "href": "/me/game-accounts/"
+        },
+        {
+          "label": "联系方式",
+          "href": "/me/contacts/"
+        }
+      ]
+    },
+    "html": "\n<p class=\"mt-2\">去补全：<a href=\"/me/game-accounts/\" class=\"c-link\">游戏 ID</a>、<a href=\"/me/contacts/\" class=\"c-link\">联系方式</a></p>\n"
+  },
+  {
+    "component": "CAvatar",
+    "props": {
+      "person": {
+        "id": 7,
+        "nickname": "· 小翼",
+        "is_active": true
+      },
+      "plain": false
+    },
+    "html": "\n\n<span class=\"c-avatar c-hue-3\" aria-hidden=\"true\">小</span>\n"
+  },
+  {
+    "component": "CAvatar",
+    "props": {
+      "person": {
+        "id": 7,
+        "nickname": "wyrm",
+        "is_active": true
+      },
+      "plain": false,
+      "size": "xs"
+    },
+    "html": "\n\n<span class=\"c-avatar c-avatar--xs c-hue-3\" aria-hidden=\"true\">W</span>\n"
+  },
+  {
+    "component": "CAvatar",
+    "props": {
+      "person": {
+        "id": 7,
+        "nickname": "🌫️",
+        "is_active": false
+      },
+      "plain": false,
+      "size": "lg"
+    },
+    "html": "\n\n<span class=\"c-avatar c-avatar--lg c-hue-3\" aria-hidden=\"true\">?</span>\n"
+  },
+  {
+    "component": "CAvatar",
+    "props": {
+      "person": {
+        "id": 7,
+        "nickname": "小满",
+        "is_active": true
+      },
+      "plain": true,
+      "size": "sm"
+    },
+    "html": "\n\n<span class=\"c-avatar c-avatar--sm\" aria-hidden=\"true\">小</span>\n"
+  },
+  {
+    "component": "CPlay",
+    "props": {
+      "profile": {
+        "roles": [
+          {
+            "code": "support",
+            "label": "支援",
+            "main": true
+          },
+          {
+            "code": "tank",
+            "label": "坦克",
+            "main": false
+          },
+          {
+            "code": "damage",
+            "label": "输出",
+            "main": false
+          }
+        ],
+        "is_flex": false,
+        "main_rank": {
+          "label": "钻石 3",
+          "role_label": "支援",
+          "stale": true,
+          "updated_at": "2026-03-01T20:30:00Z"
+        }
+      },
+      "compact": false
+    },
+    "html": "\n\n\n  <span class=\"c-play\">\n    \n      \n        \n          <span class=\"c-role c-role--main\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z\"/>\n  \n</svg>\n支援</span>\n        \n      \n        \n          <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M5 4h14v8c0 4-3.2 7-7 8.5C8.2 19 5 16 5 12V4zM9 9h6\"/>\n  \n</svg>\n坦克</span>\n        \n      \n        \n          <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3v5M12 16v5M3 12h5M16 12h5M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z\"/>\n  \n</svg>\n输出</span>\n        \n      \n    \n    \n      \n        <span class=\"c-play__rank is-stale\" title=\"支援段位，更新于 2026.03.02\">\n\n  \n    <span class=\"c-rank\">钻石 <span class=\"c-rank__div\">3</span></span>\n  \n\n</span>\n      \n    \n  </span>\n\n"
+  },
+  {
+    "component": "CPlay",
+    "props": {
+      "profile": {
+        "roles": [
+          {
+            "code": "support",
+            "label": "支援",
+            "main": true
+          },
+          {
+            "code": "tank",
+            "label": "坦克",
+            "main": false
+          },
+          {
+            "code": "damage",
+            "label": "输出",
+            "main": false
+          }
+        ],
+        "is_flex": true,
+        "main_rank": {
+          "label": "钻石 3",
+          "role_label": "支援",
+          "stale": true,
+          "updated_at": "2026-03-01T20:30:00Z"
+        }
+      },
+      "compact": false
+    },
+    "html": "\n\n\n  <span class=\"c-play\">\n    \n      <span class=\"c-role c-role--main\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z\"/>\n  \n</svg>\n支援</span>\n      <span class=\"c-role\">全能</span>\n    \n    \n      \n        <span class=\"c-play__rank is-stale\" title=\"支援段位，更新于 2026.03.02\">\n\n  \n    <span class=\"c-rank\">钻石 <span class=\"c-rank__div\">3</span></span>\n  \n\n</span>\n      \n    \n  </span>\n\n"
+  },
+  {
+    "component": "CPlay",
+    "props": {
+      "profile": {
+        "roles": [
+          {
+            "code": "support",
+            "label": "支援",
+            "main": true
+          },
+          {
+            "code": "tank",
+            "label": "坦克",
+            "main": false
+          },
+          {
+            "code": "damage",
+            "label": "输出",
+            "main": false
+          }
+        ],
+        "is_flex": true,
+        "main_rank": {
+          "label": "钻石 3",
+          "role_label": "支援",
+          "stale": true,
+          "updated_at": "2026-03-01T20:30:00Z"
+        }
+      },
+      "compact": true
+    },
+    "html": "\n\n\n  <span class=\"c-play\">\n    \n      \n        \n          <span class=\"c-role c-role--main\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z\"/>\n  \n</svg>\n支援</span>\n        \n      \n        \n      \n        \n      \n    \n    \n      \n        <span class=\"c-play__rank is-stale\" title=\"支援段位，更新于 2026.03.02\">\n\n  \n    <span class=\"c-rank\">钻石 <span class=\"c-rank__div\">3</span></span>\n  \n\n</span>\n      \n    \n  </span>\n\n"
+  },
+  {
+    "component": "CPlay",
+    "props": {
+      "profile": {
+        "roles": [],
+        "is_flex": false,
+        "main_rank": null
+      },
+      "compact": false
+    },
+    "html": "\n\n\n"
+  },
+  {
+    "component": "CPlay",
+    "props": {
+      "profile": {
+        "roles": [
+          {
+            "code": "support",
+            "label": "支援",
+            "main": true
+          },
+          {
+            "code": "tank",
+            "label": "坦克",
+            "main": false
+          },
+          {
+            "code": "damage",
+            "label": "输出",
+            "main": false
+          }
+        ],
+        "is_flex": false,
+        "main_rank": null
+      },
+      "compact": false
+    },
+    "html": "\n\n\n  <span class=\"c-play\">\n    \n      \n        \n          <span class=\"c-role c-role--main\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z\"/>\n  \n</svg>\n支援</span>\n        \n      \n        \n          <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M5 4h14v8c0 4-3.2 7-7 8.5C8.2 19 5 16 5 12V4zM9 9h6\"/>\n  \n</svg>\n坦克</span>\n        \n      \n        \n          <span class=\"c-role\">\n<svg class=\"size-3.5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3v5M12 16v5M3 12h5M16 12h5M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z\"/>\n  \n</svg>\n输出</span>\n        \n      \n    \n    \n      \n    \n  </span>\n\n"
+  },
+  {
+    "component": "CField",
+    "props": {
+      "label": "队名",
+      "inputId": "id_name",
+      "required": true,
+      "kind": "control",
+      "errors": [
+        "必需字段"
+      ]
+    },
+    "html": "\n\n  \n    <div class=\"c-field is-invalid\">\n      <label class=\"c-field__label\" for=\"id_name\">队名<span class=\"c-field__req\" aria-hidden=\"true\">*</span></label>\n      <input type=\"text\" name=\"name\" maxlength=\"16\" required aria-invalid=\"true\" aria-describedby=\"id_name_helptext id_name_error\" id=\"id_name\">\n      <div class=\"c-field__help\">只填写队名。</div>\n      <p class=\"c-field__error\" role=\"alert\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3l9.5 17h-19L12 3zM12 10v4.5M12 17.5v.5\"/>\n  \n</svg>\n<span>必需字段</span></p>\n    </div>\n  \n\n",
+    "control": "<input type=\"text\" name=\"name\" maxlength=\"16\" required aria-invalid=\"true\" aria-describedby=\"id_name_helptext id_name_error\" id=\"id_name\">",
+    "help": "只填写队名。"
+  },
+  {
+    "component": "CField",
+    "props": {
+      "label": "我已阅读并同意",
+      "inputId": "id_consent",
+      "required": true,
+      "kind": "checkbox",
+      "errors": [
+        "必需字段"
+      ]
+    },
+    "html": "\n\n  \n    <div class=\"c-field is-invalid\">\n      <label class=\"c-check\" for=\"id_consent\">\n        <input type=\"checkbox\" name=\"consent\" required aria-invalid=\"true\" aria-describedby=\"id_consent_helptext id_consent_error\" id=\"id_consent\">\n        <span>我已阅读并同意<span class=\"c-field__req\" aria-hidden=\"true\">*</span></span>\n      </label>\n      <div class=\"c-field__help\">请先阅读规则。</div>\n      <p class=\"c-field__error\" role=\"alert\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3l9.5 17h-19L12 3zM12 10v4.5M12 17.5v.5\"/>\n  \n</svg>\n<span>必需字段</span></p>\n    </div>\n  \n\n",
+    "control": "<input type=\"checkbox\" name=\"consent\" required aria-invalid=\"true\" aria-describedby=\"id_consent_helptext id_consent_error\" id=\"id_consent\">",
+    "help": "请先阅读规则。"
+  },
+  {
+    "component": "CField",
+    "props": {
+      "label": "位置",
+      "inputId": "",
+      "required": true,
+      "kind": "group",
+      "errors": [
+        "必需字段"
+      ]
+    },
+    "html": "\n\n  \n    <fieldset class=\"c-field is-invalid\">\n      <legend class=\"c-field__label mb-2\">位置<span class=\"c-field__req\" aria-hidden=\"true\">*</span></legend>\n      <div id=\"id_roles\"><div>\n    <label for=\"id_roles_0\"><input type=\"checkbox\" name=\"roles\" value=\"tank\" aria-invalid=\"true\" id=\"id_roles_0\">\n 坦克</label>\n\n</div><div>\n    <label for=\"id_roles_1\"><input type=\"checkbox\" name=\"roles\" value=\"support\" aria-invalid=\"true\" id=\"id_roles_1\">\n 支援</label>\n\n</div>\n</div>\n      \n      <p class=\"c-field__error\" role=\"alert\">\n<svg class=\"size-5\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\">\n  <path d=\"M12 3l9.5 17h-19L12 3zM12 10v4.5M12 17.5v.5\"/>\n  \n</svg>\n<span>必需字段</span></p>\n    </fieldset>\n  \n\n",
+    "control": "<div id=\"id_roles\"><div>\n    <label for=\"id_roles_0\"><input type=\"checkbox\" name=\"roles\" value=\"tank\" aria-invalid=\"true\" id=\"id_roles_0\">\n 坦克</label>\n\n</div><div>\n    <label for=\"id_roles_1\"><input type=\"checkbox\" name=\"roles\" value=\"support\" aria-invalid=\"true\" id=\"id_roles_1\">\n 支援</label>\n\n</div>\n</div>",
+    "help": ""
+  }
+]

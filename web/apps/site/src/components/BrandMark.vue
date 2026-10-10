@@ -1,20 +1,3 @@
-<script setup lang="ts">
-// Site mark (design 13.2.8): a deep red rounded square with a white
-// chevron, then the name. Shared by the masthead and the footer.
+<script lang="ts">
+export { default } from "@sjtu-ow/ui/BrandMark.vue"
 </script>
-<template>
-  <a href="/" class="c-brand" aria-label="SJTU-OW 首页">
-    <svg class="c-brand__mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <rect width="32" height="32" rx="9" class="fill-primary" />
-      <path
-        d="M8 21.5l8-8 8 8"
-        fill="none"
-        class="stroke-white"
-        stroke-width="3.2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
-    <span class="c-brand__name">SJTU-OW</span>
-  </a>
-</template>

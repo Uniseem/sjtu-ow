@@ -102,23 +102,7 @@ for (let variant = 0; variant < 4; variant++) {
   }
 }
 
-const MOST_SEATS = 24
-
-export function seats(taken: number, total: number): boolean[] {
-  const got = Math.max(Math.trunc(Number(taken) || 0), 0)
-  const need = Math.max(Math.trunc(Number(total) || 0), 0)
-  if (need === 0) return []
-  const cells = Math.min(need, MOST_SEATS)
-  const filled = Math.min(cells, Math.round((got * cells) / need))
-  return Array.from({ length: cells }, (_, index) => index < filled)
-}
-
-export function rankParts(label: string): [string, string] {
-  const text = label.trim()
-  const space = text.indexOf(" ")
-  if (space < 0) return [text, ""]
-  return [text.slice(0, space), text.slice(space + 1)]
-}
+export { seatCells as seats, rankParts } from "@sjtu-ow/shared/display"
 
 export function loadStyleguide(): { title: string; clock: SampleClock } {
   return { title: "设计体系样张", clock: sampleClock() }

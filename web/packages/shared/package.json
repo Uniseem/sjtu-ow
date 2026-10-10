@@ -1,0 +1,11 @@
+{
+  "name": "@sjtu-ow/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@sjtu-ow/api": "workspace:*"
+  }
+}

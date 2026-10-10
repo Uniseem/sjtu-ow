@@ -344,9 +344,14 @@ def main(argv: list[str]) -> int:
     only = next((a.split("=", 1)[1].split(",") for a in argv if a.startswith("--only=")), None)
     wide = "--wide" in argv
     strict = "--strict" in argv
+    pages = [p for p in PAGES if not only or any(
+        prefix and (p[0].startswith(prefix) or p[2].startswith(prefix)) for prefix in only
+    )]
+    if not pages:
+        print("PARITY-ERROR: --only 没有匹配任何页面，不能算通过", file=sys.stderr)
+        return 2
     shutil.rmtree(WORK, ignore_errors=True)
     SHOTS.mkdir(parents=True)
-    pages = [p for p in PAGES if not only or any(p[0].startswith(prefix) for prefix in only)]
 
     print("== 旧站：迁移、种子数据")
     data = prepare_legacy()
@@ -381,7 +386,7 @@ def main(argv: list[str]) -> int:
         tools.send("Page.enable")
         tools.send("Network.enable")
 
-        views = [(1280, "light")] + ([(375, "light"), (1280, "dark")] if wide else [])
+        views = [(1280, "light")] + ([(375, "light"), (1280, "dark"), (375, "dark")] if wide else [])
         results = []
         for name, who, template in pages:
             # 中文查询参数要编码成百分号形式，urllib 只收 ASCII（浏览器里也是这样发的）
