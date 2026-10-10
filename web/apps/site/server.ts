@@ -3,6 +3,7 @@ import { createReadStream, existsSync, readFileSync, statSync } from "node:fs"
 import { extname, join, resolve, sep } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { render, type Rendered, type RenderOpts } from "./src/entry-server"
+import { ERROR_CSS, errorDocument, type ErrorStatus } from "./src/error-page"
 
 const LOGIN = "/accounts/login/?next="
 // 12-architecture 6.9, verbatim. Caddy sends this on every page; the
@@ -124,17 +125,29 @@ export async function handle(
   if (method !== "GET" && method !== "HEAD") {
     return { status: 405, headers: { allow: "GET, HEAD" }, body: "" }
   }
-  const rendered = await render(req.url, { ...opts, headers: req.headers })
-  const out = toResponse(rendered, opts.assets ?? null)
+  let out: { status: number; headers: Record<string, string>; body: string }
+  try {
+    out = toResponse(await render(req.url, { ...opts, headers: req.headers }), opts.assets ?? null, req)
+  } catch (err) {
+    // A bug while rendering: the 500 page, never a hanging request.
+    console.error("render failed", req.url, err)
+    out = errorResponse(500, req)
+  }
   if (method === "HEAD") out.body = ""
   return out
 }
 
-function toResponse(rendered: Rendered, assets: Assets): { status: number; headers: Record<string, string>; body: string } {
+function errorResponse(status: ErrorStatus, req: Incoming) {
+  const body = errorDocument(status, req.headers.get("x-request-id"))
+  return { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }, body }
+}
+
+function toResponse(rendered: Rendered, assets: Assets, req: Incoming): { status: number; headers: Record<string, string>; body: string } {
   if (rendered.kind === "slash") return { status: 301, headers: { location: rendered.location }, body: "" }
   if (rendered.kind === "login") {
     return { status: 302, headers: { location: LOGIN + encodeURIComponent(rendered.next) }, body: "" }
   }
+  if (rendered.kind === "error") return errorResponse(rendered.status, req)
   const cache =
     rendered.status === 200 ? (rendered.viewer.user !== null ? "private, no-store" : "no-cache") : "no-store"
   return {
@@ -165,7 +178,8 @@ function serveStatic(req: { method?: string; url?: string }, res: import("node:h
   } catch {
     return false
   }
-  const imgFile = staticImgPath(req.url ?? "/", staticImgRoot())
+  const imgRoot = staticImgRoot()
+  const imgFile = staticImgPath(req.url ?? "/", imgRoot)
   if (imgFile) {
     res.writeHead(200, {
       "content-type": MIME[extname(imgFile)] ?? "application/octet-stream",
@@ -173,6 +187,12 @@ function serveStatic(req: { method?: string; url?: string }, res: import("node:h
     })
     if (req.method === "HEAD") res.end()
     else createReadStream(imgFile).pipe(res)
+    return true
+  }
+  if (pathname === ERROR_CSS && imgRoot) {
+    res.writeHead(200, { "content-type": "text/css", "cache-control": STATIC_IMG_CACHE })
+    if (req.method === "HEAD") res.end()
+    else createReadStream(resolve(imgRoot, "../css/error.css")).pipe(res)
     return true
   }
   if (pathname !== "/theme.js" && !pathname.startsWith("/assets/")) return false

@@ -199,7 +199,7 @@ func runServe() error {
 	defer d.Close()
 	acctSvc := accounts.NewService(d, nil, cfg.SiteURL, auth.NewStore(d, nil), ratelimit.NewEnforcer(d, nil))
 	contentStore := content.NewStore(d)
-	contentSvc := content.NewService(contentStore, cfg.SiteURL)
+	contentSvc := content.NewService(contentStore, cfg.SiteURL).WithTestEnvironment(cfg.TestEnvironment)
 	commentsStore := comments.NewStore(d)
 	commentsSvc := comments.NewService(commentsStore)
 	searchSvc := search.NewService(d)
@@ -317,6 +317,9 @@ func runApigen() error {
 	todoSvc := todo.NewService(nil)
 	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc, settingsSvc, auditMod, activitySvc, manualMod, todoSvc)
 	if err := apigen.Write(dir, reg); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "specs.ts"), []byte(media.SpecsTS()), 0o644); err != nil {
 		return err
 	}
 	repoDir := findRepoRoot()

@@ -1,9 +1,9 @@
 # 当前状态
 
 ```yaml
-milestone: 前台迁移重做中（要求 docs/frontend-migration.md，进度看「前台迁移」一节的两张表）。262 做完 F1 底座（一）：真激活、整份会话、生成的接口函数经 createClient、加载器不吞错误和登录门。页面本身还没开始重写。
-round: 262-f1-hydrate-session-client
-next: 263 做 F1 底座（二）：图片出图 B1、sitemap/robots/图标 B2、错误页照旧站 A12、Caddy B6、源码守卫（带待重写白名单）；然后对拍工具和种子数据。第 10 节第 1 件（正式站回滚）等用户拍板，窗口约 10-11 到期。
+milestone: 前台迁移重做中（要求 docs/frontend-migration.md，进度看「前台迁移」一节的两张表）。262、263 做完 F1 底座的两批：真激活、整份会话、接口客户端、加载器分流、出图接口、站点地图、错误页照旧站、Caddy（含访客 IP 修复）、源码守卫。页面本身还没开始重写；旧图的母版还没导（264）。
+round: 263-f1-media-errors-caddy-guards
+next: 264：旧原图过新管线导成母版（sjtuow import-media，不然正式站的图仍然出不来）、测试用的发会话命令、和旧站逐页对拍的工具（e2e/parity）。然后 F2 部件。第 10 节第 1 件（正式站回滚）等用户拍板，窗口约 10-11 到期。
 updated: 2026-10-10
 blocked_on: 用户拍板 docs/frontend-migration.md 第 10 节（最急：正式站要不要回滚到旧站；新依赖 SortableJS、CodeMirror 6、vue-tsc、Playwright）
 ```
@@ -25,8 +25,14 @@ blocked_on: 用户拍板 docs/frontend-migration.md 第 10 节（最急：正式
 | A3 接口客户端（生成的函数经 `createClient`、查询参数、超时、连不上 `ApiError(0)`） | ✓ 262 |
 | A4 类型（嵌入摊平、`(T \| null)[]`、切片不会是 null；`vue-tsc` 等拍板） | 半 262 |
 | A6 整份会话进页面（`superuser`、`caps`） | ✓ 262；B3 的头像、资料不全、待发信数、一次性提示还没有 |
-| A5、A7–A14 | — |
-| B1–B8 | — |
+| A7 图片地址（`imageUrl`、规格白名单从 Go 生成） | ✓ 263（旧图的母版没导，见 264） |
+| A12 错误页照旧站（独立文档、`error.css`、无脚本；渲染抛错 500） | ✓ 263 |
+| 源码守卫（色板、编出来的类、裸 `/api/`、`style`、`v-html`、`any`；待重写列表只缩不涨） | ✓ 263 |
+| B1 出图（`/media/r/<id>/<spec>.webp`，Caddy 缺图回源 Go） | ✓ 263 |
+| B2 `sitemap.xml`、`robots.txt`、图标跳转 | ✓ 263 |
+| B6 Caddy（`{client_ip}`、安全头、维护页、请求体上限、一键退订、media 路径） | ✓ 263（`e2e/caddy/smoke.sh`；部署后才生效） |
+| 旧原图导成母版（`sjtuow import-media`） | — 264 |
+| A5、A8–A11、A13、A14；B3–B5、B7、B8 | — |
 
 ### 前台页面进度
 
@@ -138,6 +144,8 @@ M2 不要重做：样式守卫、薄 SSR、布局壳、接口封装、页面路�
 做法照 `handoff/README.md` 连做：`request.md` → 实现 → `report.md` → 自查 `review.md` → 改这份 STATUS → 一轮一个中文提交，推 `main`。测试放后台，先走测试机 `bash scripts/remote-check.sh`（整组就是 `sh scripts/check.sh`：Go 加 pnpm）。pnpm 11 用工作区里的 `allowBuilds`，不要改回 `onlyBuiltDependencies`。正式站不动。
 
 ## 现在该谁动手
+
+**263（2026-10-10）**：F1 底座（二）。出图：`GET /media/r/<id>/<spec>.webp` 出图本身（Caddy 有文件直接给、没有回源 Go 现做），去掉回 JSON 和服务器路径的旧探针；前端 `imageUrl()`，规格白名单从 Go 生成（`gen/specs.ts`）。`/sitemap.xml`、`/robots.txt` 挂上，内容照旧站（带斜杠、只收公开的、上海日期）。错误页照 `templates/errors` 逐字重写成独立文档（`error.css`、无脚本），加载器错误分 403/404/429/500/503，渲染抛错兜底 500（服务端应用开 `throwUnhandledErrorInProduction`）。Caddy 重写成一个按顺序匹配的 `route`：**访客 IP 改用 `{client_ip}`**（原来 `{remote_host}` 在正式站上让所有人共用一个限流计数）、安全头由 Caddy 推迟设置、media 根目录改对、一键退订去 Go、图标 301、维护页、请求体上限；`e2e/caddy/smoke.sh` 起真 Caddy 验 43 条。源码守卫 `guards.test.ts`（260/253 的文件在只缩不涨的待重写列表里）。15 处变异全红。**发现：旧库 479 张图只导了行，原图从没转成母版，正式站的图在新栈里仍然出不来**，264 做。下一步：264（旧图母版、发会话命令、对拍工具）。
 
 **262（2026-10-10）**：F1 底座（一）（用户「之后开始写前端吧」）。客户端改成 `createSSRApp` 真激活（browser-check 新加一项：首屏启动时装着 `#main` 的节点不许被移除，换回 `createApp` 就红）；SSR 把 `/api/session` 整份放进页面状态（后台导航要的 `superuser`、`caps` 不再丢）；apigen 重写 TS 输出：每个函数第一个参数是 `createClient` 造的 `Requester`、有查询参数类型、匿名嵌入摊平、`(T | null)[]`、生成物里没有 `fetch`；注册表编码前把 nil 切片和映射换成 `[]`、`{}`；`createClient` 加基地址、查询串、超时、连不上 `ApiError(0)`、`unauthorized: "throw"`；加载器上下文有 `api`、`query`，不吞错误，`auth: "member"` 的 23 条前台地址和全部后台地址 SSR 先送访客去登录，403/404/429 画错误页、其余 503；客户端换页出错整页去拿服务器的错误页、连不上弹提示、分块丢了重载一次。顺带修了 261 提交 CI 红的那条：日历订阅测试的数据钉在 10-09、`Serve` 用墙上的钟，给安排服务加了可换的时钟。11 处变异全红。页面本身没改（下一轮起逐组重写）。下一步：263 做 F1 底座（二）：图片出图（B1）、sitemap/robots/图标（B2）、错误页照旧站（A12）、Caddy（B6）、源码守卫（带待重写白名单）。
 
@@ -972,6 +980,7 @@ M7 里只有你或真实环境能做的：用户协议和隐私政策里的【�
 | 238-m2-styleguide-shots | M2 第八轮：样张和旧站并排截 `#main`，像素差 0.0268% | **自查通过**，截图日志 `20261008-210445-16d8905`、整组日志 `20261008-210654-cfa1fe7` 退出码都是 0，govulncheck 无漏洞，2 处变异全抓到，browser-check 通过。M2 完成标准达到 |
 | 261-frontend-migration-requirements | 前台迁移要求 `docs/frontend-migration.md`：核查正式站和代码（260 的「全量移植」不成立），定不变量、架构要求、每页验收、和旧站对拍的验收方法、待拍板、阶段计划；STATUS 加「前台迁移」一节和页面进度表（只有文档；239–260 见「现在该谁动手」） | **自查通过**，整组日志 `20261010-142854-249e71d` 退出码 0 |
 | 262-f1-hydrate-session-client | F1 底座（一）：`createSSRApp` 真激活、整份会话进页面、apigen 生成的函数经 `createClient`（查询参数、嵌入摊平、`(T \| null)[]`）、注册表 nil 切片编码成 `[]`、加载器上下文和错误分流、`auth: "member"` 登录门；修 261 CI 红的日历测试（可换的时钟） | **自查通过**，整组日志 `20261010-144417-e29bbba`、browser-check `20261010-144510-5cd9496`、变异 `20261010-144137-8de0078`（11 处全红）退出码都是 0 |
+| 263-f1-media-errors-caddy-guards | F1 底座（二）：出图接口和 `imageUrl`、站点地图和 robots 照旧站、错误页照旧站、Caddy 重写（访客 IP `{client_ip}`、安全头、维护页、请求体上限、一键退订）和 `e2e/caddy/smoke.sh`、源码守卫；发现旧图母版没导 | **自查通过**，整组 `20261010-150644-db367fa`、browser-check `20261010-150716-fef4e07`、smoke `20261010-145809-46c0b96`、变异 `20261010-150814-1a05bc5`（15 处全红）退出码都是 0 |
 
 ## 当前待定问题
 

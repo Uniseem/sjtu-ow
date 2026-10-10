@@ -3,16 +3,21 @@ package media
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 )
@@ -161,5 +166,62 @@ func TestMediaUploadValidation(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatalf("expected error for tiny image, got nil")
+	}
+}
+
+// GET /media/r/{id}/{spec}.webp 给的是图本身（frontend-migration B1）：前端的
+// <img src> 就指这里。编号、后缀、规格、原图任一不对都是 404。
+func TestThumbnailAddressServesTheImage(t *testing.T) {
+	database, tmpDir := setupTestDB(t)
+	svc := NewService(database, filepath.Join(tmpDir, "data"), filepath.Join(tmpDir, "media"))
+	ctx := &app.Ctx{
+		Context: context.Background(),
+		Viewer:  &app.Viewer{ID: 1, Superuser: true},
+		Clock:   clock.Fixed(time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)),
+	}
+	pngData := createTestImage(300, 200)
+	img, err := svc.Upload(ctx, UploadInput{Title: "图", FileName: "a.png", CollectionKey: "contributed", Reader: bytes.NewReader(pngData), FileSize: int64(len(pngData))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg := &api.Registry{}
+	NewModule(svc).Routes(reg)
+	h := reg.Handler(func(*http.Request) *app.Viewer { return nil })
+	get := func(path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		return rec
+	}
+	ok := get(fmt.Sprintf("/media/r/%d/fill-88x88.webp", img.ID))
+	if ok.Code != http.StatusOK || ok.Header().Get("Content-Type") != "image/webp" {
+		t.Fatalf("应出图：%d %v", ok.Code, ok.Header())
+	}
+	if ok.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
+		t.Fatal(ok.Header())
+	}
+	if _, err := os.Stat(svc.ThumbnailPath(img.ID, "fill-88x88")); err != nil {
+		t.Fatalf("生成的文件要留在 media 卷里给 Caddy：%v", err)
+	}
+	for _, bad := range []string{
+		fmt.Sprintf("/media/r/%d/fill-999x999.webp", img.ID),
+		fmt.Sprintf("/media/r/%d/fill-88x88.png", img.ID),
+		"/media/r/abc/fill-88x88.webp",
+		"/media/r/999999/fill-88x88.webp",
+	} {
+		if rec := get(bad); rec.Code != http.StatusNotFound {
+			t.Fatalf("%s 应 404，得到 %d", bad, rec.Code)
+		}
+	}
+	if rec := get(fmt.Sprintf("/api/media/r/%d/fill-88x88", img.ID)); rec.Code != http.StatusNotFound {
+		t.Fatalf("旧的 JSON 探针（露服务器路径）应已去掉，得到 %d", rec.Code)
+	}
+}
+
+func TestSpecsTSListsEveryAllowedSpec(t *testing.T) {
+	ts := SpecsTS()
+	for k := range AllowedSpecs {
+		if !strings.Contains(ts, fmt.Sprintf("%q,", k)) {
+			t.Fatalf("specs.ts 缺 %s:\n%s", k, ts)
+		}
 	}
 }

@@ -20,6 +20,7 @@ export async function load(ctx?: LoadCtx) {
 }
 </script>
 <script setup lang="ts">
+import { imageUrl } from "../media"
 import { inject, computed } from "vue"
 import { useHead } from "@unhead/vue"
 
@@ -55,7 +56,7 @@ const pastTournaments = computed(() =>
               <div class="c-media__pic">
                 <img
                   v-if="t.cover_image_id"
-                  :src="`/api/images/${t.cover_image_id}`"
+                  :src="imageUrl(t.cover_image_id, 'fill-960x540')"
                   alt=""
                   loading="lazy"
                 />

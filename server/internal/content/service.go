@@ -29,6 +29,8 @@ type Service struct {
 	store   *Store
 	siteURL string
 	mod     app.ModerationSink
+	// testEnvironment 为真时 robots.txt 整站不让抓（设计 16.10）。
+	testEnvironment bool
 }
 
 // SetModeration 接上内容审核的送审入口：文章发布时把标题、摘要、正文（Markdown 原文）送审（规则 186）。

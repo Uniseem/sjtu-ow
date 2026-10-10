@@ -4,8 +4,8 @@
 
 ## 1. 架构概览与指标
 
-- **注册接口总数**：164 个
-- **公开访问接口 (Public)**：26 个
+- **注册接口总数**：163 个
+- **公开访问接口 (Public)**：25 个
 - **登录会员接口 (Member / Verified / Feature)**：60 个
 - **干部管理接口 (Cap / Superuser)**：78 个
 - **限流保护**：全量写接口均显式声明 `ratelimit.Decl` 集中限流规则，杜绝内联魔法数字；
@@ -71,7 +71,6 @@
 | `GET` | `/api/me/profile` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/me/registrations` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/me/teams` | Member（登录成员） | 默认 | - | - |
-| `GET` | `/api/media/r/{id}/{spec}` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/members` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/members/{id}` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/page/home` | Public（公开） | 默认 | - | - |

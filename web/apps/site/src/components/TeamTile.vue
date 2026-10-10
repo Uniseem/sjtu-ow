@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { imageUrl } from "../media"
 import { computed } from "vue"
 import { initial, hue } from "../initial"
 
@@ -32,7 +33,7 @@ const rolesText = computed(() => {
 <template>
   <li class="c-teams__item">
     <span :class="['c-teams__logo', `c-hue-${hue(team.id)}`]">
-      <img v-if="team.logo_image_id" :src="`/api/images/${team.logo_image_id}`" alt="" loading="lazy" />
+      <img v-if="team.logo_image_id" :src="imageUrl(team.logo_image_id, 'fill-288x288')" alt="" loading="lazy" />
       <template v-else>{{ initial(team.name) }}</template>
     </span>
     <span class="c-teams__body">

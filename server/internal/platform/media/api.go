@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -56,24 +58,16 @@ type ListCollectionsOut struct {
 	Collections []Collection `json:"collections"`
 }
 
-// GetThumbnailIn 是 GET /api/media/r/{id}/{spec} 的入参。
-type GetThumbnailIn struct {
-	ID   api.ID `path:"id"`
-	Spec string `path:"spec"`
-}
-
-// GetThumbnailOut 是 GET /api/media/r/{id}/{spec} 的出参。
-type GetThumbnailOut struct {
-	URL string `json:"url"`
-}
-
 // Routes 注册媒体域相关接口。
 func (m *Module) Routes(r *api.Registry) {
-	// 图片信息读取与缩略图生成探针
+	// 图片信息读取
 	api.Get(r, "/api/images/{id}", api.Public, m.getImage)
 	api.Delete(r, "/api/images/{id}", api.Cap(app.Cap("images.manage")), m.deleteImage,
 		api.NoLimit("管理员删除图片无需限流"))
-	api.Get(r, "/api/media/r/{id}/{spec}", api.Public, m.getThumbnail)
+	// 缩略图本身（12 号文档 3.4）：文件在 media 卷里就由 Caddy 直接给，不在才到这里
+	// 现做。原来的 GET /api/media/r/{id}/{spec} 回的是 JSON 和服务器上的文件路径，
+	// 前端没法当 <img src> 用，还把内部路径露了出去，去掉（frontend-migration S2、B1）。
+	api.Raw(r, http.MethodGet, "/media/r/{id}/{file}", nil, m.ServeThumbnailHTTP)
 
 	// 管理后台图片管理
 	api.Get(r, "/api/admin/images", api.Cap(app.Cap("images.manage")), m.listImages,
@@ -165,19 +159,26 @@ func (m *Module) deleteImage(ctx *app.Ctx, in struct {
 	}{Result: "ok"}, nil
 }
 
-func (m *Module) getThumbnail(ctx *app.Ctx, in GetThumbnailIn) (GetThumbnailOut, error) {
-	path, err := m.svc.RenderThumbnail(ctx.Context, int64(in.ID), in.Spec)
-	if err != nil {
-		return GetThumbnailOut{}, err
+// ServeThumbnailHTTP 是 GET /media/r/{id}/{spec}.webp：编号不对、规格不在白名单、
+// 原图不在一律 404（不说哪一样不对）；生成失败 500。生成好的文件留在 media 卷里，
+// 下一次由 Caddy 直接给。
+func (m *Module) ServeThumbnailHTTP(w http.ResponseWriter, r *http.Request) {
+	id, okID := api.ParseID(r.PathValue("id"))
+	spec, okExt := strings.CutSuffix(r.PathValue("file"), ".webp")
+	_, okSpec := AllowedSpecs[spec]
+	if !okID || !okExt || !okSpec {
+		http.NotFound(w, r)
+		return
 	}
-	return GetThumbnailOut{URL: path}, nil
-}
-
-// ServeThumbnailHTTP 提供直接响应图片二进制的 HTTP Handler（供 Caddy 缺失回源）。
-func (m *Module) ServeThumbnailHTTP(w http.ResponseWriter, r *http.Request, id int64, spec string) {
-	path, err := m.svc.RenderThumbnail(r.Context(), id, spec)
+	path, err := m.svc.RenderThumbnail(r.Context(), int64(id), spec)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		var apiErr *api.Error
+		if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		slog.Error("缩略图没生成出来", "id", int64(id), "spec", spec, "err", err.Error())
+		http.Error(w, "服务器开小差了，稍后再试", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "image/webp")

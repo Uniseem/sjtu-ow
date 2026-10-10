@@ -64,24 +64,26 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.web
     restart: unless-stopped
-    command: ["sh", "-c", "mkdir -p /var/assets/img && cp -a /app/web/apps/site/dist/client/. /var/assets/ && cp -a /app/static/img/. /var/assets/img/ && exec node dist/server/server.js"]
+    # 构建产物、固定地址的图和错误页样式表拷进 assets 卷，Caddy 从那里直接给。
+    # 安全头（含 CSP）由 Caddy 统一加（Caddyfile.new 的 security），SSR 不再自己发。
+    command: ["sh", "-c", "mkdir -p /var/assets/img /var/assets/css && cp -a /app/web/apps/site/dist/client/. /var/assets/ && cp -a /app/static/img/. /var/assets/img/ && cp /app/static/css/error.css /var/assets/css/ && exec node dist/server/server.js"]
     environment:
       - NODE_ENV=production
       - PORT=5173
       - API_BASE=http://server:8080
-      - STRICT_CSP=1
     volumes:
       - sjtuow_assets:/var/assets
     networks:
       - internal
 
   proxy:
-    image: caddy:2-alpine
+    image: caddy:2.10-alpine
     restart: unless-stopped
     ports:
       - "${PORT:-22887}:80"
     volumes:
       - ./Caddyfile.new:/etc/caddy/Caddyfile:ro
+      - ./error_pages:/srv/error_pages:ro
       - sjtuow_media:/var/media:ro
       - sjtuow_assets:/var/assets:ro
     depends_on:

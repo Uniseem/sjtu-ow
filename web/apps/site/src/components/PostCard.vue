@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { imageUrl } from "../media"
 import { computed } from "vue"
 
 const props = defineProps<{
@@ -19,7 +20,7 @@ const props = defineProps<{
 
 const coverSrc = computed(() => {
   if (props.article.cover_image_id) {
-    return `/api/images/${props.article.cover_image_id}`
+    return imageUrl(props.article.cover_image_id, "fill-960x540")
   }
   const idx = String((props.article.id % 8) + 1).padStart(2, "0")
   return `/static/img/placeholders/cover-${idx}.svg`

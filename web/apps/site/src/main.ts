@@ -10,6 +10,10 @@ import { createSiteRouter } from "./router"
 // (frontend-migration A1; 233–261 did that).
 export function createApp(ssr: boolean) {
   const app = createSSRApp(App)
+  // On the server a component that throws must fail the render (the 500 page,
+  // server.ts), not log and paint half a page with a 200: Vue only rethrows
+  // in development unless told so.
+  if (ssr) app.config.throwUnhandledErrorInProduction = true
   const router = createSiteRouter(ssr)
   const head = ssr ? createServerHead() : createClientHead()
   head.push({

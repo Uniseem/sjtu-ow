@@ -7,6 +7,7 @@ RUN corepack enable && corepack prepare pnpm@11.20.0 --activate
 
 COPY web/ ./web/
 COPY static/img/ ./static/img/
+COPY static/css/error.css ./static/css/error.css
 
 WORKDIR /app/web
 RUN pnpm install --frozen-lockfile
@@ -24,6 +25,7 @@ WORKDIR /app/web/apps/site
 COPY --from=builder --chown=app:app /app/web/apps/site/dist ./dist
 COPY --from=builder --chown=app:app /app/web/apps/site/package.json ./package.json
 COPY --from=builder --chown=app:app /app/static/img /app/static/img
+COPY --from=builder --chown=app:app /app/static/css/error.css /app/static/css/error.css
 
 ENV NODE_ENV=production \
     PORT=5173 \

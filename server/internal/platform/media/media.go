@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -494,4 +495,23 @@ func (s *Service) ListCollections(ctx context.Context) ([]Collection, error) {
 		cols = append(cols, c)
 	}
 	return cols, rows.Err()
+}
+
+// SpecsTS 把缩略图规格白名单写成前端用的 TS（sjtuow apigen 一起生成，
+// web/packages/api/src/gen/specs.ts）：前端的 imageUrl() 只收这些规格，
+// 写错了编译不过，不会到线上才 404（frontend-migration A7）。
+func SpecsTS() string {
+	keys := make([]string, 0, len(AllowedSpecs))
+	for k := range AllowedSpecs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	b.WriteString("// 由 sjtuow apigen 生成。不要手改。\n\n")
+	b.WriteString("export const IMAGE_SPECS = [\n")
+	for _, k := range keys {
+		fmt.Fprintf(&b, "  %q,\n", k)
+	}
+	b.WriteString("] as const\n\nexport type ImageSpec = (typeof IMAGE_SPECS)[number]\n")
+	return b.String()
 }

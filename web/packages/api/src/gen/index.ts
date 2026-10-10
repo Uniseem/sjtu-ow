@@ -630,14 +630,6 @@ export function getApiMeTeams(r: Requester, extras: CallExtras = {}): Promise<Ge
   return r<GetApiMeTeamsOut>("GET", "/api/me/teams", { ...extras })
 }
 
-export interface GetApiMediaRIdSpecOut {
-  url: string;
-}
-
-export function getApiMediaRIdSpec(r: Requester, id: string | number, spec: string | number, extras: CallExtras = {}): Promise<GetApiMediaRIdSpecOut> {
-  return r<GetApiMediaRIdSpecOut>("GET", "/api/media/r/{id}/{spec}", { ...extras, params: { id, spec } })
-}
-
 export interface GetApiMembersQuery {
   role?: string;
   free?: boolean;

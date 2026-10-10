@@ -1,6 +1,7 @@
 package content
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
@@ -232,6 +233,9 @@ type DeleteArticleOut struct {
 // Routes 注册内容域所有接口。
 func (m *Module) Routes(r *api.Registry) {
 	// 公开页面接口
+	// 站点地图和 robots 照旧站的地址（frontend-migration B2）。
+	api.Raw(r, http.MethodGet, "/sitemap.xml", nil, m.ServeSitemap)
+	api.Raw(r, http.MethodGet, "/robots.txt", nil, m.ServeRobots)
 	api.Get(r, "/api/page/home", api.Public, m.getHomePage)
 	api.Get(r, "/api/page/news", api.Public, m.listNews)
 	api.Get(r, "/api/page/news/{slug}", api.Public, m.getNewsDetail)

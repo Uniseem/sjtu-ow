@@ -20,6 +20,7 @@ export async function load(ctx?: LoadCtx) {
 }
 </script>
 <script setup lang="ts">
+import { imageUrl } from "../media"
 import { inject, computed } from "vue"
 import { useHead } from "@unhead/vue"
 import { initial, hue } from "../initial"
@@ -40,7 +41,7 @@ useHead({ title: team.value?.name ? `${team.value.name} - 战队 - SJTU-OW` : "�
           </nav>
           <div class="c-stage__team flex items-center gap-6 mt-4">
             <span :class="['c-teams__logo', 'c-teams__logo--lg', `c-hue-${hue(team.id)}`]">
-              <img v-if="team.logo_image_id" :src="`/api/images/${team.logo_image_id}`" :alt="team.name" />
+              <img v-if="team.logo_image_id" :src="imageUrl(team.logo_image_id, 'fill-288x288')" :alt="team.name" />
               <template v-else>{{ initial(team.name) }}</template>
             </span>
             <div class="min-w-0">

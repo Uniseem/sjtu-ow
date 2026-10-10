@@ -275,8 +275,23 @@ async function main() {
   // 8. unknown address: the server's 404, not a blank page
   const unknown = await fetch(base + "/no-such-page/")
   const unknownBody = await unknown.text()
-  if (unknown.status !== 404 || !unknownBody.includes("找不到这个页面")) fail("404", { status: unknown.status })
+  if (unknown.status !== 404 || !unknownBody.includes("页面不存在")) fail("404", { status: unknown.status })
   if (unknownBody.includes("ow-state")) fail("404 不该有数据块", {})
+  // In the browser: the old error page with error.css applied, no script,
+  // nothing blocked by the policy (frontend-migration A12).
+  await go("/no-such-page/")
+  const errorPage = await evaluate(`({
+    sheets: [...document.styleSheets].map((s) => new URL(s.href).pathname),
+    rules: document.styleSheets[0]?.cssRules.length ?? 0,
+    scripts: document.scripts.length,
+    h1: document.querySelector("h1")?.textContent,
+    code: document.querySelector(".code")?.textContent,
+  })`)
+  if (errorPage.sheets.join() !== "/static/css/error.css" || errorPage.rules < 10) fail("404 页没有 error.css", errorPage)
+  if (errorPage.scripts !== 0 || errorPage.h1 !== "页面不存在" || errorPage.code !== "404") fail("404 页不是旧站的样子", errorPage)
+  // The page's own 404 is logged as a failed load: that is the point of it.
+  const errorMessages = noted().filter((line) => !line.includes(base + "/no-such-page/"))
+  if (errorMessages.length) fail("404 页报错/CSP 违规", errorMessages)
 
   const cover = await fetch(base + "/static/img/placeholders/cover-07.svg")
   const coverBody = await cover.text()

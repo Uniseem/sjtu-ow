@@ -62,7 +62,7 @@ test("a registered page shows its title and a non-numeric id is a 404", async ()
 test("an unknown path is a 404 page without any script", async () => {
   const out = await handle(incoming("GET", "/no-such/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
   expect(out.status).toBe(404)
-  expect(out.body).toContain("找不到这个页面")
+  expect(out.body).toContain("页面不存在")
   // 错误页不是 App 画出来的，不该有数据块和入口脚本
   expect(out.body).not.toContain('id="ow-state"')
   expect(out.body).not.toContain("entry-x.js")
@@ -126,7 +126,7 @@ test("the style guide is a 404 unless the viewer is staff", async () => {
     assets: ASSETS,
   })
   expect(visitor.status).toBe(404)
-  expect(visitor.body).toContain("找不到这个页面")
+  expect(visitor.body).toContain("页面不存在")
   expect(visitor.body).not.toContain("设计体系样张")
   const member = await handle(incoming("GET", "/_styleguide/"), {
     ...base,
@@ -167,7 +167,7 @@ test("an unreachable API is a 503 page", async () => {
     },
   })
   expect(out.status).toBe(503)
-  expect(out.body).toContain("站点暂时连不上")
+  expect(out.body).toContain("网站维护中")
   expect(out.headers["cache-control"]).toBe("no-store")
 })
 
@@ -229,4 +229,71 @@ test("a loader gets the API client, the params and the query", async () => {
   expect(seen.query).toEqual({ tab: "x" })
   expect(seen.url).toBe("http://api.test/api/teams/12")
   expect(seen.got).toEqual({ team: { name: "夜航" } })
+})
+
+// ---- 263: the error pages are the old site's (templates/errors) ----
+
+test("an error page is its own document: error.css, the old wording, no script", async () => {
+  const out = await handle(incoming("GET", "/no-such/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  expect(out.status).toBe(404)
+  expect(out.headers["cache-control"]).toBe("no-store")
+  expect(out.body).toContain("<title>页面不存在 · SJTU-OW</title>")
+  expect(out.body).toContain('<link rel="stylesheet" href="/static/css/error.css">')
+  expect(out.body).toContain('<p class="code" aria-hidden="true">404</p>')
+  expect(out.body).toContain("内容可能已经下线，或者网址有误。")
+  expect(out.body).toContain("学生社团自办网站 · 不是上海交通大学官方网站")
+  expect(out.body).not.toContain("<script")
+  expect(out.body).not.toContain("/assets/entry-x.css")
+  expect(out.body).not.toContain('style="')
+})
+
+test("each status has the old page: 403, 429, Go's 500 with the request id, Go down is maintenance", async () => {
+  const at = (load: () => never, headers: Record<string, string> = {}) =>
+    handle(incoming("GET", "/teams/", headers), { ...base, fetch: api(200, { user: null }), assets: ASSETS, load })
+  const forbidden = await at(() => { throw new ApiError(403, "forbidden", "x") })
+  expect(forbidden.body).toContain("<h1>没有权限</h1>")
+  expect(forbidden.body).toContain('href="/accounts/login/"')
+  expect((await at(() => { throw new ApiError(429, "rate_limited", "x") })).body).toContain("<h1>操作太频繁</h1>")
+  const broken = await at(() => { throw new ApiError(500, "internal", "x") }, { "x-request-id": "req-<7>" })
+  expect(broken.status).toBe(500)
+  expect(broken.body).toContain("请求编号：req-&lt;7&gt;")
+  const down = await at(() => { throw new ApiError(502, "", "") })
+  expect(down.status).toBe(503)
+  expect(down.body).toContain("<h1>网站维护中</h1>")
+})
+
+test("a bug in a load is the 500 page", async () => {
+  const out = await handle(incoming("GET", "/teams/"), {
+    ...base,
+    fetch: api(200, { user: null }),
+    assets: ASSETS,
+    load: () => {
+      throw new TypeError("a bug")
+    },
+  })
+  expect(out.status).toBe(500)
+  expect(out.body).toContain("<h1>服务器出错了</h1>")
+  expect(out.body).toContain("当前没有请求编号。")
+})
+
+test("a component that throws while rendering is the 500 page, not a hanging request", async () => {
+  const out = await handle(incoming("GET", "/about/"), {
+    ...base,
+    fetch: api(200, { user: null }),
+    assets: ASSETS,
+    // Page.vue reads the title in setup: the throw happens inside renderToString.
+    load: () =>
+      ({
+        get title(): string {
+          throw new TypeError("a bug in a component")
+        },
+      }) as never,
+  })
+  expect(out.status).toBe(500)
+  expect(out.body).toContain("<h1>服务器出错了</h1>")
+})
+
+test("the server app rethrows component errors in production as well", async () => {
+  const { createApp } = await import("./main")
+  expect(createApp(true).app.config.throwUnhandledErrorInProduction).toBe(true)
 })

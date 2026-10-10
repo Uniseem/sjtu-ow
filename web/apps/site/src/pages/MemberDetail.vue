@@ -20,6 +20,7 @@ export async function load(ctx?: LoadCtx) {
 }
 </script>
 <script setup lang="ts">
+import { imageUrl } from "../media"
 import { inject, computed } from "vue"
 import { useHead } from "@unhead/vue"
 import { initial, hue } from "../initial"
@@ -41,7 +42,7 @@ useHead({ title: member.value?.nickname ? `${member.value.nickname} - 成员 - S
           </nav>
           <div class="flex items-center gap-6 mt-4">
             <span :class="['c-avatar', 'c-avatar--lg', `c-hue-${hue(member.id)}`]">
-              <img v-if="member.avatar_image_id" :src="`/api/images/${member.avatar_image_id}`" :alt="member.nickname" />
+              <img v-if="member.avatar_image_id" :src="imageUrl(member.avatar_image_id, 'fill-288x288')" :alt="member.nickname" />
               <template v-else>{{ initial(member.nickname) }}</template>
             </span>
             <div>

@@ -18,6 +18,7 @@ export async function load(ctx?: LoadCtx) {
 }
 </script>
 <script setup lang="ts">
+import { imageUrl } from "../media"
 import { inject, computed } from "vue"
 import { useHead } from "@unhead/vue"
 import SectionHead from "../components/SectionHead.vue"
@@ -156,7 +157,7 @@ const teams = computed(() => home.value?.teams ?? [])
         <article v-if="feature" class="c-feature" data-next-up="tournament" :data-phase="feature.phase">
           <img
             v-if="feature.cover_image_id"
-            :src="`/api/images/${feature.cover_image_id}`"
+            :src="imageUrl(feature.cover_image_id, 'fill-1280x720')"
             class="c-feature__img"
             alt=""
           />

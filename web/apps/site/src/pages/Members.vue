@@ -23,6 +23,7 @@ export async function load(ctx?: LoadCtx) {
 }
 </script>
 <script setup lang="ts">
+import { imageUrl } from "../media"
 import { inject, computed } from "vue"
 import { useHead } from "@unhead/vue"
 import { initial, hue } from "../initial"
@@ -50,7 +51,7 @@ const groups = computed(() => data?.groups ?? [])
           class="c-person flex items-center gap-4 p-4 rounded-lg bg-stone-900/60 border border-stone-800"
         >
           <span :class="['c-avatar', 'c-avatar--md', `c-hue-${hue(m.id)}`]">
-            <img v-if="m.avatar_image_id" :src="`/api/images/${m.avatar_image_id}`" alt="" />
+            <img v-if="m.avatar_image_id" :src="imageUrl(m.avatar_image_id, 'fill-176x176')" alt="" />
             <template v-else>{{ initial(m.nickname) }}</template>
           </span>
           <div class="min-w-0 flex-1">

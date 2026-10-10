@@ -19,6 +19,7 @@ export async function load(ctx?: LoadCtx) {
 }
 </script>
 <script setup lang="ts">
+import { imageUrl } from "../media"
 import { inject, computed, ref } from "vue"
 import { useHead } from "@unhead/vue"
 import { initial, hue } from "../initial"
@@ -93,7 +94,7 @@ async function onAvatarChange(e: Event) {
         <!-- 账号基本信息与头像上传 -->
         <section class="p-6 rounded-lg bg-stone-900/60 border border-stone-800 flex items-center gap-6">
           <span :class="['c-avatar', 'c-avatar--lg', `c-hue-${hue(profile.id)}`]">
-            <img v-if="profile.avatar_image_id" :src="`/api/images/${profile.avatar_image_id}`" alt="" />
+            <img v-if="profile.avatar_image_id" :src="imageUrl(profile.avatar_image_id, 'fill-176x176')" alt="" />
             <template v-else>{{ initial(profile.nickname) }}</template>
           </span>
           <div class="flex-1">

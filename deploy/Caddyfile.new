@@ -1,74 +1,179 @@
 {
-    admin off
-    servers {
-        trusted_proxies static private_ranges 100.96.0.0/12
-        trusted_proxies_strict
-    }
+	admin off
+	servers {
+		trusted_proxies static private_ranges 100.96.0.0/12
+		trusted_proxies_strict
+	}
 }
 
-:80 {
-    # 压缩支持
-    encode zstd gzip
+# 新栈的 Caddy（12 号文档 3.4；frontend-migration B1、B2、B6）。
+#
+# 路由全部写在一个 route 里，自上而下第一条匹配的生效（不靠 Caddy 自己给 handle
+# 排序）。e2e/caddy/smoke.sh 起一个真 Caddy、两个桩服务，逐条验这张表和响应头。
+#
+# 上游和目录用环境变量，默认就是 docker-compose.new.yml 里的样子：
+#   API_UPSTREAM（server:8080）、SSR_UPSTREAM（web:5173）、ASSETS_ROOT（/var/assets）、
+#   MEDIA_PARENT（/var，media 卷挂在 /var/media）、ERROR_PAGES_ROOT（/srv/error_pages）。
 
-    # 静态前端资源分块 (1 年缓存，immutable，12 号文档 3.4)
-    handle /assets/* {
-        root * /var/assets
-        header Cache-Control "public, max-age=31536000, immutable"
-        file_server
-    }
+# 安全头统一在这里加（12 号 3.4）。`>` 是推迟到上游答复之后再设，会覆盖上游带来的同名头，
+# 所以 SSR 不必再发 CSP。策略和 web/apps/site/server.ts 的 CSP 逐字一致（有测试比）。
+(security) {
+	header {
+		>Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		>X-Content-Type-Options "nosniff"
+		>Referrer-Policy "same-origin"
+		>Cross-Origin-Opener-Policy "same-origin"
+		>X-Frame-Options "DENY"
+		>Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	}
+}
 
-    # 固定静态图片兼容路径 (1 天缓存)
-    handle_path /static/img/* {
-        root * /var/assets/img
-        header Cache-Control "public, max-age=86400"
-        file_server
-    }
+# 转给 Go 和 SSR 时带上访客的真实 IP。{client_ip} 认上面的 trusted_proxies：正式站
+# 前面是用户自己的反代（经 WARP 内网，100.96.0.0/12），用 {remote_host} 的话所有
+# 访客都成了反代那一个 IP，登录限流和失败锁全站共用一个计数（263 修）。
+(to_api) {
+	reverse_proxy {$API_UPSTREAM:server:8080} {
+		header_up X-Real-IP {client_ip}
+	}
+}
 
-    # 新缩略图：若存在直接分发 (1 年缓存)；不存在转发后端 Go 懒生成
-    handle /media/r/* {
-        root * /var/media
-        header Cache-Control "public, max-age=31536000, immutable"
-        try_files {path} @api
-        file_server
-    }
+(to_ssr) {
+	reverse_proxy {$SSR_UPSTREAM:web:5173} {
+		header_up X-Real-IP {client_ip}
+	}
+}
 
-    # 旧缩略图兼容路径 (1 年缓存)
-    handle /media/images/* {
-        root * /var/media
-        header Cache-Control "public, max-age=31536000, immutable"
-        file_server
-    }
+{$CADDY_SITE_ADDRESS::80} {
+	encode zstd gzip
+	import security
 
-    # 字体子集与分片 (1 年缓存)
-    handle /media/fonts/* {
-        root * /var/media
-        header Cache-Control "public, max-age=31536000, immutable"
-        file_server
-    }
+	# Go、SSR 连不上或超时：维护页（照旧站）。页面里是内联样式，单独给一条只放开
+	# 内联样式、别的什么都不许的策略。
+	handle_errors 502 503 504 {
+		root * {$ERROR_PAGES_ROOT:/srv/error_pages}
+		rewrite * /maintenance.html
+		header {
+			Cache-Control "no-store"
+			Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+			X-Content-Type-Options "nosniff"
+			Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+		}
+		file_server
+	}
 
-    # 其余 media 严禁对外公开 (原图防泄漏，12 号文档 3.4)
-    handle /media/* {
-        respond "Not Found" 404
-    }
+	# 请求体上限（12 号 3.4）：传图的几个接口 16 MB（10 MB 的图走 base64 会变大），
+	# 其余接口 1 MB（Go 那边也是 1 MB）。
+	@uploads path_regexp ^/api/(admin/images/upload(-file)?|me/avatar|teams/[0-9]+/logo)$
+	@api_body {
+		path /api/*
+		not path_regexp ^/api/(admin/images/upload(-file)?|me/avatar|teams/[0-9]+/logo)$
+	}
 
-    # API、健康检查、日历、Sitemap、Robots 路由至后端 Go
-    @api {
-        path /api/* /healthz /calendar/* /sitemap.xml /robots.txt
-    }
-    handle @api {
-        reverse_proxy server:8080 {
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+	route {
+		request_body @uploads {
+			max_size 16MB
+		}
+		request_body @api_body {
+			max_size 1MB
+		}
 
-    # 所有前台页面请求转 SSR 服务 (Node 24)
-    handle {
-        reverse_proxy web:5173 {
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+		# 前端构建产物，带哈希，缓存一年
+		handle /assets/* {
+			root * {$ASSETS_ROOT:/var/assets}
+			header Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+
+		# 主题脚本（head 里第一个）：地址固定，每次问一下
+		handle /theme.js {
+			root * {$ASSETS_ROOT:/var/assets}
+			header Cache-Control "no-cache"
+			file_server
+		}
+
+		# 固定地址的图（图标、占位图、分享图、旧邮件里引用的），缓存一天
+		handle_path /static/img/* {
+			root * {$ASSETS_ROOT:/var/assets}/img
+			header Cache-Control "public, max-age=86400"
+			file_server
+		}
+
+		# 错误页的样式表（error-page.ts 引用它）
+		handle_path /static/css/* {
+			root * {$ASSETS_ROOT:/var/assets}/css
+			header Cache-Control "public, max-age=86400"
+			file_server
+		}
+
+		# 照旧站：图标的老地址跳到固定地址。redir 的第一个参数以 / 开头会被当成匹配条件，
+		# 所以写 `*`（263 smoke 抓到过）。
+		handle /favicon.ico {
+			redir * /static/img/favicon.ico 301
+		}
+		handle /apple-touch-icon.png {
+			redir * /static/img/apple-touch-icon.png 301
+		}
+
+		# 新缩略图 /media/r/<编号>/<规格>.webp：文件在就直接给；不在交给 Go 现做
+		# （Go 只认白名单规格，做好的文件留在 media 卷里，下次就到不了 Go）。
+		@thumb path_regexp ^/media/r/[0-9]{1,18}/[a-z0-9-]+\.webp$
+		handle @thumb {
+			root * {$MEDIA_PARENT:/var}
+			@have file
+			handle @have {
+				header Cache-Control "public, max-age=31536000, immutable"
+				file_server
+			}
+			handle {
+				import to_api
+			}
+		}
+
+		# 旧缩略图：正文里写死了这些地址，原样给（12 号 3.4）
+		handle /media/images/* {
+			root * {$MEDIA_PARENT:/var}
+			header Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+
+		# 字体：只给带哈希的样式表和切片；原文件不公开（旧站 v7.18）
+		@hashed_fonts path_regexp ^/media/fonts/(css/fonts\.[a-f0-9]{12}\.css|[0-9]+/[^/]+\.woff2)$
+		handle @hashed_fonts {
+			root * {$MEDIA_PARENT:/var}
+			header Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+
+		# 其余 media（原图、上传的字体原件……）不公开
+		handle /media/* {
+			respond 404
+		}
+
+		# Go：接口、健康检查、日历订阅、站点地图、robots
+		@api path /api/* /healthz /calendar/* /sitemap.xml /robots.txt
+		handle @api {
+			import to_api
+		}
+
+		# 一键退订（RFC 8058）：发信服务商直接 POST 信里的地址；GET 是给人看的页面，归 SSR
+		@unsubscribe_post {
+			method POST
+			path /unsubscribe/*
+		}
+		handle @unsubscribe_post {
+			import to_api
+		}
+
+		# 页面只有 GET、HEAD；别的写请求都该去 /api/
+		@not_read not method GET HEAD
+		handle @not_read {
+			header Allow "GET, HEAD"
+			respond 405
+		}
+
+		# 其余页面：SSR
+		handle {
+			import to_ssr
+		}
+	}
 }

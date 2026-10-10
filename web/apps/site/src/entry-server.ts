@@ -4,12 +4,15 @@ import { renderToString } from "vue/server-renderer"
 import { API } from "./api"
 import { createApp } from "./main"
 import { flat, statusOf, type Load, type LoadCtx, type PageData } from "./router"
+import type { ErrorStatus } from "./error-page"
 import { styleguideHidden } from "./specimen"
 import { VIEWER, type Viewer } from "./viewer"
 
 export type Rendered =
   | { kind: "slash"; location: string }
   | { kind: "login"; next: string }
+  // Error pages are their own document (error-page.ts), not the app.
+  | { kind: "error"; status: ErrorStatus; viewer: Viewer }
   | {
       kind: "page"
       status: number
@@ -26,15 +29,6 @@ export type RenderOpts = {
   load?: Load
 }
 
-// Placeholder bodies until the error pages follow templates/errors
-// (frontend-migration A12).
-const ERROR_HTML: Record<number, string> = {
-  403: "<main><h1>没有权限看这个页面</h1></main>",
-  404: "<main><h1>找不到这个页面</h1></main>",
-  429: "<main><h1>操作太频繁</h1></main>",
-  503: "<main><h1>站点暂时连不上</h1></main>",
-}
-
 const VISITOR: Viewer = { user: null }
 
 // Go takes 5 seconds at most per call from here (12-architecture 6.2 step 4).
@@ -46,6 +40,7 @@ function pathnameOf(url: string): string {
 
 export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   const { app, router, head } = createApp(true)
+  const error = (status: ErrorStatus, viewer: Viewer = VISITOR): Rendered => ({ kind: "error", status, viewer })
   const parsed = new URL(url, "http://site")
   const pathname = parsed.pathname
   if (pathname !== "/" && !pathname.endsWith("/")) {
@@ -57,7 +52,7 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   await router.push(url)
   await router.isReady()
   const route = router.currentRoute.value
-  if (!route.matched.length) return page(404, VISITOR, head)
+  if (!route.matched.length) return error(404)
 
   // Every call to Go carries the visitor's cookie, IP and request id.
   const ssrFetch: typeof fetch = (input, init) => {
@@ -82,17 +77,16 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   }
 
   const [sessionR, loadR] = await Promise.allSettled([fetchSession(api), runLoad(opts.load ?? route.meta.load, ctx)])
-  if (sessionR.status === "rejected") return page(503, VISITOR, head)
+  if (sessionR.status === "rejected") return error(errorStatusOf(sessionR.reason))
   const viewer = sessionR.value
   const next = pathname + parsed.search
   if (route.meta.auth === "member" && viewer.user === null) return { kind: "login", next }
   if (loadR.status === "rejected") {
     const status = statusOf(loadR.reason)
     if (status === 401) return { kind: "login", next }
-    if (status === 403 || status === 404 || status === 429) return page(status, viewer, head)
-    return page(503, viewer, head)
+    return error(errorStatusOf(loadR.reason), viewer)
   }
-  if (styleguideHidden(pathname, viewer.user?.admin === true)) return page(404, viewer, head)
+  if (styleguideHidden(pathname, viewer.user?.admin === true)) return error(404, viewer)
   app.provide(VIEWER, viewer)
   app.provide(API, api)
   app.provide("page-data", loadR.value)
@@ -101,12 +95,14 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   return { kind: "page", status: 200, html, head: tags.headTags, state: { data: loadR.value, viewer }, viewer }
 }
 
-// Error pages carry no state and no entry script: their HTML is not what
-// the app would paint, so hydration would be wrong (12-architecture 6.5,
-// error pages stay without script).
-async function page(status: number, viewer: Viewer, head: ReturnType<typeof createApp>["head"]): Promise<Rendered> {
-  const tags = await renderSSRHead(head)
-  return { kind: "page", status, html: ERROR_HTML[status] ?? ERROR_HTML[404], head: tags.headTags, state: null, viewer }
+// Which error page a failed call becomes: 403, 404 and 429 as they are; Go
+// not reachable or not answering (0, 502–504) is the maintenance page; any
+// other failure (Go's 500, a bug in a load) is the 500 page.
+export function errorStatusOf(err: unknown): ErrorStatus {
+  const status = statusOf(err)
+  if (status === 403 || status === 404 || status === 429) return status
+  if (status === 0 || status === 502 || status === 503 || status === 504) return 503
+  return 500
 }
 
 async function runLoad(load: Load | undefined, ctx: LoadCtx): Promise<PageData> {

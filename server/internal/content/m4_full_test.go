@@ -397,7 +397,7 @@ func TestSitemapAndRobots(t *testing.T) {
 	}
 
 	// Sitemap 生成
-	sitemapXML, err := svc.GenerateSitemap(ctx)
+	sitemapXML, err := svc.GenerateSitemap(ctx, time.Now())
 	if err != nil {
 		t.Fatalf("GenerateSitemap: %v", err)
 	}

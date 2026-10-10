@@ -251,6 +251,8 @@ Host sjtu-ow-test
 - **`/api/images/{id}` 返回的是图片信息的 JSON，不是图**（261）：拿它当 `<img src>` 全是坏图。出图走 `/media/r/<编号>/<规格>.webp`（规格只认 `media.AllowedSpecs`），正文里旧的 `/media/images/*` 照旧
 - **前台的状态码别靠页面自己判断**（261）：260 的页面在 `load` 里 `catch {}` 把接口的 401/404 吞成 `null`，于是不存在的战队是 200 加一句「不存在」、访客能打开 `/me/`。`load` 不吞错误，交给 `server.ts` 按状态码分流
 - **测试机的 `go test` 会用缓存，依赖日期的测试在那里一直「绿」**（262）：日历订阅测试的数据钉在 10-09、`Serve` 用墙上的钟，10-10 起其实已经红了，测试机整组显示 `(cached)` 照样过，只有 CI 红。业务代码取「现在」走 `ctx.Now()` 或注入的 `clock.Clock`，别直接 `time.Now()`；改了日期相关的东西，单条跑加 `-count=1`
+- **Caddy 的 `redir` 第一个参数以 `/` 开头会被当成匹配条件**（263）：`redir /static/img/favicon.ico 301` 不是「跳到这个地址」，而是「对这个路径跳到 301」，图标地址一直落到 SSR。要写 `redir * /目标 301`。改了 `deploy/Caddyfile.new` 就跑 `bash scripts/remote-check.sh run bash e2e/caddy/smoke.sh`（真 Caddy 容器 + 桩服务，逐条验路由和头），只读配置看不出这类错
+- **转给上游的访客 IP 用 `{client_ip}`，不用 `{remote_host}`**（263）：正式站前面有用户的反代，`{remote_host}` 是反代的地址，Go 的限流和失败锁就成了全站共用一个计数。`{client_ip}` 认全局的 `trusted_proxies`
 - **「200 OK」不等于页面对**（261）：260 拿「公网实测渲染 200」当验收，文章页 404、半数页面只有标题都没发现。前台的完成要和旧站对拍（`docs/frontend-migration.md` 第 9 节）
 
 ## 改了什么，就更新哪份文档
