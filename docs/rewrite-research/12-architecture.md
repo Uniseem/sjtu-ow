@@ -461,7 +461,9 @@ CREATE TABLE jobs (
 
 ### 5.14 搜索
 
-照旧是子串匹配（规则 233）：每类内容一列 `search_text`（保存时写入：标题 + 简介 + 纯文本正文，统一大小写折叠），查询词折叠后按空格切成最多 5 个、每个都要 `instr(search_text, 词) > 0`，每类最多 20 条，每个 IP 每分钟 30 次。Wagtail 的 FTS 表不要了。
+照旧是子串匹配（规则 233、现行设计 13.16）：先去空白、截 50 字，Unicode case-fold 后按空白切最多 5 个词，所有词都命中才算。读取保存的纯文本字段（标题 + 摘要 + body_plain/description_plain），在 Go 中匹配，不用 SQLite 仅折 ASCII 的 lower()，不在搜索时渲染 Markdown。大小写展开映射从项目 Python 的 Unicode casefold 生成，不新增依赖；社团规模下先照旧扫描，变慢再加折叠索引。文章按最近发布时间倒序，活动先赛事后内战，各自最近更新倒序，战队最近更新倒序，成员按昵称排序，第二排序键均沿旧站 ID。文章要求 live 且 search_public；导入时把 Wagtail 祖先/本页访问限制折成 pages.search_public（仅搜索可见标记，不改变发布状态）。
+
+接口附加四个固定分组（文章、赛事与内战、战队、成员），空组也在，每组最多 20 条，21 条时 truncated；摘录和标签逐条照 search/services.py。既有五份平铺列表保留，前端完成迁移前不删字段。每 IP 每分钟 30 次，超限 429。Wagtail 的 FTS 表不要了。
 
 ### 5.15 备份、恢复、健康检查、日志
 

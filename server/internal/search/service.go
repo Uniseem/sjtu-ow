@@ -4,15 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
-	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 )
 
-// ArticleResult 是文章搜索结果项。
+// Compatibility lists remain until the frontend has switched to Groups.
 type ArticleResult struct {
 	ID               int64      `json:"id"`
 	Slug             string     `json:"slug"`
@@ -21,38 +22,43 @@ type ArticleResult struct {
 	CategoryName     string     `json:"category_name"`
 	FirstPublishedAt *time.Time `json:"first_published_at,omitempty"`
 }
-
-// TeamResult 是战队搜索结果项。
 type TeamResult struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Recruiting  bool   `json:"is_recruiting"`
 }
-
-// MemberResult 是成员搜索结果项（只搜昵称，只有已加入的成员，规则 236）。
 type MemberResult struct {
 	ID       int64  `json:"id"`
 	Nickname string `json:"nickname"`
 	Motto    string `json:"motto"`
 }
-
-// TournamentResult 是赛事搜索结果项。
 type TournamentResult struct {
 	ID      int64  `json:"id"`
 	Title   string `json:"title"`
 	Summary string `json:"summary"`
 }
-
-// ScrimResult 是内战搜索结果项。
 type ScrimResult struct {
 	ID    int64  `json:"id"`
 	Title string `json:"title"`
 }
 
-// Result 是全站搜索结果（规则 233）。
+// Hit and Group mirror the old public search page, including empty groups.
+type Hit struct {
+	Title   string `json:"title"`
+	URL     string `json:"url"`
+	Excerpt string `json:"excerpt"`
+	Meta    string `json:"meta"`
+}
+type Group struct {
+	Key       string `json:"key"`
+	Label     string `json:"label"`
+	Hits      []Hit  `json:"hits"`
+	Truncated bool   `json:"truncated"`
+}
 type Result struct {
 	Query       string              `json:"query"`
+	Groups      []Group             `json:"groups"`
 	Articles    []*ArticleResult    `json:"articles"`
 	Teams       []*TeamResult       `json:"teams"`
 	Members     []*MemberResult     `json:"members"`
@@ -60,202 +66,221 @@ type Result struct {
 	Scrims      []*ScrimResult      `json:"scrims"`
 }
 
-// Service 提供全站搜索服务。
-type Service struct {
-	d *db.DB
+type Service struct{ d *db.DB }
+
+func NewService(d *db.DB) *Service { return &Service{d: d} }
+
+const perTypeLimit = 20
+
+func queryWhitespace(r rune) bool { return unicode.IsSpace(r) || (r >= 0x1c && r <= 0x1f) }
+func parseQuery(raw string) (string, []string) {
+	q := []rune(strings.TrimFunc(raw, queryWhitespace))
+	if len(q) > 50 {
+		q = q[:50]
+	}
+	terms := strings.FieldsFunc(caseFold(string(q)), queryWhitespace)
+	if len(terms) > 5 {
+		terms = terms[:5]
+	}
+	return string(q), terms
+}
+func matches(text string, terms []string) bool {
+	if len(terms) == 0 {
+		return false
+	}
+	folded := caseFold(text)
+	for _, term := range terms {
+		if !strings.Contains(folded, term) {
+			return false
+		}
+	}
+	return true
 }
 
-// NewService 创建搜索服务。
-func NewService(d *db.DB) *Service {
-	return &Service{d: d}
+var tags = regexp.MustCompile(`<[^>]*>`)
+
+func excerpt(text string, terms []string) string {
+	text = strings.Join(strings.FieldsFunc(tags.ReplaceAllString(text, ""), queryWhitespace), " ")
+	runes := []rune(text)
+	folded := caseFold(text)
+	first := -1
+	for _, term := range terms {
+		if pos := strings.Index(folded, term); pos >= 0 {
+			pos = utf8.RuneCountInString(folded[:pos])
+			if first < 0 || pos < first {
+				first = pos
+			}
+		}
+	}
+	start, end := 0, 80
+	if first >= 0 {
+		start, end = max(first-40, 0), first+40
+	}
+	end = min(end, len(runes))
+	start = min(start, end)
+	out := string(runes[start:end])
+	if start > 0 {
+		out = "…" + out
+	}
+	if end < len(runes) {
+		out += "…"
+	}
+	return out
+}
+func (g *Group) add(hit Hit) {
+	if len(g.Hits) < perTypeLimit {
+		g.Hits = append(g.Hits, hit)
+	} else {
+		g.Truncated = true
+	}
 }
 
-// hasTable 检查表是否存在。
-func (s *Service) hasTable(ctx context.Context, tableName string) bool {
-	var count int
-	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?`, tableName).Scan(&count)
-	return err == nil && count > 0
+// walk propagates database errors and stops only after the 21st match.
+func (s *Service) walk(ctx context.Context, query string, read func(*sql.Rows) (bool, error)) error {
+	rows, err := s.d.ReadPool().QueryContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	count := 0
+	for rows.Next() {
+		matched, err := read(rows)
+		if err != nil {
+			return err
+		}
+		if matched {
+			count++
+			if count > perTypeLimit {
+				break
+			}
+		}
+	}
+	return rows.Err()
 }
 
-// Search 执行纯子串大小写折叠搜索（规则 233，12 号文档 5.14）。
+// Search reads saved plain text and applies the same Unicode case-folding as
+// search/services.py; SQLite lower() only folds ASCII.
 func (s *Service) Search(ctx context.Context, rawQuery string) (*Result, error) {
-	q := strings.TrimSpace(rawQuery)
-	if q == "" {
-		return &Result{
-			Query:       "",
-			Articles:    []*ArticleResult{},
-			Teams:       []*TeamResult{},
-			Members:     []*MemberResult{},
-			Tournaments: []*TournamentResult{},
-			Scrims:      []*ScrimResult{},
-		}, nil
-	}
-
-	// 规则 233：查询 <= 50 字符
-	if utf8.RuneCountInString(q) > 50 {
-		return nil, api.Invalid("搜索关键词长度不能超过 50 个字符")
-	}
-
-	// 最多 5 个词
-	words := strings.Fields(strings.ToLower(q))
-	if len(words) > 5 {
-		words = words[:5]
-	}
-
+	q, terms := parseQuery(rawQuery)
 	res := &Result{
-		Query:       q,
-		Articles:    []*ArticleResult{},
-		Teams:       []*TeamResult{},
-		Members:     []*MemberResult{},
-		Tournaments: []*TournamentResult{},
-		Scrims:      []*ScrimResult{},
+		Query:    q,
+		Groups:   []Group{{Key: "articles", Label: "文章", Hits: []Hit{}}, {Key: "events", Label: "赛事与内战", Hits: []Hit{}}, {Key: "teams", Label: "战队", Hits: []Hit{}}, {Key: "members", Label: "成员", Hits: []Hit{}}},
+		Articles: []*ArticleResult{}, Teams: []*TeamResult{}, Members: []*MemberResult{}, Tournaments: []*TournamentResult{}, Scrims: []*ScrimResult{},
 	}
-
-	// 1. 搜索文章：live=1 且所有词满足 instr(search_text, 词) > 0（上限 20 条）
-	if s.hasTable(ctx, "articles") {
-		var whereClauses []string
-		var args []any
-		whereClauses = append(whereClauses, "p.live = 1", "p.kind = 'article'")
-		for _, w := range words {
-			whereClauses = append(whereClauses, "instr(a.search_text, ?) > 0")
-			args = append(args, w)
+	if len(terms) == 0 {
+		return res, nil
+	}
+	err := s.walk(ctx, `SELECT p.id, p.slug, p.title, a.summary, a.body_plain, IFNULL(c.name, ''), p.first_published_at
+        FROM pages p JOIN articles a ON a.page_id=p.id LEFT JOIN article_categories c ON c.id=a.category_id
+        WHERE p.kind='article' AND p.live=1 AND p.search_public=1
+        ORDER BY p.last_published_at DESC, p.id DESC`, func(rows *sql.Rows) (bool, error) {
+		item := &ArticleResult{}
+		var body string
+		var first sql.NullString
+		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &item.Summary, &body, &item.CategoryName, &first); err != nil {
+			return false, err
 		}
-		query := fmt.Sprintf(`
-			SELECT p.id, p.slug, p.title, a.summary, IFNULL(c.name, ''), p.first_published_at
-			FROM pages p
-			JOIN articles a ON a.page_id = p.id
-			LEFT JOIN article_categories c ON c.id = a.category_id
-			WHERE %s
-			ORDER BY p.first_published_at DESC, p.id DESC
-			LIMIT 20
-		`, strings.Join(whereClauses, " AND "))
-
-		rows, err := s.d.ReadPool().QueryContext(ctx, query, args...)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var item ArticleResult
-				var firstPub sql.NullString
-				if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &item.Summary, &item.CategoryName, &firstPub); err == nil {
-					if firstPub.Valid && firstPub.String != "" {
-						t, _ := db.ParseUTC(firstPub.String)
-						item.FirstPublishedAt = &t
-					}
-					res.Articles = append(res.Articles, &item)
-				}
+		text := item.Title + "\n" + item.Summary + "\n" + body
+		if !matches(text, terms) {
+			return false, nil
+		}
+		if first.Valid && first.String != "" {
+			t, err := db.ParseUTC(first.String)
+			if err != nil {
+				return false, err
 			}
+			item.FirstPublishedAt = &t
 		}
+		meta := item.CategoryName
+		if meta == "" {
+			meta = "文章"
+		}
+		res.Groups[0].add(Hit{item.Title, "/news/" + item.Slug + "/", excerpt(text, terms), meta})
+		if len(res.Articles) < perTypeLimit {
+			res.Articles = append(res.Articles, item)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("搜索文章: %w", err)
 	}
-
-	// 2. 搜索战队（M5）：未解散的，name 或 description；最近更新的在前
-	if s.hasTable(ctx, "teams") {
-		var whereClauses []string
-		var args []any
-		whereClauses = append(whereClauses, "disbanded_at IS NULL")
-		for _, w := range words {
-			whereClauses = append(whereClauses, "(instr(lower(name), ?) > 0 OR instr(lower(description), ?) > 0)")
-			args = append(args, w, w)
+	err = s.walk(ctx, `SELECT id,title,summary,description_plain FROM tournaments WHERE status IN ('published','finished') ORDER BY updated_at DESC,id DESC`, func(rows *sql.Rows) (bool, error) {
+		item := &TournamentResult{}
+		var desc string
+		if err := rows.Scan(&item.ID, &item.Title, &item.Summary, &desc); err != nil {
+			return false, err
 		}
-		query := fmt.Sprintf(`
-			SELECT id, name, description, is_recruiting FROM teams
-			WHERE %s
-			ORDER BY updated_at DESC, id DESC
-			LIMIT 20
-		`, strings.Join(whereClauses, " AND "))
-		rows, err := s.d.ReadPool().QueryContext(ctx, query, args...)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var item TeamResult
-				var recruiting int
-				if err := rows.Scan(&item.ID, &item.Name, &item.Description, &recruiting); err == nil {
-					item.Recruiting = recruiting == 1
-					res.Teams = append(res.Teams, &item)
-				}
-			}
+		text := item.Title + "\n" + item.Summary + "\n" + desc
+		if !matches(text, terms) {
+			return false, nil
 		}
+		res.Groups[1].add(Hit{item.Title, fmt.Sprintf("/tournaments/%d/", item.ID), excerpt(text, terms), "赛事"})
+		if len(res.Tournaments) < perTypeLimit {
+			res.Tournaments = append(res.Tournaments, item)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("搜索赛事: %w", err)
 	}
-
-	// 2b. 搜索成员（M5）：只搜昵称，只有已加入的成员（账号没停用且邮箱验证过，规则 236）
-	if s.hasTable(ctx, "team_memberships") {
-		var whereClauses []string
-		var args []any
-		whereClauses = append(whereClauses, "is_active = 1", "email_verified_at IS NOT NULL")
-		for _, w := range words {
-			whereClauses = append(whereClauses, "instr(lower(nickname), ?) > 0")
-			args = append(args, w)
+	err = s.walk(ctx, `SELECT id,title,description_plain FROM scrims WHERE status IN ('published','finished') ORDER BY updated_at DESC,id DESC`, func(rows *sql.Rows) (bool, error) {
+		item := &ScrimResult{}
+		var desc string
+		if err := rows.Scan(&item.ID, &item.Title, &desc); err != nil {
+			return false, err
 		}
-		query := fmt.Sprintf(`
-			SELECT id, nickname, motto FROM users
-			WHERE %s
-			ORDER BY nickname, id
-			LIMIT 20
-		`, strings.Join(whereClauses, " AND "))
-		rows, err := s.d.ReadPool().QueryContext(ctx, query, args...)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var item MemberResult
-				if err := rows.Scan(&item.ID, &item.Nickname, &item.Motto); err == nil {
-					res.Members = append(res.Members, &item)
-				}
-			}
+		text := item.Title + "\n\n" + desc
+		if !matches(text, terms) {
+			return false, nil
 		}
+		res.Groups[1].add(Hit{item.Title, fmt.Sprintf("/scrims/%d/", item.ID), excerpt(text, terms), "内战"})
+		if len(res.Scrims) < perTypeLimit {
+			res.Scrims = append(res.Scrims, item)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("搜索内战: %w", err)
 	}
-
-	// 3. 搜索赛事（若已建表，M6）：title 或 summary
-	if s.hasTable(ctx, "tournaments") {
-		var whereClauses []string
-		var args []any
-		whereClauses = append(whereClauses, "status != 'draft'")
-		for _, w := range words {
-			whereClauses = append(whereClauses, "(instr(lower(title), ?) > 0 OR instr(lower(summary), ?) > 0)")
-			args = append(args, w, w)
+	err = s.walk(ctx, `SELECT id,name,description,is_recruiting FROM teams WHERE disbanded_at IS NULL ORDER BY updated_at DESC,id DESC`, func(rows *sql.Rows) (bool, error) {
+		item := &TeamResult{}
+		var recruiting int
+		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &recruiting); err != nil {
+			return false, err
 		}
-		query := fmt.Sprintf(`
-			SELECT id, title, summary FROM tournaments
-			WHERE %s
-			ORDER BY id DESC
-			LIMIT 20
-		`, strings.Join(whereClauses, " AND "))
-		rows, err := s.d.ReadPool().QueryContext(ctx, query, args...)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var item TournamentResult
-				if err := rows.Scan(&item.ID, &item.Title, &item.Summary); err == nil {
-					res.Tournaments = append(res.Tournaments, &item)
-				}
-			}
+		if !matches(item.Name+"\n"+item.Description, terms) {
+			return false, nil
 		}
+		item.Recruiting = recruiting == 1
+		meta := "战队"
+		if item.Recruiting {
+			meta = "招募中"
+		}
+		res.Groups[2].add(Hit{item.Name, fmt.Sprintf("/teams/%d/", item.ID), excerpt(item.Description, terms), meta})
+		if len(res.Teams) < perTypeLimit {
+			res.Teams = append(res.Teams, item)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("搜索战队: %w", err)
 	}
-
-	// 4. 搜索内战（若已建表，M6）：title
-	if s.hasTable(ctx, "scrims") {
-		var whereClauses []string
-		var args []any
-		whereClauses = append(whereClauses, "status != 'draft'")
-		for _, w := range words {
-			whereClauses = append(whereClauses, "instr(lower(title), ?) > 0")
-			args = append(args, w)
+	err = s.walk(ctx, `SELECT id,nickname,motto FROM users WHERE is_active=1 AND email_verified_at IS NOT NULL ORDER BY nickname,id`, func(rows *sql.Rows) (bool, error) {
+		item := &MemberResult{}
+		if err := rows.Scan(&item.ID, &item.Nickname, &item.Motto); err != nil {
+			return false, err
 		}
-		query := fmt.Sprintf(`
-			SELECT id, title FROM scrims
-			WHERE %s
-			ORDER BY id DESC
-			LIMIT 20
-		`, strings.Join(whereClauses, " AND "))
-		rows, err := s.d.ReadPool().QueryContext(ctx, query, args...)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var item ScrimResult
-				if err := rows.Scan(&item.ID, &item.Title); err == nil {
-					res.Scrims = append(res.Scrims, &item)
-				}
-			}
+		if !matches(item.Nickname, terms) {
+			return false, nil
 		}
+		res.Groups[3].add(Hit{item.Nickname, fmt.Sprintf("/members/%d/", item.ID), item.Motto, "成员"})
+		if len(res.Members) < perTypeLimit {
+			res.Members = append(res.Members, item)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("搜索成员: %w", err)
 	}
-
 	return res, nil
 }

@@ -239,3 +239,38 @@ func TestImportCollectionKeysFollowLegacyIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestImportArticleSearchPublicRestrictions(t *testing.T) {
+	for _, restrictedID := range []int{1, 2, 3} {
+		t.Run(fmt.Sprint(restrictedID), func(t *testing.T) {
+			ctx := context.Background()
+			d := newTestDB(t)
+			legacy := newLegacyContentDB(t)
+			_, err := legacy.Exec(`INSERT INTO wagtailcore_page (id,path,slug,title) VALUES
+                (1,'00010001','restricted-parent','受限栏目'),
+                (2,'000100010001','article','文章'),
+                (3,'00010002','other','其他栏目');
+                INSERT INTO content_articlepage (page_ptr_id,body) VALUES (2,'正文');`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := legacy.Exec(`INSERT INTO wagtailcore_pageviewrestriction VALUES (1,?)`, restrictedID); err != nil {
+				t.Fatal(err)
+			}
+			if err := ImportLegacyContent(ctx, d, legacy, "https://example.test"); err != nil {
+				t.Fatal(err)
+			}
+			var public, live int
+			if err := d.ReadPool().QueryRowContext(ctx, `SELECT search_public,live FROM pages WHERE id=2`).Scan(&public, &live); err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if restrictedID == 3 {
+				want = 1
+			}
+			if public != want || live != 1 {
+				t.Fatalf("public=%d live=%d want public=%d", public, live, want)
+			}
+		})
+	}
+}

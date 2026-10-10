@@ -423,6 +423,7 @@ func newLegacyContentDB(t *testing.T) *sql.DB {
 	schema := `
 	CREATE TABLE wagtailcore_page (
 		id INTEGER PRIMARY KEY,
+        path TEXT NOT NULL DEFAULT '0001',
 		slug TEXT NOT NULL,
 		title TEXT NOT NULL,
 		live INTEGER NOT NULL DEFAULT 1,
@@ -472,6 +473,7 @@ func newLegacyContentDB(t *testing.T) *sql.DB {
 		file_size INTEGER
 	);
 
+    CREATE TABLE wagtailcore_pageviewrestriction (id INTEGER PRIMARY KEY, page_id INTEGER);
     CREATE TABLE content_standardpage (page_ptr_id INTEGER PRIMARY KEY, body TEXT NOT NULL);
     CREATE TABLE django_content_type (id INTEGER PRIMARY KEY, app_label TEXT, model TEXT);
     INSERT INTO django_content_type VALUES (1, 'content', 'articlepage'), (2, 'content', 'standardpage'), (3, 'other', 'thing');

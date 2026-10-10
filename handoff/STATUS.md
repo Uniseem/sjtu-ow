@@ -2,9 +2,9 @@
 
 ```yaml
 milestone: 正式站 265 起回到旧站（Django），新栈前台在测试机上照 docs/frontend-migration.md 重做，和旧站对拍全绿再割接。F1 关键底座补齐（262–264，细项仍见表）；F2 第一组通过（266），267 卡片/布局已有旧模板 SSR 对照，268–269 账号 14 条地址已有页面或兼容跳转，登录/注册/找回入口/改密码/邮箱/退出六页四组合对拍通过，找回密码/改邮箱 Go/Web 回归通过；F2/F3 最终验收仍未完成。270 起前端由 Claude 做、后端由 GPT 做：F4 普通页、搜索、投稿前端写好，访客投稿页对拍通过，其余卡在「交给后端（GPT）」的 BE-0/BE-2。
-round: 273-be-standard-page-import
+round: 274-be-search-session
 next_frontend: Claude：273 文章页（含评论），再资讯列表、首页；账号组其余对拍、真实旅程、F2 样张仍待补。
-next_backend: GPT：BE-0/BE-1 已完成（273，普通页三页四组合严格对拍通过），下一轮 BE-2 搜索分组、BE-3 会话投稿权限。IP 试用站未部署，正式站继续跑 Django。
+next_backend: GLM 接替 GPT 的后端范围（用户已确认），前端仍由 Claude 做。BE-0–3 后端完成，Claude 待接类型；GLM 接班先看 rounds/274-be-search-session/glm-handoff.md，优先核查文章各出口公开门、首页统计/我的安排/吞错，随后会话 B3 与页面聚合缺口。IP 试用站未部署，正式站继续 Django。
 updated: 2026-10-10
 blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令时写法、磁盘清理、异地备份）
 ```
@@ -131,8 +131,8 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 |---|---|---|---|---|
 | BE-0 | ✓ 273 | `sjtuow import`（`internal/content/import.go` 第 5 段） | **普通页一条都没导进来**：它读旧库的 `content_sitepage`，旧站的表是 `content_standardpage`（`content/models.py` `StandardPage`），`QueryContext` 报错被 `if err == nil` 吞了，`INSERT` 的错误也是 `_, _ =`。270 对拍里 `/about/`、`/terms/`、`/privacy/` 在新站都是 404。改成读 `content_standardpage`，顺带把 `seo_title`、`search_description`、`first_published_at`、`last_published_at`（`wagtailcore_page`）一起导；这一段和同文件别处吞掉的错误改成报出来（导入失败要让人看见）。正式站割接前必须修，否则三页协议在新站消失 | `about`、`terms`、`privacy` |
 | BE-1 | ✓ 273 | `GET /api/page/{slug}` | 加 `seo_title`、`search_description`、`last_published_at`（可空，RFC 3339）。`content.Page` 里都有，`SitePageOut` 没带出来（`content/models.py` `StandardPage` + `SeoPageMixin`） | `about`、`terms`、`privacy` |
-| BE-2 | 待做 | `GET /api/search?q=` | 回答改成旧搜索页的分组：`{query, groups: [{key, label, hits: [{title, url, excerpt, meta}], truncated}]}`。规则逐条照 `search/services.py`：查询去空白截 50 字、按空白切最多 5 个词、大小写折叠、每个词都要命中，空查询不搜；四组顺序固定 `articles` 文章 / `events` 赛事与内战 / `teams` 战队 / `members` 成员，空组也要在（前端按位置编 `search-N`）；每组最多 20 条，多了 `truncated: true`；摘录是第一个命中词前后各 40 字，被截的一头加「…」，没命中就取开头 80 字。文章：已发布公开的，按 `last_published_at` 倒序，搜标题+摘要+`body_plain`，`meta` 是分类名（没有就「文章」），`url` `/news/<slug>/`。赛事与内战一组：先赛事（已发布、已结束，按 `updated_at` 倒序）后内战（同），搜标题+摘要+说明纯文本，`meta` 是「赛事」「内战」。战队：没解散的，按 `updated_at` 倒序，搜名字+简介，摘录取简介，`meta`「招募中」或「战队」。成员：成员墙上的人，按昵称排序，只搜昵称，摘录是宣言，`meta`「成员」，`url` `/members/<用户编号>/`。限流照旧回 429 | `search` |
-| BE-3 | 待做 | `GET /api/session` | `user` 加 `can_submit_article`：`can_use(article_submit)` 本身，不看邮箱验证（`content/views.py` `submit_entry` 把「邮箱未验证」「没有投稿权限」分开列）。现在前端只能从 `caps` 里的 `articles.publish_own` 推，未验证邮箱又被禁投稿的人只看到前一条 | `submit`（只影响这一种人，种子数据里没有） |
+| BE-2 | ✓ 274 | `GET /api/search?q=` | 回答改成旧搜索页的分组：`{query, groups: [{key, label, hits: [{title, url, excerpt, meta}], truncated}]}`。规则逐条照 `search/services.py`：查询去空白截 50 字、按空白切最多 5 个词、大小写折叠、每个词都要命中，空查询不搜；四组顺序固定 `articles` 文章 / `events` 赛事与内战 / `teams` 战队 / `members` 成员，空组也要在（前端按位置编 `search-N`）；每组最多 20 条，多了 `truncated: true`；摘录是第一个命中词前后各 40 字，被截的一头加「…」，没命中就取开头 80 字。文章：已发布公开的，按 `last_published_at` 倒序，搜标题+摘要+`body_plain`，`meta` 是分类名（没有就「文章」），`url` `/news/<slug>/`。赛事与内战一组：先赛事（已发布、已结束，按 `updated_at` 倒序）后内战（同），搜标题+摘要+说明纯文本，`meta` 是「赛事」「内战」。战队：没解散的，按 `updated_at` 倒序，搜名字+简介，摘录取简介，`meta`「招募中」或「战队」。成员：成员墙上的人，按昵称排序，只搜昵称，摘录是宣言，`meta`「成员」，`url` `/members/<用户编号>/`。限流照旧回 429 | `search` |
+| BE-3 | ✓ 274 | `GET /api/session` | `user` 加 `can_submit_article`：`can_use(article_submit)` 本身，不看邮箱验证（`content/views.py` `submit_entry` 把「邮箱未验证」「没有投稿权限」分开列）。现在前端只能从 `caps` 里的 `articles.publish_own` 推，未验证邮箱又被禁投稿的人只看到前一条 | `submit`（只影响这一种人，种子数据里没有） |
 
 ## 交给前端（Claude）
 
@@ -143,6 +143,8 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 | （暂无） | | | |
 
 ## 最近轮次
+
+**274（2026-10-10，自查通过）**：GPT 完成 BE-2/BE-3：搜索附加固定四组、旧站摘录/标签/排序/截断，保留五份旧列表；Unicode casefold 映射由项目 Python 生成，13 个旧站 golden，限流 HTTP 回归；迁移 00018 和旧站祖先访问限制导入只用于搜索可见标记。会话独立返回 can_submit_article，六种实际权限组合通过。最终 `20261010-230752-2200302`：15 处变异、Go/Web 整组（15 + 171）、搜索四组合严格对拍通过，退出 0。用户指定 GLM 接替后端、Claude 继续前端，AGENTS 已记，详细指导 `rounds/274-be-search-session/glm-handoff.md`。下一轮核查文章公开门/首页等，本轮未扩大实现、未部署。
 
 **273（2026-10-10，自查通过）**：GPT 修 BE-0/BE-1：普通页读真实 `content_standardpage`，保留 SEO 和首次/最近发布时间，修 Store 漏赋日期；内容导入九段错误向上报，真实种子导入暴露并修复图片集合 key 与旧 ID 冲突；修订只选文章/普通页 content_type。API 只加字段，apigen 已生成。最终测试机 `20261010-225537-93f0339`：内容回归、六处变异、Go/Web 整组（15 + 171）、三页四组合严格对拍均通过，退出 0。BE-2/BE-3 下一轮；前端接类型与页面验收归 Claude，正式站未动。见 `rounds/273-be-standard-page-import/`。
 

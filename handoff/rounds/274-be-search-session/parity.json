@@ -1,0 +1,40 @@
+[
+ {
+  "name": "search",
+  "who": "visitor",
+  "path": "/search/?q=%E6%88%AA%E5%9B%BE",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ }
+]

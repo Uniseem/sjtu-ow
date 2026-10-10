@@ -218,7 +218,12 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 			       p.go_live_at, p.expire_at, p.first_published_at, p.last_published_at,
 			       p.live_revision_id, p.owner_id, p.seo_title, p.search_description,
 			       a.category_id, a.cover_id, a.summary, a.body, %s, %s, %s,
-			       a.author_id, a.comments_enabled, %s
+			       a.author_id, a.comments_enabled, %s,
+                   NOT EXISTS (
+                       SELECT 1 FROM wagtailcore_pageviewrestriction vr
+                       JOIN wagtailcore_page restricted ON restricted.id = vr.page_id
+                       WHERE substr(p.path, 1, length(restricted.path)) = restricted.path
+                   ) AS search_public
 			FROM content_articlepage a
 			JOIN wagtailcore_page p ON p.id = a.page_ptr_id
 			ORDER BY p.id ASC
@@ -232,7 +237,7 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 			for rows.Next() {
 				var pageID int64
 				var slug, title, summary, body, bodyPlain string
-				var live, hasUnpub, commentsEnabled, bodyWords, bodyMinutes int
+				var live, hasUnpub, commentsEnabled, bodyWords, bodyMinutes, searchPublic int
 				var goLive, expire, firstPub, lastPub, seoTitle, searchDesc sql.NullString
 				var liveRevID, ownerID, catID, coverID, authorID, tourID sql.NullInt64
 
@@ -241,7 +246,7 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 					&goLive, &expire, &firstPub, &lastPub,
 					&liveRevID, &ownerID, &seoTitle, &searchDesc,
 					&catID, &coverID, &summary, &body, &bodyPlain, &bodyWords, &bodyMinutes,
-					&authorID, &commentsEnabled, &tourID,
+					&authorID, &commentsEnabled, &tourID, &searchPublic,
 				); err != nil {
 					return fmt.Errorf("4. 导入文章页面 (content_articlepage + wagtailcore_page)：扫描失败: %w", err)
 				}
@@ -294,13 +299,13 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 							INSERT INTO pages (id, kind, slug, title, live, has_unpublished_changes,
 								go_live_at, expire_at, first_published_at, last_published_at,
 								live_revision_id, latest_revision_id, owner_id, seo_title, search_description,
-								version, created_at, updated_at)
-							VALUES (?, 'article', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+								version, created_at, updated_at, search_public)
+							VALUES (?, 'article', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
 							ON CONFLICT (id) DO NOTHING
 						`, pageID, slug, title, live, hasUnpub,
 					goLiveUTC, expireUTC, firstPubUTC, lastPubUTC,
 					liveRevIDVal, liveRevIDVal, ownerIDVal, seoTitleStr, searchDescStr,
-					nowStr, nowStr); err != nil {
+					nowStr, nowStr, searchPublic); err != nil {
 					return fmt.Errorf("4. 导入文章页面 (content_articlepage + wagtailcore_page)：SQL 写入失败: %w", err)
 				}
 

@@ -35,11 +35,11 @@ func TestSearchService(t *testing.T) {
 		t.Fatalf("空查询应当返回空结果: %+v", emptyRes)
 	}
 
-	// 2. 超长查询拦截 (> 50 字符)
+	// 2. 超长查询照旧截断到 50 字符
 	longQuery := strings.Repeat("词", 51)
-	_, err = svc.Search(ctx, longQuery)
-	if err == nil || !strings.Contains(err.Error(), "超过 50 个字符") {
-		t.Fatalf("超长查询应拦截: %v", err)
+	longRes, err := svc.Search(ctx, longQuery)
+	if err != nil || longRes.Query != strings.Repeat("词", 50) {
+		t.Fatalf("超长查询未截断: %+v, %v", longRes, err)
 	}
 
 	// 插入测试分类与文章
@@ -62,8 +62,8 @@ func TestSearchService(t *testing.T) {
 			return err
 		}
 		_, err = tx.ExecContext(txCtx, `
-			INSERT INTO articles (page_id, category_id, summary, search_text)
-			VALUES (101, 1, '交大杯高校赛圆满落幕', '守望先锋高校赛\n交大杯高校赛圆满落幕\nsjtu ow 线下总决赛圆满成功')
+			INSERT INTO articles (page_id, category_id, summary, search_text, body_plain)
+			VALUES (101, 1, '交大杯高校赛圆满落幕', '守望先锋高校赛\n交大杯高校赛圆满落幕\nsjtu ow 线下总决赛圆满成功', 'sjtu ow 线下总决赛圆满成功')
 		`)
 		if err != nil {
 			return err

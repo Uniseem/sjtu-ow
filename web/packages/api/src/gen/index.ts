@@ -798,6 +798,7 @@ export interface GetApiSearchQuery {
 
 export interface GetApiSearchOut {
   query: string;
+  groups: {   key: string;   label: string;   hits: {   title: string;   url: string;   excerpt: string;   meta: string; }[];   truncated: boolean; }[];
   articles: ({   id: number;   slug: string;   title: string;   summary: string;   category_name: string;   first_published_at?: string | null; } | null)[];
   teams: ({   id: number;   name: string;   description: string;   is_recruiting: boolean; } | null)[];
   members: ({   id: number;   nickname: string;   motto: string; } | null)[];
@@ -814,7 +815,7 @@ export interface GetApiSessionQuery {
 }
 
 export interface GetApiSessionOut {
-  user: {   id: number;   nickname: string;   email: string;   admin: boolean;   superuser: boolean;   caps: string[];   email_verified: boolean;   is_sjtu: boolean; } | null;
+  user: {   id: number;   nickname: string;   email: string;   admin: boolean;   superuser: boolean;   caps: string[];   email_verified: boolean;   is_sjtu: boolean;   can_submit_article: boolean; } | null;
   flash?: string;
 }
 
