@@ -6,7 +6,7 @@
    "thread": {
     "total": 2,
     "page": 1,
-    "pageSize": 20,
+    "page_size": 20,
     "comments": [
      {
       "id": 3,
@@ -62,7 +62,7 @@
    "thread": {
     "total": 0,
     "page": 1,
-    "pageSize": 20,
+    "page_size": 20,
     "comments": []
    },
    "sort": "new",
@@ -83,7 +83,7 @@
    "thread": {
     "total": 1,
     "page": 1,
-    "pageSize": 20,
+    "page_size": 20,
     "comments": [
      {
       "id": 3,
@@ -122,7 +122,7 @@
    "thread": {
     "total": 0,
     "page": 1,
-    "pageSize": 20,
+    "page_size": 20,
     "comments": []
    },
    "sort": "new",
@@ -145,7 +145,7 @@
    "thread": {
     "total": 25,
     "page": 1,
-    "pageSize": 20,
+    "page_size": 20,
     "comments": [
      {
       "id": 3,

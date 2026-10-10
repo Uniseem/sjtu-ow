@@ -21,7 +21,7 @@ export async function load(ctx: LoadCtx) {
   const page = Math.max(1, Number.parseInt(ctx.query.comments ?? "", 10) || 1)
   // A draft (visible to its author here, comments API answers 404) paints an
   // empty section as the old thread() did for an unpublished page.
-  let thread: CommentThread = { total: 0, page, pageSize: 20, comments: [] }
+  let thread: CommentThread = { total: 0, page, page_size: 20, comments: [] }
   try {
     thread = await commentThread(ctx.api, article.id, { sort, page })
   } catch (err) {
@@ -37,7 +37,8 @@ export async function load(ctx: LoadCtx) {
 }
 </script>
 <script setup lang="ts">
-import { computed, inject, ref } from "vue"
+import { computed, inject, ref, watch, onBeforeUnmount } from "vue"
+import type { CommentSubmission, CommentReplySubmission, CommentEditSubmission } from "@sjtu-ow/ui/types"
 import CAvatar from "@sjtu-ow/ui/CAvatar.vue"
 import CComments from "@sjtu-ow/ui/CComments.vue"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
@@ -56,6 +57,7 @@ import { toast } from "../toasts"
 // the old component unmounts, so everything reads optional (StandardPage).
 const data = inject<{
   title?: string
+  description?: string
   article?: ArticleDetail
   thread?: CommentThread
   sort?: string
@@ -79,8 +81,23 @@ const updated = computed(() => {
 })
 // Three headings or more get a table of contents (design-details 6.5).
 const toc = computed(() => ((article.value?.headings?.length ?? 0) >= 3 ? article.value?.headings ?? [] : []))
-const thread = ref<CommentThread>(data?.thread ?? { total: 0, page: 1, pageSize: 20, comments: [] })
+const thread = ref<CommentThread>(data?.thread ?? { total: 0, page: 1, page_size: 20, comments: [] })
 const sort = ref(data?.sort ?? "new")
+const loadingMore = ref(false)
+let firstPage = thread.value.page
+let epoch = 0
+let readSequence = 0
+// A Vue Router navigation may reuse this component. New page-data must
+// replace its local state, and any requests for the old article become stale.
+watch(() => [data?.article?.id, data?.thread, data?.sort], () => {
+  epoch++
+  readSequence++
+  thread.value = data?.thread ?? { total: 0, page: 1, page_size: 20, comments: [] }
+  sort.value = data?.sort ?? "new"
+  firstPage = thread.value.page
+  loadingMore.value = false
+}, { flush: "sync" })
+onBeforeUnmount(() => { epoch++; readSequence++ })
 // A member's section is interactive; a feature ban (can_comment, BE-7) shows
 // the old post_problems notice once Go sends the flag. The back-office caps
 // are a different system (AGENTS), so comments.moderate names the moderators.
@@ -97,41 +114,93 @@ function coverSrc(): string {
 }
 // The pool picture drifts, as cover_fallback drew it (13.2.5).
 const coverClass = computed(() =>
-  (article.value && (article.value.cover_image_id || !article.value.default_cover_image_id))
+  (!article.value || article.value.cover_image_id || !article.value.default_cover_image_id)
     ? "c-cover__img"
     : ["c-cover__img", "c-drift", `c-drift--${article.value.id % 4 + 1}`],
 )
 
-// One action failing tells the reader and keeps the section: the comment
-// itself never changed (I5).
-function act(request: Promise<unknown>, page = thread.value.page) {
-  request
-    .then(async () => {
-      thread.value = await commentThread(api, article.value!.id, { sort: sort.value, page })
+// Capture identity before sending a write. Its result belongs to that page,
+// even when the reader navigates elsewhere before the response arrives.
+async function act(request: () => Promise<unknown>): Promise<boolean> {
+  const articleId = article.value?.id
+  if (!articleId) return false
+  const started = epoch
+  const selectedSort = sort.value
+  const startPage = firstPage
+  const endPage = thread.value.page
+  try {
+    await request()
+  } catch (err) {
+    if (started === epoch) toast(err instanceof Error ? err.message : "操作失败，请重试", "error")
+    return false
+  }
+  // The write succeeded: a refresh failure must not encourage a duplicate
+  // submission. Report it separately and still acknowledge the saved draft.
+  if (started !== epoch) return true
+  const sequence = ++readSequence
+  try {
+    const pages = await Promise.all(Array.from({ length: endPage - startPage + 1 }, (_, i) =>
+      commentThread(api, articleId, { sort: selectedSort, page: startPage + i }),
+    ))
+    if (started !== epoch || sequence !== readSequence) return true
+    const last = pages[pages.length - 1]!
+    const seen = new Set<number>()
+    const comments = pages.flatMap((page) => page.comments).filter((comment) => {
+      if (!comment || seen.has(comment.id)) return false
+      seen.add(comment.id)
+      return true
     })
-    .catch((err) => toast(err?.message ?? "操作失败，请重试", "error"))
+    thread.value = { ...last, comments }
+  } catch {
+    if (started === epoch && sequence === readSequence) {
+      toast("操作已完成，暂时无法刷新评论，请刷新页面查看。", "error")
+    }
+  }
+  return true
 }
-function more(next: number) {
-  commentThread(api, article.value!.id, { sort: sort.value, page: next })
-    .then((fresh) => {
-      const seen = new Set(thread.value.comments.map((c) => c?.id))
-      thread.value = { ...fresh, comments: [...thread.value.comments, ...fresh.comments.filter((c) => !seen.has(c?.id))] }
-    })
-    .catch((err) => toast(err?.message ?? "加载失败，请重试", "error"))
+async function more(next: number) {
+  const articleId = article.value?.id
+  if (!articleId || loadingMore.value) return
+  const started = epoch
+  const sequence = ++readSequence
+  const selectedSort = sort.value
+  loadingMore.value = true
+  try {
+    const fresh = await commentThread(api, articleId, { sort: selectedSort, page: next })
+    if (started !== epoch || sequence !== readSequence) return
+    const seen = new Set(thread.value.comments.map((c) => c?.id))
+    thread.value = { ...fresh, comments: [...thread.value.comments, ...fresh.comments.filter((c) => c && !seen.has(c.id))] }
+  } catch (err) {
+    if (started === epoch) toast(err instanceof Error ? err.message : "加载失败，请重试", "error")
+  } finally {
+    if (started === epoch) loadingMore.value = false
+  }
 }
-const onLike = (id: number) => act(postApiCommentsIdLike(api, id))
-const onCreate = (payload: { content: string }) => act(postApiArticlesIdComments(api, article.value!.id, { content: payload.content }))
-const onReply = (payload: { parentId: number; content: string }) =>
-  act(postApiArticlesIdComments(api, article.value!.id, { content: payload.content, parent_id: payload.parentId }))
-const onEdit = (payload: { id: number; content: string }) => act(patchApiCommentsId(api, payload.id, { content: payload.content }))
-const onRemove = (id: number) => act(deleteApiCommentsId(api, id))
-const onHide = (change: { id: number; hidden: boolean }) => act(postApiCommentsIdHide(api, change.id, { hidden: change.hidden }))
-const onPin = (change: { id: number; pinned: boolean }) => act(postApiCommentsIdPin(api, change.id, { article_id: article.value!.id, pinned: change.pinned }))
+const onLike = (id: number) => { void act(() => postApiCommentsIdLike(api, id)) }
+const onCreate = (payload: CommentSubmission) => {
+  const id = article.value?.id
+  if (!id) return payload.complete(false)
+  void act(() => postApiArticlesIdComments(api, id, { content: payload.content })).then(payload.complete)
+}
+const onReply = (payload: CommentReplySubmission) => {
+  const id = article.value?.id
+  if (!id) return payload.complete(false)
+  void act(() => postApiArticlesIdComments(api, id, { content: payload.content, parent_id: payload.parentId })).then(payload.complete)
+}
+const onEdit = (payload: CommentEditSubmission) => {
+  void act(() => patchApiCommentsId(api, payload.id, { content: payload.content })).then(payload.complete)
+}
+const onRemove = (id: number) => { void act(() => deleteApiCommentsId(api, id)) }
+const onHide = (change: { id: number; hidden: boolean }) => { void act(() => postApiCommentsIdHide(api, change.id, { hidden: change.hidden })) }
+const onPin = (change: { id: number; pinned: boolean }) => {
+  const articleId = article.value?.id
+  if (articleId) void act(() => postApiCommentsIdPin(api, change.id, { article_id: articleId, pinned: change.pinned }))
+}
 
 const related = computed(() => (article.value?.related ?? []) as ArticleCard[])
 </script>
 <template>
-  <main id="main" class="flex-1">
+  <main v-if="article" id="main" class="flex-1">
     <header class="c-cover">
       <img :src="coverSrc()" :class="coverClass" alt="" width="2400" height="1200">
       <div class="c-cover__body">
@@ -163,7 +232,7 @@ const related = computed(() => (article.value?.related ?? []) as ArticleCard[])
             <CIcon name="text" /><span class="font-numeric">{{ article.char_count }}</span> 字
           </li>
           <li>
-            <a href="#comments"><CIcon name="chat" /><span class="font-numeric">{{ data.thread.total || article.comment_total || 0 }}</span> 条评论</a>
+            <a href="#comments"><CIcon name="chat" /><span class="font-numeric">{{ thread.total }}</span> 条评论</a>
           </li>
         </ul>
       </div>
@@ -220,6 +289,8 @@ const related = computed(() => (article.value?.related ?? []) as ArticleCard[])
         </nav>
 
         <CComments
+          :key="`${article.id}:${sort}`"
+          :loading-more="loadingMore"
           :comments-enabled="article.comments_enabled"
           :thread="thread"
           :sort="sort"
@@ -230,6 +301,7 @@ const related = computed(() => (article.value?.related ?? []) as ArticleCard[])
           :viewer-id="viewer.user?.id"
           :page-url="pageUrl"
           :login-url="loginUrl"
+          @like="onLike"
           @more="more"
           @create="onCreate"
           @reply="onReply"

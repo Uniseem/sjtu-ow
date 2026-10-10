@@ -359,3 +359,15 @@ test("a draft the author can open here paints an empty comment section when Go's
   expect(status).toBe(200)
   expect(body.replace(/<!--.*?-->/g, "")).toContain("还没有评论。")
 })
+
+test("article pagination uses the Go page_size contract at the full-page boundary", async () => {
+  for (const total of [20, 21, 40, 41]) {
+    const { status, plain: body } = await page("/news/screens-guide/?sort=top", {
+      "/api/page/news/screens-guide": { body: article },
+      "/api/articles/7/comments": { body: { total, page: 1, page_size: 20, comments: [commentRow()] } },
+    })
+    expect(status).toBe(200)
+    expect(body.includes("加载更多"), `total=${total}`).toBe(total > 20)
+    if (total > 20) expect(body).toContain('href="/news/screens-guide/?comments=2&amp;sort=top#comments"')
+  }
+})

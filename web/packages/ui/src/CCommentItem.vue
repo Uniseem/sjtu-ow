@@ -4,7 +4,9 @@ import CCommentComposer from "./CCommentComposer.vue"
 import CCommentReply from "./CCommentReply.vue"
 import CIcon from "./CIcon.vue"
 import { owDate, owISO, owTime } from "@sjtu-ow/shared/time"
-import type { CommentView } from "./types"
+import type { CommentView, CommentReplySubmission, CommentEditSubmission } from "./types"
+import { useConfirm } from "@sjtu-ow/shared/confirm"
+const confirm = useConfirm()
 
 // comments/templates/comments/_item.html: a top-level comment, its replies
 // folded into a details the same way.
@@ -17,8 +19,8 @@ defineProps<{
 }>()
 const emit = defineEmits<{
   like: [id: number]
-  reply: [payload: { parentId: number; content: string }]
-  edit: [comment: { id: number; content: string }]
+  reply: [payload: CommentReplySubmission]
+  edit: [comment: CommentEditSubmission]
   remove: [id: number]
   hide: [change: { id: number; hidden: boolean }]
   pin: [change: { id: number; pinned: boolean }]
@@ -49,12 +51,12 @@ const emit = defineEmits<{
           <template v-if="interactive">
             <details v-if="canPost">
               <summary class="c-act"><CIcon name="reply" />回复</summary>
-              <CCommentComposer :parent-name="item.author_name" @send="emit('reply', { parentId: item.id, content: $event.content })" />
+              <CCommentComposer :parent-name="item.author_name" @send="emit('reply', { ...$event, parentId: item.id })" />
             </details>
             <template v-if="item.user_id === viewerId && !item.is_hidden">
               <details>
                 <summary class="c-act"><CIcon name="edit" />编辑</summary>
-                <CCommentComposer editing :draft="item.content" class="mt-2" @send="emit('edit', { id: item.id, content: $event.content })" />
+                <CCommentComposer editing :draft="item.content" class="mt-2" @send="emit('edit', { ...$event, id: item.id })" />
               </details>
               <button type="button" class="c-act c-act--danger" @click="confirm('删除这条评论？删除后不能恢复。') && emit('remove', item.id)">
                 <CIcon name="trash" />删除

@@ -112,7 +112,7 @@ test("comment tools follow the viewer: like state, own edits, moderator pins and
 })
 
 test("the section shows the composer only where the old one would render", async () => {
-  const thread = { total: 0, page: 1, pageSize: 20, comments: [] }
+  const thread = { total: 0, page: 1, page_size: 20, comments: [] }
   const visitor = await paint(CComments, {
     commentsEnabled: true, thread, sort: "new", interactive: false, canPost: false,
     postProblems: [], canModerate: false, pageUrl: "/news/w/", loginUrl: "/accounts/login/?next=/news/w/",
@@ -140,14 +140,14 @@ test("the section shows the composer only where the old one would render", async
   expect(closed).toContain("这篇文章关闭了评论。")
   // 25 top-level comments at 20 a page leave a load-more to page 2.
   const more = await paint(CComments, {
-    commentsEnabled: true, thread: { total: 25, page: 1, pageSize: 20, comments: [] }, sort: "new",
+    commentsEnabled: true, thread: { total: 25, page: 1, page_size: 20, comments: [] }, sort: "new",
     interactive: false, canPost: false, postProblems: [], canModerate: false,
     pageUrl: "/news/w/", loginUrl: "/accounts/login/?next=/news/w/",
   })
   expect(more).toContain('href="/news/w/?comments=2&amp;sort=new#comments"')
   expect(more).toContain("加载更多")
   const last = await paint(CComments, {
-    commentsEnabled: true, thread: { total: 20, page: 1, pageSize: 20, comments: [] }, sort: "new",
+    commentsEnabled: true, thread: { total: 20, page: 1, page_size: 20, comments: [] }, sort: "new",
     interactive: false, canPost: false, postProblems: [], canModerate: false,
     pageUrl: "/news/w/", loginUrl: "/accounts/login/?next=/news/w/",
   })

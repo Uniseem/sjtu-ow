@@ -3,7 +3,7 @@ import { computed } from "vue"
 import CCommentComposer from "./CCommentComposer.vue"
 import CCommentItem from "./CCommentItem.vue"
 import CIcon from "./CIcon.vue"
-import type { CommentView } from "./types"
+import type { CommentView, CommentSubmission, CommentReplySubmission, CommentEditSubmission } from "./types"
 
 // comments/templates/comments/section.html (design 5.6, 13.13.3). Rendered
 // read-only for visitors (no forms) and interactive for a signed-in member,
@@ -12,7 +12,8 @@ import type { CommentView } from "./types"
 // hx-target="#slot-article-comments" outerHTML swaps had.
 const props = defineProps<{
   commentsEnabled: boolean
-  thread: { total: number; page: number; pageSize: number; comments: (CommentView | null)[] }
+  thread: { total: number; page: number; page_size: number; comments: (CommentView | null)[] }
+  loadingMore?: boolean
   sort: string
   interactive: boolean
   canPost: boolean
@@ -23,10 +24,11 @@ const props = defineProps<{
   loginUrl: string
 }>()
 const emit = defineEmits<{
+  like: [id: number]
   more: [page: number]
-  create: [payload: { content: string }]
-  reply: [payload: { parentId: number; content: string }]
-  edit: [comment: { id: number; content: string }]
+  create: [payload: CommentSubmission]
+  reply: [payload: CommentReplySubmission]
+  edit: [comment: CommentEditSubmission]
   remove: [id: number]
   hide: [change: { id: number; hidden: boolean }]
   pin: [change: { id: number; pinned: boolean }]
@@ -34,7 +36,7 @@ const emit = defineEmits<{
 
 // The old thread's has_next/next_number: PAGE_SIZE top-level comments a page
 // (comments/services.py), so the counts Go sends answer it.
-const hasMore = computed(() => props.thread.page * props.thread.pageSize < props.thread.total)
+const hasMore = computed(() => props.thread.page * props.thread.page_size < props.thread.total)
 const nextPage = computed(() => props.thread.page + 1)
 </script>
 <template>
@@ -81,7 +83,7 @@ const nextPage = computed(() => props.thread.page + 1)
     </ol>
 
     <div id="comments-more" class="mt-6">
-      <a v-if="hasMore" :href="`${pageUrl}?comments=${nextPage}&sort=${sort}#comments`" class="c-btn c-btn--secondary c-btn--sm" @click.prevent="emit('more', nextPage)">加载更多</a>
+      <a v-if="hasMore" :href="`${pageUrl}?comments=${nextPage}&sort=${sort}#comments`" class="c-btn c-btn--secondary c-btn--sm" :aria-busy="loadingMore ? 'true' : undefined" @click.prevent="!loadingMore && emit('more', nextPage)">加载更多</a>
     </div>
   </section>
 </template>

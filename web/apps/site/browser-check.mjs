@@ -201,7 +201,7 @@ async function main() {
   })`)
   if (!home.jsReady) fail("激活", home)
   if (home.replaced?.length !== 0) fail("没有激活：服务端画的 #main 被换掉了", home)
-  if ((home.h1 !== "SJTU-OW" && home.h1 !== "上海交通大学守望先锋社区") || home.title !== "SJTU-OW") fail("首页标题", home)
+  if ((home.h1 !== "SJTU-OW" && home.h1 !== "上海交通大学守望先锋社区") || home.title !== "首页 · SJTU-OW") fail("首页标题", home)
   if (home.nav.join(",") !== "首页,资讯,赛事,内战,战队,成员") fail("导航", home)
   if (!home.footer) fail("页脚", home)
   if (home.account.join(",") !== "登录,注册") fail("账号区", home)
@@ -375,6 +375,12 @@ async function main() {
     if (accountMessages.length) fail("账号入口报错/CSP 违规", accountMessages)
   }
 
+  if (!given && !failures.length) {
+    const comments = spawn(process.execPath, ["comments-browser-check.mjs", chrome], { stdio: "inherit" })
+    children.push(comments)
+    const code = await new Promise((resolve) => comments.on("exit", resolve))
+    if (code !== 0) fail("评论真实浏览器回归", { code })
+  }
   console.log(failures.length ? `\n${failures.length} 项没过` : "\nBROWSER-CHECK-OK")
 }
 

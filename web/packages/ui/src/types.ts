@@ -37,3 +37,12 @@ export interface CommentView {
   created_at: string
   updated_at: string
 }
+
+// A composer keeps its draft until the page reports the write's outcome.
+// Rendering a button or emitting an event is not a successful submission.
+export type CommentSubmission = {
+  content: string
+  complete: (success: boolean) => void
+}
+export type CommentReplySubmission = CommentSubmission & { parentId: number }
+export type CommentEditSubmission = CommentSubmission & { id: number }
