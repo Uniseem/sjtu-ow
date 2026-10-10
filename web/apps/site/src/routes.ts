@@ -1,12 +1,13 @@
 import type { RouteRecordRaw } from "vue-router"
 import Page from "./pages/Page.vue"
 import type { Load } from "./router"
+import { PageRedirect } from "@sjtu-ow/shared/navigation"
 
 // 02 号文档第 2、3 节里会打开成一页的地址，外加导航已经链到的四个说明页。
 // 编号只认 1 到 18 位数字。只接受 POST 的动作、探针、图标、地图和片段不在这里。
 const id = ":id(\\d{1,18})"
 
-type Opts = { auth?: "member" }
+type Opts = { auth?: "member"; guest?: boolean }
 
 // Pages that need a login (Django's login_required): SSR sends visitors to
 // the login page first (router.ts RouteMeta.auth).
@@ -14,6 +15,10 @@ const MEMBER: Opts = { auth: "member" }
 
 function page(path: string, title: string, opts: Opts = {}): RouteRecordRaw {
   const load: Load = () => ({ title })
+  return { path, component: Page, meta: { load, ...opts } }
+}
+function redirected(path: string, location: string, status: 301 | 302, opts: Opts = {}): RouteRecordRaw {
+  const load: Load = () => { throw new PageRedirect(location, status) }
   return { path, component: Page, meta: { load, ...opts } }
 }
 
@@ -64,20 +69,20 @@ export const PAGES: RouteRecordRaw[] = [
   page(`/registrations/${id}/`, "报名", MEMBER),
   dynamicPage("/scrims/", () => import("./pages/Scrims.vue"), "内战"),
   dynamicPage(`/scrims/${id}/`, () => import("./pages/ScrimDetail.vue"), "内战"),
-  dynamicPage("/accounts/login/", () => import("./pages/Login.vue"), "登录"),
-  page("/accounts/logout/", "退出"),
-  page("/accounts/inactive/", "账号已停用"),
-  dynamicPage("/accounts/signup/", () => import("./pages/Signup.vue"), "注册"),
-  page("/accounts/reauthenticate/", "重新验证", MEMBER),
+  dynamicPage("/accounts/login/", () => import("./pages/Login.vue"), "登录", { guest: true }),
+  dynamicPage("/accounts/logout/", () => import("./pages/Logout.vue"), "退出登录"),
+  dynamicPage("/accounts/inactive/", () => import("./pages/AccountResult.vue"), "账号已停用"),
+  dynamicPage("/accounts/signup/", () => import("./pages/Signup.vue"), "注册", { guest: true }),
+  dynamicPage("/accounts/reauthenticate/", () => import("./pages/Reauthenticate.vue"), "确认身份", MEMBER),
   page("/accounts/email/", "邮箱", MEMBER),
   dynamicPage("/accounts/confirm-email/", () => import("./pages/ConfirmEmail.vue"), "验证邮箱"),
-  page("/accounts/password/change/", "修改密码", MEMBER),
-  page("/accounts/password/set/", "设置密码", MEMBER),
+  dynamicPage("/accounts/password/change/", () => import("./pages/PasswordChange.vue"), "修改密码", MEMBER),
+  redirected("/accounts/password/set/", "/me/security/", 301, MEMBER),
   page("/accounts/password/reset/", "重置密码"),
   page("/accounts/password/reset/confirm/", "输入重置码"),
   page("/accounts/password/reset/complete/", "设置新密码"),
-  page("/accounts/password/reset/done/", "密码已重置"),
-  page("/accounts/login/code/confirm/", "登录"),
+  dynamicPage("/accounts/password/reset/done/", () => import("./pages/AccountResult.vue"), "密码已更新"),
+  redirected("/accounts/login/code/confirm/", "/accounts/login/", 302),
 ]
 
 function admin(path: string, comp: () => Promise<any>, title: string): RouteRecordRaw {

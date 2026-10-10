@@ -5966,7 +5966,18 @@
   }
 }
 .c-nojs {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  padding: 0.875rem 1.25rem;
+  background-color: var(--color-surface-2);
+  color: var(--color-fg);
+  text-align: center;
   visibility: hidden;
+}
+html.js-ready .c-nojs {
+  display: none;
 }
 html:not(.js-ready) .c-nojs {
   animation: c-nojs-show 0s linear 8s forwards;

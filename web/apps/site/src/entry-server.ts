@@ -7,9 +7,11 @@ import { flat, statusOf, type Load, type LoadCtx, type PageData } from "./router
 import type { ErrorStatus } from "./error-page"
 import { styleguideHidden } from "./specimen"
 import { VIEWER, type Viewer } from "./viewer"
+import { PageRedirect, safeNext } from "@sjtu-ow/shared/navigation"
 
 export type Rendered =
   | { kind: "slash"; location: string }
+  | { kind: "redirect"; location: string; status: 301 | 302 }
   | { kind: "login"; next: string }
   // Error pages are their own document (error-page.ts), not the app.
   | { kind: "error"; status: ErrorStatus; viewer: Viewer }
@@ -81,7 +83,9 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   const viewer = sessionR.value
   const next = pathname + parsed.search
   if (route.meta.auth === "member" && viewer.user === null) return { kind: "login", next }
+  if (route.meta.guest && viewer.user !== null) return { kind: "redirect", status: 302, location: safeNext(ctx.query.next) }
   if (loadR.status === "rejected") {
+    if (loadR.reason instanceof PageRedirect) return { kind: "redirect", status: loadR.reason.status, location: loadR.reason.location }
     const status = statusOf(loadR.reason)
     if (status === 401) return { kind: "login", next }
     return error(errorStatusOf(loadR.reason), viewer)
@@ -114,10 +118,11 @@ async function runLoad(load: Load | undefined, ctx: LoadCtx): Promise<PageData> 
 // area, the back office's tabs (superuser, caps) and the pages read it.
 async function fetchSession(api: Requester): Promise<Viewer> {
   try {
-    const user = (await getApiSession(api)).user
+    const body = await getApiSession(api)
+    const user = body.user
     // Go always sends a nickname; anything else is not a session to trust.
     if (!user || typeof user.nickname !== "string") return VISITOR
-    return { user }
+    return body.flash ? { user, flash: body.flash } : { user }
   } catch (err) {
     if (statusOf(err) === 401) return VISITOR
     throw err

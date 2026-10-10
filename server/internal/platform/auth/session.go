@@ -59,6 +59,11 @@ func NewStore(d *db.DB, c clock.Clock) *Store {
 
 // Create 发一条新会话，返回放进 Cookie 的令牌（32 字节的 base64url）。库里只存 SHA-256。
 func (s *Store) Create(ctx context.Context, userID int64) (string, error) {
+	return s.CreateWithNotice(ctx, userID, "")
+}
+
+// CreateWithNotice 将首次整页显示的提示与新会话一起保存。
+func (s *Store) CreateWithNotice(ctx context.Context, userID int64, notice string) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
@@ -66,9 +71,9 @@ func (s *Store) Create(ctx context.Context, userID int64) (string, error) {
 	now := s.clock.Now().UTC()
 	err := s.db.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
 		_, err := tx.ExecContext(ctx, `INSERT INTO sessions
-			(token_hash, user_id, created_at, expires_at, reauth_at, last_seen_at)
-			VALUES (?, ?, ?, ?, '', ?)`,
-			hashToken(raw), userID, db.FormatUTC(now), db.FormatUTC(now.Add(SessionTTL)), db.FormatUTC(now))
+			(token_hash, user_id, created_at, expires_at, reauth_at, last_seen_at, flash_message)
+			VALUES (?, ?, ?, ?, '', ?, ?)`,
+			hashToken(raw), userID, db.FormatUTC(now), db.FormatUTC(now.Add(SessionTTL)), db.FormatUTC(now), notice)
 		return err
 	})
 	if err != nil {
@@ -159,6 +164,46 @@ func (s *Store) MarkReauth(ctx context.Context, cookie string) error {
 		_, err := tx.ExecContext(ctx, `UPDATE sessions SET reauth_at = ? WHERE token_hash = ?`, now, hashToken(raw))
 		return err
 	})
+}
+
+// SetNoticeTx 用已有事务保存提示；不能给别人的会话写提示。
+func (s *Store) SetNoticeTx(ctx context.Context, tx *db.Tx, userID int64, cookie, notice string) error {
+	raw, err := decodeToken(cookie)
+	if err != nil {
+		return nil
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE sessions SET flash_message = ? WHERE token_hash = ? AND user_id = ?`, notice, hashToken(raw), userID)
+	return err
+}
+
+// PopNotice 原子消费；同时请求只有一个拿到。空提示的普通读取不占写车道。
+func (s *Store) PopNotice(ctx context.Context, cookie string) (string, error) {
+	raw, err := decodeToken(cookie)
+	if err != nil {
+		return "", nil
+	}
+	key, now := hashToken(raw), db.FormatUTC(s.clock.Now())
+	var notice string
+	err = s.db.ReadPool().QueryRowContext(ctx, `SELECT flash_message FROM sessions WHERE token_hash = ? AND expires_at > ?`, key, now).Scan(&notice)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil || notice == "" {
+		return notice, err
+	}
+	err = s.db.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		err := tx.QueryRowContext(ctx, `SELECT flash_message FROM sessions WHERE token_hash = ? AND expires_at > ?`, key, now).Scan(&notice)
+		if errors.Is(err, sql.ErrNoRows) {
+			notice = ""
+			return nil
+		}
+		if err != nil || notice == "" {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE sessions SET flash_message = '' WHERE token_hash = ?`, key)
+		return err
+	})
+	return notice, err
 }
 
 // Touch 更新最后访问时间；距上次不到一小时就什么都不写。

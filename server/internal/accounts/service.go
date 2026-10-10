@@ -472,7 +472,7 @@ func (s *Service) VerifyEmail(ctx context.Context, in VerifyEmailInput) (*Verify
 		return nil, errBadCode
 	}
 
-	token, err := s.sessions.Create(ctx, verifiedUserID)
+	token, err := s.sessions.CreateWithNotice(ctx, verifiedUserID, "欢迎加入社区！先在这里补全游戏 ID 和联系方式，就能报名赛事和内战；也可以去「战队」找一支招募中的队伍。")
 	if err != nil {
 		return nil, err
 	}
@@ -945,7 +945,10 @@ func (s *Service) ChangePassword(ctx *app.Ctx, in ChangePasswordInput) (*ChangeP
 			return err
 		}
 		// 作废该用户的其他会话，保留当前会话（12 号文档 5.7）
-		return s.sessions.DeleteOthersTx(txCtx, tx, u.ID, ctx.SessionToken)
+		if err := s.sessions.DeleteOthersTx(txCtx, tx, u.ID, ctx.SessionToken); err != nil {
+			return err
+		}
+		return s.sessions.SetNoticeTx(txCtx, tx, u.ID, ctx.SessionToken, "密码已修改，其他设备上的登录已退出。")
 	})
 	if err != nil {
 		return nil, err

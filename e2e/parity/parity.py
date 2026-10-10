@@ -118,6 +118,19 @@ EMAILS = {
 
 def seed() -> dict:
     data = screens.seed()
+    # screens.py intentionally makes password-less screenshot identities.
+    # Account parity needs ordinary password accounts, as on the real site.
+    from accounts.models import User
+    from django.test import Client
+
+    for user in User.objects.filter(email__endswith="@screens.test"):
+        user.set_password("ParityPassword!2026")
+        user.save(update_fields=["password"])
+    # Changing the password also invalidates the previously seeded sessions.
+    for who in data["sessions"]:
+        client = Client()
+        client.force_login(User.objects.get(email=f"{who}@screens.test"))
+        data["sessions"][who] = client.cookies["sessionid"].value
     from tournaments.models import Registration
 
     registration = Registration.objects.filter(tournament_id=data["teamcup"]).order_by("pk").first()

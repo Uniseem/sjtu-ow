@@ -32,10 +32,30 @@ async function startServers() {
     throw new Error("先构建：pnpm --filter @sjtu-ow/site test")
   }
   const stubPort = 4700 + Math.floor(Math.random() * 200)
+  const ssrPort = port + 1
   const stub = spawn(process.execPath, ["-e", `
-    require("node:http").createServer((req, res) => {
-      res.writeHead(200, { "content-type": "application/json" });
-      if (req.url.startsWith("/api/session")) res.end(JSON.stringify({ user: null }));
+    let user = null;
+    let flash = "";
+    require("node:http").createServer(async (req, res) => {
+      let body = ""; for await (const chunk of req) body += chunk;
+      const data = body ? JSON.parse(body) : {};
+      res.setHeader("content-type", "application/json");
+      if (req.url === "/api/auth/login") {
+        if (data.password === "wrong") { res.statusCode = 400; res.end(JSON.stringify({ error: { code: "invalid", message: "邮箱或密码不正确。" } })); }
+        else res.end(JSON.stringify({ result: "verify_required" }));
+      }
+      else if (req.url === "/api/auth/register") res.end(JSON.stringify({ email: data.email, message: "请查收验证码。" }));
+      else if (req.url === "/api/auth/resend-code") res.end(JSON.stringify({ email: data.email }));
+      else if (req.url === "/api/auth/verify-email") {
+        user = { id: 7, nickname: "新人", email: "new@example.com", admin: false, superuser: false, caps: [], email_verified: true, is_sjtu: false };
+        flash = "欢迎加入社区！先补全游戏 ID 和联系方式。";
+        res.end(JSON.stringify({ result: "ok" }));
+      }
+      else if (req.url.startsWith("/api/session")) {
+        const refresh = new URL(req.url, "http://stub").searchParams.get("refresh") === "true";
+        res.end(JSON.stringify({ user, flash: refresh ? "" : flash }));
+        if (!refresh) flash = "";
+      }
       else if (req.url.startsWith("/api/page/home")) res.end(JSON.stringify({ stats: { member_count: 0, team_count: 0, scrims_held: 0 } }));
       else res.end(JSON.stringify({}));
     }).listen(${stubPort});
@@ -45,12 +65,21 @@ async function startServers() {
       ...process.env,
       NODE_ENV: "production",
       STRICT_CSP: "1",
-      PORT: String(port),
+      PORT: String(ssrPort),
       API_BASE: `http://127.0.0.1:${stubPort}`,
     },
     stdio: ["ignore", "inherit", "inherit"],
   })
-  children.push(stub, server)
+  // The real site uses Caddy for /api. This throwaway proxy mirrors that
+  // split so browser writes actually reach the stub, too.
+  const proxy = spawn(process.execPath, ["-e", `
+    const http = require("node:http");
+    http.createServer((req, res) => {
+      const up = http.request({ hostname: "127.0.0.1", port: req.url.startsWith("/api/") ? ${stubPort} : ${ssrPort}, method: req.method, path: req.url, headers: req.headers }, response => { res.writeHead(response.statusCode, response.headers); response.pipe(res); });
+      up.on("error", () => { res.writeHead(502); res.end(); }); req.pipe(up);
+    }).listen(${port});
+  `])
+  children.push(stub, server, proxy)
   for (let i = 0; i < 50; i++) {
     try {
       await fetch(base + "/no-such-page/")
@@ -94,7 +123,7 @@ async function main() {
   const send = (method, params = {}) => new Promise((r) => { const i = ++id; waiting.set(i, r); ws.send(JSON.stringify({ id: i, method, params })) })
   const evaluate = async (expression) => {
     const r = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })
-    if (!r.result) throw new Error(`no result: ${expression.slice(0, 120)}`)
+    if (!r.result) throw new Error(`no result: ${expression.slice(0, 120)} ${JSON.stringify(r)}`)
     if (r.result.exceptionDetails) throw new Error(JSON.stringify(r.result.exceptionDetails))
     return r.result.result.value
   }
@@ -301,6 +330,48 @@ async function main() {
     fail("占位图", { status: cover.status, coverType })
   }
   if (!coverCache.includes("max-age=86400")) fail("占位图缓存", coverCache)
+
+  // Only exercise the local throwaway API. A supplied base may be a real site.
+  if (!given) {
+    await go("/accounts/login/?next=%2Faccounts%2Finactive%2F")
+    await waitJs()
+    const wrong = await evaluate(`(async () => {
+      const input = (name, value) => { const el = document.querySelector('[name="' + name + '"]'); el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); };
+      input('login', 'new@example.com'); input('password', 'wrong');
+      document.querySelector('#main form').requestSubmit();
+      await new Promise(r => setTimeout(r, 350));
+      return { error: document.querySelector('.c-field__error')?.textContent, email: document.querySelector('[name=login]').value, password: document.querySelector('[name=password]').value };
+    })()`)
+    if (!wrong.error?.includes("邮箱或密码不正确") || wrong.email !== "new@example.com" || wrong.password !== "wrong") fail("登录错误保留输入", wrong)
+    await evaluate(`const p = document.querySelector('[name=password]'); p.value = 'ValidPass!234'; p.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#main form').requestSubmit();`)
+    await sleep(600)
+    await waitJs()
+    const verification = await evaluate(`({ path: location.pathname, email: document.querySelector('a[href^="mailto:"]')?.textContent, next: new URLSearchParams(location.search).get('next'), replaced: window.__ssrReplaced })`)
+    if (verification.path !== "/accounts/confirm-email/" || verification.email !== "new@example.com" || verification.next !== "/accounts/inactive/" || verification.replaced?.length) fail("未验证邮箱跳转与激活", verification)
+    const cooldown = await evaluate(`(async () => {
+      document.querySelector('input[name=action]').form.requestSubmit();
+      await new Promise(r => setTimeout(r, 250));
+      const b = document.querySelector('input[name=action]').form.querySelector('button');
+      return { disabled: b.disabled, label: b.textContent };
+    })()`)
+    if (!cooldown.disabled || !cooldown.label.includes("秒后可重新发送")) fail("重发验证码冷却", cooldown)
+    await go("/accounts/signup/?next=%2Faccounts%2Finactive%2F")
+    await waitJs()
+    await evaluate(`{
+      const input = (name, value) => { const el = document.querySelector('[name="' + name + '"]'); el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); };
+      input('email', 'new@example.com'); input('nickname', '新人'); input('password1', 'ValidPass!234'); input('password2', 'ValidPass!234');
+      document.querySelector('[name=is_sjtu][value=false]').click(); document.querySelector('[name=agreed_terms]').click(); document.querySelector('[name=agreed_cross_border]').click(); document.querySelector('#main form').requestSubmit();
+    }`)
+    await sleep(600)
+    await waitJs()
+    await evaluate(`const c = document.querySelector('[name=code]'); c.value = '123456'; c.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#main form').requestSubmit();`)
+    await sleep(600)
+    await waitJs()
+    const completed = await evaluate(`({ path: location.pathname, notice: document.querySelector('.c-toast')?.textContent, stored: sessionStorage.getItem('ow-account-notice') })`)
+    if (completed.path !== "/accounts/inactive/" || !completed.notice?.includes("欢迎加入社区") || completed.stored !== null) fail("注册验证完成与一次性提示", completed)
+    const accountMessages = noted().filter(line => !/favicon/.test(line))
+    if (accountMessages.length) fail("账号入口报错/CSP 违规", accountMessages)
+  }
 
   console.log(failures.length ? `\n${failures.length} 项没过` : "\nBROWSER-CHECK-OK")
 }

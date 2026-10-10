@@ -9,6 +9,7 @@ import { styleguideHidden } from "./specimen"
 import { toast } from "./toasts"
 import { VIEWER, type Viewer } from "./viewer"
 import { installDropdowns } from "./dropdowns"
+import { PageRedirect, safeNext } from "@sjtu-ow/shared/navigation"
 
 const raw = document.getElementById("ow-state")?.textContent ?? "null"
 const state = JSON.parse(raw) as { data: PageData | null; viewer?: Viewer }
@@ -19,7 +20,7 @@ const viewer = reactive<Viewer>(state.viewer ?? { user: null })
 // again (12-architecture 6.4): the nickname, the letters waiting, the caps.
 const api = createClient({
   onWrite: () => {
-    getApiSession(api).then(
+    getApiSession(api, { refresh: true }).then(
       (body) => {
         viewer.user = body.user && typeof body.user.nickname === "string" ? body.user : null
       },
@@ -84,12 +85,14 @@ router.beforeResolve(async (to, from) => {
   if (to.meta.auth === "member" && viewer.user === null) {
     return leave("/accounts/login/?next=" + encodeURIComponent(to.fullPath))
   }
+  if (to.meta.guest && viewer.user !== null) return leave(safeNext(to.query.next))
   const load = to.meta.load
   if (!load) return
   let data: PageData
   try {
     data = await load({ params: flat(to.params), query: flat(to.query), url: to.fullPath, api, fetch, apiBase: "" })
   } catch (err) {
+    if (err instanceof PageRedirect) return leave(err.location)
     const status = statusOf(err)
     // 401: the client has already sent the browser to the login page.
     if (status === 401) return false

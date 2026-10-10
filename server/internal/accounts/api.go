@@ -8,7 +8,9 @@ import (
 )
 
 // SessionIn 是 GET /api/session 的入参（空）。
-type SessionIn struct{}
+type SessionIn struct {
+	Refresh bool `query:"refresh"`
+}
 
 // SessionUser 是 GET /api/session 返回的用户信息。
 type SessionUser struct {
@@ -24,7 +26,8 @@ type SessionUser struct {
 
 // SessionOut 是 GET /api/session 的出参。访客为 { "user": null }。
 type SessionOut struct {
-	User *SessionUser `json:"user"`
+	User  *SessionUser `json:"user"`
+	Flash string       `json:"flash,omitempty"`
 }
 
 // RegisterIn 是 POST /api/auth/register 的入参。
@@ -387,7 +390,7 @@ func (m *Module) Routes(r *api.Registry) {
 		api.Nav("review", "avatars"), api.NoLimit("下架头像"))
 }
 
-func (m *Module) getSession(ctx *app.Ctx, _ SessionIn) (SessionOut, error) {
+func (m *Module) getSession(ctx *app.Ctx, in SessionIn) (SessionOut, error) {
 	if ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID == 0 {
 		return SessionOut{User: nil}, nil
 	}
@@ -407,7 +410,15 @@ func (m *Module) getSession(ctx *app.Ctx, _ SessionIn) (SessionOut, error) {
 	if caps == nil {
 		caps = []string{}
 	}
+	var notice string
+	if !in.Refresh {
+		notice, err = m.svc.sessions.PopNotice(ctx.Context, ctx.SessionToken)
+		if err != nil {
+			return SessionOut{}, err
+		}
+	}
 	return SessionOut{
+		Flash: notice,
 		User: &SessionUser{
 			ID:            u.ID,
 			Nickname:      u.Nickname,

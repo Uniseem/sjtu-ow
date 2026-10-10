@@ -1,134 +1,53 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
-
-export function load(_ctx?: LoadCtx) {
-  return { title: "注册" }
-}
+import { safeNext } from "@sjtu-ow/shared/navigation"
+export function load(ctx: LoadCtx) { return { title: "注册", next: safeNext(ctx.query.next, "/me/") } }
 </script>
 <script setup lang="ts">
-import { ref } from "vue"
+import { computed, inject, ref } from "vue"
 import { useHead } from "@unhead/vue"
-import { useRouter } from "vue-router"
-
-useHead({ title: "注册 - SJTU-OW" })
-const router = useRouter()
-
+import { postApiAuthRegister } from "@sjtu-ow/api"
+import AuthLayout from "@sjtu-ow/ui/AuthLayout.vue"
+import AuthError from "@sjtu-ow/ui/AuthError.vue"
+import AuthNewPasswords from "@sjtu-ow/ui/AuthNewPasswords.vue"
+import CField from "@sjtu-ow/ui/CField.vue"
+import { useApi } from "../api"
+import { finishAccountAction, useAccountForm } from "../account-form"
+const data = inject<{ next: string }>("page-data")
+const next = computed(() => safeNext(data?.next, "/me/"))
+const api = useApi()
 const email = ref("")
 const nickname = ref("")
-const password1Val = ref("")
-const password2Val = ref("")
-const isSjtu = ref("true")
+const password = ref("")
+const confirmation = ref("")
+const sjtu = ref("")
 const agreeTerms = ref(false)
 const agreeCrossBorder = ref(false)
-const submitting = ref(false)
-const errorMsg = ref("")
-
-async function onSubmit(e: Event) {
-  e.preventDefault()
-  if (password1Val.value !== password2Val.value) {
-    errorMsg.value = "两次输入的密码不一致"
-    return
-  }
-  submitting.value = true
-  errorMsg.value = ""
-
-  try {
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email: email.value,
-        nickname: nickname.value,
-        password: password1Val.value,
-        confirm_password: password2Val.value,
-        is_sjtu: isSjtu.value === "true",
-        agree_terms: agreeTerms.value,
-        agree_cross_border: agreeCrossBorder.value,
-      }),
-    })
-    if (res.ok) {
-      const target = `/accounts/confirm-email/?email=${encodeURIComponent(email.value)}`
-      if (typeof window !== "undefined") {
-        window.location.href = target
-      } else {
-        router.push(target)
-      }
-    } else {
-      const err = await res.json().catch(() => ({}))
-      errorMsg.value = err.message ?? "注册失败，请检查输入"
-    }
-  } catch (err: any) {
-    errorMsg.value = err.message ?? "网络请求失败"
-  } finally {
-    submitting.value = false
-  }
+const { pending, message, fields, submit } = useAccountForm()
+useHead({ title: "注册 · SJTU-OW" })
+function signup() {
+  return submit(async () => {
+    const result = await postApiAuthRegister(api, { email: email.value.trim(), nickname: nickname.value.trim(), password: password.value, confirm_password: confirmation.value, is_sjtu: sjtu.value === "" ? null : sjtu.value === "true", agree_terms: agreeTerms.value, agree_cross_border: agreeCrossBorder.value }, { unauthorized: "throw" })
+    finishAccountAction("/accounts/confirm-email/?" + new URLSearchParams({ email: result.email, next: next.value, welcome: "1" }))
+  })
 }
 </script>
 <template>
-  <main id="main" class="flex-1">
-    <div class="l-container l-container--narrow py-12 max-w-md mx-auto">
-      <h1 class="text-2xl font-bold mb-6 text-center">加入 SJTU-OW 社区</h1>
-
-      <div v-if="errorMsg" class="c-notice c-notice--err p-4 rounded bg-rose-950/60 border border-rose-800 text-rose-200 mb-6">
-        <p>{{ errorMsg }}</p>
-      </div>
-
-      <form action="/accounts/signup/" method="post" class="c-form space-y-4" @submit="onSubmit">
-        <div class="c-field">
-          <label class="c-field__label block mb-1">邮箱地址<span class="text-rose-500">*</span></label>
-          <input v-model="email" type="email" name="email" required class="w-full p-2.5 rounded bg-stone-900 border border-stone-700" placeholder="交大邮箱或常用邮箱" />
-        </div>
-
-        <div class="c-field">
-          <label class="c-field__label block mb-1">社区昵称<span class="text-rose-500">*</span></label>
-          <input v-model="nickname" type="text" name="nickname" required class="w-full p-2.5 rounded bg-stone-900 border border-stone-700" placeholder="将在社区各处显示" />
-        </div>
-
-        <div class="c-field">
-          <label class="c-field__label block mb-1">设置密码<span class="text-rose-500">*</span></label>
-          <input v-model="password1Val" type="password" name="password1" required class="w-full p-2.5 rounded bg-stone-900 border border-stone-700" />
-        </div>
-
-        <div class="c-field">
-          <label class="c-field__label block mb-1">确认密码<span class="text-rose-500">*</span></label>
-          <input v-model="password2Val" type="password" name="password2" required class="w-full p-2.5 rounded bg-stone-900 border border-stone-700" />
-        </div>
-
-        <fieldset class="c-field">
-          <legend class="c-field__label mb-2">是否上海交通大学在读或校友</legend>
-          <div class="flex gap-4">
-            <label class="flex items-center gap-2">
-              <input v-model="isSjtu" type="radio" name="is_sjtu" value="true" />
-              <span>是</span>
-            </label>
-            <label class="flex items-center gap-2">
-              <input v-model="isSjtu" type="radio" name="is_sjtu" value="false" />
-              <span>否（校外玩家）</span>
-            </label>
-          </div>
-        </fieldset>
-
-        <div class="space-y-2 pt-2 text-sm text-stone-300">
-          <label class="flex items-start gap-2">
-            <input v-model="agreeTerms" type="checkbox" name="agree_terms" required class="mt-1" />
-            <span>我已阅读并同意<a href="/terms/" target="_blank" class="text-primary-text underline">用户协议</a>与<a href="/privacy/" target="_blank" class="text-primary-text underline">隐私政策</a></span>
-          </label>
-          <label class="flex items-start gap-2">
-            <input v-model="agreeCrossBorder" type="checkbox" name="agree_cross_border" required class="mt-1" />
-            <span>我知晓本站涉及数据出境传输与安全合规要求</span>
-          </label>
-        </div>
-
-        <div class="pt-4">
-          <button type="submit" :disabled="submitting" class="c-btn c-btn--primary w-full">
-            {{ submitting ? '注册中...' : '提交注册' }}
-          </button>
-        </div>
-
-        <p class="text-center text-sm text-stone-400 mt-4">
-          已有账号？<a href="/accounts/login/" class="text-primary-text underline">前往登录</a>
-        </p>
-      </form>
-    </div>
-  </main>
+  <AuthLayout why>
+    <h1>注册</h1><p>已经有账号？<a :href="'/accounts/login/' + (next !== '/me/' ? '?next=' + encodeURIComponent(next) : '')" class="c-link">登录</a></p>
+    <form method="post" action="/accounts/signup/" :aria-busy="pending || undefined" @submit.prevent="signup">
+      <AuthError :message="message" />
+      <CField label="邮箱" input-id="id_email" required :errors="fields.email"><input id="id_email" v-model="email" type="email" name="email" autocomplete="email" placeholder="邮箱" maxlength="320" required></CField>
+      <CField label="昵称" input-id="id_nickname" required :errors="fields.nickname"><input id="id_nickname" v-model="nickname" type="text" name="nickname" autocomplete="nickname" maxlength="16" minlength="2" required></CField>
+      <AuthNewPasswords v-model:password="password" v-model:confirmation="confirmation" fresh :errors="fields" />
+      <CField label="是否来自上海交通大学" kind="group" required :errors="fields.is_sjtu">
+        <div id="id_is_sjtu"><div><label for="id_is_sjtu_0"><input id="id_is_sjtu_0" v-model="sjtu" type="radio" name="is_sjtu" value="true" required> 是</label></div><div><label for="id_is_sjtu_1"><input id="id_is_sjtu_1" v-model="sjtu" type="radio" name="is_sjtu" value="false" required> 否</label></div></div>
+      </CField>
+      <CField label="我已阅读并同意用户协议和隐私政策" kind="checkbox" input-id="id_agreed_terms" required :errors="fields.agree_terms"><input id="id_agreed_terms" v-model="agreeTerms" type="checkbox" name="agreed_terms" required></CField>
+      <CField label="我同意将个人信息存储在境外服务器" kind="checkbox" input-id="id_agreed_cross_border" required :errors="fields.agree_cross_border"><input id="id_agreed_cross_border" v-model="agreeCrossBorder" type="checkbox" name="agreed_cross_border" required></CField>
+      <input v-if="next !== '/me/'" type="hidden" name="next" :value="next">
+      <p class="text-sm text-fg-2">请先阅读<a href="/terms/" class="c-link" target="_blank" rel="noopener">用户协议</a>和<a href="/privacy/" class="c-link" target="_blank" rel="noopener">隐私政策</a>（在新标签页打开），两项同意要分别勾选。</p>
+      <div><button type="submit" class="c-btn c-btn--primary c-btn--block" :disabled="pending">注册</button></div>
+    </form>
+  </AuthLayout>
 </template>

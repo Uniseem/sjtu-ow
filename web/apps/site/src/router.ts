@@ -46,6 +46,7 @@ declare module "vue-router" {
   interface RouteMeta {
     load?: Load
     auth?: "member"
+    guest?: boolean
     admin?: boolean
   }
 }

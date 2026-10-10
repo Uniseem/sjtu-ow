@@ -108,7 +108,7 @@ ${
 ${parts.head}
 ${links}</head>
 <body class="flex min-h-screen flex-col">
-<div id="app">${parts.html}</div>
+<div id="app" class="flex flex-1 flex-col">${parts.html}</div>
 ${script}
 </body>
 </html>
@@ -144,6 +144,7 @@ function errorResponse(status: ErrorStatus, req: Incoming) {
 
 function toResponse(rendered: Rendered, assets: Assets, req: Incoming): { status: number; headers: Record<string, string>; body: string } {
   if (rendered.kind === "slash") return { status: 301, headers: { location: rendered.location }, body: "" }
+  if (rendered.kind === "redirect") return { status: rendered.status, headers: { location: rendered.location, "cache-control": "no-store" }, body: "" }
   if (rendered.kind === "login") {
     return { status: 302, headers: { location: LOGIN + encodeURIComponent(rendered.next) }, body: "" }
   }

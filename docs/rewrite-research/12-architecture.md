@@ -548,6 +548,7 @@ export const load = defineLoader(({ params, api }) => api.page.team({ id: params
 
 - `useViewer()`：来自 `/api/session`，每次写请求成功后刷新。
 - 提示（toast）在前端直接弹；需要跨一次整页跳转的（比如从验证码页登录成功跳到资料页）由 Go 在会话上放一次性提示，下一次 `/api/session` 带回来后清掉。`ow_flash`、`ow_logged_in` 两个 Cookie 不要了。
+- `/api/session?refresh=true` 只刷新身份、不消费提示，给写请求后的身份刷新使用；普通 `/api/session` 将 `flash` 原子取走。提示与会话一起过期，不放浏览器存储。
 - 接口封装看到响应里的 `letters` 就跳 `/letters/<batch>/?back=<当前地址>`（后台是 `/admin/letters/<batch>/`），确认页和现在一样逐封勾选。
 
 ### 6.5 样式

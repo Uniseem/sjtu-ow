@@ -87,8 +87,14 @@ test("a member sees their own account area and footer column", async () => {
 })
 
 test("an admin also gets the back office link", async () => {
-  const html = await paint("/", { nickname: "站长", admin: true })
+  const html = await paint("/", { nickname: "站长", admin: true, superuser: true, caps: [] })
   expect(html).toContain('href="/admin/"')
+})
+
+test("ordinary submitters keep the submission entrance without a management menu", async () => {
+  const html = await paint("/", { nickname: "成员", admin: true, superuser: false, caps: ["admin.enter", "articles.publish_own", "images.contribute"] })
+  expect(html).toContain('href="/submit/"')
+  expect(html).not.toContain("管理后台")
 })
 
 test("a session without a nickname counts as a visitor", async () => {

@@ -61,7 +61,7 @@
 | D11 | 新依赖 | SortableJS、CodeMirror 6、vue-tsc、Playwright | 10-10，用户 | 都是 MIT 或 Apache-2.0 |
 | D12 | 后台形态 | 独立 SPA（`apps/admin`，Caddy 直接给 `index.html`） | 10-10，用户 | 12 号 6.8 原样 |
 | D13 | 对拍截图的像素差上限 | 0.5% | 10-10，用户 | `e2e/parity/parity.py` 的 `RATIO_MAX` |
-| D14 | 迁移后的后台旧地址与废弃入口 | 后台旧地址原样；预渲染设置和设置初始密码入口 301 到上一级 | 10-10（266），用户 | frontend-migration 第 10 节第 5 件 |
+| D14 | 迁移后的后台旧地址与废弃入口 | 后台旧地址原样；预渲染设置和设置初始密码入口 301 到上一级 | 10-10（266），用户 | frontend-migration 第 10 节第 5 件；账号设置的上一级为面包屑中的账号安全 `/me/security/`，预渲染设置的上一级为 `/admin/settings/` |
 
 不需要拍板、按默认走的：数据库继续 SQLite；全部纯 Go、不用 cgo（WebP 慢了会换回，见 12 号文档 5.13）；视觉和地址 100% 不变；217 的两条高先在现行站修（已在 218、219 修完）。
 

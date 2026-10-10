@@ -778,12 +778,17 @@ export function getApiSearch(r: Requester, query: GetApiSearchQuery = {}, extras
   return r<GetApiSearchOut>("GET", "/api/search", { ...extras, query })
 }
 
-export interface GetApiSessionOut {
-  user: {   id: number;   nickname: string;   email: string;   admin: boolean;   superuser: boolean;   caps: string[];   email_verified: boolean;   is_sjtu: boolean; } | null;
+export interface GetApiSessionQuery {
+  refresh?: boolean;
 }
 
-export function getApiSession(r: Requester, extras: CallExtras = {}): Promise<GetApiSessionOut> {
-  return r<GetApiSessionOut>("GET", "/api/session", { ...extras })
+export interface GetApiSessionOut {
+  user: {   id: number;   nickname: string;   email: string;   admin: boolean;   superuser: boolean;   caps: string[];   email_verified: boolean;   is_sjtu: boolean; } | null;
+  flash?: string;
+}
+
+export function getApiSession(r: Requester, query: GetApiSessionQuery = {}, extras: CallExtras = {}): Promise<GetApiSessionOut> {
+  return r<GetApiSessionOut>("GET", "/api/session", { ...extras, query })
 }
 
 export interface GetApiTeamsQuery {

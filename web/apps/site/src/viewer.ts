@@ -8,7 +8,7 @@ import { inject, type InjectionKey } from "vue"
 // provide it on the app instance (app.provide(VIEWER, viewer)); pages read
 // useViewer().
 export type ViewerUser = NonNullable<GetApiSessionOut["user"]>
-export type Viewer = { user: ViewerUser | null }
+export type Viewer = { user: ViewerUser | null; flash?: string }
 
 export const VIEWER: InjectionKey<Viewer> = Symbol("viewer")
 

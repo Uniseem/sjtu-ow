@@ -1,81 +1,45 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
-
-export function load(_ctx?: LoadCtx) {
-  return { title: "登录" }
-}
+import { safeNext } from "@sjtu-ow/shared/navigation"
+export function load(ctx: LoadCtx) { return { title: "登录", next: safeNext(ctx.query.next) } }
 </script>
 <script setup lang="ts">
-import { ref } from "vue"
+import { computed, inject, ref } from "vue"
 import { useHead } from "@unhead/vue"
-import { useRouter } from "vue-router"
-
-useHead({ title: "登录 - SJTU-OW" })
-const router = useRouter()
-
+import { postApiAuthLogin } from "@sjtu-ow/api"
+import AuthLayout from "@sjtu-ow/ui/AuthLayout.vue"
+import AuthError from "@sjtu-ow/ui/AuthError.vue"
+import CField from "@sjtu-ow/ui/CField.vue"
+import { useApi } from "../api"
+import { finishAccountAction, useAccountForm } from "../account-form"
+const data = inject<{ next: string }>("page-data")
+const next = computed(() => safeNext(data?.next))
+const api = useApi()
 const email = ref("")
 const password = ref("")
-const submitting = ref(false)
-const errorMsg = ref("")
-
-async function onSubmit(e: Event) {
-  e.preventDefault()
-  submitting.value = true
-  errorMsg.value = ""
-
-  try {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: email.value, password: password.value }),
-    })
-    if (res.ok) {
-      if (typeof window !== "undefined") {
-        window.location.href = "/"
-      } else {
-        router.push("/")
-      }
-    } else {
-      const err = await res.json().catch(() => ({}))
-      errorMsg.value = err.message ?? "邮箱或密码错误"
-    }
-  } catch (err: any) {
-    errorMsg.value = err.message ?? "网络请求失败"
-  } finally {
-    submitting.value = false
-  }
+const { pending, message, fields, submit } = useAccountForm()
+useHead({ title: "登录 · SJTU-OW" })
+function login() {
+  return submit(async () => {
+    const result = await postApiAuthLogin(api, { email: email.value.trim(), password: password.value }, { unauthorized: "throw" })
+    if (result.result === "verify_required") {
+      finishAccountAction("/accounts/confirm-email/?" + new URLSearchParams({ email: email.value.trim(), next: next.value }))
+    } else { finishAccountAction(next.value) }
+  })
 }
 </script>
 <template>
-  <main id="main" class="flex-1">
-    <div class="l-container l-container--narrow py-12 max-w-md mx-auto">
-      <h1 class="text-2xl font-bold mb-6 text-center">登录社区账号</h1>
-
-      <div v-if="errorMsg" class="c-notice c-notice--err p-4 rounded bg-rose-950/60 border border-rose-800 text-rose-200 mb-6">
-        <p>{{ errorMsg }}</p>
-      </div>
-
-      <form action="/accounts/login/" method="post" class="c-form space-y-4" @submit="onSubmit">
-        <div class="c-field">
-          <label class="c-field__label block mb-1">邮箱</label>
-          <input v-model="email" type="email" name="email" required class="w-full p-2.5 rounded bg-stone-900 border border-stone-700" placeholder="your@email.com" />
-        </div>
-
-        <div class="c-field">
-          <label class="c-field__label block mb-1">密码</label>
-          <input v-model="password" type="password" name="password" required class="w-full p-2.5 rounded bg-stone-900 border border-stone-700" />
-        </div>
-
-        <div class="pt-4">
-          <button type="submit" :disabled="submitting" class="c-btn c-btn--primary w-full">
-            {{ submitting ? '登录中...' : '登录' }}
-          </button>
-        </div>
-
-        <p class="text-center text-sm text-stone-400 mt-4">
-          还没有账号？<a href="/accounts/signup/" class="text-primary-text underline">立即注册</a>
-        </p>
-      </form>
-    </div>
-  </main>
+  <AuthLayout why>
+    <h1>登录</h1><p>还没有账号？<a :href="'/accounts/signup/' + (next !== '/' ? '?next=' + encodeURIComponent(next) : '')" class="c-link">注册</a></p>
+    <form method="post" action="/accounts/login/" :aria-busy="pending || undefined" @submit.prevent="login">
+      <AuthError :message="message" />
+      <CField label="邮箱" input-id="id_login" required :errors="fields.email"><input id="id_login" v-model="email" type="email" name="login" autocomplete="email" placeholder="邮箱" maxlength="320" required></CField>
+      <CField label="密码" input-id="id_password" required :errors="fields.password">
+        <input id="id_password" v-model="password" type="password" name="password" placeholder="密码" autocomplete="current-password" required>
+      </CField>
+      <input v-if="next !== '/'" type="hidden" name="next" :value="next">
+      <div><button type="submit" class="c-btn c-btn--primary c-btn--block" :disabled="pending">登录</button></div>
+    </form>
+    <p class="c-auth__foot"><a href="/accounts/password/reset/" class="c-link">忘记密码？</a></p>
+  </AuthLayout>
 </template>

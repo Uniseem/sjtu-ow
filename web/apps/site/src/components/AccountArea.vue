@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { initial } from "../initial"
+import { runsAdmin } from "@sjtu-ow/shared/navigation"
+import { computed } from "vue"
 import { useViewer } from "../viewer"
 import CIcon from "./CIcon.vue"
 
@@ -7,7 +9,7 @@ import CIcon from "./CIcon.vue"
 // menu once signed in (design 13.3). The avatar is the initial on the base
 // disk for now; real pictures come with the avatar API (M3).
 const viewer = useViewer()
-const user = viewer.user
+const user = computed(() => viewer.user)
 </script>
 <template>
   <details v-if="user" class="c-menu">
@@ -17,7 +19,7 @@ const user = viewer.user
       <CIcon name="chevron-down" class="size-4 text-fg-2" />
     </summary>
     <div class="c-menu__panel">
-      <template v-if="user.admin">
+      <template v-if="runsAdmin(user)">
         <a href="/admin/" data-admin-link>管理后台</a>
         <hr />
       </template>

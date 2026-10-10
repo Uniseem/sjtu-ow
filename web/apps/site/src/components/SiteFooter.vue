@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useViewer } from "../viewer"
 import { shanghaiYear } from "../time"
+import { runsAdmin } from "@sjtu-ow/shared/navigation"
 import BrandMark from "./BrandMark.vue"
 
 // The footer (design 13.2.7): who runs the site, the link columns (the
 // account column follows the viewer), the base row.
 const viewer = useViewer()
-const user = viewer.user
 </script>
 <template>
   <footer class="c-footer">
@@ -33,8 +33,8 @@ const user = viewer.user
           </nav>
           <nav class="c-footer__col font-nav" aria-label="账号">
             <h2 class="c-eyebrow">账号</h2>
-            <template v-if="user">
-              <a v-if="user.admin" href="/admin/" data-admin-link>管理后台</a>
+            <template v-if="viewer.user">
+              <a v-if="runsAdmin(viewer.user)" href="/admin/" data-admin-link>管理后台</a>
               <a href="/me/">个人中心</a>
               <a href="/me/registrations/">我的报名</a>
               <a href="/me/teams/">我的战队</a>
