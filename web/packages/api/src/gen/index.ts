@@ -745,6 +745,9 @@ export interface GetApiPageSlugOut {
   slug: string;
   title: string;
   body_html: string;
+  seo_title: string;
+  search_description: string;
+  last_published_at: string | null;
 }
 
 export function getApiPageSlug(r: Requester, slug: string | number, extras: CallExtras = {}): Promise<GetApiPageSlugOut> {

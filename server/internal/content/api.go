@@ -85,9 +85,12 @@ type SitePageIn struct {
 
 // SitePageOut 是 GET /api/page/{slug} 的出参。
 type SitePageOut struct {
-	Slug     string `json:"slug"`
-	Title    string `json:"title"`
-	BodyHTML string `json:"body_html"`
+	Slug              string     `json:"slug"`
+	Title             string     `json:"title"`
+	BodyHTML          string     `json:"body_html"`
+	SeoTitle          string     `json:"seo_title"`
+	SearchDescription string     `json:"search_description"`
+	LastPublishedAt   *time.Time `json:"last_published_at"`
 }
 
 // AdminArticleDetailIn 是 GET /api/admin/articles/{id} 的入参。
@@ -371,9 +374,12 @@ func (m *Module) getSitePage(ctx *app.Ctx, in SitePageIn) (SitePageOut, error) {
 		return SitePageOut{}, api.NotFound("页面不存在")
 	}
 	return SitePageOut{
-		Slug:     sp.Slug,
-		Title:    sp.Title,
-		BodyHTML: sp.BodyHTML,
+		Slug:              sp.Slug,
+		Title:             sp.Title,
+		BodyHTML:          sp.BodyHTML,
+		SeoTitle:          sp.SeoTitle,
+		SearchDescription: sp.SearchDescription,
+		LastPublishedAt:   sp.LastPublishedAt,
 	}, nil
 }
 

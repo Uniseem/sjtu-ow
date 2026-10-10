@@ -413,18 +413,13 @@ func TestSitemapAndRobots(t *testing.T) {
 }
 
 // 契约: Legacy Wagtail 页面迁移
-func TestImportLegacyContent(t *testing.T) {
-	newDB := newTestDB(t)
-	ctx := context.Background()
-
-	// 临时建一个包含 Wagtail 页面表的旧库
-	legacyPath := filepath.Join(t.TempDir(), "legacy_wagtail.sqlite")
-	legacyDB, err := sql.Open("sqlite", legacyPath)
+func newLegacyContentDB(t *testing.T) *sql.DB {
+	t.Helper()
+	legacyDB, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "legacy_wagtail.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer legacyDB.Close()
-
+	t.Cleanup(func() { _ = legacyDB.Close() })
 	schema := `
 	CREATE TABLE wagtailcore_page (
 		id INTEGER PRIMARY KEY,
@@ -476,10 +471,24 @@ func TestImportLegacyContent(t *testing.T) {
 		uploaded_by_user_id INTEGER,
 		file_size INTEGER
 	);
-	`
-	if _, err := legacyDB.ExecContext(ctx, schema); err != nil {
+
+    CREATE TABLE content_standardpage (page_ptr_id INTEGER PRIMARY KEY, body TEXT NOT NULL);
+    CREATE TABLE django_content_type (id INTEGER PRIMARY KEY, app_label TEXT, model TEXT);
+    INSERT INTO django_content_type VALUES (1, 'content', 'articlepage'), (2, 'content', 'standardpage'), (3, 'other', 'thing');
+    CREATE TABLE wagtailcore_revision (id INTEGER PRIMARY KEY, object_id TEXT, user_id INTEGER, content TEXT, created_at TEXT, approved_go_live_at TEXT, content_type_id INTEGER);
+    CREATE TABLE content_homepagepinnedarticle (article_id INTEGER, sort_order INTEGER);
+    `
+	if _, err := legacyDB.ExecContext(context.Background(), schema); err != nil {
 		t.Fatal(err)
 	}
+	return legacyDB
+}
+
+func TestImportLegacyContent(t *testing.T) {
+	newDB := newTestDB(t)
+	ctx := context.Background()
+	legacyDB := newLegacyContentDB(t)
+	var err error
 
 	// 灌入模拟分类与 Wagtail 页面
 	nowStr := "2026-09-18 12:00:00"

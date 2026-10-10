@@ -620,6 +620,20 @@ func (s *Store) GetSitePageBySlug(ctx context.Context, slug string) (*SitePage, 
 		}
 		return nil, err
 	}
+	if firstPub.Valid && firstPub.String != "" {
+		t, err := db.ParseUTC(firstPub.String)
+		if err != nil {
+			return nil, err
+		}
+		sp.FirstPublishedAt = &t
+	}
+	if lastPub.Valid && lastPub.String != "" {
+		t, err := db.ParseUTC(lastPub.String)
+		if err != nil {
+			return nil, err
+		}
+		sp.LastPublishedAt = &t
+	}
 	sp.Live = live == 1
 	sp.HasUnpublishedChanges = unpub == 1
 	sp.CreatedAt, _ = db.ParseUTC(created.String)

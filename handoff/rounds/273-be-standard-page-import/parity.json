@@ -1,0 +1,116 @@
+[
+ {
+  "name": "about",
+  "who": "visitor",
+  "path": "/about/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "terms",
+  "who": "visitor",
+  "path": "/terms/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "privacy",
+  "who": "visitor",
+  "path": "/privacy/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ }
+]
