@@ -35,7 +35,7 @@ const commentColumns = `
 	c.id, c.article_id, c.user_id, IFNULL(u.nickname, '已注销用户') as author_name,
 	c.parent_id, c.reply_to_user_id, IFNULL(ru.nickname, '') as reply_to_user_name,
 	c.content, c.is_pinned, c.is_hidden, c.is_deleted, c.like_count, c.version,
-	c.created_at, c.updated_at
+	c.created_at, c.updated_at, c.edited_at
 `
 
 func scanComment(row interface{ Scan(...any) error }) (*Comment, error) {
@@ -43,12 +43,13 @@ func scanComment(row interface{ Scan(...any) error }) (*Comment, error) {
 	var uid, pid, ruid sql.NullInt64
 	var pin, hide, del int
 	var created, updated string
+	var edited sql.NullString
 
 	err := row.Scan(
 		&c.ID, &c.ArticleID, &uid, &c.AuthorName,
 		&pid, &ruid, &c.ReplyToUserName,
 		&c.Content, &pin, &hide, &del, &c.LikeCount, &c.Version,
-		&created, &updated,
+		&created, &updated, &edited,
 	)
 	if err != nil {
 		return nil, err
@@ -71,6 +72,13 @@ func scanComment(row interface{ Scan(...any) error }) (*Comment, error) {
 	}
 	c.CreatedAt, _ = db.ParseUTC(created)
 	c.UpdatedAt, _ = db.ParseUTC(updated)
+	if edited.Valid {
+		at, err := db.ParseUTC(edited.String)
+		if err != nil {
+			return nil, fmt.Errorf("读取评论编辑时间: %w", err)
+		}
+		c.EditedAt = &at
+	}
 	return &c, nil
 }
 
@@ -257,9 +265,9 @@ func (s *Store) UpdateCommentContent(ctx context.Context, id int64, newContent s
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
 		res, err := tx.ExecContext(txCtx, `
 			UPDATE comments
-			SET content = ?, version = version + 1, updated_at = ?
+			SET content = ?, version = version + 1, updated_at = ?, edited_at = ?
 			WHERE id = ? AND user_id = ? AND is_deleted = 0 AND is_hidden = 0
-		`, newContent, now, id, authorID)
+		`, newContent, now, now, id, authorID)
 		if err != nil {
 			return err
 		}

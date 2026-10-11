@@ -509,7 +509,7 @@ export interface GetApiArticlesIdCommentsOut {
   total: number;
   page: number;
   page_size: number;
-  comments: ({   id: number;   article_id: number;   user_id?: number | null;   author_name: string;   parent_id?: number | null;   reply_to_user_id?: number | null;   reply_to_user_name?: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   is_tombstone?: boolean;   like_count: number;   liked_by_me?: boolean;   reply_count?: number;   replies?: (unknown | null)[];   version: number;   created_at: string;   updated_at: string; } | null)[];
+  comments: ({   id: number;   article_id: number;   user_id?: number | null;   author_name: string;   parent_id?: number | null;   reply_to_user_id?: number | null;   reply_to_user_name?: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   is_tombstone?: boolean;   like_count: number;   liked_by_me?: boolean;   reply_count?: number;   replies?: (unknown | null)[];   version: number;   created_at: string;   updated_at: string;   edited_at: string | null; } | null)[];
 }
 
 export function getApiArticlesIdComments(r: Requester, id: string | number, query: GetApiArticlesIdCommentsQuery = {}, extras: CallExtras = {}): Promise<GetApiArticlesIdCommentsOut> {
@@ -815,7 +815,7 @@ export interface GetApiSessionQuery {
 }
 
 export interface GetApiSessionOut {
-  user: {   id: number;   nickname: string;   email: string;   admin: boolean;   superuser: boolean;   caps: string[];   email_verified: boolean;   is_sjtu: boolean;   can_submit_article: boolean; } | null;
+  user: {   id: number;   nickname: string;   email: string;   admin: boolean;   superuser: boolean;   caps: string[];   email_verified: boolean;   is_sjtu: boolean;   can_submit_article: boolean;   can_comment: boolean; } | null;
   flash?: string;
 }
 
@@ -1063,7 +1063,7 @@ export interface PatchApiCommentsIdIn {
 }
 
 export interface PatchApiCommentsIdOut {
-  comment: {   id: number;   article_id: number;   user_id?: number | null;   author_name: string;   parent_id?: number | null;   reply_to_user_id?: number | null;   reply_to_user_name?: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   is_tombstone?: boolean;   like_count: number;   liked_by_me?: boolean;   reply_count?: number;   replies?: (unknown | null)[];   version: number;   created_at: string;   updated_at: string; } | null;
+  comment: {   id: number;   article_id: number;   user_id?: number | null;   author_name: string;   parent_id?: number | null;   reply_to_user_id?: number | null;   reply_to_user_name?: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   is_tombstone?: boolean;   like_count: number;   liked_by_me?: boolean;   reply_count?: number;   replies?: (unknown | null)[];   version: number;   created_at: string;   updated_at: string;   edited_at: string | null; } | null;
 }
 
 export function patchApiCommentsId(r: Requester, id: string | number, body: PatchApiCommentsIdIn, extras: CallExtras = {}): Promise<PatchApiCommentsIdOut> {
@@ -1550,7 +1550,7 @@ export interface PostApiArticlesIdCommentsIn {
 }
 
 export interface PostApiArticlesIdCommentsOut {
-  comment: {   id: number;   article_id: number;   user_id?: number | null;   author_name: string;   parent_id?: number | null;   reply_to_user_id?: number | null;   reply_to_user_name?: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   is_tombstone?: boolean;   like_count: number;   liked_by_me?: boolean;   reply_count?: number;   replies?: (unknown | null)[];   version: number;   created_at: string;   updated_at: string; } | null;
+  comment: {   id: number;   article_id: number;   user_id?: number | null;   author_name: string;   parent_id?: number | null;   reply_to_user_id?: number | null;   reply_to_user_name?: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   is_tombstone?: boolean;   like_count: number;   liked_by_me?: boolean;   reply_count?: number;   replies?: (unknown | null)[];   version: number;   created_at: string;   updated_at: string;   edited_at: string | null; } | null;
 }
 
 export function postApiArticlesIdComments(r: Requester, id: string | number, body: PostApiArticlesIdCommentsIn, extras: CallExtras = {}): Promise<PostApiArticlesIdCommentsOut> {

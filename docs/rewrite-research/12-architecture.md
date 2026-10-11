@@ -355,6 +355,8 @@ Idempotency-Key: <每次保存尝试一个，重试沿用>
 
 **唯一入口**：只有 `/api/auth/login` 和 `/api/auth/verify-email` 这两个接口能建会话（后者核验通过即登录，241 起），别的任何地方都没有；`createsuperuser`、`verify-email` 命令只改数据、不建会话。有测试遍历注册表断言这一点。
 
+会话投影额外提供 `can_submit_article` 与 `can_comment`，分别直接取 `article_submit`、`article_comment` 的功能权限结果；不混入邮箱验证或后台能力。前端结合 `email_verified` 分别显示未验证与功能禁用提示。访客、停用账号仍返回 `user: null`。
+
 ### 5.8 权限模型
 
 现在是 Django 组 + Django 权限位 + Wagtail 页面权限 + Wagtail 图片集合权限四套叠在一起。新的收成一套：
@@ -443,6 +445,8 @@ CREATE TABLE jobs (
 **对拍**（220 轮 E4 已做第一遍：346 份文档、345 份和 markdown-it 一致、约 420 行 Go、1139 KB 的 Markdown 共 24 毫秒；语料是仓库自己的文档和 80 份刁钻输入，程序和语料生成脚本在 `handoff/rounds/220-m0-experiments/e4-goldmark/`，M4 把它搬进 `server/` 作黄金用例）：把正式站备份里所有文章、页面、赛事、内战的正文，用旧的 `content/markdown.py` 和新的 Go 渲染器各渲染一遍，规范化后逐篇比较，**每一处差异要么修掉、要么写明是有意的**（比如 01-3 的 `&` 转义两次、01-4 的链接末尾 `)`）。旧测试里的 Markdown 用例转成 Go 的黄金用例。
 
 `body_html` 发布时生成；渲染规则改了就把 `renderer_version` 加一，worker 在慢车道把旧版本的重新渲染一遍。
+
+评论的 `edited_at` 是可空 UTC 时间，只有作者成功修改正文时更新；`updated_at` 继续记录一般更新（含隐藏/置顶等管理操作）。评论列表、回复与创建/修改投影均输出 `edited_at`（无编辑为 null）。旧 Django 导入保留原 `edited_at`，已有 Go 库升级不根据 `updated_at` 推断编辑历史。
 
 ### 5.13 图片
 

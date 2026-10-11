@@ -546,19 +546,21 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 						}
 						createdUTC := parseAndFormatUTC(createdAt, now)
 						updatedUTC := createdUTC
+						var editedUTC any
 						if editedAt.Valid && editedAt.String != "" {
 							updatedUTC = parseAndFormatUTC(editedAt.String, now)
+							editedUTC = updatedUTC
 						}
 						if _, err := tx.ExecContext(txCtx, `
 								INSERT INTO comments (
 									id, article_id, user_id, parent_id, reply_to_user_id,
 									content, is_pinned, is_hidden, is_deleted, like_count,
-									version, created_at, updated_at
-								) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+									version, created_at, updated_at, edited_at
+								) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
 								ON CONFLICT (id) DO NOTHING
 							`, id, pageID, authorVal, parentVal, replyToVal,
 							body, isPinned, isHidden, isDeleted, likeCount,
-							createdUTC, updatedUTC); err != nil {
+							createdUTC, updatedUTC, editedUTC); err != nil {
 							return fmt.Errorf("8. 导入评论 (comments_comment -> comments)：SQL 写入失败: %w", err)
 						}
 					}

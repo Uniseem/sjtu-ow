@@ -201,6 +201,11 @@ func (s *Service) EditComment(ctx *app.Ctx, id int64, in EditCommentInput) (*Com
 		return nil, err
 	}
 
+	// 与旧站一致：正文未变时不制造编辑记录或重复送审。
+	if !comment.IsHidden && !comment.IsDeleted && content == comment.Content {
+		return comment, nil
+	}
+
 	if err := s.store.UpdateCommentContent(ctx.Context, id, content, ctx.Viewer.ID); err != nil {
 		return nil, err
 	}

@@ -25,6 +25,7 @@ type Comment struct {
 	Version         int64      `json:"version"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
+	EditedAt        *time.Time `json:"edited_at"`
 }
 
 // CommentLike 表示用户对评论的点赞记录。

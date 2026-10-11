@@ -23,6 +23,7 @@ type SessionUser struct {
 	EmailVerified    bool     `json:"email_verified"`
 	IsSJTU           bool     `json:"is_sjtu"`
 	CanSubmitArticle bool     `json:"can_submit_article"`
+	CanComment       bool     `json:"can_comment"`
 }
 
 // SessionOut 是 GET /api/session 的出参。访客为 { "user": null }。
@@ -431,6 +432,7 @@ func (m *Module) getSession(ctx *app.Ctx, in SessionIn) (SessionOut, error) {
 			EmailVerified:    ctx.Viewer.EmailVerified,
 			IsSJTU:           u.IsSJTU,
 			CanSubmitArticle: ctx.Viewer.CanUse(FeatureArticleSubmit),
+			CanComment:       ctx.Viewer.CanUse(FeatureArticleComment),
 		},
 	}, nil
 }
