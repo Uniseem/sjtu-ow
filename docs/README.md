@@ -26,7 +26,7 @@
 | 现行站行为 | [design.md](design.md)相关章节，是现行站主设计；前台细节由 [design-details.md](design-details.md) 与 13.2 补充，后台由 [admin.md](admin.md)补充 |
 | 新栈目标和设计变化 | [design-next.md](design-next.md)是新栈 v8.0 草案，割接前不替换现行站设计；变化先写草案，割接合并照其第 8 节 |
 | 新栈实现 | [12-architecture.md](rewrite-research/12-architecture.md)相关模块：描述怎么做；与早期 00 计划冲突时以 12 为准 |
-| 新栈前台/后台页面实现与验收 | 先读 [frontend-migration.md](frontend-migration.md)：不变量、逐页验收与完成定义；第 11 节维护剩余重构的工作包、依赖和提速指导，当前领取任务仍看 STATUS；行为/视觉照现行站主设计和细节，对拍旧代码保留 |
+| 新栈前台/后台页面实现与验收 | 先读 [frontend-migration.md](frontend-migration.md)：不变量、逐页验收与完成定义；第 11 节维护剩余重构的工作包、依赖和提速指导，当前领取任务仍看 STATUS；行为/视觉照现行站主设计和细节，对拍旧代码保留。290 之后一次做完剩余工作的执行规格见 [final-batch.md](final-batch.md)（291） |
 | 业务等价与 API 契约 | [05-business-rules.md](rewrite-research/05-business-rules.md)、[08-contracts.md](rewrite-research/08-contracts.md)；实际接口查看自动生成的 [api-reference.md](api-reference.md) |
 | 割接或回滚 | [cutover.md](cutover.md)，先读第 5 节的回滚教训，再读操作章节和运维文档 |
 | 独立复核 | [REVIEW-GUIDE](../handoff/REVIEW-GUIDE.md)，技术陷阱按任务搜 pitfalls |
