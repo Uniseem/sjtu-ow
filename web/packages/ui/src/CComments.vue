@@ -38,6 +38,7 @@ const emit = defineEmits<{
 // (comments/services.py), so the counts Go sends answer it.
 const hasMore = computed(() => props.thread.page * props.thread.page_size < props.thread.total)
 const nextPage = computed(() => props.thread.page + 1)
+const comments = computed(() => props.thread.comments.filter((item): item is CommentView => item !== null))
 </script>
 <template>
   <section id="slot-article-comments" data-slot="article-comments" class="c-comments">
@@ -65,9 +66,9 @@ const nextPage = computed(() => props.thread.page + 1)
 
     <ol id="comment-list" class="c-comments__list">
       <CCommentItem
-        v-for="item in thread.comments"
-        :key="item?.id"
-        :item="item!"
+        v-for="item in comments"
+        :key="item.id"
+        :item="item"
         :interactive="interactive"
         :can-post="canPost"
         :can-moderate="canModerate"
@@ -79,7 +80,7 @@ const nextPage = computed(() => props.thread.page + 1)
         @hide="emit('hide', $event)"
         @pin="emit('pin', $event)"
       />
-      <li v-if="!thread.comments.length" class="py-6 text-sm text-fg-3">还没有评论。</li>
+      <li v-if="!comments.length" class="py-6 text-sm text-fg-3">还没有评论。</li>
     </ol>
 
     <div id="comments-more" class="mt-6">

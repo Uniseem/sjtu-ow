@@ -1,0 +1,78 @@
+[
+ {
+  "name": "article",
+  "who": "visitor",
+  "path": "/news/screens-guide/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0003626778455284553,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.001527638190954774,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0003633130081300813,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0015303182579564489,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "article",
+  "who": "member",
+  "path": "/news/screens-guide/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.00032825147167034585,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.001314878892733564,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0003288263428991906,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0013171856978085351,
+    "problems": []
+   }
+  ],
+  "pass": true
+ }
+]

@@ -99,7 +99,7 @@
 | `PATCH` | `/api/admin/users/{id}/roles` | Superuser（超级管理员） | 不限流 (管理员分配角色) | - | - |
 | `PATCH` | `/api/admin/users/{id}/rules` | Superuser（超级管理员） | 不限流 (管理员修改单人规则) | - | - |
 | `PATCH` | `/api/articles/{id}` | Member（登录成员） | 不限流 (自动保存由防抖控制) | - | - |
-| `PATCH` | `/api/comments/{id}` | Member（登录成员） | comment_create_minute (3/1m0s) | - | - |
+| `PATCH` | `/api/comments/{id}` | Member（登录成员） | comment_create_minute (3/1m0s)<br>comment_create_daily (100/24h0m0s) | - | - |
 | `PATCH` | `/api/me/game-accounts/{id}` | Member（登录成员） | 不限流 (更新段位无需限流) | - | - |
 | `PATCH` | `/api/me/profile` | Member（登录成员） | 不限流 (修改个人资料无需限流) | - | - |
 | `PATCH` | `/api/teams/{id}` | Member（登录成员） | 不限流 (自动保存，按字段校验；改的人要是队长) | - | - |

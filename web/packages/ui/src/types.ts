@@ -18,8 +18,7 @@ export interface PublicPlay {
 }
 
 // One comment as the comments API sends it (server/internal/comments/model.go),
-// replies nested one level. `edited_at` waits for the backend (STATUS BE-8);
-// until then nothing prints 已编辑.
+// replies nested one level. edited_at is independent of management updates.
 export interface CommentView {
   id: number
   user_id?: number | null
@@ -32,7 +31,7 @@ export interface CommentView {
   is_tombstone?: boolean
   like_count: number
   liked_by_me?: boolean
-  replies?: CommentView[]
+  replies?: (CommentView | null)[]
   edited_at?: string | null
   created_at: string
   updated_at: string

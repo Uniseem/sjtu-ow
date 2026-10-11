@@ -1,5 +1,8 @@
 <script lang="ts">
 import {
+  getApiArticlesIdComments as commentThread,
+  type GetApiArticlesIdCommentsOut as CommentThread,
+  type GetApiPageNewsSlugOut as ArticleDetail,
   deleteApiCommentsId,
   getApiPageNewsSlug,
   patchApiCommentsId,
@@ -9,7 +12,6 @@ import {
   postApiCommentsIdPin,
 } from "@sjtu-ow/api"
 import type { LoadCtx } from "../router"
-import { commentThread, type ArticleDetail, type CommentThread } from "../pending-api"
 
 // content/templates/content/article_page.html (design-details 6): the cover
 // with the words on it, one reading column with the contents beside it on
@@ -19,8 +21,8 @@ export async function load(ctx: LoadCtx) {
   const article: ArticleDetail = await getApiPageNewsSlug(ctx.api, ctx.params.slug!)
   const sort = ctx.query.sort === "top" ? "top" : "new"
   const page = Math.max(1, Number.parseInt(ctx.query.comments ?? "", 10) || 1)
-  // A draft (visible to its author here, comments API answers 404) paints an
-  // empty section as the old thread() did for an unpublished page.
+  // The page may be withdrawn between the projection and comment reads.
+  // Public draft previews are rejected before this point.
   let thread: CommentThread = { total: 0, page, page_size: 20, comments: [] }
   try {
     thread = await commentThread(ctx.api, article.id, { sort, page })
@@ -49,7 +51,6 @@ import { coverPlaceholder } from "@sjtu-ow/shared/pictures"
 import { owDate, owISO, owMd } from "@sjtu-ow/shared/time"
 import { useApi } from "../api"
 import { usePageMeta } from "../meta"
-import type { ArticleCard, CommentAbility } from "../pending-api"
 import { VIEWER } from "../viewer"
 import { toast } from "../toasts"
 
@@ -102,7 +103,7 @@ onBeforeUnmount(() => { epoch++; readSequence++ })
 // the old post_problems notice once Go sends the flag. The back-office caps
 // are a different system (AGENTS), so comments.moderate names the moderators.
 const canModerate = computed(() => !!viewer.user && (viewer.user.superuser || viewer.user.caps.includes("comments.moderate")))
-const canComment = (user: typeof viewer.user): boolean => (user as (typeof viewer.user & CommentAbility) | null)?.can_comment !== false
+const canComment = (user: typeof viewer.user): boolean => user?.can_comment === true
 const canPost = computed(() => !!viewer.user && !!article.value?.comments_enabled && canComment(viewer.user))
 const postProblems = computed(() => (viewer.user && !canComment(viewer.user) ? ["你暂时无法使用此功能，如有疑问请联系管理员"] : []))
 
@@ -197,7 +198,7 @@ const onPin = (change: { id: number; pinned: boolean }) => {
   if (articleId) void act(() => postApiCommentsIdPin(api, change.id, { article_id: articleId, pinned: change.pinned }))
 }
 
-const related = computed(() => (article.value?.related ?? []) as ArticleCard[])
+const related = computed(() => (article.value?.related ?? []).filter((item) => item !== null))
 </script>
 <template>
   <main v-if="article" id="main" class="flex-1">

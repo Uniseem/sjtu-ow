@@ -90,7 +90,7 @@ test("fixed routes outrank the page slug", async () => {
   expect(router.resolve("/join-us/").matched[0]?.path).toContain(":slug")
 })
 
-const member = { id: 7, nickname: "成员", email: "m@example.com", admin: false, superuser: false, caps: [] as string[], email_verified: true, is_sjtu: true }
+const member = { id: 7, nickname: "成员", email: "m@example.com", admin: false, superuser: false, caps: [] as string[], email_verified: true, is_sjtu: true, can_comment: true }
 
 test("submit: a visitor is told to log in and sent back here afterwards", async () => {
   const { status, body } = await page("/submit/", {})
@@ -417,4 +417,21 @@ test("a draft or restricted public page stays 404 for a signed-in author", async
   const result=await page("/news/screens-guide/", {"/api/page/news/screens-guide": {status:404,body:{error:{code:"not_found",message:"Article unavailable"}}}},memberSession)
   expect(result.status).toBe(404)
   expect(result.asked).not.toContain("/api/articles/7/comments")
+})
+
+test("generated comment fields mark only genuine edits on both levels and skip null nodes", async () => {
+  const root = { ...commentRow({ id: 101 }), edited_at: null, updated_at: "2026-10-12T12:00:00Z", replies: [null, { ...commentRow({ id: 150 }), parent_id: 101, content: "编辑回复", edited_at: "2026-10-11T13:00:00Z" }] }
+  const result = await page("/news/screens-guide/", {
+    "/api/page/news/screens-guide": { body: article },
+    "/api/articles/7/comments": { body: { total: 1, page: 1, page_size: 20, comments: [null, root] } },
+  }, memberSession)
+  expect(result.status).toBe(200)
+  expect(result.plain.match(/已编辑/g)).toHaveLength(1)
+  expect(result.plain).toContain("1 条回复")
+  expect(result.plain).toContain("编辑回复")
+  const edited = await page("/news/screens-guide/", {
+    "/api/page/news/screens-guide": { body: article },
+    "/api/articles/7/comments": { body: { total: 1, page: 1, page_size: 20, comments: [{ ...root, edited_at: "2026-10-11T13:00:00Z" }] } },
+  }, memberSession)
+  expect(edited.plain.match(/已编辑/g)).toHaveLength(2)
 })

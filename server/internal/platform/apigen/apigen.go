@@ -48,6 +48,12 @@ func Render(reg *api.Registry) (index, nav string) {
 	var b strings.Builder
 	b.WriteString(header)
 	b.WriteString(imports)
+	var types []reflect.Type
+	for _, rt := range routes {
+		types = append(types, rt.InType, rt.OutType)
+	}
+	names := recursiveStructs(types)
+	writeRecursive(&b, names)
 	var navItems []string
 	for _, rt := range routes {
 		name := funcName(rt.Method, rt.Pattern)
@@ -55,13 +61,13 @@ func Render(reg *api.Registry) (index, nav string) {
 		sig := signature{name: name, out: typeName + "Out", route: rt}
 		if hasJSON(rt.InType) {
 			sig.in = typeName + "In"
-			writeInterface(&b, sig.in, bodyFields(rt.InType))
+			writeInterface(&b, sig.in, bodyFields(rt.InType, names))
 		}
 		if q := queryFields(rt.InType); q != "" {
 			sig.query = typeName + "Query"
 			writeInterface(&b, sig.query, q)
 		}
-		writeOut(&b, sig.out, rt.OutType)
+		writeOut(&b, sig.out, rt.OutType, names)
 		writeFunc(&b, sig)
 		if section, tab, ok := splitNav(rt.Nav); ok {
 			navItems = append(navItems, fmt.Sprintf(
@@ -89,12 +95,12 @@ func writeInterface(b *strings.Builder, name, body string) {
 	b.WriteString("}\n\n")
 }
 
-func writeOut(b *strings.Builder, name string, t reflect.Type) {
+func writeOut(b *strings.Builder, name string, t reflect.Type, named ...map[reflect.Type]string) {
 	if t != nil && deref(t).Kind() == reflect.Struct && !isTime(deref(t)) {
-		writeInterface(b, name, structFields(deref(t), map[reflect.Type]bool{}))
+		writeInterface(b, name, structFields(deref(t), map[reflect.Type]bool{}, named...))
 		return
 	}
-	fmt.Fprintf(b, "export type %s = %s\n\n", name, tsType(t, map[reflect.Type]bool{}))
+	fmt.Fprintf(b, "export type %s = %s\n\n", name, tsType(t, map[reflect.Type]bool{}, named...))
 }
 
 // writeFunc 写一个调用函数：Requester、路径参数、请求体、查询参数、其余选项。
@@ -123,7 +129,7 @@ func writeFunc(b *strings.Builder, s signature) {
 }
 
 // bodyFields 是请求体里的字段：带 json 标签、不是路径或查询参数的。
-func bodyFields(t reflect.Type) string {
+func bodyFields(t reflect.Type, named ...map[reflect.Type]string) string {
 	t = deref(t)
 	var b strings.Builder
 	for i := range t.NumField() {
@@ -135,7 +141,7 @@ func bodyFields(t reflect.Type) string {
 		if name == "" || name == "-" {
 			continue
 		}
-		fmt.Fprintf(&b, "  %s%s: %s;\n", name, optional(opts), tsType(f.Type, map[reflect.Type]bool{}))
+		fmt.Fprintf(&b, "  %s%s: %s;\n", name, optional(opts), tsType(f.Type, map[reflect.Type]bool{}, named...))
 	}
 	return b.String()
 }
@@ -168,7 +174,7 @@ func queryFields(t reflect.Type) string {
 
 // structFields 照 encoding/json 的规则列出字段：没写名字的匿名结构摊平进来，
 // 其余没写 json 标签的用 Go 的字段名。
-func structFields(t reflect.Type, visited map[reflect.Type]bool) string {
+func structFields(t reflect.Type, visited map[reflect.Type]bool, named ...map[reflect.Type]string) string {
 	visited = copyVisited(visited)
 	visited[t] = true
 	var b strings.Builder
@@ -180,7 +186,7 @@ func structFields(t reflect.Type, visited map[reflect.Type]bool) string {
 		}
 		name, opts := splitTag(tag)
 		if name == "" && f.Anonymous && deref(f.Type).Kind() == reflect.Struct && !isTime(deref(f.Type)) {
-			b.WriteString(structFields(deref(f.Type), visited))
+			b.WriteString(structFields(deref(f.Type), visited, named...))
 			continue
 		}
 		if f.PkgPath != "" {
@@ -189,14 +195,14 @@ func structFields(t reflect.Type, visited map[reflect.Type]bool) string {
 		if name == "" {
 			name = f.Name
 		}
-		fmt.Fprintf(&b, "  %s%s: %s;\n", name, optional(opts), tsType(f.Type, visited))
+		fmt.Fprintf(&b, "  %s%s: %s;\n", name, optional(opts), tsType(f.Type, visited, named...))
 	}
 	return b.String()
 }
 
 var rawMessage = reflect.TypeOf(json.RawMessage{})
 
-func tsType(t reflect.Type, visited map[reflect.Type]bool) string {
+func tsType(t reflect.Type, visited map[reflect.Type]bool, named ...map[reflect.Type]string) string {
 	if t == nil {
 		return "unknown"
 	}
@@ -219,22 +225,24 @@ func tsType(t reflect.Type, visited map[reflect.Type]bool) string {
 		case t.Elem().Kind() == reflect.Uint8:
 			out = "string" // []byte 编码成 base64
 		default:
-			elem := tsType(t.Elem(), visited)
+			elem := tsType(t.Elem(), visited, named...)
 			if strings.Contains(elem, " | ") {
 				elem = "(" + elem + ")"
 			}
 			out = elem + "[]"
 		}
 	case reflect.Map:
-		out = "Record<" + tsType(t.Key(), visited) + ", " + tsType(t.Elem(), visited) + ">"
+		out = "Record<" + tsType(t.Key(), visited, named...) + ", " + tsType(t.Elem(), visited, named...) + ">"
 	case reflect.Struct:
 		switch {
 		case isTime(t):
 			out = "string"
+		case len(named) > 0 && named[0][t] != "":
+			out = named[0][t]
 		case visited[t]:
 			out = "unknown"
 		default:
-			body := structFields(t, visited)
+			body := structFields(t, visited, named...)
 			if body == "" {
 				out = "Record<string, never>"
 			} else {

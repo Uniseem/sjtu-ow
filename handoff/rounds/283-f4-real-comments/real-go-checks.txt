@@ -1,0 +1,24 @@
+PASS REAL visitor read-only {}
+PASS REAL real pagination reaches final page {}
+PASS REAL post saved by Go {"id":26,"total":26}
+PASS REAL like persisted {}
+PASS REAL real hottest ordering {}
+PASS REAL unlike persisted {}
+PASS REAL reply persisted under root {"id":27}
+PASS REAL reply edited marker {}
+PASS REAL reply to reply flattened with attribution {}
+PASS REAL root edit persisted and marked {}
+PASS REAL real 429 keeps draft {}
+PASS REAL pin persists without rewriting edited_at {}
+PASS REAL hide persists without editing {}
+PASS REAL visitor tombstone preserves visible reply {}
+PASS REAL restore/unpin preserved edit history {}
+PASS REAL delete creates tombstone with reply {}
+PASS REAL one deleted reply keeps surviving thread {}
+PASS REAL deleted reply removes empty tombstone {}
+PASS REAL real feature ban notice {}
+PASS REAL real ban edit refused and draft retained {}
+PASS REAL closed comments readable without composer {}
+PASS REAL real private page remains 404 for superuser {}
+PASS REAL real runtime/CSP/server errors absent {"runtime":0,"csp":[],"server500":0}
+REAL-COMMENTS-JOURNEY-OK 23

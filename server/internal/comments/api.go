@@ -120,7 +120,7 @@ func (m *Module) Routes(r *api.Registry) {
 	api.Post(r, "/api/articles/{id}/comments", api.Member, m.postComment,
 		api.Limit(ratelimit.CommentCreateMinute, ratelimit.CommentCreateDaily))
 	api.Patch(r, "/api/comments/{id}", api.Member, m.patchComment,
-		api.Limit(ratelimit.CommentCreateMinute))
+		api.Limit(ratelimit.CommentCreateMinute, ratelimit.CommentCreateDaily))
 	api.Delete(r, "/api/comments/{id}", api.Member, m.deleteComment,
 		api.NoLimit("删除评论无需限流"))
 

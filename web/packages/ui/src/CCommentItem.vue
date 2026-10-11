@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue"
 import CAvatar from "./CAvatar.vue"
 import CCommentComposer from "./CCommentComposer.vue"
 import CCommentReply from "./CCommentReply.vue"
@@ -8,9 +9,11 @@ import type { CommentView, CommentReplySubmission, CommentEditSubmission } from 
 import { useConfirm } from "@sjtu-ow/shared/confirm"
 const confirm = useConfirm()
 
+const replies = computed(() => (props.item.replies ?? []).filter((reply): reply is CommentView => reply !== null))
+
 // comments/templates/comments/_item.html: a top-level comment, its replies
 // folded into a details the same way.
-defineProps<{
+const props = defineProps<{
   item: CommentView
   interactive: boolean
   canPost: boolean
@@ -80,11 +83,11 @@ const emit = defineEmits<{
         </div>
       </div>
     </template>
-    <details v-if="item.replies?.length" class="c-comment__thread">
-      <summary>{{ item.replies.length }} 条回复<CIcon name="chevron-down" /></summary>
+    <details v-if="replies.length" class="c-comment__thread">
+      <summary>{{ replies.length }} 条回复<CIcon name="chevron-down" /></summary>
       <ol>
         <CCommentReply
-          v-for="reply in item.replies"
+          v-for="reply in replies"
           :key="reply.id"
           :reply="reply"
           :interactive="interactive"
