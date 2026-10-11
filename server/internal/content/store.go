@@ -175,7 +175,7 @@ func (s *Store) DeleteCategory(ctx context.Context, id int64) error {
 const pageColumns = `p.id, p.kind, p.slug, p.title, p.live, p.has_unpublished_changes,
 	p.go_live_at, p.expire_at, p.first_published_at, p.last_published_at,
 	p.live_revision_id, p.latest_revision_id, p.owner_id, p.seo_title, p.search_description,
-	p.version, p.created_at, p.updated_at`
+	p.version, p.created_at, p.updated_at, p.is_public`
 
 const articleColumns = pageColumns + `,
 	a.category_id, IFNULL(c.name, '') as category_name,
@@ -185,7 +185,7 @@ const articleColumns = pageColumns + `,
 
 func scanArticle(row interface{ Scan(...any) error }) (*Article, error) {
 	var a Article
-	var live, unpub, comments, rendVer int
+	var live, unpub, comments, rendVer, public int
 	var goLive, expire, firstPub, lastPub, created, updated sql.NullString
 	var catID, coverID, authorID, tourID sql.NullInt64
 
@@ -193,7 +193,7 @@ func scanArticle(row interface{ Scan(...any) error }) (*Article, error) {
 		&a.ID, &a.Kind, &a.Slug, &a.Title, &live, &unpub,
 		&goLive, &expire, &firstPub, &lastPub,
 		&a.LiveRevisionID, &a.LatestRevisionID, &a.OwnerID, &a.SeoTitle, &a.SearchDescription,
-		&a.Version, &created, &updated,
+		&a.Version, &created, &updated, &public,
 		&catID, &a.CategoryName,
 		&coverID, &a.Summary, &a.BodyMD, &a.BodyHTML, &a.BodyPlain,
 		&a.CharCount, &a.ReadingTime, &authorID, &a.AuthorName,
@@ -204,6 +204,7 @@ func scanArticle(row interface{ Scan(...any) error }) (*Article, error) {
 	}
 
 	a.Live = live == 1
+	a.Public = public == 1
 	a.HasUnpublishedChanges = unpub == 1
 	a.CommentsEnabled = comments == 1
 	a.RendererVersion = rendVer
@@ -604,14 +605,14 @@ func (s *Store) GetSitePageBySlug(ctx context.Context, slug string) (*SitePage, 
 		WHERE p.slug = ? AND p.kind = 'site_page'
 	`
 	var sp SitePage
-	var live, unpub int
+	var live, unpub, public int
 	var goLive, expire, firstPub, lastPub, created, updated sql.NullString
 
 	err := s.d.ReadPool().QueryRowContext(ctx, query, slug).Scan(
 		&sp.ID, &sp.Kind, &sp.Slug, &sp.Title, &live, &unpub,
 		&goLive, &expire, &firstPub, &lastPub,
 		&sp.LiveRevisionID, &sp.LatestRevisionID, &sp.OwnerID, &sp.SeoTitle, &sp.SearchDescription,
-		&sp.Version, &created, &updated,
+		&sp.Version, &created, &updated, &public,
 		&sp.BodyMD, &sp.BodyHTML, &sp.BodyPlain,
 	)
 	if err != nil {
@@ -635,6 +636,7 @@ func (s *Store) GetSitePageBySlug(ctx context.Context, slug string) (*SitePage, 
 		sp.LastPublishedAt = &t
 	}
 	sp.Live = live == 1
+	sp.Public = public == 1
 	sp.HasUnpublishedChanges = unpub == 1
 	sp.CreatedAt, _ = db.ParseUTC(created.String)
 	sp.UpdatedAt, _ = db.ParseUTC(updated.String)
@@ -657,51 +659,25 @@ func (s *Store) GetHomePins(ctx context.Context) ([]*HomePin, error) {
 	}
 	defer rows.Close()
 
-	var pins []*HomePin
+	pins := []*HomePin{}
 	for rows.Next() {
 		var pin HomePin
-		var a Article
-		var live, unpub, comments, rendVer int
-		var goLive, expire, firstPub, lastPub, created, updated sql.NullString
-		var catID, coverID, authorID, tourID sql.NullInt64
-
-		err := rows.Scan(
-			&pin.ArticlePageID, &pin.SortOrder,
-			&a.ID, &a.Kind, &a.Slug, &a.Title, &live, &unpub,
-			&goLive, &expire, &firstPub, &lastPub,
-			&a.LiveRevisionID, &a.LatestRevisionID, &a.OwnerID, &a.SeoTitle, &a.SearchDescription,
-			&a.Version, &created, &updated,
-			&catID, &a.CategoryName,
-			&coverID, &a.Summary, &a.BodyMD, &a.BodyHTML, &a.BodyPlain,
-			&a.CharCount, &a.ReadingTime, &authorID, &a.AuthorName,
-			&comments, &tourID, &a.SearchText, &rendVer,
-		)
+		article, err := scanArticle(prefixedScan{rows, []any{&pin.ArticlePageID, &pin.SortOrder}})
 		if err != nil {
 			return nil, err
 		}
-		a.Live = live == 1
-		a.HasUnpublishedChanges = unpub == 1
-		a.CommentsEnabled = comments == 1
-		a.RendererVersion = rendVer
-		if catID.Valid {
-			a.CategoryID = &catID.Int64
-		}
-		if coverID.Valid {
-			a.CoverImageID = &coverID.Int64
-		}
-		if authorID.Valid {
-			a.AuthorID = &authorID.Int64
-		}
-		if tourID.Valid {
-			a.RelatedTournamentID = &tourID.Int64
-		}
-		a.CreatedAt, _ = db.ParseUTC(created.String)
-		a.UpdatedAt, _ = db.ParseUTC(updated.String)
-		pin.Article = &a
+		pin.Article = article
 		pins = append(pins, &pin)
 	}
-	return pins, nil
+	return pins, rows.Err()
 }
+
+type prefixedScan struct {
+	row    interface{ Scan(...any) error }
+	prefix []any
+}
+
+func (r prefixedScan) Scan(args ...any) error { return r.row.Scan(append(r.prefix, args...)...) }
 
 // SetHomePins 设置首页置顶文章（最多 3 篇，原子替换）。
 func (s *Store) SetHomePins(ctx context.Context, articleIDs []int64) error {

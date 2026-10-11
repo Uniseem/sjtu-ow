@@ -234,6 +234,19 @@ func (s *Store) CheckMyLikes(ctx context.Context, commentIDs []int64, userID int
 func (s *Store) CreateComment(ctx context.Context, c *Comment) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if err := requirePublicArticle(txCtx, tx, c.ArticleID, true); err != nil {
+			return err
+		}
+		if c.ParentID != nil {
+			var visible int
+			if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM comments WHERE id=? AND article_id=? AND is_hidden=0 AND is_deleted=0`, *c.ParentID, c.ArticleID).Scan(&visible); err != nil {
+				return err
+			}
+			if visible == 0 {
+				return api.Invalid("所回复的评论已被删除或隐藏，无法回复")
+			}
+		}
+
 		res, err := tx.ExecContext(txCtx, `
 			INSERT INTO comments (article_id, user_id, parent_id, reply_to_user_id, content,
 				is_pinned, is_hidden, is_deleted, like_count, version, created_at, updated_at)
@@ -258,6 +271,10 @@ func (s *Store) CreateComment(ctx context.Context, c *Comment) error {
 func (s *Store) UpdateCommentContent(ctx context.Context, id int64, newContent string, authorID int64) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if err := requirePublicComment(txCtx, tx, id, true); err != nil {
+			return err
+		}
+
 		res, err := tx.ExecContext(txCtx, `
 			UPDATE comments
 			SET content = ?, version = version + 1, updated_at = ?, edited_at = ?
@@ -278,6 +295,10 @@ func (s *Store) UpdateCommentContent(ctx context.Context, id int64, newContent s
 func (s *Store) SoftDeleteComment(ctx context.Context, id int64, authorID int64) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if err := requirePublicComment(txCtx, tx, id, false); err != nil {
+			return err
+		}
+
 		res, err := tx.ExecContext(txCtx, `
 			UPDATE comments
 			SET is_deleted = 1, content = '', is_pinned = 0, version = version + 1, updated_at = ?
@@ -303,6 +324,10 @@ func (s *Store) SetCommentHidden(ctx context.Context, id int64, hidden bool) err
 	}
 
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if err := requirePublicComment(txCtx, tx, id, false); err != nil {
+			return err
+		}
+
 		query := `UPDATE comments SET is_hidden = ?, is_pinned = 0, version = version + 1, updated_at = ? WHERE id = ?`
 		if !hidden {
 			query = `UPDATE comments SET is_hidden = ?, version = version + 1, updated_at = ? WHERE id = ?`
@@ -323,6 +348,22 @@ func (s *Store) SetCommentHidden(ctx context.Context, id int64, hidden bool) err
 func (s *Store) SetCommentPinned(ctx context.Context, articleID int64, commentID int64, pinned bool) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if err := requirePublicComment(txCtx, tx, commentID, false); err != nil {
+			return err
+		}
+
+		var actualArticle int64
+		if err := tx.QueryRowContext(txCtx, `SELECT article_id FROM comments WHERE id=?`, commentID).Scan(&actualArticle); err != nil {
+			return err
+		}
+		if actualArticle != articleID {
+			return api.NotFound("评论不存在")
+		}
+
+		if !pinned {
+			_, err := tx.ExecContext(txCtx, `UPDATE comments SET is_pinned=0,version=version+1,updated_at=? WHERE id=? AND article_id=?`, now, commentID, articleID)
+			return err
+		}
 		// 先释放该文章旧的置顶
 		if _, err := tx.ExecContext(txCtx, `UPDATE comments SET is_pinned = 0 WHERE article_id = ? AND is_pinned = 1`, articleID); err != nil {
 			return err
@@ -354,6 +395,10 @@ func (s *Store) ToggleLike(ctx context.Context, commentID int64, userID int64) (
 	var count int
 
 	err := s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if err := requirePublicComment(txCtx, tx, commentID, false); err != nil {
+			return err
+		}
+
 		// 检查评论是否存在且未被隐藏、未被删除
 		var visible int
 		err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM comments WHERE id = ? AND is_hidden = 0 AND is_deleted = 0`, commentID).Scan(&visible)
@@ -517,4 +562,31 @@ func (s *Store) CountRoots(ctx context.Context, articleID int64, isMod bool) (in
 	var total int
 	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT COUNT(*) FROM comments c WHERE c.article_id=? AND c.parent_id IS NULL`+rootVisibility(isMod), articleID).Scan(&total)
 	return total, err
+}
+
+func requirePublicArticle(ctx context.Context, tx *db.Tx, articleID int64, open bool) error {
+	var enabled int
+	err := tx.QueryRowContext(ctx, `SELECT a.comments_enabled FROM pages p JOIN articles a ON a.page_id=p.id
+ WHERE p.id=? AND p.kind='article' AND p.live=1 AND p.is_public=1`, articleID).Scan(&enabled)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.NotFound("文章不存在或未发布")
+		}
+		return err
+	}
+	if open && enabled != 1 {
+		return api.Invalid("文章已关闭评论")
+	}
+	return nil
+}
+
+func requirePublicComment(ctx context.Context, tx *db.Tx, id int64, open bool) error {
+	var articleID int64
+	if err := tx.QueryRowContext(ctx, `SELECT article_id FROM comments WHERE id=?`, id).Scan(&articleID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.NotFound("评论不存在")
+		}
+		return err
+	}
+	return requirePublicArticle(ctx, tx, articleID, open)
 }

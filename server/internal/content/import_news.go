@@ -35,8 +35,8 @@ func importNewsIndexes(ctx context.Context, d *db.DB, legacy *sql.DB, now time.T
 				}
 				return parseAndFormatUTC(v.String, now)
 			}
-			_, err := tx.ExecContext(ctx, `INSERT INTO pages (id,kind,slug,title,live,has_unpublished_changes,go_live_at,expire_at,first_published_at,last_published_at,live_revision_id,latest_revision_id,owner_id,seo_title,search_description,parent_id,search_public,created_at,updated_at)
-    VALUES (?,'news_index',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING`, id, slug, title, live, unpub, date(goLive), date(expire), date(first), date(last), revision, revision, owner, seo.String, description.String, parent, public, db.FormatUTC(now), db.FormatUTC(now))
+			_, err := tx.ExecContext(ctx, `INSERT INTO pages (id,kind,slug,title,live,has_unpublished_changes,go_live_at,expire_at,first_published_at,last_published_at,live_revision_id,latest_revision_id,owner_id,seo_title,search_description,parent_id,search_public,created_at,updated_at,is_public)
+    VALUES (?,'news_index',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING`, id, slug, title, live, unpub, date(goLive), date(expire), date(first), date(last), revision, revision, owner, seo.String, description.String, parent, public, db.FormatUTC(now), db.FormatUTC(now), public)
 			if err != nil {
 				return fmt.Errorf("写栏目 %d: %w", id, err)
 			}

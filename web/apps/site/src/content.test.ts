@@ -353,9 +353,9 @@ test("the home page paints the real blocks and the member's agenda", async () =>
   expect(body).toContain("缺 坦克")
 })
 
-test("a draft the author can open here paints an empty comment section when Go's thread 404s", async () => {
-  // The article gate lets its author through; the comments gate does not.
-  // The old thread() rendered an empty list for such a page, not an error.
+test("a public article withdrawn between page and comment reads paints an empty thread", async () => {
+  // A read race can withdraw a page after its projection has already loaded.
+  // This does not authorize draft previews through the public page API.
   const { status, body } = await page("/news/screens-guide/", {
     "/api/page/news/screens-guide": { body: article },
     "/api/articles/7/comments": { status: 404, body: { error: { code: "not_found", message: "文章不存在" } } },
@@ -410,4 +410,11 @@ test("home's default cover uses the old drift class; an explicit cover stays sti
   expect(fallback?.[1].split(" ").sort()).toEqual(["c-feature__img", "c-drift", "c-drift--4"].sort())
   const explicit = await page("/", { "/api/page/home": { body: { ...EMPTY_HOME, feature_tournament: { ...feature, cover_image_id: 30 } } } })
   expect(explicit.plain).toContain('src="/media/r/30/fill-1280x720.webp" class="c-feature__img"')
+})
+
+
+test("a draft or restricted public page stays 404 for a signed-in author", async () => {
+  const result=await page("/news/screens-guide/", {"/api/page/news/screens-guide": {status:404,body:{error:{code:"not_found",message:"Article unavailable"}}}},memberSession)
+  expect(result.status).toBe(404)
+  expect(result.asked).not.toContain("/api/articles/7/comments")
 })

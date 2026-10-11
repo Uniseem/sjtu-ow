@@ -56,9 +56,9 @@ func (s *Service) GenerateSitemap(ctx context.Context, now time.Time) (string, e
 		loc   func(string) string
 		args  []any
 	}{
-		{`SELECT slug, IFNULL(last_published_at, '') FROM pages WHERE kind = ? AND live = 1 ORDER BY id`,
+		{`SELECT slug, IFNULL(last_published_at, '') FROM pages WHERE kind = ? AND live = 1 AND is_public = 1 ORDER BY id`,
 			func(k string) string { return "/news/" + k + "/" }, []any{KindArticle}},
-		{`SELECT slug, IFNULL(last_published_at, '') FROM pages WHERE kind = ? AND live = 1 ORDER BY id`,
+		{`SELECT slug, IFNULL(last_published_at, '') FROM pages WHERE kind = ? AND live = 1 AND is_public = 1 ORDER BY id`,
 			func(k string) string { return "/" + k + "/" }, []any{KindSitePage}},
 		{`SELECT id, updated_at FROM teams WHERE disbanded_at IS NULL ORDER BY id`,
 			func(k string) string { return "/teams/" + k + "/" }, nil},

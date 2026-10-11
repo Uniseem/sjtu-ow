@@ -292,7 +292,7 @@ func (m *Module) Routes(r *api.Registry) {
 		api.NoLimit("删除分类无需限流"))
 
 	// 首页置顶
-	api.Get(r, "/api/admin/home-pins", api.Cap(app.Cap("admin.enter")), m.adminGetHomePins,
+	api.Get(r, "/api/admin/home-pins", api.Cap(CapArticlesEditAny), m.adminGetHomePins,
 		api.Nav("content", "home_pins"))
 	api.Put(r, "/api/admin/home-pins", api.Cap(CapArticlesEditAny), m.setHomePins,
 		api.NoLimit("设置置顶无需限流"))
@@ -311,7 +311,7 @@ func (m *Module) getSitePage(ctx *app.Ctx, in SitePageIn) (SitePageOut, error) {
 	if err != nil {
 		return SitePageOut{}, err
 	}
-	if sp == nil || !sp.Live {
+	if sp == nil || !sp.Live || !sp.Public {
 		return SitePageOut{}, api.NotFound("页面不存在")
 	}
 	return SitePageOut{
@@ -325,27 +325,7 @@ func (m *Module) getSitePage(ctx *app.Ctx, in SitePageIn) (SitePageOut, error) {
 }
 
 func (m *Module) getHomePins(ctx *app.Ctx, _ HomePinsIn) (HomePinsOut, error) {
-	pins, err := m.svc.store.GetHomePins(ctx.Context)
-	if err != nil {
-		return HomePinsOut{}, err
-	}
-	items := make([]*NewsItemOut, 0, len(pins))
-	for _, p := range pins {
-		if p.Article != nil {
-			items = append(items, &NewsItemOut{
-				ID:               p.Article.ID,
-				Slug:             p.Article.Slug,
-				Title:            p.Article.Title,
-				CategoryName:     p.Article.CategoryName,
-				CoverImageID:     p.Article.CoverImageID,
-				Summary:          p.Article.Summary,
-				ReadingTime:      p.Article.ReadingTime,
-				AuthorName:       p.Article.AuthorName,
-				FirstPublishedAt: p.Article.FirstPublishedAt,
-			})
-		}
-	}
-	return HomePinsOut{Items: items}, nil
+	return m.svc.HomePins(ctx, true)
 }
 
 func (m *Module) createArticle(ctx *app.Ctx, in CreateArticleIn) (CreateArticleOut, error) {
@@ -487,7 +467,7 @@ func (m *Module) deleteCategory(ctx *app.Ctx, in DeleteCategoryIn) (DeleteCatego
 }
 
 func (m *Module) adminGetHomePins(ctx *app.Ctx, _ HomePinsIn) (HomePinsOut, error) {
-	return m.getHomePins(ctx, HomePinsIn{})
+	return m.svc.HomePins(ctx, false)
 }
 
 func (m *Module) setHomePins(ctx *app.Ctx, in SetHomePinsIn) (SetHomePinsOut, error) {

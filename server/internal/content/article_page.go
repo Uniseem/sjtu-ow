@@ -52,7 +52,7 @@ func (s *Service) ArticlePage(ctx *app.Ctx, slug string) (NewsDetailOut, error) 
 	if err != nil {
 		return NewsDetailOut{}, err
 	}
-	if article == nil || (!article.Live && !s.canEditArticle(ctx.Viewer, &article.Page)) {
+	if article == nil || !article.Live || !article.Public {
 		return NewsDetailOut{}, api.NotFound("文章不存在")
 	}
 	_, headings := markdown.AnchorHeadings(article.BodyHTML)
@@ -178,7 +178,7 @@ func (s *Store) articleAuthor(ctx context.Context, id *int64) (*ArticleAuthorOut
 func (s *Store) authorPublicArticleCount(ctx context.Context, id int64) (int, error) {
 	var count int
 	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT COUNT(*) FROM pages p JOIN articles a ON a.page_id=p.id
- WHERE p.live=1 AND p.search_public=1 AND a.author_id=?`, id).Scan(&count)
+ WHERE p.live=1 AND p.is_public=1 AND a.author_id=?`, id).Scan(&count)
 	return count, err
 }
 
@@ -189,7 +189,7 @@ func (s *Store) articleNeighbour(ctx context.Context, id int64, first time.Time,
 	}
 	var out ArticleNeighbourOut
 	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT p.slug,p.title FROM pages p
- WHERE p.kind='article' AND p.live=1 AND p.search_public=1
+ WHERE p.kind='article' AND p.live=1 AND p.is_public=1
  AND p.parent_id IS NOT NULL
  AND p.parent_id IS (SELECT parent_id FROM pages WHERE id=?)
  AND `+utcTimeOrder("p.first_published_at")+` `+comparison+` ?
@@ -207,7 +207,7 @@ func (s *Store) relatedArticles(ctx context.Context, id int64, category *int64) 
 	rows, err := s.d.ReadPool().QueryContext(ctx, `SELECT `+articleColumns+`
  FROM pages p JOIN articles a ON a.page_id=p.id
  LEFT JOIN article_categories c ON c.id=a.category_id LEFT JOIN users u ON u.id=a.author_id
- WHERE p.live=1 AND p.search_public=1 AND a.category_id IS ? AND p.id<>?
+ WHERE p.live=1 AND p.is_public=1 AND a.category_id IS ? AND p.id<>?
  ORDER BY `+utcTimeOrder("p.first_published_at")+` DESC,`+utcTimeOrder("p.last_published_at")+` DESC,p.id ASC LIMIT 3`, category, id)
 	if err != nil {
 		return nil, err

@@ -91,7 +91,7 @@ func TestNewsPageAPI(t *testing.T) {
 }
 
 func TestNewsPageGateAndErrors(t *testing.T) {
-	for _, update := range []string{"UPDATE pages SET live=0 WHERE id=900", "UPDATE pages SET search_public=0 WHERE id=900", "DELETE FROM pages WHERE id=900"} {
+	for _, update := range []string{"UPDATE pages SET live=0 WHERE id=900", "UPDATE pages SET is_public=0 WHERE id=900", "DELETE FROM pages WHERE id=900"} {
 		d, svc := newsFixture(t)
 		projectionExec(t, d, update)
 		reg := &api.Registry{}

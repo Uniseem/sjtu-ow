@@ -299,6 +299,9 @@ def look(tools, url: str, cookie: dict | None, width: int, scheme: str, shot: Pa
             break
         time.sleep(0.25)
     time.sleep(0.3)
+    # Font loading can outlive readyState/image completion, especially on long
+    # Chinese pages. Capture the layout after its fonts and next paint frames.
+    evaluate(tools, "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))")
     snap = evaluate(tools, SNAPSHOT)
     box = snap.pop("box")
     if box["width"] > 0 and box["height"] > 0:

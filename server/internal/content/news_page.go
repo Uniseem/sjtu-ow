@@ -21,7 +21,7 @@ func (s *Service) NewsPage(ctx *app.Ctx, in NewsListIn) (NewsListOut, error) {
 	var indexID int64
 	var intro, title, seo, description string
 	err := s.store.d.ReadPool().QueryRowContext(ctx.Context, `SELECT p.id,n.intro,p.title,p.seo_title,p.search_description FROM pages p JOIN news_index n ON n.page_id=p.id
- WHERE p.kind='news_index' AND p.slug='news' AND p.live=1 AND p.search_public=1`).Scan(&indexID, &intro, &title, &seo, &description)
+ WHERE p.kind='news_index' AND p.slug='news' AND p.live=1 AND p.is_public=1`).Scan(&indexID, &intro, &title, &seo, &description)
 	if errors.Is(err, sql.ErrNoRows) {
 		return NewsListOut{}, api.NotFound("页面不存在")
 	}
@@ -41,7 +41,7 @@ func (s *Service) NewsPage(ctx *app.Ctx, in NewsListIn) (NewsListOut, error) {
 		pageSize = 12
 	}
 	category := strings.TrimSpace(in.Category)
-	where := `p.kind='article' AND p.live=1 AND p.search_public=1 AND p.parent_id=?`
+	where := `p.kind='article' AND p.live=1 AND p.is_public=1 AND p.parent_id=?`
 	args := []any{indexID}
 	if category != "" {
 		where += ` AND c.slug=?`

@@ -248,8 +248,8 @@ func (s *Store) homeScrims(ctx context.Context, now time.Time, loc *time.Locatio
 
 func (s *Store) homeNews(ctx context.Context) ([]*Article, map[int64]bool, error) {
 	rows, err := s.d.ReadPool().QueryContext(ctx, `SELECT `+articleColumns+`,hp.article_page_id FROM pages p JOIN articles a ON a.page_id=p.id
- LEFT JOIN article_categories c ON c.id=a.category_id LEFT JOIN users u ON u.id=a.author_id LEFT JOIN (SELECT hp.article_page_id,hp.sort_order FROM home_pins hp JOIN pages pp ON pp.id=hp.article_page_id WHERE pp.live=1 AND pp.search_public=1 ORDER BY hp.sort_order LIMIT 3) hp ON hp.article_page_id=p.id
- WHERE p.live=1 AND p.search_public=1 ORDER BY CASE WHEN hp.article_page_id IS NULL THEN 1 ELSE 0 END,hp.sort_order,
+ LEFT JOIN article_categories c ON c.id=a.category_id LEFT JOIN users u ON u.id=a.author_id LEFT JOIN (SELECT hp.article_page_id,hp.sort_order FROM home_pins hp JOIN pages pp ON pp.id=hp.article_page_id WHERE pp.live=1 AND pp.is_public=1 ORDER BY hp.sort_order LIMIT 3) hp ON hp.article_page_id=p.id
+ WHERE p.live=1 AND p.is_public=1 ORDER BY CASE WHEN hp.article_page_id IS NULL THEN 1 ELSE 0 END,hp.sort_order,
  `+utcTimeOrder("p.first_published_at")+` DESC,`+utcTimeOrder("p.last_published_at")+` DESC,p.id ASC LIMIT 4`)
 	if err != nil {
 		return nil, nil, err
@@ -282,7 +282,7 @@ func scanArticleWithPin(row interface{ Scan(...any) error }, pin *sql.NullInt64)
 
 func (s *Store) homeNotices(ctx context.Context, loc *time.Location) ([]*HomeNoticeItem, error) {
 	rows, err := s.d.ReadPool().QueryContext(ctx, `SELECT p.id,p.slug,p.title,p.first_published_at FROM pages p JOIN articles a ON a.page_id=p.id JOIN article_categories c ON c.id=a.category_id
- WHERE p.live=1 AND p.search_public=1 AND c.slug IN ('notice','event-notice') ORDER BY `+utcTimeOrder("p.first_published_at")+` DESC,`+utcTimeOrder("p.last_published_at")+` DESC,p.id ASC LIMIT 5`)
+ WHERE p.live=1 AND p.is_public=1 AND c.slug IN ('notice','event-notice') ORDER BY `+utcTimeOrder("p.first_published_at")+` DESC,`+utcTimeOrder("p.last_published_at")+` DESC,p.id ASC LIMIT 5`)
 	if err != nil {
 		return nil, err
 	}

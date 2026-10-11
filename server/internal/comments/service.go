@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
@@ -51,31 +50,14 @@ func (s *Service) isMod(v *app.Viewer) bool {
 
 // checkArticleAvailable 校验文章是否处于公开可评论状态（规则 171–172）。
 func (s *Service) checkArticleAvailable(ctx context.Context, articleID int64, mustCommentsOpen bool) error {
-	var live, commentsEnabled int
-	var expireAt sql.NullString
-	err := s.store.d.ReadPool().QueryRowContext(ctx, `
-		SELECT p.live, p.expire_at, a.comments_enabled
-		FROM pages p
-		JOIN articles a ON a.page_id = p.id
-		WHERE p.id = ? AND p.kind = 'article'
-	`, articleID).Scan(&live, &expireAt, &commentsEnabled)
+	var commentsEnabled int
+	err := s.store.d.ReadPool().QueryRowContext(ctx, `SELECT a.comments_enabled FROM pages p JOIN articles a ON a.page_id=p.id
+ WHERE p.id=? AND p.kind='article' AND p.live=1 AND p.is_public=1`, articleID).Scan(&commentsEnabled)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return api.NotFound("文章不存在")
+			return api.NotFound("文章不存在或未发布")
 		}
 		return err
-	}
-
-	if live != 1 {
-		return api.Invalid("文章未发布，无法评论")
-	}
-
-	if expireAt.Valid && expireAt.String != "" {
-		// 已过期
-		t, err := timeFromUTC(expireAt.String)
-		if err == nil && t.Before(time.Now()) {
-			return api.Invalid("文章已过期，无法评论")
-		}
 	}
 
 	if mustCommentsOpen && commentsEnabled != 1 {
@@ -185,7 +167,7 @@ func (s *Service) EditComment(ctx *app.Ctx, id int64, in EditCommentInput) (*Com
 		return nil, api.Invalid("评论内容最多 500 字")
 	}
 
-	comment, err := s.store.GetCommentByID(ctx.Context, id)
+	comment, err := s.publicComment(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +205,7 @@ func (s *Service) DeleteComment(ctx *app.Ctx, id int64) error {
 		return api.Unauthorized("要先登录")
 	}
 
-	comment, err := s.store.GetCommentByID(ctx.Context, id)
+	comment, err := s.publicComment(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -245,6 +227,9 @@ func (s *Service) SetHidden(ctx *app.Ctx, id int64, hidden bool) error {
 	if !s.isMod(ctx.Viewer) {
 		return api.Forbidden()
 	}
+	if _, err := s.publicComment(ctx, id); err != nil {
+		return err
+	}
 	return s.store.SetCommentHidden(ctx.Context, id, hidden)
 }
 
@@ -253,6 +238,13 @@ func (s *Service) SetPinned(ctx *app.Ctx, articleID int64, commentID int64, pinn
 	if !s.isMod(ctx.Viewer) {
 		return api.Forbidden()
 	}
+	comment, err := s.publicComment(ctx, commentID)
+	if err != nil {
+		return err
+	}
+	if comment.ArticleID != articleID {
+		return api.NotFound("评论不存在")
+	}
 	return s.store.SetCommentPinned(ctx.Context, articleID, commentID, pinned)
 }
 
@@ -260,6 +252,9 @@ func (s *Service) SetPinned(ctx *app.Ctx, articleID int64, commentID int64, pinn
 func (s *Service) ToggleLike(ctx *app.Ctx, commentID int64) (bool, int, error) {
 	if ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
 		return false, 0, api.Unauthorized("要先登录")
+	}
+	if _, err := s.publicComment(ctx, commentID); err != nil {
+		return false, 0, err
 	}
 	return s.store.ToggleLike(ctx.Context, commentID, ctx.Viewer.ID)
 }
@@ -350,14 +345,25 @@ func (s *Service) ListComments(ctx *app.Ctx, articleID int64, in ListCommentsInp
 	}, nil
 }
 
-func timeFromUTC(s string) (time.Time, error) {
-	return time.Parse(time.RFC3339Nano, s)
-}
-
 // ListAdminComments 管理员查看所有评论（规则 179–183，docs/admin.md 4.5）。
 func (s *Service) ListAdminComments(ctx *app.Ctx, q string, hidden, pinned *bool, page, pageSize int) ([]AdminCommentRow, int, error) {
 	if !s.isMod(ctx.Viewer) {
 		return nil, 0, api.Forbidden()
 	}
 	return s.store.ListAdminComments(ctx.Context, q, hidden, pinned, page, pageSize)
+}
+
+// publicComment 给每个按评论编号的前台动作同一道文章门。
+func (s *Service) publicComment(ctx *app.Ctx, id int64) (*Comment, error) {
+	comment, err := s.store.GetCommentByID(ctx.Context, id)
+	if err != nil {
+		return nil, err
+	}
+	if comment == nil {
+		return nil, api.NotFound("评论不存在")
+	}
+	if err := s.checkArticleAvailable(ctx.Context, comment.ArticleID, false); err != nil {
+		return nil, err
+	}
+	return comment, nil
 }

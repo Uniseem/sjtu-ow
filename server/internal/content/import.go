@@ -318,13 +318,13 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 							INSERT INTO pages (id, kind, slug, title, live, has_unpublished_changes,
 								go_live_at, expire_at, first_published_at, last_published_at,
 								live_revision_id, latest_revision_id, owner_id, seo_title, search_description,
-								version, created_at, updated_at, search_public, parent_id)
-							VALUES (?, 'article', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+								version, created_at, updated_at, search_public, parent_id, is_public)
+							VALUES (?, 'article', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
 							ON CONFLICT (id) DO NOTHING
 						`, pageID, slug, title, live, hasUnpub,
 					goLiveUTC, expireUTC, firstPubUTC, lastPubUTC,
 					liveRevIDVal, liveRevIDVal, ownerIDVal, seoTitleStr, searchDescStr,
-					nowStr, nowStr, searchPublic, parentID); err != nil {
+					nowStr, nowStr, searchPublic, parentID, searchPublic); err != nil {
 					return fmt.Errorf("4. 导入文章页面 (content_articlepage + wagtailcore_page)：SQL 写入失败: %w", err)
 				}
 
@@ -363,7 +363,8 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 	{
 		rows, err := legacy.QueryContext(ctx, `
 			SELECT p.id, p.slug, p.title, p.live, p.has_unpublished_changes,
-			       p.seo_title, p.search_description, p.first_published_at, p.last_published_at, sp.body
+			       p.seo_title, p.search_description, p.first_published_at, p.last_published_at, sp.body,
+ NOT EXISTS (SELECT 1 FROM wagtailcore_pageviewrestriction vr JOIN wagtailcore_page restricted ON restricted.id=vr.page_id WHERE substr(p.path,1,length(restricted.path))=restricted.path)
 			FROM content_standardpage sp
 			JOIN wagtailcore_page p ON p.id = sp.page_ptr_id
 			ORDER BY p.id ASC
@@ -376,9 +377,9 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 			for rows.Next() {
 				var id int64
 				var slug, title, body string
-				var live, unpub int
+				var live, unpub, public int
 				var seoTitle, searchDesc, firstPub, lastPub sql.NullString
-				if err := rows.Scan(&id, &slug, &title, &live, &unpub, &seoTitle, &searchDesc, &firstPub, &lastPub, &body); err != nil {
+				if err := rows.Scan(&id, &slug, &title, &live, &unpub, &seoTitle, &searchDesc, &firstPub, &lastPub, &body, &public); err != nil {
 					return fmt.Errorf("扫描普通页: %w", err)
 				}
 				var firstPubUTC, lastPubUTC any
@@ -390,10 +391,10 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 				}
 				if _, err := tx.ExecContext(txCtx, `
 					INSERT INTO pages (id, kind, slug, title, live, has_unpublished_changes,
-						seo_title, search_description, first_published_at, last_published_at, version, created_at, updated_at)
-					VALUES (?, 'site_page', ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+						seo_title, search_description, first_published_at, last_published_at, version, created_at, updated_at, is_public)
+					VALUES (?, 'site_page', ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
 					ON CONFLICT (id) DO NOTHING
-				`, id, slug, title, live, unpub, seoTitle.String, searchDesc.String, firstPubUTC, lastPubUTC, nowStr, nowStr); err != nil {
+				`, id, slug, title, live, unpub, seoTitle.String, searchDesc.String, firstPubUTC, lastPubUTC, nowStr, nowStr, public); err != nil {
 					return fmt.Errorf("写普通页 %d: %w", id, err)
 				}
 				html, _, err := markdown.Render(body, siteURL, nil)

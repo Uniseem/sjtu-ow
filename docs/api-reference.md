@@ -37,7 +37,7 @@
 | `GET` | `/api/admin/categories` | Cap(admin.enter) | 默认 | - | content/categories |
 | `GET` | `/api/admin/comments` | Cap(comments.moderate) | 默认 | - | review/comments |
 | `GET` | `/api/admin/feature-role-restrictions` | Superuser（超级管理员） | 默认 | - | roles/restrictions |
-| `GET` | `/api/admin/home-pins` | Cap(admin.enter) | 默认 | - | content/home_pins |
+| `GET` | `/api/admin/home-pins` | Cap(articles.edit_any) | 默认 | - | content/home_pins |
 | `GET` | `/api/admin/image-collections` | Cap(images.manage) | 默认 | - | content/images |
 | `GET` | `/api/admin/images` | Cap(images.manage) | 默认 | - | content/images |
 | `GET` | `/api/admin/log` | Superuser（超级管理员） | 默认 | - | settings/log |

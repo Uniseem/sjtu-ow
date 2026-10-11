@@ -27,6 +27,7 @@ type Category struct {
 
 // Page 是所有页面的公共基础数据。
 type Page struct {
+	Public                bool       `json:"-"`
 	ID                    int64      `json:"id"`
 	Kind                  string     `json:"kind"`
 	Slug                  string     `json:"slug"`

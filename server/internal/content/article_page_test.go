@@ -64,6 +64,7 @@ func articleProjectionFixture(t *testing.T) (*db.DB, *Service) {
  (114,'article','latest-draft','新草稿',0,1,900,'2099-10-10T09:00:00Z','2026-10-10','2026-10-10'),
  (115,'article','latest-restricted','新受限',1,0,900,'2080-10-10T10:00:00Z','2026-10-10','2026-10-10');
  INSERT INTO articles (page_id,category_id,author_id) VALUES (114,1,2),(115,1,2);`)
+	projectionExec(t, d, "UPDATE pages SET is_public=search_public")
 	return d, NewService(NewStore(d), "https://example.test")
 }
 

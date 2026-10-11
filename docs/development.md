@@ -40,6 +40,8 @@ pnpm test
 
 ## 新旧对拍与 Caddy
 
+截图在字体就绪并经过绘制帧后采集，避免长中文页字体切换造成仅一个组合的字形/行距差异；282有真实延迟字体探针，删掉等待会失败。单次截图异常与专项复验分别记录，保留原始失败结果，不能把多次执行合称同一次全绿。
+
 **和旧站逐页对拍**（264 起，`docs/frontend-migration.md` 9.2）：`bash scripts/remote-check.sh run bash e2e/parity/run.sh [--only=前缀,…] [--wide] [--strict]`。旧站用 `scripts/screens.py` 的种子数据建临时库，新站 `sjtuow import` 同一个库、`import-media` 同一个媒体目录、`session` 发会话，按正式站的样子跑（Go + SSR 生产构建 + 真 Caddy 容器），逐个「地址 × 身份」比状态、标题、正文、链接、表单、坏图、截图像素差；报告在测试机 `/tmp/sjtu-ow-parity/out/`。约 6 分钟，不进整组；做完一组页面时用 `--only=那一组 --strict` 证明「对拍通过」。改了 Caddy 跑 `e2e/caddy/smoke.sh`（263）。
 
 **这组检查在测试机上跑**（2026-10-04 起，见 [机器与运维](operations.md)）：

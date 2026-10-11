@@ -172,7 +172,7 @@ func (s *Service) Search(ctx context.Context, rawQuery string) (*Result, error) 
 	}
 	err := s.walk(ctx, `SELECT p.id, p.slug, p.title, a.summary, a.body_plain, IFNULL(c.name, ''), p.first_published_at
         FROM pages p JOIN articles a ON a.page_id=p.id LEFT JOIN article_categories c ON c.id=a.category_id
-        WHERE p.kind='article' AND p.live=1 AND p.search_public=1
+        WHERE p.kind='article' AND p.live=1 AND p.is_public=1 AND p.search_public=1
         ORDER BY p.last_published_at DESC, p.id DESC`, func(rows *sql.Rows) (bool, error) {
 		item := &ArticleResult{}
 		var body string
