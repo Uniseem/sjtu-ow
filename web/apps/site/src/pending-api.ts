@@ -1,9 +1,10 @@
 import type {
   CallExtras,
   GetApiMeProfileOut,
+  GetApiMeScrimsOut,
   Requester,
 } from "@sjtu-ow/api"
-import { ApiError, getApiMeProfile } from "@sjtu-ow/api"
+import { ApiError, getApiMeProfile,getApiMeScrims,patchApiMeProfile,patchApiMeGameAccountsId,patchApiMeContactsId } from "@sjtu-ow/api"
 import type { SaveReceipt, SaveRequest } from "@sjtu-ow/shared/autosave"
 import { primitiveValues, readSaveReceipt } from "@sjtu-ow/shared/save-receipt"
 
@@ -83,7 +84,7 @@ export async function patchPersonalProfile(
   extras: CallExtras,
 ): Promise<SaveReceipt<ProfileValues>> {
   requireVersion(body.base_version)
-  const response = await api<unknown>("PATCH", "/api/me/profile", { ...extras, body })
+  const response = await patchApiMeProfile(api,body,extras)
   const shape: ProfileValues = { nickname: "", is_sjtu: false, motto: "", main_role: "", flex_roles: "", show_rank: false }
   return readSaveReceipt(response, shape, primitiveValues(shape))
 }
@@ -95,7 +96,7 @@ export async function patchPersonalGameAccount(
   extras: CallExtras,
 ): Promise<SaveReceipt<GameEditValues>> {
   requireVersion(body.base_version)
-  const response = await api<unknown>("PATCH", "/api/me/game-accounts/{id}", { ...extras, params: { id }, body })
+  const response = await patchApiMeGameAccountsId(api,id,body,extras)
   const shape: GameEditValues = { battletag: "", rank_tank: null, rank_damage: null, rank_support: null }
   return readSaveReceipt(response, shape, primitiveValues(shape))
 }
@@ -107,48 +108,12 @@ export async function patchPersonalContact(
   extras: CallExtras,
 ): Promise<SaveReceipt<ContactValues>> {
   requireVersion(body.base_version)
-  const response = await api<unknown>("PATCH", "/api/me/contacts/{id}", { ...extras, params: { id }, body })
+  const response = await patchApiMeContactsId(api,id,body,extras)
   const shape: ContactValues = { type: "", value: "" }
   return readSaveReceipt(response, shape, primitiveValues(shape))
 }
 
-// [BE-11] Exact deletion blockers are a read projection, not a failed DELETE.
-export type DeletionState = {
-  blockers: string[]
-}
-
-export function getDeletionState(api: Requester): Promise<DeletionState> {
-  return api("GET", "/api/auth/delete-account/state")
-}
-
-// [BE-12] Individual registration/calendar and full private team projections.
-export type PersonalTeamContext = {
-  member_contact?: string
-}
-
-// [BE-13] Letter preview is a standalone, server-rendered document. The
-// frontend must not invent its body from the list's recipient/subject fields.
-export type LetterPreviewAvailability = {
-  preview_url?: string
-}
-
-// [BE-14] Private scrim history, including cancelled/finished and placement.
-export type PersonalScrimSignup = {
-  id: number
-  scrim_id: number
-  title: string
-  starts_at: string
-  role_tank: boolean
-  role_damage: boolean
-  role_support: boolean
-  placement: string
-  status: string
-}
-
-export type PersonalScrims = {
-  signups: PersonalScrimSignup[]
-}
-
-export function getPersonalScrims(api: Requester): Promise<PersonalScrims> {
-  return api("GET", "/api/me/scrims")
-}
+// Historical adapter filename. All consumed contracts now come from apigen.
+export type PersonalScrimSignup=GetApiMeScrimsOut["signups"][number]
+export type PersonalScrims=GetApiMeScrimsOut
+export const getPersonalScrims=getApiMeScrims

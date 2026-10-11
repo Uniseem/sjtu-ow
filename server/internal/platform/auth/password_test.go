@@ -116,7 +116,7 @@ func TestValidatePassword(t *testing.T) {
 		t.Fatalf("好密码不应被拦：%v", msgs)
 	}
 	msgs := Validate("short", "a@b.co", "小明")
-	if !contains(msgs, "至少 8") {
+	if !contains(msgs, "至少要包含 8") {
 		t.Fatalf("太短：%v", msgs)
 	}
 	msgs = Validate("12345678", "a@b.co", "小明")

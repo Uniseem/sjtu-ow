@@ -1,0 +1,1051 @@
+[
+ {
+  "name": "teams",
+  "who": "visitor",
+  "path": "/teams/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 1.907602663706992e-05,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 6.281227694503926e-05,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 1.7341842397336293e-05,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 5.710206995003569e-05,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "team",
+  "who": "visitor",
+  "path": "/teams/1/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "team",
+  "who": "member",
+  "path": "/teams/1/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "team-new",
+  "who": "member",
+  "path": "/teams/new/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "team-manage",
+  "who": "captain",
+  "path": "/teams/1/manage/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "members",
+  "who": "visitor",
+  "path": "/members/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "members-filter",
+  "who": "visitor",
+  "path": "/members/?role=support&free=1",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "member",
+  "who": "visitor",
+  "path": "/members/1/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "cup",
+  "who": "visitor",
+  "path": "/tournaments/1/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 4.133597883597884e-06,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 4.133597883597884e-06,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "cup",
+  "who": "member",
+  "path": "/tournaments/1/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 4.027061855670103e-06,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "teamcup",
+  "who": "captain",
+  "path": "/tournaments/2/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 9.41265060240964e-06,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 3.4989065916900966e-05,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0013507153614457832,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "cup-signup",
+  "who": "member",
+  "path": "/tournaments/1/signup/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "teamcup-register",
+  "who": "captain",
+  "path": "/tournaments/2/register/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "registration",
+  "who": "captain",
+  "path": "/registrations/1/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "scrims",
+  "who": "visitor",
+  "path": "/scrims/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "scrim",
+  "who": "visitor",
+  "path": "/scrims/1/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "scrim",
+  "who": "member",
+  "path": "/scrims/1/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me",
+  "who": "visitor",
+  "path": "/me/",
+  "status": [
+   [
+    302,
+    "/accounts/login/?next=/me/"
+   ],
+   [
+    302,
+    "/accounts/login/?next=%2Fme%2F"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me",
+  "who": "member",
+  "path": "/me/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me-game-accounts",
+  "who": "member",
+  "path": "/me/game-accounts/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me-contacts",
+  "who": "member",
+  "path": "/me/contacts/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me-security",
+  "who": "member",
+  "path": "/me/security/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me-delete",
+  "who": "member",
+  "path": "/me/delete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me-teams",
+  "who": "member",
+  "path": "/me/teams/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me-registrations",
+  "who": "member",
+  "path": "/me/registrations/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "me-scrims",
+  "who": "member",
+  "path": "/me/scrims/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "letters",
+  "who": "member",
+  "path": "/letters/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "letters-confirm",
+  "who": "member",
+  "path": "/letters/b2851372-8b89-4f6a-8ebb-47a2b859db9d/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 2.4127547869054974e-06,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 1.881948733786288e-05,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 5.7639330366603094e-05,
+    "problems": []
+   }
+  ],
+  "pass": true
+ }
+]

@@ -4,10 +4,10 @@
 
 ## 1. 架构概览与指标
 
-- **注册接口总数**：168 个
+- **注册接口总数**：233 个
 - **公开访问接口 (Public)**：28 个
-- **登录会员接口 (Member / Verified / Feature)**：62 个
-- **干部管理接口 (Cap / Superuser)**：78 个
+- **登录会员接口 (Member / Verified / Feature)**：70 个
+- **干部管理接口 (Cap / Superuser)**：135 个
 - **限流保护**：全量写接口均显式声明 `ratelimit.Decl` 集中限流规则，杜绝内联魔法数字；
 - **查询预算**：关键列表接口显式声明 `api.Budget(n)` 查询上限，防范 N+1 慢查询。
 
@@ -16,10 +16,14 @@
 | 方法 | 路径 | 准入门禁 (Gate) | 限流规则 (Rate Limits) | 查询预算 | 后台分类/标签 |
 |---|---|---|---|---|---|
 | `DELETE` | `/api/admin/categories/{id}` | Cap(article_categories.manage) | 不限流 (删除分类无需限流) | - | - |
+| `DELETE` | `/api/admin/fonts/{id}` | Superuser（超级管理员） | 不限流 (超管删除未被引用的字体，事务内再次查引用) | - | settings/fonts |
+| `DELETE` | `/api/admin/image-collections/{id}` | Superuser（超级管理员） | 不限流 (超级管理员删除空集合) | - | content/images |
 | `DELETE` | `/api/admin/member-group-people/{id}` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `DELETE` | `/api/admin/member-groups/{id}` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
+| `DELETE` | `/api/admin/roles/{id}/restrictions/{rule}` | Superuser（超级管理员） | 不限流 (超管删除指定角色的单功能限制) | - | members/roles |
 | `DELETE` | `/api/admin/scrims/{id}` | Cap(scrims.manage) | 不限流 (后台，有能力的门) | - | scrims/list |
 | `DELETE` | `/api/admin/tournaments/{id}` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/list |
+| `DELETE` | `/api/admin/users/{id}/feature-rules/{rule}` | Superuser（超级管理员） | 不限流 (超管删除本人指定的单条规则) | - | members/users |
 | `DELETE` | `/api/articles/{id}` | Member（登录成员） | 不限流 (删除文章无需限流) | - | - |
 | `DELETE` | `/api/auth/email/change` | Member（登录成员） | 不限流 (只删除当前账号的待验证邮箱) | - | - |
 | `DELETE` | `/api/comments/{id}` | Member（登录成员） | 不限流 (删除评论无需限流) | - | - |
@@ -32,33 +36,60 @@
 | `GET` | `/api/admin/activity` | Cap(activity.view) | 默认 | - | data/activity |
 | `GET` | `/api/admin/announce/{kind}/{id}` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/admin/articles` | Cap(admin.enter) | 默认 | - | content/articles |
+| `GET` | `/api/admin/articles/new` | Cap(admin.enter) | 默认 | - | content/articles |
 | `GET` | `/api/admin/articles/{id}` | Cap(admin.enter) | 默认 | - | content/article_edit |
+| `GET` | `/api/admin/articles/{id}/revisions` | Cap(admin.enter) | 默认 | - | content/articles |
+| `GET` | `/api/admin/articles/{id}/revisions/{revision}` | Cap(admin.enter) | 默认 | - | content/articles |
 | `GET` | `/api/admin/avatars` | Cap(moderation.review) | 默认 | - | review/avatars |
-| `GET` | `/api/admin/categories` | Cap(admin.enter) | 默认 | - | content/categories |
+| `GET` | `/api/admin/categories` | Cap(article_categories.manage) | 默认 | - | content/categories |
 | `GET` | `/api/admin/comments` | Cap(comments.moderate) | 默认 | - | review/comments |
 | `GET` | `/api/admin/feature-role-restrictions` | Superuser（超级管理员） | 默认 | - | roles/restrictions |
+| `GET` | `/api/admin/fonts` | Superuser（超级管理员） | 默认 | - | settings/fonts |
+| `GET` | `/api/admin/fonts/{id}` | Superuser（超级管理员） | 默认 | - | settings/fonts |
+| `GET` | `/api/admin/home` | Cap(admin.enter) | 默认 | - | home/home |
 | `GET` | `/api/admin/home-pins` | Cap(articles.edit_any) | 默认 | - | content/home_pins |
-| `GET` | `/api/admin/image-collections` | Cap(images.manage) | 默认 | - | content/images |
-| `GET` | `/api/admin/images` | Cap(images.manage) | 默认 | - | content/images |
+| `GET` | `/api/admin/home-pins/draft` | Cap(site_pages.manage) | 默认 | - | content/pages |
+| `GET` | `/api/admin/image-collections` | Cap(admin.enter) | 默认 | - | content/images |
+| `GET` | `/api/admin/images` | Cap(admin.enter) | 默认 | - | content/images |
 | `GET` | `/api/admin/log` | Superuser（超级管理员） | 默认 | - | settings/log |
+| `GET` | `/api/admin/mail-samples` | Cap(admin.enter) | 默认 | - | - |
+| `GET` | `/api/admin/mail-samples/{key}` | Cap(admin.enter) | 默认 | - | - |
 | `GET` | `/api/admin/manual` | Member（登录成员） | 默认 | - | manual/manual |
 | `GET` | `/api/admin/member-groups` | Cap(member_groups.manage) | 默认 | - | members/groups |
 | `GET` | `/api/admin/member-groups/{id}` | Cap(member_groups.manage) | 默认 | - | members/groups |
 | `GET` | `/api/admin/member-groups/{id}/people` | Cap(member_groups.manage) | 默认 | - | members/groups |
 | `GET` | `/api/admin/moderation` | Cap(moderation.review) | 默认 | - | moderation/queue |
 | `GET` | `/api/admin/moderation/{id}` | Cap(moderation.review) | 默认 | - | moderation/queue |
+| `GET` | `/api/admin/navigation` | Cap(admin.enter) | 默认 | - | home/navigation |
+| `GET` | `/api/admin/news-intro` | Cap(site_pages.manage) | 默认 | - | content/pages |
+| `GET` | `/api/admin/pages` | Cap(site_pages.manage) | 默认 | - | content/pages |
+| `GET` | `/api/admin/pages/{id}` | Cap(site_pages.manage) | 默认 | - | content/pages |
+| `GET` | `/api/admin/registrations` | Cap(tournaments.manage) | 默认 | - | review/registrations |
+| `GET` | `/api/admin/registrations/{id}` | Cap(tournaments.manage) | 默认 | - | review/registrations |
+| `GET` | `/api/admin/roles` | Superuser（超级管理员） | 默认 | - | members/roles |
 | `GET` | `/api/admin/scrims` | Cap(scrims.manage) | 默认 | - | scrims/list |
+| `GET` | `/api/admin/scrims/editor-defaults` | Cap(scrims.manage) | 默认 | - | scrims/list |
 | `GET` | `/api/admin/scrims/{id}` | Cap(scrims.manage) | 默认 | - | scrims/list |
 | `GET` | `/api/admin/scrims/{id}/board` | Cap(scrims.manage) | 默认 | - | scrims/board |
+| `GET` | `/api/admin/scrims/{id}/copy-preview` | Cap(scrims.manage) | 默认 | - | scrims/list |
+| `GET` | `/api/admin/scrims/{id}/publish-preview` | Cap(scrims.manage) | 默认 | - | scrims/list |
 | `GET` | `/api/admin/settings` | Superuser（超级管理员） | 默认 | - | settings/site |
+| `GET` | `/api/admin/settings/backup` | Superuser（超级管理员） | 默认 | - | settings/site |
 | `GET` | `/api/admin/teams` | Superuser（超级管理员） | 默认 | - | members/teams |
+| `GET` | `/api/admin/teams/{id}` | Superuser（超级管理员） | 默认 | - | members/teams |
 | `GET` | `/api/admin/todo` | Member（登录成员） | 默认 | - | home/todo |
 | `GET` | `/api/admin/tournaments` | Cap(tournaments.manage) | 默认 | - | tournaments/list |
+| `GET` | `/api/admin/tournaments/editor-defaults` | Cap(tournaments.manage) | 默认 | - | tournaments/list |
 | `GET` | `/api/admin/tournaments/{id}` | Cap(tournaments.manage) | 默认 | - | tournaments/list |
 | `GET` | `/api/admin/tournaments/{id}/board` | Cap(tournaments.manage) | 默认 | - | tournaments/board |
+| `GET` | `/api/admin/tournaments/{id}/copy-preview` | Cap(tournaments.manage) | 默认 | - | tournaments/list |
+| `GET` | `/api/admin/tournaments/{id}/publish-preview` | Cap(tournaments.manage) | 默认 | - | tournaments/list |
 | `GET` | `/api/admin/tournaments/{id}/registrations` | Cap(tournaments.manage) | 默认 | - | tournaments/review |
+| `GET` | `/api/admin/typography` | Superuser（超级管理员） | 默认 | - | settings/typography |
 | `GET` | `/api/admin/users` | Superuser（超级管理员） | 默认 | - | users/list |
+| `GET` | `/api/admin/users/search` | Superuser（超级管理员） | 默认 | - | members/users |
 | `GET` | `/api/admin/users/{id}` | Superuser（超级管理员） | 默认 | - | users/detail |
+| `GET` | `/api/admin/users/{id}/feature-rules` | Superuser（超级管理员） | 默认 | - | members/users |
 | `GET` | `/api/announcements/unsubscribe/{token}` | Public（公开） | unsubscribe (30/1m0s) | - | - |
 | `GET` | `/api/articles/{id}/comments` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/auth/email/state` | Member（登录成员） | 默认 | - | - |
@@ -73,6 +104,7 @@
 | `GET` | `/api/me/export` | Member（登录成员） | account_export (5/1h0m0s) | - | - |
 | `GET` | `/api/me/profile` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/me/registrations` | Member（登录成员） | 默认 | - | - |
+| `GET` | `/api/me/scrims` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/me/teams` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/members` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/members/{id}` | Public（公开） | 默认 | - | - |
@@ -83,39 +115,65 @@
 | `GET` | `/api/registrations/{id}` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/scrims` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/scrims/{id}` | Public（公开） | 默认 | - | - |
+| `GET` | `/api/scrims/{id}/signup` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/search` | Public（公开） | search (30/1m0s) | - | - |
 | `GET` | `/api/session` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/teams` | Public（公开） | 默认 | - | - |
+| `GET` | `/api/teams/create-state` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/teams/{id}` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/teams/{id}/manage` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/tournaments` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/tournaments/{id}` | Public（公开） | 默认 | - | - |
+| `GET` | `/api/tournaments/{id}/register` | Member（登录成员） | 默认 | - | - |
+| `GET` | `/api/tournaments/{id}/signup` | Member（登录成员） | 默认 | - | - |
 | `PATCH` | `/api/admin/categories/{id}` | Cap(article_categories.manage) | 不限流 (修改分类无需限流) | - | - |
+| `PATCH` | `/api/admin/home-pins/draft` | Cap(site_pages.manage) | 不限流 (首页置顶自动保存由客户端防抖) | - | content/pages |
+| `PATCH` | `/api/admin/image-collections/{id}` | Superuser（超级管理员） | 不限流 (集合名称自动保存由客户端防抖) | - | content/images |
+| `PATCH` | `/api/admin/images/{id}` | Cap(images.manage) | 不限流 (图片元信息自动保存由客户端防抖) | - | content/images |
 | `PATCH` | `/api/admin/member-groups/{id}` | Cap(member_groups.manage) | 不限流 (后台自动保存) | - | members/groups |
+| `PATCH` | `/api/admin/news-intro` | Cap(site_pages.manage) | 不限流 (资讯栏目介绍自动保存由客户端防抖) | - | content/pages |
+| `PATCH` | `/api/admin/pages/{id}` | Cap(site_pages.manage) | 不限流 (普通页自动保存由客户端防抖) | - | content/pages |
 | `PATCH` | `/api/admin/scrims/{id}` | Cap(scrims.manage) | 不限流 (后台自动保存) | - | scrims/list |
 | `PATCH` | `/api/admin/settings` | Superuser（超级管理员） | 不限流 (超管修改设置) | - | settings/site |
+| `PATCH` | `/api/admin/settings/backup` | Superuser（超级管理员） | 不限流 (超管版本化自动保存) | - | settings/site |
 | `PATCH` | `/api/admin/teams/{id}` | Superuser（超级管理员） | 不限流 (超管后台的自动保存) | - | members/teams |
 | `PATCH` | `/api/admin/tournaments/{id}` | Cap(tournaments.manage) | 不限流 (后台自动保存) | - | tournaments/list |
+| `PATCH` | `/api/admin/typography` | Superuser（超级管理员） | 不限流 (超管排版自动保存，乐观版本且写前校验九区域) | - | settings/typography |
+| `PATCH` | `/api/admin/users/{id}` | Superuser（超级管理员） | 不限流 (后台超管逐字段自动保存，乐观版本保护) | - | members/users |
 | `PATCH` | `/api/admin/users/{id}/roles` | Superuser（超级管理员） | 不限流 (管理员分配角色) | - | - |
 | `PATCH` | `/api/admin/users/{id}/rules` | Superuser（超级管理员） | 不限流 (管理员修改单人规则) | - | - |
 | `PATCH` | `/api/articles/{id}` | Member（登录成员） | 不限流 (自动保存由防抖控制) | - | - |
 | `PATCH` | `/api/comments/{id}` | Member（登录成员） | comment_create_minute (3/1m0s)<br>comment_create_daily (100/24h0m0s) | - | - |
+| `PATCH` | `/api/me/contacts/{id}` | Member（登录成员） | 不限流 (编辑本人联系方式按版本逐组保存) | - | - |
 | `PATCH` | `/api/me/game-accounts/{id}` | Member（登录成员） | 不限流 (更新段位无需限流) | - | - |
 | `PATCH` | `/api/me/profile` | Member（登录成员） | 不限流 (修改个人资料无需限流) | - | - |
 | `PATCH` | `/api/teams/{id}` | Member（登录成员） | 不限流 (自动保存，按字段校验；改的人要是队长) | - | - |
 | `POST` | `/api/admin/announce/{kind}/{id}` | Member（登录成员） | 不限流 (同一件事 30 分钟冷却，服务里数) | - | - |
+| `POST` | `/api/admin/announce/{kind}/{id}/confirm` | Member（登录成员） | 不限流 (已预览确认，事务内复核冻结内容和收件人) | - | - |
+| `POST` | `/api/admin/articles/{id}/revisions/{revision}/restore` | Cap(admin.enter) | 不限流 (恢复已有修订为草稿) | - | content/articles |
 | `POST` | `/api/admin/avatars/{id}/take-down` | Cap(moderation.review) | 不限流 (下架头像) | - | review/avatars |
 | `POST` | `/api/admin/categories` | Cap(article_categories.manage) | 不限流 (创建分类无需限流) | - | - |
+| `POST` | `/api/admin/fonts` | Superuser（超级管理员） | 不限流 (超级管理员显式导入已授权字体，总大小有上限) | - | settings/fonts |
+| `POST` | `/api/admin/fonts/uploads` | Superuser（超级管理员） | 不限流 (超管成品包上传会话，总64MB、最多3个未完成) | - | settings/fonts |
+| `POST` | `/api/admin/fonts/uploads/{id}/chunks` | Superuser（超级管理员） | 不限流 (超管上传128KB定长分块，所有者绑定) | - | settings/fonts |
+| `POST` | `/api/admin/home-pins/publish` | Cap(site_pages.manage) | 不限流 (发布首页置顶) | - | content/pages |
+| `POST` | `/api/admin/image-collections` | Superuser（超级管理员） | 不限流 (超级管理员创建集合) | - | content/images |
 | `POST` | `/api/admin/images/upload` | Cap(images.contribute) | 不限流 (上传图片) | - | content/images |
+| `POST` | `/api/admin/markdown/preview` | Cap(admin.enter) | 不限流 (预览缓存有总量和正文大小限制) | - | content/articles |
 | `POST` | `/api/admin/member-group-people/{id}/move` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `POST` | `/api/admin/member-group-people/{id}/title` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `POST` | `/api/admin/member-groups` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `POST` | `/api/admin/member-groups/{id}/people` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `POST` | `/api/admin/moderation/{id}/ask-author` | Cap(moderation.review) | 不限流 (后台，有能力的门) | - | moderation/queue |
 | `POST` | `/api/admin/moderation/{id}/handle` | Cap(moderation.review) | 不限流 (后台，有能力的门) | - | moderation/queue |
+| `POST` | `/api/admin/news-intro/publish` | Cap(site_pages.manage) | 不限流 (发布资讯栏目介绍) | - | content/pages |
+| `POST` | `/api/admin/pages/{id}/publish` | Cap(site_pages.manage) | 不限流 (发布网站页面) | - | content/pages |
+| `POST` | `/api/admin/registrations/bulk-approve` | Cap(tournaments.manage) | 不限流 (干部批量审核，最多50份，各调用原赛事事务服务) | - | review/registrations |
+| `POST` | `/api/admin/registrations/export` | Cap(tournaments.manage) | 不限流 (后台按筛选导出，隐私导出留操作记录) | - | review/registrations |
 | `POST` | `/api/admin/registrations/{id}/approve` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/review |
 | `POST` | `/api/admin/registrations/{id}/dissolve` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/board |
 | `POST` | `/api/admin/registrations/{id}/reject` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/review |
+| `POST` | `/api/admin/roles/{id}/restrictions` | Superuser（超级管理员） | 不限流 (超管单角色单功能唯一限制) | - | members/roles |
 | `POST` | `/api/admin/scrims` | Cap(scrims.manage) | 不限流 (后台，有能力的门) | - | scrims/list |
 | `POST` | `/api/admin/scrims/{id}/board/generate` | Cap(scrims.manage) | 不限流 (后台，有能力的门) | - | scrims/board |
 | `POST` | `/api/admin/scrims/{id}/board/selection` | Cap(scrims.manage) | 不限流 (后台，有能力的门) | - | scrims/board |
@@ -125,7 +183,10 @@
 | `POST` | `/api/admin/scrims/{id}/finish` | Cap(scrims.manage) | 不限流 (后台，有能力的门) | - | scrims/list |
 | `POST` | `/api/admin/scrims/{id}/notify` | Cap(scrims.manage) | 不限流 (后台，有能力的门) | - | scrims/list |
 | `POST` | `/api/admin/scrims/{id}/publish` | Cap(scrims.manage) | 不限流 (后台，有能力的门) | - | scrims/list |
+| `POST` | `/api/admin/scrims/{id}/publish-confirm` | Cap(scrims.manage) | 不限流 (确认发布与通知在同一事务) | - | scrims/list |
+| `POST` | `/api/admin/settings/backup/secret` | Superuser（超级管理员） | 不限流 (超管显式只写密钥) | - | settings/site |
 | `POST` | `/api/admin/settings/test-email` | Superuser（超级管理员） | 不限流 (超管测试发信) | - | settings/site |
+| `POST` | `/api/admin/settings/test-storage` | Superuser（超级管理员） | 不限流 (超管测试保存的对象存储设置) | - | settings/site |
 | `POST` | `/api/admin/teams/{id}/assign-captain` | Superuser（超级管理员） | 不限流 (超管救援动作) | - | members/teams |
 | `POST` | `/api/admin/teams/{id}/disband` | Superuser（超级管理员） | 不限流 (超管动作) | - | members/teams |
 | `POST` | `/api/admin/tournaments` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/list |
@@ -135,8 +196,11 @@
 | `POST` | `/api/admin/tournaments/{id}/finish` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/list |
 | `POST` | `/api/admin/tournaments/{id}/notify` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/list |
 | `POST` | `/api/admin/tournaments/{id}/publish` | Cap(tournaments.manage) | 不限流 (后台，有能力的门) | - | tournaments/list |
+| `POST` | `/api/admin/tournaments/{id}/publish-confirm` | Cap(tournaments.manage) | 不限流 (确认发布与通知在同一事务) | - | tournaments/list |
+| `POST` | `/api/admin/typography/preview` | Superuser（超级管理员） | 不限流 (超管排版草稿只生成作用域CSS预览，不写设置) | - | settings/typography |
 | `POST` | `/api/admin/users/{id}/activate` | Superuser（超级管理员） | 不限流 (管理员启用用户) | - | - |
 | `POST` | `/api/admin/users/{id}/deactivate` | Superuser（超级管理员） | 不限流 (管理员停用用户) | - | - |
+| `POST` | `/api/admin/users/{id}/feature-rules` | Superuser（超级管理员） | 不限流 (超管单条功能规则，唯一约束保护) | - | members/users |
 | `POST` | `/api/announcements/unsubscribe/{token}` | Public（公开） | unsubscribe (30/1m0s) | - | - |
 | `POST` | `/api/articles` | Member（登录成员） | 不限流 (创建草稿无需限流) | - | - |
 | `POST` | `/api/articles/{id}/comments` | Member（登录成员） | comment_create_minute (3/1m0s)<br>comment_create_daily (100/24h0m0s) | - | - |
@@ -173,6 +237,7 @@
 | `POST` | `/api/team-applications/{id}/cancel` | Member（登录成员） | 不限流 (只能撤回自己的申请) | - | - |
 | `POST` | `/api/team-applications/{id}/reject` | Member（登录成员） | 不限流 (审批有队长或超管的门) | - | - |
 | `POST` | `/api/teams` | Feature(team_create) | 不限流 (服务层只对通过校验的那几次计数（规则 84）) | - | - |
+| `POST` | `/api/teams/logo` | Feature(team_create) | 不限流 (服务层检查图片日限额及建队资格) | - | - |
 | `POST` | `/api/teams/{id}/applications` | Feature(team_apply) | 不限流 (服务层按人每天 20 次（规则 89）) | - | - |
 | `POST` | `/api/teams/{id}/disband` | Member（登录成员） | 不限流 (解散有队长或超管的门) | - | - |
 | `POST` | `/api/teams/{id}/leave` | Member（登录成员） | 不限流 (退队没有滥用面) | - | - |

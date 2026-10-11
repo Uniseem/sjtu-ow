@@ -250,13 +250,32 @@ func (s *Service) SetTeamLogo(ctx *app.Ctx, teamID int64, fileName, dataURL stri
 		return nil, err
 	}
 
-	oldLogo := t.LogoImageID
+	var oldLogo *int64
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
-		_, err := tx.ExecContext(txCtx, `UPDATE teams SET logo_image_id = ?, version = version + 1, updated_at = ? WHERE id = ?`,
+		latest, err := s.store.GetTeam(txCtx, tx, teamID)
+		if err != nil {
+			return err
+		}
+		if latest == nil {
+			return api.NotFound("战队不存在")
+		}
+		manager, err := s.isManager(txCtx, tx, v, teamID)
+		if err != nil {
+			return err
+		}
+		if !manager {
+			return api.Forbidden()
+		}
+		if latest.Disbanded() {
+			return refuse("战队已解散。")
+		}
+		oldLogo = latest.LogoImageID
+		_, err = tx.ExecContext(txCtx, `UPDATE teams SET logo_image_id = ?, version = version + 1, updated_at = ? WHERE id = ?`,
 			img.ID, db.FormatUTC(ctx.Now().UTC()), teamID)
 		return err
 	})
 	if err != nil {
+		s.discardLogo(ctx, img.ID)
 		return nil, err
 	}
 
@@ -433,6 +452,7 @@ type ProfileChanges struct {
 
 // SaveResult 是自动保存的回答（12 号文档 5.5）：存了哪些、哪些字段有问题。
 type SaveResult struct {
+	Values  *ProfileValues      `json:"values,omitempty"`
 	Version int64               `json:"version"`
 	Saved   []string            `json:"saved"`
 	Fields  map[string][]string `json:"fields,omitempty"`
@@ -447,7 +467,7 @@ func (s *Service) UpdateTeam(ctx *app.Ctx, teamID, baseVersion int64, ch Profile
 		return nil, err
 	}
 	now := ctx.Now().UTC()
-	res := &SaveResult{Fields: map[string][]string{}, SavedAt: now}
+	res := &SaveResult{Fields: map[string][]string{}, SavedAt: now, Saved: []string{}}
 	var oldLogo *int64
 	var nameChanged, descChanged bool
 	var team *Team
@@ -471,7 +491,7 @@ func (s *Service) UpdateTeam(ctx *app.Ctx, teamID, baseVersion int64, ch Profile
 			return refuse("战队已解散。")
 		}
 		if baseVersion != t.Version {
-			return api.NewErr(http.StatusConflict, "stale", "另一个人刚改过，已换成最新内容")
+			return api.Stale(ProfileCurrent{Version: t.Version, Values: profileValues(t)})
 		}
 
 		var sets []string
@@ -525,7 +545,7 @@ func (s *Service) UpdateTeam(ctx *app.Ctx, teamID, baseVersion int64, ch Profile
 		}
 		switch {
 		case ch.RemoveLogo != nil && *ch.RemoveLogo && t.LogoImageID != nil:
-			set("logo_image_id", "logo_image_id", nil)
+			set("remove_logo", "logo_image_id", nil)
 			oldLogo = t.LogoImageID
 		case ch.LogoImageID != nil && (t.LogoImageID == nil || *t.LogoImageID != *ch.LogoImageID):
 			if m := s.checkLogo(txCtx, tx, v, *ch.LogoImageID); m != "" {
@@ -546,7 +566,32 @@ func (s *Service) UpdateTeam(ctx *app.Ctx, teamID, baseVersion int64, ch Profile
 			res.Version = t.Version + 1
 		}
 		team, err = s.store.GetTeam(txCtx, tx, teamID)
-		return err
+		if err != nil {
+			return err
+		}
+		vals := profileValues(team)
+		res.Values = &vals
+		// A valid unchanged value is acknowledged too, so trimming and redundant
+		// checkbox submissions do not leave the client permanently dirty.
+		acknowledge := func(name string, present bool) {
+			if !present || len(res.Fields[name]) > 0 {
+				return
+			}
+			for _, x := range res.Saved {
+				if x == name {
+					return
+				}
+			}
+			res.Saved = append(res.Saved, name)
+		}
+		acknowledge("name", ch.Name != nil)
+		acknowledge("description", ch.Description != nil)
+		acknowledge("is_recruiting", ch.IsRecruiting != nil)
+		acknowledge("recruiting_roles", ch.RecruitingRoles != nil)
+		acknowledge("member_contact", ch.MemberContact != nil)
+		acknowledge("logo_image_id", ch.LogoImageID != nil)
+		acknowledge("remove_logo", ch.RemoveLogo != nil)
+		return nil
 	})
 	if isUnique(err) {
 		return nil, api.InvalidFields(map[string][]string{"name": {NameTaken}})

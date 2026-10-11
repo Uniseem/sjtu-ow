@@ -33,17 +33,19 @@ var AllowedSpecs = map[string]struct {
 	W    int
 	H    int
 }{
-	"fill-88x88":     {Mode: "fill", W: 88, H: 88},
-	"fill-176x176":   {Mode: "fill", W: 176, H: 176},
-	"fill-288x288":   {Mode: "fill", W: 288, H: 288},
-	"fill-400x400":   {Mode: "fill", W: 400, H: 400},
-	"fill-960x540":   {Mode: "fill", W: 960, H: 540},
-	"fill-1280x720":  {Mode: "fill", W: 1280, H: 720},
-	"fill-2400x1200": {Mode: "fill", W: 2400, H: 1200},
-	"fill-2400x640":  {Mode: "fill", W: 2400, H: 640},
-	"fill-2400x1350": {Mode: "fill", W: 2400, H: 1350},
-	"max-1600x1600":  {Mode: "max", W: 1600, H: 1600},
-	"fill-1200x630":  {Mode: "fill", W: 1200, H: 630},
+	"fill-96x96":        {Mode: "fill", W: 96, H: 96},
+	"fill-2400x900-c50": {Mode: "fill", W: 2400, H: 900},
+	"fill-88x88":        {Mode: "fill", W: 88, H: 88},
+	"fill-176x176":      {Mode: "fill", W: 176, H: 176},
+	"fill-288x288":      {Mode: "fill", W: 288, H: 288},
+	"fill-400x400":      {Mode: "fill", W: 400, H: 400},
+	"fill-960x540":      {Mode: "fill", W: 960, H: 540},
+	"fill-1280x720":     {Mode: "fill", W: 1280, H: 720},
+	"fill-2400x1200":    {Mode: "fill", W: 2400, H: 1200},
+	"fill-2400x640":     {Mode: "fill", W: 2400, H: 640},
+	"fill-2400x1350":    {Mode: "fill", W: 2400, H: 1350},
+	"max-1600x1600":     {Mode: "max", W: 1600, H: 1600},
+	"fill-1200x630":     {Mode: "fill", W: 1200, H: 630},
 }
 
 const (
@@ -68,10 +70,16 @@ type Image struct {
 
 // Collection 表示图片集合。
 type Collection struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	Key       string    `json:"key"`
-	CreatedAt time.Time `json:"created_at"`
+	ParentID   *int64    `json:"parent_id"`
+	Version    int64     `json:"version"`
+	ImageCount int       `json:"image_count"`
+	CanAdd     bool      `json:"can_add"`
+	CanChange  bool      `json:"can_change"`
+	CanDelete  bool      `json:"can_delete"`
+	ID         int64     `json:"id"`
+	Name       string    `json:"name"`
+	Key        string    `json:"key"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // Service 提供图片处理与存储。
@@ -377,17 +385,7 @@ func (s *Service) RenderThumbnail(ctx context.Context, id int64, spec string) (s
 
 // DeleteImage 删除图片及其母版和缩略图。
 func (s *Service) DeleteImage(ctx *app.Ctx, id int64) error {
-	// 检查是否有引用（例如文章封面）
-	var refCount int
-	err := s.db.ReadPool().QueryRowContext(ctx.Context, `SELECT COUNT(*) FROM articles WHERE cover_image_id = ?`, id).Scan(&refCount)
-	if err != nil {
-		return errors.New("检查图片引用失败")
-	}
-	if refCount > 0 {
-		return api.Invalid(fmt.Sprintf("该图片正被 %d 篇文章作为封面使用，无法删除", refCount))
-	}
-
-	err = s.db.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+	err := s.db.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
 		res, err := tx.ExecContext(txCtx, `DELETE FROM images WHERE id = ?`, id)
 		if err != nil {
 			return err
@@ -395,6 +393,9 @@ func (s *Service) DeleteImage(ctx *app.Ctx, id int64) error {
 		affected, _ := res.RowsAffected()
 		if affected == 0 {
 			return api.NotFound("图片不存在")
+		}
+		if ctx.Viewer != nil {
+			return mediaAudit(txCtx, tx, ctx.Viewer.ID, "image.delete", id, nil, ctx.Now())
 		}
 		return nil
 	})
@@ -489,18 +490,18 @@ func (s *Service) ListImages(ctx context.Context, collectionKey string, collecti
 // ListCollections 查询所有图片集合。
 func (s *Service) ListCollections(ctx context.Context) ([]Collection, error) {
 	rows, err := s.db.ReadPool().QueryContext(ctx, `
-		SELECT id, name, key, created_at FROM image_collections ORDER BY id ASC
+		SELECT c.id, c.name, c.key, c.created_at, c.parent_id, c.version, (SELECT COUNT(*) FROM images i WHERE i.collection_id=c.id) FROM image_collections c ORDER BY c.id ASC
 	`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var cols []Collection
+	cols := []Collection{}
 	for rows.Next() {
 		var c Collection
 		var at string
-		if err := rows.Scan(&c.ID, &c.Name, &c.Key, &at); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Key, &at, &c.ParentID, &c.Version, &c.ImageCount); err != nil {
 			return nil, err
 		}
 		t, _ := time.Parse(time.RFC3339Nano, at)

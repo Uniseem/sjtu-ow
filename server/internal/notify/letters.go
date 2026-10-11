@@ -29,6 +29,7 @@ type Service struct {
 	signingKey string
 	mailReady  func() bool
 	kinds      map[string]Kind
+	viewers    func(context.Context, int64) (*app.Viewer, error)
 }
 
 // NewService 造通知服务。mailReady 报 SMTP 配没配好（规则 78），nil 当作配好了。
@@ -38,10 +39,11 @@ func NewService(d *db.DB, siteURL, signingKey string, mailReady func() bool) *Se
 
 // HeldLetter 是确认页上的一封信。
 type HeldLetter struct {
-	ID      int64  `json:"id"`
-	Subject string `json:"subject"`
-	Who     string `json:"who"`
-	Count   int    `json:"count"`
+	ID         int64  `json:"id"`
+	Subject    string `json:"subject"`
+	Who        string `json:"who"`
+	Count      int    `json:"count"`
+	PreviewURL string `json:"preview_url"`
 }
 
 // HeldBatch 是一件事带出来的信。State：waiting 等着、done 已处理、expired 等了 7 天作废。
@@ -141,7 +143,8 @@ func (s *Service) Held(ctx *app.Ctx, batch string) (*HeldBatch, error) {
 		_ = json.Unmarshal([]byte(r.letter), &l)
 		out.Letters = append(out.Letters, HeldLetter{
 			ID: r.id, Subject: l.Subject,
-			Who: who(parseRecipients(r.recipients), email), Count: len(parseRecipients(r.recipients)),
+			PreviewURL: fmt.Sprintf("/api/letters/%s/%d/preview", batch, r.id),
+			Who:        who(parseRecipients(r.recipients), email), Count: len(parseRecipients(r.recipients)),
 		})
 		out.Back, out.InBackOffice = r.back, r.inBack
 	}

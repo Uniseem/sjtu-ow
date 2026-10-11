@@ -27,13 +27,13 @@ var (
 func Validate(password, email, nickname string) []string {
 	var msgs []string
 	if len([]rune(password)) < 8 {
-		msgs = append(msgs, "密码太短。密码必须包含至少 8 个字符。")
-	}
-	if password != "" && allDigits(password) {
-		msgs = append(msgs, "密码完全是数字。")
+		msgs = append(msgs, "此密码太短，至少要包含 8 个字符。")
 	}
 	if isCommon(strings.ToLower(strings.TrimSpace(password))) {
-		msgs = append(msgs, "密码过于常见。")
+		msgs = append(msgs, "这个密码太常见了。")
+	}
+	if password != "" && allDigits(password) {
+		msgs = append(msgs, "这个密码完全是数字。")
 	}
 	if tooSimilar(password, email) {
 		msgs = append(msgs, "密码与邮箱太相似。")

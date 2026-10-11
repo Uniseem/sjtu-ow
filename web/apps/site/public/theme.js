@@ -68,6 +68,9 @@
       root.classList.remove("is-theme-switch");
     };
     transition.finished.then(done, done);
+    // A navigation or a second transition can skip the snapshot. Its DOM
+    // update still runs; observe ready's rejection as well as finished's.
+    transition.ready.catch(function () {});
   }
 
   apply(stored());

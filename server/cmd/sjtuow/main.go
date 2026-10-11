@@ -24,8 +24,11 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/activity"
 	"github.com/Uniseem/sjtu-ow/server/internal/agenda"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/backoffice"
 	"github.com/Uniseem/sjtu-ow/server/internal/comments"
 	"github.com/Uniseem/sjtu-ow/server/internal/content"
+	"github.com/Uniseem/sjtu-ow/server/internal/fonts"
+	"github.com/Uniseem/sjtu-ow/server/internal/mailpreview"
 	"github.com/Uniseem/sjtu-ow/server/internal/manual"
 	"github.com/Uniseem/sjtu-ow/server/internal/members"
 	"github.com/Uniseem/sjtu-ow/server/internal/moderation"
@@ -85,6 +88,8 @@ func main() {
 		err = runParity()
 	case "seed":
 		err = runSeed()
+	case "import-fonts":
+		err = runImportFonts()
 	case "import-media":
 		err = runImportMedia()
 	case "session":
@@ -99,7 +104,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|import-media|verify-email|backup|restore|createsuperuser|reconcile|rulecheck|parity|seed|session>")
+	fmt.Fprintln(os.Stderr, "用法：sjtuow <migrate|serve|worker|apigen|import|import-media|import-fonts|verify-email|backup|restore|createsuperuser|reconcile|rulecheck|parity|seed|session>")
 }
 
 func fatal(err error) {
@@ -121,6 +126,13 @@ func runMigrate() error {
 	return nil
 }
 
+type registryOptions struct {
+	data            *db.DB
+	mediaDir        string
+	dataDir         string
+	previewResolver api.ViewerResolver
+}
+
 func buildRegistry(
 	acctSvc *accounts.Service,
 	contentSvc *content.Service,
@@ -139,13 +151,25 @@ func buildRegistry(
 	activitySvc *activity.Service,
 	manualMod *manual.Module,
 	todoSvc *todo.Service,
+	options ...registryOptions,
 ) *api.Registry {
+	var opts registryOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
 	reg := &api.Registry{}
+	fontService := fonts.NewService(opts.data, opts.mediaDir, filepath.Join(opts.dataDir, "fontuploads"))
+	if acctSvc != nil {
+		acctSvc.SetFontCSSReader(fontService.CSSPointer)
+	}
 	if acctSvc != nil {
 		accounts.NewModule(acctSvc).Routes(reg)
 	}
 	if contentSvc != nil {
-		content.NewModule(contentSvc).Routes(reg)
+		module := content.NewModule(contentSvc)
+		module.SetPreviewResolver(opts.previewResolver)
+		module.SetPreviewStylesheet("/static/css/reader.css")
+		module.Routes(reg)
 	}
 	if commentsSvc != nil {
 		comments.NewModule(commentsSvc).Routes(reg)
@@ -192,6 +216,14 @@ func buildRegistry(
 	if todoSvc != nil {
 		todo.NewModule(todoSvc).Routes(reg)
 	}
+	mailpreview.NewModule(opts.previewResolver).Routes(reg)
+	fonts.NewModule(fontService).Routes(reg)
+	admin := backoffice.NewService(opts.data, reg)
+	admin.SetTournamentService(tournamentsSvc)
+	if opts.dataDir != "" {
+		admin.SetBackupStatusReader(backupStatusReader(filepath.Join(opts.dataDir, "backups")))
+	}
+	backoffice.NewModule(admin).Routes(reg)
 	return reg
 }
 
@@ -224,12 +256,25 @@ func runServe() error {
 	notifySvc := newNotify(d, cfg, contentSvc, tournamentsSvc, scrimsSvc)
 	agendaSvc := agenda.NewService(d, cfg.SiteURL, cfg.SigningKey)
 	settingsSvc := settings.NewService(d, cfg.SiteURL, cfg.FieldEncryptionKey)
+	notifySvc.SetViewerBuilder(acctSvc.BuildViewer)
+	tournamentsSvc.SetNotifier(notifySvc)
+	scrimsSvc.SetNotifier(notifySvc)
+	calendarReader := func(ctx *app.Ctx) (string, string, error) {
+		address, err := agendaSvc.MyAddress(ctx)
+		if err != nil {
+			return "", "", err
+		}
+		return address.URL, address.Webcal, nil
+	}
+	tournamentsSvc.SetCalendarAddressReader(calendarReader)
+	scrimsSvc.SetCalendarAddressReader(calendarReader)
+
 	auditMod := audit.NewModule(d)
 	activitySvc := activity.NewService(d, cfg.SiteURL)
 	manualMod := manual.NewModule()
 	todoSvc := todo.NewService(d)
 
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc, settingsSvc, auditMod, activitySvc, manualMod, todoSvc)
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc, settingsSvc, auditMod, activitySvc, manualMod, todoSvc, registryOptions{data: d, mediaDir: cfg.MediaDir, dataDir: cfg.DataDir, previewResolver: viewerOf(d, acctSvc)})
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
@@ -252,7 +297,8 @@ func runWorker() error {
 	}
 	defer d.Close()
 	w := jobs.New(d, nil)
-	w.Handle(outbox.KindLetter, outbox.Handler(smtpFrom(cfg)))
+	mailSettings := settings.NewService(d, cfg.SiteURL, cfg.FieldEncryptionKey)
+	w.Handle(outbox.KindLetter, outbox.DynamicHandler(func(ctx context.Context) (mail.SMTP, error) { return mailSettings.MailConfig(ctx, smtpFrom(cfg)) }))
 	// 每天 04:00 的夜任务：战队的申请提醒和自动关闭（规则 94、95）。后面的里程碑往里加。
 	acctSvc := accounts.NewService(d, nil, cfg.SiteURL, auth.NewStore(d, nil), nil)
 	teamsSvc := teams.NewService(d, cfg.SiteURL, nil, nil)
@@ -275,6 +321,9 @@ func runWorker() error {
 		return nil
 	})
 	w.OnSchedule(jobs.SchedCleanup, func(ctx context.Context, _ *db.DB, now time.Time) error {
+		if _, err := fonts.NewService(d, cfg.MediaDir, filepath.Join(cfg.DataDir, "fontuploads")).CleanupExpired(ctx, now); err != nil {
+			return err
+		}
 		if _, err := teamsSvc.RemindCaptains(ctx, now); err != nil {
 			return fmt.Errorf("提醒队长：%w", err)
 		}
@@ -381,8 +430,8 @@ func viewerOf(d *db.DB, acctSvc *accounts.Service) api.ViewerResolver {
 // newNotify 造通知服务并挂上三类能被「通知全体成员」的内容。
 func newNotify(d *db.DB, cfg *config.Config, contentSvc *content.Service, tournamentsSvc *tournaments.Service, scrimsSvc *scrims.Service) *notify.Service {
 	ready := func() bool {
-		smtp := smtpFrom(cfg)
-		return smtp.Host != "" && smtp.FromAddr != ""
+		smtp, err := settings.NewService(d, cfg.SiteURL, cfg.FieldEncryptionKey).MailConfig(context.Background(), smtpFrom(cfg))
+		return err == nil && smtp.Host != "" && smtp.FromAddr != ""
 	}
 	n := notify.NewService(d, cfg.SiteURL, cfg.SigningKey, ready)
 	n.Register(contentSvc.AnnounceKind())
@@ -433,6 +482,9 @@ func runImport() error {
 		return fmt.Errorf("导入账号失败: %w", err)
 	}
 	fmt.Println("账号域数据导入成功。")
+	if err := notify.ImportLegacyHeldLetters(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入待发信失败: %w", err)
+	}
 	if err := content.ImportLegacyContent(ctx, d, legacyDB, cfg.SiteURL); err != nil {
 		return fmt.Errorf("导入内容域失败: %w", err)
 	}
@@ -463,6 +515,10 @@ func runImport() error {
 	if err := settings.ImportLegacySettings(ctx, d, legacyDB); err != nil {
 		return fmt.Errorf("导入全站设置失败: %w", err)
 	}
+	if err := settings.ImportLegacyBackupSettings(ctx, d, legacyDB); err != nil {
+		return err
+	}
+
 	fmt.Println("全站设置数据导入成功。")
 	return nil
 }
@@ -587,6 +643,7 @@ func runBackup() error {
 	defer d.Close()
 
 	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
+	noUpload := fs.Bool("no-upload", false, "跳过本次异地上传")
 	outPath := fs.String("out", "", "输出备份文件路径（默认为 data/backups/sjtuow-<timestamp>.tar.gz，- 为标准输出）")
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		return err
@@ -594,7 +651,7 @@ func runBackup() error {
 
 	targetOut := *outPath
 	if targetOut == "" {
-		targetOut = filepath.Join(cfg.DataDir, "backups", fmt.Sprintf("sjtuow-%s.tar.gz", time.Now().Format("20060102-150405")))
+		targetOut = filepath.Join(cfg.DataDir, "backups", fmt.Sprintf("sjtuow-%s.tar.gz", time.Now().UTC().Format("20060102-150405")))
 	}
 
 	manifest, err := ops.Backup(context.Background(), d, ops.BackupOptions{
@@ -608,6 +665,20 @@ func runBackup() error {
 	if targetOut != "-" {
 		fmt.Printf("备份完成：%s (大小: %d 字节, 媒体文件: %d 个, 库校验和: %s)\n",
 			targetOut, manifest.DatabaseSize, manifest.MediaFilesCount, manifest.DatabaseChecksum)
+	}
+	if targetOut != "-" {
+		settingsService := settings.NewService(d, cfg.SiteURL, cfg.FieldEncryptionKey)
+		storageConfig, enabled, retention, err := settingsService.StorageConfig(context.Background())
+		if err != nil {
+			return fmt.Errorf("本地备份已生成，读取异地设置失败：%w", err)
+		}
+		status, err := ops.CompleteBackup(context.Background(), ops.OffsiteOptions{ArchivePath: targetOut, EncryptionKey: cfg.BackupEncryptionKey, Config: storageConfig, Enabled: enabled, Skip: *noUpload, RetentionDays: retention})
+		if err != nil {
+			return err
+		}
+		if status.PruneWarning != "" {
+			fmt.Fprintf(os.Stderr, "备份清理警告：%s\n", status.PruneWarning)
+		}
 	}
 	return nil
 }
@@ -959,4 +1030,50 @@ func runSeed() error {
 	data, _ := json.Marshal(sessionsOut)
 	fmt.Println(string(data))
 	return nil
+}
+
+// import-fonts requires explicit old media input; it never guesses a live
+// server path or writes back to the legacy database.
+func runImportFonts() error {
+	if len(os.Args) != 4 {
+		return fmt.Errorf("用法：sjtuow import-fonts <legacy.sqlite3> <legacy-media-directory>")
+	}
+	cfg, d, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	legacy, err := sql.Open("sqlite", fmt.Sprintf("file:%s?mode=ro", os.Args[2]))
+	if err != nil {
+		return err
+	}
+	defer legacy.Close()
+	report, err := fonts.ImportLegacyFonts(context.Background(), d, legacy, os.Args[3], cfg.MediaDir)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(report)
+}
+
+func backupStatusReader(root string) backoffice.BackupStatusReader {
+	return func(ctx context.Context, now time.Time) ([]string, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		status, err := ops.ReadBackupStatus(root)
+		if os.IsNotExist(err) {
+			return []string{"还没有本站备份记录，请检查每日备份任务。"}, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		problems := []string{}
+		if now.Sub(status.FinishedAt) > 36*time.Hour {
+			problems = append(problems, "超过 36 小时没有新备份，请检查每日备份任务。")
+		}
+		if status.Offsite == "failed" {
+			problems = append(problems, "最近一次异地备份上传失败，请检查对象存储设置和备份任务日志。")
+		}
+		return problems, nil
+	}
 }

@@ -10,7 +10,10 @@ import (
 
 // Module 负责内容域 HTTP 接口注册与协调。
 type Module struct {
-	svc *Service
+	svc               *Service
+	previewResolver   api.ViewerResolver
+	previewStylesheet string
+	previews          contentPreviewCache
 }
 
 // NewModule 创建内容域模块。
@@ -118,13 +121,24 @@ type AdminArticleDetailIn struct {
 
 // AdminArticleDetailOut 是 GET /api/admin/articles/{id} 的出参。
 type AdminArticleDetailOut struct {
-	Article  *Article                `json:"article"`
-	Revision *ArticleRevisionContent `json:"revision,omitempty"`
-	Version  int64                   `json:"version"`
+	Capabilities ArticleCapabilities       `json:"capabilities"`
+	Guide        bool                      `json:"guide"`
+	Categories   []ArticleCategoryChoice   `json:"categories"`
+	Authors      []ArticleAuthorChoice     `json:"authors"`
+	Tournaments  []ArticleTournamentChoice `json:"tournaments"`
+	PreviewURL   *string                   `json:"preview_url"`
+	Announced    int                       `json:"announced"`
+	Verdict      *ArticleVerdict           `json:"verdict"`
+	Article      *Article                  `json:"article"`
+	Revision     *ArticleRevisionContent   `json:"revision,omitempty"`
+	Version      int64                     `json:"version"`
 }
 
 // AdminListArticlesIn 是 GET /api/admin/articles 的入参。
 type AdminListArticlesIn struct {
+	Q        string `query:"q"`
+	Status   string `query:"status"`
+	Mine     bool   `query:"mine"`
 	Category string `query:"category"`
 	Page     int    `query:"page"`
 	PageSize int    `query:"page_size"`
@@ -253,6 +267,7 @@ type DeleteArticleOut struct {
 
 // Routes 注册内容域所有接口。
 func (m *Module) Routes(r *api.Registry) {
+	m.registerContentEditing(r)
 	// 公开页面接口
 	// 站点地图和 robots 照旧站的地址（frontend-migration B2）。
 	api.Raw(r, http.MethodGet, "/sitemap.xml", nil, m.ServeSitemap)
@@ -282,7 +297,7 @@ func (m *Module) Routes(r *api.Registry) {
 		api.Nav("content", "article_edit"))
 
 	// 分类管理
-	api.Get(r, "/api/admin/categories", api.Cap(app.Cap("admin.enter")), m.listCategories,
+	api.Get(r, "/api/admin/categories", api.Cap(CapCategoriesManage), m.listCategories,
 		api.Nav("content", "categories"))
 	api.Post(r, "/api/admin/categories", api.Cap(CapCategoriesManage), m.createCategory,
 		api.NoLimit("创建分类无需限流"))
@@ -370,55 +385,15 @@ func (m *Module) deleteArticle(ctx *app.Ctx, in DeleteArticleIn) (DeleteArticleO
 }
 
 func (m *Module) adminListArticles(ctx *app.Ctx, in AdminListArticlesIn) (AdminListArticlesOut, error) {
-	page := in.Page
-	if page < 1 {
-		page = 1
-	}
-	pageSize := in.PageSize
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-	offset := (page - 1) * pageSize
-
-	articles, total, err := m.svc.store.ListArticles(ctx.Context, in.Category, false, pageSize, offset)
-	if err != nil {
-		return AdminListArticlesOut{}, err
-	}
-
-	return AdminListArticlesOut{
-		Total:    total,
-		Page:     page,
-		PageSize: pageSize,
-		Items:    articles,
-	}, nil
+	return m.listEditableArticles(ctx, in)
 }
 
 func (m *Module) adminGetArticleDetail(ctx *app.Ctx, in AdminArticleDetailIn) (AdminArticleDetailOut, error) {
-	pageID := int64(in.ID)
-	a, err := m.svc.store.GetArticleByID(ctx.Context, pageID)
+	article, err := m.authorizedArticle(ctx, int64(in.ID))
 	if err != nil {
 		return AdminArticleDetailOut{}, err
 	}
-	if a == nil {
-		return AdminArticleDetailOut{}, api.NotFound("文章不存在")
-	}
-
-	rev, err := m.svc.store.GetLatestRevision(ctx.Context, pageID)
-	if err != nil {
-		return AdminArticleDetailOut{}, err
-	}
-
-	var revContent *ArticleRevisionContent
-	var ver int64 = a.Version
-	if rev != nil {
-		ver = rev.ID
-	}
-
-	return AdminArticleDetailOut{
-		Article:  a,
-		Revision: revContent,
-		Version:  ver,
-	}, nil
+	return m.editorProjection(ctx, article)
 }
 
 func (m *Module) listCategories(ctx *app.Ctx, _ CategoryListIn) (CategoryListOut, error) {
@@ -437,6 +412,9 @@ func (m *Module) createCategory(ctx *app.Ctx, in CreateCategoryIn) (CreateCatego
 		SortOrder:       in.SortOrder,
 		AllowSubmission: in.AllowSubmission,
 	}
+	if err := validateCategoryValues(c); err != nil {
+		return CreateCategoryOut{}, err
+	}
 	if err := m.svc.store.CreateCategory(ctx.Context, c); err != nil {
 		return CreateCategoryOut{}, err
 	}
@@ -452,6 +430,9 @@ func (m *Module) updateCategory(ctx *app.Ctx, in UpdateCategoryIn) (UpdateCatego
 		SortOrder:       in.SortOrder,
 		AllowSubmission: in.AllowSubmission,
 		Version:         in.Version,
+	}
+	if err := validateCategoryValues(c); err != nil {
+		return UpdateCategoryOut{}, err
 	}
 	if err := m.svc.store.UpdateCategory(ctx.Context, c); err != nil {
 		return UpdateCategoryOut{}, err

@@ -1,3 +1,4 @@
+import {emptyTeams,emptyTeam} from "./public-fixtures"
 import { readFileSync } from "node:fs"
 import { expect, test } from "vitest"
 import { CSP, STATIC_IMG_CACHE, handle, staticImgPath, staticImgRoot, type Incoming } from "../server"
@@ -199,7 +200,7 @@ test("a page that needs a login sends a visitor to the login page and lets a mem
   })
   expect(member.status).toBe(200)
   // A public page stays public.
-  const teams = await handle(incoming("GET", "/teams/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  const teams = await handle(incoming("GET", "/teams/"), { ...base, fetch:async input=>Response.json(new URL(String(input)).pathname==="/api/teams"?emptyTeams:{user:null}), assets: ASSETS })
   expect(teams.status).toBe(200)
 })
 
@@ -236,7 +237,7 @@ test("a loader gets the API client, the params and the query", async () => {
       seen.params = ctx.params
       seen.query = ctx.query
       seen.got = await ctx.api("GET", "/api/teams/{id}", { params: { id: ctx.params.id } })
-      return { title: "夜航" }
+      return { title: "夜航",team:emptyTeam.team,detail:emptyTeam }
     },
   })
   expect(out.status).toBe(200)

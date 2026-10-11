@@ -1,3 +1,4 @@
+import { fontCSSPath } from "@sjtu-ow/shared/font-css"
 import { renderSSRHead } from "@unhead/vue/server"
 import { createClient, getApiSession, type Requester } from "@sjtu-ow/api"
 import { renderToString } from "vue/server-renderer"
@@ -93,7 +94,9 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
     return error(errorStatusOf(loadR.reason), viewer)
   }
   if (styleguideHidden(pathname, viewer.user?.admin === true)) return error(404, viewer)
-  app.provide(VIEWER, viewer)
+  const fontPath=fontCSSPath(viewer.font_css_path)
+ if(fontPath)head.push({link:[{rel:"stylesheet",href:fontPath,"data-site-font-css":""}]})
+ app.provide(VIEWER, viewer)
   app.provide(API, api)
   app.provide("page-data", loadR.value)
   const html = await renderToString(app)
@@ -123,8 +126,9 @@ async function fetchSession(api: Requester): Promise<Viewer> {
     const body = await getApiSession(api)
     const user = body.user
     // Go always sends a nickname; anything else is not a session to trust.
-    if (!user || typeof user.nickname !== "string") return VISITOR
-    return body.flash ? { user, flash: body.flash } : { user }
+    const font_css_path=(body as typeof body & {font_css_path?:string}).font_css_path
+ if (!user || typeof user.nickname !== "string") return {user:null,font_css_path}
+ return { user,flash:body.flash,font_css_path }
   } catch (err) {
     if (statusOf(err) === 401) return VISITOR
     throw err

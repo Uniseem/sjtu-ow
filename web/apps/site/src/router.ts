@@ -50,7 +50,7 @@ export type Load = (ctx: LoadCtx) => Promise<PageData> | PageData
 declare module "vue-router" {
   interface RouteMeta {
     load?: Load
-    auth?: "member"
+    auth?: "member" | "admin"
     guest?: boolean
     admin?: boolean
   }
@@ -63,6 +63,7 @@ export function createSiteRouter(ssr: boolean) {
       { path: "/", component: Home, meta: { load: loadHome satisfies Load } },
       { path: "/teams/", component: Teams, meta: { load: loadTeams satisfies Load } },
       { path: "/_styleguide/", component: () => import("./pages/Styleguide.vue"), meta: { load: loadStyleguide satisfies Load } },
+      {path:"/admin/:pathMatch(.*)*",component:()=>import("./pages/Page.vue"),meta:{load:()=>{throw httpError(404)}}},
       ...PAGES,
     ],
   })

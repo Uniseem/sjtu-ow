@@ -8,7 +8,7 @@ export function load(ctx: LoadCtx) {
 </script>
 
 <script setup lang="ts">
-import { computed, inject, reactive } from "vue"
+import { computed, inject, onMounted, reactive, ref } from "vue"
 import { useHead } from "@unhead/vue"
 import SectionHead from "@sjtu-ow/ui/SectionHead.vue"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
@@ -39,6 +39,8 @@ const person = computed(() => ({
   nickname: save.values.value.nickname,
   avatar_image_id: profile.avatar_image_id,
 }))
+const enhanced = ref(false)
+onMounted(() => { enhanced.value = true })
 const loginHref = "/accounts/login/?next=" + encodeURIComponent("/me/")
 
 useHead({ title: "基本资料 · SJTU-OW", meta: [{ name: "robots", content: "noindex" }] })
@@ -68,6 +70,16 @@ function choose(changes: Partial<ReturnType<typeof profileValues>>): void {
         :aria-busy="save.pending.value || undefined"
         @submit.prevent="save.save"
       >
+        <CAutosave
+          class="contents"
+          :state="save.snapshot.value.state"
+          :message="save.snapshot.value.state === 'idle' && !save.dirty.value ? '改了就自动保存' : save.snapshot.value.message"
+          :dirty="save.dirty.value"
+          :pending="save.pending.value"
+          :login-required="save.snapshot.value.loginRequired"
+          :login-href="loginHref"
+          @retry="save.save"
+        />
         <ProfileFields
           :values="save.values.value"
           :fields="save.fields.value"
@@ -76,18 +88,10 @@ function choose(changes: Partial<ReturnType<typeof profileValues>>): void {
           @choice="choose"
           @blur="save.flush"
         />
-        <CAutosave
-          :state="save.snapshot.value.state"
-          :message="save.snapshot.value.message"
-          :dirty="save.dirty.value"
-          :pending="save.pending.value"
-          :login-required="save.snapshot.value.loginRequired"
-          :login-href="loginHref"
-          @retry="save.save"
-        />
+
         <p v-if="!validVersion(profile.version)" class="text-sm text-fg-2" role="status">暂时无法保存，请稍后再试。</p>
-        <div class="c-formbar">
-          <button type="submit" class="c-btn c-btn--primary" data-autosave-button :disabled="save.pending.value">保存</button>
+        <div class="c-formbar" :hidden="enhanced">
+          <button type="submit" class="c-btn c-btn--primary" data-autosave-button :hidden="enhanced" :disabled="save.pending.value">保存</button>
         </div>
       </form>
     </section>

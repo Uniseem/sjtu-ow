@@ -37,11 +37,12 @@ type AvatarUploader interface {
 
 // Service 是账号域的业务服务。
 type Service struct {
-	d        *db.DB
-	store    *Store
-	clock    clock.Clock
-	siteURL  string
-	sessions *auth.Store
+	fontCSSReader func(context.Context) (string, error)
+	d             *db.DB
+	store         *Store
+	clock         clock.Clock
+	siteURL       string
+	sessions      *auth.Store
 	// mod 把昵称、宣言送审（规则 186）；nil 表示不送。
 	mod app.ModerationSink
 	// media 处理头像图片上传；nil 表示未接上。
@@ -162,7 +163,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (*RegisterResu
 	if in.ConfirmPassword == "" {
 		fields["confirm_password"] = []string{"请再次输入密码。"}
 	} else if in.ConfirmPassword != in.Password {
-		fields["confirm_password"] = []string{"两次输入的密码不一致。"}
+		fields["confirm_password"] = []string{"每次输入的密码必须相同。"}
 	}
 
 	if in.IsSJTU == nil {
@@ -232,6 +233,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (*RegisterResu
 			PasswordChangedAt:   &now,
 			Version:             1,
 			IsActive:            true,
+			ShowRank:            true,
 			IsSuperuser:         false,
 			CreatedAt:           now,
 			UpdatedAt:           now,
@@ -383,7 +385,7 @@ func (s *Service) ResendCode(ctx context.Context, in ResendCodeInput) (*ResendCo
 // errBadCode 是核验失败的统一口径（R004 防枚举）：码不对、过期、用尽、
 // 邮箱没注册，全都是同一句话，不泄露哪一条不成立。
 var errBadCode = api.InvalidFields(map[string][]string{
-	"code": {"验证码不正确或已过期。"},
+	"code": {"验证码不正确。"},
 })
 
 // VerifyEmailInput 是邮箱验证码核验的入参。
@@ -536,7 +538,7 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (*LoginResult, error
 			return nil, err
 		}
 		s.hitLoginFailure(ctx, emailNorm)
-		return nil, api.Unauthorized("邮箱或密码不正确")
+		return nil, api.Unauthorized("邮箱或密码不正确。")
 	}
 
 	// Argon2 在事务外算（一次约 100 MB，别占写锁）
@@ -546,7 +548,7 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (*LoginResult, error
 	}
 	if !ok {
 		s.hitLoginFailure(ctx, emailNorm)
-		return nil, api.Unauthorized("邮箱或密码不正确")
+		return nil, api.Unauthorized("邮箱或密码不正确。")
 	}
 
 	if !u.IsActive {
@@ -776,7 +778,7 @@ func (s *Service) ResetPasswordConfirm(ctx context.Context, in ResetPasswordConf
 	if in.Password == "" {
 		fields["password"] = []string{"请输入新密码。"}
 	} else if in.Password != in.ConfirmPassword {
-		fields["confirm_password"] = []string{"两次输入的密码不一致。"}
+		fields["confirm_password"] = []string{"每次输入的密码必须相同。"}
 	} else {
 		pwdErrs := auth.Validate(in.Password, trimmedEmail, "")
 		if len(pwdErrs) > 0 {
@@ -903,7 +905,7 @@ func (s *Service) ChangePassword(ctx *app.Ctx, in ChangePasswordInput) (*ChangeP
 	if in.ConfirmPassword == "" {
 		fields["confirm_password"] = []string{"请再次输入新密码。"}
 	} else if in.Password != in.ConfirmPassword {
-		fields["confirm_password"] = []string{"两次输入的密码不一致。"}
+		fields["confirm_password"] = []string{"每次输入的密码必须相同。"}
 	}
 	if in.OldPassword != "" && in.Password != "" && in.OldPassword == in.Password {
 		fields["password"] = []string{"新密码不能与当前密码相同。"}
@@ -925,7 +927,7 @@ func (s *Service) ChangePassword(ctx *app.Ctx, in ChangePasswordInput) (*ChangeP
 		return nil, err
 	}
 	if !ok {
-		return nil, api.InvalidFields(map[string][]string{"old_password": {"当前密码不正确。"}})
+		return nil, api.InvalidFields(map[string][]string{"old_password": {"请输入当前密码。"}})
 	}
 
 	pwdErrs := auth.Validate(in.Password, u.Email, u.Nickname)
@@ -1090,7 +1092,7 @@ func (s *Service) Reauthenticate(ctx *app.Ctx, in ReauthInput) (*ReauthResult, e
 
 	match, _, err := auth.Verify(ctx.Context, u.PasswordHash, in.Password)
 	if err != nil || !match {
-		return nil, api.InvalidFields(map[string][]string{"password": {"当前密码不正确。"}})
+		return nil, api.InvalidFields(map[string][]string{"password": {"密码不正确。"}})
 	}
 
 	if ctx.SessionToken != "" {
@@ -1219,6 +1221,7 @@ func (s *Service) ConfirmEmailChange(ctx *app.Ctx, in ConfirmEmailChangeInput) (
 
 // ProfileResult 个人资料详情出参。
 type ProfileResult struct {
+	PersonalContext
 	ID           int64               `json:"id"`
 	Nickname     string              `json:"nickname"`
 	Email        string              `json:"email"`
@@ -1227,6 +1230,7 @@ type ProfileResult struct {
 	MainRole     string              `json:"main_role"`
 	FlexRoles    string              `json:"flex_roles"`
 	ShowRank     bool                `json:"show_rank"`
+	Version      int64               `json:"version"`
 	IsComplete   bool                `json:"is_complete"`
 	PublicRanks  PublicRanksResult   `json:"public_ranks"`
 	GameAccounts []GameAccountResult `json:"game_accounts"`
@@ -1235,18 +1239,25 @@ type ProfileResult struct {
 
 // UpdateProfileInput 更新资料入参。
 type UpdateProfileInput struct {
-	Nickname  string `json:"nickname"`
-	Motto     string `json:"motto"`
-	MainRole  string `json:"main_role"`
-	FlexRoles string `json:"flex_roles"`
-	ShowRank  bool   `json:"show_rank"`
-	IsSJTU    *bool  `json:"is_sjtu"`
+	BaseVersion *int64          `json:"base_version,omitempty"`
+	Changes     *ProfileChanges `json:"changes,omitempty"`
+	Nickname    string          `json:"nickname,omitempty"`
+	Motto       string          `json:"motto,omitempty"`
+	MainRole    string          `json:"main_role,omitempty"`
+	FlexRoles   string          `json:"flex_roles,omitempty"`
+	ShowRank    bool            `json:"show_rank,omitempty"`
+	IsSJTU      *bool           `json:"is_sjtu,omitempty"`
 }
 
 // UpdateProfileResult 更新资料出参。
 type UpdateProfileResult struct {
-	Result  string `json:"result"`
-	Message string `json:"message"`
+	Result  string              `json:"result"`
+	Message string              `json:"message"`
+	Version int64               `json:"version"`
+	Saved   []string            `json:"saved"`
+	Fields  map[string][]string `json:"fields,omitempty"`
+	Values  *ProfileValues      `json:"values,omitempty"`
+	SavedAt time.Time           `json:"saved_at"`
 }
 
 // GetProfile 读当前登录用户的个人资料、游戏 ID、联系方式与段位。
@@ -1274,6 +1285,10 @@ func (s *Service) GetProfile(ctx *app.Ctx) (*ProfileResult, error) {
 	now := s.clock.Now().UTC()
 	pubRanks := CalculatePublicRanks(gas, u.ShowRank, now)
 	isComplete := IsProfileComplete(len(gas), len(contacts))
+	personal, err := s.personalContext(ctx, u)
+	if err != nil {
+		return nil, err
+	}
 
 	var gaResults []GameAccountResult
 	for _, ga := range gas {
@@ -1286,23 +1301,28 @@ func (s *Service) GetProfile(ctx *app.Ctx) (*ProfileResult, error) {
 	}
 
 	return &ProfileResult{
-		ID:           u.ID,
-		Nickname:     u.Nickname,
-		Email:        u.Email,
-		IsSJTU:       u.IsSJTU,
-		Motto:        u.Motto,
-		MainRole:     u.MainRole,
-		FlexRoles:    u.FlexRoles,
-		ShowRank:     u.ShowRank,
-		IsComplete:   isComplete,
-		PublicRanks:  pubRanks,
-		GameAccounts: gaResults,
-		Contacts:     contactResults,
+		PersonalContext: personal,
+		ID:              u.ID,
+		Nickname:        u.Nickname,
+		Email:           u.Email,
+		IsSJTU:          u.IsSJTU,
+		Motto:           u.Motto,
+		MainRole:        u.MainRole,
+		FlexRoles:       u.FlexRoles,
+		ShowRank:        u.ShowRank,
+		Version:         u.Version,
+		IsComplete:      isComplete,
+		PublicRanks:     pubRanks,
+		GameAccounts:    gaResults,
+		Contacts:        contactResults,
 	}, nil
 }
 
 // UpdateProfile 更新个人资料（昵称、宣言、主位置、副位置、段位公开，规则 18–20）。
 func (s *Service) UpdateProfile(ctx *app.Ctx, in UpdateProfileInput) (*UpdateProfileResult, error) {
+	if in.Changes != nil {
+		return s.patchProfile(ctx, in)
+	}
 	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
 		return nil, api.Unauthorized("要先登录")
 	}
@@ -1382,28 +1402,37 @@ type AddGameAccountInput struct {
 
 // UpdateGameAccountInput 更新游戏 ID 入参。
 type UpdateGameAccountInput struct {
-	ID          api.ID `path:"id"`
-	RankTank    *int   `json:"rank_tank"`
-	RankDamage  *int   `json:"rank_damage"`
-	RankSupport *int   `json:"rank_support"`
+	ID          api.ID       `path:"id"`
+	BaseVersion *int64       `json:"base_version,omitempty"`
+	Changes     *GameChanges `json:"changes,omitempty"`
+	RankTank    *int         `json:"rank_tank,omitempty"`
+	RankDamage  *int         `json:"rank_damage,omitempty"`
+	RankSupport *int         `json:"rank_support,omitempty"`
 }
 
 // GameAccountResult 游戏 ID 出参。
 type GameAccountResult struct {
-	ID             int64     `json:"id"`
-	Battletag      string    `json:"battletag"`
-	RankTank       *int      `json:"rank_tank"`
-	RankDamage     *int      `json:"rank_damage"`
-	RankSupport    *int      `json:"rank_support"`
-	TankLabel      string    `json:"tank_label"`
-	DamageLabel    string    `json:"damage_label"`
-	SupportLabel   string    `json:"support_label"`
-	RanksUpdatedAt time.Time `json:"ranks_updated_at"`
+	ID             int64               `json:"id"`
+	Version        int64               `json:"version"`
+	Saved          []string            `json:"saved"`
+	Fields         map[string][]string `json:"fields,omitempty"`
+	Values         *GameValues         `json:"values,omitempty"`
+	SavedAt        time.Time           `json:"saved_at"`
+	Battletag      string              `json:"battletag"`
+	RankTank       *int                `json:"rank_tank"`
+	RankDamage     *int                `json:"rank_damage"`
+	RankSupport    *int                `json:"rank_support"`
+	TankLabel      string              `json:"tank_label"`
+	DamageLabel    string              `json:"damage_label"`
+	SupportLabel   string              `json:"support_label"`
+	RanksUpdatedAt time.Time           `json:"ranks_updated_at"`
 }
 
 func toGameAccountResult(ga GameAccount) GameAccountResult {
 	return GameAccountResult{
 		ID:             ga.ID,
+		Version:        ga.Version,
+		Saved:          []string{},
 		Battletag:      ga.Battletag,
 		RankTank:       ga.RankTank,
 		RankDamage:     ga.RankDamage,
@@ -1480,6 +1509,9 @@ func (s *Service) AddGameAccount(ctx *app.Ctx, in AddGameAccountInput) (*GameAcc
 
 // UpdateGameAccount 更新游戏 ID 的段位信息。
 func (s *Service) UpdateGameAccount(ctx *app.Ctx, in UpdateGameAccountInput) (*GameAccountResult, error) {
+	if in.Changes != nil {
+		return s.patchGame(ctx, in)
+	}
 	if ctx == nil || ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID <= 0 {
 		return nil, api.Unauthorized("要先登录")
 	}
@@ -1540,6 +1572,29 @@ func (s *Service) DeleteGameAccount(ctx *app.Ctx, id int64) (*DeleteResult, erro
 	}
 
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		if err := s.patchActor(ctx, txCtx, tx); err != nil {
+			return err
+		}
+		var owner int64
+		if err := tx.QueryRowContext(txCtx, `SELECT user_id FROM game_accounts WHERE id=?`, id).Scan(&owner); errors.Is(err, sql.ErrNoRows) {
+			return api.NotFound("游戏 ID 不存在")
+		} else if err != nil {
+			return err
+		}
+		if owner != ctx.Viewer.ID {
+			return api.NotFound("游戏 ID 不存在")
+		}
+		var kind, title string
+		err := tx.QueryRowContext(txCtx, `SELECT '内战',s.title FROM scrim_signups x JOIN scrims s ON s.id=x.scrim_id
+      WHERE x.game_account_id=? AND s.status IN ('draft','published')
+      UNION ALL SELECT '赛事',t.title FROM individual_signups x JOIN tournaments t ON t.id=x.tournament_id
+      WHERE x.game_account_id=? AND t.status IN ('draft','published') LIMIT 1`, id, id).Scan(&kind, &title)
+		if err == nil {
+			return api.Invalid(fmt.Sprintf("这个游戏 ID 正用于%s「%s」的报名，请先取消报名再删除。", kind, title))
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
 		return s.store.DeleteGameAccount(txCtx, tx, id, ctx.Viewer.ID)
 	})
 	if err != nil {
@@ -1564,11 +1619,16 @@ type AddContactInput struct {
 
 // ContactResult 联系方式出参。
 type ContactResult struct {
-	ID        int64     `json:"id"`
-	Type      string    `json:"type"`
-	TypeLabel string    `json:"type_label"`
-	Value     string    `json:"value"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        int64               `json:"id"`
+	Version   int64               `json:"version"`
+	Saved     []string            `json:"saved"`
+	Fields    map[string][]string `json:"fields,omitempty"`
+	Values    *ContactValues      `json:"values,omitempty"`
+	SavedAt   time.Time           `json:"saved_at"`
+	Type      string              `json:"type"`
+	TypeLabel string              `json:"type_label"`
+	Value     string              `json:"value"`
+	CreatedAt time.Time           `json:"created_at"`
 }
 
 func toContactResult(c Contact) ContactResult {
@@ -1578,6 +1638,8 @@ func toContactResult(c Contact) ContactResult {
 	}
 	return ContactResult{
 		ID:        c.ID,
+		Version:   c.Version,
+		Saved:     []string{},
 		Type:      c.Type,
 		TypeLabel: label,
 		Value:     c.Value,
@@ -1717,6 +1779,19 @@ func (s *Service) DeleteAccount(ctx *app.Ctx, in DeleteAccountInput) (*DeleteAcc
 
 	now := s.clock.Now().UTC()
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		var active, captain int
+		if err := tx.QueryRowContext(txCtx, `SELECT is_active FROM users WHERE id = ?`, u.ID).Scan(&active); err != nil {
+			return err
+		}
+		if active != 1 {
+			return api.Unauthorized("账号不存在或已停用")
+		}
+		if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM team_memberships m JOIN teams t ON t.id=m.team_id WHERE m.user_id=? AND m.role='captain' AND t.disbanded_at IS NULL`, u.ID).Scan(&captain); err != nil {
+			return err
+		}
+		if captain > 0 {
+			return api.Invalid("你仍担任未解散战队的队长，必须先转让队长或解散战队才能注销账号。")
+		}
 		if err := s.store.AnonymizeUserTx(txCtx, tx, u.ID, now); err != nil {
 			return err
 		}
@@ -2001,6 +2076,8 @@ type UserDetailInput struct {
 
 // UserDetailResult 用户详情出参。
 type UserDetailResult struct {
+	IsDeleted    bool                `json:"is_deleted"`
+	OwnAccount   bool                `json:"own_account"`
 	User         *User               `json:"user"`
 	Roles        []string            `json:"roles"`
 	Rules        map[string]bool     `json:"rules"`
@@ -2054,12 +2131,15 @@ func (s *Service) GetUserDetail(ctx *app.Ctx, in UserDetailInput) (*UserDetailRe
 		}
 	}
 
+	isDeleted := strings.HasSuffix(u.Email, "@deleted.invalid")
 	if ctx.Viewer != nil && !ctx.Viewer.Superuser {
 		u.Email = ""
 		u.EmailNorm = ""
 	}
 
 	return &UserDetailResult{
+		IsDeleted:    isDeleted,
+		OwnAccount:   ctx.Viewer != nil && ctx.Viewer.ID == u.ID,
 		User:         u,
 		Roles:        roles,
 		Rules:        rulesStr,
@@ -2081,20 +2161,47 @@ type UpdateUserRolesResult struct {
 	Message string   `json:"message"`
 }
 
-// UpdateUserRoles 更新用户的管理角色（仅限 4 个存库角色）。
+// UpdateUserRoles 分配内建及现有手工角色；不能借分配创建角色。
 func (s *Service) UpdateUserRoles(ctx *app.Ctx, in UpdateUserRolesInput) (*UpdateUserRolesResult, error) {
-	for _, r := range in.Roles {
-		valid := false
-		for _, sr := range AllStoredRoles {
-			if r == sr {
-				valid = true
-				break
-			}
+	if ctx.Viewer == nil || !ctx.Viewer.Superuser || ctx.Viewer.Disabled {
+		return nil, api.Forbidden()
+	}
+	validRoles := map[string]bool{}
+	for _, role := range AllStoredRoles {
+		validRoles[role] = true
+	}
+	rows, err := s.d.ReadPool().QueryContext(ctx.Context, `SELECT role FROM user_roles UNION SELECT role FROM feature_role_restrictions`)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var role string
+		if err := rows.Scan(&role); err != nil {
+			rows.Close()
+			return nil, err
 		}
-		if !valid {
-			return nil, api.Invalid("未知或非存库角色: " + r)
+		validRoles[role] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Derived membership is recalculated from account data, never assigned.
+	for _, role := range []string{RoleSJTU, RoleExternal, RoleContributor} {
+		delete(validRoles, role)
+	}
+	unique := []string{}
+	seen := map[string]bool{}
+	for _, role := range in.Roles {
+		if !validRoles[role] {
+			return nil, api.Invalid("未知或非存库角色: " + role)
+		}
+		if !seen[role] {
+			unique = append(unique, role)
+			seen[role] = true
 		}
 	}
+	in.Roles = unique
 
 	u, err := s.store.GetByID(ctx.Context, int64(in.ID))
 	if err != nil {
@@ -2392,4 +2499,8 @@ func (s *Service) TakeDownAvatar(ctx *app.Ctx, submissionID int64, note string) 
 		return err
 	}
 	return nil
+}
+
+func (s *Service) SetFontCSSReader(reader func(context.Context) (string, error)) {
+	s.fontCSSReader = reader
 }

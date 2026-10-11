@@ -1,0 +1,27 @@
+import type { RouteRecordRaw } from 'vue-router'
+/** URLs are the frozen Django addresses; numeric aliases preserve the earlier SPA links. */
+export const managementRoutes: RouteRecordRaw[] = [
+  { path: '/admin/', component: () => import('./Home.vue'), meta: { auth: 'admin', title: '首页' } },
+  { path: '/admin/users/', component: () => import('./Users.vue'), meta: { auth: 'admin', title: '用户' } },
+  { path: '/admin/users/:id(\\d{1,18})/', component: () => import('./UserDetail.vue'), meta: { auth: 'admin', title: '用户' } },
+  { path: '/admin/roles/', component: () => import('./Roles.vue'), meta: { auth: 'admin', title: '角色' } },
+  { path: '/admin/teams/', component: () => import('./Teams.vue'), meta: { auth: 'admin', title: '战队' } },
+  { path: '/admin/teams/edit/:id(\\d{1,18})/', alias: '/admin/teams/:id(\\d{1,18})/', component: () => import('./TeamDetail.vue'), meta: { auth: 'admin', title: '战队' } },
+  { path: '/admin/member-groups/', component: () => import('./Groups.vue'), meta: { auth: 'admin', title: '成员分组' } },
+  { path: '/admin/member-groups/new/', component: () => import('./GroupNew.vue'), meta: { auth: 'admin', title: '新建分组' } },
+  { path: '/admin/member-groups/:id(\\d{1,18})/', component: () => import('./GroupDetail.vue'), meta: { auth: 'admin', title: '成员分组' } },
+  { path: '/admin/registrations/', component: () => import('./Registrations.vue'), meta: { auth: 'admin', title: '报名' } },
+  { path: '/admin/registrations/:id(\\d{1,18})/', component: () => import('./RegistrationDetail.vue'), meta: { auth: 'admin', title: '报名详情' } },
+  { path: '/admin/comments/', component: () => import('./Comments.vue'), meta: { auth: 'admin', title: '评论' } },
+  { path: '/admin/avatars/', component: () => import('./Avatars.vue'), meta: { auth: 'admin', title: '头像' } },
+  { path: '/admin/moderation/', component: () => import('./Moderation.vue'), meta: { auth: 'admin', title: '内容巡查' } },
+  { path: '/admin/moderation/:id(\\d{1,18})/', component: () => import('./ModerationDetail.vue'), meta: { auth: 'admin', title: '巡查记录' } },
+  { path: '/admin/activity/', component: () => import('./Activity.vue'), meta: { auth: 'admin', title: '活动数据' } },
+  { path: '/admin/settings/site/', alias: '/admin/settings/', component: () => import('./Settings.vue'), meta: { auth: 'admin', title: '全站设置' } },
+  { path: '/admin/settings/fonts/', alias: '/admin/fonts/', component: () => import('./Fonts.vue'), meta: { auth: 'admin', title: '字体库' } },
+  { path: '/admin/settings/fonts/add/', alias: ['/admin/fonts/add/', '/admin/fonts/new/'], component: () => import('./FontAdd.vue'), meta: { auth: 'admin', title: '添加字体' } },
+  { path: '/admin/settings/fonts/:id(\\d{1,18})/', alias: '/admin/fonts/:id(\\d{1,18})/', component: () => import('./FontDetail.vue'), meta: { auth: 'admin', title: '字体' } },
+  { path: '/admin/settings/typography/', alias: '/admin/typography/', component: () => import('./Typography.vue'), meta: { auth: 'admin', title: '排版设置' } },
+  { path: '/admin/log/', component: () => import('./Log.vue'), meta: { auth: 'admin', title: '操作记录' } },
+  { path: '/admin/manual/', component: () => import('./Manual.vue'), meta: { auth: 'admin', title: '后台手册' } },
+]

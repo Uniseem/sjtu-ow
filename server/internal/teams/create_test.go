@@ -143,8 +143,8 @@ func TestOnlyCaptainEditsProfile(t *testing.T) {
 	same := "新名字"
 	v = e.versionOf(team.ID)
 	res, err = e.svc.UpdateTeam(e.ctx(cap, false), team.ID, v, ProfileChanges{Name: &same})
-	if err != nil || res.Version != v || len(res.Saved) != 0 {
-		t.Fatalf("没改动不该涨版本：%+v %v", res, err)
+	if err != nil || res.Version != v || len(res.Saved) != 1 || res.Saved[0] != "name" {
+		t.Fatalf("没改动不该涨版本，但应确认已接受的字段：%+v %v", res, err)
 	}
 	// 解散后不能改（队长的成员关系已删，要超管才进得了这一关）
 	if err := e.svc.Disband(e.ctx(cap, false), team.ID); err != nil {

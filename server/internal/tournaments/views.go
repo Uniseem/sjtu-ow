@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/notify"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 var phaseLabels = map[string]string{
@@ -17,18 +19,23 @@ var phaseLabels = map[string]string{
 
 // Card 是赛事列表里的一张卡。
 type Card struct {
-	ID                   int64      `json:"id"`
-	Title                string     `json:"title"`
-	Summary              string     `json:"summary"`
-	CoverImageID         *int64     `json:"cover_image_id"`
-	StartsAt             *time.Time `json:"starts_at"`
-	RegistrationOpensAt  *time.Time `json:"registration_opens_at"`
-	RegistrationClosesAt *time.Time `json:"registration_closes_at"`
-	RegistrationMode     string     `json:"registration_mode"`
-	SjtuOnly             bool       `json:"sjtu_only"`
-	Status               string     `json:"status"`
-	Phase                string     `json:"phase"`
-	ApprovedCount        int        `json:"approved_count"`
+	ID                    int64      `json:"id"`
+	Title                 string     `json:"title"`
+	Summary               string     `json:"summary"`
+	CoverImageID          *int64     `json:"cover_image_id"`
+	StartsAt              *time.Time `json:"starts_at"`
+	RegistrationOpensAt   *time.Time `json:"registration_opens_at"`
+	RegistrationClosesAt  *time.Time `json:"registration_closes_at"`
+	RegistrationMode      string     `json:"registration_mode"`
+	SjtuOnly              bool       `json:"sjtu_only"`
+	Status                string     `json:"status"`
+	Phase                 string     `json:"phase"`
+	ApprovedCount         int        `json:"approved_count"`
+	RosterMin             int        `json:"roster_min"`
+	RosterMax             int        `json:"roster_max"`
+	RegistrationModeLabel string     `json:"registration_mode_label"`
+	TakesIndividuals      bool       `json:"takes_individuals"`
+	DefaultCoverImageID   *int64     `json:"default_cover_image_id"`
 }
 
 // Group 是列表页的一组。
@@ -41,7 +48,8 @@ type Group struct {
 func cardOf(t *Tournament, now time.Time, approved int) Card {
 	return Card{ID: t.ID, Title: t.Title, Summary: t.Summary, CoverImageID: t.CoverImageID, StartsAt: t.StartsAt,
 		RegistrationOpensAt: t.RegistrationOpensAt, RegistrationClosesAt: t.RegistrationClosesAt,
-		RegistrationMode: t.RegistrationMode, SjtuOnly: t.SjtuOnly, Status: t.Status, Phase: t.Phase(now), ApprovedCount: approved}
+		RegistrationMode: t.RegistrationMode, RosterMin: t.RosterMin, RosterMax: t.RosterMax, RegistrationModeLabel: modeLabels[t.RegistrationMode],
+		TakesIndividuals: t.TakesIndividuals(), DefaultCoverImageID: t.DefaultCoverImageID, SjtuOnly: t.SjtuOnly, Status: t.Status, Phase: t.Phase(now), ApprovedCount: approved}
 }
 
 func (s *Service) loadTournaments(ctx context.Context, q db.DBTX, where string, args ...any) ([]*Tournament, error) {
@@ -82,13 +90,22 @@ func approvedCounts(ctx context.Context, q db.DBTX) (map[int64]int, error) {
 // List 赛事列表（公开）：已发布和已结束的，分成四组（设计 8.2）。
 func (s *Service) List(ctx context.Context, now time.Time) ([]Group, error) {
 	rd := s.d.ReadPool()
-	ts, err := s.loadTournaments(ctx, rd, `WHERE status IN ('published', 'finished')`)
+	// Django starts with model ordering before its stable per-phase sort.
+	// Keep equal deadline/start keys in registration-opens/id descending order.
+	ts, err := s.loadTournaments(ctx, rd, `WHERE status IN ('published', 'finished') ORDER BY registration_opens_at DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
 	counts, err := approvedCounts(ctx, rd)
 	if err != nil {
 		return nil, err
+	}
+	covers, err := media.LoadPool(ctx, rd, "default_cover")
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range ts {
+		t.DefaultCoverImageID = media.PickCover(covers, t.ID, 13)
 	}
 	order := []string{"open", "upcoming", "closed", "finished"}
 	groups := map[string][]*Tournament{}
@@ -157,12 +174,16 @@ type ViewerState struct {
 
 // Page 是赛事详情页要的全部。
 type Page struct {
-	Tournament    *Tournament    `json:"tournament"`
-	Phase         string         `json:"phase"`
-	PhaseLabel    string         `json:"phase_label"`
-	ApprovedTeams []ApprovedTeam `json:"approved_teams"`
-	Pool          *PoolView      `json:"pool,omitempty"`
-	Viewer        ViewerState    `json:"viewer"`
+	Tournament          *Tournament      `json:"tournament"`
+	Phase               string           `json:"phase"`
+	PhaseLabel          string           `json:"phase_label"`
+	ApprovedTeams       []ApprovedTeam   `json:"approved_teams"`
+	Pool                *PoolView        `json:"pool,omitempty"`
+	Viewer              ViewerState      `json:"viewer"`
+	Card                Card             `json:"card"`
+	BodyHTML            string           `json:"body_html"`
+	DefaultCoverImageID *int64           `json:"default_cover_image_id"`
+	Articles            []RelatedArticle `json:"articles"`
 }
 
 func (s *Service) takesPart(ctx context.Context, q db.DBTX, tournamentID, userID int64) (bool, error) {
@@ -246,6 +267,9 @@ func (s *Service) Detail(ctx *app.Ctx, id int64) (*Page, error) {
 	if !showContact {
 		t.ParticipantContact = ""
 	}
+	if err := s.projectPublicDetail(ctx, page); err != nil {
+		return nil, err
+	}
 	return page, nil
 }
 
@@ -318,6 +342,10 @@ type RegistrationPage struct {
 	RosterDiffers      bool           `json:"roster_differs"`
 	CanLeave           bool           `json:"can_leave"`
 	ParticipantContact string         `json:"participant_contact,omitempty"`
+	IsAdhoc            bool           `json:"is_adhoc"`
+	CanChange          bool           `json:"can_change"`
+	Resubmittable      bool           `json:"resubmittable"`
+	StatusLabel        string         `json:"status_label"`
 }
 
 func logsOf(ctx context.Context, q db.DBTX, regID int64) ([]StatusLog, error) {
@@ -340,6 +368,10 @@ func logsOf(ctx context.Context, q db.DBTX, regID int64) ([]StatusLog, error) {
 			l.ActorUserID = &x
 		}
 		l.CreatedAt = parseTime(at)
+		l.ActionLabel = labeled(l.Action, actionLabels)
+		l.FromStatusLabel = labeled(l.FromStatus, statusLabels)
+		l.ToStatusLabel = labeled(l.ToStatus, statusLabels)
+		l.ActorTypeLabel = labeled(l.ActorType, actorLabels)
 		out = append(out, l)
 	}
 	return out, rows.Err()
@@ -378,7 +410,8 @@ func (s *Service) RegistrationDetail(ctx *app.Ctx, id int64) (*RegistrationPage,
 		return nil, err
 	}
 	now := ctx.Now().UTC()
-	page := &RegistrationPage{Registration: r, IsCaptain: captain}
+	page := &RegistrationPage{Registration: r, IsCaptain: captain, IsAdhoc: r.Adhoc(),
+		StatusLabel: statusLabels[r.Status], Resubmittable: r.Status == RegRejected || r.Status == RegWithdrawn}
 	c := cardOf(t, now, 0)
 	page.Tournament = &c
 	if page.Roster, err = roster(ctx.Context, rd, id); err != nil {
@@ -390,13 +423,14 @@ func (s *Service) RegistrationDetail(ctx *app.Ctx, id int64) (*RegistrationPage,
 	beforeClose := t.RegistrationClosesAt != nil && !now.After(*t.RegistrationClosesAt)
 	page.CanWithdraw = captain && r.Active() && beforeClose
 	page.CanResubmit = captain && t.RegistrationOpen(now)
+	page.CanChange = page.CanResubmit
 	page.CanLeave = r.Adhoc() && active > 0 && r.Active() && beforeClose
 	if r.TeamID != nil {
 		if page.RosterDiffers, err = rosterDiffers(ctx.Context, rd, r); err != nil {
 			return nil, err
 		}
 	}
-	if active > 0 {
+	if r.Active() && (active > 0 || captain) {
 		page.ParticipantContact = t.ParticipantContact
 	}
 	return page, nil
@@ -414,12 +448,20 @@ func rosterDiffers(ctx context.Context, q db.DBTX, r *Registration) (bool, error
 
 // MyRegistration 是个人中心里「我所在的有效报名」一行。
 type MyRegistration struct {
-	RegistrationID int64     `json:"registration_id"`
-	TournamentID   int64     `json:"tournament_id"`
-	Title          string    `json:"title"`
-	TeamName       string    `json:"team_name"`
-	Status         string    `json:"status"`
-	SubmittedAt    time.Time `json:"submitted_at"`
+	RegistrationID int64      `json:"registration_id"`
+	TournamentID   int64      `json:"tournament_id"`
+	Title          string     `json:"title"`
+	TeamName       string     `json:"team_name"`
+	Status         string     `json:"status"`
+	SubmittedAt    time.Time  `json:"submitted_at"`
+	StartsAt       *time.Time `json:"starts_at"`
+	StartsLabel    string     `json:"starts_label"`
+	TeamID         *int64     `json:"team_id"`
+	StatusLabel    string     `json:"status_label"`
+	RosterVersion  int64      `json:"roster_version"`
+	CanWithdraw    bool       `json:"can_withdraw"`
+	CanResubmit    bool       `json:"can_resubmit"`
+	CanLeave       bool       `json:"can_leave"`
 }
 
 // MyRegistrations 我现在名单上的有效报名（设计 13.5）。
@@ -428,9 +470,12 @@ func (s *Service) MyRegistrations(ctx *app.Ctx) ([]MyRegistration, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.d.ReadPool().QueryContext(ctx.Context, `SELECT DISTINCT r.id, r.tournament_id, t.title, r.team_name, r.status, r.submitted_at
+	rows, err := s.d.ReadPool().QueryContext(ctx.Context, `SELECT DISTINCT r.id, r.tournament_id, t.title, r.team_name, r.status, r.submitted_at,
+		r.team_id,t.starts_at,t.registration_opens_at,t.registration_closes_at,t.status,r.roster_version,
+		EXISTS(SELECT 1 FROM team_memberships captain JOIN teams live_team ON live_team.id=captain.team_id
+			WHERE captain.team_id=r.team_id AND captain.user_id=? AND captain.role='captain' AND live_team.disbanded_at IS NULL)
 		FROM registrations r JOIN registration_members m ON m.registration_id = r.id JOIN tournaments t ON t.id = r.tournament_id
-		WHERE m.user_id = ? AND m.is_active = 1 ORDER BY r.submitted_at DESC`, v.ID)
+		WHERE m.user_id = ? AND m.is_active = 1 ORDER BY r.submitted_at DESC,r.id DESC`, v.ID, v.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -438,11 +483,28 @@ func (s *Service) MyRegistrations(ctx *app.Ctx) ([]MyRegistration, error) {
 	out := []MyRegistration{}
 	for rows.Next() {
 		var m MyRegistration
-		var at string
-		if err := rows.Scan(&m.RegistrationID, &m.TournamentID, &m.Title, &m.TeamName, &m.Status, &at); err != nil {
+		var at, status string
+		var starts, opens, closes sql.NullString
+		var team sql.NullInt64
+		var captain int
+		if err := rows.Scan(&m.RegistrationID, &m.TournamentID, &m.Title, &m.TeamName, &m.Status, &at,
+			&team, &starts, &opens, &closes, &status, &m.RosterVersion, &captain); err != nil {
 			return nil, err
 		}
 		m.SubmittedAt = parseTime(at)
+		m.StartsAt = nullTime(starts)
+		m.StartsLabel = startsLabel(m.StartsAt)
+		m.StatusLabel = statusLabels[m.Status]
+		if team.Valid {
+			id := team.Int64
+			m.TeamID = &id
+		}
+		tournament := &Tournament{Status: status, RegistrationOpensAt: nullTime(opens), RegistrationClosesAt: nullTime(closes)}
+		beforeClose := tournament.RegistrationClosesAt != nil && !ctx.Now().After(*tournament.RegistrationClosesAt)
+		active := m.Status == RegPending || m.Status == RegApproved
+		m.CanWithdraw = captain == 1 && active && beforeClose
+		m.CanResubmit = captain == 1 && tournament.RegistrationOpen(ctx.Now().UTC())
+		m.CanLeave = !team.Valid && active && beforeClose
 		out = append(out, m)
 	}
 	return out, rows.Err()
@@ -451,9 +513,12 @@ func (s *Service) MyRegistrations(ctx *app.Ctx) ([]MyRegistration, error) {
 // AdminRow 是后台赛事列表的一行。
 type AdminRow struct {
 	Card
-	PendingCount int      `json:"pending_count"`
-	WaitingTeam  int      `json:"waiting_for_team"`
-	Missing      []string `json:"missing"`
+	PendingCount       int      `json:"pending_count"`
+	WaitingTeam        int      `json:"waiting_for_team"`
+	Missing            []string `json:"missing"`
+	CanDelete          bool     `json:"can_delete"`
+	EveryoneNotices    int      `json:"everyone_notices"`
+	ParticipantNotices int      `json:"participant_notices"`
 }
 
 // AdminList 后台赛事列表（含草稿）。
@@ -462,7 +527,7 @@ func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
 		return nil, err
 	}
 	rd := s.d.ReadPool()
-	ts, err := s.loadTournaments(ctx.Context, rd, `ORDER BY COALESCE(registration_opens_at, created_at) DESC, id DESC`)
+	ts, err := s.loadTournaments(ctx.Context, rd, `ORDER BY registration_opens_at IS NULL DESC, registration_opens_at DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -500,6 +565,10 @@ func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
 		waiting[id] = n
 	}
 	rows.Close()
+	notices, err := notify.HistoryCounts(ctx.Context, rd, notify.KindTournament)
+	if err != nil {
+		return nil, err
+	}
 	now := ctx.Now().UTC()
 	out := make([]AdminRow, 0, len(ts))
 	for _, t := range ts {
@@ -507,7 +576,9 @@ func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
 		if miss == nil {
 			miss = []string{}
 		}
-		out = append(out, AdminRow{Card: cardOf(t, now, counts[t.ID]), PendingCount: pending[t.ID], WaitingTeam: waiting[t.ID], Missing: miss})
+		out = append(out, AdminRow{Card: cardOf(t, now, counts[t.ID]), PendingCount: pending[t.ID], WaitingTeam: waiting[t.ID], Missing: miss,
+			CanDelete:       t.Status == StatusDraft && t.PublishedAt == nil,
+			EveryoneNotices: notices[t.ID][notify.Everyone], ParticipantNotices: notices[t.ID][notify.Participants]})
 	}
 	return out, nil
 }

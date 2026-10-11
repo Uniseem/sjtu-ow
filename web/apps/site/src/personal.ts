@@ -20,7 +20,7 @@ export const PERSONAL_NAV = [
   { href: "/me/contacts/", label: "联系方式", available: true, icon: "phone" },
   { href: "/me/teams/", label: "我的战队", available: true, icon: "shield" },
   { href: "/me/registrations/", label: "我的报名", available: true, icon: "trophy" },
-  { href: "/me/scrims/", label: "我的内战", available: false, icon: "calendar" },
+  { href: "/me/scrims/", label: "我的内战", available: true, icon: "calendar" },
   { href: "/me/security/", label: "账号安全", available: true, icon: "lock" },
 ]
 
@@ -40,13 +40,14 @@ export const CONTACT_TYPES = [
 export type PersonalPageData = {
   title: string
   profile: PersonalProfile
+  renderedAt?: number
   newItem?: boolean
   editId?: number
 }
 
 export async function loadPersonal(ctx: LoadCtx, title: string): Promise<PersonalPageData> {
   const profile = validatePersonalProfile(await getPersonalProfile(ctx.api))
-  return { title, profile }
+  return { title, profile, renderedAt: Date.now() }
 }
 
 export function personalId(value: string | undefined): number {

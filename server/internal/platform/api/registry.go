@@ -49,6 +49,8 @@ func Raw(g *Registry, method, pattern string, limits []ratelimit.Decl, h http.Ha
 
 // Route 是一条注册了的接口。守卫测试遍历它做矩阵和乱填。
 type Route struct {
+	BodyBytesLimit int64 // 显式JSON上传上限；零值为1MB
+
 	Method     string
 	Pattern    string
 	Gate       Gate
@@ -76,6 +78,15 @@ type handlerCfg struct {
 
 // RouteOption 是注册接口时的可选项。
 type RouteOption func(*Route)
+
+// BodyLimit is declared only by JSON image-upload routes. The decoder still
+// rejects unknown fields and a second JSON document at every limit.
+func BodyLimit(bytes int64) RouteOption {
+	if bytes < 1 || bytes > 16<<20 {
+		panic("API request body limit must be between 1 and 16MB")
+	}
+	return func(route *Route) { route.BodyBytesLimit = bytes }
+}
 
 // Budget 声明这个接口最多跑几条查询（查询预算，3 份和 10 份数据都不得超）。
 func Budget(n int) RouteOption { return func(r *Route) { r.Budget = n } }
@@ -124,6 +135,12 @@ func WithSecureCookies(on bool) HandlerOption {
 
 // Routes 返回全部路由，守卫测试用。
 func (g *Registry) Routes() []*Route { return g.routes }
+
+// Allowed is the same coarse gate used before dispatch. Navigation must not
+// reimplement capability rules or treat its visibility as record permission.
+func (r *Route) Allowed(viewer *app.Viewer) bool {
+	return r != nil && r.Gate != nil && r.Gate.check(viewer) == nil
+}
 
 // Get 注册一个 GET 接口（只读；GET 不写业务数据，5.4）。
 func Get[In, Out any](g *Registry, pattern string, gate Gate,

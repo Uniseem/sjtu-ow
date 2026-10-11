@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -58,40 +59,42 @@ type SiteSettingsDTO struct {
 
 // UpdateSettingsInput 是修改全站设置的入参。
 type UpdateSettingsInput struct {
-	SiteDescription         *string `json:"site_description,omitempty"`
-	FromName                *string `json:"from_name,omitempty"`
-	EmailSubjectPrefix      *string `json:"email_subject_prefix,omitempty"`
-	SmtpHost                *string `json:"smtp_host,omitempty"`
-	SmtpPort                *int    `json:"smtp_port,omitempty"`
-	SmtpSecurity            *string `json:"smtp_security,omitempty"`
-	SmtpUsername            *string `json:"smtp_username,omitempty"`
-	SmtpPassword            *string `json:"smtp_password,omitempty"`
-	ClearSmtpPassword       *bool   `json:"clear_smtp_password,omitempty"`
-	FromAddress             *string `json:"from_address,omitempty"`
-	FoundedOn               *string `json:"founded_on,omitempty"`
-	DefaultShareImageID     *int64  `json:"default_share_image_id,omitempty"`
-	HeroImageID             *int64  `json:"hero_image_id,omitempty"`
-	BannerNewsID            *int64  `json:"banner_news_id,omitempty"`
-	BannerTournamentsID     *int64  `json:"banner_tournaments_id,omitempty"`
-	BannerScrimsID          *int64  `json:"banner_scrims_id,omitempty"`
-	BannerTeamsID           *int64  `json:"banner_teams_id,omitempty"`
-	BannerMembersID         *int64  `json:"banner_members_id,omitempty"`
-	QQGroupURL              *string `json:"qq_group_url,omitempty"`
-	TeamMaxMembers          *int    `json:"team_max_members,omitempty"`
-	TeamMaxCaptained        *int    `json:"team_max_captained,omitempty"`
-	TournamentReminderHours *int    `json:"tournament_reminder_hours,omitempty"`
-	ScrimReminderHours      *int    `json:"scrim_reminder_hours,omitempty"`
-	ModerationEnabled       *bool   `json:"moderation_enabled,omitempty"`
-	ModerationProvider      *string `json:"moderation_provider,omitempty"`
-	ModerationAPIKey        *string `json:"moderation_api_key,omitempty"`
-	ClearModerationAPIKey   *bool   `json:"clear_moderation_api_key,omitempty"`
-	ModerationBaseURL       *string `json:"moderation_base_url,omitempty"`
-	ModerationModel         *string `json:"moderation_model,omitempty"`
-	ModerationMaxTokens     *int    `json:"moderation_max_tokens,omitempty"`
-	ModerationTimeoutSecs   *int    `json:"moderation_timeout_seconds,omitempty"`
-	ModerationExtraParams   *string `json:"moderation_extra_params,omitempty"`
-	ModerationDailyLimit    *int    `json:"moderation_daily_limit,omitempty"`
-	ModerationNotifyEmail   *string `json:"moderation_notify_email,omitempty"`
+	BaseVersion             *int64           `json:"base_version,omitempty"`
+	Changes                 *SettingsChanges `json:"changes,omitempty"`
+	SiteDescription         *string          `json:"site_description,omitempty"`
+	FromName                *string          `json:"from_name,omitempty"`
+	EmailSubjectPrefix      *string          `json:"email_subject_prefix,omitempty"`
+	SmtpHost                *string          `json:"smtp_host,omitempty"`
+	SmtpPort                *int             `json:"smtp_port,omitempty"`
+	SmtpSecurity            *string          `json:"smtp_security,omitempty"`
+	SmtpUsername            *string          `json:"smtp_username,omitempty"`
+	SmtpPassword            *string          `json:"smtp_password,omitempty"`
+	ClearSmtpPassword       *bool            `json:"clear_smtp_password,omitempty"`
+	FromAddress             *string          `json:"from_address,omitempty"`
+	FoundedOn               *string          `json:"founded_on,omitempty"`
+	DefaultShareImageID     *int64           `json:"default_share_image_id,omitempty"`
+	HeroImageID             *int64           `json:"hero_image_id,omitempty"`
+	BannerNewsID            *int64           `json:"banner_news_id,omitempty"`
+	BannerTournamentsID     *int64           `json:"banner_tournaments_id,omitempty"`
+	BannerScrimsID          *int64           `json:"banner_scrims_id,omitempty"`
+	BannerTeamsID           *int64           `json:"banner_teams_id,omitempty"`
+	BannerMembersID         *int64           `json:"banner_members_id,omitempty"`
+	QQGroupURL              *string          `json:"qq_group_url,omitempty"`
+	TeamMaxMembers          *int             `json:"team_max_members,omitempty"`
+	TeamMaxCaptained        *int             `json:"team_max_captained,omitempty"`
+	TournamentReminderHours *int             `json:"tournament_reminder_hours,omitempty"`
+	ScrimReminderHours      *int             `json:"scrim_reminder_hours,omitempty"`
+	ModerationEnabled       *bool            `json:"moderation_enabled,omitempty"`
+	ModerationProvider      *string          `json:"moderation_provider,omitempty"`
+	ModerationAPIKey        *string          `json:"moderation_api_key,omitempty"`
+	ClearModerationAPIKey   *bool            `json:"clear_moderation_api_key,omitempty"`
+	ModerationBaseURL       *string          `json:"moderation_base_url,omitempty"`
+	ModerationModel         *string          `json:"moderation_model,omitempty"`
+	ModerationMaxTokens     *int             `json:"moderation_max_tokens,omitempty"`
+	ModerationTimeoutSecs   *int             `json:"moderation_timeout_seconds,omitempty"`
+	ModerationExtraParams   *string          `json:"moderation_extra_params,omitempty"`
+	ModerationDailyLimit    *int             `json:"moderation_daily_limit,omitempty"`
+	ModerationNotifyEmail   *string          `json:"moderation_notify_email,omitempty"`
 }
 
 // Service 负责全站设置读写与邮件测试。
@@ -112,7 +115,11 @@ func NewService(d *db.DB, siteURL, fieldKey string) *Service {
 
 // Get 读取全站设置。
 func (s *Service) Get(ctx context.Context) (*SiteSettingsDTO, error) {
-	row := s.d.ReadPool().QueryRowContext(ctx, `
+	return s.getWith(ctx, s.d.ReadPool())
+}
+
+func (s *Service) getWith(ctx context.Context, q db.DBTX) (*SiteSettingsDTO, error) {
+	row := q.QueryRowContext(ctx, `
 		SELECT id, site_description, from_name, email_subject_prefix,
 		       smtp_host, smtp_port, smtp_security, smtp_username, smtp_password, from_address,
 		       founded_on, default_share_image_id, hero_image_id,
@@ -441,7 +448,7 @@ func (s *Service) Update(ctx *app.Ctx, in UpdateSettingsInput) (*SiteSettingsDTO
 		}
 
 		// 记审计日志
-		if err := audit.Record(txCtx, tx, ctx.Viewer.ID, "site_settings.update", "site_settings", 1, in, now); err != nil {
+		if err := audit.Record(txCtx, tx, ctx.Viewer.ID, "site_settings.update", "site_settings", 1, settingsAudit(in), now); err != nil {
 			return fmt.Errorf("记录审计日志失败: %w", err)
 		}
 
@@ -491,7 +498,7 @@ func (s *Service) SendTestEmail(ctx *app.Ctx) (string, error) {
 		Password: decPass,
 		FromName: name,
 		FromAddr: from,
-		Security: sec,
+		Security: normalizedMailSecurity(sec),
 		Prefix:   prefix,
 		Timeout:  15 * time.Second,
 	}
@@ -519,4 +526,28 @@ func (s *Service) SendTestEmail(ctx *app.Ctx) (string, error) {
 	}
 
 	return fmt.Sprintf("测试邮件已成功发送到 %s。", target.Address), nil
+}
+
+// The audit trail records field names and secret-presence actions, never
+// submitted credentials or encrypted values.
+func settingsAudit(in UpdateSettingsInput) map[string]any {
+	data, _ := json.Marshal(in)
+	fields := map[string]json.RawMessage{}
+	_ = json.Unmarshal(data, &fields)
+	names := []string{}
+	for name := range fields {
+		names = append(names, name)
+	}
+	return map[string]any{"fields": names}
+}
+
+func normalizedMailSecurity(value string) string {
+	switch value {
+	case "tls":
+		return "starttls"
+	case "none":
+		return "plain"
+	default:
+		return value
+	}
 }

@@ -106,6 +106,7 @@ type UploadLogoOut struct {
 
 // Routes 注册战队域的接口。
 func (m *Module) Routes(r *api.Registry) {
+	m.extraRoutes(r)
 	api.Get(r, "/api/teams", api.Public, m.list)
 	api.Get(r, "/api/teams/{id}", api.Public, m.detail)
 
@@ -115,7 +116,7 @@ func (m *Module) Routes(r *api.Registry) {
 		api.NoLimit("自动保存，按字段校验；改的人要是队长"))
 	api.Post(r, "/api/teams/{id}/applications", api.Feature(accounts.FeatureTeamApply), m.apply,
 		api.NoLimit("服务层按人每天 20 次（规则 89）"))
-	api.Post(r, "/api/teams/{id}/logo", api.Member, m.uploadLogo,
+	api.Post(r, "/api/teams/{id}/logo", api.Member, m.uploadLogo, api.BodyLimit(16<<20),
 		api.NoLimit("队长上传队标"))
 	api.Get(r, "/api/teams/{id}/manage", api.Member, m.manage)
 	api.Post(r, "/api/teams/{id}/leave", api.Member, m.leave, api.NoLimit("退队没有滥用面"))

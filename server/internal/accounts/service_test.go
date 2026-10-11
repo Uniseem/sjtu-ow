@@ -668,7 +668,7 @@ func TestLoginWrongPasswordUnified(t *testing.T) {
 	if !errors.As(errWrong, &apiErr) || apiErr.Status != 401 {
 		t.Fatalf("应为 401: %v", errWrong)
 	}
-	if apiErr.Message != "邮箱或密码不正确" {
+	if apiErr.Message != "邮箱或密码不正确。" {
 		t.Fatalf("文案应为统一句: %q", apiErr.Message)
 	}
 }
@@ -1576,8 +1576,8 @@ func TestChangePasswordWrongOldPassword(t *testing.T) {
 	if !errors.As(err, &apiErr) || apiErr.Status != 422 {
 		t.Fatalf("旧密码错误应 422，得到 %v", err)
 	}
-	if len(apiErr.Fields["old_password"]) == 0 || !strings.Contains(apiErr.Fields["old_password"][0], "不正确") {
-		t.Fatalf("应提示当前密码不正确: %+v", apiErr.Fields)
+	if len(apiErr.Fields["old_password"]) == 0 || !strings.Contains(apiErr.Fields["old_password"][0], "请输入当前密码") {
+		t.Fatalf("应提示旧站当前密码校验文案: %+v", apiErr.Fields)
 	}
 }
 

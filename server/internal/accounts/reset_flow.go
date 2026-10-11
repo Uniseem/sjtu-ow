@@ -150,7 +150,7 @@ func (s *Service) CompletePasswordReset(ctx context.Context, token string, in Co
 		fields["password"] = pwdErrs
 	}
 	if in.Password != in.ConfirmPassword {
-		fields["confirm_password"] = []string{"两次输入的密码不一致。"}
+		fields["confirm_password"] = []string{"每次输入的密码必须相同。"}
 	}
 	if len(fields) > 0 {
 		return nil, api.InvalidFields(fields)

@@ -1,0 +1,29 @@
+{
+  "name": "@sjtu-ow/admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run && vite build"
+  },
+  "dependencies": {
+    "@sjtu-ow/api": "workspace:*",
+    "@sjtu-ow/shared": "workspace:*",
+    "@sjtu-ow/styles": "workspace:*",
+    "@sjtu-ow/ui": "workspace:*",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.41.0",
+    "@codemirror/commands": "^6.10.0",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.0",
+    "sortablejs": "1.15.7",
+    "@unhead/vue": "^2.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4"
+  }
+}

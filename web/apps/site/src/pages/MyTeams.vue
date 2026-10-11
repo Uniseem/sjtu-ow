@@ -124,7 +124,7 @@ useHead({ title: "我的战队 · SJTU-OW", meta: [{ name: "robots", content: "n
           <tr v-for="application in memberships.applications" :key="application.id">
             <td data-label="战队"><a :href="'/teams/' + application.team_id + '/'" class="font-semibold hover:text-primary-text">{{ application.team_name }}</a></td>
             <td data-label="状态">
-              <CStatus :kind="applicationStatus(application.status).kind" :label="applicationStatus(application.status).label" />
+              <CStatus :kind="applicationStatus(application.status).kind" :label="application.status === 'approved' ? '已通过' : applicationStatus(application.status).label" />
               <span v-if="application.decision_note" class="mt-1 block text-sm text-fg-2">{{ application.decision_note }}</span>
             </td>
             <td data-label="提交" class="font-numeric">{{ owDate(new Date(application.created_at)) }}</td>

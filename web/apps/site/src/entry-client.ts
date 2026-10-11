@@ -1,4 +1,5 @@
 import "@sjtu-ow/styles/dist/site.css"
+import {syncFontCSS} from "@sjtu-ow/shared/font-css"
 import { createClient, getApiSession } from "@sjtu-ow/api"
 import { reactive } from "vue"
 import { API } from "./api"
@@ -22,7 +23,8 @@ const api = createClient({
   onWrite: () => {
     getApiSession(api, { refresh: true }).then(
       (body) => {
-        viewer.user = body.user && typeof body.user.nickname === "string" ? body.user : null
+        syncFontCSS((body as typeof body & {font_css_path?:string}).font_css_path)
+ viewer.user = body.user && typeof body.user.nickname === "string" ? body.user : null
       },
       () => {},
     )

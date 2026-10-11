@@ -35,7 +35,7 @@ watch(() => props.calendar, (calendar) => { current.value = calendar })
     <p class="mt-1 break-all font-code text-sm" data-calendar-url>{{ current.url }}</p>
     <p class="mt-2 text-sm text-fg-3">这个地址只属于你，别发给别人：拿到的人能看到你报名的活动名、队名和时间。</p>
     <form method="post" action="/me/calendar/reset/" class="mt-3" @submit.prevent="renew.submit({})">
-      <button type="submit" class="c-btn c-btn--quiet c-btn--sm" :disabled="!renew.canStart.value">换一个订阅地址</button>
+      <button type="submit" class="c-btn c-btn--quiet c-btn--sm" :disabled="!renew.canStart.value">换一个订阅地址</button>{{ ' ' }}
       <span class="text-sm text-fg-3">地址给了不该给的人时用；换了以后旧地址立刻失效，手机上要重新订阅。</span>
     </form>
     <CMutationError :message="renew.message.value" :uncertain="renew.uncertain.value" :pending="renew.pending.value" @retry="renew.retry" />

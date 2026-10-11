@@ -27,7 +27,7 @@ export type PersonalSignup = {
 export type PersonalRegistrations = {
   registrations: PersonalRegistration[]
   individual_signups?: PersonalSignup[]
-  calendar?: GetApiMeCalendarOut
+  calendar?: GetApiMeCalendarOut | null
 }
 
 export function registrationLabel(status: string, label?: string): string {

@@ -4,6 +4,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 // Module 负责内战域的路由。
@@ -24,7 +25,8 @@ type IDIn struct {
 
 // ListOut 是公开列表。
 type ListOut struct {
-	Scrims []Card `json:"scrims"`
+	BannerImageID *int64 `json:"banner_image_id"`
+	Scrims        []Card `json:"scrims"`
 }
 
 // SignupIn 是 POST /api/scrims/{id}/signup。
@@ -97,7 +99,9 @@ type TeamsIn struct {
 // Routes 注册内战域的接口。
 func (m *Module) Routes(r *api.Registry) {
 	api.Get(r, "/api/scrims", api.Public, m.list)
+	api.Get(r, "/api/me/scrims", api.Member, m.personal)
 	api.Get(r, "/api/scrims/{id}", api.Public, m.detail)
+	api.Get(r, "/api/scrims/{id}/signup", api.Member, m.signupForm)
 	api.Post(r, "/api/scrims/{id}/signup", api.Feature(accounts.FeatureScrimSignup), m.signup,
 		api.NoLimit("每人每场一条，更新同一条"))
 	api.Delete(r, "/api/scrims/{id}/signup", api.Member, m.cancelSignup, api.NoLimit("只能取消自己的"))
@@ -105,11 +109,15 @@ func (m *Module) Routes(r *api.Registry) {
 	cap := api.Cap(accounts.CapScrimsManage)
 	list, board := api.Nav("scrims", "list"), api.Nav("scrims", "board")
 	api.Get(r, "/api/admin/scrims", cap, m.adminList, list)
+	api.Get(r, "/api/admin/scrims/editor-defaults", cap, m.editorDefaults, list)
 	api.Post(r, "/api/admin/scrims", cap, m.create, list, api.NoLimit("后台，有能力的门"))
 	api.Get(r, "/api/admin/scrims/{id}", cap, m.adminGet, list)
+	api.Get(r, "/api/admin/scrims/{id}/copy-preview", cap, m.copyPreview, list)
 	api.Patch(r, "/api/admin/scrims/{id}", cap, m.patch, list, api.NoLimit("后台自动保存"))
 	api.Delete(r, "/api/admin/scrims/{id}", cap, m.delete, list, api.NoLimit("后台，有能力的门"))
 	api.Post(r, "/api/admin/scrims/{id}/publish", cap, m.publish, list, api.NoLimit("后台，有能力的门"))
+	api.Get(r, "/api/admin/scrims/{id}/publish-preview", cap, m.publishPreview, list)
+	api.Post(r, "/api/admin/scrims/{id}/publish-confirm", cap, m.publishNotice, list, api.NoLimit("确认发布与通知在同一事务"))
 	api.Post(r, "/api/admin/scrims/{id}/finish", cap, m.finish, list, api.NoLimit("后台，有能力的门"))
 	api.Post(r, "/api/admin/scrims/{id}/cancel", cap, m.cancel, list, api.NoLimit("后台，有能力的门"))
 	api.Post(r, "/api/admin/scrims/{id}/copy", cap, m.copy, list, api.NoLimit("后台，有能力的门"))
@@ -122,7 +130,11 @@ func (m *Module) Routes(r *api.Registry) {
 
 func (m *Module) list(ctx *app.Ctx, _ struct{}) (ListOut, error) {
 	l, err := m.svc.List(ctx.Context, ctx.Now().UTC())
-	return ListOut{Scrims: l}, err
+	if err != nil {
+		return ListOut{}, err
+	}
+	banner, err := media.Banner(ctx.Context, m.svc.d.ReadPool(), "scrims")
+	return ListOut{Scrims: l, BannerImageID: banner}, err
 }
 
 func (m *Module) detail(ctx *app.Ctx, in IDIn) (*Page, error) { return m.svc.Detail(ctx, int64(in.ID)) }
@@ -192,13 +204,20 @@ func (m *Module) board(ctx *app.Ctx, in BoardIn) (*Board, error) {
 }
 
 func (m *Module) selection(ctx *app.Ctx, in SelectionIn) (*Board, error) {
-	return m.svc.SetSelection(ctx, int64(in.ID), in.SignupIDs, in.BaseBoardVersion)
+	value, err := m.svc.SetSelection(ctx, int64(in.ID), in.SignupIDs, in.BaseBoardVersion)
+	return value, m.svc.boardError(ctx, int64(in.ID), err)
 }
 
 func (m *Module) generate(ctx *app.Ctx, in SelectionIn) (*GenerateResult, error) {
-	return m.svc.Generate(ctx, int64(in.ID), in.SignupIDs, in.BaseBoardVersion)
+	value, err := m.svc.Generate(ctx, int64(in.ID), in.SignupIDs, in.BaseBoardVersion)
+	return value, m.svc.boardError(ctx, int64(in.ID), err)
 }
 
 func (m *Module) teams(ctx *app.Ctx, in TeamsIn) (*Board, error) {
-	return m.svc.SaveTeams(ctx, int64(in.ID), in.Placements, in.BaseBoardVersion)
+	value, err := m.svc.SaveTeams(ctx, int64(in.ID), in.Placements, in.BaseBoardVersion)
+	return value, m.svc.boardError(ctx, int64(in.ID), err)
+}
+
+func (m *Module) copyPreview(ctx *app.Ctx, in IDIn) (*AdminGetOut, error) {
+	return m.svc.CopyPreview(ctx, int64(in.ID))
 }

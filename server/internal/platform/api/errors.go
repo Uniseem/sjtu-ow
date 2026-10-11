@@ -17,6 +17,8 @@ type Error struct {
 	Message string
 	// Fields 是 422 的字段错误：字段名 → 一组中文说明。`__all__` 放整表单的。
 	Fields map[string][]string
+	// Current 只接服务层显式构造的安全投影，不自动序列化存储实体。
+	Current any
 	// Header 附加响应头（限流的 Retry-After 之类，后续轮次用）。
 	Header http.Header
 }
@@ -61,6 +63,13 @@ func InvalidFields(fields map[string][]string) *Error {
 	}
 }
 
+// Stale 返回最新版本与可编辑值；同一个用户的不同标签页也受版本保护。
+func Stale(current any) *Error {
+	err := NewErr(http.StatusConflict, "stale", "另一个人刚改过，已换成最新内容。")
+	err.Current = current
+	return err
+}
+
 // TooManyRequests 是 429：限流（带 Retry-After，5.4）。注册表的限流分支
 // 和服务层的失败计数（登录按账号）共用这一个形状。
 func TooManyRequests(retry time.Duration) *Error {
@@ -77,8 +86,9 @@ func TooManyRequests(retry time.Duration) *Error {
 //
 //	{ "error": { "code": "invalid", "message": "…" }, "fields": { "name": ["…"] } }
 type errorBody struct {
-	Error  errorHead           `json:"error"`
-	Fields map[string][]string `json:"fields,omitempty"`
+	Error   errorHead           `json:"error"`
+	Fields  map[string][]string `json:"fields,omitempty"`
+	Current any                 `json:"current,omitempty"`
 }
 
 type errorHead struct {
@@ -87,7 +97,7 @@ type errorHead struct {
 }
 
 func writeError(w http.ResponseWriter, err *Error) {
-	body := errorBody{Error: errorHead{Code: err.Code, Message: err.Message}, Fields: err.Fields}
+	body := errorBody{Error: errorHead{Code: err.Code, Message: err.Message}, Fields: err.Fields, Current: err.Current}
 	w.Header().Set("Content-Type", "application/json")
 	for k, vs := range err.Header {
 		for _, v := range vs {

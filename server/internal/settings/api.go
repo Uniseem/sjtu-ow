@@ -24,9 +24,7 @@ type GetSettingsOut struct {
 type PatchSettingsIn = UpdateSettingsInput
 
 // PatchSettingsOut 是 PATCH /api/admin/settings 的响应。
-type PatchSettingsOut struct {
-	Settings *SiteSettingsDTO `json:"settings"`
-}
+type PatchSettingsOut = SettingsReceipt
 
 // TestEmailOut 是 POST /api/admin/settings/test-email 的响应。
 type TestEmailOut struct {
@@ -36,6 +34,7 @@ type TestEmailOut struct {
 
 // Routes 注册设置路由。
 func (m *Module) Routes(r *api.Registry) {
+	m.backupRoutes(r)
 	api.Get(r, "/api/admin/settings", api.Superuser, m.get, api.Nav("settings", "site"))
 	api.Patch(r, "/api/admin/settings", api.Superuser, m.patch, api.Nav("settings", "site"),
 		api.NoLimit("超管修改设置"))
@@ -52,11 +51,18 @@ func (m *Module) get(ctx *app.Ctx, _ struct{}) (GetSettingsOut, error) {
 }
 
 func (m *Module) patch(ctx *app.Ctx, in PatchSettingsIn) (PatchSettingsOut, error) {
+	if in.Changes != nil {
+		result, err := m.svc.patchFields(ctx, in.BaseVersion, *in.Changes)
+		if err != nil {
+			return PatchSettingsOut{}, err
+		}
+		return *result, nil
+	}
 	s, err := m.svc.Update(ctx, in)
 	if err != nil {
 		return PatchSettingsOut{}, err
 	}
-	return PatchSettingsOut{Settings: s}, nil
+	return PatchSettingsOut{Settings: s, Version: s.Version, Saved: []string{}, SavedAt: ctx.Now().UTC()}, nil
 }
 
 func (m *Module) testEmail(ctx *app.Ctx, _ struct{}) (TestEmailOut, error) {

@@ -2,6 +2,7 @@ package scrims
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -19,6 +20,8 @@ type BoardSignup struct {
 	SignupID     int64             `json:"signup_id"`
 	UserID       int64             `json:"user_id"`
 	Nickname     string            `json:"nickname"`
+	IsActive     bool              `json:"is_active"`
+	IsSJTU       bool              `json:"is_sjtu"`
 	Battletag    string            `json:"battletag"`
 	Roles        []string          `json:"roles"`
 	Ratings      map[string]int    `json:"ratings"` // 位置 → 分数，只有填了段位的位置
@@ -56,6 +59,7 @@ type Board struct {
 	CopyText      string        `json:"copy_text"`
 	BoardVersion  int64         `json:"board_version"`
 	Warnings      []string      `json:"warnings,omitempty"`
+	ShowContacts  bool          `json:"show_contacts"`
 }
 
 type signupRow struct {
@@ -244,11 +248,11 @@ func (s *Service) loadContacts(ctx context.Context, q db.DBTX, rows []signupRow)
 
 // GetBoard 分队页：全部报名（可按报名时间或段位排）、两队、替补、总分差、过期标记、复制文案。
 func (s *Service) GetBoard(ctx *app.Ctx, scrimID int64, order string) (*Board, error) {
-	v, err := requireManager(ctx)
+	_, err := requireManager(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return s.buildBoard(ctx.Context, s.d.ReadPool(), scrimID, order, v.HasCap(accounts.CapContactsView))
+	return s.readBoardSnapshot(ctx, scrimID, order)
 }
 
 func (s *Service) buildBoard(ctx context.Context, q db.DBTX, scrimID int64, order string, withContacts bool) (*Board, error) {
@@ -288,14 +292,20 @@ func (s *Service) buildBoard(ctx context.Context, q db.DBTX, scrimID int64, orde
 			return nil, err
 		}
 	}
+	states, err := s.memberStates(ctx, q, scrimID)
+	if err != nil {
+		return nil, err
+	}
 	decorate := func(r signupRow) BoardSignup {
 		bs := r.view()
+		bs.IsActive = states[r.UserID].Active
+		bs.IsSJTU = states[r.UserID].SJTU
 		if withContacts {
 			bs.Contacts = contacts[r.UserID]
 		}
 		return bs
 	}
-	b := &Board{Scrim: sc, Order: order, Needed: sc.PlayersNeeded(), BoardVersion: sc.BoardVersion, Signups: []BoardSignup{},
+	b := &Board{Scrim: sc, Order: order, Needed: sc.PlayersNeeded(), BoardVersion: sc.BoardVersion, ShowContacts: withContacts, Signups: []BoardSignup{},
 		Bench: []BoardSignup{}, Teams: []BoardTeam{}}
 	for _, r := range display {
 		b.Signups = append(b.Signups, decorate(r))
@@ -366,7 +376,7 @@ func bumpBoard(ctx context.Context, tx *db.Tx, scrimID int64) error {
 
 // SetSelection 勾出今晚真正来的人（规则 165 的前置）；取消勾选的人同时清掉分队结果。
 func (s *Service) SetSelection(ctx *app.Ctx, scrimID int64, ids []int64, baseBoardVersion int64) (*Board, error) {
-	v, err := requireManager(ctx)
+	_, err := requireManager(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +400,7 @@ func (s *Service) SetSelection(ctx *app.Ctx, scrimID int64, ids []int64, baseBoa
 	if err != nil {
 		return nil, err
 	}
-	return s.buildBoard(ctx.Context, s.d.ReadPool(), scrimID, "", v.HasCap(accounts.CapContactsView))
+	return s.readBoardSnapshot(ctx, scrimID, "")
 }
 
 func (s *Service) players(rows []signupRow) []Player {
@@ -422,7 +432,7 @@ type GenerateResult struct {
 
 // Generate 勾选 → 生成 → 保存（规则 159–163、165）。勾选先落库；生成失败时勾选保留，错误说明原因。
 func (s *Service) Generate(ctx *app.Ctx, scrimID int64, ids []int64, baseBoardVersion int64) (*GenerateResult, error) {
-	v, err := requireManager(ctx)
+	_, err := requireManager(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -482,10 +492,10 @@ func (s *Service) Generate(ctx *app.Ctx, scrimID int64, ids []int64, baseBoardVe
 			}
 		}
 	}
-	if err := s.saveTeams(ctx, scrimID, placements, now); err != nil {
+	if err := s.saveTeams(ctx, scrimID, placements, now, baseBoardVersion+1); err != nil {
 		return nil, err
 	}
-	board, err := s.buildBoard(ctx.Context, s.d.ReadPool(), scrimID, "", v.HasCap(accounts.CapContactsView))
+	board, err := s.readBoardSnapshot(ctx, scrimID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -518,8 +528,20 @@ type Placement struct {
 
 // saveTeams 存分队（规则 164、165）：每个报名一条去向；没放进任何队的上场者进替补——
 // is_selected 保留（还在板上），但队和位置清空；保存后置分队时间、清名单变动标记。不校验位置配比。
-func (s *Service) saveTeams(ctx *app.Ctx, scrimID int64, placements []Placement, now time.Time) error {
+func (s *Service) saveTeams(ctx *app.Ctx, scrimID int64, placements []Placement, now time.Time, base ...int64) error {
 	return s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		if len(base) > 0 {
+			sc, err := GetScrim(txCtx, tx, scrimID)
+			if err != nil {
+				return err
+			}
+			if sc == nil {
+				return api.NotFound("内战不存在")
+			}
+			if err := checkBoardVersion(sc, base[0]); err != nil {
+				return err
+			}
+		}
 		list, err := listSignups(txCtx, tx, scrimID)
 		if err != nil {
 			return err
@@ -561,7 +583,7 @@ func (s *Service) saveTeams(ctx *app.Ctx, scrimID int64, placements []Placement,
 // SaveTeams 管理员手工保存分队（规则 164、165）：只校验报名属于这场内战；队是 a/b 以外的当没放。
 // 角色限定的位置分数取该位置的段位（没有按 0 算，216 S5）；不限位置取最高段位。
 func (s *Service) SaveTeams(ctx *app.Ctx, scrimID int64, in []PlacementIn, baseBoardVersion int64) (*Board, error) {
-	v, err := requireManager(ctx)
+	_, err := requireManager(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -612,17 +634,24 @@ func (s *Service) SaveTeams(ctx *app.Ctx, scrimID int64, in []PlacementIn, baseB
 	if err := s.saveTeamsChecked(ctx, scrimID, placements, now, baseBoardVersion); err != nil {
 		return nil, err
 	}
-	return s.buildBoard(ctx.Context, s.d.ReadPool(), scrimID, "", v.HasCap(accounts.CapContactsView))
+	return s.readBoardSnapshot(ctx, scrimID, "")
 }
 
 // saveTeamsChecked 和 saveTeams 一样，但在同一个事务里再核对一次板版本，防止两个管理员同时保存互相覆盖。
 func (s *Service) saveTeamsChecked(ctx *app.Ctx, scrimID int64, placements []Placement, now time.Time, base int64) error {
-	var cur int64
-	if err := s.d.ReadPool().QueryRowContext(ctx.Context, `SELECT board_version FROM scrims WHERE id = ?`, scrimID).Scan(&cur); err != nil {
-		return err
+	return s.saveTeams(ctx, scrimID, placements, now, base)
+}
+
+// boardError returns a current board only to a still-authorized manager.
+func (s *Service) boardError(ctx *app.Ctx, id int64, failure error) error {
+	var stale *api.Error
+	if !errors.As(failure, &stale) || (stale.Status != 409 && stale.Status != 422) {
+		return failure
 	}
-	if cur != base {
-		return api.NewErr(409, "stale", "分队板刚被改过，已换成最新内容")
+	current, err := s.GetBoard(ctx, id, "")
+	if err != nil {
+		return failure
 	}
-	return s.saveTeams(ctx, scrimID, placements, now)
+	stale.Current = current
+	return stale
 }

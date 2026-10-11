@@ -66,7 +66,7 @@ services:
     restart: unless-stopped
     # 构建产物、固定地址的图和错误页样式表拷进 assets 卷，Caddy 从那里直接给。
     # 安全头（含 CSP）由 Caddy 统一加（Caddyfile.new 的 security），SSR 不再自己发。
-    command: ["sh", "-c", "mkdir -p /var/assets/img /var/assets/css && cp -a /app/web/apps/site/dist/client/. /var/assets/ && cp -a /app/static/img/. /var/assets/img/ && cp /app/static/css/error.css /var/assets/css/ && exec node dist/server/server.js"]
+    command: ["sh", "-c", "mkdir -p /var/assets/img /var/assets/css /var/assets/admin && cp -a /app/web/apps/site/dist/client/. /var/assets/ && cp -a /app/web/apps/admin/dist/. /var/assets/admin/ && cp -a /app/static/img/. /var/assets/img/ && cp /app/static/css/error.css /app/static/css/reader.css /var/assets/css/ && exec node dist/server/server.js"]
     environment:
       - NODE_ENV=production
       - PORT=5173

@@ -18,11 +18,18 @@ const password = ref("")
 const confirmation = ref("")
 const { pending, message, fields, submit } = useAccountForm()
 useHead({ title: "修改密码 · SJTU-OW" })
-function change() {
-  return submit(async () => {
+async function change() {
+  await submit(async () => {
     await postApiAuthChangePassword(api, { old_password: oldPassword.value, password: password.value, confirm_password: confirmation.value })
     finishAccountAction("/accounts/password/change/")
   })
+  if (Object.keys(fields.value).length) {
+    // Legacy PasswordInput widgets render rejected change forms without values.
+    // Keep the server errors visible while requiring the passwords again.
+    oldPassword.value = ""
+    password.value = ""
+    confirmation.value = ""
+  }
 }
 </script>
 <template>

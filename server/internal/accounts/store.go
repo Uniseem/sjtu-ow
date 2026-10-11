@@ -382,7 +382,7 @@ func scanGameAccount(row interface{ Scan(dest ...any) error }) (*GameAccount, er
 	var ga GameAccount
 	var tank, damage, support sql.NullInt64
 	var stamped, created, updated string
-	err := row.Scan(&ga.ID, &ga.UserID, &ga.Battletag, &ga.BattletagNorm, &tank, &damage, &support, &stamped, &created, &updated)
+	err := row.Scan(&ga.ID, &ga.UserID, &ga.Battletag, &ga.BattletagNorm, &tank, &damage, &support, &stamped, &created, &updated, &ga.Version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -413,7 +413,7 @@ func scanGameAccount(row interface{ Scan(dest ...any) error }) (*GameAccount, er
 	return &ga, nil
 }
 
-const gameAccountCols = `id, user_id, battletag, battletag_norm, rank_tank, rank_damage, rank_support, ranks_updated_at, created_at, updated_at`
+const gameAccountCols = `id, user_id, battletag, battletag_norm, rank_tank, rank_damage, rank_support, ranks_updated_at, created_at, updated_at, version`
 
 // GetGameAccountsByUserID 读用户的所有游戏 ID。
 func (s *Store) GetGameAccountsByUserID(ctx context.Context, userID int64) ([]GameAccount, error) {
@@ -456,6 +456,7 @@ func (s *Store) CountGameAccountsByUserID(ctx context.Context, userID int64) (in
 
 // InsertGameAccount 插入新游戏 ID。
 func (s *Store) InsertGameAccount(ctx context.Context, tx *db.Tx, ga *GameAccount) (int64, error) {
+	ga.Version = 1
 	res, err := tx.ExecContext(ctx, `INSERT INTO game_accounts (
 		user_id, battletag, battletag_norm, rank_tank, rank_damage, rank_support, ranks_updated_at, created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -479,10 +480,15 @@ func (s *Store) UpdateGameAccount(ctx context.Context, tx *db.Tx, ga *GameAccoun
 		rank_damage = ?,
 		rank_support = ?,
 		ranks_updated_at = ?,
-		updated_at = ?
+		version = version + 1,
+		updated_at = ?,
+		version = version + 1
 		WHERE id = ? AND user_id = ?`,
 		ga.RankTank, ga.RankDamage, ga.RankSupport,
 		db.FormatUTC(ga.RanksUpdatedAt), db.FormatUTC(ga.UpdatedAt), ga.ID, ga.UserID)
+	if err == nil {
+		ga.Version++
+	}
 	return err
 }
 
@@ -492,12 +498,12 @@ func (s *Store) DeleteGameAccount(ctx context.Context, tx *db.Tx, id int64, user
 	return err
 }
 
-const contactCols = `id, user_id, type, value, created_at, updated_at`
+const contactCols = `id, user_id, type, value, created_at, updated_at, version`
 
 func scanContact(row interface{ Scan(dest ...any) error }) (*Contact, error) {
 	var c Contact
 	var created, updated string
-	err := row.Scan(&c.ID, &c.UserID, &c.Type, &c.Value, &created, &updated)
+	err := row.Scan(&c.ID, &c.UserID, &c.Type, &c.Value, &created, &updated, &c.Version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -547,6 +553,7 @@ func (s *Store) GetContactByUserAndType(ctx context.Context, userID int64, cType
 
 // InsertContact 插入联系方式。
 func (s *Store) InsertContact(ctx context.Context, tx *db.Tx, c *Contact) (int64, error) {
+	c.Version = 1
 	res, err := tx.ExecContext(ctx, `INSERT INTO contacts (
 		user_id, type, value, created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?)`,
@@ -724,6 +731,9 @@ func (s *Store) DeleteUserDataTx(ctx context.Context, tx *db.Tx, userID int64) e
 // （规则 31：现行站 leave_all_teams 加 MemberGroupMembership）。在任队长的人进不到这里，
 // 服务层先拦下了（规则 29）。
 func (s *Store) LeaveTeamsAndGroupsTx(ctx context.Context, tx *db.Tx, userID int64, at time.Time) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE teams SET version=version+1,updated_at=? WHERE id IN(SELECT team_id FROM team_memberships WHERE user_id=?)`, db.FormatUTC(at), userID); err != nil {
+		return err
+	}
 	stmts := []struct {
 		q    string
 		args []any

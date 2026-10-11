@@ -68,7 +68,7 @@ useHead({ title: "注销账号 · SJTU-OW", meta: [{ name: "robots", content: "n
         </div>
       </div>
       <p class="text-fg-2">
-        注销前可以先<button type="button" class="c-link" :disabled="exporting.pending.value" @click="exportAccount">导出你的个人信息</button>。
+        注销前可以先<a href="/me/export/" class="c-link" @click.prevent="exportAccount">导出你的个人信息</a>。
       </p>
       <CMutationError :message="exporting.message.value" />
       <div v-if="blockers?.length" class="c-notice c-notice--warn" role="alert" data-deletion-blocked>

@@ -7,6 +7,7 @@ export PATH=/srv/sjtu-ow-check/go/bin:/srv/sjtu-ow-check/node24/bin:$PATH
 cd "$ROOT/web"
 pnpm install --frozen-lockfile >/dev/null
 pnpm --filter @sjtu-ow/site build >/dev/null 2>&1
+pnpm --filter @sjtu-ow/admin build >/dev/null 2>&1
 cd "$ROOT"
 # 上一次没收干净的 Caddy 容器
 docker rm -f ow-parity-caddy >/dev/null 2>&1 || true

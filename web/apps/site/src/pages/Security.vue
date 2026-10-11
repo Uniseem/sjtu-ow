@@ -129,9 +129,9 @@ useHead({ title: "账号安全 · SJTU-OW", meta: [{ name: "robots", content: "n
             <h3 class="c-row__title">导出</h3>
             <p class="c-row__text">下载本站保存的你的全部个人信息（JSON 文件）。</p>
           </div>
-          <button type="button" class="c-btn c-btn--secondary" :disabled="exporting.pending.value" @click="exportAccount">
+          <a href="/me/export/" class="c-btn c-btn--secondary" data-no-loading :aria-disabled="exporting.pending.value || undefined" @click.prevent="exportAccount">
             <CIcon name="download" />导出我的个人信息
-          </button>
+          </a>
         </li>
         <li class="c-row c-row--plain">
           <div class="c-row__main">

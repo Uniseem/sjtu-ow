@@ -67,3 +67,7 @@ test("the stylesheet does not load daisyUI", () => {
   assert.equal(flat.includes(".btn{"), false);
   assert.equal(compiled.includes("--color-base-100"), false);
 });
+
+test("the production SSR shell keeps the viewport minimum height", () => {
+  assert.match(compiled, /\.min-h-screen\{min-height:100vh\}/);
+});

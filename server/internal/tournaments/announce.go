@@ -7,6 +7,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/notify"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/mail"
 )
@@ -18,6 +19,11 @@ var modeLabels = map[string]string{ModeIndividual: "个人报名", ModeTeam: "�
 // AnnounceKind 是赛事的「通知全体成员」（设计 10.4）：谁能发、读什么、信怎么写。
 func (s *Service) AnnounceKind() notify.Kind {
 	return notify.Kind{
+		Participants: s.participantDraft,
+		ParticipantsSent: func(ctx context.Context, tx *db.Tx, id int64) error {
+			_, err := tx.ExecContext(ctx, `UPDATE tournaments SET moved_from = NULL WHERE id = ?`, id)
+			return err
+		},
 		Key:  notify.KindTournament,
 		Noun: "这场赛事",
 		CanSend: func(v *app.Viewer) bool {
@@ -71,4 +77,25 @@ func newTournamentLetter(t *Tournament, unsubscribe, link string, now time.Time)
 		Reason:      announceWhy,
 		Unsubscribe: unsubscribe,
 	}
+}
+
+// participantDraft is shared by the preview and the confirmed send inside its
+// transaction, so recipient selection and letter content cannot diverge.
+func (s *Service) participantDraft(ctx context.Context, q db.DBTX, id int64, note string, now time.Time) (*notify.ParticipantDraft, error) {
+	t, err := GetTournament(ctx, q, id)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, api.NotFound("赛事不存在")
+	}
+	people, err := s.participants(ctx, q, id)
+	if err != nil {
+		return nil, err
+	}
+	problem := ""
+	if t.Status != StatusPublished {
+		problem = "只有已发布的赛事可以通知报名的人。"
+	}
+	return &notify.ParticipantDraft{Letter: s.updateLetter(t, t.MovedFrom, note), People: people, Problem: problem}, nil
 }

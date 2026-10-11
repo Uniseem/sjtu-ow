@@ -42,6 +42,8 @@ SHOTS = OUT / "shots"
 # 先用文档建议的 0.5%。
 CHANNEL = 18
 RATIO_MAX = 0.005
+TEST_SITE_URL = "http://localhost:8000"
+TEST_SIGNING_KEY = "parity-signing-key-0123456789-abcdefghij"
 
 spec = importlib.util.spec_from_file_location("ow_screens", ROOT / "scripts/screens.py")
 screens = importlib.util.module_from_spec(spec)
@@ -67,6 +69,7 @@ PAGES = [
     ("team", "visitor", "/teams/{team}/"),
     ("team", "member", "/teams/{team}/"),
     ("team-new", "member", "/teams/new/"),
+    ("team-apply", "officer", "/teams/{team}/apply/"),
     ("team-manage", "captain", "/teams/{team}/manage/"),
     ("members", "visitor", "/members/"),
     ("members-filter", "visitor", "/members/?role=support&free=1"),
@@ -153,8 +156,8 @@ def new_env(api_port: int) -> dict:
         **os.environ,
         "DATA_DIR": str(WORK / "new-data"),
         "MEDIA_DIR": str(WORK / "media"),
-        "SITE_URL": "http://127.0.0.1",
-        "SIGNING_KEY": "parity-signing-key-0123456789-abcdefghij",
+        "SITE_URL": TEST_SITE_URL,
+        "SIGNING_KEY": TEST_SIGNING_KEY,
         "FIELD_ENCRYPTION_KEY": "parity-field-key-0123456789-abcdefghijk",
         "SJTUOW_HTTP_ADDR": f"127.0.0.1:{api_port}",
     }
@@ -197,6 +200,7 @@ def prepare_new(env: dict) -> dict:
 def assets_dir() -> Path:
     assets = WORK / "assets"
     shutil.copytree(ROOT / "web/apps/site/dist/client", assets)
+    shutil.copytree(ROOT / "web/apps/admin/dist", assets / "admin")
     shutil.copytree(ROOT / "static/img", assets / "img")
     (assets / "css").mkdir()
     shutil.copy(ROOT / "static/css/error.css", assets / "css/error.css")
@@ -258,6 +262,8 @@ class RecordingDevTools(screens.DevTools):
             self.browser_errors.append('runtime: ' + params.get('exceptionDetails', {}).get('text', 'exception'))
         elif method == 'Runtime.consoleAPICalled' and any(a.get('value') == 'PARITY-CSP' for a in params.get('args', [])):
             self.browser_errors.append('CSP violation')
+        elif method == 'Runtime.consoleAPICalled' and params.get('type') in ('error', 'assert'):
+            self.browser_errors.append('console error: ' + ' '.join(str(a.get('value', a.get('description', ''))) for a in params.get('args', [])))
         elif method == 'Network.responseReceived' and params.get('response', {}).get('status', 0) >= 500:
             self.browser_errors.append('HTTP 500+: ' + params['response']['url'])
         return message
@@ -305,7 +311,12 @@ SNAPSHOT = """(() => {
     .map((el) => `${el.tagName.toLowerCase()}:${el.type || ''}:${el.name || ''}`).sort();
   const broken = [...document.images].filter((img) => img.complete && img.naturalWidth === 0).map((img) => img.getAttribute('src'));
   const box = main.getBoundingClientRect();
-  return { title: document.title, text, links, fields, broken,
+  const shell = ['body','#app','.c-masthead','#main','.c-footer'].map(selector => {
+    const node=document.querySelector(selector); if (!node) return {selector};
+    const css=getComputedStyle(node),rect=node.getBoundingClientRect();
+    return {selector,height:rect.height,top:rect.top,display:css.display,minHeight:css.minHeight,flex:css.flex,padding:css.padding,margin:css.margin,font:css.font,children:[...node.children].map(child=>({tag:child.tagName,class:child.className,height:child.getBoundingClientRect().height}))};
+  });
+  return { title: document.title, text, links, fields, broken, shell,
            box: { x: box.left + scrollX, y: box.top + scrollY, width: box.width, height: box.height } };
 })()"""
 
@@ -427,6 +438,10 @@ def approved_redirect(name, who, status):
 
 
 def main(argv: list[str]) -> int:
+    # Calendar addresses must be signed under identical fictional configuration
+    # on both sides; comparing different host names or keys is not page parity.
+    os.environ["SITE_URL"] = TEST_SITE_URL
+    os.environ["DJANGO_SECRET_KEY"] = TEST_SIGNING_KEY
     only = next((a.split("=", 1)[1].split(",") for a in argv if a.startswith("--only=")), None)
     wide = "--wide" in argv
     strict = "--strict" in argv
@@ -535,6 +550,8 @@ def main(argv: list[str]) -> int:
                 if note:
                     problems.append(note)
                 view = {"view": f"{width}-{scheme}", "ratio": ratio, "problems": problems}
+                if problems:
+                    view['shell'] = {'old': old.get('shell'), 'new': new.get('shell')}
                 if errors:
                     view['submissions'] = {'old': old['submission'], 'new': new['submission']}
                 row["views"].append(view)

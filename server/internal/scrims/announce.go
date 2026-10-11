@@ -8,6 +8,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/notify"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/mail"
 )
@@ -15,6 +16,11 @@ import (
 // AnnounceKind 是内战的「通知全体成员」（设计 10.4）。
 func (s *Service) AnnounceKind() notify.Kind {
 	return notify.Kind{
+		Participants: s.participantDraft,
+		ParticipantsSent: func(ctx context.Context, tx *db.Tx, id int64) error {
+			_, err := tx.ExecContext(ctx, `UPDATE scrims SET moved_from = NULL WHERE id = ?`, id)
+			return err
+		},
 		Key:  notify.KindScrim,
 		Noun: "这场内战",
 		CanSend: func(v *app.Viewer) bool {
@@ -70,4 +76,25 @@ func newScrimLetter(sc *Scrim, plain, unsubscribe, link string) mail.Letter {
 		Reason:      "你收到这封邮件，是因为你在社区开着「活动通知」。",
 		Unsubscribe: unsubscribe,
 	}
+}
+
+// participantDraft is shared by the preview and the confirmed send inside its
+// transaction, so recipient selection and letter content cannot diverge.
+func (s *Service) participantDraft(ctx context.Context, q db.DBTX, id int64, note string, now time.Time) (*notify.ParticipantDraft, error) {
+	sc, err := GetScrim(ctx, q, id)
+	if err != nil {
+		return nil, err
+	}
+	if sc == nil {
+		return nil, api.NotFound("内战不存在")
+	}
+	people, err := s.participants(ctx, q, id)
+	if err != nil {
+		return nil, err
+	}
+	problem := ""
+	if sc.Status != StatusPublished {
+		problem = "只有已发布的内战可以通知报名的人。"
+	}
+	return &notify.ParticipantDraft{Letter: s.updateLetter(sc, note), People: people, Problem: problem}, nil
 }

@@ -18,13 +18,33 @@
 # 安全头统一在这里加（12 号 3.4）。`>` 是推迟到上游答复之后再设，会覆盖上游带来的同名头，
 # 所以 SSR 不必再发 CSP。策略和 web/apps/site/server.ts 的 CSP 逐字一致（有测试比）。
 (security) {
-	header {
+	@ordinary_headers not path /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
+	@letter_preview_headers path /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview
+	@content_preview_headers path /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
+	header @ordinary_headers {
 		>Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		>X-Content-Type-Options "nosniff"
 		>Referrer-Policy "same-origin"
 		>Cross-Origin-Opener-Policy "same-origin"
 		>X-Frame-Options "DENY"
 		>Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	}
+	header @content_preview_headers {
+        >X-Content-Type-Options "nosniff"
+        >Referrer-Policy "no-referrer"
+        >Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        >X-Frame-Options "SAMEORIGIN"
+        >Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; frame-src https://player.bilibili.com; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-same-origin"
+    }
+	# 邮件独立文档沿用旧站 EMAIL_CSP：信纸内联排版，禁止所有脚本与表单。
+	# 仅这个精确的私有预览模式可嵌入同站页面，其他页面仍 DENY。
+	header @letter_preview_headers {
+		>Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		>X-Content-Type-Options "nosniff"
+		>Referrer-Policy "no-referrer"
+		>Cross-Origin-Opener-Policy "same-origin"
+		>X-Frame-Options "SAMEORIGIN"
+		>Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox"
 	}
 }
 
@@ -63,10 +83,10 @@
 
 	# 请求体上限（12 号 3.4）：传图的几个接口 16 MB（10 MB 的图走 base64 会变大），
 	# 其余接口 1 MB（Go 那边也是 1 MB）。
-	@uploads path_regexp ^/api/(admin/images/upload(-file)?|me/avatar|teams/[0-9]+/logo)$
+	@uploads path_regexp ^/api/(admin/images/upload(-file)?|me/avatar|teams/(logo|[0-9]+/logo))$
 	@api_body {
 		path /api/*
-		not path_regexp ^/api/(admin/images/upload(-file)?|me/avatar|teams/[0-9]+/logo)$
+		not path_regexp ^/api/(admin/images/upload(-file)?|me/avatar|teams/(logo|[0-9]+/logo))$
 	}
 
 	route {
@@ -97,6 +117,13 @@
 			header Cache-Control "public, max-age=86400"
 			file_server
 		}
+
+        handle /static/css/reader.css {
+            root * {$ASSETS_ROOT:/var/assets}/css
+            rewrite * /reader.css
+            header Cache-Control "no-cache"
+            file_server
+        }
 
 		# 错误页的样式表（error-page.ts 引用它）
 		handle_path /static/css/* {
@@ -137,7 +164,7 @@
 		}
 
 		# 字体：只给带哈希的样式表和切片；原文件不公开（旧站 v7.18）
-		@hashed_fonts path_regexp ^/media/fonts/(css/fonts\.[a-f0-9]{12}\.css|[0-9]+/[^/]+\.woff2)$
+		@hashed_fonts path_regexp ^/media/fonts/(css/(fonts|preview)\.[a-f0-9]{12}\.css|[0-9]+/[^/]+\.woff2)$
 		handle @hashed_fonts {
 			root * {$MEDIA_PARENT:/var}
 			header Cache-Control "public, max-age=31536000, immutable"
@@ -170,6 +197,19 @@
 			header Allow "GET, HEAD"
 			respond 405
 		}
+
+        # 独立后台 SPA：静态块带哈希，页面 shell 每次重验证。
+        handle_path /admin/assets/* {
+            root * {$ASSETS_ROOT:/var/assets}/admin/assets
+            header Cache-Control "public, max-age=31536000, immutable"
+            file_server
+        }
+        handle /admin/* {
+            root * {$ASSETS_ROOT:/var/assets}/admin
+            rewrite * /index.html
+            header Cache-Control "no-cache"
+            file_server
+        }
 
 		# 其余页面：SSR
 		handle {

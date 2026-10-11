@@ -1,0 +1,860 @@
+[
+ {
+  "name": "error-login",
+  "who": "visitor",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.00046397379912663754,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/login/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/login",
+      "status": 401
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0017691056910569105,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/login/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/login",
+      "status": 401
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0004628366084425036,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/login/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/login",
+      "status": 401
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.001764769647696477,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/login/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/login",
+      "status": 401
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-signup-mismatch",
+  "who": "visitor",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.000673835931254996,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.002440486287814532,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0006688399280575539,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0024223918575063614,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-signup-short",
+  "who": "visitor",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0004608812949640288,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0016692111959287531,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.00045463629096722624,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0016465931580435396,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-signup-numeric",
+  "who": "visitor",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0005426908473221423,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0019655074922250494,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.00053707034372502,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0019451512581283574,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/signup/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/register",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-reauth",
+  "who": "member",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0005806010928961748,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/reauthenticate/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reauthenticate",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.002280922431865828,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/reauthenticate/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reauthenticate",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0005820241347905282,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/reauthenticate/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reauthenticate",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.002286512928022362,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/reauthenticate/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reauthenticate",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-change-old",
+  "who": "member",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-change-mismatch",
+  "who": "member",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-change-short",
+  "who": "member",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/change/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/change-password",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-email-code",
+  "who": "visitor",
+  "path": "/accounts/confirm-email/?email=pending@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/confirm-email/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/verify-email",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/confirm-email/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/verify-email",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/confirm-email/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/verify-email",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/confirm-email/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/verify-email",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-reset-code",
+  "who": "visitor",
+  "path": "/accounts/password/reset/confirm/?email=member@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/reset/confirm/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reset-password/verify",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/reset/confirm/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reset-password/verify",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/reset/confirm/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reset-password/verify",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/reset/confirm/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reset-password/verify",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "error-reset-short",
+  "who": "visitor",
+  "path": "/accounts/password/reset/complete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0011160714285714285,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/reset/complete/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reset-password/complete",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.004256243213897937,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/reset/complete/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reset-password/complete",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.001092155612244898,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/reset/complete/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reset-password/complete",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.004165038002171552,
+    "problems": [],
+    "submissions": {
+     "old": {
+      "path": "/accounts/password/reset/complete/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reset-password/complete",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": true
+ }
+]

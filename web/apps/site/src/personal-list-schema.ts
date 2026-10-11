@@ -96,7 +96,7 @@ export function personalRegistrations(raw: GetApiMeRegistrationsOut): PersonalRe
       if (signup.registration_id !== null && !id(signup.registration_id)) invalid()
     }
   }
-  if (value.calendar !== undefined) {
+  if (value.calendar !== undefined && value.calendar !== null) {
     const calendar = row(value.calendar)
     if (!calendar) invalid()
     textFields(calendar, ["url", "webcal"])
@@ -112,7 +112,7 @@ export function personalScrims(raw: PersonalScrims): PersonalScrims {
     if (!id(signup.scrim_id)) invalid()
     textFields(signup, ["title", "placement", "status"])
     booleanFields(signup, ["role_tank", "role_damage", "role_support"])
-    if (!date(signup.starts_at)) invalid()
+    if (signup.starts_at !== null && !date(signup.starts_at)) invalid()
   }
   return raw
 }

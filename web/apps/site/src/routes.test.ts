@@ -1,3 +1,5 @@
+import {createMemoryHistory,createRouter} from "vue-router"
+import {ADMIN_ROUTES} from "../../admin/src/router"
 import { expect, test } from "vitest"
 import { createSiteRouter } from "./router"
 import { NAV } from "./sections"
@@ -92,7 +94,7 @@ test("admin pages resolve cleanly", () => {
     "/admin/log/",
     "/admin/manual/",
   ]) {
-    expect(match(url).matched.length, url).toBeGreaterThan(0)
+    expect(createRouter({history:createMemoryHistory(),routes:ADMIN_ROUTES}).resolve(url).matched.length,url).toBeGreaterThan(0)
   }
 })
 

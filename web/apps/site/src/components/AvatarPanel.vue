@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onUnmounted, ref } from "vue"
+import { onMounted, onUnmounted, ref } from "vue"
 import { deleteApiMeAvatar, postApiMeAvatar, ApiError } from "@sjtu-ow/api"
 import CAvatar from "@sjtu-ow/ui/CAvatar.vue"
 import CField from "@sjtu-ow/ui/CField.vue"
@@ -20,6 +20,8 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const reading = ref(false)
 const fileMessage = ref("")
 const notice = ref("")
+const enhanced = ref(false)
+onMounted(() => { enhanced.value = true })
 let reader: AbortController | null = null
 
 const upload = useMutation(
@@ -92,7 +94,7 @@ onUnmounted(() => reader?.abort())
         :aria-busy="reading || upload.pending.value || undefined"
         @submit.prevent="choose"
       >
-        <CField label="头像图片" input-id="id_avatar_file" :errors="fileMessage ? [fileMessage] : upload.fields.value.file">
+        <CField label="上传新头像" input-id="id_avatar_file" :errors="fileMessage ? [fileMessage] : upload.fields.value.file">
           <input
             id="id_avatar_file"
             ref="fileInput"
@@ -104,9 +106,12 @@ onUnmounted(() => reader?.abort())
             @change="choose"
           >
           <template #help>
-            <span id="id_avatar_file_helptext">JPG、PNG 或 WebP，不超过 5 MB。会从中间裁成正方形，想要别的范围请先自己裁好。</span>
+            <span id="id_avatar_file_helptext">JPG、PNG 或 WebP，不超过 5MB，至少 128×128 像素。会从中间裁成正方形，想要别的范围请先自己裁好。选好图片就上传，马上换上。</span>
           </template>
         </CField>
+        <div class="c-formbar" :hidden="enhanced">
+          <button type="submit" class="c-btn c-btn--primary" data-autosave-button :hidden="enhanced" :disabled="reading || !upload.canStart.value">上传</button>
+        </div>
         <p v-if="reading || upload.pending.value" class="c-autosave" data-autosubmit-status role="status">正在上传，传好就换上…</p>
         <CMutationError
           :message="upload.message.value"

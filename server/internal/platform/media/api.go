@@ -60,6 +60,7 @@ type ListCollectionsOut struct {
 
 // Routes 注册媒体域相关接口。
 func (m *Module) Routes(r *api.Registry) {
+	m.registerAdminEditing(r)
 	// 图片信息读取
 	api.Get(r, "/api/images/{id}", api.Public, m.getImage)
 	api.Delete(r, "/api/images/{id}", api.Cap(app.Cap("images.manage")), m.deleteImage,
@@ -70,11 +71,11 @@ func (m *Module) Routes(r *api.Registry) {
 	api.Raw(r, http.MethodGet, "/media/r/{id}/{file}", nil, m.ServeThumbnailHTTP)
 
 	// 管理后台图片管理
-	api.Get(r, "/api/admin/images", api.Cap(app.Cap("images.manage")), m.listImages,
+	api.Get(r, "/api/admin/images", api.Cap(app.Cap("admin.enter")), m.listImages,
 		api.Nav("content", "images"))
-	api.Get(r, "/api/admin/image-collections", api.Cap(app.Cap("images.manage")), m.listCollections,
+	api.Get(r, "/api/admin/image-collections", api.Cap(app.Cap("admin.enter")), m.listCollections,
 		api.Nav("content", "images"))
-	api.Post(r, "/api/admin/images/upload", api.Cap(app.Cap("images.contribute")), m.uploadImage,
+	api.Post(r, "/api/admin/images/upload", api.Cap(app.Cap("images.contribute")), m.uploadImage, api.BodyLimit(16<<20),
 		api.Nav("content", "images"), api.NoLimit("上传图片"))
 	api.Raw(r, http.MethodPost, "/api/admin/images/upload-file", nil, m.ServeUploadHTTP)
 }
@@ -86,6 +87,9 @@ func (m *Module) getImage(ctx *app.Ctx, in struct {
 }
 
 func (m *Module) listImages(ctx *app.Ctx, in ListImagesIn) (ListImagesOut, error) {
+	if !ctx.Viewer.HasCap("images.manage") && !ctx.Viewer.HasCap("images.contribute") {
+		return ListImagesOut{}, api.Forbidden()
+	}
 	items, total, err := m.svc.ListImages(ctx.Context, in.CollectionKey, in.CollectionID, in.Q, in.Page, in.PageSize)
 	if err != nil {
 		return ListImagesOut{}, err
@@ -107,9 +111,17 @@ func (m *Module) listImages(ctx *app.Ctx, in ListImagesIn) (ListImagesOut, error
 }
 
 func (m *Module) listCollections(ctx *app.Ctx, _ struct{}) (ListCollectionsOut, error) {
+	if !ctx.Viewer.HasCap("images.manage") && !ctx.Viewer.HasCap("images.contribute") {
+		return ListCollectionsOut{}, api.Forbidden()
+	}
 	cols, err := m.svc.ListCollections(ctx.Context)
 	if err != nil {
 		return ListCollectionsOut{}, err
+	}
+	for i := range cols {
+		cols[i].CanAdd = ctx.Viewer != nil && ctx.Viewer.Superuser
+		cols[i].CanChange = cols[i].CanAdd && cols[i].ParentID != nil
+		cols[i].CanDelete = cols[i].CanChange && cols[i].ImageCount == 0
 	}
 	return ListCollectionsOut{Collections: cols}, nil
 }

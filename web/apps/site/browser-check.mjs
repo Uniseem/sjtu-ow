@@ -57,6 +57,7 @@ async function startServers() {
         if (!refresh) flash = "";
       }
       else if (req.url.startsWith("/api/page/home")) res.end(JSON.stringify({ stats: { member_count: 0, team_count: 0, scrims_held: 0 } }));
+      else if (req.url.startsWith("/api/teams")) res.end(JSON.stringify({banner_image_id:null,teams:[],team_total:0,recruiting_total:0,role_counts:{tank:0,damage:0,support:0},max_members:10,recruiting_only:false,role:""}));
       // Like Go: an editor's page that is not there (/<slug>/ asks for it, 270).
       else if (req.url.startsWith("/api/page/")) { res.statusCode = 404; res.end(JSON.stringify({ error: { code: "not_found", message: "页面不存在" } })); }
       else res.end(JSON.stringify({}));
@@ -247,7 +248,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 600));
     return { there, back: { path: location.pathname, h1: document.querySelector("h1")?.textContent, same: window.__same }, violations };
   })()`)
-  if (nav.there.path !== "/teams/" || nav.there.h1 !== "战队" || nav.there.title !== "战队" || nav.there.same !== 1) fail("客户端换页", nav)
+  if (nav.there.path !== "/teams/" || nav.there.h1 !== "战队" || nav.there.title !== "战队 · SJTU-OW" || nav.there.same !== 1) fail("客户端换页", nav)
   if (nav.back.path !== "/" || (nav.back.h1 !== "SJTU-OW" && nav.back.h1 !== "上海交通大学守望先锋社区")) fail("后退", nav)
   const navMessages = noted().filter((line) => !/favicon/i.test(line))
   if (navMessages.length) fail("换页报错", navMessages)

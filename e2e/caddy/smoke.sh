@@ -24,10 +24,13 @@ API=$((19000 + RANDOM % 500))
 SSR=$((19500 + RANDOM % 500))
 
 # ---- 卷里的东西 ----
-mkdir -p "$TMP/assets/assets" "$TMP/assets/img" "$TMP/assets/css" \
+mkdir -p "$TMP/assets/assets" "$TMP/assets/img" "$TMP/assets/css" "$TMP/assets/admin/assets" \
   "$TMP/media/r/5" "$TMP/media/images" "$TMP/media/original_images" "$TMP/media/fonts/css" "$TMP/error_pages"
 echo "ENTRY" >"$TMP/assets/assets/entry-abc.js"
 echo "THEME" >"$TMP/assets/theme.js"
+echo "ADMIN-SHELL" >"$TMP/assets/admin/index.html"
+echo "ADMIN-CHUNK" >"$TMP/assets/admin/assets/editor-abc.js"
+echo "READER" >"$TMP/assets/css/reader.css"
 echo "<svg/>" >"$TMP/assets/img/a.svg"
 echo "ICO" >"$TMP/assets/img/favicon.ico"
 cp "$ROOT/static/css/error.css" "$TMP/assets/css/error.css"
@@ -35,6 +38,7 @@ echo "WEBP-5" >"$TMP/media/r/5/fill-88x88.webp"
 echo "OLD-JPG" >"$TMP/media/images/old.jpg"
 echo "SECRET" >"$TMP/media/original_images/secret.jpg"
 echo "FONT-CSS" >"$TMP/media/fonts/css/fonts.0123456789ab.css"
+echo "FONT-PREVIEW" >"$TMP/media/fonts/css/preview.0123456789ab.css"
 echo "RAW-TTF" >"$TMP/media/fonts/raw.ttf"
 cp "$ROOT/deploy/error_pages/maintenance.html" "$TMP/error_pages/maintenance.html"
 
@@ -140,6 +144,14 @@ check "原图不公开" "404" "$(status "$BASE/media/original_images/secret.jpg"
 check "带哈希的字体样式表给" "FONT-CSS" "$(body "$BASE/media/fonts/css/fonts.0123456789ab.css")"
 check "字体原件不给" "404" "$(status "$BASE/media/fonts/raw.ttf")"
 
+check "独立后台 shell 不走 SSR" "ADMIN-SHELL" "$(body "$BASE/admin/articles/5/")"
+check "后台 shell 重新验证缓存" "no-cache" "$(header Cache-Control "$BASE/admin/articles/5/")"
+check "后台独立块" "ADMIN-CHUNK" "$(body "$BASE/admin/assets/editor-abc.js")"
+check "后台块长期缓存" "public, max-age=31536000, immutable" "$(header Cache-Control "$BASE/admin/assets/editor-abc.js")"
+check "阅读预览固定样式" "READER" "$(body "$BASE/static/css/reader.css")"
+check "阅读预览固定样式重新验证" "no-cache" "$(header Cache-Control "$BASE/static/css/reader.css")"
+check "排版预览哈希样式" "FONT-PREVIEW" "$(body "$BASE/media/fonts/css/preview.0123456789ab.css")"
+
 echo "安全头"
 check "页面的 CSP 是 Caddy 的（覆盖了上游带来的）" "$CSP" "$(header Content-Security-Policy "$BASE/")"
 check "只有一条 CSP" "1" "$(count_header Content-Security-Policy "$BASE/")"
@@ -148,6 +160,11 @@ check "接口也带 nosniff" "nosniff" "$(header X-Content-Type-Options "$BASE/a
 check "文件也带 HSTS" "max-age=31536000; includeSubDomains; preload" "$(header Strict-Transport-Security "$BASE/assets/entry-abc.js")"
 check "Referrer-Policy" "same-origin" "$(header Referrer-Policy "$BASE/")"
 check "X-Frame-Options" "DENY" "$(header X-Frame-Options "$BASE/")"
+check "私有信件预览同站可嵌入" "SAMEORIGIN" "$(header X-Frame-Options "$BASE/api/letters/batch/1/preview")"
+check "信纸 CSP 隔离脚本" "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox" "$(header Content-Security-Policy "$BASE/api/letters/batch/1/preview")"
+check "Markdown 预览只允许外部阅读样式" "default-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; frame-src https://player.bilibili.com; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-same-origin" "$(header Content-Security-Policy "$BASE/api/admin/previews/token")"
+check "样张同站可嵌入" "SAMEORIGIN" "$(header X-Frame-Options "$BASE/api/admin/mail-samples/signup/preview")"
+
 
 echo "请求体上限"
 head -c 2000000 /dev/zero | tr '\0' 'a' >"$TMP/big"

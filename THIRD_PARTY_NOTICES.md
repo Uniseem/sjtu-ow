@@ -263,3 +263,13 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## 290：独立后台交互依赖
+
+CodeMirror 6（`@codemirror/state`、`view`、`commands`、`lang-markdown`、`language`）与 SortableJS 用于本轮已批准的编辑器和编排交互；官方 npm 元数据逐包核对为 MIT。实际版本以 `web/pnpm-lock.yaml` 为准。官方许可入口：
+
+- https://github.com/codemirror/view/blob/main/LICENSE
+- https://github.com/codemirror/lang-markdown/blob/main/LICENSE
+- https://github.com/SortableJS/Sortable/blob/master/LICENSE
+
+Markdown 使用现代 `@codemirror/lang-markdown` 与 `@codemirror/language` 接口，不依赖早期文档所写的独立 `@codemirror/streamparser` 包。

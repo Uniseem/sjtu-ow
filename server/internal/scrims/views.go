@@ -5,29 +5,32 @@ import (
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/notify"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 // Card 是列表里的一场内战。
 type Card struct {
-	ID             int64      `json:"id"`
-	Title          string     `json:"title"`
-	StartsAt       *time.Time `json:"starts_at"`
-	SignupDeadline *time.Time `json:"signup_deadline"`
-	Format         string     `json:"format"`
-	FormatLabel    string     `json:"format_label"`
-	SjtuOnly       bool       `json:"sjtu_only"`
-	Status         string     `json:"status"`
-	SignupOpen     bool       `json:"signup_open"`
-	SignupTotal    int        `json:"signup_total"`
-	PlayersNeeded  int        `json:"players_needed"`
+	ID                  int64      `json:"id"`
+	Title               string     `json:"title"`
+	StartsAt            *time.Time `json:"starts_at"`
+	SignupDeadline      *time.Time `json:"signup_deadline"`
+	Format              string     `json:"format"`
+	FormatLabel         string     `json:"format_label"`
+	SjtuOnly            bool       `json:"sjtu_only"`
+	Status              string     `json:"status"`
+	SignupOpen          bool       `json:"signup_open"`
+	SignupTotal         int        `json:"signup_total"`
+	PlayersNeeded       int        `json:"players_needed"`
+	DefaultCoverImageID *int64     `json:"default_cover_image_id"`
 }
 
 func cardOf(sc *Scrim, total int, now time.Time) Card {
 	return Card{ID: sc.ID, Title: sc.Title, StartsAt: sc.StartsAt, SignupDeadline: sc.Deadline(), Format: sc.Format,
 		FormatLabel: FormatLabels[sc.Format], SjtuOnly: sc.SjtuOnly, Status: sc.Status, SignupOpen: sc.SignupOpen(now),
-		SignupTotal: total, PlayersNeeded: sc.PlayersNeeded()}
+		SignupTotal: total, PlayersNeeded: sc.PlayersNeeded(), DefaultCoverImageID: sc.DefaultCoverImageID}
 }
 
 func signupTotals(ctx context.Context, q db.DBTX) (map[int64]int, error) {
@@ -77,6 +80,13 @@ func (s *Service) List(ctx context.Context, now time.Time) ([]Card, error) {
 	if err != nil {
 		return nil, err
 	}
+	covers, err := media.LoadPool(ctx, rd, "default_cover")
+	if err != nil {
+		return nil, err
+	}
+	for _, sc := range list {
+		sc.DefaultCoverImageID = media.PickCover(covers, sc.ID, 26)
+	}
 	out := make([]Card, 0, len(list))
 	for _, sc := range list {
 		out = append(out, cardOf(sc, totals[sc.ID], now))
@@ -86,8 +96,10 @@ func (s *Service) List(ctx context.Context, now time.Time) ([]Card, error) {
 
 // PublicSignup 是详情页上公开的名单一行：昵称和能打的位置，不带游戏 ID 和分队。
 type PublicSignup struct {
-	Nickname string   `json:"nickname"`
-	Roles    []string `json:"roles"`
+	UserID        int64    `json:"user_id"`
+	AvatarImageID *int64   `json:"avatar_image_id"`
+	Nickname      string   `json:"nickname"`
+	Roles         []string `json:"roles"`
 }
 
 // MySignup 是登录的人自己的报名和去向（规则 166：只给本人，公开页面没有任何分队）。
@@ -97,6 +109,8 @@ type MySignup struct {
 	Roles         []string `json:"roles"`
 	Placement     string   `json:"placement"`
 	CanCancel     bool     `json:"can_cancel"`
+	CanEdit       bool     `json:"can_edit"`
+	Battletag     string   `json:"battletag"`
 }
 
 // Counts 是详情页上的人数。
@@ -109,12 +123,16 @@ type Counts struct {
 
 // Page 是内战详情页要的全部。
 type Page struct {
-	Scrim    *Scrim         `json:"scrim"`
-	Card     Card           `json:"card"`
-	Counts   Counts         `json:"counts"`
-	Signups  []PublicSignup `json:"signups"`
-	Mine     *MySignup      `json:"mine"`
-	Problems []string       `json:"problems"`
+	Scrim               *Scrim              `json:"scrim"`
+	Card                Card                `json:"card"`
+	Counts              Counts              `json:"counts"`
+	Signups             []PublicSignup      `json:"signups"`
+	Mine                *MySignup           `json:"mine"`
+	Problems            []string            `json:"problems"`
+	BodyHTML            string              `json:"body_html"`
+	DefaultCoverImageID *int64              `json:"default_cover_image_id"`
+	GroupURL            string              `json:"group_url"`
+	GameAccounts        []GameAccountChoice `json:"game_accounts"`
 }
 
 // Detail 详情（公开；草稿是 404，不泄露存在，规则 148）。
@@ -132,7 +150,7 @@ func (s *Service) Detail(ctx *app.Ctx, id int64) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &Page{Scrim: sc, Signups: []PublicSignup{}, Problems: []string{}}
+	p := &Page{Scrim: sc, Signups: []PublicSignup{}, Problems: []string{}, GameAccounts: []GameAccountChoice{}}
 	hasSplit := false
 	for _, g := range rows {
 		p.Counts.Total++
@@ -152,11 +170,15 @@ func (s *Service) Detail(ctx *app.Ctx, id int64) (*Page, error) {
 		if err := rd.QueryRowContext(ctx.Context, `SELECT nickname FROM users WHERE id = ?`, g.UserID).Scan(&nick); err != nil {
 			return nil, err
 		}
-		p.Signups = append(p.Signups, PublicSignup{Nickname: nick, Roles: g.Roles()})
+		p.Signups = append(p.Signups, PublicSignup{UserID: g.UserID, Nickname: nick, Roles: g.Roles()})
 	}
 	p.Card = cardOf(sc, p.Counts.Total, now)
 	v := ctx.Viewer
 	if v != nil && !v.Disabled && v.ID > 0 {
+		p.GameAccounts, err = accountChoices(ctx.Context, rd, v.ID)
+		if err != nil {
+			return nil, err
+		}
 		var mine *Signup
 		for _, g := range rows {
 			if g.UserID == v.ID {
@@ -166,12 +188,26 @@ func (s *Service) Detail(ctx *app.Ctx, id int64) (*Page, error) {
 		if mine != nil {
 			d := sc.Deadline()
 			p.Mine = &MySignup{ID: mine.ID, GameAccountID: mine.GameAccountID, Roles: mine.Roles(),
-				Placement: PlacementText(sc, mine, hasSplit), CanCancel: d != nil && !now.After(*d)}
+				Placement: PlacementText(sc, mine, hasSplit), CanCancel: d != nil && !now.After(*d), CanEdit: sc.SignupOpen(now)}
+			if mine.GameAccountID != nil {
+				account, err := getAccount(ctx.Context, rd, *mine.GameAccountID)
+				if err != nil {
+					return nil, err
+				}
+				if account != nil {
+					p.Mine.Battletag = account.Battletag
+				} else {
+					p.Mine.Battletag = deletedID
+				}
+			}
 		} else {
 			if p.Problems, err = s.signupProblems(ctx.Context, rd, sc, v.ID, now); err != nil {
 				return nil, err
 			}
 		}
+	}
+	if err := s.projectPublicDetail(ctx, p); err != nil {
+		return nil, err
 	}
 	return p, nil
 }
@@ -179,9 +215,12 @@ func (s *Service) Detail(ctx *app.Ctx, id int64) (*Page, error) {
 // AdminRow 是后台内战列表的一行。
 type AdminRow struct {
 	Card
-	Missing   []string `json:"missing"`
-	CanDelete bool     `json:"can_delete"`
-	Stale     bool     `json:"teams_stale"`
+	Missing            []string `json:"missing"`
+	CanDelete          bool     `json:"can_delete"`
+	Stale              bool     `json:"teams_stale"`
+	Description        string   `json:"description"`
+	EveryoneNotices    int      `json:"everyone_notices"`
+	ParticipantNotices int      `json:"participant_notices"`
 }
 
 // AdminList 后台列表（含草稿和已取消的）。
@@ -198,6 +237,10 @@ func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	notices, err := notify.HistoryCounts(ctx.Context, rd, notify.KindScrim)
+	if err != nil {
+		return nil, err
+	}
 	now := ctx.Now().UTC()
 	out := make([]AdminRow, 0, len(list))
 	for _, sc := range list {
@@ -206,7 +249,8 @@ func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
 			miss = []string{}
 		}
 		out = append(out, AdminRow{Card: cardOf(sc, totals[sc.ID], now), Missing: miss,
-			CanDelete: sc.Status == StatusDraft && totals[sc.ID] == 0, Stale: teamsStale(sc)})
+			CanDelete: sc.Status == StatusDraft && totals[sc.ID] == 0, Stale: teamsStale(sc),
+			Description: sc.Description, EveryoneNotices: notices[sc.ID][notify.Everyone], ParticipantNotices: notices[sc.ID][notify.Participants]})
 	}
 	return out, nil
 }
@@ -233,6 +277,6 @@ func (s *Service) AdminGet(ctx *app.Ctx, id int64) (*AdminRow, *Scrim, error) {
 		miss = []string{}
 	}
 	row := &AdminRow{Card: cardOf(sc, totals[sc.ID], ctx.Now().UTC()), Missing: miss,
-		CanDelete: sc.Status == StatusDraft && totals[sc.ID] == 0, Stale: teamsStale(sc)}
+		CanDelete: sc.Status == StatusDraft && totals[sc.ID] == 0, Stale: teamsStale(sc), Description: sc.Description}
 	return row, sc, nil
 }

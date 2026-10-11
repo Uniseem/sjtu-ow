@@ -68,6 +68,7 @@ type Tournament struct {
 	Summary              string     `json:"summary"`
 	Description          string     `json:"description"`
 	CoverImageID         *int64     `json:"cover_image_id"`
+	DefaultCoverImageID  *int64     `json:"default_cover_image_id"`
 	StartsAt             *time.Time `json:"starts_at"`
 	RegistrationOpensAt  *time.Time `json:"registration_opens_at"`
 	RegistrationClosesAt *time.Time `json:"registration_closes_at"`
@@ -123,6 +124,7 @@ func (t *Tournament) TakesIndividuals() bool { return t.RegistrationMode == Mode
 
 // Registration 是一支队对一项赛事的一次报名；TeamID 为空是临时队伍。
 type Registration struct {
+	StatusLabel   string    `json:"status_label"`
 	ID            int64     `json:"id"`
 	TournamentID  int64     `json:"tournament_id"`
 	TeamID        *int64    `json:"team_id"`
@@ -144,30 +146,36 @@ func (r *Registration) Adhoc() bool { return r.TeamID == nil }
 
 // RosterMember 是名单快照里的一个人。
 type RosterMember struct {
-	ID            int64  `json:"id"`
-	UserID        int64  `json:"user_id"`
-	GameAccountID *int64 `json:"game_account_id"`
-	Nickname      string `json:"nickname"`
-	Battletag     string `json:"battletag"`
-	IsSJTU        bool   `json:"is_sjtu"`
-	RankTank      *int   `json:"rank_tank"`
-	RankDamage    *int   `json:"rank_damage"`
-	RankSupport   *int   `json:"rank_support"`
-	IsCaptain     bool   `json:"is_captain"`
-	Active        bool   `json:"is_active"`
+	RankLabels    []string `json:"rank_labels"`
+	RankSummary   string   `json:"rank_summary"`
+	ID            int64    `json:"id"`
+	UserID        int64    `json:"user_id"`
+	GameAccountID *int64   `json:"game_account_id"`
+	Nickname      string   `json:"nickname"`
+	Battletag     string   `json:"battletag"`
+	IsSJTU        bool     `json:"is_sjtu"`
+	RankTank      *int     `json:"rank_tank"`
+	RankDamage    *int     `json:"rank_damage"`
+	RankSupport   *int     `json:"rank_support"`
+	IsCaptain     bool     `json:"is_captain"`
+	Active        bool     `json:"is_active"`
 }
 
 // StatusLog 是一条状态日志。
 type StatusLog struct {
-	ID            int64     `json:"id"`
-	Action        string    `json:"action"`
-	FromStatus    string    `json:"from_status"`
-	ToStatus      string    `json:"to_status"`
-	ActorType     string    `json:"actor_type"`
-	ActorUserID   *int64    `json:"actor_user_id,omitempty"`
-	RosterVersion int64     `json:"roster_version"`
-	Note          string    `json:"note"`
-	CreatedAt     time.Time `json:"created_at"`
+	ActionLabel     string    `json:"action_label"`
+	FromStatusLabel string    `json:"from_status_label"`
+	ToStatusLabel   string    `json:"to_status_label"`
+	ActorTypeLabel  string    `json:"actor_type_label"`
+	ID              int64     `json:"id"`
+	Action          string    `json:"action"`
+	FromStatus      string    `json:"from_status"`
+	ToStatus        string    `json:"to_status"`
+	ActorType       string    `json:"actor_type"`
+	ActorUserID     *int64    `json:"actor_user_id,omitempty"`
+	RosterVersion   int64     `json:"roster_version"`
+	Note            string    `json:"note"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 // IndividualSignup 是散人池里的一个人。

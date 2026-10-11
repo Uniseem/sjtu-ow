@@ -47,6 +47,13 @@ func (s *Service) canRegister(ctx context.Context, userID int64) (bool, error) {
 
 // memberProblems 一个人自己的问题（规则 116）：功能被限制、资料不完整、仅限交大。
 func (s *Service) memberProblems(ctx context.Context, q db.DBTX, t *Tournament, userID int64, asSelf bool) ([]string, error) {
+	key := memberProblemKey{Tournament: t.ID, User: userID, Self: asSelf}
+	cache := projectionCacheFrom(ctx)
+	if cache != nil {
+		if messages, ok := cache.members[key]; ok {
+			return append([]string{}, messages...), nil
+		}
+	}
 	u, err := getUser(ctx, q, userID)
 	if err != nil {
 		return nil, err
@@ -90,17 +97,30 @@ func (s *Service) memberProblems(ctx context.Context, q db.DBTX, t *Tournament, 
 	if t.SjtuOnly && !u.IsSJTU {
 		out = append(out, fmt.Sprintf("该赛事仅限交大用户参加，%s不符合", strings.TrimSpace(who)))
 	}
+	if cache != nil {
+		cache.members[key] = append([]string{}, out...)
+	}
 	return out, nil
 }
 
 // rosterConflict 这个人已经在别的活跃名单上（规则 117）。
 func (s *Service) rosterConflict(ctx context.Context, q db.DBTX, tournamentID, userID, excludeReg int64) (string, error) {
+	key := conflictKey{Tournament: tournamentID, User: userID, Excluded: excludeReg}
+	cache := projectionCacheFrom(ctx)
+	if cache != nil {
+		if message, ok := cache.conflicts[key]; ok {
+			return message, nil
+		}
+	}
 	var name string
 	err := q.QueryRowContext(ctx, `SELECT r.team_name FROM registration_members rm
 		JOIN registrations r ON r.id = rm.registration_id
 		WHERE rm.tournament_id = ? AND rm.user_id = ? AND rm.is_active = 1 AND rm.registration_id <> ?
 		ORDER BY rm.id LIMIT 1`, tournamentID, userID, excludeReg).Scan(&name)
 	if err == sql.ErrNoRows {
+		if cache != nil {
+			cache.conflicts[key] = ""
+		}
 		return "", nil
 	}
 	if err != nil {
@@ -110,7 +130,11 @@ func (s *Service) rosterConflict(ctx context.Context, q db.DBTX, tournamentID, u
 	if err != nil || u == nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s 已经在该赛事的战队「%s」名单中", u.Nickname, name), nil
+	message := fmt.Sprintf("%s 已经在该赛事的战队「%s」名单中", u.Nickname, name)
+	if cache != nil {
+		cache.conflicts[key] = message
+	}
+	return message, nil
 }
 
 type teamMember struct {
@@ -304,9 +328,11 @@ func snapshotJSON(rows []RosterMember) string {
 
 // SubmitInput 是整队报名的入参。Accounts 是 用户编号 → 所选游戏 ID 编号。
 type SubmitInput struct {
-	TournamentID int64
-	TeamID       int64
-	Accounts     map[string]int64
+	TournamentID      int64
+	TeamID            int64
+	Accounts          map[string]int64
+	BaseTeamVersion   int64
+	BaseRosterVersion int64
 }
 
 // Submit 首次提交、重新提交、同步名单都走这里（规则 115–121）。
@@ -327,11 +353,15 @@ func (s *Service) Submit(ctx *app.Ctx, in SubmitInput) (*Registration, error) {
 		}
 		var team struct{ ID int64 }
 		var teamName string
-		if err := tx.QueryRowContext(txCtx, `SELECT id, name FROM teams WHERE id = ? AND disbanded_at IS NULL`, in.TeamID).Scan(&team.ID, &teamName); err != nil {
+		var teamVersion int64
+		if err := tx.QueryRowContext(txCtx, `SELECT id, name,version FROM teams WHERE id = ? AND disbanded_at IS NULL`, in.TeamID).Scan(&team.ID, &teamName, &teamVersion); err != nil {
 			if err == sql.ErrNoRows {
 				return api.NotFound("战队不存在")
 			}
 			return err
+		}
+		if in.BaseTeamVersion > 0 && in.BaseTeamVersion != teamVersion {
+			return api.NewErr(409, "stale_roster", "战队成员或资料有变化，请重新打开报名表。")
 		}
 		var existing *Registration
 		{
@@ -342,6 +372,9 @@ func (s *Service) Submit(ctx *app.Ctx, in SubmitInput) (*Registration, error) {
 			if err == nil {
 				existing = r
 			}
+		}
+		if in.BaseRosterVersion > 0 && (existing == nil || existing.RosterVersion != in.BaseRosterVersion) {
+			return api.NewErr(409, "stale_roster", "报名名单刚被改过，请重新打开报名表。")
 		}
 		action, fromStatus := ActSubmit, ""
 		var excl int64
@@ -464,6 +497,7 @@ func (s *Service) setStatus(ctx context.Context, tx *db.Tx, c *app.Ctx, t *Tourn
 		return nil, err
 	}
 	reg.Status, reg.StatusNote = to, note
+	reg.StatusLabel = labeled(to, statusLabels)
 	snap := ""
 	if snapshot {
 		rows, err := roster(ctx, tx, reg.ID)

@@ -1,86 +1,80 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
+import { getApiTeams } from "@sjtu-ow/api"
+import { validTeamRole } from "../team-domain"
 
-export async function load(ctx?: LoadCtx) {
-  const f = ctx?.fetch ?? fetch
-  const base = ctx?.apiBase ?? ""
-  const urlObj = new URL(ctx?.url ?? "/teams/", "http://site")
-  const role = urlObj.searchParams.get("role") ?? ""
-  const recruiting = urlObj.searchParams.get("recruiting") === "1"
-
-  let teams: any[] = []
-  try {
-    const res = await f(`${base}/api/teams`)
-    if (res.ok) {
-      const data = await res.json()
-      teams = data.teams ?? data.items ?? []
-    }
-  } catch {}
-
-  return {
-    title: "战队",
-    teams,
-    role,
-    recruiting,
-  }
+export async function load(ctx: LoadCtx) {
+  const role = validTeamRole(ctx.query.role ?? "")
+  const list = await getApiTeams(ctx.api, {
+    recruiting: ctx.query.recruiting === "1",
+    role: role || undefined,
+  })
+  return { title: "战队", list }
 }
 </script>
+
 <script setup lang="ts">
-import { inject, computed } from "vue"
+import { computed, inject } from "vue"
 import { useHead } from "@unhead/vue"
-import TeamTile from "../components/TeamTile.vue"
-import CIcon from "../components/CIcon.vue"
+import CPagehead from "@sjtu-ow/ui/CPagehead.vue"
+import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
+import TeamTile from "@sjtu-ow/ui/TeamTile.vue"
+import { requirePageData } from "../personal"
+import { TEAM_ROLES, teamRoleLabel } from "../team-domain"
+import type { TeamList } from "../team-domain"
 
-const data = inject<any>("page-data")
-useHead({ title: data?.title ?? "战队" })
-
-const allTeams = computed(() => data?.teams ?? [])
-const activeRole = computed(() => data?.role ?? "")
-const isRecruiting = computed(() => data?.recruiting ?? false)
-
-const filteredTeams = computed(() => {
-  return allTeams.value.filter((t: any) => {
-    if (isRecruiting.value && !t.is_recruiting) return false
-    if (activeRole.value) {
-      const roles = (t.wanted_roles || t.recruiting_roles || "").toLowerCase()
-      if (!roles.includes(activeRole.value.toLowerCase())) return false
-    }
-    return true
-  })
-})
+const data = requirePageData(inject<{ list: TeamList }>("page-data"))
+const list = computed(() => data.list)
+const emptyTitle = computed(() => list.value.role
+  ? `暂时没有缺${teamRoleLabel(list.value.role)}的战队`
+  : "还没有战队")
+const emptyMessage = computed(() => list.value.role
+  ? "现在招募中的战队都不缺这个位置，或者已经满员。可以看看全部战队，或者自己建一支。"
+  : "第一支战队可以由你来建。")
+useHead({ title: "战队 · SJTU-OW" })
 </script>
+
 <template>
   <main id="main" class="flex-1">
     <header class="c-pagehead c-pagehead--picture">
+      <CPagehead section="teams" :image-id="list.banner_image_id" />
       <div class="l-container">
         <div class="c-pagehead__row">
           <div>
             <h1>战队</h1>
-            <p class="c-pagehead__lede text-stone-300">社团里的固定队伍，每队最多 12 人。找一支招募中的申请加入，或者自己建一支。</p>
+            <p class="c-pagehead__lede">社团里的固定队伍，每队最多 {{ list.max_members }} 人。找一支招募中的申请加入，或者自己建一支。</p>
           </div>
           <div class="c-pagehead__actions">
             <a href="/teams/new/" class="c-btn c-btn--primary"><CIcon name="plus" />创建战队</a>
           </div>
         </div>
         <nav class="c-tabs mt-8" aria-label="筛选">
-          <a href="/teams/" :aria-current="!isRecruiting && !activeRole ? 'page' : undefined">全部<span class="c-tabs__count">{{ allTeams.length }}</span></a>
-          <a href="/teams/?recruiting=1" :aria-current="isRecruiting ? 'page' : undefined">只看招募中</a>
-          <a href="/teams/?role=tank" :aria-current="activeRole === 'tank' ? 'page' : undefined" data-role-tab="tank">缺重装</a>
-          <a href="/teams/?role=damage" :aria-current="activeRole === 'damage' ? 'page' : undefined" data-role-tab="damage">缺输出</a>
-          <a href="/teams/?role=support" :aria-current="activeRole === 'support' ? 'page' : undefined" data-role-tab="support">缺支援</a>
+          <a href="/teams/" :aria-current="!list.recruiting_only && !list.role ? 'page' : undefined">全部<span class="c-tabs__count">{{ list.team_total }}</span></a>
+          <a href="/teams/?recruiting=1" :aria-current="list.recruiting_only ? 'page' : undefined">只看招募中<span class="c-tabs__count">{{ list.recruiting_total }}</span></a>
+          <a
+            v-for="role in TEAM_ROLES"
+            :key="role.code"
+            :href="'/teams/?role=' + role.code"
+            :aria-current="list.role === role.code ? 'page' : undefined"
+            :data-role-tab="role.code"
+          >缺{{ role.label }}<span class="c-tabs__count">{{ list.role_counts[role.code] ?? 0 }}</span></a>
         </nav>
       </div>
     </header>
-
     <div class="l-container pt-10 pb-16 lg:pt-14 lg:pb-24">
-      <ul v-if="filteredTeams.length > 0" class="c-teams c-teams--list">
-        <TeamTile v-for="team in filteredTeams" :key="team.id" :team="team" />
+      <ul v-if="list.teams.length" class="c-teams c-teams--list">
+        <TeamTile
+          v-for="team in list.teams"
+          :key="team.id"
+          :team="team"
+          :capacity="list.max_members"
+          :members="team.member_count"
+          show-closed
+          about
+        />
       </ul>
-      <div v-else class="text-center py-16 text-stone-400">
-        <p class="text-lg">暂无符合条件的战队</p>
-        <p class="text-sm mt-1">可以看看全部战队，或者自己建一支。</p>
-        <a href="/teams/new/" class="c-btn c-btn--primary mt-4">创建战队</a>
-      </div>
+      <CEmpty v-else :title="emptyTitle" :message="emptyMessage" action-url="/teams/new/" action-label="创建战队" />
     </div>
   </main>
 </template>

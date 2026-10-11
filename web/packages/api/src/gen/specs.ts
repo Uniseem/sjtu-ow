@@ -7,10 +7,12 @@ export const IMAGE_SPECS = [
   "fill-2400x1200",
   "fill-2400x1350",
   "fill-2400x640",
+  "fill-2400x900-c50",
   "fill-288x288",
   "fill-400x400",
   "fill-88x88",
   "fill-960x540",
+  "fill-96x96",
   "max-1600x1600",
 ] as const
 

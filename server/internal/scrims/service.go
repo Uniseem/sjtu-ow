@@ -26,11 +26,13 @@ type ViewerBuilder func(ctx context.Context, userID int64) (*app.Viewer, error)
 
 // Service 协调内战域的业务规则（设计 9）。
 type Service struct {
-	d       *db.DB
-	siteURL string
-	viewers ViewerBuilder
-	rng     *rand.Rand
-	mod     app.ModerationSink
+	calendar CalendarAddressReader
+	notifier *notify.Service
+	d        *db.DB
+	siteURL  string
+	viewers  ViewerBuilder
+	rng      *rand.Rand
+	mod      app.ModerationSink
 }
 
 // SetModeration 接上内容审核的送审入口（内战说明，规则 186）。
@@ -137,6 +139,7 @@ type SaveResult struct {
 	Saved   []string            `json:"saved"`
 	Fields  map[string][]string `json:"fields,omitempty"`
 	SavedAt time.Time           `json:"saved_at"`
+	Values  EditValues          `json:"values"`
 }
 
 func parseWhen(raw string) (*time.Time, bool) {
@@ -177,7 +180,7 @@ func (s *Service) UpdateScrim(ctx *app.Ctx, id, baseVersion int64, ch Changes) (
 			return api.NotFound("内战不存在")
 		}
 		if baseVersion != sc.Version {
-			return api.NewErr(http.StatusConflict, "stale", "另一个人刚改过，已换成最新内容")
+			return editConflict(sc)
 		}
 		var sets []string
 		var args []any
@@ -211,6 +214,17 @@ func (s *Service) UpdateScrim(ctx *app.Ctx, id, baseVersion int64, ch Changes) (
 				bad("format", "规格不对。")
 			} else {
 				set("format", "format", *ch.Format)
+				// The generator computes outside this transaction. Its final write
+				// must reject a board loaded under a different role/size contract.
+				sets = append(sets, "board_version = board_version + 1")
+				if sc.TeamsGeneratedAt != nil {
+					changedAt := now
+					if !changedAt.After(*sc.TeamsGeneratedAt) {
+						changedAt = sc.TeamsGeneratedAt.Add(time.Microsecond)
+					}
+					sets = append(sets, "roster_changed_at = ?")
+					args = append(args, db.FormatUTC(changedAt))
+				}
 			}
 		}
 		newStarts, startsChanged := sc.StartsAt, false
@@ -253,6 +267,11 @@ func (s *Service) UpdateScrim(ctx *app.Ctx, id, baseVersion int64, ch Changes) (
 			}
 			res.Version = sc.Version + 1
 		}
+		current, err := GetScrim(txCtx, tx, id)
+		if err != nil {
+			return err
+		}
+		acknowledgeEdit(ch, res, current)
 		return nil
 	})
 	if err != nil {

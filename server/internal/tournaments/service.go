@@ -27,10 +27,12 @@ type ModerationSink interface {
 
 // Service 协调赛事域的业务规则（设计 8）。
 type Service struct {
-	d       *db.DB
-	siteURL string
-	mod     ModerationSink
-	viewers ViewerBuilder
+	calendar CalendarAddressReader
+	notifier *notify.Service
+	d        *db.DB
+	siteURL  string
+	mod      ModerationSink
+	viewers  ViewerBuilder
 }
 
 // NewService 造赛事服务；d 可以是 nil（apigen）。
@@ -203,6 +205,7 @@ type SaveResult struct {
 	Saved   []string            `json:"saved"`
 	Fields  map[string][]string `json:"fields,omitempty"`
 	SavedAt time.Time           `json:"saved_at"`
+	Values  EditValues          `json:"values"`
 }
 
 func parseWhen(raw string) (*time.Time, bool) {
@@ -245,7 +248,7 @@ func (s *Service) UpdateTournament(ctx *app.Ctx, id, baseVersion int64, ch Chang
 			return api.NotFound("赛事不存在")
 		}
 		if baseVersion != t.Version {
-			return api.NewErr(http.StatusConflict, "stale", "另一个人刚改过，已换成最新内容")
+			return editConflict(t)
 		}
 		var sets []string
 		var args []any
@@ -444,6 +447,9 @@ func (s *Service) UpdateTournament(ctx *app.Ctx, id, baseVersion int64, ch Chang
 			res.Version = t.Version + 1
 		}
 		after, err = GetTournament(txCtx, tx, id)
+		if err == nil {
+			acknowledgeEdit(ch, res, after)
+		}
 		return err
 	})
 	if err != nil {

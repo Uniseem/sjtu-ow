@@ -35,6 +35,17 @@ type WaitingOut struct {
 type AnnounceIn struct {
 	Kind string `path:"kind"`
 	ID   api.ID `path:"id"`
+	To   string `query:"to"`
+	Note string `query:"note"`
+}
+
+type AnnounceSendIn struct {
+	Kind           string `path:"kind"`
+	ID             api.ID `path:"id"`
+	To             string `query:"to"`
+	Audience       string `json:"audience"`
+	Note           string `json:"note"`
+	PreviewVersion string `json:"preview_version"`
 }
 
 // TokenIn 是退订链接里的令牌。
@@ -54,11 +65,14 @@ type PrefsIn struct {
 func (m *Module) Routes(r *api.Registry) {
 	api.Get(r, "/api/letters", api.Member, m.waiting)
 	api.Get(r, "/api/letters/{batch}", api.Member, m.held)
+	api.Raw(r, http.MethodGet, "/api/letters/{batch}/{id}/preview", nil, m.svc.HeldPreview)
 	api.Post(r, "/api/letters/{batch}", api.Member, m.decide, api.NoLimit("只处理自己的批次，每封只认领一次"))
 
 	// 「通知全体成员」：门在服务里按种类判（文章要能改作者，赛事、内战要对应的管理权限）。
 	api.Get(r, "/api/admin/announce/{kind}/{id}", api.Member, m.status)
-	api.Post(r, "/api/admin/announce/{kind}/{id}", api.Member, m.announce, api.NoLimit("同一件事 30 分钟冷却，服务里数"))
+	api.Raw(r, http.MethodGet, "/api/admin/announce/{kind}/{id}/preview", nil, m.svc.NoticeDocument)
+	api.Post(r, "/api/admin/announce/{kind}/{id}", api.Member, m.legacyAnnounce, api.NoLimit("同一件事 30 分钟冷却，服务里数"))
+	api.Post(r, "/api/admin/announce/{kind}/{id}/confirm", api.Member, m.announce, api.NoLimit("已预览确认，事务内复核冻结内容和收件人"))
 
 	api.Get(r, "/api/announcements/unsubscribe/{token}", api.Public, m.unsubscribeInfo, api.Limit(ratelimit.Unsubscribe))
 	api.Post(r, "/api/announcements/unsubscribe/{token}", api.Public, m.unsubscribe, api.Limit(ratelimit.Unsubscribe))
@@ -86,12 +100,19 @@ func (m *Module) decide(ctx *app.Ctx, in DecideIn) (*DecideResult, error) {
 	return m.svc.DecideHeld(ctx, in.Batch, ids, in.Skip)
 }
 
-func (m *Module) status(ctx *app.Ctx, in AnnounceIn) (*Status, error) {
-	return m.svc.Status(ctx, in.Kind, int64(in.ID))
+func (m *Module) status(ctx *app.Ctx, in AnnounceIn) (*NoticePreview, error) {
+	return m.svc.PreviewNotice(ctx, in.Kind, int64(in.ID), in.To, in.Note)
 }
 
-func (m *Module) announce(ctx *app.Ctx, in AnnounceIn) (*Result, error) {
-	return m.svc.Announce(ctx, in.Kind, int64(in.ID))
+func (m *Module) announce(ctx *app.Ctx, in AnnounceSendIn) (*Result, error) {
+	if in.Audience != "" && in.To != "" && in.Audience != in.To {
+		return nil, api.InvalidFields(map[string][]string{"audience": {"收件人范围不一致。"}})
+	}
+	audience := in.Audience
+	if audience == "" {
+		audience = in.To
+	}
+	return m.svc.SendPreviewed(ctx, in.Kind, int64(in.ID), audience, in.Note, in.PreviewVersion)
 }
 
 func (m *Module) unsubscribeInfo(ctx *app.Ctx, in TokenIn) (*Prefs, error) {
@@ -106,4 +127,8 @@ func (m *Module) myPrefs(ctx *app.Ctx, _ NoIn) (*Prefs, error) { return m.svc.My
 
 func (m *Module) setMyPrefs(ctx *app.Ctx, in PrefsIn) (*Prefs, error) {
 	return m.svc.SetMyPrefs(ctx, in.Accepts)
+}
+
+func (m *Module) legacyAnnounce(ctx *app.Ctx, in AnnounceIn) (*Result, error) {
+	return m.svc.Announce(ctx, in.Kind, int64(in.ID))
 }

@@ -130,6 +130,7 @@ func (s *Service) SignUp(ctx *app.Ctx, in SignupInput) (*Signup, error) {
 		return nil, err
 	}
 	now := ctx.Now().UTC()
+	in.Roles = canonicalRoles(in.Roles)
 	var out *Signup
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
 		sc, err := GetScrim(txCtx, tx, in.ScrimID)
@@ -169,6 +170,9 @@ func (s *Service) SignUp(ctx *app.Ctx, in SignupInput) (*Signup, error) {
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, sc.ID, v.ID, acc.ID, tank, damage, support, db.FormatUTC(now), db.FormatUTC(now)); err != nil {
 				return err
 			}
+			if err := bumpBoard(txCtx, tx, sc.ID); err != nil {
+				return err
+			}
 		} else {
 			changed := existing.GameAccountID == nil || *existing.GameAccountID != acc.ID ||
 				b2i(existing.RoleTank) != tank || b2i(existing.RoleDamage) != damage || b2i(existing.RoleSupport) != support
@@ -184,6 +188,8 @@ func (s *Service) SignUp(ctx *app.Ctx, in SignupInput) (*Signup, error) {
 					if err := markChanged(txCtx, tx, sc.ID, now); err != nil {
 						return err
 					}
+				} else if err := bumpBoard(txCtx, tx, sc.ID); err != nil {
+					return err
 				}
 			}
 		}
@@ -231,6 +237,22 @@ func (s *Service) CancelSignup(ctx *app.Ctx, scrimID int64) error {
 		if g.Placed() {
 			return markChanged(txCtx, tx, scrimID, now)
 		}
-		return nil
+		return bumpBoard(txCtx, tx, scrimID)
 	})
+}
+
+// canonicalRoles preserves the established role order, removes duplicates and
+// ignores unknown form values before enforcing the at-least-one requirement.
+func canonicalRoles(roles []string) []string {
+	selected := map[string]bool{}
+	for _, role := range roles {
+		selected[role] = true
+	}
+	out := []string{}
+	for _, role := range RoleOrder {
+		if selected[role] {
+			out = append(out, role)
+		}
+	}
+	return out
 }

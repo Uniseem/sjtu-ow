@@ -1,3 +1,4 @@
+import {emptyTeams} from "./public-fixtures"
 import { expect, test } from "vitest"
 import { assetsFromManifest, documentHTML, type Assets } from "../server"
 import { render } from "./entry-server"
@@ -13,6 +14,7 @@ function at(user: unknown): Parameters<typeof render>[1] {
     // everywhere else (the old all-paths session stub painted broken homes).
     fetch: async (input) => {
       const path = new URL(String(input)).pathname
+      if(path==="/api/teams")return Response.json(emptyTeams)
       if (path === "/api/page/home") return new Response(JSON.stringify({ stats: null, scrims: [], news: [], notices: [], teams: [] }), { headers: { "content-type": "application/json" } })
       if (path === "/api/me/agenda") return new Response(JSON.stringify({ items: [] }), { headers: { "content-type": "application/json" } })
       return new Response(JSON.stringify({ user }), { headers: { "content-type": "application/json" } })

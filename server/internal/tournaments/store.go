@@ -104,6 +104,7 @@ func scanRegistration(row interface{ Scan(...any) error }) (*Registration, error
 		v := by.Int64
 		r.SubmittedBy = &v
 	}
+	r.StatusLabel = labeled(r.Status, statusLabels)
 	r.SubmittedAt, r.CreatedAt, r.UpdatedAt = parseTime(submitted), parseTime(created), parseTime(updated)
 	return &r, nil
 }
@@ -148,6 +149,8 @@ func roster(ctx context.Context, q db.DBTX, regID int64) ([]RosterMember, error)
 			}
 		}
 		m.IsSJTU, m.IsCaptain, m.Active = sjtu == 1, cap == 1, active == 1
+		m.RankLabels = rankLabels(m.RankTank, m.RankDamage, m.RankSupport)
+		m.RankSummary = rankSummary(m.RankLabels)
 		out = append(out, m)
 	}
 	return out, rows.Err()

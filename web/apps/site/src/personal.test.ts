@@ -5,12 +5,13 @@ import type { GetApiMeProfileOut } from "@sjtu-ow/api"
 const user = { id: 7, nickname: "成员", email: "member@example.test", admin: false, superuser: false, caps: [], email_verified: true, is_sjtu: true, can_comment: true, can_submit_article: true }
 const rank = { score: null, label: "未定级", is_expired: false }
 const profile: GetApiMeProfileOut = {
+  version:1, avatar_image_id:null,default_avatar_image_id:null,avatar_can_upload:true,avatar_denied:"",avatar_turned_down:null,max_game_accounts:5,profile_gaps:[],waiting_letters:0,deletion_blockers:[],
   id: 7, nickname: "成员", email: user.email, is_sjtu: true,
   motto: "原宣言", main_role: "tank", flex_roles: "support", show_rank: false,
   is_complete: true,
   public_ranks: { tank: rank, damage: rank, support: rank },
-  game_accounts: [{ id: 8, battletag: "Player#12345", rank_tank: 0, rank_damage: null, rank_support: 40, tank_label: "青铜 5", damage_label: "未定级", support_label: "前 500", ranks_updated_at: "2026-10-11T00:00:00Z" }],
-  contacts: [{ id: 9, type: "qq", type_label: "QQ", value: "12345678", created_at: "2026-10-11T00:00:00Z" }],
+  game_accounts: [{ id: 8,version:1,saved:[],saved_at:"2026-10-11T00:00:00Z", battletag: "Player#12345", rank_tank: 0, rank_damage: null, rank_support: 40, tank_label: "青铜 5", damage_label: "未定级", support_label: "前 500", ranks_updated_at: "2026-10-11T00:00:00Z" }],
+  contacts: [{ id: 9,version:1,saved:[],saved_at:"2026-10-11T00:00:00Z", type: "qq", type_label: "QQ", value: "12345678", created_at: "2026-10-11T00:00:00Z" }],
 }
 
 async function page(url: string, overrides: Record<string, unknown> = {}) {
@@ -31,7 +32,7 @@ async function page(url: string, overrides: Record<string, unknown> = {}) {
 }
 
 test("profile SSR preserves privacy value and disables editing without a real version", async () => {
-  const response = await page("/me/")
+  const response = await page("/me/",{version:undefined})
   expect(response.status).toBe(200)
   const body = String(response.body)
   expect(body).toContain("基本资料 · SJTU-OW")
@@ -76,7 +77,7 @@ test("security needs one page endpoint and displays the real notification state"
 })
 
 test("absence of deletion preflight is not treated as permission to delete", async () => {
-  const response = await page("/me/delete/")
+  const response = await page("/me/delete/",{deletion_blockers:undefined})
   expect(response.status).toBe(200)
   expect(response.body).toContain("暂时无法确认账号状态")
   expect(response.body).not.toContain("确认注销</button>")

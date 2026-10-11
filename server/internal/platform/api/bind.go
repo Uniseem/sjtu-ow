@@ -39,7 +39,7 @@ func bindRequest(w http.ResponseWriter, req *http.Request, rt *Route, in any) er
 		}
 	}
 	if hasBody {
-		if err := decodeBody(w, req, in); err != nil {
+		if err := decodeBodyWithLimit(w, req, in, rt.BodyBytesLimit); err != nil {
 			return err
 		}
 	}
@@ -93,10 +93,13 @@ func bindRequest(w http.ResponseWriter, req *http.Request, rt *Route, in any) er
 	return nil
 }
 
-// decodeBody 严格解析 JSON：Content-Type 必须是 application/json、未知字段
+// decodeBodyWithLimit 严格解析 JSON：Content-Type 必须是 application/json、未知字段
 // 拒收（400）、超过 1 MB 拒收（400）。POST 等写动作「只收 JSON」是跨站防护
 // 的一层（12 号文档 4 节 CSRF 选型）。
-func decodeBody(w http.ResponseWriter, req *http.Request, in any) error {
+func decodeBodyWithLimit(w http.ResponseWriter, req *http.Request, in any, limit int64) error {
+	if limit <= 0 {
+		limit = maxBody
+	}
 	ct := req.Header.Get("Content-Type")
 	if !strings.HasPrefix(ct, "application/json") {
 		return Invalid("请求体得是 JSON（Content-Type: application/json）")
@@ -104,13 +107,13 @@ func decodeBody(w http.ResponseWriter, req *http.Request, in any) error {
 	if req.Body == nil || req.ContentLength == 0 {
 		return Invalid("请求体是空的")
 	}
-	req.Body = http.MaxBytesReader(w, req.Body, maxBody)
+	req.Body = http.MaxBytesReader(w, req.Body, limit)
 	dec := json.NewDecoder(req.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(in); err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
-			return Invalid("请求体太大，最多 1 MB")
+			return Invalid("请求体太大，最多 " + strconv.FormatInt(limit/(1<<20), 10) + " MB")
 		}
 		return Invalid("请求体读不懂：" + shortDecodeErr(err))
 	}

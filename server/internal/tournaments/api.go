@@ -4,6 +4,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 // Module 负责赛事域的路由。
@@ -24,14 +25,17 @@ type IDIn struct {
 
 // GroupsOut 是列表页。
 type GroupsOut struct {
-	Groups []Group `json:"groups"`
+	BannerImageID *int64  `json:"banner_image_id"`
+	Groups        []Group `json:"groups"`
 }
 
 // SubmitIn 是 POST /api/tournaments/{id}/registrations。
 type SubmitIn struct {
-	ID       api.ID           `path:"id"`
-	TeamID   int64            `json:"team_id"`
-	Accounts map[string]int64 `json:"accounts"`
+	ID                api.ID           `path:"id"`
+	TeamID            int64            `json:"team_id"`
+	Accounts          map[string]int64 `json:"accounts"`
+	BaseTeamVersion   int64            `json:"base_team_version,omitempty"`
+	BaseRosterVersion int64            `json:"base_roster_version,omitempty"`
 }
 
 // RegistrationOut 包一条报名。
@@ -58,7 +62,9 @@ type LeaveOut struct {
 
 // MineOut 是 GET /api/me/registrations。
 type MineOut struct {
-	Registrations []MyRegistration `json:"registrations"`
+	Registrations     []MyRegistration           `json:"registrations"`
+	IndividualSignups []PersonalIndividualSignup `json:"individual_signups"`
+	Calendar          *CalendarAddress           `json:"calendar,omitempty"`
 }
 
 // PatchIn 是 PATCH /api/admin/tournaments/{id}（自动保存协议 v2）。
@@ -114,8 +120,9 @@ type RejectIn struct {
 
 // LayoutIn 是编队板的保存。
 type LayoutIn struct {
-	ID    api.ID       `path:"id"`
-	Teams []LayoutTeam `json:"teams"`
+	ID              api.ID       `path:"id"`
+	Teams           []LayoutTeam `json:"teams"`
+	BasePoolVersion int64        `json:"base_pool_version"`
 }
 
 // Routes 注册赛事域的接口。
@@ -123,6 +130,8 @@ func (m *Module) Routes(r *api.Registry) {
 	reg := api.Feature(accounts.FeatureTournamentRegister)
 	api.Get(r, "/api/tournaments", api.Public, m.list)
 	api.Get(r, "/api/tournaments/{id}", api.Public, m.detail)
+	api.Get(r, "/api/tournaments/{id}/register", api.Member, m.registerForm)
+	api.Get(r, "/api/tournaments/{id}/signup", api.Member, m.individualForm)
 	api.Get(r, "/api/registrations/{id}", api.Member, m.registration)
 	api.Get(r, "/api/me/registrations", api.Member, m.mine)
 
@@ -135,11 +144,15 @@ func (m *Module) Routes(r *api.Registry) {
 	cap := api.Cap(accounts.CapTournamentsManage)
 	list, review, board := api.Nav("tournaments", "list"), api.Nav("tournaments", "review"), api.Nav("tournaments", "board")
 	api.Get(r, "/api/admin/tournaments", cap, m.adminList, list)
+	api.Get(r, "/api/admin/tournaments/editor-defaults", cap, m.editorDefaults, list)
 	api.Post(r, "/api/admin/tournaments", cap, m.create, list, api.NoLimit("后台，有能力的门"))
 	api.Get(r, "/api/admin/tournaments/{id}", cap, m.adminGet, list)
+	api.Get(r, "/api/admin/tournaments/{id}/copy-preview", cap, m.copyPreview, list)
 	api.Patch(r, "/api/admin/tournaments/{id}", cap, m.patch, list, api.NoLimit("后台自动保存"))
 	api.Delete(r, "/api/admin/tournaments/{id}", cap, m.delete, list, api.NoLimit("后台，有能力的门"))
 	api.Post(r, "/api/admin/tournaments/{id}/publish", cap, m.publish, list, api.NoLimit("后台，有能力的门"))
+	api.Get(r, "/api/admin/tournaments/{id}/publish-preview", cap, m.publishPreview, list)
+	api.Post(r, "/api/admin/tournaments/{id}/publish-confirm", cap, m.publishNotice, list, api.NoLimit("确认发布与通知在同一事务"))
 	api.Post(r, "/api/admin/tournaments/{id}/finish", cap, m.finish, list, api.NoLimit("后台，有能力的门"))
 	api.Post(r, "/api/admin/tournaments/{id}/cancel", cap, m.cancel, list, api.NoLimit("后台，有能力的门"))
 	api.Post(r, "/api/admin/tournaments/{id}/copy", cap, m.copy, list, api.NoLimit("后台，有能力的门"))
@@ -154,7 +167,11 @@ func (m *Module) Routes(r *api.Registry) {
 
 func (m *Module) list(ctx *app.Ctx, _ struct{}) (GroupsOut, error) {
 	g, err := m.svc.List(ctx.Context, ctx.Now().UTC())
-	return GroupsOut{Groups: g}, err
+	if err != nil {
+		return GroupsOut{}, err
+	}
+	banner, err := media.Banner(ctx.Context, m.svc.d.ReadPool(), "tournaments")
+	return GroupsOut{Groups: g, BannerImageID: banner}, err
 }
 
 func (m *Module) detail(ctx *app.Ctx, in IDIn) (*Page, error) { return m.svc.Detail(ctx, int64(in.ID)) }
@@ -163,13 +180,12 @@ func (m *Module) registration(ctx *app.Ctx, in IDIn) (*RegistrationPage, error) 
 	return m.svc.RegistrationDetail(ctx, int64(in.ID))
 }
 
-func (m *Module) mine(ctx *app.Ctx, _ struct{}) (MineOut, error) {
-	rows, err := m.svc.MyRegistrations(ctx)
-	return MineOut{Registrations: rows}, err
+func (m *Module) mine(ctx *app.Ctx, _ struct{}) (*MineOut, error) {
+	return m.svc.PersonalRegistrations(ctx)
 }
 
 func (m *Module) submit(ctx *app.Ctx, in SubmitIn) (RegistrationOut, error) {
-	r, err := m.svc.Submit(ctx, SubmitInput{TournamentID: int64(in.ID), TeamID: in.TeamID, Accounts: in.Accounts})
+	r, err := m.svc.Submit(ctx, SubmitInput{TournamentID: int64(in.ID), TeamID: in.TeamID, Accounts: in.Accounts, BaseTeamVersion: in.BaseTeamVersion, BaseRosterVersion: in.BaseRosterVersion})
 	return RegistrationOut{Registration: r}, err
 }
 
@@ -259,9 +275,13 @@ func (m *Module) board(ctx *app.Ctx, in IDIn) (*Board, error) {
 }
 
 func (m *Module) formTeams(ctx *app.Ctx, in LayoutIn) (*FormResult, error) {
-	return m.svc.FormTeams(ctx, int64(in.ID), in.Teams)
+	return m.svc.FormTeams(ctx, int64(in.ID), in.Teams, in.BasePoolVersion)
 }
 
 func (m *Module) dissolve(ctx *app.Ctx, in IDIn) (OkOut, error) {
 	return OkOut{Result: "ok"}, m.svc.DissolveTeam(ctx, int64(in.ID))
+}
+
+func (m *Module) copyPreview(ctx *app.Ctx, in IDIn) (*AdminDetail, error) {
+	return m.svc.CopyPreview(ctx, int64(in.ID))
 }

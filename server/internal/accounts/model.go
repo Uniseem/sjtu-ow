@@ -55,6 +55,7 @@ func NormalizeEmail(email string) string {
 // GameAccount 是绑定的守望先锋游戏 ID（对应 game_accounts 表，规则 16–17）。
 type GameAccount struct {
 	ID             int64
+	Version        int64
 	UserID         int64
 	Battletag      string
 	BattletagNorm  string
@@ -74,6 +75,7 @@ func NormalizeBattletag(tag string) string {
 // Contact 是用户的联系方式（对应 contacts 表，规则 18–19）。
 type Contact struct {
 	ID        int64
+	Version   int64
 	UserID    int64
 	Type      string
 	Value     string

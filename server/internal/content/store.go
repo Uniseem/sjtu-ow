@@ -103,6 +103,9 @@ func (s *Store) CreateCategory(ctx context.Context, c *Category) error {
 		allowSub = 1
 	}
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if err := categoryDuplicates(txCtx, tx, c.ID, c.Name, c.Slug); err != nil {
+			return err
+		}
 		res, err := tx.ExecContext(txCtx, `
 			INSERT INTO article_categories (name, slug, description, sort_order, allow_submission, version, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, 1, ?, ?)
@@ -130,6 +133,9 @@ func (s *Store) UpdateCategory(ctx context.Context, c *Category) error {
 		allowSub = 1
 	}
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if err := categoryDuplicates(txCtx, tx, c.ID, c.Name, c.Slug); err != nil {
+			return err
+		}
 		res, err := tx.ExecContext(txCtx, `
 			UPDATE article_categories
 			SET name = ?, slug = ?, description = ?, sort_order = ?, allow_submission = ?, version = version + 1, updated_at = ?
@@ -140,7 +146,22 @@ func (s *Store) UpdateCategory(ctx context.Context, c *Category) error {
 		}
 		affected, _ := res.RowsAffected()
 		if affected == 0 {
-			return api.NewErr(409, "conflict", "分类已被他人修改")
+			var current Category
+			var allow int
+			err := tx.QueryRowContext(txCtx, "SELECT name,slug,description,sort_order,allow_submission,version FROM article_categories WHERE id=?", c.ID).Scan(
+				&current.Name, &current.Slug, &current.Description, &current.SortOrder, &allow, &current.Version)
+			if errors.Is(err, sql.ErrNoRows) {
+				return api.NotFound("分类不存在")
+			}
+			if err != nil {
+				return err
+			}
+			return api.Stale(map[string]any{"version": current.Version, "values": map[string]any{
+				"name": current.Name, "slug": current.Slug, "description": current.Description, "sort_order": current.SortOrder, "allow_submission": allow == 1,
+			}})
+		}
+		if err := tx.QueryRowContext(txCtx, "SELECT COUNT(*) FROM articles WHERE category_id=?", c.ID).Scan(&c.ArticleCount); err != nil {
+			return err
 		}
 		c.Version++
 		c.UpdatedAt, _ = db.ParseUTC(now)
@@ -150,16 +171,14 @@ func (s *Store) UpdateCategory(ctx context.Context, c *Category) error {
 
 // DeleteCategory 删除分类（若仍有文章使用则拒绝）。
 func (s *Store) DeleteCategory(ctx context.Context, id int64) error {
-	var count int
-	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT COUNT(*) FROM articles WHERE category_id = ?`, id).Scan(&count)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return api.Invalid(fmt.Sprintf("该分类下有 %d 篇文章，无法删除", count))
-	}
-
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		var count int
+		if err := tx.QueryRowContext(txCtx, "SELECT COUNT(*) FROM articles WHERE category_id=?", id).Scan(&count); err != nil {
+			return err
+		}
+		if count > 0 {
+			return api.InvalidFields(map[string][]string{"__all__": {fmt.Sprintf("该分类下有%d篇文章，无法删除", count)}})
+		}
 		res, err := tx.ExecContext(txCtx, `DELETE FROM article_categories WHERE id = ?`, id)
 		if err != nil {
 			return err
@@ -423,7 +442,7 @@ func (s *Store) SaveArticleDraft(ctx context.Context, pageID int64, baseVersion 
 			return err
 		}
 		if curVer != baseVersion {
-			return api.NewErr(409, "stale", "另一个人刚改过，已换成最新内容")
+			return articleStale(txCtx, tx, pageID)
 		}
 		newVer = curVer + 1
 
@@ -477,7 +496,15 @@ func (s *Store) PublishArticle(ctx context.Context, pageID int64, p *Page, a *Ar
 
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
 		var firstPub sql.NullString
-		_ = tx.QueryRowContext(txCtx, `SELECT first_published_at FROM pages WHERE id = ?`, pageID).Scan(&firstPub)
+		var version int64
+		var latest *int64
+		err := tx.QueryRowContext(txCtx, `SELECT first_published_at,version,latest_revision_id FROM pages WHERE id=? AND kind='article'`, pageID).Scan(&firstPub, &version, &latest)
+		if err != nil {
+			return err
+		}
+		if version != p.Version || latest == nil || *latest != revID {
+			return articleStale(txCtx, tx, pageID)
+		}
 		firstPubStr := now
 		if firstPub.Valid && firstPub.String != "" {
 			firstPubStr = firstPub.String
@@ -499,7 +526,7 @@ func (s *Store) PublishArticle(ctx context.Context, pageID int64, p *Page, a *Ar
 		}
 
 		// 更新 pages
-		_, err := tx.ExecContext(txCtx, `
+		_, err = tx.ExecContext(txCtx, `
 			UPDATE pages
 			SET title = ?, slug = ?, live = ?, has_unpublished_changes = 0,
 			    go_live_at = ?, expire_at = ?, first_published_at = ?, last_published_at = ?,

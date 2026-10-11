@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -73,7 +74,7 @@ func (s *Service) canEditScheduleAndSlug(v *app.Viewer) bool {
 	if v == nil || v.Disabled || v.ID <= 0 {
 		return false
 	}
-	return v.Superuser || v.HasCap(CapArticlesEditAny)
+	return v.Superuser || v.HasCap(CapArticlesEditAny) || v.HasRole("certified_author")
 }
 
 // isPureSubmitter 校验是否为纯投稿者（规则 53）。
@@ -81,7 +82,7 @@ func (s *Service) isPureSubmitter(v *app.Viewer) bool {
 	if v == nil || v.Superuser {
 		return false
 	}
-	return !v.HasCap(CapArticlesEditAny) && !v.HasCap(CapArticlesPublishOwn)
+	return !v.HasCap(CapArticlesEditAny) && !v.HasRole("certified_author")
 }
 
 // CreateDraftInput 创建草稿入参。
@@ -108,10 +109,19 @@ func (s *Service) CreateDraft(ctx *app.Ctx, in CreateDraftInput) (*CreateDraftRe
 		return nil, api.Forbidden()
 	}
 
-	title := strings.TrimSpace(in.Title)
-	if title == "" {
-		title = "(无标题)"
+	checks := map[string]any{"title": in.Title, "summary": in.Summary, "body_md": in.BodyMD}
+	if in.CategoryID != nil {
+		checks["category_id"] = *in.CategoryID
 	}
+	fields, validationErr := s.validateArticleChanges(ctx, checks)
+	if validationErr != nil {
+		return nil, validationErr
+	}
+	if len(fields) > 0 {
+		return nil, api.InvalidFields(fields)
+	}
+
+	title := strings.TrimSpace(in.Title)
 
 	baseSlug := Slugify(title)
 	uniqueSlug, err := s.store.ResolveUniqueSlug(ctx.Context, KindArticle, baseSlug, 0)
@@ -200,7 +210,11 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 
 	var revContent ArticleRevisionContent
 	if latestRev != nil && latestRev.Content != "" {
-		_ = json.Unmarshal([]byte(latestRev.Content), &revContent)
+		var decodeErr error
+		revContent, decodeErr = readArticleRevisionContent(latestRev.Content, articleDraft(curArticle))
+		if decodeErr != nil {
+			return nil, api.Invalid("修订内容无法读取")
+		}
 	} else {
 		// 回落到当前行数据
 		revContent = ArticleRevisionContent{
@@ -220,12 +234,18 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 		}
 	}
 
+	fieldErrors, validationErr := s.validateArticleChanges(ctx, in.Changes)
+	if validationErr != nil {
+		return nil, validationErr
+	}
 	savedFields := make([]string, 0)
-	fieldErrors := make(map[string][]string)
 	retValues := make(map[string]any)
 
 	// 部分保存与按字段校验（规则 47）
 	for k, v := range in.Changes {
+		if len(fieldErrors[k]) > 0 {
+			continue
+		}
 		switch k {
 		case "title":
 			if str, ok := v.(string); ok {
@@ -275,6 +295,14 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 			} else {
 				fieldErrors["cover_image_id"] = []string{"封面图 ID 无效"}
 			}
+		case "related_tournament_id":
+			if v == nil {
+				revContent.RelatedTournamentID = nil
+			} else {
+				number, _ := toInt64(v)
+				revContent.RelatedTournamentID = &number
+			}
+			savedFields = append(savedFields, "related_tournament_id")
 		case "comments_enabled":
 			if s.isPureSubmitter(ctx.Viewer) {
 				fieldErrors["comments_enabled"] = []string{"普通投稿者不可更改评论设置"}
@@ -368,12 +396,34 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 		}
 	}
 
+	accepted := make([]string, 0, len(savedFields))
+	for _, name := range savedFields {
+		if len(fieldErrors[name]) == 0 {
+			accepted = append(accepted, name)
+		}
+	}
+	savedFields = accepted
+	if len(fieldErrors["expire_at"]) > 0 {
+		if latestRev != nil {
+			previous, decodeErr := readArticleRevisionContent(latestRev.Content, articleDraft(curArticle))
+			if decodeErr != nil {
+				return nil, decodeErr
+			}
+			revContent.ExpireAt = previous.ExpireAt
+		} else {
+			revContent.ExpireAt = curArticle.ExpireAt
+		}
+	}
+	if len(savedFields) == 0 {
+		return &SaveDraftResult{Version: curArticle.Version, Saved: []string{}, Fields: fieldErrors, Values: map[string]any{}, SavedAt: ctx.Now()}, nil
+	}
+
 	// 复用修订判定（规则 43–44）：
 	// 仅当最新修订是本人的草稿、非 live、未定时、且 30 分钟内创建时 overwrite
 	var overwriteRevID int64
-	if latestRev != nil && !curArticle.Live {
+	if latestRev != nil && (curArticle.LiveRevisionID == nil || *curArticle.LiveRevisionID != latestRev.ID) {
 		isSameAuthor := latestRev.AuthorID != nil && *latestRev.AuthorID == ctx.Viewer.ID
-		isRecent := ctx.Now().Sub(latestRev.CreatedAt) < 30*time.Minute
+		isRecent := ctx.Now().Sub(latestRev.CreatedAt) >= 0 && ctx.Now().Sub(latestRev.CreatedAt) < 30*time.Minute
 		isNotScheduled := latestRev.ApprovedGoLiveAt == nil
 		if isSameAuthor && isRecent && isNotScheduled {
 			overwriteRevID = latestRev.ID
@@ -416,6 +466,9 @@ func (s *Service) Publish(ctx *app.Ctx, pageID int64, in PublishInput) (*Article
 	if !s.canEditArticle(ctx.Viewer, &curArticle.Page) {
 		return nil, api.Forbidden()
 	}
+	if curArticle.Version != in.BaseVersion {
+		return nil, articleStale(ctx.Context, s.store.d.ReadPool(), pageID)
+	}
 
 	latestRev, err := s.store.GetLatestRevision(ctx.Context, pageID)
 	if err != nil {
@@ -426,7 +479,8 @@ func (s *Service) Publish(ctx *app.Ctx, pageID int64, in PublishInput) (*Article
 	}
 
 	var revContent ArticleRevisionContent
-	if err := json.Unmarshal([]byte(latestRev.Content), &revContent); err != nil {
+	revContent, err = readArticleRevisionContent(latestRev.Content, articleDraft(curArticle))
+	if err != nil {
 		return nil, api.Invalid("修订内容损坏")
 	}
 
@@ -437,6 +491,15 @@ func (s *Service) Publish(ctx *app.Ctx, pageID int64, in PublishInput) (*Article
 	}
 	if revContent.CategoryID == nil {
 		return nil, api.Invalid("必须选择文章分类")
+	}
+	// Categories can close after the draft was saved (or be restored from
+	// history). Recheck the current submission gate before publishing.
+	fields, err := s.validateArticleChanges(ctx, map[string]any{"category_id": *revContent.CategoryID})
+	if err != nil {
+		return nil, err
+	}
+	if len(fields) > 0 {
+		return nil, api.InvalidFields(fields)
 	}
 	if strings.TrimSpace(revContent.BodyMD) == "" {
 		return nil, api.Invalid("文章正文不能为空")
@@ -626,6 +689,9 @@ func toInt64(v any) (int64, bool) {
 	case int64:
 		return val, true
 	case float64:
+		if math.IsNaN(val) || math.IsInf(val, 0) || val > 9007199254740991 || val < -9007199254740991 || math.Trunc(val) != val {
+			return 0, false
+		}
 		return int64(val), true
 	case json.Number:
 		n, err := val.Int64()

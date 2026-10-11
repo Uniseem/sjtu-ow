@@ -3,6 +3,7 @@ package teams
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,20 +11,27 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 // Person 是战队页上一个人公开的样子：昵称、位置、各位置最高段位（规则 21 的口径）。
 type Person struct {
-	UserID   int64                      `json:"user_id"`
-	Nickname string                     `json:"nickname"`
-	Active   bool                       `json:"is_active"`
-	MainRole string                     `json:"main_role"`
-	Roles    []string                   `json:"roles"`
-	Ranks    accounts.PublicRanksResult `json:"ranks"`
+	AvatarImageID        *int64                     `json:"avatar_image_id"`
+	DefaultAvatarImageID *int64                     `json:"default_avatar_image_id"`
+	Motto                string                     `json:"motto"`
+	MemberURL            *string                    `json:"member_url"`
+	UserID               int64                      `json:"user_id"`
+	Nickname             string                     `json:"nickname"`
+	Active               bool                       `json:"is_active"`
+	MainRole             string                     `json:"main_role"`
+	Roles                []string                   `json:"roles"`
+	Ranks                accounts.PublicRanksResult `json:"ranks"`
 }
 
 // MemberRow 是现役成员一行。
 type MemberRow struct {
+	GameIDs      []string             `json:"game_ids,omitempty"`
+	GameAccounts []PrivateGameAccount `json:"game_accounts,omitempty"`
 	Person
 	Role     string    `json:"role"`
 	JoinedAt time.Time `json:"joined_at"`
@@ -42,14 +50,15 @@ type AlumnusRow struct {
 
 // TeamCard 是战队列表里的一张卡。
 type TeamCard struct {
-	ID          int64    `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	LogoImageID *int64   `json:"logo_image_id"`
-	Recruiting  bool     `json:"is_recruiting"`
-	WantedRoles []string `json:"wanted_roles"`
-	MemberCount int      `json:"member_count"`
-	Full        bool     `json:"is_full"`
+	CreatedAt   time.Time `json:"created_at"`
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	LogoImageID *int64    `json:"logo_image_id"`
+	Recruiting  bool      `json:"is_recruiting"`
+	WantedRoles []string  `json:"wanted_roles"`
+	MemberCount int       `json:"member_count"`
+	Full        bool      `json:"is_full"`
 }
 
 // ListInput 是战队列表的筛选：只看招募中，或只看缺某个位置的（设计 7.6）。
@@ -60,6 +69,7 @@ type ListInput struct {
 
 // ListResult 是战队列表页要的全部。
 type ListResult struct {
+	BannerImageID   *int64         `json:"banner_image_id"`
 	Teams           []TeamCard     `json:"teams"`
 	TeamTotal       int            `json:"team_total"`
 	RecruitingTotal int            `json:"recruiting_total"`
@@ -111,7 +121,7 @@ func (s *Service) List(ctx context.Context, in ListInput) (*ListResult, error) {
 			return nil, err
 		}
 		card := TeamCard{
-			ID: t.ID, Name: t.Name, Description: t.Description, LogoImageID: t.LogoImageID,
+			ID: t.ID, Name: t.Name, Description: t.Description, LogoImageID: t.LogoImageID, CreatedAt: t.CreatedAt,
 			Recruiting: t.IsRecruiting, MemberCount: count, Full: count >= lim.MaxMembers,
 			WantedRoles: []string{},
 		}
@@ -137,7 +147,11 @@ func (s *Service) List(ctx context.Context, in ListInput) (*ListResult, error) {
 		}
 		res.Teams = append(res.Teams, card)
 	}
-	return res, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	res.BannerImageID, err = media.Banner(ctx, s.d.ReadPool(), "teams")
+	return res, err
 }
 
 func prefixCols(alias, cols string) string {
@@ -187,17 +201,22 @@ func (s *Service) people(ctx context.Context, q db.DBTX, ids []int64, now time.T
 	for i, id := range ids {
 		args[i] = id
 	}
-	rows, err := q.QueryContext(ctx, `SELECT id, nickname, is_active, main_role, flex_roles, show_rank
+	rows, err := q.QueryContext(ctx, `SELECT id, nickname, is_active, main_role, flex_roles, show_rank, avatar_image_id, motto, email_verified_at
 		FROM users WHERE id IN (`+ph+`)`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	pool, err := media.LoadPool(ctx, q, "default_avatar")
+	if err != nil {
+		return nil, err
+	}
 	for rows.Next() {
 		var p Person
 		var active, show int
 		var flex string
-		if err := rows.Scan(&p.UserID, &p.Nickname, &active, &p.MainRole, &flex, &show); err != nil {
+		var verified sql.NullString
+		if err := rows.Scan(&p.UserID, &p.Nickname, &active, &p.MainRole, &flex, &show, &p.AvatarImageID, &p.Motto, &verified); err != nil {
 			return nil, err
 		}
 		p.Active = active == 1
@@ -205,7 +224,23 @@ func (s *Service) people(ctx context.Context, q db.DBTX, ids []int64, now time.T
 			p.MainRole = ""
 		}
 		p.Roles = accounts.PublicPositions(p.MainRole, flex)
-		p.Ranks = accounts.CalculatePublicRanks(gas[p.UserID], show == 1, now)
+		p.Ranks = accounts.CalculatePublicRanks(gas[p.UserID], show == 1 && p.Active, now)
+		if p.Active {
+			avatarRole := p.MainRole
+			if avatarRole == "" && len(p.Roles) > 0 {
+				avatarRole = p.Roles[0]
+			}
+			p.DefaultAvatarImageID = media.PickAvatar(pool, p.UserID, avatarRole)
+			if verified.Valid {
+				u := fmt.Sprintf("/members/%d/", p.UserID)
+				p.MemberURL = &u
+			}
+		} else {
+			p.AvatarImageID = nil
+			p.Motto = ""
+			p.MainRole = ""
+			p.Roles = []string{}
+		}
 		out[p.UserID] = p
 	}
 	return out, rows.Err()
@@ -223,11 +258,12 @@ type ViewerState struct {
 
 // TeamPage 是战队详情页要的全部（公开；解散的队也看得到，只是没有退役名单）。
 type TeamPage struct {
-	Team       *Team        `json:"team"`
-	Members    []MemberRow  `json:"members"`
-	Alumni     []AlumnusRow `json:"alumni"`
-	MaxMembers int          `json:"max_members"`
-	Viewer     ViewerState  `json:"viewer"`
+	Entries    []PublicEntry `json:"entries"`
+	Team       *Team         `json:"team"`
+	Members    []MemberRow   `json:"members"`
+	Alumni     []AlumnusRow  `json:"alumni"`
+	MaxMembers int           `json:"max_members"`
+	Viewer     ViewerState   `json:"viewer"`
 }
 
 func (s *Service) members(ctx context.Context, q db.DBTX, teamID int64, now time.Time) ([]MemberRow, error) {
@@ -298,6 +334,9 @@ func (s *Service) alumni(ctx context.Context, q db.DBTX, v *app.Viewer, teamID i
 	}
 	for i := range out {
 		out[i].Person = ppl[out[i].UserID]
+		if !isManager {
+			out[i].Reason = ""
+		}
 		out[i].CanRemove = isManager || (v != nil && v.ID == out[i].UserID)
 	}
 	if out == nil {
@@ -320,6 +359,10 @@ func (s *Service) Detail(ctx *app.Ctx, teamID int64) (*TeamPage, error) {
 	loggedIn := v != nil && !v.Disabled && v.ID > 0
 	now := ctx.Now().UTC()
 	page := &TeamPage{Team: t}
+	page.Entries, err = s.publicEntries(ctx.Context, rd, teamID)
+	if err != nil {
+		return nil, err
+	}
 	lim, err := s.store.GetLimits(ctx.Context, rd)
 	if err != nil {
 		return nil, err
@@ -364,13 +407,14 @@ func (s *Service) Detail(ctx *app.Ctx, teamID int64) (*TeamPage, error) {
 
 // PendingRow 是队长管理页上一条待审申请（规则 96：停用账号的申请不显示）。
 type PendingRow struct {
-	ID        int64     `json:"id"`
-	Applicant Person    `json:"applicant"`
-	Roles     []string  `json:"roles"`
-	Message   string    `json:"message"`
-	CreatedAt time.Time `json:"created_at"`
-	GameIDs   []string  `json:"game_ids"`
-	Reminded  bool      `json:"reminded"`
+	GameAccounts []PrivateGameAccount `json:"game_accounts"`
+	ID           int64                `json:"id"`
+	Applicant    Person               `json:"applicant"`
+	Roles        []string             `json:"roles"`
+	Message      string               `json:"message"`
+	CreatedAt    time.Time            `json:"created_at"`
+	GameIDs      []string             `json:"game_ids"`
+	Reminded     bool                 `json:"reminded"`
 }
 
 // ManagePage 是队长管理页（队长或超管；别人看到的是 404）。
@@ -410,6 +454,9 @@ func (s *Service) Manage(ctx *app.Ctx, teamID int64) (*ManagePage, error) {
 	}
 	page := &ManagePage{Team: t, MaxMembers: lim.MaxMembers}
 	if page.Members, err = s.members(ctx.Context, rd, teamID, now); err != nil {
+		return nil, err
+	}
+	if err := s.fillPrivateRoster(ctx.Context, rd, page.Members); err != nil {
 		return nil, err
 	}
 	if page.Alumni, err = s.alumni(ctx.Context, rd, v, teamID, true, now); err != nil {
@@ -462,10 +509,11 @@ func (s *Service) pending(ctx context.Context, q db.DBTX, teamID int64, now time
 	for _, a := range apps {
 		row := PendingRow{
 			ID: a.ID, Applicant: ppl[a.ApplicantID], Roles: a.Positions(), Message: a.Message,
-			CreatedAt: a.CreatedAt, GameIDs: []string{}, Reminded: a.CaptainRemindedAt != nil,
+			CreatedAt: a.CreatedAt, GameIDs: []string{}, GameAccounts: []PrivateGameAccount{}, Reminded: a.CaptainRemindedAt != nil,
 		}
 		for _, ga := range gas[a.ApplicantID] {
 			row.GameIDs = append(row.GameIDs, ga.Battletag)
+			row.GameAccounts = append(row.GameAccounts, privateGameAccount(ga))
 		}
 		out = append(out, row)
 	}
@@ -474,12 +522,13 @@ func (s *Service) pending(ctx context.Context, q db.DBTX, teamID int64, now time
 
 // MyEntry / MyApplication 是个人中心「我的战队」。
 type MyEntry struct {
-	TeamID      int64     `json:"team_id"`
-	Name        string    `json:"name"`
-	LogoImageID *int64    `json:"logo_image_id"`
-	Role        string    `json:"role"`
-	MemberCount int       `json:"member_count"`
-	JoinedAt    time.Time `json:"joined_at"`
+	MemberContact string    `json:"member_contact"`
+	TeamID        int64     `json:"team_id"`
+	Name          string    `json:"name"`
+	LogoImageID   *int64    `json:"logo_image_id"`
+	Role          string    `json:"role"`
+	MemberCount   int       `json:"member_count"`
+	JoinedAt      time.Time `json:"joined_at"`
 }
 
 // MyApplication 是我提交过的一条申请。
@@ -498,6 +547,15 @@ type MyApplication struct {
 type MyTeamsResult struct {
 	Teams        []MyEntry       `json:"teams"`
 	Applications []MyApplication `json:"applications"`
+	Alumni       []MyAlumnus     `json:"alumni"`
+}
+
+type MyAlumnus struct {
+	ID       int64     `json:"id"`
+	TeamID   int64     `json:"team_id"`
+	TeamName string    `json:"team_name"`
+	JoinedAt time.Time `json:"joined_at"`
+	LeftAt   time.Time `json:"left_at"`
 }
 
 // MyTeams 我所在的战队和我的申请（登录）。
@@ -507,8 +565,8 @@ func (s *Service) MyTeams(ctx *app.Ctx) (*MyTeamsResult, error) {
 		return nil, err
 	}
 	rd := s.d.ReadPool()
-	res := &MyTeamsResult{Teams: []MyEntry{}, Applications: []MyApplication{}}
-	rows, err := rd.QueryContext(ctx.Context, `SELECT t.id, t.name, t.logo_image_id, m.role, m.joined_at,
+	res := &MyTeamsResult{Teams: []MyEntry{}, Applications: []MyApplication{}, Alumni: []MyAlumnus{}}
+	rows, err := rd.QueryContext(ctx.Context, `SELECT t.id, t.name, t.logo_image_id, m.role, m.joined_at, t.member_contact,
 		(SELECT COUNT(*) FROM team_memberships x WHERE x.team_id = t.id)
 		FROM team_memberships m JOIN teams t ON t.id = m.team_id
 		WHERE m.user_id = ? AND t.disbanded_at IS NULL ORDER BY m.joined_at DESC, m.id DESC`, v.ID)
@@ -519,7 +577,7 @@ func (s *Service) MyTeams(ctx *app.Ctx) (*MyTeamsResult, error) {
 		var e MyEntry
 		var logo sql.NullInt64
 		var joined string
-		if err := rows.Scan(&e.TeamID, &e.Name, &logo, &e.Role, &joined, &e.MemberCount); err != nil {
+		if err := rows.Scan(&e.TeamID, &e.Name, &logo, &e.Role, &joined, &e.MemberContact, &e.MemberCount); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -557,7 +615,27 @@ func (s *Service) MyTeams(ctx *app.Ctx) (*MyTeamsResult, error) {
 			DecisionNote: a.DecisionNote, CreatedAt: parseTime(created), DecidedAt: nullTime(decided),
 		})
 	}
-	return res, arows.Err()
+	if err := arows.Err(); err != nil {
+		return nil, err
+	}
+	arows.Close()
+	retired, err := rd.QueryContext(ctx.Context, `SELECT a.id,a.team_id,t.name,a.joined_at,a.left_at
+    FROM team_alumni a JOIN teams t ON t.id=a.team_id
+    WHERE a.user_id=? AND t.disbanded_at IS NULL ORDER BY a.left_at DESC,a.id DESC`, v.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer retired.Close()
+	for retired.Next() {
+		var entry MyAlumnus
+		var joined, left string
+		if err := retired.Scan(&entry.ID, &entry.TeamID, &entry.TeamName, &joined, &left); err != nil {
+			return nil, err
+		}
+		entry.JoinedAt, entry.LeftAt = parseTime(joined), parseTime(left)
+		res.Alumni = append(res.Alumni, entry)
+	}
+	return res, retired.Err()
 }
 
 // AdminRow 是超管的战队列表一行（含卡壳状态：没有队长或队长账号停用，规则 108）。

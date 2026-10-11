@@ -42,6 +42,12 @@ const mutation = useMutation(
   () => finishAccountAction(returnFromLetters(data.back)),
 )
 
+function submit(event: SubmitEvent): void {
+  const skip = event.submitter instanceof HTMLButtonElement
+    && event.submitter.name === "skip" && event.submitter.value === "1"
+  send(skip)
+}
+
 function send(skip: boolean): void {
   if (!skip && !hasAllPreviews.value) return
   const allowed = new Set(data.batch.letters.map((letter) => letter.id))
@@ -71,7 +77,7 @@ useHead({ title: "发信 · SJTU-OW", meta: [{ name: "robots", content: "noindex
       class="c-form"
       data-held-letters
       :aria-busy="mutation.pending.value || undefined"
-      @submit.prevent="send(false)"
+      @submit.prevent="submit"
     >
       <CMutationError
         :message="mutation.message.value"
@@ -121,12 +127,11 @@ useHead({ title: "发信 · SJTU-OW", meta: [{ name: "robots", content: "noindex
           :disabled="!mutation.canStart.value || !hasAllPreviews"
         >发出勾选的信</button>
         <button
-          type="button"
+          type="submit"
           name="skip"
           value="1"
           class="c-btn c-btn--secondary"
           :disabled="!mutation.canStart.value"
-          @click="send(true)"
         >都不发</button>
       </div>
     </form>

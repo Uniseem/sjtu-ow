@@ -74,23 +74,24 @@ const (
 
 // Scrim 是一场内战。
 type Scrim struct {
-	ID               int64      `json:"id"`
-	Title            string     `json:"title"`
-	Description      string     `json:"description"`
-	StartsAt         *time.Time `json:"starts_at"`
-	SignupClosesAt   *time.Time `json:"signup_closes_at"`
-	Format           string     `json:"format"`
-	SjtuOnly         bool       `json:"sjtu_only"`
-	Status           string     `json:"status"`
-	TeamsGeneratedAt *time.Time `json:"teams_generated_at,omitempty"`
-	RosterChangedAt  *time.Time `json:"roster_changed_at,omitempty"`
-	ReminderSentAt   *time.Time `json:"reminder_sent_at,omitempty"`
-	MovedFrom        *time.Time `json:"moved_from,omitempty"`
-	CreatedBy        *int64     `json:"created_by,omitempty"`
-	Version          int64      `json:"version"`
-	BoardVersion     int64      `json:"board_version"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	DefaultCoverImageID *int64     `json:"default_cover_image_id"`
+	ID                  int64      `json:"id"`
+	Title               string     `json:"title"`
+	Description         string     `json:"description"`
+	StartsAt            *time.Time `json:"starts_at"`
+	SignupClosesAt      *time.Time `json:"signup_closes_at"`
+	Format              string     `json:"format"`
+	SjtuOnly            bool       `json:"sjtu_only"`
+	Status              string     `json:"status"`
+	TeamsGeneratedAt    *time.Time `json:"teams_generated_at,omitempty"`
+	RosterChangedAt     *time.Time `json:"roster_changed_at,omitempty"`
+	ReminderSentAt      *time.Time `json:"reminder_sent_at,omitempty"`
+	MovedFrom           *time.Time `json:"moved_from,omitempty"`
+	CreatedBy           *int64     `json:"created_by,omitempty"`
+	Version             int64      `json:"version"`
+	BoardVersion        int64      `json:"board_version"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 // PlayersNeeded 分队需要的人数（规则 159）。

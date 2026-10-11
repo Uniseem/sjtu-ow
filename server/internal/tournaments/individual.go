@@ -12,16 +12,18 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/mail"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 // SignupView 是一个人自己的个人报名。
 type SignupView struct {
-	ID             int64     `json:"id"`
-	GameAccountID  *int64    `json:"game_account_id"`
-	Roles          []string  `json:"roles"`
-	Placed         bool      `json:"placed"`
-	RegistrationID *int64    `json:"registration_id"`
-	CreatedAt      time.Time `json:"created_at"`
+	RegistrationTeamName *string   `json:"registration_team_name,omitempty"`
+	ID                   int64     `json:"id"`
+	GameAccountID        *int64    `json:"game_account_id"`
+	Roles                []string  `json:"roles"`
+	Placed               bool      `json:"placed"`
+	RegistrationID       *int64    `json:"registration_id"`
+	CreatedAt            time.Time `json:"created_at"`
 }
 
 func rolesOf(tank, damage, support bool) []string {
@@ -105,6 +107,13 @@ func (s *Service) fillIndividualState(ctx *app.Ctx, rd db.DBTX, t *Tournament, v
 	}
 	if sg != nil {
 		vs.MySignup = viewOf(sg)
+		if sg.RegistrationID != nil {
+			var name string
+			if err := rd.QueryRowContext(ctx.Context, `SELECT team_name FROM registrations WHERE id=? AND tournament_id=?`, *sg.RegistrationID, t.ID).Scan(&name); err != nil {
+				return err
+			}
+			vs.MySignup.RegistrationTeamName = &name
+		}
 		return nil
 	}
 	p, err := s.individualProblems(ctx.Context, rd, t, v.ID, now)
@@ -119,10 +128,11 @@ func (s *Service) fillIndividualState(ctx *app.Ctx, rd db.DBTX, t *Tournament, v
 
 // PoolEntry 是散人池里的一个人。
 type PoolEntry struct {
-	SignupID int64    `json:"signup_id"`
-	UserID   int64    `json:"user_id"`
-	Nickname string   `json:"nickname"`
-	Roles    []string `json:"roles"`
+	AvatarImageID *int64   `json:"avatar_image_id"`
+	SignupID      int64    `json:"signup_id"`
+	UserID        int64    `json:"user_id"`
+	Nickname      string   `json:"nickname"`
+	Roles         []string `json:"roles"`
 }
 
 // PoolView 是还在等编队的人和各位置的人数。
@@ -142,6 +152,10 @@ func (s *Service) pool(ctx context.Context, q db.DBTX, tournamentID int64) (*Poo
 		return nil, err
 	}
 	defer rows.Close()
+	avatars, err := media.LoadPool(ctx, q, "default_avatar")
+	if err != nil {
+		return nil, err
+	}
 	pv := &PoolView{Entries: []PoolEntry{}}
 	for rows.Next() {
 		var e PoolEntry
@@ -156,7 +170,24 @@ func (s *Service) pool(ctx context.Context, q db.DBTX, tournamentID int64) (*Poo
 		pv.Support += support
 		pv.Entries = append(pv.Entries, e)
 	}
-	return pv, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	users := make([]int64, 0, len(pv.Entries))
+	for _, entry := range pv.Entries {
+		users = append(users, entry.UserID)
+	}
+	images, err := publicAvatars(ctx, q, avatars, users)
+	if err != nil {
+		return nil, err
+	}
+	for i := range pv.Entries {
+		pv.Entries[i].AvatarImageID = images[pv.Entries[i].UserID]
+	}
+	return pv, nil
 }
 
 // SignupInput 是个人报名的入参。
@@ -290,6 +321,8 @@ type BoardEntry struct {
 	RankSupport    *int     `json:"rank_support"`
 	RegistrationID *int64   `json:"registration_id"`
 	Conflict       string   `json:"conflict,omitempty"`
+	IsActive       bool     `json:"is_active"`
+	IsSJTU         bool     `json:"is_sjtu"`
 }
 
 // BoardTeam 是编队板上的一支临时队伍。
@@ -302,10 +335,12 @@ type BoardTeam struct {
 
 // Board 是队伍编排页要的全部。
 type Board struct {
-	Tournament *Card        `json:"tournament"`
-	RosterMax  int          `json:"roster_max"`
-	Entries    []BoardEntry `json:"entries"`
-	Teams      []BoardTeam  `json:"teams"`
+	Tournament  *Card        `json:"tournament"`
+	RosterMax   int          `json:"roster_max"`
+	RosterMin   int          `json:"roster_min"`
+	PoolVersion int64        `json:"pool_version"`
+	Entries     []BoardEntry `json:"entries"`
+	Teams       []BoardTeam  `json:"teams"`
 }
 
 // GetBoard 读编队板：全部个人报名（含已编队的）和活跃的临时队伍。
@@ -313,7 +348,15 @@ func (s *Service) GetBoard(ctx *app.Ctx, tournamentID int64) (*Board, error) {
 	if _, err := requireManager(ctx); err != nil {
 		return nil, err
 	}
-	rd := s.d.ReadPool()
+	snapshot, err := s.d.ReadPool().BeginTx(ctx.Context, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return nil, err
+	}
+	defer snapshot.Rollback()
+	return s.buildBoard(ctx, snapshot, tournamentID)
+}
+
+func (s *Service) buildBoard(ctx *app.Ctx, rd db.DBTX, tournamentID int64) (*Board, error) {
 	t, err := GetTournament(ctx.Context, rd, tournamentID)
 	if err != nil {
 		return nil, err
@@ -322,9 +365,12 @@ func (s *Service) GetBoard(ctx *app.Ctx, tournamentID int64) (*Board, error) {
 		return nil, api.NotFound("赛事不存在")
 	}
 	c := cardOf(t, ctx.Now().UTC(), 0)
-	b := &Board{Tournament: &c, RosterMax: t.RosterMax, Entries: []BoardEntry{}, Teams: []BoardTeam{}}
+	b := &Board{Tournament: &c, RosterMax: t.RosterMax, RosterMin: t.RosterMin, Entries: []BoardEntry{}, Teams: []BoardTeam{}}
+	if err := rd.QueryRowContext(ctx.Context, `SELECT pool_version FROM tournaments WHERE id = ?`, tournamentID).Scan(&b.PoolVersion); err != nil {
+		return nil, err
+	}
 	rows, err := rd.QueryContext(ctx.Context, `SELECT g.id, g.user_id, u.nickname, COALESCE(a.battletag, ''), g.role_tank, g.role_damage,
-		g.role_support, a.rank_tank, a.rank_damage, a.rank_support, g.registration_id
+		g.role_support, a.rank_tank, a.rank_damage, a.rank_support, g.registration_id, u.is_active, u.is_sjtu
 		FROM individual_signups g JOIN users u ON u.id = g.user_id LEFT JOIN game_accounts a ON a.id = g.game_account_id
 		WHERE g.tournament_id = ? ORDER BY g.created_at, g.id`, tournamentID)
 	if err != nil {
@@ -332,13 +378,15 @@ func (s *Service) GetBoard(ctx *app.Ctx, tournamentID int64) (*Board, error) {
 	}
 	for rows.Next() {
 		var e BoardEntry
-		var tank, damage, support int
+		var tank, damage, support, active, sjtu int
 		var rt, rd2, rs, reg sql.NullInt64
-		if err := rows.Scan(&e.SignupID, &e.UserID, &e.Nickname, &e.Battletag, &tank, &damage, &support, &rt, &rd2, &rs, &reg); err != nil {
+		if err := rows.Scan(&e.SignupID, &e.UserID, &e.Nickname, &e.Battletag, &tank, &damage, &support, &rt, &rd2, &rs, &reg, &active, &sjtu); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		e.Roles = rolesOf(tank == 1, damage == 1, support == 1)
+		e.IsActive = active == 1
+		e.IsSJTU = sjtu == 1
 		for _, p := range []struct {
 			n   sql.NullInt64
 			dst **int
@@ -453,7 +501,7 @@ func nameProblems(ctx context.Context, q db.DBTX, tournamentID int64, name strin
 
 // FormTeams 应用编队板（规则 130–133）：先全部校验，任何一条错误整个操作不生效；先从原队移出
 // 再写入，避免一人一活跃名单的约束在移动时触发；布局里缺席的现有临时队全员回散人池并解散。
-func (s *Service) FormTeams(ctx *app.Ctx, tournamentID int64, layout []LayoutTeam) (*FormResult, error) {
+func (s *Service) FormTeams(ctx *app.Ctx, tournamentID int64, layout []LayoutTeam, basePoolVersion ...int64) (*FormResult, error) {
 	v, err := requireManager(ctx)
 	if err != nil {
 		return nil, err
@@ -470,6 +518,15 @@ func (s *Service) FormTeams(ctx *app.Ctx, tournamentID int64, layout []LayoutTea
 		}
 		if err := stillOpen(t); err != nil {
 			return err
+		}
+		if len(basePoolVersion) > 0 && basePoolVersion[0] > 0 {
+			var current int64
+			if err := tx.QueryRowContext(txCtx, `SELECT pool_version FROM tournaments WHERE id = ?`, tournamentID).Scan(&current); err != nil {
+				return err
+			}
+			if current != basePoolVersion[0] {
+				return api.NewErr(409, "stale", "报名名单刚有变化，请刷新名单后再编队。")
+			}
 		}
 		liveList, err := s.adhocRegistrations(txCtx, tx, tournamentID)
 		if err != nil {

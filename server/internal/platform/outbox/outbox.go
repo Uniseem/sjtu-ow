@@ -267,3 +267,17 @@ func mergeRecipients(raw string, extra []mail.Person) string {
 	}
 	return recipientsJSON(have)
 }
+
+// ConfigReader provides the current saved SMTP configuration at delivery time.
+// A failed read is a retryable job failure, never a silently skipped letter.
+type ConfigReader func(context.Context) (mail.SMTP, error)
+
+func DynamicHandler(reader ConfigReader) jobs.Handler {
+	return func(ctx context.Context, d *db.DB, j jobs.Job) error {
+		config, err := reader(ctx)
+		if err != nil {
+			return err
+		}
+		return Handler(config)(ctx, d, j)
+	}
+}

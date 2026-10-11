@@ -14,6 +14,7 @@ type SessionIn struct {
 
 // SessionUser 是 GET /api/session 返回的用户信息。
 type SessionUser struct {
+	PersonalContext
 	ID               int64    `json:"id"`
 	Nickname         string   `json:"nickname"`
 	Email            string   `json:"email"`
@@ -28,8 +29,9 @@ type SessionUser struct {
 
 // SessionOut 是 GET /api/session 的出参。访客为 { "user": null }。
 type SessionOut struct {
-	User  *SessionUser `json:"user"`
-	Flash string       `json:"flash,omitempty"`
+	FontCSSPath string       `json:"font_css_path,omitempty"`
+	User        *SessionUser `json:"user"`
+	Flash       string       `json:"flash,omitempty"`
 }
 
 // RegisterIn 是 POST /api/auth/register 的入参。
@@ -359,6 +361,8 @@ func (m *Module) Routes(r *api.Registry) {
 	// 联系方式管理 (规则 18–19)
 	api.Post(r, "/api/me/contacts", api.Member, m.addContact,
 		api.NoLimit("添加联系方式由类型唯一约束控制"))
+	api.Patch(r, "/api/me/contacts/{id}", api.Member, m.updateContact,
+		api.NoLimit("编辑本人联系方式按版本逐组保存"))
 	api.Delete(r, "/api/me/contacts/{id}", api.Member, m.deleteContact,
 		api.NoLimit("删除联系方式无需限流"))
 
@@ -381,7 +385,7 @@ func (m *Module) Routes(r *api.Registry) {
 		api.NoLimit("管理员修改角色限制"))
 
 	// 头像管理 (规则 221)
-	api.Post(r, "/api/me/avatar", api.Member, m.uploadAvatar,
+	api.Post(r, "/api/me/avatar", api.Member, m.uploadAvatar, api.BodyLimit(16<<20),
 		api.Limit(ratelimit.AvatarUpload))
 	api.Delete(r, "/api/me/avatar", api.Member, m.deleteAvatar,
 		api.NoLimit("移除头像无需限流"))
@@ -394,15 +398,23 @@ func (m *Module) Routes(r *api.Registry) {
 }
 
 func (m *Module) getSession(ctx *app.Ctx, in SessionIn) (SessionOut, error) {
+	cssPath := ""
+	if m.svc.fontCSSReader != nil {
+		var err error
+		cssPath, err = m.svc.fontCSSReader(ctx.Context)
+		if err != nil {
+			return SessionOut{}, err
+		}
+	}
 	if ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID == 0 {
-		return SessionOut{User: nil}, nil
+		return SessionOut{User: nil, FontCSSPath: cssPath}, nil
 	}
 	u, err := m.svc.store.GetByID(ctx.Context, ctx.Viewer.ID)
 	if err != nil {
-		return SessionOut{User: nil}, err
+		return SessionOut{User: nil, FontCSSPath: cssPath}, err
 	}
 	if u == nil || !u.IsActive {
-		return SessionOut{User: nil}, nil
+		return SessionOut{User: nil, FontCSSPath: cssPath}, nil
 	}
 	var caps []string
 	if ctx.Viewer != nil && ctx.Viewer.Caps != nil {
@@ -414,6 +426,10 @@ func (m *Module) getSession(ctx *app.Ctx, in SessionIn) (SessionOut, error) {
 		caps = []string{}
 	}
 	var notice string
+	personal, err := m.svc.personalContext(ctx, u)
+	if err != nil {
+		return SessionOut{}, err
+	}
 	if !in.Refresh {
 		notice, err = m.svc.sessions.PopNotice(ctx.Context, ctx.SessionToken)
 		if err != nil {
@@ -421,8 +437,10 @@ func (m *Module) getSession(ctx *app.Ctx, in SessionIn) (SessionOut, error) {
 		}
 	}
 	return SessionOut{
-		Flash: notice,
+		Flash:       notice,
+		FontCSSPath: cssPath,
 		User: &SessionUser{
+			PersonalContext:  personal,
 			ID:               u.ID,
 			Nickname:         u.Nickname,
 			Email:            u.Email,
@@ -609,6 +627,14 @@ func (m *Module) deleteContact(ctx *app.Ctx, in DeleteContactIn) (DeleteContactO
 		return DeleteContactOut{}, err
 	}
 	return *res, nil
+}
+
+func (m *Module) updateContact(ctx *app.Ctx, in UpdateContactInput) (ContactResult, error) {
+	result, err := m.svc.UpdateContact(ctx, in)
+	if err != nil {
+		return ContactResult{}, err
+	}
+	return *result, nil
 }
 
 func (m *Module) exportAccount(ctx *app.Ctx, _ ExportAccountIn) (ExportAccountOut, error) {

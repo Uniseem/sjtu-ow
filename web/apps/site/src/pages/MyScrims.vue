@@ -4,7 +4,7 @@ import { httpError } from "../router"
 import { getPersonalScrims } from "../pending-api"
 import { personalScrims } from "../personal-list-schema"
 
-// [BE-14] Kept ready for the missing private endpoint; route stays absent.
+// The private projection is resolved by the actor's session, never a user query.
 export async function load(ctx: LoadCtx) {
   const viewer = await ctx.viewer()
   if (!viewer.user) throw httpError(401)
@@ -53,7 +53,7 @@ useHead({ title: "我的内战 · SJTU-OW", meta: [{ name: "robots", content: "n
             <a :href="'/scrims/' + signup.scrim_id + '/'" class="font-semibold hover:text-primary-text">{{ signup.title }}</a>
           </td>
           <td data-label="开始" class="font-numeric">
-            {{ owDate(new Date(signup.starts_at)) }} {{ owTime(new Date(signup.starts_at)) }}
+            <template v-if="signup.starts_at">{{ owDate(new Date(signup.starts_at)) }} {{ owTime(new Date(signup.starts_at)) }}</template><template v-else>待定</template>
           </td>
           <td data-label="位置"><CRoleIcon :tank="signup.role_tank" :damage="signup.role_damage" :support="signup.role_support" /></td>
           <td data-label="分队" data-placement>

@@ -1,12 +1,28 @@
 <script setup lang="ts">
+import { nextTick, onMounted, ref, watch } from "vue"
 import CAvatar from "./CAvatar.vue"
 import CIcon from "./CIcon.vue"
 import type { AvatarPerson } from "./types"
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   title: string; user: AvatarPerson; current: string
   nav: { href: string; label: string; available: boolean; icon: string }[]
   gaps?: { label: string; href: string; hint: string }[]; waiting?: number
 }>(), { gaps: () => [], waiting: 0 })
+
+const mobileTabs = ref<HTMLDivElement | null>(null)
+function revealCurrentTab(): void {
+  const strip = mobileTabs.value
+  const current = strip?.querySelector<HTMLElement>('[aria-current="page"]')
+  if (!strip || !current || strip.scrollWidth <= strip.clientWidth) return
+  // Match the legacy tab strip: open on the current item with a 16px inset.
+  // Only the horizontal strip scrolls; the page and focused control stay put.
+  strip.scrollLeft = current.offsetLeft - strip.offsetLeft - 16
+}
+onMounted(revealCurrentTab)
+watch(() => [props.current, props.nav], async () => {
+  await nextTick()
+  revealCurrentTab()
+}, { flush: "post" })
 </script>
 <template>
   <main id="main" class="flex-1">
@@ -28,7 +44,7 @@ withDefaults(defineProps<{
               <span v-else class="flex min-h-11 items-center pl-4 text-fg-3">{{ item.label }}</span>
             </li>
           </ul>
-          <div class="c-tabs lg:hidden"><template v-for="item in nav" :key="item.href"><a v-if="item.available" :href="item.href" :aria-current="current === item.href ? 'page' : undefined">{{ item.label }}</a></template></div>
+          <div ref="mobileTabs" class="c-tabs lg:hidden"><template v-for="item in nav" :key="item.href"><a v-if="item.available" :href="item.href" :aria-current="current === item.href ? 'page' : undefined">{{ item.label }}</a></template></div>
         </nav>
         <div class="flex min-w-0 flex-col gap-10">
           <div id="profile-incomplete">

@@ -2,7 +2,9 @@ package notify
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -54,7 +56,9 @@ type Kind struct {
 	// Load 读对象；不存在返回 nil, nil。
 	Load func(ctx context.Context, q db.DBTX, id int64) (*Subject, error)
 	// Letter 是发给全体的那封信。unsubscribe 是收信人自己的退订链接。
-	Letter func(ctx context.Context, q db.DBTX, id int64, unsubscribe string, now time.Time) (mail.Letter, error)
+	Letter           func(ctx context.Context, q db.DBTX, id int64, unsubscribe string, now time.Time) (mail.Letter, error)
+	Participants     func(ctx context.Context, q db.DBTX, id int64, note string, now time.Time) (*ParticipantDraft, error)
+	ParticipantsSent func(ctx context.Context, tx *db.Tx, id int64) error
 }
 
 // Register 挂上一个种类。
@@ -395,10 +399,17 @@ func (s *Service) Deliver() jobs.Handler {
 			var kind string
 			var id int64
 			var before int
-			err := tx.QueryRowContext(txCtx, `SELECT kind, object_id, before_count FROM broadcasts WHERE id = ?`, args.BroadcastID).
-				Scan(&kind, &id, &before)
+			var delivered sql.NullString
+			err := tx.QueryRowContext(txCtx, `SELECT kind, object_id, before_count,delivered_at FROM broadcasts WHERE id = ?`, args.BroadcastID).
+				Scan(&kind, &id, &before, &delivered)
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
 			if err != nil {
-				return nil // 记录没了，没什么可发的
+				return err
+			}
+			if delivered.Valid {
+				return nil
 			}
 			k, err := s.kindFor(kind)
 			if err != nil {
@@ -431,7 +442,7 @@ func (s *Service) Deliver() jobs.Handler {
 				}
 				sent += n
 			}
-			_, err = tx.ExecContext(txCtx, `UPDATE broadcasts SET recipient_count = ? WHERE id = ?`, sent, args.BroadcastID)
+			_, err = tx.ExecContext(txCtx, `UPDATE broadcasts SET recipient_count = ?,delivered_at=? WHERE id = ?`, sent, db.FormatUTC(now), args.BroadcastID)
 			return err
 		})
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 const (
@@ -66,16 +67,18 @@ type TeamRef struct {
 
 // Card 是成员墙上的一张卡。
 type Card struct {
-	UserID   int64                      `json:"user_id"`
-	Number   int                        `json:"number"` // 按加入先后排的序号（001…），筛选后也不变
-	Nickname string                     `json:"nickname"`
-	Motto    string                     `json:"motto"`
-	MainRole string                     `json:"main_role"`
-	Roles    []string                   `json:"roles"`
-	Ranks    accounts.PublicRanksResult `json:"ranks"`
-	Teams    []TeamRef                  `json:"teams"`
-	Groups   []string                   `json:"groups"`
-	Titles   []string                   `json:"titles"`
+	AvatarImageID        *int64                     `json:"avatar_image_id"`
+	DefaultAvatarImageID *int64                     `json:"default_avatar_image_id"`
+	UserID               int64                      `json:"user_id"`
+	Number               int                        `json:"number"` // 按加入先后排的序号（001…），筛选后也不变
+	Nickname             string                     `json:"nickname"`
+	Motto                string                     `json:"motto"`
+	MainRole             string                     `json:"main_role"`
+	Roles                []string                   `json:"roles"`
+	Ranks                accounts.PublicRanksResult `json:"ranks"`
+	Teams                []TeamRef                  `json:"teams"`
+	Groups               []string                   `json:"groups"`
+	Titles               []string                   `json:"titles"`
 }
 
 // Tags 是职务；没有职务的人退回到所在分组的名字（设计 4.3）。
@@ -108,18 +111,19 @@ type ShowcaseInput struct {
 
 // ShowcaseResult 是成员墙要的全部。
 type ShowcaseResult struct {
-	Sections  []Section `json:"sections"`
-	Members   []Card    `json:"members"`
-	Total     int       `json:"total"`
-	Role      string    `json:"role"`
-	Free      bool      `json:"free"`
-	Filtering bool      `json:"filtering"`
+	BannerImageID *int64    `json:"banner_image_id"`
+	Sections      []Section `json:"sections"`
+	Members       []Card    `json:"members"`
+	Total         int       `json:"total"`
+	Role          string    `json:"role"`
+	Free          bool      `json:"free"`
+	Filtering     bool      `json:"filtering"`
 }
 
 // Showcase 成员墙（公开）：可见的分组按顺序，再是所有已加入的人，先加入的在前。
 func (s *Service) Showcase(ctx context.Context, in ShowcaseInput, now time.Time) (*ShowcaseResult, error) {
 	rd := s.d.ReadPool()
-	rows, err := rd.QueryContext(ctx, `SELECT u.id, u.nickname, u.motto, u.main_role, u.flex_roles, u.show_rank
+	rows, err := rd.QueryContext(ctx, `SELECT u.id, u.nickname, u.motto, u.main_role, u.flex_roles, u.show_rank, u.avatar_image_id
 		FROM users u WHERE `+joinedWhere+` ORDER BY u.created_at, u.id`)
 	if err != nil {
 		return nil, err
@@ -135,7 +139,7 @@ func (s *Service) Showcase(ctx context.Context, in ShowcaseInput, now time.Time)
 		var c Card
 		var flex string
 		var show int
-		if err := rows.Scan(&c.UserID, &c.Nickname, &c.Motto, &c.MainRole, &flex, &show); err != nil {
+		if err := rows.Scan(&c.UserID, &c.Nickname, &c.Motto, &c.MainRole, &flex, &show, &c.AvatarImageID); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -152,6 +156,10 @@ func (s *Service) Showcase(ctx context.Context, in ShowcaseInput, now time.Time)
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	pool, err := media.LoadPool(ctx, rd, "default_avatar")
+	if err != nil {
+		return nil, err
+	}
 	gas, err := accounts.LoadGameAccounts(ctx, rd, order)
 	if err != nil {
 		return nil, err
@@ -159,6 +167,7 @@ func (s *Service) Showcase(ctx context.Context, in ShowcaseInput, now time.Time)
 	for id, c := range cards {
 		c.Roles = accounts.PublicPositions(c.MainRole, extra[id].flex)
 		c.Ranks = accounts.CalculatePublicRanks(gas[id], extra[id].show, now)
+		c.DefaultAvatarImageID = media.PickAvatar(pool, id, avatarRole(c.MainRole, c.Roles))
 	}
 
 	trows, err := rd.QueryContext(ctx, `SELECT m.user_id, t.id, t.name FROM team_memberships m
@@ -255,6 +264,10 @@ func (s *Service) Showcase(ctx context.Context, in ShowcaseInput, now time.Time)
 		}
 		res.Members = append(res.Members, *c)
 	}
+	res.BannerImageID, err = media.Banner(ctx, rd, "members")
+	if err != nil {
+		return nil, err
+	}
 	return res, nil
 }
 
@@ -280,6 +293,7 @@ type AlumniRef struct {
 	TeamName string    `json:"team_name"`
 	Role     string    `json:"role"`
 	LeftAt   time.Time `json:"left_at"`
+	JoinedAt time.Time `json:"joined_at"`
 	Reason   string    `json:"reason"`
 }
 
@@ -294,8 +308,10 @@ type ArticleRef struct {
 // TeamEntry 是成员主页上的一支现役战队。
 type TeamEntry struct {
 	TeamRef
-	MemberCount int  `json:"member_count"`
-	IsCaptain   bool `json:"is_captain"`
+	MemberCount int    `json:"member_count"`
+	LogoImageID *int64 `json:"logo_image_id"`
+	Recruiting  bool   `json:"is_recruiting"`
+	IsCaptain   bool   `json:"is_captain"`
 }
 
 // Page 是成员主页要的全部：只放设计 1.8 说公开的东西。
@@ -316,9 +332,9 @@ func (s *Service) Detail(ctx *app.Ctx, userID int64) (*Page, error) {
 	var c Card
 	var flex string
 	var show int
-	err := rd.QueryRowContext(ctx.Context, `SELECT u.id, u.nickname, u.motto, u.main_role, u.flex_roles, u.show_rank
+	err := rd.QueryRowContext(ctx.Context, `SELECT u.id, u.nickname, u.motto, u.main_role, u.flex_roles, u.show_rank, u.avatar_image_id
 		FROM users u WHERE u.id = ? AND `+joinedWhere, userID).
-		Scan(&c.UserID, &c.Nickname, &c.Motto, &c.MainRole, &flex, &show)
+		Scan(&c.UserID, &c.Nickname, &c.Motto, &c.MainRole, &flex, &show, &c.AvatarImageID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, api.NotFound("没有这位成员。")
 	}
@@ -334,6 +350,11 @@ func (s *Service) Detail(ctx *app.Ctx, userID int64) (*Page, error) {
 	}
 	c.Roles = accounts.PublicPositions(c.MainRole, flex)
 	c.Ranks = accounts.CalculatePublicRanks(gas[userID], show == 1, now)
+	pool, err := media.LoadPool(ctx.Context, rd, "default_avatar")
+	if err != nil {
+		return nil, err
+	}
+	c.DefaultAvatarImageID = media.PickAvatar(pool, userID, avatarRole(c.MainRole, c.Roles))
 	c.Teams, c.Groups, c.Titles = []TeamRef{}, []string{}, []string{}
 	page := &Page{Card: c, Groups: []GroupRef{}, Teams: []TeamEntry{}, Alumni: []AlumniRef{}, Articles: []ArticleRef{}}
 	page.IsOwner = ctx.Viewer != nil && ctx.Viewer.ID == userID
@@ -359,7 +380,7 @@ func (s *Service) Detail(ctx *app.Ctx, userID int64) (*Page, error) {
 		return nil, err
 	}
 
-	trows, err := rd.QueryContext(ctx.Context, `SELECT t.id, t.name, m.role,
+	trows, err := rd.QueryContext(ctx.Context, `SELECT t.id, t.name, m.role, t.logo_image_id, t.is_recruiting,
 		(SELECT COUNT(*) FROM team_memberships x WHERE x.team_id = t.id)
 		FROM team_memberships m JOIN teams t ON t.id = m.team_id
 		WHERE m.user_id = ? AND t.disbanded_at IS NULL ORDER BY t.name, t.id`, userID)
@@ -369,7 +390,7 @@ func (s *Service) Detail(ctx *app.Ctx, userID int64) (*Page, error) {
 	for trows.Next() {
 		var e TeamEntry
 		var role string
-		if err := trows.Scan(&e.ID, &e.Name, &role, &e.MemberCount); err != nil {
+		if err := trows.Scan(&e.ID, &e.Name, &role, &e.LogoImageID, &e.Recruiting, &e.MemberCount); err != nil {
 			trows.Close()
 			return nil, err
 		}
@@ -381,7 +402,7 @@ func (s *Service) Detail(ctx *app.Ctx, userID int64) (*Page, error) {
 		return nil, err
 	}
 
-	arows, err := rd.QueryContext(ctx.Context, `SELECT a.team_id, t.name, a.role, a.left_at, a.reason
+	arows, err := rd.QueryContext(ctx.Context, `SELECT a.team_id, t.name, a.role, a.left_at, a.joined_at, a.reason
 		FROM team_alumni a JOIN teams t ON t.id = a.team_id
 		WHERE a.user_id = ? AND t.disbanded_at IS NULL ORDER BY a.left_at DESC, a.id DESC`, userID)
 	if err != nil {
@@ -389,12 +410,13 @@ func (s *Service) Detail(ctx *app.Ctx, userID int64) (*Page, error) {
 	}
 	for arows.Next() {
 		var a AlumniRef
-		var left string
-		if err := arows.Scan(&a.TeamID, &a.TeamName, &a.Role, &left, &a.Reason); err != nil {
+		var left, joined string
+		if err := arows.Scan(&a.TeamID, &a.TeamName, &a.Role, &left, &joined, &a.Reason); err != nil {
 			arows.Close()
 			return nil, err
 		}
 		a.LeftAt, _ = db.ParseUTC(left)
+		a.JoinedAt, _ = db.ParseUTC(joined)
 		page.Alumni = append(page.Alumni, a)
 	}
 	arows.Close()
@@ -922,4 +944,14 @@ func (s *Service) SetTitle(ctx *app.Ctx, membershipID int64, title string) (*Gro
 		return err
 	})
 	return d, err
+}
+
+func avatarRole(main string, roles []string) string {
+	if main != "" {
+		return main
+	}
+	if len(roles) > 0 {
+		return roles[0]
+	}
+	return ""
 }

@@ -22,7 +22,7 @@ type Category struct {
 	Version         int64     `json:"version"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
-	ArticleCount    int       `json:"article_count,omitempty"`
+	ArticleCount    int       `json:"article_count"`
 }
 
 // Page 是所有页面的公共基础数据。
@@ -50,6 +50,7 @@ type Page struct {
 
 // Article 表示资讯文章完整实体（含页面基础属性）。
 type Article struct {
+	DraftTitle *string `json:"draft_title,omitempty"`
 	Page
 	CategoryID          *int64 `json:"category_id,omitempty"`
 	CategoryName        string `json:"category_name,omitempty"`

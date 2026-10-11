@@ -1,0 +1,50 @@
+<script setup lang="ts">
+import { formatContentTime } from "./types"
+import { onMounted } from "vue"
+import { useAdminApi } from "../../core/api"
+import AdminPage from "../../components/AdminPage.vue"
+import ContentLoad from "../../components/content/ContentLoad.vue"
+import { useContentResource } from "./use-resource"
+import { readSiteParts } from "./pending"
+const api = useAdminApi()
+const resource = useContentResource((signal) => readSiteParts(api, { signal }))
+onMounted(() => { void resource.load() })
+</script>
+<template>
+  <AdminPage title="网站页面" section="content">
+    <ContentLoad :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.load" />
+    <template v-if="resource.data.value">
+      <section class="b-section" data-site-part="pins">
+        <div class="c-panel__head">
+          <h2 class="b-section__title">首页的置顶文章 <span v-if="resource.data.value.home.has_unpublished_changes" class="b-sub" data-unpublished>有改动还没发布</span></h2>
+          <RouterLink class="c-btn c-btn--secondary c-btn--sm" to="/admin/pages/pins/">改置顶</RouterLink>
+        </div>
+        <ol v-if="resource.data.value.pinned.length" class="b-list"><li v-for="(article, index) in resource.data.value.pinned" :key="article.id">{{ index + 1 }}. {{ article.title }}<span v-if="!article.live" class="b-sub">已撤下，首页不显示</span></li></ol>
+        <p v-else class="b-section__text">没有置顶文章，首页按发布时间排。</p>
+      </section>
+      <section class="b-section" data-site-part="intro">
+        <div class="c-panel__head">
+          <h2 class="b-section__title">资讯栏目的介绍 <span v-if="resource.data.value.news.has_unpublished_changes" class="b-sub" data-unpublished>有改动还没发布</span></h2>
+          <RouterLink class="c-btn c-btn--secondary c-btn--sm" to="/admin/pages/intro/">改介绍</RouterLink>
+        </div>
+        <p class="b-section__text">{{ resource.data.value.news.draft.intro_md.slice(0, 120) || '还没写介绍。' }}</p>
+      </section>
+      <section class="b-form" data-site-part="pages">
+        <h2 class="b-section__title">页面</h2>
+        <table v-if="resource.data.value.items.length" class="c-table c-table--stack">
+          <thead><tr><th>页面</th><th>地址</th><th>状态</th><th>最后改动</th><th><span class="sr-only">操作</span></th></tr></thead>
+          <tbody>
+            <tr v-for="page in resource.data.value.items" :key="page.id">
+              <td><RouterLink class="b-title" :to="`/admin/pages/${page.id}/`">{{ page.title || '（无标题）' }}</RouterLink></td>
+              <td data-label="地址"><span class="b-mono">/{{ page.slug }}/</span></td>
+              <td data-label="状态"><span class="c-status">{{ page.live ? page.has_unpublished_changes ? '已发布·有改动' : '已发布' : '草稿' }}</span></td>
+              <td data-label="最后改动">{{ formatContentTime(page.updated_at) }}</td>
+              <td><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/pages/${page.id}/`">编辑</RouterLink></td>
+            </tr>
+          </tbody>
+        </table>
+        <section v-else class="c-empty"><h2 class="c-empty__title">还没有页面</h2><p>运行 init_site 建好关于我们和两份协议。</p></section>
+      </section>
+    </template>
+  </AdminPage>
+</template>
