@@ -1,0 +1,293 @@
+日志：sjtu-ow-test:/srv/sjtu-ow-check/runs/20261011-183630-0e4159b.log
+测试机 kvm17243： 0b08cb7 288: 写入剩余重构的提速计划与交班安排 + 工作区改动
+
+== Go（新栈） (10:36:48)
+=== Symbol Results ===
+
+No vulnerabilities found.
+
+Your code is affected by 0 vulnerabilities.
+This scan also found 0 vulnerabilities in packages you import and 3
+vulnerabilities in modules you require, but your code doesn't appear to call
+these vulnerabilities.
+Use '-show verbose' for more details.
+?   	github.com/Uniseem/sjtu-ow/server/cmd/sjtuow	[no test files]
+?   	github.com/Uniseem/sjtu-ow/server/db	[no test files]
+ok  	github.com/Uniseem/sjtu-ow/server/internal/accounts	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/activity	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/agenda	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/app	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/comments	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/content	(cached)
+?   	github.com/Uniseem/sjtu-ow/server/internal/manual	[no test files]
+ok  	github.com/Uniseem/sjtu-ow/server/internal/members	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/moderation	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/notify	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/ops	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/api	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/apigen	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/audit	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/auth	1.232s
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/clock	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/config	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/crypto	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/db	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/djsign	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/health	(cached)
+?   	github.com/Uniseem/sjtu-ow/server/internal/platform/idempotency	[no test files]
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/jobs	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/mail	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/markdown	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/media	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/outbox	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/scrims	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/search	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/serve	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/settings	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/teams	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/todo	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/tournaments	(cached)
+?   	github.com/Uniseem/sjtu-ow/server/tools/txhammer	[no test files]
+API 客户端代码与参考手册生成完成：/srv/sjtu-ow-check/repo/docs/api-reference.md
+
+== Web（新栈） (10:36:55)
+Scope: all 6 workspace projects
+Already up to date
+Done in 331ms using pnpm v11.20.0
+$ pnpm typecheck && pnpm --filter @sjtu-ow/styles build && vitest run && pnpm --filter @sjtu-ow/site test
+$ vue-tsc --noEmit
+$ tailwindcss -i ./input.css -o ./dist/site.css --minify
+≈ tailwindcss v4.3.3
+
+Done in 83ms
+
+ RUN  v3.2.7 /srv/sjtu-ow-check/repo/web
+
+ ✓ styles.test.mjs (6 tests) 4ms
+ ✓ packages/api/client.test.ts (9 tests) 10ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  10:37:04
+   Duration  225ms (transform 44ms, setup 0ms, collect 63ms, tests 15ms, environment 0ms, prepare 86ms)
+
+$ pnpm --filter @sjtu-ow/styles build && vitest run && vite build --outDir dist/client --ssrManifest && vite build --ssr server.ts --outDir dist/server && node budget.mjs
+$ tailwindcss -i ./input.css -o ./dist/site.css --minify
+≈ tailwindcss v4.3.3
+
+Done in 91ms
+
+ RUN  v3.2.7 /srv/sjtu-ow-check/repo/web/apps/site
+
+ ✓ src/autosave.test.ts (9 tests) 18ms
+stderr | src/handle.test.ts > a registered page shows its title and a non-numeric id is a 404
+[Vue Router warn]: No match found for location with path "/teams/abc/"
+
+stderr | src/handle.test.ts > an unknown path is a 404 page without any script
+[Vue Router warn]: No match found for location with path "/no/such/"
+
+stderr | src/content.test.ts > addresses Wagtail never served as pages stay 404 without asking Go
+[Vue Router warn]: No match found for location with path "/wp-login.php/"
+
+stderr | src/content.test.ts > addresses Wagtail never served as pages stay 404 without asking Go
+[Vue Router warn]: No match found for location with path "/a/b/"
+
+stderr | src/content.test.ts > addresses Wagtail never served as pages stay 404 without asking Go
+[Vue Router warn]: No match found for location with path "/.env/"
+
+ ✓ src/accounts.test.ts (9 tests) 441ms
+stderr | src/handle.test.ts > an error page is its own document: error.css, the old wording, no script
+[Vue Router warn]: No match found for location with path "/no/such/"
+
+ ✓ src/content.test.ts (30 tests) 568ms
+stderr | src/handle.test.ts > a component that throws while rendering is the 500 page, not a hanging request
+render failed /unsubscribe/tok/ TypeError: a bug in a component
+    at Object.get title [as title] [90m(/srv/sjtu-ow-check/repo/web/apps/site/[39msrc/handle.test.ts:301:17[90m)[39m
+    at JSON.stringify (<anonymous>)
+    at escapeState [90m(/srv/sjtu-ow-check/repo/web/apps/site/[39mserver.ts:57:15[90m)[39m
+    at documentHTML [90m(/srv/sjtu-ow-check/repo/web/apps/site/[39mserver.ts:97:58[90m)[39m
+    at toResponse [90m(/srv/sjtu-ow-check/repo/web/apps/site/[39mserver.ts:157:11[90m)[39m
+    at handle [90m(/srv/sjtu-ow-check/repo/web/apps/site/[39mserver.ts:130:11[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:103:5)[39m
+    at [90m/srv/sjtu-ow-check/repo/web/apps/site/[39msrc/handle.test.ts:293:15
+    at file:///srv/sjtu-ow-check/repo/web/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.7/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:20
+
+ ❯ src/handle.test.ts (21 tests | 1 failed) 642ms
+   ✓ the content security policy is the one in section 6.9 1ms
+   ✓ static images stay inside static/img and are cached for a day 1ms
+   ✓ only GET and HEAD are accepted 0ms
+   ✓ a missing trailing slash redirects when the slashed path exists 5ms
+   ✓ a registered page shows its title and a non-numeric id is a 404 90ms
+   ✓ an unknown path is a 404 page without any script 3ms
+   ✓ the shell has no executable inline script and escapes state 9ms
+   ✓ a logged-in session is not cached 5ms
+   ✓ HEAD has the same status and an empty body 3ms
+   ✓ a 401 from the loader redirects to login 1ms
+   ✓ the style guide is a 404 unless the viewer is staff 191ms
+   ✓ an unreachable API is a 503 page 2ms
+   × a page that needs a login sends a visitor to the login page and lets a member in 196ms
+     → expected 503 to be 200 // Object.is equality
+   ✓ a loader's ApiError decides the status: 404, 403, 429 are pages, a dead API is 503 8ms
+   ✓ the whole session goes into the page state, caps and all 6ms
+   ✓ a loader gets the API client, the params and the query 46ms
+   ✓ an error page is its own document: error.css, the old wording, no script 1ms
+   ✓ each status has the old page: 403, 429, Go's 500 with the request id, Go down is maintenance 15ms
+   ✓ a bug in a load is the 500 page 1ms
+   ✓ a component that throws while rendering is the 500 page, not a hanging request 55ms
+   ✓ the server app rethrows component errors in production as well 1ms
+stderr | src/ui.test.ts > comment tools follow the viewer: like state, own edits, moderator pins and hides
+[Vue warn]: Missing required prop: "interactive" 
+  at <CCommentItem item= {
+  id: [33m3[39m,
+  user_id: [33m2[39m,
+  author_name: [32m'小满'[39m,
+  content: [32m'写得好'[39m,
+  is_pinned: [33mfalse[39m,
+  is_hidden: [33mfalse[39m,
+  is_deleted: [33mtrue[39m,
+  like_count: [33m1[39m,
+  liked_by_me: [33mtrue[39m,
+  created_at: [32m'2026-10-10T13:00:00Z'[39m,
+  updated_at: [32m'2026-10-10T13:00:00Z'[39m,
+  replies: [
+    {
+      id: [33m9[39m,
+      user_id: [33m2[39m,
+      author_name: [32m'小满'[39m,
+      content: [32m'写得好'[39m,
+      is_pinned: [33mfalse[39m,
+      is_hidden: [33mfalse[39m,
+      is_deleted: [33mfalse[39m,
+      like_count: [33m1[39m,
+      liked_by_me: [33mtrue[39m,
+      created_at: [32m'2026-10-10T13:00:00Z'[39m,
+      updated_at: [32m'2026-10-10T13:00:00Z'[39m
+    }
+  ]
+} > 
+  at <App>
+[Vue warn]: Missing required prop: "canPost" 
+  at <CCommentItem item= {
+  id: [33m3[39m,
+  user_id: [33m2[39m,
+  author_name: [32m'小满'[39m,
+  content: [32m'写得好'[39m,
+  is_pinned: [33mfalse[39m,
+  is_hidden: [33mfalse[39m,
+  is_deleted: [33mtrue[39m,
+  like_count: [33m1[39m,
+  liked_by_me: [33mtrue[39m,
+  created_at: [32m'2026-10-10T13:00:00Z'[39m,
+  updated_at: [32m'2026-10-10T13:00:00Z'[39m,
+  replies: [
+    {
+      id: [33m9[39m,
+      user_id: [33m2[39m,
+      author_name: [32m'小满'[39m,
+      content: [32m'写得好'[39m,
+      is_pinned: [33mfalse[39m,
+      is_hidden: [33mfalse[39m,
+      is_deleted: [33mfalse[39m,
+      like_count: [33m1[39m,
+      liked_by_me: [33mtrue[39m,
+      created_at: [32m'2026-10-10T13:00:00Z'[39m,
+      updated_at: [32m'2026-10-10T13:00:00Z'[39m
+    }
+  ]
+} > 
+  at <App>
+[Vue warn]: Missing required prop: "canModerate" 
+  at <CCommentItem item= {
+  id: [33m3[39m,
+  user_id: [33m2[39m,
+  author_name: [32m'小满'[39m,
+  content: [32m'写得好'[39m,
+  is_pinned: [33mfalse[39m,
+  is_hidden: [33mfalse[39m,
+  is_deleted: [33mtrue[39m,
+  like_count: [33m1[39m,
+  liked_by_me: [33mtrue[39m,
+  created_at: [32m'2026-10-10T13:00:00Z'[39m,
+  updated_at: [32m'2026-10-10T13:00:00Z'[39m,
+  replies: [
+    {
+      id: [33m9[39m,
+      user_id: [33m2[39m,
+      author_name: [32m'小满'[39m,
+      content: [32m'写得好'[39m,
+      is_pinned: [33mfalse[39m,
+      is_hidden: [33mfalse[39m,
+      is_deleted: [33mfalse[39m,
+      like_count: [33m1[39m,
+      liked_by_me: [33mtrue[39m,
+      created_at: [32m'2026-10-10T13:00:00Z'[39m,
+      updated_at: [32m'2026-10-10T13:00:00Z'[39m
+    }
+  ]
+} > 
+  at <App>
+
+ ✓ src/ui.test.ts (117 tests) 114ms
+ ✓ src/shell.test.ts (10 tests) 68ms
+stderr | src/routes.test.ts > a numeric id matches and anything else does not
+[Vue Router warn]: No match found for location with path "/teams/abc/"
+[Vue Router warn]: No match found for location with path "/teams/1234567890123456789/"
+
+stderr | src/routes.test.ts > the listed front pages resolve
+[Vue Router warn]: No match found for location with path "/me/scrims/"
+
+ ❯ src/routes.test.ts (4 tests | 1 failed) 57ms
+   ✓ the navigation targets are pages 13ms
+   ✓ a numeric id matches and anything else does not 8ms
+   × the listed front pages resolve 18ms
+     → /me/scrims/: expected 0 to be greater than 0
+   ✓ admin pages resolve cleanly 18ms
+ ✓ src/specimen.test.ts (4 tests) 18ms
+ ✓ src/guards.test.ts (10 tests) 19ms
+ ✓ src/behaviour.test.ts (7 tests) 8ms
+ ✓ src/image-inspect.test.ts (3 tests) 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/handle.test.ts > a page that needs a login sends a visitor to the login page and lets a member in
+AssertionError: expected 503 to be 200 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 503[39m
+
+ ❯ src/handle.test.ts:198:25
+    196|     assets: ASSETS,
+    197|   })
+    198|   expect(member.status).toBe(200)
+       |                         ^
+    199|   // A public page stays public.
+    200|   const teams = await handle(incoming("GET", "/teams/"), { ...base, fe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/routes.test.ts > the listed front pages resolve
+AssertionError: /me/scrims/: expected 0 to be greater than 0
+ ❯ src/routes.test.ts:55:44
+     53|     "/_styleguide/emails/welcome/",
+     54|   ]) {
+     55|     expect(match(url).matched.length, url).toBeGreaterThan(0)
+       |                                            ^
+     56|   }
+     57| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 9 passed (11)
+      Tests  2 failed | 222 passed (224)
+   Start at  10:37:05
+   Duration  2.34s (transform 1.46s, setup 0ms, collect 2.87s, tests 1.96s, environment 2ms, prepare 626ms)
+
+/srv/sjtu-ow-check/repo/web/apps/site:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @sjtu-ow/site@ test: `pnpm --filter @sjtu-ow/styles build && vitest run && vite build --outDir dist/client --ssrManifest && vite build --ssr server.ts --outDir dist/server && node budget.mjs`
+Exit status 1
+[ELIFECYCLE] Test failed. See above for more details.

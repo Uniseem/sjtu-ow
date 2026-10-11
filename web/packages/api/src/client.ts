@@ -8,6 +8,8 @@ export class ApiError extends Error {
   code: string
   fields?: Record<string, string[]>
   current?: unknown
+  /** 限流响应要求等待的秒数（Retry-After）。 */
+  retryAfter?: number
 
   constructor(status: number, code: string, message: string) {
     super(message)
@@ -115,12 +117,22 @@ export function createClient(deps: ClientDeps = {}): Requester {
       if (options.unauthorized !== "throw") {
         assign("/accounts/login/?next=" + encodeURIComponent(locate()))
       }
-      throw new ApiError(401, "unauthorized", payload?.error?.message || "登录已失效")
+      const err = new ApiError(401, payload?.error?.code || "unauthorized", payload?.error?.message || "登录已失效")
+      err.fields = payload?.fields
+      err.current = payload?.current
+      throw err
     }
     if (!response.ok) {
       const err = new ApiError(response.status, payload?.error?.code ?? "", payload?.error?.message ?? "")
       err.fields = payload?.fields
       err.current = payload?.current
+      if (response.status === 429) {
+        const retry = response.headers.get("Retry-After")
+        if (retry?.trim()) {
+          const seconds = /^\d+$/.test(retry.trim()) ? Number(retry) : (Date.parse(retry) - Date.now()) / 1000
+          if (Number.isFinite(seconds)) err.retryAfter = Math.max(0, Math.ceil(seconds))
+        }
+      }
       throw err
     }
     const batch = payload?.letters?.batch

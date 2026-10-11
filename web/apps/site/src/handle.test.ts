@@ -192,7 +192,9 @@ test("a page that needs a login sends a visitor to the login page and lets a mem
   expect(visitor.headers.location).toBe("/accounts/login/?next=" + encodeURIComponent("/me/teams/?x=1"))
   const member = await handle(incoming("GET", "/me/teams/"), {
     ...base,
-    fetch: api(200, { user: { id: 3, nickname: "夜蛾", admin: false, superuser: false, caps: [] } }),
+    fetch: async (input, init) => new URL(String(input)).pathname === "/api/me/teams"
+      ? Response.json({ teams: [], applications: [] })
+      : api(200, { user: { id: 3, nickname: "夜蛾", admin: false, superuser: false, caps: [] } })(input, init),
     assets: ASSETS,
   })
   expect(member.status).toBe(200)

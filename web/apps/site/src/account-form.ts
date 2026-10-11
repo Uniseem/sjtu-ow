@@ -13,13 +13,16 @@ export function useAccountForm() {
     fields.value = {}
     try { await action() } catch (error) {
       if (error instanceof ApiError) {
-        fields.value = error.fields ?? {}
+        fields.value = Object.fromEntries(Object.entries(error.fields ?? {}).filter(([, errors]) => errors.length > 0))
         message.value = Object.keys(fields.value).length ? "" : error.message || "暂时无法提交，请稍后再试。"
       } else {
         message.value = "暂时无法提交，请稍后再试。"
       }
       await nextTick()
-      document.querySelector<HTMLElement>(".is-invalid input, .is-invalid select, .is-invalid textarea, .c-field__error")?.focus()
+      const invalid = document.querySelector<HTMLElement>("#main .is-invalid input, #main .is-invalid select, #main .is-invalid textarea")
+      const alert = document.querySelector<HTMLElement>("#main .c-field__error")
+      if (invalid) invalid.focus()
+      else if (alert) { alert.tabIndex = -1; alert.focus() }
     } finally { pending.value = false }
   }
   return { pending, message, fields, submit }
@@ -28,10 +31,12 @@ export function useAccountForm() {
 export function useCodeCooldown() {
   const seconds = ref(0)
   let timer: ReturnType<typeof setInterval> | undefined
-  function start() {
+  function start(waitSeconds = 10) {
     if (timer) clearInterval(timer)
-    const until = Date.now() + 10_000
-    seconds.value = 10
+    const wait = Number.isFinite(waitSeconds) ? Math.max(0, Math.ceil(waitSeconds)) : 10
+    const until = Date.now() + wait * 1000
+    seconds.value = wait
+    if (!wait) { timer = undefined; return }
     timer = setInterval(() => {
       seconds.value = Math.max(0, Math.ceil((until - Date.now()) / 1000))
       if (!seconds.value) { clearInterval(timer); timer = undefined }

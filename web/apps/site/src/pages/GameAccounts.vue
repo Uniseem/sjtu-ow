@@ -1,140 +1,123 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
+import { httpError } from "../router"
+import { loadPersonal, personalId } from "../personal"
 
-export async function load(ctx?: LoadCtx) {
-  const f = ctx?.fetch ?? fetch
-  const base = ctx?.apiBase ?? ""
-  let accounts: any[] = []
-  try {
-    const res = await f(`${base}/api/me/profile`)
-    if (res.ok) {
-      const data = await res.json()
-      accounts = data.game_accounts ?? []
-    }
-  } catch {}
-
-  return {
-    title: "游戏 ID",
-    accounts,
-  }
+export async function load(ctx: LoadCtx) {
+  const result = await loadPersonal(ctx, "游戏 ID 与段位")
+  const editId = ctx.params.id ? personalId(ctx.params.id) : undefined
+  if (editId && !result.profile.game_accounts.some((account) => account.id === editId)) throw httpError(404)
+  return { ...result, newItem: ctx.query.new === "1" && !editId, editId }
 }
 </script>
+
 <script setup lang="ts">
-import { inject, computed, ref } from "vue"
+import { computed, inject, reactive, ref, watch } from "vue"
 import { useHead } from "@unhead/vue"
+import { useRouter } from "vue-router"
+import { deleteApiMeGameAccountsId } from "@sjtu-ow/api"
+import { useConfirm } from "@sjtu-ow/shared/confirm"
+import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
+import CMutationError from "@sjtu-ow/ui/CMutationError.vue"
+import PersonalLayout from "../components/PersonalLayout.vue"
+import GameAccountCard from "../components/GameAccountCard.vue"
+import GameAccountEditor from "../components/GameAccountEditor.vue"
+import GameAccountCreate from "../components/GameAccountCreate.vue"
+import { requirePageData, usePersonalUser } from "../personal"
+import type { PersonalPageData } from "../personal"
+import type { GameAccount } from "../pending-api"
+import { useApi } from "../api"
+import { useMutation } from "../use-mutation"
 
-const data = inject<any>("page-data")
-useHead({ title: "游戏 ID - 个人中心 - SJTU-OW" })
+const data = requirePageData(inject<PersonalPageData>("page-data"))
+const profile = reactive({ ...data.profile, game_accounts: [...data.profile.game_accounts] })
+const user = usePersonalUser(profile)
+const api = useApi()
+const router = useRouter()
+const confirm = useConfirm()
+const notice = ref("")
+const newItem = ref(data.newItem === true)
+const editId = ref(data.editId)
+const limit = computed(() => profile.max_game_accounts)
+const atLimit = computed(() => limit.value !== undefined && profile.game_accounts.length >= limit.value)
 
-const accounts = computed(() => data?.accounts ?? [])
-const battletag = ref("")
-const rankTank = ref("15")
-const rankDamage = ref("15")
-const rankSupport = ref("15")
-const addedTag = ref("")
-const submitting = ref(false)
+const remove = useMutation(
+  (id: number, extras) => deleteApiMeGameAccountsId(api, id, extras),
+  () => {
+    profile.game_accounts = profile.game_accounts.filter((account) => account.id !== deletingId.value)
+    notice.value = "游戏 ID 已删除。"
+  },
+)
+const deletingId = ref<number | null>(null)
 
-const ranks = [
-  { value: "0", label: "无段位 / 未定级" },
-  { value: "1", label: "青铜 5" },
-  { value: "5", label: "白银 5" },
-  { value: "10", label: "黄金 5" },
-  { value: "15", label: "白金 5" },
-  { value: "20", label: "钻石 5" },
-  { value: "25", label: "大师 5" },
-  { value: "30", label: "宗师 5" },
-]
-
-async function onSubmit(e: Event) {
-  e.preventDefault()
-  submitting.value = true
-  try {
-    const res = await fetch("/api/me/game-accounts", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        battletag: battletag.value,
-        rank_tank: Number(rankTank.value),
-        rank_damage: Number(rankDamage.value),
-        rank_support: Number(rankSupport.value),
-      }),
-    })
-    addedTag.value = battletag.value
-    if (res.ok) {
-      const acc = await res.json().catch(() => null)
-      if (acc) accounts.value.push(acc)
-    }
-  } catch {
-    addedTag.value = battletag.value
-  } finally {
-    submitting.value = false
-  }
+function removeAccount(id: number): void {
+  if (remove.pending.value || remove.uncertain.value) return
+  if (!confirm("确定删除这个游戏 ID？")) return
+  deletingId.value = id
+  notice.value = ""
+  void remove.submit(id)
 }
+
+function created(account: GameAccount): void {
+  // Only the real POST response is added; never add the input optimistically.
+  profile.game_accounts.push(account)
+  newItem.value = false
+  notice.value = "游戏 ID 已添加。"
+  void router.replace("/me/game-accounts/")
+}
+
+async function finished(): Promise<void> {
+  editId.value = undefined
+  await router.replace("/me/game-accounts/")
+}
+
+watch(() => data.profile, (next) => {
+  Object.assign(profile, next, { game_accounts: [...next.game_accounts] })
+  newItem.value = data.newItem === true
+  editId.value = data.editId
+})
+watch(() => [data.newItem, data.editId], () => {
+  newItem.value = data.newItem === true
+  editId.value = data.editId
+})
+
+useHead({ title: "游戏 ID 与段位 · SJTU-OW", meta: [{ name: "robots", content: "noindex" }] })
 </script>
+
 <template>
-  <main id="main" class="flex-1">
-    <div class="l-container l-container--narrow py-12 max-w-xl mx-auto">
-      <nav class="c-crumbs mb-6" aria-label="位置">
-        <a href="/">首页</a><span class="c-crumbs__sep">/</span>
-        <a href="/me/">个人中心</a><span class="c-crumbs__sep">/</span>
-        <span>游戏 ID</span>
-      </nav>
-
-      <h1 class="text-2xl font-bold mb-6">添加游戏 ID</h1>
-
-      <form action="/me/game-accounts/" method="post" class="c-form space-y-4" @submit="onSubmit">
-        <div class="c-field">
-          <label class="c-field__label block mb-1">BattleTag<span class="text-rose-500">*</span></label>
-          <input
-            v-model="battletag"
-            type="text"
-            name="battletag"
-            required
-            class="w-full p-2.5 rounded bg-stone-900 border border-stone-700 text-stone-100"
-            placeholder="例如 Player#1234"
-          />
-        </div>
-
-        <div class="grid grid-cols-3 gap-4">
-          <div class="c-field">
-            <label class="c-field__label block mb-1">坦克段位</label>
-            <select v-model="rankTank" name="rank_tank" class="w-full p-2 rounded bg-stone-900 border border-stone-700 text-sm">
-              <option v-for="r in ranks" :key="r.value" :value="r.value">{{ r.label }}</option>
-            </select>
-          </div>
-          <div class="c-field">
-            <label class="c-field__label block mb-1">输出段位</label>
-            <select v-model="rankDamage" name="rank_damage" class="w-full p-2 rounded bg-stone-900 border border-stone-700 text-sm">
-              <option v-for="r in ranks" :key="r.value" :value="r.value">{{ r.label }}</option>
-            </select>
-          </div>
-          <div class="c-field">
-            <label class="c-field__label block mb-1">支援段位</label>
-            <select v-model="rankSupport" name="rank_support" class="w-full p-2 rounded bg-stone-900 border border-stone-700 text-sm">
-              <option v-for="r in ranks" :key="r.value" :value="r.value">{{ r.label }}</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="pt-4">
-          <button type="submit" :disabled="submitting || !battletag" class="c-btn c-btn--primary">
-            {{ submitting ? '保存中...' : '保存游戏 ID' }}
-          </button>
-        </div>
-      </form>
-
-      <div v-if="addedTag" class="mt-8 p-4 rounded bg-emerald-950/60 border border-emerald-800 text-emerald-200">
-        已添加游戏 ID：<span class="font-bold font-mono">{{ addedTag }}</span>
+  <PersonalLayout title="游戏 ID 与段位" current="/me/game-accounts/" :profile="profile" :user="user">
+    <CMutationError
+      :message="remove.message.value"
+      :uncertain="remove.uncertain.value"
+      :pending="remove.pending.value"
+      @retry="remove.retry"
+    />
+    <p v-if="notice" class="text-sm text-fg-2" role="status">{{ notice }}</p>
+    <div id="game-account-list" class="flex flex-col gap-4">
+      <template v-for="account in profile.game_accounts" :key="account.id">
+        <article v-if="editId === account.id" :id="'game-account-' + account.id" class="c-panel" data-game-account>
+          <GameAccountEditor :key="account.id" :account="account" @done="finished" />
+        </article>
+        <GameAccountCard
+          v-else
+          :account="account"
+          :pending="remove.pending.value || remove.uncertain.value"
+          @remove="removeAccount"
+        />
+      </template>
+      <CEmpty
+        v-if="!profile.game_accounts.length"
+        title="还没有游戏 ID"
+        message="至少绑定 1 个游戏 ID 后才能报名赛事和内战。"
+      />
+      <div id="create-game-account">
+        <GameAccountCreate v-if="newItem && !atLimit" @created="created" />
       </div>
-
-      <div v-if="accounts.length > 0" class="mt-10">
-        <h2 class="font-bold text-lg mb-4">已有游戏 ID</h2>
-        <ul class="space-y-2">
-          <li v-for="a in accounts" :key="a.id" class="p-3 rounded bg-stone-900 border border-stone-800 font-semibold font-mono">
-            {{ a.battletag }}
-          </li>
-        </ul>
-      </div>
+      <p v-if="atLimit" class="text-sm text-fg-2">每人最多绑定 {{ limit }} 个游戏 ID。</p>
+      <a v-else href="/me/game-accounts/?new=1" class="c-btn c-btn--primary self-start">
+        <CIcon name="plus" />新增游戏 ID
+      </a>
     </div>
-  </main>
+  </PersonalLayout>
 </template>

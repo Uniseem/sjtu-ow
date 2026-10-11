@@ -1,0 +1,64 @@
+日志：sjtu-ow-test:/srv/sjtu-ow-check/runs/20261011-184235-40b306a.log
+测试机 kvm17243： 0b08cb7 288: 写入剩余重构的提速计划与交班安排 + 工作区改动
+PASS REAL unproved reset cannot open new password form {}
+PASS REAL real validation retains signup inputs {}
+PASS REAL registration persists unverified without session {}
+PASS REAL unverified password login issues new SMTP code without session {}
+PASS REAL wrong signup code commits attempt {}
+PASS REAL third wrong signup code is discarded {}
+PASS REAL real resend restarts code and browser cooldown {}
+PASS REAL SMTP signup code verifies and logs in {}
+PASS REAL welcome notice survives SSR then is consumed {}
+PASS REAL GET logout only confirms {}
+PASS REAL POST logout revokes session {}
+PASS REAL wrong login stays with field/message error {}
+PASS REAL real login returns safe next {}
+PASS REAL second real password login creates separate session {}
+PASS REAL password change retains current and revokes others {}
+PASS REAL email change requires reauthentication {}
+PASS REAL wrong reauthentication leaves state unchanged {}
+PASS REAL reauthentication restores email draft {}
+PASS REAL new address is pending until verified {}
+PASS REAL wrong new-email code persists attempt {}
+PASS REAL new-email SMTP code replaces login address {}
+PASS REAL cancel pending email keeps current address {}
+PASS REAL wrong reset code commits attempt {}
+PASS REAL reset proof is private cookie without URL or JS access {}
+PASS REAL password reset logs out all sessions without auto-login {}
+PASS REAL previous password fails after reset {}
+PASS REAL reset password signs in with changed email {}
+PASS REAL external login next falls back inside site {}
+PASS REAL existing-email signup shows same confirmation without login {}
+PASS REAL unknown-email reset shows same confirmation {}
+PASS REAL inactive explanation renders in real SSR {}
+PASS REAL real redirect /accounts/login/code/confirm/ {}
+PASS REAL real redirect /accounts/password/change/ {}
+PASS REAL password-set is actual authenticated permanent redirect {}
+PASS REAL profile privacy stays unchanged when versioned editing is unavailable {}
+PASS REAL real game creation preserves bronze zero and other unranked nulls {}
+PASS REAL game editing is protected until version receipt exists {}
+PASS REAL real contact creation persists and refreshes list {}
+PASS REAL notification toggle is real persisted state {}
+PASS REAL notification toggle can be reenabled {}
+PASS REAL deletion without preflight projection never offers submission {}
+JOURNEY-STATE {"path":"/me/contacts/","title":"联系方式 · SJTU-OW","errors":[],"forms":[]}
+JOURNEY-HTTP [{"path":"/api/auth/register","status":422},{"path":"/api/auth/register","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/login","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/verify-email","status":422},{"path":"/api/auth/verify-email","status":422},{"path":"/api/auth/verify-email","status":422},{"path":"/api/auth/resend-code","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/verify-email","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/logout","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/login","status":401},{"path":"/api/auth/login","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/change-password","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/reauthenticate","status":422},{"path":"/api/auth/email/state","status":200},{"path":"/api/auth/reauthenticate","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/email/state","status":200},{"path":"/api/auth/email/change","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/email/state","status":200},{"path":"/api/auth/email/change/confirm","status":422},{"path":"/api/auth/email/change/confirm","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/email/change","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/email/change","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/reset-password","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/reset-password/verify","status":422},{"path":"/api/auth/reset-password/state","status":200},{"path":"/api/auth/reset-password/verify","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/reset-password/state","status":200},{"path":"/api/auth/reset-password/complete","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/login","status":401},{"path":"/api/auth/login","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/logout","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/login","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/logout","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/register","status":200},{"path":"/api/session","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/reset-password","status":200},{"path":"/api/session","status":200},{"path":"/api/auth/login","status":200},{"path":"/api/session","status":200},{"path":"/api/me/game-accounts","status":200},{"path":"/api/session","status":200},{"path":"/api/me/profile","status":200},{"path":"/api/me/contacts","status":200},{"path":"/api/session","status":200},{"path":"/api/me/profile","status":200},{"path":"/api/me/announcements","status":200},{"path":"/api/session","status":200},{"path":"/api/me/announcements","status":200},{"path":"/api/session","status":200},{"path":"/api/me/contacts/1","status":200},{"path":"/api/session","status":200}]
+file:///srv/sjtu-ow-check/repo/handoff/rounds/289-f5-personal-center-code/personal-journey.mjs:30
+  const evaluate=async(expression)=>{const result=await send("Runtime.evaluate",{expression,awaitPromise:true,returnByValue:true});if(result.exceptionDetails)throw new Error(JSON.stringify(result.exceptionDetails));return result.result?.value}
+                                                                                                                                                                    ^
+
+Error: {"exceptionId":1,"text":"Uncaught","lineNumber":0,"columnNumber":44,"scriptId":"130","stackTrace":{"callFrames":[{"functionName":"","scriptId":"130","url":"","lineNumber":0,"columnNumber":44}]},"exception":{"type":"object","subtype":"error","className":"ReferenceError","description":"ReferenceError: contact is not defined\n    at <anonymous>:1:45","objectId":"-753656109236149314.45.2"}}
+    at evaluate (file:///srv/sjtu-ow-check/repo/handoff/rounds/289-f5-personal-center-code/personal-journey.mjs:30:165)
+    at async wait (file:///srv/sjtu-ow-check/repo/handoff/rounds/289-f5-personal-center-code/personal-journey.mjs:35:63)
+    at async file:///srv/sjtu-ow-check/repo/handoff/rounds/289-f5-personal-center-code/personal-journey.mjs:185:3
+
+Node.js v24.13.0
+REAL-ACCOUNTS-WORK /tmp/sjtuow-real-accounts-9_bscn5x
+Traceback (most recent call last):
+  File "/srv/sjtu-ow-check/repo/handoff/rounds/289-f5-personal-center-code/run_real_personal.py", line 71, in <module>
+    subprocess.run(['node',str(root/'handoff/rounds/289-f5-personal-center-code/personal-journey.mjs'),str(config),'/usr/bin/chromium'],cwd=root/'web/apps/site',check=True,env=os.environ)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['node', '/srv/sjtu-ow-check/repo/handoff/rounds/289-f5-personal-center-code/personal-journey.mjs', '/tmp/sjtuow-real-accounts-9_bscn5x/config.json', '/usr/bin/chromium']' returned non-zero exit status 1.

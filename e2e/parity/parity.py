@@ -239,11 +239,21 @@ def start_new(env: dict, api_port: int, ssr_port: int, caddy_port: int) -> list:
 class RecordingDevTools(screens.DevTools):
     def __init__(self, url):
         self.browser_errors = []
+        self.request_methods = {}
+        self.submissions = []
         super().__init__(url)
 
     def _receive(self):
         message = super()._receive()
         method, params = message.get('method'), message.get('params', {})
+        if method == 'Network.requestWillBeSent':
+            self.request_methods[params['requestId']] = params['request']['method']
+        elif method == 'Network.responseReceived':
+            response = params.get('response', {})
+            if self.request_methods.get(params['requestId']) == 'POST':
+                self.submissions.append({'path': urllib.parse.urlsplit(response['url']).path, 'status': response['status']})
+        elif method in ('Network.loadingFinished', 'Network.loadingFailed'):
+            self.request_methods.pop(params['requestId'], None)
         if method == 'Runtime.exceptionThrown':
             self.browser_errors.append('runtime: ' + params.get('exceptionDetails', {}).get('text', 'exception'))
         elif method == 'Runtime.consoleAPICalled' and any(a.get('value') == 'PARITY-CSP' for a in params.get('args', [])):
@@ -300,7 +310,7 @@ SNAPSHOT = """(() => {
 })()"""
 
 
-def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: str, shot: Path) -> dict:
+def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: str, shot: Path, invalid=None) -> dict:
     tools.send("Network.clearBrowserCookies")
     for item in (cookie if isinstance(cookie, list) else [cookie] if cookie else []):
         tools.send("Network.setCookie", {**item, "domain": "127.0.0.1", "path": "/"})
@@ -330,7 +340,12 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
     # Font loading can outlive readyState/image completion, especially on long
     # Chinese pages. Capture the layout after its fonts and next paint frames.
     evaluate(tools, "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))")
+    if invalid:
+        from account_errors import submit
+        submission = submit(tools, invalid, evaluate)
     snap = evaluate(tools, SNAPSHOT)
+    if invalid:
+        snap['submission'] = submission
     snap['browser_errors'] = list(tools.browser_errors)
     box = snap.pop("box")
     if box["width"] > 0 and box["height"] > 0:
@@ -415,10 +430,13 @@ def main(argv: list[str]) -> int:
     only = next((a.split("=", 1)[1].split(",") for a in argv if a.startswith("--only=")), None)
     wide = "--wide" in argv
     strict = "--strict" in argv
-    accounts = "--accounts" in argv
+    errors = "--account-errors" in argv
+    accounts = "--accounts" in argv or errors
     if accounts:
         from account_scenarios import PAGES as account_pages, EXTRA_EMAILS
         EMAILS.update(EXTRA_EMAILS)
+        if errors:
+            from account_errors import PAGES as account_pages
     pages = [p for p in (account_pages if accounts else PAGES) if not only or any(
         prefix and (p[0].startswith(prefix) or p[2].startswith(prefix)) for prefix in only
     )]
@@ -484,10 +502,14 @@ def main(argv: list[str]) -> int:
             path = urllib.parse.quote(template.format(**data), safe="/?=&#%")
             old_cookie = [{"name": "sessionid", "value": data["sessions"][who]}] if who in data["sessions"] else []
             new_cookie = [{"name": "ow_session", "value": new_sessions[who]}] if who in new_sessions else []
-            if accounts:
+            if accounts and not errors:
                 from account_scenarios import context
                 old_cookie, new_cookie, suffix = context(name, who, data, new_sessions, WORK, screens.site_env())
                 path += suffix
+            if errors:
+                from account_errors import context as error_context
+                old_cookie, new_cookie, suffix = error_context(name, data, new_sessions, WORK, screens.site_env())
+                path = template + suffix
             cookies = lambda items: "; ".join(c["name"] + "=" + c["value"] for c in items)
             status = (
                 fetch_status(f"http://127.0.0.1:{old_port}{path}", cookies(old_cookie)),
@@ -495,19 +517,27 @@ def main(argv: list[str]) -> int:
             )
             row = {"name": name, "who": who, "path": path, "status": status, "views": []}
             if 300 <= status[0][0] < 400 or 300 <= status[1][0] < 400:
-                allowed = approved_redirect(name, who, status)
+                allowed = approved_redirect(name, who, status) if not errors else None
                 if allowed:
                     row['approved_difference'] = allowed
-                row["views"] = [{"view": "redirect", "ratio": 0, "problems": [] if allowed else redirect_problems(status)}]
+                problems = ['错误态夹具未进入可提交表单'] if errors else ([] if allowed else redirect_problems(status))
+                row["views"] = [{"view": "redirect", "ratio": 0, "problems": problems}]
             for width, scheme in ([] if row["views"] else views):
                 stem = f"{name}-{who}-{width}-{scheme}"
-                old = look(tools, f"http://127.0.0.1:{old_port}{path}", old_cookie, width, scheme, SHOTS / f"{stem}-old.png")
-                new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png")
+                if errors:
+                    from account_errors import context as error_context
+                    old_cookie, new_cookie, suffix = error_context(name, data, new_sessions, WORK, screens.site_env())
+                    path = template + suffix
+                old = look(tools, f"http://127.0.0.1:{old_port}{path}", old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None)
+                new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png", name if errors else None)
                 ratio, note = pixel_ratio(SHOTS / f"{stem}-old.png", SHOTS / f"{stem}-new.png")
                 problems = compare(old, new, ratio, (status[0][0], status[1][0]) if (width, scheme) == views[0] else (0, 0))
                 if note:
                     problems.append(note)
-                row["views"].append({"view": f"{width}-{scheme}", "ratio": ratio, "problems": problems})
+                view = {"view": f"{width}-{scheme}", "ratio": ratio, "problems": problems}
+                if errors:
+                    view['submissions'] = {'old': old['submission'], 'new': new['submission']}
+                row["views"].append(view)
             row["pass"] = all(not v["problems"] for v in row["views"])
             results.append(row)
             mark = "通过" if row["pass"] else "不同"

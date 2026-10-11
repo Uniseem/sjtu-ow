@@ -1,0 +1,52 @@
+日志：sjtu-ow-test:/srv/sjtu-ow-check/runs/20261011-184413-b30bb5f.log
+测试机 kvm17243： 0b08cb7 288: 写入剩余重构的提速计划与交班安排 + 工作区改动
+PASS REAL unproved reset cannot open new password form {}
+PASS REAL real validation retains signup inputs {}
+PASS REAL registration persists unverified without session {}
+PASS REAL unverified password login issues new SMTP code without session {}
+PASS REAL wrong signup code commits attempt {}
+PASS REAL third wrong signup code is discarded {}
+PASS REAL real resend restarts code and browser cooldown {}
+PASS REAL SMTP signup code verifies and logs in {}
+PASS REAL welcome notice survives SSR then is consumed {}
+PASS REAL GET logout only confirms {}
+PASS REAL POST logout revokes session {}
+PASS REAL wrong login stays with field/message error {}
+PASS REAL real login returns safe next {}
+PASS REAL second real password login creates separate session {}
+PASS REAL password change retains current and revokes others {}
+PASS REAL email change requires reauthentication {}
+PASS REAL wrong reauthentication leaves state unchanged {}
+PASS REAL reauthentication restores email draft {}
+PASS REAL new address is pending until verified {}
+PASS REAL wrong new-email code persists attempt {}
+PASS REAL new-email SMTP code replaces login address {}
+PASS REAL cancel pending email keeps current address {}
+PASS REAL wrong reset code commits attempt {}
+PASS REAL reset proof is private cookie without URL or JS access {}
+PASS REAL password reset logs out all sessions without auto-login {}
+PASS REAL previous password fails after reset {}
+PASS REAL reset password signs in with changed email {}
+PASS REAL external login next falls back inside site {}
+PASS REAL existing-email signup shows same confirmation without login {}
+PASS REAL unknown-email reset shows same confirmation {}
+PASS REAL inactive explanation renders in real SSR {}
+PASS REAL real redirect /accounts/login/code/confirm/ {}
+PASS REAL real redirect /accounts/password/change/ {}
+PASS REAL password-set is actual authenticated permanent redirect {}
+PASS REAL profile privacy stays unchanged when versioned editing is unavailable {}
+PASS REAL real game creation preserves bronze zero and other unranked nulls {}
+PASS REAL game editing is protected until version receipt exists {}
+PASS REAL real contact creation persists and refreshes list {}
+PASS REAL notification toggle is real persisted state {}
+PASS REAL notification toggle can be reenabled {}
+PASS REAL deletion without preflight projection never offers submission {}
+PASS REAL real contact deletion removes persisted row {}
+PASS REAL real game deletion removes persisted row {}
+PASS REAL real account runtime/CSP/server errors absent {"runtime":0,"csp":0,"server500":0}
+REAL-PERSONAL-JOURNEY-OK 44
+REAL-ACCOUNTS-WORK /tmp/sjtuow-real-accounts-xz846niu
+Traceback (most recent call last):
+  File "/srv/sjtu-ow-check/repo/handoff/rounds/289-f5-personal-center-code/mutate.py", line 40, in <module>
+    raise RuntimeError('mutation did not fail an assertion: ' + name)
+RuntimeError: mutation did not fail an assertion: changed fields only

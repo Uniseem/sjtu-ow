@@ -1,6 +1,29 @@
 import { expect, test } from "vitest"
 import { ApiError, buildURL, createClient } from "./src/client"
 
+test("explicit 401 handling preserves server fields and does not redirect", async () => {
+  let assigned = false
+  const request = createClient({
+    assign: () => { assigned = true },
+    fetch: async () => Response.json({ error: { code: "bad_credentials", message: "错误" }, fields: { password: ["密码错误"] }, current: { version: 7 } }, { status: 401 }),
+  })
+  try {
+    await request("POST", "/api/auth/login", { unauthorized: "throw" })
+    throw new Error("expected rejection")
+  } catch (error) {
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 401, code: "bad_credentials", fields: { password: ["密码错误"] }, current: { version: 7 } })
+  }
+  expect(assigned).toBe(false)
+})
+
+test("429 exposes Retry-After seconds without accepting an invalid header", async () => {
+  for (const [header, expected] of [["30", 30], ["0", 0], ["bad-date", undefined]] as const) {
+    const request = createClient({ fetch: async () => Response.json({ error: { code: "limited" } }, { status: 429, headers: { "Retry-After": header } }) })
+    await expect(request("POST", "/api/auth/resend-code")).rejects.toMatchObject({ status: 429, retryAfter: expected })
+  }
+})
+
 function fake(status: number, body: unknown, seen: { headers: Headers; url: string }) {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     seen.url = String(input)

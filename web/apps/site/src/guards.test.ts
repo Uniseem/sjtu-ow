@@ -13,11 +13,8 @@ const REPO = resolve(SRC, "../../../..")
 // 260's pages and 253's back office, to be redone page family by page family
 // (frontend-migration 3, 11). Do not add to this list.
 const PENDING_REWRITE = new Set([
-  "pages/Contacts.vue",
-  "pages/GameAccounts.vue",
   "pages/MemberDetail.vue",
   "pages/Members.vue",
-  "pages/Profile.vue",
   "pages/ScrimDetail.vue",
   "pages/Scrims.vue",
   "pages/TeamApply.vue",

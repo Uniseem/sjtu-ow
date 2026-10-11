@@ -1,0 +1,2347 @@
+[
+ {
+  "name": "login",
+  "who": "visitor",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "signup",
+  "who": "visitor",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "confirm-email",
+  "who": "visitor",
+  "path": "/accounts/confirm-email/?email=pending@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "reauthenticate",
+  "who": "visitor",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    302,
+    "/accounts/login/?next=/accounts/reauthenticate/"
+   ],
+   [
+    302,
+    "/accounts/login/?next=%2Faccounts%2Freauthenticate%2F"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-change",
+  "who": "visitor",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    302,
+    "/accounts/login/?next=/accounts/password/change/"
+   ],
+   [
+    302,
+    "/accounts/login/?next=%2Faccounts%2Fpassword%2Fchange%2F"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset",
+  "who": "visitor",
+  "path": "/accounts/password/reset/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-confirm",
+  "who": "visitor",
+  "path": "/accounts/password/reset/confirm/?email=member@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-complete",
+  "who": "visitor",
+  "path": "/accounts/password/reset/complete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-done",
+  "who": "visitor",
+  "path": "/accounts/password/reset/done/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login-code-confirm",
+  "who": "visitor",
+  "path": "/accounts/login/code/confirm/",
+  "status": [
+   [
+    302,
+    "/accounts/login/"
+   ],
+   [
+    302,
+    "/accounts/login/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login",
+  "who": "member",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "signup",
+  "who": "member",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "confirm-email",
+  "who": "member",
+  "path": "/accounts/confirm-email/?mode=change&email=pending-member@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "reauthenticate",
+  "who": "member",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-change",
+  "who": "member",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset",
+  "who": "member",
+  "path": "/accounts/password/reset/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-confirm",
+  "who": "member",
+  "path": "/accounts/password/reset/confirm/?email=member@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-complete",
+  "who": "member",
+  "path": "/accounts/password/reset/complete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-done",
+  "who": "member",
+  "path": "/accounts/password/reset/done/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login-code-confirm",
+  "who": "member",
+  "path": "/accounts/login/code/confirm/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login",
+  "who": "captain",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "signup",
+  "who": "captain",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "confirm-email",
+  "who": "captain",
+  "path": "/accounts/confirm-email/?mode=change&email=pending-captain@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "reauthenticate",
+  "who": "captain",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-change",
+  "who": "captain",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset",
+  "who": "captain",
+  "path": "/accounts/password/reset/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-confirm",
+  "who": "captain",
+  "path": "/accounts/password/reset/confirm/?email=captain@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-complete",
+  "who": "captain",
+  "path": "/accounts/password/reset/complete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-done",
+  "who": "captain",
+  "path": "/accounts/password/reset/done/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login-code-confirm",
+  "who": "captain",
+  "path": "/accounts/login/code/confirm/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login",
+  "who": "tournament_admin",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "signup",
+  "who": "tournament_admin",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "confirm-email",
+  "who": "tournament_admin",
+  "path": "/accounts/confirm-email/?mode=change&email=pending-tournament_admin@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "reauthenticate",
+  "who": "tournament_admin",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-change",
+  "who": "tournament_admin",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset",
+  "who": "tournament_admin",
+  "path": "/accounts/password/reset/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-confirm",
+  "who": "tournament_admin",
+  "path": "/accounts/password/reset/confirm/?email=tournament_admin@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-complete",
+  "who": "tournament_admin",
+  "path": "/accounts/password/reset/complete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-done",
+  "who": "tournament_admin",
+  "path": "/accounts/password/reset/done/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login-code-confirm",
+  "who": "tournament_admin",
+  "path": "/accounts/login/code/confirm/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login",
+  "who": "scrim_admin",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "signup",
+  "who": "scrim_admin",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "confirm-email",
+  "who": "scrim_admin",
+  "path": "/accounts/confirm-email/?mode=change&email=pending-scrim_admin@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "reauthenticate",
+  "who": "scrim_admin",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-change",
+  "who": "scrim_admin",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset",
+  "who": "scrim_admin",
+  "path": "/accounts/password/reset/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-confirm",
+  "who": "scrim_admin",
+  "path": "/accounts/password/reset/confirm/?email=scrim_admin@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-complete",
+  "who": "scrim_admin",
+  "path": "/accounts/password/reset/complete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-done",
+  "who": "scrim_admin",
+  "path": "/accounts/password/reset/done/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login-code-confirm",
+  "who": "scrim_admin",
+  "path": "/accounts/login/code/confirm/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login",
+  "who": "content_editor",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "signup",
+  "who": "content_editor",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "confirm-email",
+  "who": "content_editor",
+  "path": "/accounts/confirm-email/?mode=change&email=pending-content_editor@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "reauthenticate",
+  "who": "content_editor",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-change",
+  "who": "content_editor",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset",
+  "who": "content_editor",
+  "path": "/accounts/password/reset/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-confirm",
+  "who": "content_editor",
+  "path": "/accounts/password/reset/confirm/?email=content_editor@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-complete",
+  "who": "content_editor",
+  "path": "/accounts/password/reset/complete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-done",
+  "who": "content_editor",
+  "path": "/accounts/password/reset/done/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login-code-confirm",
+  "who": "content_editor",
+  "path": "/accounts/login/code/confirm/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login",
+  "who": "officer",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "signup",
+  "who": "officer",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "confirm-email",
+  "who": "officer",
+  "path": "/accounts/confirm-email/?mode=change&email=pending-officer@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "reauthenticate",
+  "who": "officer",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-change",
+  "who": "officer",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset",
+  "who": "officer",
+  "path": "/accounts/password/reset/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-confirm",
+  "who": "officer",
+  "path": "/accounts/password/reset/confirm/?email=officer@screens.test",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-complete",
+  "who": "officer",
+  "path": "/accounts/password/reset/complete/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset-done",
+  "who": "officer",
+  "path": "/accounts/password/reset/done/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login-code-confirm",
+  "who": "officer",
+  "path": "/accounts/login/code/confirm/",
+  "status": [
+   [
+    302,
+    "/"
+   ],
+   [
+    302,
+    "/"
+   ]
+  ],
+  "views": [
+   {
+    "view": "redirect",
+    "ratio": 0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ }
+]

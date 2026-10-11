@@ -1,0 +1,176 @@
+[
+ {
+  "name": "error-login",
+  "who": "visitor",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.000485580422125182,
+    "problems": [
+     "正文不同：-邮箱或密码不正确。；+邮箱或密码不正确"
+    ],
+    "submissions": {
+     "old": {
+      "path": "/accounts/login/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/login",
+      "status": 401
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.001851490514905149,
+    "problems": [
+     "正文不同：-邮箱或密码不正确。；+邮箱或密码不正确"
+    ],
+    "submissions": {
+     "old": {
+      "path": "/accounts/login/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/login",
+      "status": 401
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.00048444323144104806,
+    "problems": [
+     "正文不同：-邮箱或密码不正确。；+邮箱或密码不正确"
+    ],
+    "submissions": {
+     "old": {
+      "path": "/accounts/login/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/login",
+      "status": 401
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0018471544715447155,
+    "problems": [
+     "正文不同：-邮箱或密码不正确。；+邮箱或密码不正确"
+    ],
+    "submissions": {
+     "old": {
+      "path": "/accounts/login/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/login",
+      "status": 401
+     }
+    }
+   }
+  ],
+  "pass": false
+ },
+ {
+  "name": "error-reauth",
+  "who": "member",
+  "path": "/accounts/reauthenticate/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0016578438069216757,
+    "problems": [
+     "正文不同：-密码不正确。；+当前密码不正确。"
+    ],
+    "submissions": {
+     "old": {
+      "path": "/accounts/reauthenticate/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reauthenticate",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.006512928022361985,
+    "problems": [
+     "正文不同：-密码不正确。；+当前密码不正确。",
+     "像素差 0.65%"
+    ],
+    "submissions": {
+     "old": {
+      "path": "/accounts/reauthenticate/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reauthenticate",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0016635359744990893,
+    "problems": [
+     "正文不同：-密码不正确。；+当前密码不正确。"
+    ],
+    "submissions": {
+     "old": {
+      "path": "/accounts/reauthenticate/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reauthenticate",
+      "status": 422
+     }
+    }
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.00653529000698812,
+    "problems": [
+     "正文不同：-密码不正确。；+当前密码不正确。",
+     "像素差 0.65%"
+    ],
+    "submissions": {
+     "old": {
+      "path": "/accounts/reauthenticate/",
+      "status": 200
+     },
+     "new": {
+      "path": "/api/auth/reauthenticate",
+      "status": 422
+     }
+    }
+   }
+  ],
+  "pass": false
+ }
+]

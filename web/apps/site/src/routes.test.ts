@@ -37,7 +37,6 @@ test("the listed front pages resolve", () => {
     "/me/",
     "/me/teams/",
     "/me/registrations/",
-    "/me/scrims/",
     "/members/",
     "/members/3/",
     "/tournaments/",

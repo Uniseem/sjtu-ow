@@ -1,0 +1,272 @@
+[
+  {
+    "path": "web/packages/ui/src/CMutationError.vue",
+    "added": 27,
+    "removed": 0,
+    "nonblank_added": 24
+  },
+  {
+    "path": "web/packages/ui/src/CAutosave.vue",
+    "added": 50,
+    "removed": 0,
+    "nonblank_added": 47
+  },
+  {
+    "path": "web/packages/ui/src/CField.vue",
+    "added": 7,
+    "removed": 3,
+    "nonblank_added": 7
+  },
+  {
+    "path": "web/packages/ui/src/field-accessibility.ts",
+    "added": 75,
+    "removed": 0,
+    "nonblank_added": 70
+  },
+  {
+    "path": "web/packages/shared/src/autosave.ts",
+    "added": 433,
+    "removed": 0,
+    "nonblank_added": 404
+  },
+  {
+    "path": "web/packages/shared/src/save-receipt.ts",
+    "added": 71,
+    "removed": 0,
+    "nonblank_added": 66
+  },
+  {
+    "path": "web/apps/site/src/routes.ts",
+    "added": 10,
+    "removed": 10,
+    "nonblank_added": 10
+  },
+  {
+    "path": "web/apps/site/src/personal.ts",
+    "added": 199,
+    "removed": 0,
+    "nonblank_added": 177
+  },
+  {
+    "path": "web/apps/site/src/letter-schema.ts",
+    "added": 56,
+    "removed": 0,
+    "nonblank_added": 50
+  },
+  {
+    "path": "web/apps/site/src/team-display.ts",
+    "added": 25,
+    "removed": 0,
+    "nonblank_added": 22
+  },
+  {
+    "path": "web/apps/site/src/pending-api.ts",
+    "added": 154,
+    "removed": 0,
+    "nonblank_added": 134
+  },
+  {
+    "path": "web/apps/site/src/personal-schema.ts",
+    "added": 53,
+    "removed": 0,
+    "nonblank_added": 48
+  },
+  {
+    "path": "web/apps/site/src/use-mutation.ts",
+    "added": 137,
+    "removed": 0,
+    "nonblank_added": 128
+  },
+  {
+    "path": "web/apps/site/src/use-autosave.ts",
+    "added": 76,
+    "removed": 0,
+    "nonblank_added": 70
+  },
+  {
+    "path": "web/apps/site/src/registration-display.ts",
+    "added": 49,
+    "removed": 0,
+    "nonblank_added": 44
+  },
+  {
+    "path": "web/apps/site/src/personal-list-schema.ts",
+    "added": 131,
+    "removed": 0,
+    "nonblank_added": 119
+  },
+  {
+    "path": "web/apps/site/src/image-inspect.ts",
+    "added": 209,
+    "removed": 0,
+    "nonblank_added": 196
+  },
+  {
+    "path": "web/apps/site/src/unsaved.ts",
+    "added": 82,
+    "removed": 0,
+    "nonblank_added": 74
+  },
+  {
+    "path": "web/apps/site/src/upload.ts",
+    "added": 69,
+    "removed": 0,
+    "nonblank_added": 66
+  },
+  {
+    "path": "web/apps/site/src/letters.ts",
+    "added": 48,
+    "removed": 0,
+    "nonblank_added": 41
+  },
+  {
+    "path": "web/apps/site/src/components/PersonalSessionLayout.vue",
+    "added": 34,
+    "removed": 0,
+    "nonblank_added": 32
+  },
+  {
+    "path": "web/apps/site/src/components/ContactEditor.vue",
+    "added": 64,
+    "removed": 0,
+    "nonblank_added": 60
+  },
+  {
+    "path": "web/apps/site/src/components/ContactCreate.vue",
+    "added": 52,
+    "removed": 0,
+    "nonblank_added": 49
+  },
+  {
+    "path": "web/apps/site/src/components/ProfileFields.vue",
+    "added": 157,
+    "removed": 0,
+    "nonblank_added": 152
+  },
+  {
+    "path": "web/apps/site/src/components/AvatarPanel.vue",
+    "added": 137,
+    "removed": 0,
+    "nonblank_added": 130
+  },
+  {
+    "path": "web/apps/site/src/components/ContactFields.vue",
+    "added": 46,
+    "removed": 0,
+    "nonblank_added": 43
+  },
+  {
+    "path": "web/apps/site/src/components/TeamAlumni.vue",
+    "added": 60,
+    "removed": 0,
+    "nonblank_added": 56
+  },
+  {
+    "path": "web/apps/site/src/components/GameAccountFields.vue",
+    "added": 68,
+    "removed": 0,
+    "nonblank_added": 63
+  },
+  {
+    "path": "web/apps/site/src/components/LettersLayout.vue",
+    "added": 22,
+    "removed": 0,
+    "nonblank_added": 21
+  },
+  {
+    "path": "web/apps/site/src/components/PersonalCalendar.vue",
+    "added": 44,
+    "removed": 0,
+    "nonblank_added": 42
+  },
+  {
+    "path": "web/apps/site/src/components/GameAccountCreate.vue",
+    "added": 58,
+    "removed": 0,
+    "nonblank_added": 55
+  },
+  {
+    "path": "web/apps/site/src/components/GameAccountEditor.vue",
+    "added": 60,
+    "removed": 0,
+    "nonblank_added": 57
+  },
+  {
+    "path": "web/apps/site/src/components/GameAccountCard.vue",
+    "added": 50,
+    "removed": 0,
+    "nonblank_added": 47
+  },
+  {
+    "path": "web/apps/site/src/components/PersonalLayout.vue",
+    "added": 46,
+    "removed": 0,
+    "nonblank_added": 43
+  },
+  {
+    "path": "web/apps/site/src/pages/MyRegistrations.vue",
+    "added": 117,
+    "removed": 0,
+    "nonblank_added": 111
+  },
+  {
+    "path": "web/apps/site/src/pages/MyScrims.vue",
+    "added": 75,
+    "removed": 0,
+    "nonblank_added": 69
+  },
+  {
+    "path": "web/apps/site/src/pages/DeleteAccount.vue",
+    "added": 112,
+    "removed": 0,
+    "nonblank_added": 105
+  },
+  {
+    "path": "web/apps/site/src/pages/LettersWaiting.vue",
+    "added": 41,
+    "removed": 0,
+    "nonblank_added": 37
+  },
+  {
+    "path": "web/apps/site/src/pages/LettersConfirm.vue",
+    "added": 134,
+    "removed": 0,
+    "nonblank_added": 126
+  },
+  {
+    "path": "web/apps/site/src/pages/Profile.vue",
+    "added": 78,
+    "removed": 155,
+    "nonblank_added": 76
+  },
+  {
+    "path": "web/apps/site/src/pages/MyTeams.vue",
+    "added": 143,
+    "removed": 0,
+    "nonblank_added": 135
+  },
+  {
+    "path": "web/apps/site/src/pages/Unsubscribe.vue",
+    "added": 75,
+    "removed": 0,
+    "nonblank_added": 70
+  },
+  {
+    "path": "web/apps/site/src/pages/GameAccounts.vue",
+    "added": 106,
+    "removed": 123,
+    "nonblank_added": 101
+  },
+  {
+    "path": "web/apps/site/src/pages/Security.vue",
+    "added": 147,
+    "removed": 0,
+    "nonblank_added": 140
+  },
+  {
+    "path": "web/apps/site/src/pages/Contacts.vue",
+    "added": 114,
+    "removed": 96,
+    "nonblank_added": 109
+  }
+]

@@ -1,0 +1,63 @@
+日志：sjtu-ow-test:/srv/sjtu-ow-check/runs/20261011-183534-17d9b5a.log
+测试机 kvm17243： 0b08cb7 288: 写入剩余重构的提速计划与交班安排 + 工作区改动
+
+== Go（新栈） (10:35:52)
+=== Symbol Results ===
+
+No vulnerabilities found.
+
+Your code is affected by 0 vulnerabilities.
+This scan also found 0 vulnerabilities in packages you import and 3
+vulnerabilities in modules you require, but your code doesn't appear to call
+these vulnerabilities.
+Use '-show verbose' for more details.
+?   	github.com/Uniseem/sjtu-ow/server/cmd/sjtuow	[no test files]
+?   	github.com/Uniseem/sjtu-ow/server/db	[no test files]
+ok  	github.com/Uniseem/sjtu-ow/server/internal/accounts	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/activity	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/agenda	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/app	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/comments	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/content	(cached)
+?   	github.com/Uniseem/sjtu-ow/server/internal/manual	[no test files]
+ok  	github.com/Uniseem/sjtu-ow/server/internal/members	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/moderation	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/notify	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/ops	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/api	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/apigen	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/audit	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/auth	1.206s
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/clock	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/config	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/crypto	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/db	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/djsign	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/health	(cached)
+?   	github.com/Uniseem/sjtu-ow/server/internal/platform/idempotency	[no test files]
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/jobs	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/mail	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/markdown	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/media	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/outbox	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/platform/ratelimit	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/scrims	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/search	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/serve	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/settings	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/teams	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/todo	(cached)
+ok  	github.com/Uniseem/sjtu-ow/server/internal/tournaments	(cached)
+?   	github.com/Uniseem/sjtu-ow/server/tools/txhammer	[no test files]
+API 客户端代码与参考手册生成完成：/srv/sjtu-ow-check/repo/docs/api-reference.md
+
+== Web（新栈） (10:35:59)
+Scope: all 6 workspace projects
+Already up to date
+Done in 329ms using pnpm v11.20.0
+$ pnpm typecheck && pnpm --filter @sjtu-ow/styles build && vitest run && pnpm --filter @sjtu-ow/site test
+$ vue-tsc --noEmit
+apps/site/src/pages/LettersConfirm.vue(5,23): error TS2300: Duplicate identifier 'returnFromLetters'.
+apps/site/src/pages/LettersConfirm.vue(27,22): error TS2300: Duplicate identifier 'returnFromLetters'.
+[ELIFECYCLE] Command failed with exit code 2.
+[ELIFECYCLE] Test failed. See above for more details.

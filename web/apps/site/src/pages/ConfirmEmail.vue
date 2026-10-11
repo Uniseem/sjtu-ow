@@ -48,7 +48,7 @@ function resend() {
       sent.value = true
       start()
     } catch (error) {
-      if (error instanceof ApiError && error.status === 429) start()
+      if (error instanceof ApiError && error.status === 429) start(error.retryAfter)
       throw error
     }
   })

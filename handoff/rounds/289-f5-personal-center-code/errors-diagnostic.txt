@@ -1,0 +1,12 @@
+日志：sjtu-ow-test:/srv/sjtu-ow-check/runs/20261011-184947-66a21e6.log
+另一次检查还在跑，等它结束……
+测试机 kvm17243： 0b08cb7 288: 写入剩余重构的提速计划与交班安排 + 工作区改动
+== 旧站：迁移、种子数据
+== 新站：迁移、导入、图片母版、会话
+做成母版 1 张，已有跳过 0 张，找不到原图 0 张，失败 0 张。
+ACCOUNT-IDENTITIES-OK 7 (three non-superuser cadres)
+PARITY-BROWSER-ERROR-PROBES-OK runtime/CSP (intentional, before page comparisons)
+不同  visitor  /accounts/login/  ← 正文不同：-邮箱或密码不正确。；+邮箱或密码不正确
+不同  member   /accounts/reauthenticate/  ← 正文不同：-密码不正确。；+当前密码不正确。
+
+PARITY 0/2 通过；报告 /tmp/sjtu-ow-parity/out/report.md，截图 /tmp/sjtu-ow-parity/out/shots
