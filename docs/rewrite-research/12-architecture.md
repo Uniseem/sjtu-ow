@@ -412,6 +412,7 @@ CREATE TABLE jobs (
 - **信的结构**照 `core/letters.py`：`Letter{Greeting, Notice, Lead, Facts, Code, Items, Paragraphs, Action, Note, Reason, Unsubscribe}`，`html/template` 和 `text/template` 各一套，**信纸 HTML 逐字照搬 `templates/email/layout.html`**；头图两张 PNG 用 `go:embed` 嵌进二进制，`cid:` 引用（照旧）。
 - 34 种信每种一个构造函数，放在各领域的 `letters.go`；样张页数据也在那里，后台「邮件样张」页用 iframe 显示 Go 渲染的 HTML（邮件预览那套 CSP）。验收：同样的假数据，新旧两边渲染的 HTML 规范化后一致。
 - 发送：SMTP 配置在全站设置里（密码 Fernet 加密），20 秒超时，主题前缀统一加一次（照旧）。`EMAIL_ALLOWLIST` 测试环境白名单照旧。
+- SMTP 原始字节的顶层 `Content-Type` 是真实消息头中的 `multipart/alternative`，正文分别为纯文本和带 HTML/两张 CID 图片的 `multipart/related`，不能把该头写在空行后的正文里。收件端标准 MIME 解析器验六位码（保留前导零）、中文、HTML 和 PNG 原字节；真实账号旅程从临时本地 SMTP 收到的合法邮件读取码，不从数据库或 worker 任务反取明文。
 - **待发信（设计 10.5）**：登录用户的每个写请求，框架在 `app.Ctx` 里放一个批次；服务层 `outbox.Send(tx, letter, recipients)` 有批次就冻结进 `held_letters`（同批次同内容合并收件人），没有（worker、命令）就直接入队。响应带 `letters: {batch, count}`，前端跳确认页；确认用条件更新一次性认领（防双击）。7 天过期、30 天清理、操作人注销时批次由系统代发（照旧）。
 - **退订**：只有群发的活动通知带退订链接和 `List-Unsubscribe` / `List-Unsubscribe-Post`（RFC 8058）头。
 - **Django 签名兼容**（第 1 节第 1 条）：`internal/platform/djsign` 实现 Django 的 `Signer.sign_object` / `unsign_object` 和 `signing.dumps` / `loads`（HMAC-SHA256，密钥 = SHA-256(盐 + "signer" + 密钥)，URL 安全 base64，带压缩标记的也认）。用 Python 生成一批真值写进 `testdata/` 当黄金用例。**新签发的地址也用同一算法、同一密钥**，这样只有一种格式。环境变量叫 `SIGNING_KEY`，值就是现在的 `DJANGO_SECRET_KEY`。

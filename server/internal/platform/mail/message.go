@@ -30,7 +30,7 @@ func Build(letter Letter, to Person, from, siteURL, prefix string, now time.Time
 	if err != nil {
 		return Message{}, err
 	}
-	raw, err := assemble(text, html)
+	raw, contentType, err := assemble(text, html)
 	if err != nil {
 		return Message{}, err
 	}
@@ -40,6 +40,7 @@ func Build(letter Letter, to Person, from, siteURL, prefix string, now time.Time
 	h.Set("From", from)
 	h.Set("To", to.Address)
 	h.Set("MIME-Version", "1.0")
+	h.Set("Content-Type", contentType)
 	if letter.Unsubscribe != "" {
 		h.Set("List-Unsubscribe", "<"+letter.Unsubscribe+">")
 		h.Set("List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
@@ -55,7 +56,7 @@ func Build(letter Letter, to Person, from, siteURL, prefix string, now time.Time
 	return Message{Subject: subject, From: from, To: to.Address, Header: h, Raw: buf.Bytes()}, nil
 }
 
-func assemble(text, html string) ([]byte, error) {
+func assemble(text, html string) ([]byte, string, error) {
 	var related bytes.Buffer
 	rw := multipart.NewWriter(&related)
 	htmlHeader := textproto.MIMEHeader{}
@@ -63,14 +64,14 @@ func assemble(text, html string) ([]byte, error) {
 	htmlHeader.Set("Content-Transfer-Encoding", "quoted-printable")
 	hw, err := rw.CreatePart(htmlHeader)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	qhtml := quotedprintable.NewWriter(hw)
 	if _, err := qhtml.Write([]byte(html)); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := qhtml.Close(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	for _, cid := range []string{"ow-mark", "ow-horizon"} {
 		ih := textproto.MIMEHeader{}
@@ -80,18 +81,18 @@ func assemble(text, html string) ([]byte, error) {
 		ih.Set("Content-Disposition", "inline")
 		pw, err := rw.CreatePart(ih)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		enc := base64.NewEncoder(base64.StdEncoding, &lineWrap{w: pw})
 		if _, err := enc.Write(Art()[cid]); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		if err := enc.Close(); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	if err := rw.Close(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var alt bytes.Buffer
@@ -101,32 +102,29 @@ func assemble(text, html string) ([]byte, error) {
 	th.Set("Content-Transfer-Encoding", "quoted-printable")
 	tw, err := aw.CreatePart(th)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	qtext := quotedprintable.NewWriter(tw)
 	if _, err := qtext.Write([]byte(text)); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := qtext.Close(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	rh := textproto.MIMEHeader{}
 	rh.Set("Content-Type", "multipart/related; boundary="+rw.Boundary())
 	rp, err := aw.CreatePart(rh)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if _, err := rp.Write(related.Bytes()); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := aw.Close(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	var out bytes.Buffer
-	fmt.Fprintf(&out, "Content-Type: multipart/alternative; boundary=%s\r\n\r\n", aw.Boundary())
-	out.Write(alt.Bytes())
-	return out.Bytes(), nil
+	return alt.Bytes(), mime.FormatMediaType("multipart/alternative", map[string]string{"boundary": aw.Boundary()}), nil
 }
 
 // lineWrap 给 base64 每 76 个字符换一行，邮件才认。
