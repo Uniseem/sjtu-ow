@@ -10,14 +10,14 @@ const api = useApi()
 
 const contentSection = ADMIN_SECTIONS.find((s) => s.id === "content")
 const loading = ref(true)
-const categories = ref<GetApiAdminCategoriesOut["categories"]>([])
+const categories = ref<NonNullable<GetApiAdminCategoriesOut["items"][number]>[]>([])
 const error = ref<string | null>(null)
 
 async function loadCategories() {
   loading.value = true
   try {
     const res = await getApiAdminCategories(api)
-    categories.value = res.categories
+    categories.value = res.items.filter((item): item is NonNullable<typeof item> => item !== null)
   } catch (err: any) {
     error.value = err?.message ?? "加载分类失败"
   } finally {
@@ -79,8 +79,8 @@ onMounted(() => {
               <td class="p-3 font-mono text-xs text-fg-2">{{ cat.slug }}</td>
               <td class="p-3 text-sm text-fg-2">{{ cat.sort_order }}</td>
               <td class="p-3 text-sm">
-                <span :class="cat.allow_submissions ? 'text-success' : 'text-fg-3'">
-                  {{ cat.allow_submissions ? '开放' : '关闭' }}
+                <span :class="cat.allow_submission ? 'text-success' : 'text-fg-3'">
+                  {{ cat.allow_submission ? '开放' : '关闭' }}
                 </span>
               </td>
               <td class="p-3 text-sm text-fg-2">{{ cat.article_count }}</td>

@@ -1,0 +1,382 @@
+[
+ {
+  "name": "home",
+  "who": "visitor",
+  "path": "/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 2.1300363526204183e-06,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 6.849315068493151e-06,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 1.4200242350802787e-06,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 6.849315068493151e-06,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "home",
+  "who": "member",
+  "path": "/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 1.492970242970243e-06,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 5.886681383370125e-06,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 1.2796887796887797e-06,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 5.886681383370125e-06,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "news",
+  "who": "visitor",
+  "path": "/news/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "article",
+  "who": "visitor",
+  "path": "/news/screens-guide/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0003626778455284553,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.001527638190954774,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0003633130081300813,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0015303182579564489,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "article",
+  "who": "member",
+  "path": "/news/screens-guide/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.00032825147167034585,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.001314878892733564,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0003288263428991906,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0013171856978085351,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "login",
+  "who": "visitor",
+  "path": "/accounts/login/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "signup",
+  "who": "visitor",
+  "path": "/accounts/signup/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-reset",
+  "who": "visitor",
+  "path": "/accounts/password/reset/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "password-change",
+  "who": "member",
+  "path": "/accounts/password/change/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "email",
+  "who": "member",
+  "path": "/accounts/email/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ }
+]

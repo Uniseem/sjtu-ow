@@ -1,0 +1,23 @@
+20261011-165938-bfa53d5 exit 0
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+ Test Files  9 passed (9)
+      Tests  212 passed (212)
+首页壳 gzip：HTML 3130 + CSS 19925 + JS 73723 = 96778 字节（脚本上限 122880，合计上限 307200）
+BUDGET-OK
+CAUGHT password hash serialization
+CAUGHT comment article slug
+CAUGHT user roles projection
+TYPE-RUNTIME-MUTATIONS-OK 3
+TYPE-PROBE-OK valid API and Vue template
+TYPE-PROBE-OK unknown API query
+TYPE-PROBE-OK nullable API item
+TYPE-PROBE-OK unknown Vue prop
+TYPE-PROBE-OK wrong Vue prop value
+REAL-ACCOUNTS-JOURNEY-OK 35
+PASS REAL real 429 keeps draft {"acceptedBurst":1}
+REAL-COMMENTS-JOURNEY-OK 23
+COMMENTS-BROWSER-CHECK 23/23
+BROWSER-CHECK-OK
+PARITY-BROWSER-ERROR-PROBES-OK runtime/CSP (intentional, before page comparisons)
+PARITY 10/10 通过；报告 /tmp/sjtu-ow-parity/out/report.md，截图 /tmp/sjtu-ow-parity/out/shots

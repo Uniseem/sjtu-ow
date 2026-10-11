@@ -8,7 +8,7 @@ import CIcon from "./CIcon.vue"
 // system decides and the buttons could do nothing anyway. The hidden
 // attribute is static in the template and removed after mount, so server
 // and browser paint the same thing.
-const props = withDefaults(defineProps<{ variant: "bar" | "drawer" }>(), { variant: "bar" })
+const props = withDefaults(defineProps<{ variant?: "bar" | "drawer" }>(), { variant: "bar" })
 const current = ref<ThemeChoice>("system")
 const root = ref<HTMLElement | null>(null)
 const choices: { value: ThemeChoice; label: string; icon: string }[] = [
@@ -50,7 +50,7 @@ onUnmounted(() => {
         v-for="choice in choices"
         :key="choice.value"
         type="button"
-        :aria-pressed="String(choice.value === current)"
+        :aria-pressed="choice.value === current"
         @click="pick(choice.value)"
       >
         <CIcon :name="choice.icon" />{{ choice.label }}
@@ -64,7 +64,7 @@ onUnmounted(() => {
         v-for="choice in choices"
         :key="choice.value"
         type="button"
-        :aria-pressed="String(choice.value === current)"
+        :aria-pressed="choice.value === current"
         @click="pick(choice.value)"
       >
         <CIcon :name="choice.icon" />{{ choice.label }}

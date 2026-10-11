@@ -33,7 +33,6 @@ const PENDING_REWRITE = new Set([
   "pages/admin/AdminAvatars.vue",
   "pages/admin/AdminCategories.vue",
   "pages/admin/AdminComments.vue",
-  "pages/admin/AdminHome.vue",
   "pages/admin/AdminHomePins.vue",
   "pages/admin/AdminImages.vue",
   "pages/admin/AdminLetters.vue",

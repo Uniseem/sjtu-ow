@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { imageUrl } from "../../media"
 import { ref, onMounted } from "vue"
 import {
   getApiAdminImages,
@@ -15,7 +16,7 @@ const api = useApi()
 
 const contentSection = ADMIN_SECTIONS.find((s) => s.id === "content")
 const loading = ref(true)
-const images = ref<GetApiAdminImagesOut["images"]>([])
+const images = ref<GetApiAdminImagesOut["items"]>([])
 const collections = ref<GetApiAdminImageCollectionsOut["collections"]>([])
 const selectedCollection = ref("")
 const search = ref("")
@@ -28,7 +29,7 @@ async function loadData() {
       getApiAdminImages(api),
       getApiAdminImageCollections(api),
     ])
-    images.value = imgRes.images
+    images.value = imgRes.items
     collections.value = colRes.collections
   } catch (err: any) {
     error.value = err?.message ?? "加载图片失败"
@@ -76,7 +77,7 @@ onMounted(() => {
         <select v-model="selectedCollection" class="c-input">
           <option value="">全部集合</option>
           <option v-for="col in collections" :key="col.id" :value="String(col.id)">
-            {{ col.name }} ({{ col.image_count }})
+            {{ col.name }} ({{ images.filter((img) => img.collection_id === col.id).length }})
           </option>
         </select>
         <button class="c-btn c-btn--secondary c-btn--sm" @click="loadData">刷新</button>
@@ -95,8 +96,8 @@ onMounted(() => {
         >
           <div class="aspect-square bg-surface-2 overflow-hidden flex items-center justify-center">
             <img
-              v-if="img.thumb_url"
-              :src="img.thumb_url"
+              v-if="imageUrl(img.id, 'fill-400x400')"
+              :src="imageUrl(img.id, 'fill-400x400')"
               :alt="img.title"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform"
             />
@@ -105,7 +106,7 @@ onMounted(() => {
           <div class="p-2 text-xs">
             <p class="font-medium text-fg truncate" :title="img.title">{{ img.title }}</p>
             <p class="text-fg-3 text-[10px] mt-0.5">
-              {{ img.width }}×{{ img.height }} · {{ img.collection_name || "默认集合" }}
+              {{ img.width }}×{{ img.height }} · {{ collections.find((col) => col.id === img.collection_id)?.name || "默认集合" }}
             </p>
           </div>
         </div>

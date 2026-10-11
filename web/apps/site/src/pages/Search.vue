@@ -1,5 +1,4 @@
 <script lang="ts">
-import { computed, inject } from "vue"
 import { getApiSearch, type GetApiSearchOut } from "@sjtu-ow/api"
 import type { LoadCtx } from "../router"
 

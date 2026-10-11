@@ -31,8 +31,8 @@ onMounted(async () => {
         title.value = res.article.title
         slug.value = res.article.slug
         summary.value = res.article.summary ?? ""
-        content.value = res.article.content ?? ""
-        status.value = res.article.status
+        content.value = res.article.body_md ?? ""
+        status.value = res.article.live ? "published" : "draft"
       }
     } catch (err: any) {
       error.value = err?.message ?? "加载文章失败"

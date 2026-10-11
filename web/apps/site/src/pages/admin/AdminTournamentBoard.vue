@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue"
+import { computed, ref, onMounted } from "vue"
 import { useRoute } from "vue-router"
 import { getApiAdminTournamentsIdBoard, type GetApiAdminTournamentsIdBoardOut } from "@sjtu-ow/api"
 import AdminHead from "../../admin/AdminHead.vue"
@@ -14,6 +14,8 @@ const loading = ref(true)
 const board = ref<GetApiAdminTournamentsIdBoardOut | null>(null)
 const error = ref<string | null>(null)
 const saving = ref(false)
+const pool = computed(() => (board.value?.entries ?? []).filter((p) => p.registration_id === null))
+function members(signupIds: number[]) { return (board.value?.entries ?? []).filter((p) => signupIds.includes(p.signup_id)) }
 
 async function loadBoard() {
   loading.value = true
@@ -58,22 +60,22 @@ onMounted(() => {
           <h2 class="font-bold text-sm text-fg mb-3 pb-2 border-b border-border flex justify-between items-center">
             <span>散人待编排池</span>
             <span class="text-xs bg-surface-2 px-2 py-0.5 rounded text-fg-2">
-              {{ board?.solo_pool?.length ?? 0 }} 人
+              {{ pool?.length ?? 0 }} 人
             </span>
           </h2>
 
           <div v-if="loading" class="text-xs text-fg-3 py-6 text-center">加载散人池中...</div>
-          <div v-else-if="!board?.solo_pool?.length" class="text-xs text-fg-3 py-6 text-center">
+          <div v-else-if="!pool?.length" class="text-xs text-fg-3 py-6 text-center">
             暂无待编排散人
           </div>
           <div v-else class="space-y-2">
             <div
-              v-for="p in board.solo_pool"
+              v-for="p in pool"
               :key="p.user_id"
               class="p-2.5 rounded bg-surface-2 border border-border text-xs"
             >
               <p class="font-semibold text-fg">{{ p.nickname }}</p>
-              <p class="text-[11px] text-fg-3">{{ p.battle_tag }} · {{ p.primary_role || "未选位置" }}</p>
+              <p class="text-[11px] text-fg-3">{{ p.battletag }} · {{ p.roles.join("、") || "未选位置" }}</p>
             </div>
           </div>
         </div>
@@ -100,17 +102,17 @@ onMounted(() => {
             >
               <div>
                 <div class="flex justify-between items-center mb-2 pb-2 border-b border-border">
-                  <h3 class="font-bold text-sm text-fg">{{ team.team_name }}</h3>
-                  <span class="text-xs text-fg-3">{{ team.members?.length ?? 0 }} 人</span>
+                  <h3 class="font-bold text-sm text-fg">{{ team.name }}</h3>
+                  <span class="text-xs text-fg-3">{{ members(team.signup_ids)?.length ?? 0 }} 人</span>
                 </div>
                 <div class="space-y-1.5">
                   <div
-                    v-for="m in team.members"
+                    v-for="m in members(team.signup_ids)"
                     :key="m.user_id"
                     class="p-2 rounded bg-surface-2 flex items-center justify-between text-xs"
                   >
                     <span>{{ m.nickname }}</span>
-                    <span class="text-[10px] text-fg-3">{{ m.role_label }}</span>
+                    <span class="text-[10px] text-fg-3">{{ m.roles.join("、") }}</span>
                   </div>
                 </div>
               </div>

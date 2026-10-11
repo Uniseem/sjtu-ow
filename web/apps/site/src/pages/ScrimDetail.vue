@@ -175,7 +175,7 @@ async function onSubmit(e: Event) {
                 </thead>
                 <tbody>
                   <tr v-for="(s, idx) in scrim.signups" :key="s.id">
-                    <td class="font-numeric">{{ idx + 1 }}</td>
+                    <td class="font-numeric">{{ Number(idx) + 1 }}</td>
                     <td>{{ s.user_nickname }}</td>
                     <td>{{ s.battletag }}</td>
                   </tr>

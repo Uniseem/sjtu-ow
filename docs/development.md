@@ -36,6 +36,8 @@ pnpm test
 
 ## 前台浏览器
 
+Web整组的 `pnpm test` 先执行 `pnpm typecheck`（`vue-tsc --noEmit`），统一 `web/tsconfig.json` 的strict/strictTemplates覆盖site、UI/shared/API和TS配置/测试；只有node_modules及构建产物不作源文件入口。`vue-tsc 3.3.12`/TypeScript 6.0.3/Node开发类型固定在锁文件；保留pnpm发布保护，不加最低发布时间豁免。单独验类型仍经 `remote-check.sh run bash -c 'cd web && pnpm typecheck'` 后台运行。
+
 **前台 SSR 在真浏览器里过一遍**（233 起）：`bash scripts/remote-check.sh run bash -c 'cd web/apps/site && node browser-check.mjs /usr/bin/chromium'`（本机 Chrome 就把路径换成 `/Applications/Google Chrome.app/...`）。它起桩 API 和生产 SSR 服务（`STRICT_CSP=1` 时服务自己加 CSP 响应头）、用 CDP 驱动无头 Chromium 走激活、严格 CSP 零违规、SPA 换页、主题、右键菜单、无脚本横幅、404；要在跑它的前一步先构建（整组里 `pnpm test` 就构建了）。改了前台入口、壳或这些行为后跑一次；截图落在仓库检出里（gitignore 了）。
 
 ## 新旧对拍与 Caddy

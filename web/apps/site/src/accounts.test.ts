@@ -74,3 +74,16 @@ test("logout GET redirects guests safely and leaves a real confirmation for memb
   expect(member.status).toBe(200)
   expect(member.body).toContain("确定要退出当前账号吗？")
 })
+
+test("pending email explanation is visible help content, not an unknown component attribute", async () => {
+  const result = await handle({ method: "GET", url: "/accounts/email/", headers: { get: () => null } }, {
+    apiBase: "http://api.test",
+    fetch: async (input) => Response.json(new URL(String(input)).pathname === "/api/session"
+      ? { user }
+      : { email: "member@example.com", pending_email: "pending@example.com", reauthenticated: true }),
+  })
+  expect(result.status).toBe(200)
+  const plain = String(result.body).replace(/<!--.*?-->/g, "")
+  expect(plain).toContain('<div class="c-field__help">新邮箱尚未验证。验证通过后才会替换。</div>')
+  expect(plain).not.toContain('help="新邮箱')
+})

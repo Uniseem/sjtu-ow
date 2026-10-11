@@ -387,6 +387,9 @@ func TestTeamsWithoutCaptain(t *testing.T) {
 	flags := map[int64]bool{}
 	for _, r := range rows {
 		flags[r.ID] = r.NoCaptain
+		if r.ID == fine.ID && r.IsRecruiting != fine.IsRecruiting {
+			t.Fatal("admin list must expose the real recruitment flag")
+		}
 	}
 	if !flags[stopped.ID] || flags[fine.ID] {
 		t.Fatalf("无队长战队名单不对：%+v", flags)

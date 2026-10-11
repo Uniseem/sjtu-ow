@@ -73,13 +73,13 @@ onMounted(() => {
                 <a :href="`/teams/${t.id}/`" target="_blank" class="hover:underline">{{ t.name }}</a>
               </td>
               <td class="p-3 text-sm text-fg-2">
-                <span v-if="t.captain_nickname">{{ t.captain_nickname }}</span>
+                <span v-if="t.captain_name">{{ t.captain_name }}</span>
                 <span v-else class="text-danger font-bold text-xs">无队长（需指定）</span>
               </td>
               <td class="p-3 text-sm text-fg-2">{{ t.member_count }} 人</td>
               <td class="p-3 text-sm">
-                <span :class="t.recruiting ? 'text-success' : 'text-fg-3'">
-                  {{ t.recruiting ? '招募中' : '已暂停' }}
+                <span :class="t.is_recruiting ? 'text-success' : 'text-fg-3'">
+                  {{ t.is_recruiting ? '招募中' : '已暂停' }}
                 </span>
               </td>
               <td class="p-3 text-sm">
@@ -87,13 +87,13 @@ onMounted(() => {
                   class="inline-block px-2 py-0.5 rounded text-xs"
                   :class="t.disbanded_at ? 'bg-danger-soft text-on-danger-soft' : 'bg-success-soft text-on-success-soft'"
                 >
-                  {{ t.disbanded_at ? '已解散' : '正常' }}
+                  {{ t.disbanded_at ? '停止招募' : '正常' }}
                 </span>
               </td>
               <td class="p-3 text-right">
                 <div class="inline-flex gap-2">
-                  <button v-if="!t.disbanded_at" class="c-btn c-btn--ghost c-btn--xs">指定队长</button>
-                  <button v-if="!t.disbanded_at" class="c-btn c-btn--ghost c-btn--xs text-danger">解散战队</button>
+                  <button v-if="t.is_recruiting" class="c-btn c-btn--ghost c-btn--xs">指定队长</button>
+                  <button v-if="t.is_recruiting" class="c-btn c-btn--ghost c-btn--xs text-danger">解散战队</button>
                 </div>
               </td>
             </tr>

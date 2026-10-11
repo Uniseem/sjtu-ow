@@ -35,7 +35,8 @@ async function runGenerate() {
   generating.value = true
   try {
     await postApiAdminScrimsIdBoardGenerate(api, id.value, {
-      board_version: board.value?.board_version ?? 1,
+      base_board_version: board.value?.board_version ?? 1,
+      signup_ids: (board.value?.signups ?? []).filter((p) => p.is_selected).map((p) => p.signup_id),
     })
     await loadBoard()
   } catch (err: any) {
@@ -96,9 +97,9 @@ onMounted(() => {
             >
               <div>
                 <p class="font-semibold text-fg">{{ s.nickname }}</p>
-                <p class="text-[11px] text-fg-3">{{ s.role }} · {{ s.rank_label || "未定级" }}</p>
+                <p class="text-[11px] text-fg-3">{{ s.roles.join("、") }} · {{ Object.values(s.rank_text).join("、") || "未定级" }}</p>
               </div>
-              <input type="checkbox" :checked="s.selected" class="c-checkbox" />
+              <input type="checkbox" :checked="s.is_selected" class="c-checkbox" />
             </div>
           </div>
         </div>
@@ -121,12 +122,12 @@ onMounted(() => {
               </h3>
               <div class="space-y-2 min-h-[160px]">
                 <div
-                  v-for="p in (board?.team_a ?? [])"
+                  v-for="p in (board?.teams.find((t) => t.team === 'A')?.members ?? [])"
                   :key="p.user_id"
                   class="p-2 rounded bg-surface-2 flex items-center justify-between text-xs"
                 >
                   <span class="font-medium text-fg">{{ p.nickname }}</span>
-                  <span class="text-fg-3">{{ p.role_slot }}</span>
+                  <span class="text-fg-3">{{ p.assigned_role }}</span>
                 </div>
               </div>
             </div>
@@ -138,12 +139,12 @@ onMounted(() => {
               </h3>
               <div class="space-y-2 min-h-[160px]">
                 <div
-                  v-for="p in (board?.team_b ?? [])"
+                  v-for="p in (board?.teams.find((t) => t.team === 'B')?.members ?? [])"
                   :key="p.user_id"
                   class="p-2 rounded bg-surface-2 flex items-center justify-between text-xs"
                 >
                   <span class="font-medium text-fg">{{ p.nickname }}</span>
-                  <span class="text-fg-3">{{ p.role_slot }}</span>
+                  <span class="text-fg-3">{{ p.assigned_role }}</span>
                 </div>
               </div>
             </div>

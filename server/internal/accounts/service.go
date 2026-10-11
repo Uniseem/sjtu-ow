@@ -1923,6 +1923,7 @@ type ListUsersInput struct {
 
 // AdminUserSummary 用户概要出参。
 type AdminUserSummary struct {
+	Roles            []string  `json:"roles"`
 	ID               int64     `json:"id"`
 	Email            string    `json:"email"`
 	Nickname         string    `json:"nickname"`
@@ -1969,8 +1970,13 @@ func (s *Service) ListUsers(ctx *app.Ctx, in ListUsersInput) (*ListUsersResult, 
 		if !isSuperuser {
 			email = "" // 非超管隐藏邮箱（规则 39）
 		}
+		roles, err := s.store.GetUserRoles(ctx.Context, u.ID)
+		if err != nil {
+			return nil, err
+		}
 		summaries = append(summaries, AdminUserSummary{
 			ID:               u.ID,
+			Roles:            roles,
 			Email:            email,
 			Nickname:         u.Nickname,
 			IsSJTU:           u.IsSJTU,

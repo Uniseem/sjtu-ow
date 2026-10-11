@@ -10,14 +10,14 @@ const api = useApi()
 
 const settingsSection = ADMIN_SECTIONS.find((s) => s.id === "settings")
 const loading = ref(true)
-const logs = ref<GetApiAdminLogOut["entries"]>([])
+const logs = ref<GetApiAdminLogOut["items"]>([])
 const error = ref<string | null>(null)
 
 async function loadLog() {
   loading.value = true
   try {
     const res = await getApiAdminLog(api)
-    logs.value = res.entries
+    logs.value = res.items
   } catch (err: any) {
     error.value = err?.message ?? "加载审计日志失败"
   } finally {
@@ -78,9 +78,9 @@ onMounted(() => {
                 </span>
               </td>
               <td class="p-3 text-fg-2 font-mono">
-                {{ l.target_type }} {{ l.target_id ? `#${l.target_id}` : '' }}
+                {{ l.object_type }} {{ l.object_id ? `#${l.object_id}` : '' }}
               </td>
-              <td class="p-3 text-fg-2 max-w-sm truncate">{{ l.comment || "—" }}</td>
+              <td class="p-3 text-fg-2 max-w-sm truncate">{{ JSON.stringify(l.data) || "—" }}</td>
             </tr>
           </tbody>
         </table>

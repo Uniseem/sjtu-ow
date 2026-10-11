@@ -1,3 +1,4 @@
 <script lang="ts">
-export { default } from "@sjtu-ow/ui/CIcon.vue"
+import Component from "@sjtu-ow/ui/CIcon.vue"
+export default Component
 </script>

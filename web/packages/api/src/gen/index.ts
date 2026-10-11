@@ -156,7 +156,7 @@ export interface GetApiAdminActivityOut {
 }
 
 export function getApiAdminActivity(r: Requester, query: GetApiAdminActivityQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminActivityOut> {
-  return r<GetApiAdminActivityOut>("GET", "/api/admin/activity", { ...extras, query })
+  return r<GetApiAdminActivityOut>("GET", "/api/admin/activity", { ...extras, query: { ...query } })
 }
 
 export interface GetApiAdminAnnounceKindIdOut {
@@ -184,7 +184,7 @@ export interface GetApiAdminArticlesOut {
 }
 
 export function getApiAdminArticles(r: Requester, query: GetApiAdminArticlesQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminArticlesOut> {
-  return r<GetApiAdminArticlesOut>("GET", "/api/admin/articles", { ...extras, query })
+  return r<GetApiAdminArticlesOut>("GET", "/api/admin/articles", { ...extras, query: { ...query } })
 }
 
 export interface GetApiAdminArticlesIdOut {
@@ -211,7 +211,7 @@ export interface GetApiAdminAvatarsOut {
 }
 
 export function getApiAdminAvatars(r: Requester, query: GetApiAdminAvatarsQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminAvatarsOut> {
-  return r<GetApiAdminAvatarsOut>("GET", "/api/admin/avatars", { ...extras, query })
+  return r<GetApiAdminAvatarsOut>("GET", "/api/admin/avatars", { ...extras, query: { ...query } })
 }
 
 export interface GetApiAdminCategoriesOut {
@@ -231,14 +231,14 @@ export interface GetApiAdminCommentsQuery {
 }
 
 export interface GetApiAdminCommentsOut {
-  items: {   id: number;   article_id: number;   article_title: string;   author_id: number;   author_name: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   like_count: number;   created_at: string; }[];
+  items: {   id: number;   article_id: number;   article_title: string;   article_slug: string;   author_id: number;   author_name: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   like_count: number;   created_at: string; }[];
   total: number;
   page: number;
   page_size: number;
 }
 
 export function getApiAdminComments(r: Requester, query: GetApiAdminCommentsQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminCommentsOut> {
-  return r<GetApiAdminCommentsOut>("GET", "/api/admin/comments", { ...extras, query })
+  return r<GetApiAdminCommentsOut>("GET", "/api/admin/comments", { ...extras, query: { ...query } })
 }
 
 export interface GetApiAdminFeatureRoleRestrictionsOut {
@@ -281,7 +281,7 @@ export interface GetApiAdminImagesOut {
 }
 
 export function getApiAdminImages(r: Requester, query: GetApiAdminImagesQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminImagesOut> {
-  return r<GetApiAdminImagesOut>("GET", "/api/admin/images", { ...extras, query })
+  return r<GetApiAdminImagesOut>("GET", "/api/admin/images", { ...extras, query: { ...query } })
 }
 
 export interface GetApiAdminLogQuery {
@@ -302,7 +302,7 @@ export interface GetApiAdminLogOut {
 }
 
 export function getApiAdminLog(r: Requester, query: GetApiAdminLogQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminLogOut> {
-  return r<GetApiAdminLogOut>("GET", "/api/admin/log", { ...extras, query })
+  return r<GetApiAdminLogOut>("GET", "/api/admin/log", { ...extras, query: { ...query } })
 }
 
 export interface GetApiAdminManualOut {
@@ -339,7 +339,7 @@ export interface GetApiAdminMemberGroupsIdPeopleOut {
 }
 
 export function getApiAdminMemberGroupsIdPeople(r: Requester, id: string | number, query: GetApiAdminMemberGroupsIdPeopleQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminMemberGroupsIdPeopleOut> {
-  return r<GetApiAdminMemberGroupsIdPeopleOut>("GET", "/api/admin/member-groups/{id}/people", { ...extras, params: { id }, query })
+  return r<GetApiAdminMemberGroupsIdPeopleOut>("GET", "/api/admin/member-groups/{id}/people", { ...extras, params: { id }, query: { ...query } })
 }
 
 export interface GetApiAdminModerationQuery {
@@ -362,7 +362,7 @@ export interface GetApiAdminModerationOut {
 }
 
 export function getApiAdminModeration(r: Requester, query: GetApiAdminModerationQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminModerationOut> {
-  return r<GetApiAdminModerationOut>("GET", "/api/admin/moderation", { ...extras, query })
+  return r<GetApiAdminModerationOut>("GET", "/api/admin/moderation", { ...extras, query: { ...query } })
 }
 
 export interface GetApiAdminModerationIdOut {
@@ -414,7 +414,7 @@ export interface GetApiAdminScrimsIdBoardOut {
 }
 
 export function getApiAdminScrimsIdBoard(r: Requester, id: string | number, query: GetApiAdminScrimsIdBoardQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminScrimsIdBoardOut> {
-  return r<GetApiAdminScrimsIdBoardOut>("GET", "/api/admin/scrims/{id}/board", { ...extras, params: { id }, query })
+  return r<GetApiAdminScrimsIdBoardOut>("GET", "/api/admin/scrims/{id}/board", { ...extras, params: { id }, query: { ...query } })
 }
 
 export interface GetApiAdminSettingsOut {
@@ -426,7 +426,7 @@ export function getApiAdminSettings(r: Requester, extras: CallExtras = {}): Prom
 }
 
 export interface GetApiAdminTeamsOut {
-  teams: ({   id: number;   name: string;   member_count: number;   captain_id: number | null;   captain_name: string;   captain_active: boolean;   no_captain: boolean;   disbanded_at?: string | null;   created_at: string; })[];
+  teams: ({   is_recruiting: boolean;   id: number;   name: string;   member_count: number;   captain_id: number | null;   captain_name: string;   captain_active: boolean;   no_captain: boolean;   disbanded_at?: string | null;   created_at: string; })[];
 }
 
 export function getApiAdminTeams(r: Requester, extras: CallExtras = {}): Promise<GetApiAdminTeamsOut> {
@@ -483,7 +483,7 @@ export interface GetApiAdminTournamentsIdRegistrationsOut {
 }
 
 export function getApiAdminTournamentsIdRegistrations(r: Requester, id: string | number, query: GetApiAdminTournamentsIdRegistrationsQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminTournamentsIdRegistrationsOut> {
-  return r<GetApiAdminTournamentsIdRegistrationsOut>("GET", "/api/admin/tournaments/{id}/registrations", { ...extras, params: { id }, query })
+  return r<GetApiAdminTournamentsIdRegistrationsOut>("GET", "/api/admin/tournaments/{id}/registrations", { ...extras, params: { id }, query: { ...query } })
 }
 
 export interface GetApiAdminUsersQuery {
@@ -494,15 +494,15 @@ export interface GetApiAdminUsersQuery {
 
 export interface GetApiAdminUsersOut {
   total: number;
-  users: {   id: number;   email: string;   nickname: string;   is_sjtu: boolean;   is_active: boolean;   is_superuser: boolean;   email_verified: boolean;   deactivation_note: string;   created_at: string; }[];
+  users: {   roles: string[];   id: number;   email: string;   nickname: string;   is_sjtu: boolean;   is_active: boolean;   is_superuser: boolean;   email_verified: boolean;   deactivation_note: string;   created_at: string; }[];
 }
 
 export function getApiAdminUsers(r: Requester, query: GetApiAdminUsersQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminUsersOut> {
-  return r<GetApiAdminUsersOut>("GET", "/api/admin/users", { ...extras, query })
+  return r<GetApiAdminUsersOut>("GET", "/api/admin/users", { ...extras, query: { ...query } })
 }
 
 export interface GetApiAdminUsersIdOut {
-  user: {   ID: number;   Email: string;   EmailNorm: string;   PasswordHash: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   AvatarImageID: number | null;   CreatedAt: string;   UpdatedAt: string; } | null;
+  user: {   ID: number;   Email: string;   EmailNorm: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   AvatarImageID: number | null;   CreatedAt: string;   UpdatedAt: string; } | null;
   roles: string[];
   rules: Record<string, boolean>;
   game_accounts: ({   id: number;   battletag: string;   rank_tank: number | null;   rank_damage: number | null;   rank_support: number | null;   tank_label: string;   damage_label: string;   support_label: string;   ranks_updated_at: string; })[];
@@ -536,7 +536,7 @@ export interface GetApiArticlesIdCommentsOut {
 }
 
 export function getApiArticlesIdComments(r: Requester, id: string | number, query: GetApiArticlesIdCommentsQuery = {}, extras: CallExtras = {}): Promise<GetApiArticlesIdCommentsOut> {
-  return r<GetApiArticlesIdCommentsOut>("GET", "/api/articles/{id}/comments", { ...extras, params: { id }, query })
+  return r<GetApiArticlesIdCommentsOut>("GET", "/api/articles/{id}/comments", { ...extras, params: { id }, query: { ...query } })
 }
 
 export interface GetApiAuthEmailStateOut {
@@ -630,7 +630,7 @@ export function getApiMeCalendar(r: Requester, extras: CallExtras = {}): Promise
 }
 
 export interface GetApiMeExportOut {
-  user: {   ID: number;   Email: string;   EmailNorm: string;   PasswordHash: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   AvatarImageID: number | null;   CreatedAt: string;   UpdatedAt: string; } | null;
+  user: {   ID: number;   Email: string;   EmailNorm: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   AvatarImageID: number | null;   CreatedAt: string;   UpdatedAt: string; } | null;
   game_accounts: ({   id: number;   battletag: string;   rank_tank: number | null;   rank_damage: number | null;   rank_support: number | null;   tank_label: string;   damage_label: string;   support_label: string;   ranks_updated_at: string; })[];
   contacts: {   id: number;   type: string;   type_label: string;   value: string;   created_at: string; }[];
   roles: string[];
@@ -696,7 +696,7 @@ export interface GetApiMembersOut {
 }
 
 export function getApiMembers(r: Requester, query: GetApiMembersQuery = {}, extras: CallExtras = {}): Promise<GetApiMembersOut> {
-  return r<GetApiMembersOut>("GET", "/api/members", { ...extras, query })
+  return r<GetApiMembersOut>("GET", "/api/members", { ...extras, query: { ...query } })
 }
 
 export interface GetApiMembersIdOut {
@@ -746,7 +746,7 @@ export interface GetApiPageNewsOut {
 }
 
 export function getApiPageNews(r: Requester, query: GetApiPageNewsQuery = {}, extras: CallExtras = {}): Promise<GetApiPageNewsOut> {
-  return r<GetApiPageNewsOut>("GET", "/api/page/news", { ...extras, query })
+  return r<GetApiPageNewsOut>("GET", "/api/page/news", { ...extras, query: { ...query } })
 }
 
 export interface GetApiPageNewsSlugOut {
@@ -848,7 +848,7 @@ export interface GetApiSearchOut {
 }
 
 export function getApiSearch(r: Requester, query: GetApiSearchQuery = {}, extras: CallExtras = {}): Promise<GetApiSearchOut> {
-  return r<GetApiSearchOut>("GET", "/api/search", { ...extras, query })
+  return r<GetApiSearchOut>("GET", "/api/search", { ...extras, query: { ...query } })
 }
 
 export interface GetApiSessionQuery {
@@ -861,7 +861,7 @@ export interface GetApiSessionOut {
 }
 
 export function getApiSession(r: Requester, query: GetApiSessionQuery = {}, extras: CallExtras = {}): Promise<GetApiSessionOut> {
-  return r<GetApiSessionOut>("GET", "/api/session", { ...extras, query })
+  return r<GetApiSessionOut>("GET", "/api/session", { ...extras, query: { ...query } })
 }
 
 export interface GetApiTeamsQuery {
@@ -880,7 +880,7 @@ export interface GetApiTeamsOut {
 }
 
 export function getApiTeams(r: Requester, query: GetApiTeamsQuery = {}, extras: CallExtras = {}): Promise<GetApiTeamsOut> {
-  return r<GetApiTeamsOut>("GET", "/api/teams", { ...extras, query })
+  return r<GetApiTeamsOut>("GET", "/api/teams", { ...extras, query: { ...query } })
 }
 
 export interface GetApiTeamsIdOut {

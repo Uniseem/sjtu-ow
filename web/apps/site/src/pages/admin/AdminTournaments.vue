@@ -81,7 +81,7 @@ onMounted(() => {
                 </a>
               </td>
               <td class="p-3 text-sm text-fg-2">
-                {{ t.mode === 'team' ? '整队报名' : '个人报名' }}
+                {{ t.registration_mode === 'team' ? '整队报名' : '个人报名' }}
               </td>
               <td class="p-3 text-sm">
                 <span
@@ -96,10 +96,10 @@ onMounted(() => {
                 </span>
               </td>
               <td class="p-3 text-xs text-fg-3">
-                {{ t.start_time || "未设定" }}
+                {{ t.starts_at || "未设定" }}
               </td>
               <td class="p-3 text-sm text-fg-2">
-                {{ t.registration_count }} 支队伍
+                {{ (t.approved_count + t.pending_count) }} 支队伍
               </td>
               <td class="p-3 text-right">
                 <div class="inline-flex gap-2">

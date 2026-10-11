@@ -46,7 +46,7 @@ function cancel() {
   <AuthLayout><AuthBack here="修改邮箱" /><h1>修改邮箱</h1>
     <CField v-if="state?.email" label="当前邮箱" input-id="current_email" class="mt-7"><input id="current_email" type="email" :value="state.email" disabled></CField>
     <template v-if="state?.pending_email">
-      <CField label="正在改为" input-id="new_email" class="mt-5" help="新邮箱尚未验证。验证通过后才会替换。"><input id="new_email" type="email" :value="state.pending_email" disabled></CField>
+      <CField label="正在改为" input-id="new_email" class="mt-5"><input id="new_email" type="email" :value="state.pending_email" disabled><template #help>新邮箱尚未验证。验证通过后才会替换。</template></CField>
       <form id="pending-email" method="post" action="/accounts/email/" class="!mt-3 !flex-row flex-wrap" @submit.prevent="resend"><input type="hidden" name="email" :value="state.pending_email"><button type="submit" name="action_send" class="c-btn c-btn--secondary c-btn--sm" :disabled="pending || seconds > 0">{{ seconds ? seconds + ' 秒后可重发' : '重发验证码' }}</button><button type="button" name="action_remove" class="c-btn c-btn--quiet c-btn--sm" :disabled="pending" @click="cancel">取消修改</button></form>
     </template>
     <form method="post" action="/accounts/email/" :aria-busy="pending || undefined" @submit.prevent="request(email.trim())"><AuthError :message="message" /><CField label="邮箱" input-id="id_email" required :errors="fields.new_email"><input id="id_email" v-model="email" type="email" name="email" autocomplete="email" placeholder="邮箱" required></CField><div><button type="submit" name="action_add" class="c-btn c-btn--primary" :disabled="pending">更换邮箱</button></div></form>

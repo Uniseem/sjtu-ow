@@ -10,7 +10,7 @@ const api = useApi()
 
 const reviewSection = ADMIN_SECTIONS.find((s) => s.id === "review")
 const loading = ref(true)
-const comments = ref<GetApiAdminCommentsOut["comments"]>([])
+const comments = ref<GetApiAdminCommentsOut["items"]>([])
 const error = ref<string | null>(null)
 const search = ref("")
 
@@ -18,7 +18,7 @@ async function loadComments() {
   loading.value = true
   try {
     const res = await getApiAdminComments(api)
-    comments.value = res.comments
+    comments.value = res.items
   } catch (err: any) {
     error.value = err?.message ?? "加载评论失败"
   } finally {
@@ -85,7 +85,7 @@ onMounted(() => {
               <td class="p-3 max-w-md text-sm text-fg">
                 <p class="line-clamp-2">{{ c.content }}</p>
               </td>
-              <td class="p-3 text-sm text-fg-2">{{ c.author_nickname }}</td>
+              <td class="p-3 text-sm text-fg-2">{{ c.author_name }}</td>
               <td class="p-3 text-sm text-fg-2">
                 <a :href="`/news/${c.article_slug}/`" target="_blank" class="hover:underline">
                   {{ c.article_title }}

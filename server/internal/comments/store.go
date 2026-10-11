@@ -451,6 +451,7 @@ type AdminCommentRow struct {
 	ID           int64     `json:"id"`
 	ArticleID    int64     `json:"article_id"`
 	ArticleTitle string    `json:"article_title"`
+	ArticleSlug  string    `json:"article_slug"`
 	AuthorID     int64     `json:"author_id"`
 	AuthorName   string    `json:"author_name"`
 	Content      string    `json:"content"`
@@ -507,7 +508,7 @@ func (s *Store) ListAdminComments(ctx context.Context, q string, hidden, pinned 
 	}
 
 	query := fmt.Sprintf(`
-		SELECT c.id, c.article_id, COALESCE(p.title, ''), COALESCE(c.user_id, 0), COALESCE(u.nickname, ''),
+		SELECT c.id, c.article_id, COALESCE(p.title, ''), COALESCE(p.slug, ''), COALESCE(c.user_id, 0), COALESCE(u.nickname, ''),
 		       c.content, c.is_pinned, c.is_hidden, c.is_deleted, c.like_count, c.created_at
 		FROM comments c
 		LEFT JOIN pages p ON p.id = c.article_id
@@ -530,7 +531,7 @@ func (s *Store) ListAdminComments(ctx context.Context, q string, hidden, pinned 
 		var atStr string
 		var pinInt, hideInt, delInt int
 		if err := rows.Scan(
-			&row.ID, &row.ArticleID, &row.ArticleTitle, &row.AuthorID, &row.AuthorName,
+			&row.ID, &row.ArticleID, &row.ArticleTitle, &row.ArticleSlug, &row.AuthorID, &row.AuthorName,
 			&row.Content, &pinInt, &hideInt, &delInt, &row.LikeCount, &atStr,
 		); err != nil {
 			return nil, 0, err

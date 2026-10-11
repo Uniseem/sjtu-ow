@@ -10,7 +10,7 @@ const api = useApi()
 
 const contentSection = ADMIN_SECTIONS.find((s) => s.id === "content")
 const loading = ref(true)
-const articles = ref<GetApiAdminArticlesOut["articles"]>([])
+const articles = ref<NonNullable<GetApiAdminArticlesOut["items"][number]>[]>([])
 const error = ref<string | null>(null)
 const search = ref("")
 const selectedStatus = ref("")
@@ -19,7 +19,7 @@ async function loadArticles() {
   loading.value = true
   try {
     const res = await getApiAdminArticles(api)
-    articles.value = res.articles
+    articles.value = res.items.filter((art): art is NonNullable<typeof art> => art !== null)
   } catch (err: any) {
     error.value = err?.message ?? "加载文章失败"
   } finally {
@@ -109,12 +109,12 @@ onMounted(() => {
                 <span
                   class="inline-block px-2 py-0.5 rounded text-xs"
                   :class="{
-                    'bg-success-soft text-on-success-soft': art.status === 'published',
-                    'bg-warning-soft text-on-warning-soft': art.status === 'draft',
-                    'bg-primary-soft text-on-primary-soft': art.status === 'scheduled',
+                    'bg-success-soft text-on-success-soft': art.live,
+                    'bg-warning-soft text-on-warning-soft': !art.live && !art.has_unpublished_changes,
+                    'bg-primary-soft text-on-primary-soft': !art.live && !!art.go_live_at,
                   }"
                 >
-                  {{ art.status === 'published' ? '已发布' : art.status === 'scheduled' ? '定时上线' : '草稿' }}
+                  {{ art.live ? '已发布' : !art.live && !!art.go_live_at ? '定时上线' : '草稿' }}
                 </span>
               </td>
               <td class="p-3 text-xs text-fg-3">
@@ -123,7 +123,7 @@ onMounted(() => {
               <td class="p-3 text-right">
                 <div class="inline-flex gap-2">
                   <a :href="`/admin/articles/${art.id}/`" class="c-btn c-btn--ghost c-btn--xs">编辑</a>
-                  <a v-if="art.status === 'published'" :href="`/news/${art.slug}/`" target="_blank" class="c-btn c-btn--ghost c-btn--xs">预览</a>
+                  <a v-if="art.live" :href="`/news/${art.slug}/`" target="_blank" class="c-btn c-btn--ghost c-btn--xs">预览</a>
                 </div>
               </td>
             </tr>

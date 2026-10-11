@@ -28,7 +28,7 @@ onMounted(async () => {
       if (res.tournament) {
         title.value = res.tournament.title
         description.value = res.tournament.description ?? ""
-        mode.value = res.tournament.mode
+        mode.value = res.tournament.registration_mode
         status.value = res.tournament.status
       }
     } catch (err: any) {

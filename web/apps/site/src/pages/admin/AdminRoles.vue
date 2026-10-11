@@ -66,7 +66,7 @@ onMounted(() => {
           >
             <div>
               <p class="font-bold text-fg">角色：{{ r.role }} · 限制功能：{{ r.feature }}</p>
-              <p class="text-xs text-fg-3">说明：{{ r.reason || "无附加说明" }}</p>
+              <p class="text-xs text-fg-3">说明：{{ r.feature || "无附加说明" }}</p>
             </div>
           </div>
         </div>

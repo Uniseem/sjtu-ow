@@ -46,7 +46,7 @@ async function reject(regId: number) {
   const reason = prompt("请输入驳回原因：")
   if (!reason) return
   try {
-    await postApiAdminRegistrationsIdReject(api, String(regId), { reason })
+    await postApiAdminRegistrationsIdReject(api, String(regId), { note: reason })
     successMsg.value = `报名 #${regId} 已驳回`
     await loadRegistrations()
   } catch (err: any) {
@@ -97,35 +97,35 @@ onMounted(() => {
             <tr
               v-for="reg in registrations"
               v-else
-              :key="reg.id"
+              :key="reg.registration.id"
               class="border-b border-border hover:bg-surface-2 transition-colors"
             >
               <td class="p-3">
-                <p class="font-bold text-fg">{{ reg.team_name || "临时队伍 / 散人" }}</p>
-                <p class="text-xs text-fg-3">联系人：{{ reg.contact_info || "—" }}</p>
+                <p class="font-bold text-fg">{{ reg.registration.team_name || "临时队伍 / 散人" }}</p>
+                <p class="text-xs text-fg-3">联系人：{{ reg.roster.map((p) => p.nickname).join("、") || "—" }}</p>
               </td>
               <td class="p-3 text-sm text-fg-2">
-                {{ reg.type === 'team' ? '整队报名' : '个人拼队' }}
+                {{ reg.registration.team_id !== null ? '整队报名' : '个人拼队' }}
               </td>
               <td class="p-3 text-sm">
                 <span
                   class="inline-block px-2 py-0.5 rounded text-xs"
                   :class="{
-                    'bg-success-soft text-on-success-soft': reg.status === 'approved',
-                    'bg-warning-soft text-on-warning-soft': reg.status === 'submitted',
-                    'bg-danger-soft text-on-danger-soft': reg.status === 'rejected',
+                    'bg-success-soft text-on-success-soft': reg.registration.status === 'approved',
+                    'bg-warning-soft text-on-warning-soft': reg.registration.status === 'submitted',
+                    'bg-danger-soft text-on-danger-soft': reg.registration.status === 'rejected',
                   }"
                 >
-                  {{ reg.status === 'approved' ? '已通过' : reg.status === 'submitted' ? '待审核' : '已驳回' }}
+                  {{ reg.registration.status === 'approved' ? '已通过' : reg.registration.status === 'submitted' ? '待审核' : '已驳回' }}
                 </span>
               </td>
               <td class="p-3 text-xs text-fg-3">
-                {{ reg.created_at }}
+                {{ reg.registration.created_at }}
               </td>
               <td class="p-3 text-right">
-                <div v-if="reg.status === 'submitted'" class="inline-flex gap-2">
-                  <button class="c-btn c-btn--primary c-btn--xs" @click="approve(reg.id)">通过</button>
-                  <button class="c-btn c-btn--secondary c-btn--xs text-danger" @click="reject(reg.id)">驳回</button>
+                <div v-if="reg.registration.status === 'submitted'" class="inline-flex gap-2">
+                  <button class="c-btn c-btn--primary c-btn--xs" @click="approve(reg.registration.id)">通过</button>
+                  <button class="c-btn c-btn--secondary c-btn--xs text-danger" @click="reject(reg.registration.id)">驳回</button>
                 </div>
                 <span v-else class="text-xs text-fg-3">—</span>
               </td>

@@ -24,7 +24,7 @@ export type SampleClock = {
   pastTime: string
 }
 
-export type PageData = { title: string; marker?: string; clock?: SampleClock; [key: string]: any }
+export type PageData = { title: string; marker?: string; clock?: SampleClock; [key: string]: unknown }
 // What a page's load() gets (frontend-migration A2). `api` is the one way to
 // Go: pass it to the generated functions (getApiTeamsId(ctx.api, id)). Errors
 // are not caught here: an ApiError's status decides the response (401 → login,

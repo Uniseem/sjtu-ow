@@ -93,7 +93,7 @@ function run(entry: MenuEntry) {
 }
 
 function context(target: HTMLElement) {
-  const link = target.closest("a[href]")
+  const link = target.closest<HTMLAnchorElement>("a[href]")
   const href = link && !/^javascript:/i.test(link.getAttribute("href") ?? "") ? link.href : null
   const image = target.closest("img")
   const imageSrc = image ? image.currentSrc || image.src : null
@@ -159,7 +159,7 @@ function items() {
 
 function onContextMenu(event: MouseEvent) {
   const target = event.target as HTMLElement
-  const touch = event.pointerType === "touch" || event.pointerType === "pen"
+  const touch = "pointerType" in event && (event.pointerType === "touch" || event.pointerType === "pen")
   if (event.shiftKey || touch || !target.closest || target.closest(NATIVE)) {
     close()
     return

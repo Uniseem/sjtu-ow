@@ -55,25 +55,25 @@ onMounted(() => {
         <div class="p-5 rounded-lg bg-surface border border-border shadow-xs">
           <p class="text-xs text-fg-3 font-medium">内战总场次</p>
           <p class="text-2xl font-bold text-fg mt-2">
-            {{ activity?.summary?.total_scrims ?? 0 }}
+            {{ activity?.totals.scrims ?? 0 }}
           </p>
         </div>
         <div class="p-5 rounded-lg bg-surface border border-border shadow-xs">
           <p class="text-xs text-fg-3 font-medium">赛事总场次</p>
           <p class="text-2xl font-bold text-fg mt-2">
-            {{ activity?.summary?.total_tournaments ?? 0 }}
+            {{ activity?.totals.tournaments ?? 0 }}
           </p>
         </div>
         <div class="p-5 rounded-lg bg-surface border border-border shadow-xs">
-          <p class="text-xs text-fg-3 font-medium">参赛总人次</p>
+          <p class="text-xs text-fg-3 font-medium">内战上场人次</p>
           <p class="text-2xl font-bold text-fg mt-2">
-            {{ activity?.summary?.total_participants ?? 0 }}
+            {{ activity?.totals.scrim_players ?? 0 }}
           </p>
         </div>
         <div class="p-5 rounded-lg bg-surface border border-border shadow-xs">
-          <p class="text-xs text-fg-3 font-medium">当前活跃成员</p>
+          <p class="text-xs text-fg-3 font-medium">新成员</p>
           <p class="text-2xl font-bold text-fg mt-2">
-            {{ activity?.summary?.active_members ?? 0 }}
+            {{ activity?.totals.members ?? 0 }}
           </p>
         </div>
       </div>
@@ -91,7 +91,7 @@ onMounted(() => {
               <th class="p-3 font-medium">类型</th>
               <th class="p-3 font-medium">活动标题</th>
               <th class="p-3 font-medium">开赛时间</th>
-              <th class="p-3 font-medium">规格</th>
+              <th class="p-3 font-medium">状态</th>
               <th class="p-3 font-medium text-right">参与人数</th>
             </tr>
           </thead>
@@ -105,7 +105,7 @@ onMounted(() => {
             <tr
               v-for="e in (activity?.events ?? [])"
               v-else
-              :key="`${e.kind}-${e.id}`"
+              :key="`${e.kind}-${e.url}`"
               class="border-b border-border hover:bg-surface-2 transition-colors text-sm"
             >
               <td class="p-3 font-semibold text-fg">
@@ -117,9 +117,9 @@ onMounted(() => {
                 </span>
               </td>
               <td class="p-3 font-bold text-fg">{{ e.title }}</td>
-              <td class="p-3 text-xs text-fg-3">{{ e.start_time }}</td>
-              <td class="p-3 text-xs text-fg-2">{{ e.format_label }}</td>
-              <td class="p-3 text-right font-medium text-fg">{{ e.participant_count }} 人</td>
+              <td class="p-3 text-xs text-fg-3">{{ e.when }}</td>
+              <td class="p-3 text-xs text-fg-2">{{ e.status }}</td>
+              <td class="p-3 text-right font-medium text-fg">{{ e.players }} 人</td>
             </tr>
           </tbody>
         </table>

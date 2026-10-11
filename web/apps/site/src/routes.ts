@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from "vue-router"
+import type { Component } from "vue"
 import Page from "./pages/Page.vue"
 import type { Load } from "./router"
 import { PageRedirect } from "@sjtu-ow/shared/navigation"
@@ -22,7 +23,8 @@ function redirected(path: string, location: string, status: 301 | 302, opts: Opt
   return { path, component: Page, meta: { load, ...opts } }
 }
 
-function dynamicPage(path: string, comp: () => Promise<any>, title: string, opts: Opts = {}): RouteRecordRaw {
+type PageModule = { default: Component; load?: Load }
+function dynamicPage(path: string, comp: () => Promise<PageModule>, title: string, opts: Opts = {}): RouteRecordRaw {
   const load: Load = async (ctx) => {
     const mod = await comp()
     if (typeof mod.load === "function") {
@@ -95,7 +97,7 @@ export const PAGES: RouteRecordRaw[] = [
   dynamicPage("/:slug([\\w%\\u0080-\\uffff-]+)/", standardPage, "页面"),
 ]
 
-function admin(path: string, comp: () => Promise<any>, title: string): RouteRecordRaw {
+function admin(path: string, comp: () => Promise<PageModule>, title: string): RouteRecordRaw {
   const load: Load = () => ({ title })
   return { path, component: comp, meta: { load, admin: true, auth: "member" } }
 }

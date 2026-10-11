@@ -77,8 +77,8 @@ onMounted(() => {
               <td class="p-3 font-bold text-fg">{{ g.name || "（未命名分组）" }}</td>
               <td class="p-3 text-sm text-fg-2">{{ g.sort_order }}</td>
               <td class="p-3 text-sm">
-                <span :class="g.visible ? 'text-success' : 'text-fg-3'">
-                  {{ g.visible ? '显示' : '隐藏' }}
+                <span :class="g.is_visible ? 'text-success' : 'text-fg-3'">
+                  {{ g.is_visible ? '显示' : '隐藏' }}
                 </span>
               </td>
               <td class="p-3 text-sm text-fg-2">{{ g.member_count }} 人</td>

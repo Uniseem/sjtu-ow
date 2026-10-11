@@ -96,10 +96,10 @@ onMounted(() => {
                 </span>
               </td>
               <td class="p-3 text-xs text-fg-3">
-                {{ s.start_time || "未设定" }}
+                {{ s.starts_at || "未设定" }}
               </td>
               <td class="p-3 text-sm text-fg-2">
-                {{ s.signup_count }} 人
+                {{ s.signup_total }} 人
               </td>
               <td class="p-3 text-right">
                 <div class="inline-flex gap-2">

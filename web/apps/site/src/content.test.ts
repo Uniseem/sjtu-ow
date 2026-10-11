@@ -312,6 +312,17 @@ test("the news list without the column data (BE-5 pending) still lists; an empty
 
 const EMPTY_HOME = { stats: null, scrims: [], news: [], notices: [], teams: [], agenda: [] }
 
+test("nullable home collections, news rows and heading nodes never become renderable items", async () => {
+  const home = await page("/", { "/api/page/home": { body: { ...EMPTY_HOME, scrims: [null], news: [null], notices: [null], teams: [null] } } })
+  expect(home.status).toBe(200)
+  const news = await page("/news/", { "/api/page/news": { body: { total: 1, page: 1, page_size: 12, items: [null, article], categories: [null, { slug: "guides", name: "攻略" }] } } })
+  expect(news.status).toBe(200)
+  expect(news.body).toContain("截图指南")
+  const short = await page("/news/screens-guide/", { "/api/page/news/screens-guide": { body: { ...article, headings: [null, { id: "first", level: 2, text: "第一节" }, null, { id: "second", level: 2, text: "第二节" }] } } })
+  expect(short.status).toBe(200)
+  expect(short.body).not.toContain('class="c-toc ')
+})
+
 test("the home page: hero, figures, sections; a visitor has no agenda", async () => {
   const { status, plain: body } = await page("/", { "/api/page/home": { body: EMPTY_HOME } })
   expect(status).toBe(200)

@@ -5,6 +5,7 @@ import {
   patchApiAdminSettings,
   postApiAdminSettingsTestEmail,
   type GetApiAdminSettingsOut,
+  type PatchApiAdminSettingsIn,
 } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
 import AdminHead from "../../admin/AdminHead.vue"
@@ -29,7 +30,7 @@ const smtpPort = ref<number | undefined>(undefined)
 const smtpUsername = ref("")
 const smtpPassword = ref("")
 const smtpSender = ref("")
-const smtpUseTls = ref(true)
+const smtpSecurity = ref("starttls")
 
 // AI settings
 const aiEnabled = ref(false)
@@ -48,11 +49,11 @@ async function loadSettings() {
       smtpHost.value = res.settings.smtp_host ?? ""
       smtpPort.value = res.settings.smtp_port
       smtpUsername.value = res.settings.smtp_username ?? ""
-      smtpSender.value = res.settings.smtp_sender ?? ""
-      smtpUseTls.value = res.settings.smtp_use_tls
-      aiEnabled.value = res.settings.ai_moderation_enabled
-      aiEndpoint.value = res.settings.ai_api_endpoint ?? ""
-      aiModel.value = res.settings.ai_model ?? ""
+      smtpSender.value = res.settings.from_address ?? ""
+      smtpSecurity.value = res.settings.smtp_security
+      aiEnabled.value = res.settings.moderation_enabled
+      aiEndpoint.value = res.settings.moderation_base_url ?? ""
+      aiModel.value = res.settings.moderation_model ?? ""
     }
   } catch (err: any) {
     error.value = err?.message ?? "加载全站设置失败"
@@ -66,20 +67,23 @@ async function saveSettings() {
   successMsg.value = null
   error.value = null
   try {
-    await patchApiAdminSettings(api, {
-      site_description: siteDescription.value,
-      founded_on: foundedOn.value,
-      smtp_host: smtpHost.value,
-      smtp_port: smtpPort.value ? Number(smtpPort.value) : undefined,
-      smtp_username: smtpUsername.value,
-      smtp_password: smtpPassword.value ? smtpPassword.value : undefined,
-      smtp_sender: smtpSender.value,
-      smtp_use_tls: smtpUseTls.value,
-      ai_moderation_enabled: aiEnabled.value,
-      ai_api_endpoint: aiEndpoint.value,
-      ai_api_key: aiApiKey.value ? aiApiKey.value : undefined,
-      ai_model: aiModel.value,
-    })
+    const current = settings.value
+    if (!current) throw new Error("请先成功加载设置。")
+    const changes: PatchApiAdminSettingsIn = {}
+    if (siteDescription.value !== current.site_description) changes.site_description = siteDescription.value
+    if (foundedOn.value !== current.founded_on) changes.founded_on = foundedOn.value
+    if (smtpHost.value !== current.smtp_host) changes.smtp_host = smtpHost.value
+    if (smtpPort.value !== current.smtp_port) changes.smtp_port = smtpPort.value
+    if (smtpUsername.value !== current.smtp_username) changes.smtp_username = smtpUsername.value
+    if (smtpSender.value !== current.from_address) changes.from_address = smtpSender.value
+    if (smtpSecurity.value !== current.smtp_security) changes.smtp_security = smtpSecurity.value
+    if (aiEnabled.value !== current.moderation_enabled) changes.moderation_enabled = aiEnabled.value
+    if (aiEndpoint.value !== current.moderation_base_url) changes.moderation_base_url = aiEndpoint.value
+    if (aiModel.value !== current.moderation_model) changes.moderation_model = aiModel.value
+    if (smtpPassword.value) changes.smtp_password = smtpPassword.value
+    if (aiApiKey.value) changes.moderation_api_key = aiApiKey.value
+    await patchApiAdminSettings(api, changes)
+
     successMsg.value = "全站设置已成功保存"
     smtpPassword.value = ""
     aiApiKey.value = ""
@@ -171,6 +175,7 @@ onMounted(() => {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <label class="block text-sm font-semibold mb-1">SMTP 服务器主机</label>
+              <label>连接安全<select v-model="smtpSecurity" class="c-input"><option value="starttls">STARTTLS</option><option value="ssl">SSL/TLS</option><option value="plain">明文</option></select></label>
               <input v-model="smtpHost" type="text" class="c-input w-full" placeholder="smtp.example.com" />
             </div>
             <div>
@@ -221,7 +226,7 @@ onMounted(() => {
                   v-model="aiApiKey"
                   type="password"
                   class="c-input w-full"
-                  :placeholder="settings?.has_ai_api_key ? '已配置安全密钥（留空不修改）' : '输入 API Key'"
+                  :placeholder="settings?.has_moderation_api_key ? '已配置安全密钥（留空不修改）' : '输入 API Key'"
                 />
               </div>
             </div>

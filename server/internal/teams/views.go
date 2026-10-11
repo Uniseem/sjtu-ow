@@ -562,6 +562,7 @@ func (s *Service) MyTeams(ctx *app.Ctx) (*MyTeamsResult, error) {
 
 // AdminRow 是超管的战队列表一行（含卡壳状态：没有队长或队长账号停用，规则 108）。
 type AdminRow struct {
+	IsRecruiting  bool       `json:"is_recruiting"`
 	ID            int64      `json:"id"`
 	Name          string     `json:"name"`
 	MemberCount   int        `json:"member_count"`
@@ -575,7 +576,7 @@ type AdminRow struct {
 
 // AdminList 后台战队列表（超管）。「无队长战队」排在待办里：未解散、没有队长或队长已停用。
 func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
-	rows, err := s.d.ReadPool().QueryContext(ctx.Context, `SELECT t.id, t.name, t.disbanded_at, t.created_at,
+	rows, err := s.d.ReadPool().QueryContext(ctx.Context, `SELECT t.id, t.name, t.disbanded_at, t.created_at, t.is_recruiting,
 		(SELECT COUNT(*) FROM team_memberships x WHERE x.team_id = t.id),
 		c.user_id, IFNULL(u.nickname, ''), IFNULL(u.is_active, 0)
 		FROM teams t
@@ -593,7 +594,7 @@ func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
 		var created string
 		var cid sql.NullInt64
 		var active int
-		if err := rows.Scan(&r.ID, &r.Name, &disbanded, &created, &r.MemberCount, &cid, &r.CaptainName, &active); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &disbanded, &created, &r.IsRecruiting, &r.MemberCount, &cid, &r.CaptainName, &active); err != nil {
 			return nil, err
 		}
 		if cid.Valid {

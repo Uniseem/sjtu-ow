@@ -10,14 +10,14 @@ const api = useApi()
 
 const reviewSection = ADMIN_SECTIONS.find((s) => s.id === "review")
 const loading = ref(true)
-const items = ref<GetApiAdminModerationOut["items"]>([])
+const items = ref<NonNullable<GetApiAdminModerationOut["items"][number]>[]>([])
 const error = ref<string | null>(null)
 
 async function loadItems() {
   loading.value = true
   try {
     const res = await getApiAdminModeration(api)
-    items.value = res.items
+    items.value = res.items.filter((item): item is NonNullable<typeof item> => item !== null)
   } catch (err: any) {
     error.value = err?.message ?? "加载审核记录失败"
   } finally {
@@ -69,18 +69,18 @@ onMounted(() => {
               :key="item.id"
               class="border-b border-border hover:bg-surface-2 transition-colors"
             >
-              <td class="p-3 font-bold text-fg">{{ item.content_type }}</td>
-              <td class="p-3 text-sm text-fg-2">{{ item.author_nickname }}</td>
-              <td class="p-3 text-xs text-fg-2 max-w-xs truncate">{{ item.snippet }}</td>
+              <td class="p-3 font-bold text-fg">{{ item.target_label }}</td>
+              <td class="p-3 text-sm text-fg-2">{{ item.author_id }}</td>
+              <td class="p-3 text-xs text-fg-2 max-w-xs truncate">{{ item.excerpt }}</td>
               <td class="p-3 text-sm">
-                <span class="text-danger font-semibold">{{ item.ai_judgment }}</span>
+                <span class="text-danger font-semibold">{{ item.reason }}</span>
               </td>
               <td class="p-3 text-sm">
                 <span
                   class="inline-block px-2 py-0.5 rounded text-xs"
-                  :class="item.handled_at ? 'bg-success-soft text-on-success-soft' : 'bg-warning-soft text-on-warning-soft'"
+                  :class="item.reviewed_at ? 'bg-success-soft text-on-success-soft' : 'bg-warning-soft text-on-warning-soft'"
                 >
-                  {{ item.handled_at ? '已处置' : '待复核' }}
+                  {{ item.reviewed_at ? '已处置' : '待复核' }}
                 </span>
               </td>
               <td class="p-3 text-right">

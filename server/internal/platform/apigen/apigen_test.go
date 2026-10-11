@@ -182,7 +182,7 @@ func TestQueryParamsAreGenerated(t *testing.T) {
 	for _, want := range []string{
 		"export interface GetApiPageNewsQuery {\n  category?: string;\n  page?: number;\n  mine?: boolean;\n}",
 		"export function getApiPageNews(r: Requester, query: GetApiPageNewsQuery = {}, extras: CallExtras = {}): Promise<GetApiPageNewsOut>",
-		`return r<GetApiPageNewsOut>("GET", "/api/page/news", { ...extras, query })`,
+		`return r<GetApiPageNewsOut>("GET", "/api/page/news", { ...extras, query: { ...query } })`,
 	} {
 		if !strings.Contains(index, want) {
 			t.Fatalf("缺 %q\n%s", want, index)

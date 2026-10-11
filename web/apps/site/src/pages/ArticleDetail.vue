@@ -65,7 +65,7 @@ const data = inject<{
 }>("page-data")
 const viewer = inject(VIEWER, { user: null })
 const api = useApi()
-usePageMeta(() => ({ title: data?.title, description: data?.description }))
+usePageMeta(() => ({ title: data?.title ?? "文章", description: data?.description }))
 
 const article = computed(() => data?.article)
 const pageUrl = computed(() => (article.value ? `/news/${article.value.slug}/` : "/news/"))
@@ -81,7 +81,10 @@ const updated = computed(() => {
   return (new Date(last).getTime() - new Date(first).getTime()) / 86400000 > 1 ? new Date(last) : null
 })
 // Three headings or more get a table of contents (design-details 6.5).
-const toc = computed(() => ((article.value?.headings?.length ?? 0) >= 3 ? article.value?.headings ?? [] : []))
+const toc = computed(() => {
+  const headings = (article.value?.headings ?? []).filter((heading): heading is NonNullable<typeof heading> => heading !== null)
+  return headings.length >= 3 ? headings : []
+})
 const thread = ref<CommentThread>(data?.thread ?? { total: 0, page: 1, page_size: 20, comments: [] })
 const sort = ref(data?.sort ?? "new")
 const loadingMore = ref(false)
@@ -198,7 +201,7 @@ const onPin = (change: { id: number; pinned: boolean }) => {
   if (articleId) void act(() => postApiCommentsIdPin(api, change.id, { article_id: articleId, pinned: change.pinned }))
 }
 
-const related = computed(() => (article.value?.related ?? []).filter((item) => item !== null))
+const related = computed(() => (article.value?.related ?? []).filter((item): item is NonNullable<typeof item> => item !== null))
 </script>
 <template>
   <main v-if="article" id="main" class="flex-1">

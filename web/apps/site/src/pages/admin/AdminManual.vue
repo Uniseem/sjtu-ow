@@ -8,14 +8,14 @@ import { useApi } from "../../api"
 const api = useApi()
 
 const loading = ref(true)
-const sections = ref<GetApiAdminManualOut["sections"]>([])
+const sections = ref<GetApiAdminManualOut["parts"]>([])
 const error = ref<string | null>(null)
 
 async function loadManual() {
   loading.value = true
   try {
     const res = await getApiAdminManual(api)
-    sections.value = res.sections
+    sections.value = res.parts
   } catch (err: any) {
     error.value = err?.message ?? "加载干部手册失败"
   } finally {
@@ -45,7 +45,7 @@ onMounted(() => {
         <section
           v-for="s in sections"
           v-else
-          :key="s.id"
+          :key="s.key"
           class="b-section p-6 rounded-lg bg-surface border border-border shadow-xs"
         >
           <div class="flex items-center gap-2 mb-3 pb-2 border-b border-border">
@@ -53,7 +53,7 @@ onMounted(() => {
             <h2 class="text-base font-bold text-fg">{{ s.title }}</h2>
           </div>
           <div class="text-sm leading-relaxed text-fg-2 whitespace-pre-line font-mono">
-            {{ s.content }}
+            <p v-for="step in s.steps" :key="step.text">{{ step.text }} <a v-if="step.link_url" :href="step.link_url">{{ step.link_label }}</a></p>
           </div>
         </section>
       </div>

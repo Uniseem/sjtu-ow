@@ -1,3 +1,4 @@
 <script lang="ts">
-export { default } from "@sjtu-ow/ui/SectionHead.vue"
+import Component from "@sjtu-ow/ui/SectionHead.vue"
+export default Component
 </script>

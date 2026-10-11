@@ -1,3 +1,4 @@
 <script lang="ts">
-export { default } from "@sjtu-ow/ui/TeamTile.vue"
+import Component from "@sjtu-ow/ui/TeamTile.vue"
+export default Component
 </script>

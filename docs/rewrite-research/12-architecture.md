@@ -568,6 +568,7 @@ export const load = defineLoader(({ params, api }) => api.page.team({ id: params
 
 - 服务端：6.2 第 4 步跑；客户端首屏：读 `ow-state`，不再请求；之后的导航：`router.beforeResolve` 里跑 `load`，顶部加载条跟着走，新导航会取消旧的请求。后退用最近 10 个结果的短缓存（60 秒）。
 - **SSR 写法纪律**（有 lint 规则和测试）：`setup` 里不碰 `window`/`document`（放 `onMounted`）；时间一律用 `shared/time.ts`（`Intl.DateTimeFormat('zh-CN', {timeZone: 'Asia/Shanghai'})`），服务端客户端算出来一样；不用 `Math.random()`/`Date.now()` 决定渲染结果；组件不用 `:style`（SSR 会输出 `style` 属性，被 CSP 拦）——需要动态值的用类名或 `data-*` 属性。
+- `web/tsconfig.json` 统一检查所有工作区的 TS/Vue（含测试与配置），`strict`、Vue `strictTemplates`，不发射文件。`pnpm typecheck` 是 `pnpm test` 的第一步，测试机整组/CI同一句触发。路径映射与workspace导出一致，避免包symlink重复检查；标准 `data-*` 用Vue的dataAttributes及限定HTML类型，其余属性仍严格。类型门不代替未重写页面的行为/视觉验收，既有待重写any由源码守卫清单继续约束，不能新增逃逸。
 
 ### 6.4 会话、提示、待发信
 

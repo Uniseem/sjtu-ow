@@ -10,7 +10,7 @@ type User struct {
 	ID                  int64
 	Email               string
 	EmailNorm           string
-	PasswordHash        string
+	PasswordHash        string `json:"-"`
 	Nickname            string
 	IsSJTU              bool
 	AgreedTermsAt       time.Time

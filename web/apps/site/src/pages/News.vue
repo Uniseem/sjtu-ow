@@ -30,16 +30,17 @@ import CPager from "@sjtu-ow/ui/CPager.vue"
 import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import PostCard from "@sjtu-ow/ui/PostCard.vue"
 import { usePageMeta } from "../meta"
-import type { GetApiPageNewsOut as NewsList } from "@sjtu-ow/api"
-
 // The page-data object sheds the previous page's keys on navigation before
 // the old component unmounts, so the list falls back to an empty shape.
 const data = inject<{ title: string; data?: NewsList; category?: string; page?: number; description?: string }>("page-data")
 usePageMeta(() => ({ title: data?.data?.seo_title || data?.title || "资讯", description: data?.description }))
 
 const list = computed(() => data?.data ?? { total: 0, page: 1, page_size: 12, items: [], categories: [], intro_html: "" })
-const categories = computed(() => list.value.categories ?? [])
-const articles = computed(() => (list.value.items ?? []).filter((item) => item !== null))
+const categories = computed(() => (list.value.categories ?? []).filter((item): item is NonNullable<typeof item> => item !== null))
+const articles = computed(() => {
+  const items: NewsList["items"] = data?.data?.items ?? []
+  return items.filter((item): item is NonNullable<NewsList["items"][number]> => item !== null)
+})
 // The old pager keeps the category filter (extra_query without page=).
 const extraQuery = computed(() => (data?.category ? `category=${encodeURIComponent(data.category)}` : ""))
 const intro = computed(() => (list.value.intro_html ?? "").trim())
@@ -60,8 +61,8 @@ const intro = computed(() => (list.value.intro_html ?? "").trim())
         </div>
         <!-- Category filter: links, so the list stays a plain GET page (13.7). -->
         <nav class="c-tabs mt-8" aria-label="文章分类">
-          <a href="/news/" :aria-current="!data.category ? 'page' : undefined">全部</a>
-          <a v-for="cat in categories" :key="cat.slug" :href="`/news/?category=${cat.slug}`" :aria-current="data.category === cat.slug ? 'page' : undefined">{{ cat.name }}</a>
+          <a href="/news/" :aria-current="!data?.category ? 'page' : undefined">全部</a>
+          <a v-for="cat in categories" :key="cat.slug" :href="`/news/?category=${cat.slug}`" :aria-current="data?.category === cat.slug ? 'page' : undefined">{{ cat.name }}</a>
         </nav>
       </div>
     </header>

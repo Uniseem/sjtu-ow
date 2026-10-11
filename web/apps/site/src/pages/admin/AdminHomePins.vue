@@ -11,7 +11,7 @@ const api = useApi()
 const contentSection = ADMIN_SECTIONS.find((s) => s.id === "content")
 const loading = ref(true)
 const saving = ref(false)
-const pins = ref<GetApiAdminHomePinsOut["pins"]>([])
+const pins = ref<NonNullable<GetApiAdminHomePinsOut["items"][number]>[]>([])
 const error = ref<string | null>(null)
 const successMsg = ref<string | null>(null)
 
@@ -19,7 +19,7 @@ async function loadPins() {
   loading.value = true
   try {
     const res = await getApiAdminHomePins(api)
-    pins.value = res.pins
+    pins.value = res.items.filter((p): p is NonNullable<typeof p> => p !== null)
   } catch (err: any) {
     error.value = err?.message ?? "加载置顶失败"
   } finally {
@@ -33,7 +33,7 @@ async function savePins() {
   successMsg.value = null
   try {
     await putApiAdminHomePins(api, {
-      article_ids: pins.value.map((p) => p.article_id),
+      article_ids: pins.value.map((p) => p.id),
     })
     successMsg.value = "首页置顶顺序已保存"
   } catch (err: any) {
@@ -85,7 +85,7 @@ onMounted(() => {
         <div v-else class="space-y-3">
           <div
             v-for="(pin, idx) in pins"
-            :key="pin.article_id"
+            :key="pin.id"
             class="flex items-center justify-between p-3 rounded-md bg-surface-2 border border-border"
           >
             <div class="flex items-center gap-3">
@@ -94,7 +94,7 @@ onMounted(() => {
               </span>
               <div>
                 <p class="font-bold text-sm text-fg">{{ pin.title }}</p>
-                <p class="text-xs text-fg-3">编号：#{{ pin.article_id }} · 发布于 {{ pin.published_at }}</p>
+                <p class="text-xs text-fg-3">编号：#{{ pin.id }} · 发布于 {{ pin.first_published_at }}</p>
               </div>
             </div>
             <button class="c-btn c-btn--ghost c-btn--xs text-danger" @click="pins.splice(idx, 1)">

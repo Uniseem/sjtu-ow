@@ -84,11 +84,29 @@ try {
   await wait(`document.querySelector('#comment-${top} .c-comment__body')?.textContent==='REAL top edited'`)
   const editedAt=row(top).edited_at
   check("root edit persisted and marked",!!editedAt && await evaluate(`document.querySelector('#comment-${top} .c-comment__meta').textContent.includes('已编辑')`))
-  await fill(rootForm,"REAL limit accepted")
-  await wait("[...document.querySelectorAll('.c-comment__body')].some(e=>e.textContent==='REAL limit accepted')")
-  await fill(rootForm,"REAL limit denied keep draft")
-  await wait(`!document.querySelector(${JSON.stringify(rootForm)}+' button').disabled`)
-  check("real 429 keeps draft",await evaluate(`document.querySelector(${JSON.stringify(rootForm)}+' textarea').value==='REAL limit denied keep draft' && !!document.querySelector('.c-toast')`) && !newest("REAL limit denied keep draft") && events.some((e)=>e.method==="Network.responseReceived" && e.params.response.status===429))
+  // The previous posts can straddle a UTC minute boundary. Exercise the
+  // actual limiter with a short real UI burst instead of assuming its bucket.
+  let acceptedBurst=0, deniedText, deniedResponse
+  for(let attempt=0;attempt<8;attempt++) {
+    const text=`REAL rate burst ${attempt}`
+    const before=events.length
+    await fill(rootForm,text)
+    let response
+    for(let poll=0;poll<100;poll++) {
+      const request=events.slice(before).find(e=>e.method==='Network.requestWillBeSent' && e.params.request.method==='POST' && new URL(e.params.request.url).pathname===`/api/articles/${config.article}/comments`)
+      response=request && events.slice(before).find(e=>e.method==='Network.responseReceived' && e.params.requestId===request.params.requestId)
+      if(response)break
+      await pause(50)
+    }
+    if(!response)throw new Error('missing rate burst POST response')
+    await wait(`!document.querySelector(${JSON.stringify(rootForm)}+' button').disabled`)
+    if(response.params.response.status===429) {deniedText=text;deniedResponse=response;break}
+    if(response.params.response.status!==200)throw new Error('unexpected rate burst status '+response.params.response.status)
+    await wait(`[...document.querySelectorAll('.c-comment__body')].some(e=>e.textContent===${JSON.stringify(text)})`)
+    if(!newest(text))throw new Error('successful rate burst did not persist')
+    acceptedBurst++
+  }
+  check("real 429 keeps draft",!!deniedResponse && !newest(deniedText) && await evaluate(`document.querySelector(${JSON.stringify(rootForm)}+' textarea').value===${JSON.stringify(deniedText)} && !!document.querySelector('.c-toast')`),{acceptedBurst})
   await go("moderator")
   await action(top,"置顶");await wait(`document.querySelector('#comment-${top} .c-tag')?.textContent==='置顶'`)
   check("pin persists without rewriting edited_at",row(top).is_pinned===1 && row(top).edited_at===editedAt)
@@ -112,7 +130,7 @@ try {
   await evaluate(`document.querySelector('#comment-${top} > details.c-comment__thread').open=true`)
   await action(flattened,"删除")
   await wait(`!document.querySelector('#comment-${top}')`)
-  check("deleted reply removes empty tombstone",row(reply).is_deleted===1 && (await api(`/api/articles/${config.article}/comments`)).body.total===26)
+  check("deleted reply removes empty tombstone",row(reply).is_deleted===1 && (await api(`/api/articles/${config.article}/comments`)).body.total===25+acceptedBurst)
   await go("banned")
   check("real feature ban notice",await evaluate("document.querySelector('#slot-article-comments').textContent.includes('你暂时无法使用此功能') && !document.querySelector('#slot-article-comments > form')"))
   const bannedForm=await openComposer(25,"编辑")

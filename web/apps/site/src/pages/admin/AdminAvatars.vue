@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { imageUrl } from "../../media"
 import { ref, onMounted } from "vue"
 import { getApiAdminAvatars, postApiAdminAvatarsIdTakeDown, type GetApiAdminAvatarsOut } from "@sjtu-ow/api"
 import { ADMIN_SECTIONS } from "../../admin/nav"
@@ -10,7 +11,7 @@ const api = useApi()
 
 const reviewSection = ADMIN_SECTIONS.find((s) => s.id === "review")
 const loading = ref(true)
-const avatars = ref<GetApiAdminAvatarsOut["avatars"]>([])
+const avatars = ref<GetApiAdminAvatarsOut["items"]>([])
 const error = ref<string | null>(null)
 const successMsg = ref<string | null>(null)
 
@@ -18,7 +19,7 @@ async function loadAvatars() {
   loading.value = true
   try {
     const res = await getApiAdminAvatars(api)
-    avatars.value = res.avatars
+    avatars.value = res.items
   } catch (err: any) {
     error.value = err?.message ?? "加载头像列表失败"
   } finally {
@@ -30,7 +31,7 @@ async function takeDown(id: number) {
   const reason = prompt("请输入下架头像的原因：", "违反社区头像规范")
   if (!reason) return
   try {
-    await postApiAdminAvatarsIdTakeDown(api, String(id), { reason })
+    await postApiAdminAvatarsIdTakeDown(api, String(id), { note: reason })
     successMsg.value = `头像记录 #${id} 已下架`
     await loadAvatars()
   } catch (err: any) {
@@ -71,15 +72,15 @@ onMounted(() => {
           class="bg-surface border border-border rounded-lg overflow-hidden flex flex-col p-3 items-center text-center"
         >
           <div class="size-20 rounded-full overflow-hidden bg-surface-2 border border-border mb-3 flex items-center justify-center">
-            <img v-if="a.thumb_url" :src="a.thumb_url" :alt="a.nickname" class="w-full h-full object-cover" />
+            <img v-if="a.image_id" :src="imageUrl(a.image_id, 'fill-88x88')" :alt="a.user_nickname" class="w-full h-full object-cover" />
             <CIcon v-else name="user" class="size-8 text-fg-3" />
           </div>
-          <p class="font-bold text-sm text-fg truncate w-full">{{ a.nickname }}</p>
+          <p class="font-bold text-sm text-fg truncate w-full">{{ a.user_nickname }}</p>
           <p class="text-[10px] text-fg-3 mt-1">提交于 {{ a.created_at }}</p>
 
           <div class="mt-3 w-full">
             <button
-              v-if="!a.taken_down"
+              v-if="a.status !== 'taken_down'"
               class="c-btn c-btn--danger w-full c-btn--xs"
               @click="takeDown(a.id)"
             >

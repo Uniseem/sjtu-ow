@@ -515,6 +515,15 @@ func TestAdminUsersVisibilityAndRoles(t *testing.T) {
 	if err != nil || len(rolesRes.Roles) != 2 {
 		t.Fatalf("UpdateUserRoles 失败: %+v, err=%v", rolesRes, err)
 	}
+	updatedList, err := svc.ListUsers(superCtx, ListUsersInput{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range updatedList.Users {
+		if item.ID == u1.ID && len(item.Roles) != 2 {
+			t.Fatal("user list omitted assigned roles")
+		}
+	}
 
 	// 4. 管理员配置角色功能限制 (规则 11)
 	restrRes, err := svc.SetFeatureRoleRestrictions(superCtx, SetFeatureRoleRestrictionsInput{

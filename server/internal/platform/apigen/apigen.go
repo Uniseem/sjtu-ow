@@ -120,7 +120,7 @@ func writeFunc(b *strings.Builder, s signature) {
 	}
 	if s.query != "" {
 		params = append(params, "query: "+s.query+" = {}")
-		parts = append(parts, "query")
+		parts = append(parts, "query: { ...query }")
 	}
 	params = append(params, "extras: CallExtras = {}")
 	parts = append([]string{"...extras"}, parts...)

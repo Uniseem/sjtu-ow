@@ -1,3 +1,4 @@
 <script lang="ts">
-export { default } from "@sjtu-ow/ui/BrandMark.vue"
+import Component from "@sjtu-ow/ui/BrandMark.vue"
+export default Component
 </script>
