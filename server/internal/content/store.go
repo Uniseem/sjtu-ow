@@ -350,8 +350,8 @@ func (s *Store) CreateArticleDraft(ctx context.Context, p *Page, a *Article, rev
 
 	err := s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
 		res, err := tx.ExecContext(txCtx, `
-			INSERT INTO pages (kind, slug, title, live, has_unpublished_changes, owner_id, seo_title, search_description, version, created_at, updated_at)
-			VALUES ('article', ?, ?, 0, 1, ?, ?, ?, 1, ?, ?)
+			INSERT INTO pages (kind, slug, title, live, has_unpublished_changes, owner_id, seo_title, search_description, version, created_at, updated_at, parent_id)
+			VALUES ('article', ?, ?, 0, 1, ?, ?, ?, 1, ?, ?, (SELECT id FROM pages WHERE kind='news_index' AND slug='news' LIMIT 1))
 		`, p.Slug, p.Title, p.OwnerID, p.SeoTitle, p.SearchDescription, now, now)
 		if err != nil {
 			return err

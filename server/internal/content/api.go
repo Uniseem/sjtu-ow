@@ -6,7 +6,6 @@ import (
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
-	"github.com/Uniseem/sjtu-ow/server/internal/platform/markdown"
 )
 
 // Module 负责内容域 HTTP 接口注册与协调。
@@ -28,16 +27,17 @@ type NewsListIn struct {
 
 // NewsItemOut 是文章列表项。
 type NewsItemOut struct {
-	ID               int64      `json:"id"`
-	Slug             string     `json:"slug"`
-	Title            string     `json:"title"`
-	CategoryName     string     `json:"category_name"`
-	CoverImageID     *int64     `json:"cover_image_id,omitempty"`
-	Summary          string     `json:"summary"`
-	ReadingTime      int        `json:"reading_time"`
-	AuthorName       string     `json:"author_name"`
-	FirstPublishedAt *time.Time `json:"first_published_at,omitempty"`
-	Pinned           bool       `json:"pinned,omitempty"`
+	ID                  int64      `json:"id"`
+	Slug                string     `json:"slug"`
+	Title               string     `json:"title"`
+	CategoryName        string     `json:"category_name"`
+	CoverImageID        *int64     `json:"cover_image_id,omitempty"`
+	DefaultCoverImageID *int64     `json:"default_cover_image_id"`
+	Summary             string     `json:"summary"`
+	ReadingTime         int        `json:"reading_time"`
+	AuthorName          string     `json:"author_name"`
+	FirstPublishedAt    *time.Time `json:"first_published_at,omitempty"`
+	Pinned              bool       `json:"pinned,omitempty"`
 }
 
 // NewsListOut 是 GET /api/page/news 的出参。
@@ -62,20 +62,32 @@ type HeadingOut struct {
 
 // NewsDetailOut 是 GET /api/page/news/{slug} 的出参。
 type NewsDetailOut struct {
-	ID                  int64         `json:"id"`
-	Slug                string        `json:"slug"`
-	Title               string        `json:"title"`
-	CategoryName        string        `json:"category_name"`
-	CoverImageID        *int64        `json:"cover_image_id,omitempty"`
-	Summary             string        `json:"summary"`
-	BodyHTML            string        `json:"body_html"`
-	CharCount           int           `json:"char_count"`
-	ReadingTime         int           `json:"reading_time"`
-	AuthorName          string        `json:"author_name"`
-	CommentsEnabled     bool          `json:"comments_enabled"`
-	RelatedTournamentID *int64        `json:"related_tournament_id,omitempty"`
-	FirstPublishedAt    *time.Time    `json:"first_published_at,omitempty"`
-	Headings            []*HeadingOut `json:"headings"`
+	ID                  int64                 `json:"id"`
+	Slug                string                `json:"slug"`
+	Title               string                `json:"title"`
+	CategoryName        string                `json:"category_name"`
+	CoverImageID        *int64                `json:"cover_image_id,omitempty"`
+	Summary             string                `json:"summary"`
+	BodyHTML            string                `json:"body_html"`
+	CharCount           int                   `json:"char_count"`
+	ReadingTime         int                   `json:"reading_time"`
+	AuthorName          string                `json:"author_name"`
+	CommentsEnabled     bool                  `json:"comments_enabled"`
+	RelatedTournamentID *int64                `json:"related_tournament_id,omitempty"`
+	FirstPublishedAt    *time.Time            `json:"first_published_at,omitempty"`
+	Headings            []*HeadingOut         `json:"headings"`
+	CategorySlug        string                `json:"category_slug"`
+	DefaultCoverImageID *int64                `json:"default_cover_image_id"`
+	Author              *ArticleAuthorOut     `json:"author"`
+	AuthorArticleCount  int                   `json:"author_article_count"`
+	LastPublishedAt     *time.Time            `json:"last_published_at"`
+	CommentTotal        int                   `json:"comment_total"`
+	Older               *ArticleNeighbourOut  `json:"older"`
+	Newer               *ArticleNeighbourOut  `json:"newer"`
+	Related             []*NewsItemOut        `json:"related"`
+	Tournament          *ArticleTournamentOut `json:"tournament"`
+	SeoTitle            string                `json:"seo_title"`
+	SearchDescription   string                `json:"search_description"`
 }
 
 // SitePageIn 是 GET /api/page/{slug} 的入参。
@@ -320,49 +332,7 @@ func (m *Module) listNews(ctx *app.Ctx, in NewsListIn) (NewsListOut, error) {
 }
 
 func (m *Module) getNewsDetail(ctx *app.Ctx, in NewsDetailIn) (NewsDetailOut, error) {
-	slug := in.Slug
-	article, err := m.svc.store.GetArticleBySlug(ctx.Context, slug)
-	if err != nil {
-		return NewsDetailOut{}, err
-	}
-	if article == nil {
-		return NewsDetailOut{}, api.NotFound("文章不存在")
-	}
-
-	// 权限检查：非公开文章仅作者或编辑可见
-	if !article.Live {
-		if !m.svc.canEditArticle(ctx.Viewer, &article.Page) {
-			return NewsDetailOut{}, api.NotFound("文章不存在")
-		}
-	}
-
-	// 提取标题结构（目录用）
-	_, headings := markdown.AnchorHeadings(article.BodyHTML)
-	headingOuts := make([]*HeadingOut, 0, len(headings))
-	for _, h := range headings {
-		headingOuts = append(headingOuts, &HeadingOut{
-			Level: h.Level,
-			Text:  h.Text,
-			ID:    h.Anchor,
-		})
-	}
-
-	return NewsDetailOut{
-		ID:                  article.ID,
-		Slug:                article.Slug,
-		Title:               article.Title,
-		CategoryName:        article.CategoryName,
-		CoverImageID:        article.CoverImageID,
-		Summary:             article.Summary,
-		BodyHTML:            article.BodyHTML,
-		CharCount:           article.CharCount,
-		ReadingTime:         article.ReadingTime,
-		AuthorName:          article.AuthorName,
-		CommentsEnabled:     article.CommentsEnabled,
-		RelatedTournamentID: article.RelatedTournamentID,
-		FirstPublishedAt:    article.FirstPublishedAt,
-		Headings:            headingOuts,
-	}, nil
+	return m.svc.ArticlePage(ctx, in.Slug)
 }
 
 func (m *Module) getSitePage(ctx *app.Ctx, in SitePageIn) (SitePageOut, error) {

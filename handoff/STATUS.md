@@ -1,10 +1,10 @@
 # 当前状态
 
 ```yaml
-milestone: 正式站 265 起回到旧站（Django），新栈前台在测试机上照 docs/frontend-migration.md 重做，和旧站对拍全绿再割接。F1 关键底座补齐（262–264，细项仍见表）；F2 第一组通过（266），267 卡片/布局已有旧模板 SSR 对照；F3 账号入口 268–269 有页面、登录/注册/找回/改密码/邮箱/退出对拍通过；F4 内容组 270–275 前端写齐（普通页/搜索/投稿对拍通过，文章页含评论区/资讯列表/首页照旧模板重写，剩余差异在 BE-4–8）。前端 Claude、后端 GLM（274 起）。
-round: 279-be-comment-contracts
-next_frontend: Claude：FE-0–4 已由用户授权 GPT 在 277 修复（原探针8/8、新浏览器23/23、8处变异通过）；BE-4–8 接入后补文章页/列表/首页对拍与评论真实 Go 旅程。账号组其余对拍、真实旅程、F2 样张仍待补。
-next_backend: 本轮用户授权 Codex 自主接手后端，279 已完成 BE-7/8（权限/编辑时间、9处变异与整组通过），长期分工不变。下一轮先补 BE-4–6 的文章页、资讯列表、首页投影并核查公开门/统计/错误传播；之后按 request 中计划推进账号内容验收、F5–F9 页面、F10 全站验收。IP 试用站未部署，正式站继续 Django。
+milestone: 正式站 265 起运行旧站（Django），新栈在测试机照 frontend-migration 重做，逐页对拍与试用通过再割接。F1关键底座262–264已补，F2第一组266通过、267卡片布局有SSR对照，F3账号入口268–269部分对拍通过；F4普通页/搜索/投稿通过，280补文章投影后访客/成员四组合对拍通过（真实评论旅程未验），资讯列表/首页的BE-5/6仍待补。长期Claude前端、GLM后端，本轮用户授权Codex自主推进的范围例外见request。
+round: 280-be-article-projection
+next_frontend: 本轮用户授权 Codex 接手后端并更新实际对拍证据，长期 Claude 前端/GLM 后端分工不变。BE-4/7/8 后端已完成，文章访客/成员四组合对拍280通过（最大0.153032%）；前端需接生成类型、补评论 edited_at 标记与真实 Go 旅程。账号组其余对拍/真实旅程、F2 样张仍待补。
+next_backend: 用户授权 Codex 自主推进；279 已补 BE-7/8，280 已补 BE-4 和栏目/图库父子关系（36处变异、整组、文章对拍通过）。下一轮补 BE-5（分类/简介导入和列表封面）、BE-6（首页/agenda），再补文章各出口和评论公开门矩阵；随后按279计划推进逐页真实验收和 F5–F10。旧Go库未知父栏目不猜上下篇，须从旧库重建；IP试用站未部署，正式站继续Django。长期分工不变。
 updated: 2026-10-11
 blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令时写法、磁盘清理、异地备份）
 ```
@@ -67,7 +67,7 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 | **内容** | | | | | |
 | `/` | ✓（275 照旧模板重写） | ✓ | 半（BE-6：feature/公告缺、agenda 链接形状） | 不同（BE-6；about/search/submit 访客已过） | — |
 | `/news/` | ✓（275 照旧模板） | ✓ | 半（BE-5：分类标签、简介、默认封面） | 不同（BE-5） | — |
-| `/news/<slug>/`（含评论） | 半（275 实现；277 修 FE-0–4，评论交互已验） | ✓（17组旧模板；277浏览器23项） | 半（BE-4/7/8） | 半（277：仍缺作者卡/相关文章，17.21%/16.21%，与275一致） | 评论桩浏览器通过；真实 Go 旅程未验 |
+| `/news/<slug>/`（含评论） | 半（275 实现；277 修 FE-0–4，评论交互已验） | ✓（17组旧模板；277浏览器23项） | 半（279/280已补BE-4/7/8；公开门待核查） | ✓（280，访客/成员四组合，最大0.153032%） | 评论桩浏览器通过；真实 Go 旅程未验 |
 | `/about/`、`/terms/`、`/privacy/`、普通页 | 半（270 照旧模板） | ✓ | ✓（BE-0/1） | ✓（275，三页访客逐字通过） | — |
 | `/search/` | 半（270 照旧模板） | ✓ | ✓（BE-2） | ✓（275，访客逐字通过） | — |
 | `/submit/` | 半（270 照旧模板） | ✓ | 半（BE-3） | 访客 ✓（270，四组合）；成员 302 一致、目的地是后台写文章页（F9） | — |
@@ -133,7 +133,7 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 | BE-1 | 已接 275 | `GET /api/page/{slug}` | 加 `seo_title`、`search_description`、`last_published_at`（可空，RFC 3339）。`content.Page` 里都有，`SitePageOut` 没带出来（`content/models.py` `StandardPage` + `SeoPageMixin`） | `about`、`terms`、`privacy` |
 | BE-2 | 已接 275 | `GET /api/search?q=` | 回答改成旧搜索页的分组：`{query, groups: [{key, label, hits: [{title, url, excerpt, meta}], truncated}]}`。规则逐条照 `search/services.py`：查询去空白截 50 字、按空白切最多 5 个词、大小写折叠、每个词都要命中，空查询不搜；四组顺序固定 `articles` 文章 / `events` 赛事与内战 / `teams` 战队 / `members` 成员，空组也要在（前端按位置编 `search-N`）；每组最多 20 条，多了 `truncated: true`；摘录是第一个命中词前后各 40 字，被截的一头加「…」，没命中就取开头 80 字。文章：已发布公开的，按 `last_published_at` 倒序，搜标题+摘要+`body_plain`，`meta` 是分类名（没有就「文章」），`url` `/news/<slug>/`。赛事与内战一组：先赛事（已发布、已结束，按 `updated_at` 倒序）后内战（同），搜标题+摘要+说明纯文本，`meta` 是「赛事」「内战」。战队：没解散的，按 `updated_at` 倒序，搜名字+简介，摘录取简介，`meta`「招募中」或「战队」。成员：成员墙上的人，按昵称排序，只搜昵称，摘录是宣言，`meta`「成员」，`url` `/members/<用户编号>/`。限流照旧回 429 | `search` |
 | BE-3 | 已接 275 | `GET /api/session` | `user` 加 `can_submit_article`：`can_use(article_submit)` 本身，不看邮箱验证（`content/views.py` `submit_entry` 把「邮箱未验证」「没有投稿权限」分开列）。现在前端只能从 `caps` 里的 `articles.publish_own` 推，未验证邮箱又被禁投稿的人只看到前一条 | `submit`（只影响这一种人，种子数据里没有） |
-| BE-4 | 待做 | `GET /api/page/news/{slug}` | 文章页正文之外的投影，逐条照 `content/models.py` `ArticlePage.get_context`：`author`（`{user_id, nickname, avatar_image_id, is_active, motto}`，作者卡用：链接 `/members/<user_id>/`、头像、宣言「…”motto“」、停用的人不显示头像）；`author_article_count`（作者已发布公开文章数）；`last_published_at`（可空；前端按「距首发超过一天」显示「更新于」）；`comment_total`（头部事实行的顶层评论数）；`older`/`newer`（同栏目按 `first_published_at` 前后最近一篇 `{slug, title}`，无首发时间时 null）；`related`（同分类排除自己、按首发时间倒序前 3 篇，形状照 `NewsItemOut` 再加 `default_cover_image_id`）；`category_slug`（面包屑和分类 tag 链接 `?category=`）；`default_cover_image_id`（分类默认封面，即 `cover_fallback`）；`tournament`（关联赛事卡，`is_public` 才给：`{id, title, phase, starts_at, registration_opens_at, registration_closes_at, cover_image_id, default_cover_image_id, roster_min, roster_max, registration_mode_label, takes_individuals, sjtu_only}`）；`seo_title`、`search_description`（页面标题和描述） | `article`（作者卡、上下篇、相关文章、关联赛事卡、SEO） |
+| BE-4 | ✓ 280 | `GET /api/page/news/{slug}` | 文章页正文之外的投影，逐条照 `content/models.py` `ArticlePage.get_context`：`author`（`{user_id, nickname, avatar_image_id, is_active, motto}`，作者卡用：链接 `/members/<user_id>/`、头像、宣言「…”motto“」、停用的人不显示头像）；`author_article_count`（作者已发布公开文章数）；`last_published_at`（可空；前端按「距首发超过一天」显示「更新于」）；`comment_total`（头部事实行的顶层评论数）；`older`/`newer`（同栏目按 `first_published_at` 前后最近一篇 `{slug, title}`，无首发时间时 null）；`related`（同分类排除自己、按首发时间倒序前 3 篇，形状照 `NewsItemOut` 再加 `default_cover_image_id`）；`category_slug`（面包屑和分类 tag 链接 `?category=`）；`default_cover_image_id`（分类默认封面，即 `cover_fallback`）；`tournament`（关联赛事卡，`is_public` 才给：`{id, title, phase, starts_at, registration_opens_at, registration_closes_at, cover_image_id, default_cover_image_id, roster_min, roster_max, registration_mode_label, takes_individuals, sjtu_only}`）；`seo_title`、`search_description`（页面标题和描述） | `article`（作者卡、上下篇、相关文章、关联赛事卡、SEO） |
 | BE-5 | 待做 | `GET /api/page/news` | 列表页三样（`ArticleIndexPage.get_context`）：`categories`（有名字有 slug 的分类，按 `sort_order, name`，`{slug, name}` 数组，分类标签条）；`intro_html`（栏目简介渲染后的 HTML，`c-pagehead__lede`）；items 每项补 `default_cover_image_id`（文章卡的默认封面） | `news`（分类标签、栏目简介、默认封面） |
 | BE-6 | 待做 | `GET /api/page/home`（含 `/api/me/agenda` 的组合） | 275 对拍（`/tmp/sjtu-ow-parity/out/report.md`）拿到三处：① `feature_tournament` 是空——种子里有整队赛（id 2），旧站画了「报名中 · 截图战队杯 · 已通过 0 队」大卡，新站整块没有，查选择逻辑/门；② `notices` 是空——旧站公告列出了 notice 分类文章，新站没有；③ 议程条目的报名链接形状不对：旧站是 `/registrations/1/`，新站 `/api/me/agenda` 给 `/tournaments/2/registrations/1/`。glm-handoff 5.1 让把 agenda 组合进 home、`feature_tournament` 补 `default_cover_image_id`（和 BE-5 同一个默认封面池）——这三条一起做 | `home`（访客像素差 56%、member 50%，大头是缺的大卡和公告） |
 | BE-7 | ✓ 279（待前端接入） | `GET /api/session` | `user` 补 `can_comment`：`can_use("article_comment")` 本身。评论区要像旧站的 `post_problems` 一样预先显示「你暂时无法使用此功能，如有疑问请联系管理员」（`accounts/permissions.py`）；后台 caps 是另一套语义，判不了这个。和 BE-3 的 `can_submit_article` 同一模式 | `article`（功能被禁的成员，种子数据里没有） |
@@ -166,11 +166,11 @@ blocked_on: 无（等用户点头的三件不挡开发：定时任务换冬令�
 
 只保留最近 3 轮的摘要；新加一轮时把超出的条目移到 `archive/` 的历史记录。过去的执行结果归档，当前未完成项必须仍在上面的任务/验收表。
 
+**280（2026-10-11，自查通过）**：Codex本轮接手BE-4并更新实际对拍格子；文章作者卡/公开篇数/最近发布时间/评论总数/同栏目上下篇/同分类三篇/赛事/默认封面/SEO补齐，00020保留旧栏目编号和图库父子关系，未知栏目不猜上下篇。最终 `20261011-123917-2538c42` 36处可编译变异、Go/Web整组（15 + 202）、生成物与预算通过，退出0。对拍 `20261011-123552-280258a` 访客/成员四组合2/2通过，最大0.153032%；后加NULL保护的样本父编号只读核对通过。真实Go评论旅程、前端类型接入未验，不标整页完成；无依赖或部署改动。见 `rounds/280-be-article-projection/`。
+
 **279（2026-10-11，自查通过）**：用户授权先规划再自主推进，Codex 本轮接手后端；BE-7 session.can_comment 独立于邮箱/后台能力，BE-8 评论独立 edited_at 与旧库导入，00019 升级不虚构历史；相同正文不记编辑。测试机最终 `20261011-122024-44ae78e`：9处可编译变异、Go/Web整组（15 + 202）、apigen一致、预算96649字节通过，退出0。前端接入、文章对拍与真实Go旅程未验证，不标整页完成；下一轮BE-4–6。无依赖或部署改动，长期分工不变。见 `rounds/279-be-comment-contracts/`。
 
 **278（2026-10-11，自查通过）**：用户授权重组文档入口；AGENTS 314→36、README 550→35、STATUS 1069→177 行，分工/验收/运维/踩坑按需读取；旧手册和状态原文另存历史，当前表保留，长期前后端分工不变。测试机 `20261011-021035-9ea4624` 文档审计（100 链接/79 坑/15 范围/105 行表/历史逐字/28 小节）及 Go/Web 整组（15 + 202）退出 0，预算 96649 字节；首轮审计路径比对误报已修，最终文档收尾 `20261011-021222-2d95457`（20 文件/100 链接）也退出 0。没有网站代码、依赖、生成契约或部署改动。见 `rounds/278-docs-navigation/`。
-
-**277（2026-10-11，自查通过）**：用户明确「你开始改吧」，GPT 获本轮前端范围例外，修 FE-0–4：点赞监听、显式原生确认、Go page_size 契约、SPA 状态/旧响应隔离、空文章渲染、提交同步防重/失败留稿/成功复位、实时头部计数；多页操作刷新不丢已加载范围。默认 browser-check 增加真实评论浏览器回归。最终 `20261011-013837-db781c7`：17组旧参考字节一致、8个可编译变异、Go/Web整组（15 + 202）、原复核8/8、新浏览器23/23通过，退出0。文章四组合对拍 `20261011-014720-6937a5a` 仍0/2（BE-4），17.21%/16.21%与275一致，无新增差异；不标整页完成、不部署。长期仍 Claude 前端/GLM 后端，BE-4–8未动。见 `rounds/277-f4-comment-review-fixes/`。
 
 
 ## 历史记录

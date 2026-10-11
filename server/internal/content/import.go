@@ -31,7 +31,15 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 
 	// 1. 导入图片集合 (wagtailcore_collection -> image_collections)
 	{
-		rows, err := legacy.QueryContext(ctx, `SELECT id, name FROM wagtailcore_collection ORDER BY id ASC`)
+		hasPath, err := legacyColumn(ctx, legacy, "wagtailcore_collection", "path")
+		if err != nil {
+			return err
+		}
+		collectionQuery := `SELECT id, name, NULL FROM wagtailcore_collection ORDER BY id ASC`
+		if hasPath {
+			collectionQuery = `SELECT c.id,c.name,parent.id FROM wagtailcore_collection c LEFT JOIN wagtailcore_collection parent ON parent.path=substr(c.path,1,length(c.path)-4) ORDER BY length(c.path),c.path,c.id`
+		}
+		rows, err := legacy.QueryContext(ctx, collectionQuery)
 		if err != nil {
 			return fmt.Errorf("1. 导入图片集合 (wagtailcore_collection -> image_collections)：读取失败: %w", err)
 		}
@@ -45,10 +53,12 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
                 WHERE key IN ('default_cover', 'default_avatar', 'user_avatar', 'contributed', 'team_logo')`); err != nil {
 				return fmt.Errorf("释放预置集合 key: %w", err)
 			}
+			claimedKeys := map[string]bool{}
 			for rows.Next() {
 				var id int64
 				var name string
-				if err := rows.Scan(&id, &name); err != nil {
+				var parent sql.NullInt64
+				if err := rows.Scan(&id, &name, &parent); err != nil {
 					return fmt.Errorf("1. 导入图片集合 (wagtailcore_collection -> image_collections)：扫描失败: %w", err)
 				}
 
@@ -65,11 +75,15 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 				case "队标":
 					key = "team_logo"
 				}
+				if claimedKeys[key] {
+					key = fmt.Sprintf("collection_%d", id)
+				}
+				claimedKeys[key] = true
 				if _, err := tx.ExecContext(txCtx, `
-							INSERT INTO image_collections (id, name, key, created_at)
-							VALUES (?, ?, ?, ?)
-							ON CONFLICT (id) DO UPDATE SET name = excluded.name, key = excluded.key
-						`, id, name, key, nowStr); err != nil {
+							INSERT INTO image_collections (id, name, key, created_at, parent_id)
+							VALUES (?, ?, ?, ?, ?)
+							ON CONFLICT (id) DO UPDATE SET name = excluded.name, key = excluded.key, parent_id = excluded.parent_id
+						`, id, name, key, nowStr, parent); err != nil {
 					return fmt.Errorf("1. 导入图片集合 (wagtailcore_collection -> image_collections)：SQL 写入失败: %w", err)
 				}
 			}
@@ -223,7 +237,8 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
                        SELECT 1 FROM wagtailcore_pageviewrestriction vr
                        JOIN wagtailcore_page restricted ON restricted.id = vr.page_id
                        WHERE substr(p.path, 1, length(restricted.path)) = restricted.path
-                   ) AS search_public
+                   ) AS search_public,
+                   (SELECT parent.id FROM wagtailcore_page parent WHERE parent.path=substr(p.path,1,length(p.path)-4)) AS parent_id
 			FROM content_articlepage a
 			JOIN wagtailcore_page p ON p.id = a.page_ptr_id
 			ORDER BY p.id ASC
@@ -239,14 +254,14 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 				var slug, title, summary, body, bodyPlain string
 				var live, hasUnpub, commentsEnabled, bodyWords, bodyMinutes, searchPublic int
 				var goLive, expire, firstPub, lastPub, seoTitle, searchDesc sql.NullString
-				var liveRevID, ownerID, catID, coverID, authorID, tourID sql.NullInt64
+				var liveRevID, ownerID, catID, coverID, authorID, tourID, parentID sql.NullInt64
 
 				if err := rows.Scan(
 					&pageID, &slug, &title, &live, &hasUnpub,
 					&goLive, &expire, &firstPub, &lastPub,
 					&liveRevID, &ownerID, &seoTitle, &searchDesc,
 					&catID, &coverID, &summary, &body, &bodyPlain, &bodyWords, &bodyMinutes,
-					&authorID, &commentsEnabled, &tourID, &searchPublic,
+					&authorID, &commentsEnabled, &tourID, &searchPublic, &parentID,
 				); err != nil {
 					return fmt.Errorf("4. 导入文章页面 (content_articlepage + wagtailcore_page)：扫描失败: %w", err)
 				}
@@ -299,13 +314,13 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 							INSERT INTO pages (id, kind, slug, title, live, has_unpublished_changes,
 								go_live_at, expire_at, first_published_at, last_published_at,
 								live_revision_id, latest_revision_id, owner_id, seo_title, search_description,
-								version, created_at, updated_at, search_public)
-							VALUES (?, 'article', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+								version, created_at, updated_at, search_public, parent_id)
+							VALUES (?, 'article', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
 							ON CONFLICT (id) DO NOTHING
 						`, pageID, slug, title, live, hasUnpub,
 					goLiveUTC, expireUTC, firstPubUTC, lastPubUTC,
 					liveRevIDVal, liveRevIDVal, ownerIDVal, seoTitleStr, searchDescStr,
-					nowStr, nowStr, searchPublic); err != nil {
+					nowStr, nowStr, searchPublic, parentID); err != nil {
 					return fmt.Errorf("4. 导入文章页面 (content_articlepage + wagtailcore_page)：SQL 写入失败: %w", err)
 				}
 
@@ -623,4 +638,26 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 	}
 
 	return nil
+}
+
+// legacyColumn 兼容最小旧库测试夹具；真实 Wagtail 的树列有值时必须读取。
+func legacyColumn(ctx context.Context, legacy *sql.DB, table, column string) (bool, error) {
+	rows, err := legacy.QueryContext(ctx, "PRAGMA table_info("+table+")")
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	found := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, kind string
+		var def any
+		if err := rows.Scan(&cid, &name, &kind, &notnull, &def, &pk); err != nil {
+			return false, err
+		}
+		if name == column {
+			found = true
+		}
+	}
+	return found, rows.Err()
 }

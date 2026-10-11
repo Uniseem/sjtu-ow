@@ -104,13 +104,7 @@ func (s *Store) GetCommentByID(ctx context.Context, id int64) (*Comment, error) 
 // ListRootComments 查询顶层评论（规则 182、183）。
 func (s *Store) ListRootComments(ctx context.Context, articleID int64, viewerID int64, isMod bool, sortBy string, limit, offset int) ([]*Comment, int, error) {
 	where := "WHERE c.article_id = ? AND c.parent_id IS NULL"
-	if !isMod {
-		// 普通人只见未隐藏且（未删除或有存活子回复）的项
-		where += ` AND (
-			(c.is_hidden = 0 AND c.is_deleted = 0) OR
-			EXISTS (SELECT 1 FROM comments r WHERE r.parent_id = c.id AND r.is_hidden = 0 AND r.is_deleted = 0)
-		)`
-	}
+	where += rootVisibility(isMod)
 
 	countQuery := `SELECT COUNT(*) FROM comments c ` + where
 	var total int
@@ -179,8 +173,9 @@ func (s *Store) ListRepliesForRoots(ctx context.Context, rootIDs []int64, viewer
 	}
 
 	where := fmt.Sprintf("WHERE c.parent_id IN (%s)", joinInts(rootIDs, ","))
+	where += " AND c.is_deleted = 0"
 	if !isMod {
-		where += " AND c.is_hidden = 0 AND c.is_deleted = 0"
+		where += " AND c.is_hidden = 0"
 	}
 
 	query := `
@@ -507,4 +502,19 @@ func (s *Store) ListAdminComments(ctx context.Context, q string, hidden, pinned 
 	}
 
 	return items, total, rows.Err()
+}
+
+// rootVisibility 是旧 thread 的可见顶层规则；头部计数与列表共享同一口径。
+func rootVisibility(isMod bool) string {
+	if isMod {
+		return ` AND (c.is_deleted=0 OR EXISTS (SELECT 1 FROM comments r WHERE r.parent_id=c.id AND r.is_deleted=0))`
+	}
+	return ` AND ((c.is_hidden=0 AND c.is_deleted=0) OR EXISTS (SELECT 1 FROM comments r WHERE r.parent_id=c.id AND r.is_hidden=0 AND r.is_deleted=0))`
+}
+
+// CountRoots 不计回复；保留有存活回复的墓碑顶层，与 ListRootComments 一致。
+func (s *Store) CountRoots(ctx context.Context, articleID int64, isMod bool) (int, error) {
+	var total int
+	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT COUNT(*) FROM comments c WHERE c.article_id=? AND c.parent_id IS NULL`+rootVisibility(isMod), articleID).Scan(&total)
+	return total, err
 }
