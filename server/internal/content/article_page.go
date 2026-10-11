@@ -110,9 +110,11 @@ func (s *Service) ArticlePage(ctx *app.Ctx, slug string) (NewsDetailOut, error) 
 	if err != nil {
 		return NewsDetailOut{}, err
 	}
-	for _, item := range related {
-		out.Related = append(out.Related, newsItem(item, media.PickCover(pool, item.ID, 0)))
+	out.Related, err = s.store.newsItems(ctx.Context, related, pool)
+	if err != nil {
+		return NewsDetailOut{}, err
 	}
+
 	if article.RelatedTournamentID != nil {
 		t, err := tournaments.GetTournament(ctx.Context, s.store.d.ReadPool(), *article.RelatedTournamentID)
 		if err != nil {

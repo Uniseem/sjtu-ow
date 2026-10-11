@@ -130,7 +130,7 @@ func Items(ctx context.Context, q db.DBTX, userID int64, now time.Time, limit in
 		if when != nil && when.Before(now) {
 			continue
 		}
-		items = append(items, Item{Kind: "赛事", Title: title, URL: "/tournaments/" + itoa(tid) + "/registrations/" + itoa(rid) + "/", When: when,
+		items = append(items, Item{Kind: "赛事", Title: title, URL: "/registrations/" + itoa(rid) + "/", When: when,
 			Note: team + " · " + statusLabels[status]})
 	}
 	err = trs.Err()

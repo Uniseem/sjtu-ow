@@ -1,7 +1,6 @@
 <script lang="ts">
-import { getApiMeAgenda, getApiPageHome, type GetApiPageHomeOut } from "@sjtu-ow/api"
+import { getApiPageHome, type GetApiPageHomeOut } from "@sjtu-ow/api"
 import type { LoadCtx } from "../router"
-import type { ArticleCard } from "../pending-api"
 
 // content/templates/content/home_page.html (design 5.2, 13.2.5): full-screen
 // hero, the figures along its bottom edge, 近期 (the big card on the left and
@@ -10,11 +9,7 @@ import type { ArticleCard } from "../pending-api"
 // visitor. The stats block can be null before the site is set up (v6.48).
 export async function load(ctx: LoadCtx) {
   const home: GetApiPageHomeOut = await getApiPageHome(ctx.api)
-  const member = (await ctx.viewer()).user
-  // The agenda is its own resource endpoint today (glm-handoff 5.1 wants it
-  // combined into HomePageOut eventually); one fixed extra request while
-  // signed in, like the article page's comments.
-  const agenda = member ? (await getApiMeAgenda(ctx.api)).items : []
+  const agenda = home.agenda ?? []
   // marker 里的 < 走真渲染，确认状态脚本把 < 转义了。页面上不显示。
   return { title: "首页", marker: "<", home, agenda }
 }
@@ -30,7 +25,6 @@ import SectionHead from "../components/SectionHead.vue"
 import { imageUrl } from "../media"
 import { owMonthNum, owDay, owTime, owWeekday, owISO } from "@sjtu-ow/shared/time"
 import { usePageMeta } from "../meta"
-import type { ArticleCard } from "../pending-api"
 import { VIEWER } from "../viewer"
 
 // The page-data object sheds the previous page's keys on navigation before
@@ -44,7 +38,7 @@ const home = computed(() => data?.home)
 const stats = computed(() => home.value?.stats)
 const feature = computed(() => home.value?.feature_tournament)
 const scrims = computed(() => home.value?.scrims ?? [])
-const news = computed(() => (home.value?.news ?? []) as ArticleCard[])
+const news = computed(() => (home.value?.news ?? []).filter((item) => item !== null))
 const notices = computed(() => home.value?.notices ?? [])
 const teams = computed(() => home.value?.teams ?? [])
 const agenda = computed(() => data?.agenda ?? [])
@@ -53,7 +47,7 @@ function featureCover(): string {
   const t = feature.value
   if (!t) return ""
   if (t.cover_image_id) return imageUrl(t.cover_image_id, "fill-1280x720")
-  if ((t as { default_cover_image_id?: number | null }).default_cover_image_id) return imageUrl((t as { default_cover_image_id: number }).default_cover_image_id, "fill-1280x720")
+  if (t.default_cover_image_id) return imageUrl(t.default_cover_image_id, "fill-1280x720")
   return `/static/img/placeholders/cover-${String(((t.id + 13) % 36) + 1).padStart(2, "0")}.svg`
 }
 </script>
@@ -115,7 +109,7 @@ function featureCover(): string {
            the scrims on the right; whichever is missing leaves the ground. -->
       <div class="c-upcoming c-upcoming--two">
         <article v-if="feature" class="c-feature" data-next-up="tournament" :data-phase="feature.phase">
-          <img :src="featureCover()" class="c-feature__img" alt="" width="1280" height="720">
+          <img :src="featureCover()" class="c-feature__img" :class="!feature.cover_image_id && feature.default_cover_image_id ? `c-drift c-drift--${feature.id % 4 + 1}` : undefined" alt="" width="1280" height="720">
           <div class="c-feature__body">
             <span v-if="feature.phase === 'open'" class="c-status c-status--live">报名中</span>
             <span v-else-if="feature.phase === 'upcoming'" class="c-status c-status--info">即将开始报名</span>
@@ -127,7 +121,7 @@ function featureCover(): string {
         </article>
         <ol v-if="scrims.length" class="c-rows">
           <li v-for="scrim in scrims" :key="scrim.id" class="c-row" data-next-up="scrim">
-            <span class="c-date"><small>{{ scrim.month }}月</small><b>{{ scrim.day }}</b></span>
+            <span class="c-date"><small>{{ scrim.month }}月</small><b>{{ owDay(new Date(scrim.starts_at)) }}</b></span>
             <div class="c-row__main">
               <h3 class="c-row__title"><a :href="`/scrims/${scrim.id}/`" class="c-stretch">{{ scrim.title }}</a></h3>
               <p class="c-row__meta">{{ scrim.weekday }} {{ scrim.time }} · 已报 {{ scrim.count }} / {{ scrim.capacity }}</p>
@@ -158,7 +152,7 @@ function featureCover(): string {
         </div>
         <ol v-if="notices.length" class="c-rows">
           <li v-for="notice in notices" :key="notice.id" class="c-row">
-            <time class="c-date" :datetime="notice.published_at_raw ? owISO(new Date(notice.published_at_raw)) : undefined"><small>{{ notice.month }}月</small><b>{{ notice.day }}</b></time>
+            <time class="c-date" :datetime="notice.published_at_raw ? owISO(new Date(notice.published_at_raw)) : undefined"><small>{{ notice.published_at_raw ? owMonthNum(new Date(notice.published_at_raw)) : "" }}月</small><b>{{ notice.published_at_raw ? owDay(new Date(notice.published_at_raw)) : "" }}</b></time>
             <div class="c-row__main">
               <h3 class="c-row__title"><a :href="`/news/${notice.slug}/`" class="c-stretch">{{ notice.title }}</a></h3>
             </div>

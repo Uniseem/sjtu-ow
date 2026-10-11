@@ -13,10 +13,7 @@ import {
 // uses the generated type and runs that page's parity.
 
 /** One article card, as NewsItemOut comes back inside lists and page bodies. */
-export type ArticleCard = NonNullable<GetApiPageNewsOut["items"][number]> & {
-  /** [BE-5] the category's default cover, what cover_fallback drew. */
-  default_cover_image_id?: number | null
-}
+export type ArticleCard = NonNullable<GetApiPageNewsOut["items"][number]>
 
 /**
  * [BE-4] GET /api/page/news/{slug}: what content ArticlePage.get_context
@@ -66,15 +63,6 @@ export type ArticleDetail = GetApiPageNewsSlugOut & {
   tournament?: TournamentCard | null
   seo_title?: string
   search_description?: string
-}
-
-/**
- * [BE-5] GET /api/page/news: the named categories (sort_order, then name)
- * for the filter tabs and the rendered column intro (page.intro|markdown).
- */
-export type NewsList = GetApiPageNewsOut & {
-  categories?: { slug: string; name: string }[]
-  intro_html?: string
 }
 
 /**

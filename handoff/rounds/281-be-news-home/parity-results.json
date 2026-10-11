@@ -1,0 +1,116 @@
+[
+ {
+  "name": "home",
+  "who": "visitor",
+  "path": "/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 1.585693729172978e-05,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 6.849315068493151e-06,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 1.4200242350802787e-06,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 6.849315068493151e-06,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "home",
+  "who": "member",
+  "path": "/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 6.185162435162435e-06,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 5.886681383370125e-06,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 1.2796887796887797e-06,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 5.886681383370125e-06,
+    "problems": []
+   }
+  ],
+  "pass": true
+ },
+ {
+  "name": "news",
+  "who": "visitor",
+  "path": "/news/",
+  "status": [
+   [
+    200,
+    ""
+   ],
+   [
+    200,
+    ""
+   ]
+  ],
+  "views": [
+   {
+    "view": "1280-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-light",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "1280-dark",
+    "ratio": 0.0,
+    "problems": []
+   },
+   {
+    "view": "375-dark",
+    "ratio": 0.0,
+    "problems": []
+   }
+  ],
+  "pass": true
+ }
+]

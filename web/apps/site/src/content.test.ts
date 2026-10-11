@@ -6,11 +6,13 @@ import { createSiteRouter } from "./router"
 type Answer = { status?: number; body: unknown }
 async function page(url: string, answers: Record<string, Answer>, user: unknown = null) {
   const asked: string[] = []
+  const queries: string[] = []
   const result = await handle({ method: "GET", url, headers: { get: () => null } }, {
     apiBase: "http://api.test",
     fetch: async (input) => {
       const path = new URL(String(input)).pathname
       asked.push(path)
+      if (path === "/api/page/news") queries.push(new URL(String(input)).search)
       if (path === "/api/session") return Response.json({ user })
       const answer = answers[path]
       if (!answer) return Response.json({ error: { code: "not_found", message: "页面不存在" } }, { status: 404 })
@@ -19,7 +21,7 @@ async function page(url: string, answers: Record<string, Answer>, user: unknown 
   })
   // Vue's SSR inserts fragment comments around v-for/v-if text (233): tests
   // that match prose read `plain`, comments stripped.
-  return { ...result, asked, plain: String(result.body).replace(/<!--.*?-->/g, "") }
+  return { ...result, asked, queries, plain: String(result.body).replace(/<!--.*?-->/g, "") }
 }
 
 const terms = {
@@ -308,7 +310,7 @@ test("the news list without the column data (BE-5 pending) still lists; an empty
   expect(bare.body).not.toContain("c-pager")
 })
 
-const EMPTY_HOME = { stats: null, scrims: [], news: [], notices: [], teams: [] }
+const EMPTY_HOME = { stats: null, scrims: [], news: [], notices: [], teams: [], agenda: [] }
 
 test("the home page: hero, figures, sections; a visitor has no agenda", async () => {
   const { status, plain: body } = await page("/", { "/api/page/home": { body: EMPTY_HOME } })
@@ -331,7 +333,9 @@ test("the home page paints the real blocks and the member's agenda", async () =>
     teams: [{ id: 4, name: "思源", logo_image_id: null, member_count: 6, is_recruiting: true, wanted_roles: "tank", created_at_month: "2026.09" }],
   }
   const agenda = { items: [{ kind: "内战", title: "周五内战", url: "/scrims/8/", when: "2026-10-16T12:00:00Z", note: "已报名" }] }
-  const { plain: body } = await page("/", { "/api/page/home": { body: home }, "/api/me/agenda": { body: agenda } }, memberSession)
+  const { plain: body, asked } = await page("/", { "/api/page/home": { body: { ...home, agenda: agenda.items } } }, memberSession)
+  expect(asked.filter((path) => path === "/api/page/home")).toHaveLength(1)
+  expect(asked).not.toContain("/api/me/agenda")
   expect(body).toContain("<dt>注册成员</dt><dd>41</dd>")
   expect(body).toContain("6 年 350 天")
   expect(body).toContain('<a href="https://qm.qq.com/x" class="c-btn c-btn--secondary" rel="noopener" data-quick="qq">加入 QQ 群</a>')
@@ -370,4 +374,40 @@ test("article pagination uses the Go page_size contract at the full-page boundar
     expect(body.includes("加载更多"), `total=${total}`).toBe(total > 20)
     if (total > 20) expect(body).toContain('href="/news/screens-guide/?comments=2&amp;sort=top#comments"')
   }
+})
+
+test("home uses Shanghai's two-digit calendar days, and missing notice dates stay empty", async () => {
+  const home = {
+    ...EMPTY_HOME,
+    scrims: [{ id: 1, title: "月初内战", starts_at: "2026-10-06T16:00:00Z", month: 10, day: 7, weekday: "周三", time: "00:00", count: 0, capacity: 10, signup_open: true }],
+    notices: [{ id: 1, slug: "notice", title: "公告", month: 10, day: 7, published_at_raw: "2026-10-06T16:00:00Z" }, { id: 2, slug: "undated", title: "无日期", month: 0, day: 0, published_at_raw: "" }],
+  }
+  const { plain } = await page("/", { "/api/page/home": { body: home } })
+  expect(plain.match(/<b>07<\/b>/g)).toHaveLength(2)
+  expect(plain).not.toContain("<b>0</b>")
+})
+
+test("news uses the published column heading and SEO, and the API's effective page", async () => {
+  const { plain } = await page("/news/?page=999", { "/api/page/news": { body: { total: 13, page: 2, page_size: 12, title: "社区资讯", seo_title: "社区新闻", search_description: "栏目说明", intro_html: "", categories: [], items: [{ ...article, author: null }] } } })
+  expect(plain).toContain("<title>社区新闻 · SJTU-OW</title>")
+  expect(plain).toContain("社区资讯</h1>")
+  expect(plain).toContain('<meta name="description" content="栏目说明">')
+  expect(plain).toContain("<strong>2</strong> / 2")
+})
+
+
+test("news translates zero, negative and huge page numbers to the old paginator's last page", async () => {
+  for (const [query, expected] of [["0", "-1"], ["-2", "-2"], ["99999999999999999999999999999", String(Number.MAX_SAFE_INTEGER)], ["garbage", "1"], ["1.5", "1"]]) {
+    const result = await page(`/news/?page=${query}`, { "/api/page/news": { body: { total: 0, page: 1, page_size: 12, title: "News", categories: [], intro_html: "", items: [] } } })
+    expect(new URLSearchParams(result.queries[0]).get("page")).toBe(expected)
+  }
+})
+
+test("home's default cover uses the old drift class; an explicit cover stays still", async () => {
+  const feature = { id: 3, title: "比赛", phase: "open", phase_label: "报名中", registration_mode: "team", takes_individuals: false, approved_teams: 0, default_cover_image_id: 20, facts: "整队报名" }
+  const result = await page("/", { "/api/page/home": { body: { ...EMPTY_HOME, feature_tournament: feature } } })
+  const fallback = result.plain.match(/<img src="\/media\/r\/20\/fill-1280x720\.webp" class="([^"]+)"/)
+  expect(fallback?.[1].split(" ").sort()).toEqual(["c-feature__img", "c-drift", "c-drift--4"].sort())
+  const explicit = await page("/", { "/api/page/home": { body: { ...EMPTY_HOME, feature_tournament: { ...feature, cover_image_id: 30 } } } })
+  expect(explicit.plain).toContain('src="/media/r/30/fill-1280x720.webp" class="c-feature__img"')
 })

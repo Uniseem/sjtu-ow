@@ -1,21 +1,24 @@
 <script lang="ts">
 import { getApiPageNews } from "@sjtu-ow/api"
 import type { LoadCtx } from "../router"
-import type { NewsList } from "../pending-api"
+import type { GetApiPageNewsOut as NewsList } from "@sjtu-ow/api"
 
 // content/templates/content/article_index_page.html (design 13.2.7): head
 // with the column intro, category filter, picture cards, pager. The filter is
-// links, so the list stays a plain GET page (13.7). Go's 404 for an unknown
-// category stays a 404.
+// links, so the list stays a plain GET page (13.7). Unknown categories render the old empty
+// state; a missing/unpublished column remains a 404.
 export async function load(ctx: LoadCtx) {
   const category = (ctx.query.category ?? "").trim()
-  const page = Math.max(1, Number.parseInt(ctx.query.page ?? "", 10) || 1)
+  const rawPage = (ctx.query.page ?? "").trim()
+  const numeric = /^[-+]?\d+$/.test(rawPage) ? Number(rawPage) : 1
+  const page = Number.isSafeInteger(numeric) ? (numeric === 0 ? -1 : numeric) : Number.MAX_SAFE_INTEGER
   const data: NewsList = await getApiPageNews(ctx.api, { category: category || undefined, page })
   return {
-    title: "资讯",
+    title: data.title || "资讯",
+    description: data.search_description,
     data,
     category,
-    page,
+    page: data.page,
   }
 }
 </script>
@@ -27,16 +30,16 @@ import CPager from "@sjtu-ow/ui/CPager.vue"
 import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import PostCard from "@sjtu-ow/ui/PostCard.vue"
 import { usePageMeta } from "../meta"
-import type { ArticleCard, NewsList } from "../pending-api"
+import type { GetApiPageNewsOut as NewsList } from "@sjtu-ow/api"
 
 // The page-data object sheds the previous page's keys on navigation before
 // the old component unmounts, so the list falls back to an empty shape.
-const data = inject<{ title: string; data?: NewsList; category?: string; page?: number }>("page-data")
-usePageMeta(() => ({ title: "资讯" }))
+const data = inject<{ title: string; data?: NewsList; category?: string; page?: number; description?: string }>("page-data")
+usePageMeta(() => ({ title: data?.data?.seo_title || data?.title || "资讯", description: data?.description }))
 
-const list = computed(() => data?.data ?? { total: 0, page: 1, page_size: 12, items: [] })
+const list = computed(() => data?.data ?? { total: 0, page: 1, page_size: 12, items: [], categories: [], intro_html: "" })
 const categories = computed(() => list.value.categories ?? [])
-const articles = computed(() => (list.value.items ?? []) as ArticleCard[])
+const articles = computed(() => (list.value.items ?? []).filter((item) => item !== null))
 // The old pager keeps the category filter (extra_query without page=).
 const extraQuery = computed(() => (data?.category ? `category=${encodeURIComponent(data.category)}` : ""))
 const intro = computed(() => (list.value.intro_html ?? "").trim())
@@ -48,7 +51,7 @@ const intro = computed(() => (list.value.intro_html ?? "").trim())
       <div class="l-container">
         <div class="c-pagehead__row">
           <div>
-            <h1>资讯</h1>
+            <h1>{{ data?.title ?? "资讯" }}</h1>
             <div v-if="intro" class="c-pagehead__lede" v-html="intro"></div>
           </div>
           <div class="c-pagehead__actions">

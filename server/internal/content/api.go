@@ -27,25 +27,31 @@ type NewsListIn struct {
 
 // NewsItemOut 是文章列表项。
 type NewsItemOut struct {
-	ID                  int64      `json:"id"`
-	Slug                string     `json:"slug"`
-	Title               string     `json:"title"`
-	CategoryName        string     `json:"category_name"`
-	CoverImageID        *int64     `json:"cover_image_id,omitempty"`
-	DefaultCoverImageID *int64     `json:"default_cover_image_id"`
-	Summary             string     `json:"summary"`
-	ReadingTime         int        `json:"reading_time"`
-	AuthorName          string     `json:"author_name"`
-	FirstPublishedAt    *time.Time `json:"first_published_at,omitempty"`
-	Pinned              bool       `json:"pinned,omitempty"`
+	ID                  int64          `json:"id"`
+	Slug                string         `json:"slug"`
+	Title               string         `json:"title"`
+	CategoryName        string         `json:"category_name"`
+	CoverImageID        *int64         `json:"cover_image_id,omitempty"`
+	DefaultCoverImageID *int64         `json:"default_cover_image_id"`
+	Summary             string         `json:"summary"`
+	ReadingTime         int            `json:"reading_time"`
+	AuthorName          string         `json:"author_name"`
+	Author              *NewsAuthorOut `json:"author"`
+	FirstPublishedAt    *time.Time     `json:"first_published_at,omitempty"`
+	Pinned              bool           `json:"pinned,omitempty"`
 }
 
 // NewsListOut 是 GET /api/page/news 的出参。
 type NewsListOut struct {
-	Total    int            `json:"total"`
-	Page     int            `json:"page"`
-	PageSize int            `json:"page_size"`
-	Items    []*NewsItemOut `json:"items"`
+	Total             int               `json:"total"`
+	Page              int               `json:"page"`
+	PageSize          int               `json:"page_size"`
+	Items             []*NewsItemOut    `json:"items"`
+	Categories        []NewsCategoryOut `json:"categories"`
+	IntroHTML         string            `json:"intro_html"`
+	Title             string            `json:"title"`
+	SeoTitle          string            `json:"seo_title"`
+	SearchDescription string            `json:"search_description"`
 }
 
 // NewsDetailIn 是 GET /api/page/news/{slug} 的入参。
@@ -293,42 +299,7 @@ func (m *Module) Routes(r *api.Registry) {
 }
 
 func (m *Module) listNews(ctx *app.Ctx, in NewsListIn) (NewsListOut, error) {
-	page := in.Page
-	if page < 1 {
-		page = 1
-	}
-	pageSize := in.PageSize
-	if pageSize < 1 || pageSize > 50 {
-		pageSize = 12
-	}
-	offset := (page - 1) * pageSize
-
-	articles, total, err := m.svc.store.ListArticles(ctx.Context, in.Category, true, pageSize, offset)
-	if err != nil {
-		return NewsListOut{}, err
-	}
-
-	items := make([]*NewsItemOut, 0, len(articles))
-	for _, a := range articles {
-		items = append(items, &NewsItemOut{
-			ID:               a.ID,
-			Slug:             a.Slug,
-			Title:            a.Title,
-			CategoryName:     a.CategoryName,
-			CoverImageID:     a.CoverImageID,
-			Summary:          a.Summary,
-			ReadingTime:      a.ReadingTime,
-			AuthorName:       a.AuthorName,
-			FirstPublishedAt: a.FirstPublishedAt,
-		})
-	}
-
-	return NewsListOut{
-		Total:    total,
-		Page:     page,
-		PageSize: pageSize,
-		Items:    items,
-	}, nil
+	return m.svc.NewsPage(ctx, in)
 }
 
 func (m *Module) getNewsDetail(ctx *app.Ctx, in NewsDetailIn) (NewsDetailOut, error) {

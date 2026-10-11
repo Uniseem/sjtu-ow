@@ -475,6 +475,7 @@ func newLegacyContentDB(t *testing.T) *sql.DB {
 
     CREATE TABLE wagtailcore_pageviewrestriction (id INTEGER PRIMARY KEY, page_id INTEGER);
     CREATE TABLE content_standardpage (page_ptr_id INTEGER PRIMARY KEY, body TEXT NOT NULL);
+    CREATE TABLE content_articleindexpage (page_ptr_id INTEGER PRIMARY KEY, intro TEXT NOT NULL DEFAULT '');
     CREATE TABLE django_content_type (id INTEGER PRIMARY KEY, app_label TEXT, model TEXT);
     INSERT INTO django_content_type VALUES (1, 'content', 'articlepage'), (2, 'content', 'standardpage'), (3, 'other', 'thing');
     CREATE TABLE wagtailcore_revision (id INTEGER PRIMARY KEY, object_id TEXT, user_id INTEGER, content TEXT, created_at TEXT, approved_go_live_at TEXT, content_type_id INTEGER);

@@ -227,7 +227,7 @@ export function getApiAdminFeatureRoleRestrictions(r: Requester, extras: CallExt
 }
 
 export interface GetApiAdminHomePinsOut {
-  items: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
+  items: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   author: {   id: number;   nickname: string;   avatar_image_id: number | null;   is_active: boolean; } | null;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
 }
 
 export function getApiAdminHomePins(r: Requester, extras: CallExtras = {}): Promise<GetApiAdminHomePinsOut> {
@@ -536,7 +536,7 @@ export function getApiAuthResetPasswordState(r: Requester, extras: CallExtras = 
 }
 
 export interface GetApiHomePinsOut {
-  items: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
+  items: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   author: {   id: number;   nickname: string;   avatar_image_id: number | null;   is_active: boolean; } | null;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
 }
 
 export function getApiHomePins(r: Requester, extras: CallExtras = {}): Promise<GetApiHomePinsOut> {
@@ -692,11 +692,12 @@ export function getApiMembersId(r: Requester, id: string | number, extras: CallE
 
 export interface GetApiPageHomeOut {
   stats: {   member_count: number;   team_count: number;   scrims_held: number;   founded_on?: string;   age?: {   years: number;   days: number; } | null;   hero_image_id?: number | null;   qq_group_url?: string; } | null;
-  feature_tournament?: {   id: number;   title: string;   phase: string;   phase_label: string;   registration_mode: string;   takes_individuals: boolean;   approved_teams: number;   starts_at?: string;   registration_opens_at?: string;   registration_closes_at?: string;   cover_image_id?: number | null;   facts: string; } | null;
+  feature_tournament?: {   id: number;   title: string;   phase: string;   phase_label: string;   registration_mode: string;   takes_individuals: boolean;   approved_teams: number;   starts_at?: string;   registration_opens_at?: string;   registration_closes_at?: string;   cover_image_id?: number | null;   facts: string;   default_cover_image_id: number | null; } | null;
   scrims: ({   id: number;   title: string;   starts_at: string;   month: number;   day: number;   weekday: string;   time: string;   count: number;   capacity: number;   signup_open: boolean; } | null)[];
-  news: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
+  news: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   author: {   id: number;   nickname: string;   avatar_image_id: number | null;   is_active: boolean; } | null;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
   notices: ({   id: number;   slug: string;   title: string;   month: number;   day: number;   published_at_raw: string; } | null)[];
   teams: ({   id: number;   name: string;   logo_image_id?: number | null;   member_count: number;   is_recruiting: boolean;   wanted_roles?: string;   created_at_month: string; } | null)[];
+  agenda: ({   kind: string;   title: string;   url: string;   when: string | null;   note: string; })[];
 }
 
 export function getApiPageHome(r: Requester, extras: CallExtras = {}): Promise<GetApiPageHomeOut> {
@@ -713,7 +714,12 @@ export interface GetApiPageNewsOut {
   total: number;
   page: number;
   page_size: number;
-  items: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
+  items: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   author: {   id: number;   nickname: string;   avatar_image_id: number | null;   is_active: boolean; } | null;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
+  categories: {   slug: string;   name: string; }[];
+  intro_html: string;
+  title: string;
+  seo_title: string;
+  search_description: string;
 }
 
 export function getApiPageNews(r: Requester, query: GetApiPageNewsQuery = {}, extras: CallExtras = {}): Promise<GetApiPageNewsOut> {
@@ -743,7 +749,7 @@ export interface GetApiPageNewsSlugOut {
   comment_total: number;
   older: {   slug: string;   title: string; } | null;
   newer: {   slug: string;   title: string; } | null;
-  related: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
+  related: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   author: {   id: number;   nickname: string;   avatar_image_id: number | null;   is_active: boolean; } | null;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
   tournament: {   id: number;   title: string;   phase: string;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   cover_image_id: number | null;   default_cover_image_id: number | null;   roster_min: number;   roster_max: number;   registration_mode_label: string;   takes_individuals: boolean;   sjtu_only: boolean; } | null;
   seo_title: string;
   search_description: string;

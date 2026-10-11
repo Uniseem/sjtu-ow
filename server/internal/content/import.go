@@ -185,6 +185,10 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 		}
 	}
 
+	if err := importNewsIndexes(ctx, d, legacy, now); err != nil {
+		return err
+	}
+
 	// 4. 导入文章页面 (content_articlepage + wagtailcore_page)
 	{
 		artCols := make(map[string]bool)
@@ -417,7 +421,7 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 			FROM wagtailcore_revision
             WHERE content_type_id IN (
                 SELECT id FROM django_content_type
-                WHERE app_label = 'content' AND model IN ('articlepage', 'standardpage')
+                WHERE app_label = 'content' AND model IN ('articlepage', 'standardpage', 'articleindexpage')
             )
 			ORDER BY id ASC
 		`)
@@ -463,6 +467,14 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 		}); err != nil {
 			return fmt.Errorf("6. 导入修订表 (wagtailcore_revision -> page_revisions)：写入失败: %w", err)
 		}
+	}
+
+	if err := d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE pages SET latest_revision_id=(SELECT id FROM page_revisions r WHERE r.page_id=pages.id ORDER BY created_at DESC,id DESC LIMIT 1)
+ WHERE kind='news_index' AND EXISTS(SELECT 1 FROM page_revisions r WHERE r.page_id=pages.id)`)
+		return err
+	}); err != nil {
+		return fmt.Errorf("column latest revision: %w", err)
 	}
 
 	// 7. 导入首页置顶 (content_homepagepinnedarticle -> home_pins)
