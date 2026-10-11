@@ -27,6 +27,8 @@ test("authenticated account entrances return a safe next with an actual 302", as
 test("unused login-code and password-set entrances redirect instead of painting placeholders", async () => {
   const code = await page("/accounts/login/code/confirm/")
   expect([code.status, code.headers.location]).toEqual([302, "/accounts/login/"])
+  const signedInCode = await page("/accounts/login/code/confirm/", true)
+  expect([signedInCode.status, signedInCode.headers.location]).toEqual([302, "/"])
   const password = await page("/accounts/password/set/", true)
   expect([password.status, password.headers.location]).toEqual([301, "/me/security/"])
 })
@@ -52,4 +54,23 @@ test("registration consents stay separate and affiliation has no default", async
   expect(result.body).toContain('name="agreed_cross_border"')
   expect(result.body).not.toMatch(/type="radio"[^>]*checked/)
   expect(result.body).toContain('rel="noopener"')
+})
+
+test("reset code page matches the old single code form without an unsupported resend action", async () => {
+  const result = await page("/accounts/password/reset/confirm/?email=member%40screens.test")
+  expect(result.status).toBe(200)
+  expect(result.body).toContain('href="mailto:member@screens.test"')
+  expect(result.body).toContain('name="code"')
+  expect(result.body).not.toContain('value="resend"')
+  expect(result.body).not.toContain('重新发送验证码')
+})
+
+test("logout GET redirects guests safely and leaves a real confirmation for members", async () => {
+  for (const [query, target] of [["", "/"], ["?next=%2Fnews%2F", "/news/"], ["?next=https%3A%2F%2Fevil.test", "/"]]) {
+    const guest = await page("/accounts/logout/" + query)
+    expect([guest.status, guest.headers.location]).toEqual([302, target])
+  }
+  const member = await page("/accounts/logout/", true)
+  expect(member.status).toBe(200)
+  expect(member.body).toContain("确定要退出当前账号吗？")
 })

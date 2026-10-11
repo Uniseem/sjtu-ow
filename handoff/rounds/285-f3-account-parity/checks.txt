@@ -1,0 +1,21 @@
+20261011-154406-a7774f1 exit 0
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+ Test Files  9 passed (9)
+      Tests  210 passed (210)
+首页壳 gzip：HTML 3125 + CSS 19936 + JS 73636 = 96697 字节（脚本上限 122880，合计上限 307200）
+PARITY-GUARDS-OK destinations/encoding/origin/server-errors
+CAUGHT destination
+CAUGHT external origin
+CAUGHT two server errors
+CAUGHT browser errors
+CAUGHT extra reset action (valid SSR build)
+CAUGHT guest logout (valid SSR build)
+CAUGHT authenticated login code (valid SSR build)
+ACCOUNT-WEB-MUTATIONS-OK 3
+REAL-ACCOUNTS-JOURNEY-OK 35
+COMMENTS-BROWSER-CHECK 23/23
+BROWSER-CHECK-OK
+ACCOUNT-IDENTITIES-OK 7 (three non-superuser cadres)
+PARITY-BROWSER-ERROR-PROBES-OK runtime/CSP (intentional, before page comparisons)
+PARITY 98/98 通过；报告 /tmp/sjtu-ow-parity/out/report.md，截图 /tmp/sjtu-ow-parity/out/shots

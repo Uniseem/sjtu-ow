@@ -195,17 +195,17 @@
 | `/accounts/login/` | `account/login.html` | `POST /api/auth/login` | 错 | 「忘记密码」链接；认 `?next=`（只认站内地址）；`verify_required` 时带着邮箱去 `/accounts/confirm-email/`；已登录访问照旧站行为；限流 429 的提示 |
 | `/accounts/signup/` | `account/signup.html` | `POST /api/auth/register` | 半 | 字段、顺序、协议勾选照旧；成功后去验证码页；已注册与新注册的回答一样（防枚举，R004） |
 | `/accounts/confirm-email/` | `account/confirm_email_verification_code.html` | `verify-email`、`resend-code` | 半 | 重发按钮冷却（1 次 / 10 秒）；三次错作废的提示；成功即登录，去资料页并带一次性提示 |
-| `/accounts/logout/` | `account/logout.html` | `POST /api/auth/logout` | 缺 | GET 是确认页，提交才退出，回首页 |
+| `/accounts/logout/` | `account/logout.html` | `POST /api/auth/logout` | 缺 | 已登录 GET 是确认页，提交才退出；访客直接跳站内 next（默认首页），已登录提交也认安全 next |
 | `/accounts/inactive/` | `account/account_inactive.html` | 无 | 缺 | 静态说明 |
 | `/accounts/reauthenticate/` | `account/reauthenticate.html` | `POST /api/auth/reauthenticate` | 缺 | 成功回 `?next=`，5 分钟窗口 |
 | `/accounts/email/` | `account/email.html`、`email_change.html` | `email/change`、`email/change/confirm` | 缺 | 要重新认证时先去 reauthenticate；输码确认 |
 | `/accounts/password/change/` | `account/password_change.html` | `POST /api/auth/change-password` | 缺 | 成功后其他会话作废的说明 |
 | `/accounts/password/set/` | `account/password_set.html` | — | 缺 | 本站用户都有密码；照旧站行为（第 10 节第 5 件确认） |
 | `/accounts/password/reset/` | `account/password_reset.html` | `POST /api/auth/reset-password` | 缺 | 防枚举 |
-| `/accounts/password/reset/confirm/` | `account/confirm_password_reset_code.html` | `reset-password/confirm` | 缺 | 3 分钟 3 次 |
+| `/accounts/password/reset/confirm/` | `account/confirm_password_reset_code.html` | `reset-password/confirm` | 缺 | 3 分钟 3 次；旧视图未提供 can_resend，模板不显示重发按钮，不额外画一个 |
 | `/accounts/password/reset/complete/` | `account/password_reset_from_key.html` | 同上 | 缺 | 没确认过码就回 confirm |
 | `/accounts/password/reset/done/` | `account/password_reset_from_key_done.html` | 无 | 缺 | |
-| `/accounts/login/code/confirm/` | — | 无 | 缺 | 照旧站：302 回 `/accounts/login/` |
+| `/accounts/login/code/confirm/` | — | 无 | 缺 | 照旧站：访客302回 `/accounts/login/`；已登录直接回安全 next（默认首页） |
 
 ### 6.2 内容
 

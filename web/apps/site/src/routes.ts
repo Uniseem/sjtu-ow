@@ -87,7 +87,7 @@ export const PAGES: RouteRecordRaw[] = [
   dynamicPage("/accounts/password/reset/confirm/", () => import("./pages/PasswordResetCode.vue"), "找回密码"),
   dynamicPage("/accounts/password/reset/complete/", () => import("./pages/PasswordResetComplete.vue"), "设置新密码"),
   dynamicPage("/accounts/password/reset/done/", () => import("./pages/AccountResult.vue"), "密码已更新"),
-  redirected("/accounts/login/code/confirm/", "/accounts/login/", 302),
+  redirected("/accounts/login/code/confirm/", "/accounts/login/", 302, { guest: true }),
   // Other pages an editor makes under the home page (Wagtail's /<slug>/).
   // Fixed routes outrank it; Wagtail's slug is word characters and hyphens
   // (Unicode allowed, so percent-encoded bytes too), never a dot: /x.php/

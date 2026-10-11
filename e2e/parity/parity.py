@@ -116,8 +116,11 @@ EMAILS = {
 # --- 旧站的种子（在 Django 里跑：parity.py seed） ------------------------------------
 
 
-def seed() -> dict:
+def seed(accounts=False) -> dict:
     data = screens.seed()
+    if accounts:
+        from account_scenarios import extend_seed
+        extend_seed(data)
     # screens.py intentionally makes password-less screenshot identities.
     # Account parity needs ordinary password accounts, as on the real site.
     from accounts.models import User
@@ -157,20 +160,22 @@ def new_env(api_port: int) -> dict:
     }
 
 
-def prepare_legacy() -> dict:
+def prepare_legacy(accounts=False) -> dict:
     if not (ROOT / "static/css/app.css").exists():
         screens.manage("tailwind", "build")
     screens.manage("migrate", "--noinput", stdout=subprocess.DEVNULL)
     screens.manage("createcachetable")
     screens.manage("init_site", "--verbosity", "0", stdout=subprocess.DEVNULL)
     seeded = subprocess.run(
-        [sys.executable, __file__, "seed"],
+        [sys.executable, __file__, "seed"] + (["--accounts"] if accounts else []),
         cwd=ROOT,
         env=screens.site_env(),
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    if seeded.returncode:
+        raise RuntimeError(seeded.stderr)
     return json.loads(seeded.stdout.strip().splitlines()[-1])
 
 
@@ -231,6 +236,23 @@ def start_new(env: dict, api_port: int, ssr_port: int, caddy_port: int) -> list:
 # --- 看一页 ------------------------------------------------------------------------
 
 
+class RecordingDevTools(screens.DevTools):
+    def __init__(self, url):
+        self.browser_errors = []
+        super().__init__(url)
+
+    def _receive(self):
+        message = super()._receive()
+        method, params = message.get('method'), message.get('params', {})
+        if method == 'Runtime.exceptionThrown':
+            self.browser_errors.append('runtime: ' + params.get('exceptionDetails', {}).get('text', 'exception'))
+        elif method == 'Runtime.consoleAPICalled' and any(a.get('value') == 'PARITY-CSP' for a in params.get('args', [])):
+            self.browser_errors.append('CSP violation')
+        elif method == 'Network.responseReceived' and params.get('response', {}).get('status', 0) >= 500:
+            self.browser_errors.append('HTTP 500+: ' + params['response']['url'])
+        return message
+
+
 def evaluate(tools, expression: str):
     result = tools.send("Runtime.evaluate", {"expression": expression, "awaitPromise": True, "returnByValue": True})
     remote = result.get("result", {})
@@ -251,8 +273,13 @@ def fetch_status(url: str, cookie: str | None) -> tuple[int, str]:
             return response.status, ""
     except urllib.error.HTTPError as err:
         location = err.headers.get("Location", "") or ""
-        if location.startswith("http"):
-            location = "/" + location.split("/", 3)[3] if location.count("/") >= 3 else location
+        if location:
+            target = urllib.parse.urlsplit(urllib.parse.urljoin(url, location))
+            origin = urllib.parse.urlsplit(url)
+            if (target.scheme, target.netloc) == (origin.scheme, origin.netloc):
+                location = urllib.parse.urlunsplit(('', '', target.path, target.query, target.fragment))
+            else:
+                location = target.geturl()
         return err.code, location
 
 
@@ -273,15 +300,16 @@ SNAPSHOT = """(() => {
 })()"""
 
 
-def look(tools, url: str, cookie: dict | None, width: int, scheme: str, shot: Path) -> dict:
+def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: str, shot: Path) -> dict:
     tools.send("Network.clearBrowserCookies")
-    if cookie:
-        tools.send("Network.setCookie", {**cookie, "domain": "127.0.0.1", "path": "/"})
+    for item in (cookie if isinstance(cookie, list) else [cookie] if cookie else []):
+        tools.send("Network.setCookie", {**item, "domain": "127.0.0.1", "path": "/"})
     tools.send("Emulation.setDeviceMetricsOverride", {"width": width, "height": 900, "deviceScaleFactor": 1, "mobile": width < 600})
     tools.send(
         "Emulation.setEmulatedMedia",
         {"features": [{"name": "prefers-color-scheme", "value": scheme}, {"name": "prefers-reduced-motion", "value": "reduce"}]},
     )
+    tools.browser_errors.clear()
     tools.send("Page.navigate", {"url": url})
     time.sleep(0.5)
     for _ in range(60):
@@ -303,6 +331,7 @@ def look(tools, url: str, cookie: dict | None, width: int, scheme: str, shot: Pa
     # Chinese pages. Capture the layout after its fonts and next paint frames.
     evaluate(tools, "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))")
     snap = evaluate(tools, SNAPSHOT)
+    snap['browser_errors'] = list(tools.browser_errors)
     box = snap.pop("box")
     if box["width"] > 0 and box["height"] > 0:
         data = tools.send(
@@ -336,6 +365,8 @@ def pixel_ratio(a: Path, b: Path) -> tuple[float, str]:
 
 def compare(old: dict, new: dict, ratio: float, status: tuple) -> list[str]:
     problems = []
+    if any(code >= 500 for code in status):
+        problems.append(f"服务器错误 {status}")
     if status[0] != status[1]:
         problems.append(f"状态 {status[0]} / {status[1]}")
     if old["title"] != new["title"]:
@@ -351,31 +382,63 @@ def compare(old: dict, new: dict, ratio: float, status: tuple) -> list[str]:
         problems.append(f"表单 {old['fields']} / {new['fields']}")
     if new["broken"]:
         problems.append(f"新站坏图 {new['broken'][:3]}")
+    for label, value in (('旧站', old), ('新站', new)):
+        if value.get('browser_errors'):
+            problems.append(label + '浏览器异常：' + str(value['browser_errors']))
     if ratio > RATIO_MAX:
         problems.append(f"像素差 {ratio:.2%}")
     return problems
+
+
+def canonical_location(location):
+    target = urllib.parse.urlsplit(location)
+    return (target.scheme.lower(), target.netloc.lower(), target.path,
+            urllib.parse.parse_qsl(target.query, keep_blank_values=True), target.fragment)
+
+
+def redirect_problems(status):
+    old, new = status
+    if old[0] != new[0] or canonical_location(old[1]) != canonical_location(new[1]):
+        return [f"状态/跳转 {old} / {new}"]
+    return []
+
+
+def approved_redirect(name, who, status):
+    # Explicit decision in frontend-migration 10, item 5 (266), implemented
+    # in 268. Only this exact authenticated entrance difference is allowed.
+    if name == 'password-set' and who != 'visitor' and status == ((302, '/accounts/password/change/'), (301, '/me/security/')):
+        return 'docs/frontend-migration.md §10 #5（266）：未使用的设密码入口301回账号安全'
+    return None
 
 
 def main(argv: list[str]) -> int:
     only = next((a.split("=", 1)[1].split(",") for a in argv if a.startswith("--only=")), None)
     wide = "--wide" in argv
     strict = "--strict" in argv
-    pages = [p for p in PAGES if not only or any(
+    accounts = "--accounts" in argv
+    if accounts:
+        from account_scenarios import PAGES as account_pages, EXTRA_EMAILS
+        EMAILS.update(EXTRA_EMAILS)
+    pages = [p for p in (account_pages if accounts else PAGES) if not only or any(
         prefix and (p[0].startswith(prefix) or p[2].startswith(prefix)) for prefix in only
     )]
     if not pages:
         print("PARITY-ERROR: --only 没有匹配任何页面，不能算通过", file=sys.stderr)
         return 2
-    shutil.rmtree(WORK, ignore_errors=True)
+    if WORK.exists():
+        WORK.rename(WORK.with_name('sjtu-ow-parity-prev-' + str(time.time_ns())))
     SHOTS.mkdir(parents=True)
 
     print("== 旧站：迁移、种子数据")
-    data = prepare_legacy()
+    data = prepare_legacy(accounts)
     ports = [screens.free_port() for _ in range(5)]
     old_port, api_port, ssr_port, caddy_port, debug_port = ports
     env = new_env(api_port)
     print("== 新站：迁移、导入、图片母版、会话")
     new_sessions = prepare_new(env)
+    if accounts:
+        from account_scenarios import validate_import
+        validate_import(WORK)
 
     procs = []
     try:
@@ -398,23 +461,45 @@ def main(argv: list[str]) -> int:
         screens.wait_for(f"http://127.0.0.1:{caddy_port}/robots.txt")
         screens.wait_for(f"http://127.0.0.1:{debug_port}/json/version")
         targets = json.load(urllib.request.urlopen(f"http://127.0.0.1:{debug_port}/json"))
-        tools = screens.DevTools(next(t for t in targets if t.get("type") == "page")["webSocketDebuggerUrl"])
+        tools = RecordingDevTools(next(t for t in targets if t.get("type") == "page")["webSocketDebuggerUrl"])
         tools.send("Page.enable")
         tools.send("Network.enable")
+        tools.send("Runtime.enable")
+        tools.send("Page.addScriptToEvaluateOnNewDocument", {'source': "document.addEventListener('securitypolicyviolation',()=>console.error('PARITY-CSP'))"})
+        evaluate(tools, "new Promise(resolve=>{setTimeout(()=>{throw new Error('PARITY-NEGATIVE-PROBE')},0);setTimeout(()=>resolve(true),40)})")
+        if not any(e.startswith('runtime:') for e in tools.browser_errors):
+            raise RuntimeError('browser runtime guard did not observe its negative probe')
+        probe = look(tools, f'http://127.0.0.1:{caddy_port}/accounts/login/', None, 1280, 'light', SHOTS / 'csp-probe-before.png')
+        if probe['browser_errors']:
+            raise RuntimeError('login before CSP probe had browser errors: ' + str(probe['browser_errors']))
+        evaluate(tools, "new Promise(resolve=>{const script=document.createElement('script');script.textContent='window.__parity_bad_inline=true';document.head.append(script);setTimeout(()=>resolve(true),50)})")
+        if 'CSP violation' not in tools.browser_errors or evaluate(tools, 'window.__parity_bad_inline===true'):
+            raise RuntimeError('browser CSP guard did not observe a blocked inline script')
+        print('PARITY-BROWSER-ERROR-PROBES-OK runtime/CSP (intentional, before page comparisons)', flush=True)
 
         views = [(1280, "light")] + ([(375, "light"), (1280, "dark"), (375, "dark")] if wide else [])
         results = []
         for name, who, template in pages:
             # 中文查询参数要编码成百分号形式，urllib 只收 ASCII（浏览器里也是这样发的）
             path = urllib.parse.quote(template.format(**data), safe="/?=&#%")
-            old_cookie = {"name": "sessionid", "value": data["sessions"][who]} if who in data["sessions"] else None
-            new_cookie = {"name": "ow_session", "value": new_sessions[who]} if who in new_sessions else None
+            old_cookie = [{"name": "sessionid", "value": data["sessions"][who]}] if who in data["sessions"] else []
+            new_cookie = [{"name": "ow_session", "value": new_sessions[who]}] if who in new_sessions else []
+            if accounts:
+                from account_scenarios import context
+                old_cookie, new_cookie, suffix = context(name, who, data, new_sessions, WORK, screens.site_env())
+                path += suffix
+            cookies = lambda items: "; ".join(c["name"] + "=" + c["value"] for c in items)
             status = (
-                fetch_status(f"http://127.0.0.1:{old_port}{path}", f"sessionid={old_cookie['value']}" if old_cookie else None),
-                fetch_status(f"http://127.0.0.1:{caddy_port}{path}", f"ow_session={new_cookie['value']}" if new_cookie else None),
+                fetch_status(f"http://127.0.0.1:{old_port}{path}", cookies(old_cookie)),
+                fetch_status(f"http://127.0.0.1:{caddy_port}{path}", cookies(new_cookie)),
             )
             row = {"name": name, "who": who, "path": path, "status": status, "views": []}
-            for width, scheme in views:
+            if 300 <= status[0][0] < 400 or 300 <= status[1][0] < 400:
+                allowed = approved_redirect(name, who, status)
+                if allowed:
+                    row['approved_difference'] = allowed
+                row["views"] = [{"view": "redirect", "ratio": 0, "problems": [] if allowed else redirect_problems(status)}]
+            for width, scheme in ([] if row["views"] else views):
                 stem = f"{name}-{who}-{width}-{scheme}"
                 old = look(tools, f"http://127.0.0.1:{old_port}{path}", old_cookie, width, scheme, SHOTS / f"{stem}-old.png")
                 new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png")
@@ -449,6 +534,8 @@ def main(argv: list[str]) -> int:
     ]
     for r in results:
         problems = "；".join(p for v in r["views"] for p in v["problems"]).replace("|", "\\|")
+        if r.get('approved_difference'):
+            problems = '已批准差异：' + r['approved_difference']
         lines.append(f"| {'通过' if r['pass'] else '不同'} | {r['who']} | `{r['path']}` | {r['status'][0][0]} / {r['status'][1][0]} | {problems[:400]} |")
     (OUT / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"\nPARITY {passed}/{len(results)} 通过；报告 {OUT / 'report.md'}，截图 {SHOTS}")
@@ -461,6 +548,6 @@ if __name__ == "__main__":
         import django
 
         django.setup()
-        print(json.dumps(seed()))
+        print(json.dumps(seed("--accounts" in sys.argv)))
     else:
         sys.exit(main(sys.argv[1:]))

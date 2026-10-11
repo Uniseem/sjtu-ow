@@ -44,6 +44,8 @@ pnpm test
 
 **和旧站逐页对拍**（264 起，`docs/frontend-migration.md` 9.2）：`bash scripts/remote-check.sh run bash e2e/parity/run.sh [--only=前缀,…] [--wide] [--strict]`。旧站用 `scripts/screens.py` 的种子数据建临时库，新站 `sjtuow import` 同一个库、`import-media` 同一个媒体目录、`session` 发会话，按正式站的样子跑（Go + SSR 生产构建 + 真 Caddy 容器），逐个「地址 × 身份」比状态、标题、正文、链接、表单、坏图、截图像素差；报告在测试机 `/tmp/sjtu-ow-parity/out/`。约 6 分钟，不进整组；做完一组页面时用 `--only=那一组 --strict` 证明「对拍通过」。改了 Caddy 跑 `e2e/caddy/smoke.sh`（263）。
 
+账号专项加 `--accounts --wide --strict`：14 地址 × 访客、成员、队长、三类非超管干部、超管。验证码/重置的视觉上下文逐页新建，旧站截图限流桶逐页重置，不能算真实收信或限流旅程。200 页跑四组合并收集浏览器异常/CSP/500；工具在正式比较前用真实浏览器负向探针验证异常收集器。跳转核对状态和实际 Location（查询编码等价可，外部源/next 改变不可），不跟去尚未验的目标页；设密码入口仅允许 frontend-migration.md 第10节第5件已批准的精确301差异并在报告列明。上一临时目录移到同级 `sjtu-ow-parity-prev-*` 保留数据库和报告。
+
 **这组检查在测试机上跑**（2026-10-04 起，见 [机器与运维](operations.md)）：
 
 ```bash
