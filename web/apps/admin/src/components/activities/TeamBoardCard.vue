@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue"
 import type { TournamentEntry } from "../../pages/activities/domain"
-import { record, roleLabel } from "../../pages/activities/domain"
+import { boardRank, record, roleLabel } from "../../pages/activities/domain"
 import type { TeamZone } from "../../pages/activities/team-board-model"
 
 const props = defineProps<{
@@ -42,8 +42,8 @@ function keyboard(event: KeyboardEvent): void {
     <span class="split-card-tag b-mono">{{ entry.battletag || '游戏 ID 已删除' }}</span>
     <span v-if="record(entry)?.is_sjtu === false" class="split-card-flag">校外</span>
     <span class="split-card-roles">
-      <span v-for="role in entry.roles" :key="role">
-        {{ roleLabel(role) }}：{{ role === 'tank' ? entry.rank_tank ?? '—' : role === 'damage' ? entry.rank_damage ?? '—' : entry.rank_support ?? '—' }}
+      <span v-for="(role, index) in entry.roles" :key="role">
+        {{ index ? ' · ' : '' }}{{ roleLabel(role) }} {{ boardRank(role === 'tank' ? entry.rank_tank : role === 'damage' ? entry.rank_damage : entry.rank_support) }}
       </span>
     </span>
     <span v-if="entry.conflict" class="split-card-blocked">{{ entry.conflict }}</span>

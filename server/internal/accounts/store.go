@@ -703,6 +703,7 @@ func (s *Store) AnonymizeUserTx(ctx context.Context, tx *db.Tx, userID int64, at
 		main_role = '',
 		flex_roles = '',
 		show_rank = 0,
+		avatar_image_id = NULL,
 		version = version + 1,
 		updated_at = ?
 		WHERE id = ?`,
@@ -711,8 +712,18 @@ func (s *Store) AnonymizeUserTx(ctx context.Context, tx *db.Tx, userID int64, at
 }
 
 // DeleteUserDataTx 清除注销用户的自有数据（规则 31）。
-func (s *Store) DeleteUserDataTx(ctx context.Context, tx *db.Tx, userID int64) error {
+func (s *Store) DeleteUserDataTx(ctx context.Context, tx *db.Tx, userID int64, keepBatch ...string) error {
+	batch := ""
+	if len(keepBatch) > 0 {
+		batch = keepBatch[0]
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM held_letters WHERE actor_id=? AND batch<>?`, userID, batch); err != nil {
+		return err
+	}
 	queries := []string{
+		`DELETE FROM moderation_items WHERE target_type IN('nickname','motto') AND target_id=?`,
+		`DELETE FROM images WHERE id IN(SELECT image_id FROM avatar_submissions WHERE user_id=? AND image_id IS NOT NULL)`,
+		`DELETE FROM avatar_submissions WHERE user_id=?`,
 		`DELETE FROM game_accounts WHERE user_id = ?`,
 		`DELETE FROM contacts WHERE user_id = ?`,
 		`DELETE FROM user_roles WHERE user_id = ?`,
@@ -766,7 +777,8 @@ func (s *Store) LeaveTournamentsTx(ctx context.Context, tx *db.Tx, userID int64,
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT DISTINCT m.registration_id FROM registration_members m
 		JOIN registrations r ON r.id = m.registration_id
-		WHERE m.user_id = ? AND m.is_active = 1 AND r.team_id IS NULL AND r.status IN ('pending', 'approved')`, userID)
+		JOIN tournaments t ON t.id = r.tournament_id
+		WHERE m.user_id = ? AND m.is_active = 1 AND r.team_id IS NULL AND r.status IN ('pending', 'approved') AND t.status IN('draft','published')`, userID)
 	if err != nil {
 		return err
 	}
@@ -1034,11 +1046,13 @@ func (s *Store) ListAvatarSubmissions(ctx context.Context, status string, page, 
 	}
 
 	query := fmt.Sprintf(`
-		SELECT s.id, s.user_id, COALESCE(u.nickname, ''), s.image_id, s.status, s.handling_note, s.reviewed_at, s.created_at
+		SELECT s.id, s.user_id, COALESCE(u.nickname, ''), s.image_id, s.status, s.handling_note, s.reviewed_at, s.created_at, s.note, s.reason, s.reviewed_by, COALESCE(reviewer.nickname,''), u.is_active, COALESCE((s.image_id IS NOT NULL AND u.avatar_image_id=s.image_id),0),
+        (SELECT COUNT(*) FROM avatar_submissions past WHERE past.user_id=s.user_id AND past.status IN ('rejected','taken_down'))
 		FROM avatar_submissions s
 		LEFT JOIN users u ON u.id = s.user_id
+        LEFT JOIN users reviewer ON reviewer.id = s.reviewed_by
 		%s
-		ORDER BY s.id DESC
+		ORDER BY s.created_at DESC, s.id DESC
 		LIMIT ? OFFSET ?
 	`, whereClause)
 
@@ -1055,7 +1069,7 @@ func (s *Store) ListAvatarSubmissions(ctx context.Context, status string, page, 
 		var imgID sql.NullInt64
 		var revStr sql.NullString
 		var atStr string
-		if err := rows.Scan(&sub.ID, &sub.UserID, &sub.UserNickname, &imgID, &sub.Status, &sub.HandlingNote, &revStr, &atStr); err != nil {
+		if err := rows.Scan(&sub.ID, &sub.UserID, &sub.UserNickname, &imgID, &sub.Status, &sub.HandlingNote, &revStr, &atStr, &sub.Note, &sub.Reason, &sub.ReviewedBy, &sub.ReviewerNickname, &sub.UserActive, &sub.IsCurrent, &sub.TurnedDown); err != nil {
 			return nil, 0, err
 		}
 		if imgID.Valid {
@@ -1068,61 +1082,8 @@ func (s *Store) ListAvatarSubmissions(ctx context.Context, status string, page, 
 		}
 		t, _ := db.ParseUTC(atStr)
 		sub.CreatedAt = t
+		sub.ReasonDisplay = avatarReasonLabel(sub.Reason)
 		items = append(items, sub)
 	}
 	return items, total, rows.Err()
-}
-
-// TakeDownAvatar 下架指定头像。
-func (s *Store) TakeDownAvatar(ctx context.Context, submissionID int64, note string, reviewedAt time.Time) (*AvatarSubmission, error) {
-	var sub AvatarSubmission
-	var imgID sql.NullInt64
-	var atStr string
-	err := s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
-		err := tx.QueryRowContext(txCtx, `
-			SELECT id, user_id, image_id, status, handling_note, created_at
-			FROM avatar_submissions WHERE id = ?
-		`, submissionID).Scan(&sub.ID, &sub.UserID, &imgID, &sub.Status, &sub.HandlingNote, &atStr)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return sql.ErrNoRows
-			}
-			return err
-		}
-		if imgID.Valid {
-			v := imgID.Int64
-			sub.ImageID = &v
-		}
-		sub.CreatedAt, _ = db.ParseUTC(atStr)
-		sub.Status = "taken_down"
-		sub.HandlingNote = note
-		sub.ReviewedAt = &reviewedAt
-
-		// 更新 submission 状态
-		_, err = tx.ExecContext(txCtx, `
-			UPDATE avatar_submissions
-			SET status = 'taken_down', handling_note = ?, reviewed_at = ?
-			WHERE id = ?
-		`, note, db.FormatUTC(reviewedAt), submissionID)
-		if err != nil {
-			return err
-		}
-
-		// 若用户当前头像正是这张，将其重置为 NULL
-		if sub.ImageID != nil {
-			_, err = tx.ExecContext(txCtx, `
-				UPDATE users
-				SET avatar_image_id = NULL, version = version + 1, updated_at = ?
-				WHERE id = ? AND avatar_image_id = ?
-			`, db.FormatUTC(reviewedAt), sub.UserID, *sub.ImageID)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &sub, nil
 }

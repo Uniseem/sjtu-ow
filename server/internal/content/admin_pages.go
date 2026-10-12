@@ -28,6 +28,7 @@ type PlainPageItem struct {
 	ID                    int64     `json:"id"`
 	Slug                  string    `json:"slug"`
 	Title                 string    `json:"title"`
+	DraftTitle            *string   `json:"draft_title"`
 	Live                  bool      `json:"live"`
 	HasUnpublishedChanges bool      `json:"has_unpublished_changes"`
 	UpdatedAt             time.Time `json:"updated_at"`

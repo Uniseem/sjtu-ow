@@ -33,7 +33,7 @@ const active = useAdminAction<{ active: boolean; reason: string }, { result: str
   (body, extras) => body.active ? postApiAdminUsersIdActivate(api, id, extras) : postApiAdminUsersIdDeactivate(api, id, { reason: body.reason }, extras), () => emit("changed"))
 function value(event: Event) { return (event.target as HTMLInputElement).value }
 function checked(event: Event) { return (event.target as HTMLInputElement).checked }
-function changeRole(name: string, enabled: boolean) { roles.value = enabled ? [...new Set([...roles.value, name])] : roles.value.filter(role => role !== name) }
+function changeRole(name: string, enabled: boolean) { roles.value = enabled ? [...new Set([...roles.value, name])] : roles.value.filter(role => role !== name); void saveRoles() }
 async function saveRoles() { if (await save.flush()) await roleAction.submit([...roles.value]) }
 </script>
 <template>

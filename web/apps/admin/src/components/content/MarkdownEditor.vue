@@ -153,8 +153,8 @@ async function loadCollections(): Promise<void> {
   try {
     const result = await getApiAdminImageCollections(api)
     if (destroyed) return
-    collections.value = result.collections
-    uploadCollection.value = result.collections[0]?.key ?? ""
+    collections.value = result.collections.filter(item => item.can_upload)
+    uploadCollection.value = collections.value[0]?.key ?? ""
     uploads.configure(uploadCollection.value)
   } catch (cause) {
     if (!destroyed) uploadMessage.value = cause instanceof ApiError ? cause.message : "图片集合暂时无法加载。"

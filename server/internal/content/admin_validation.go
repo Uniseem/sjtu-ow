@@ -1,12 +1,15 @@
 package content
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/media"
 )
 
 var articleFields = map[string]bool{
@@ -16,6 +19,10 @@ var articleFields = map[string]bool{
 }
 
 func (s *Service) validateArticleChanges(ctx *app.Ctx, changes map[string]any) (map[string][]string, error) {
+	return s.validateArticleChangesWithCover(ctx, changes, nil)
+}
+
+func (s *Service) validateArticleChangesWithCover(ctx *app.Ctx, changes map[string]any, currentCover *int64) (map[string][]string, error) {
 	fields := map[string][]string{}
 	for key, value := range changes {
 		if !articleFields[key] {
@@ -43,6 +50,14 @@ func (s *Service) validateArticleChanges(ctx *app.Ctx, changes map[string]any) (
 			if tooLong {
 				fields[key] = []string{fmt.Sprintf("内容不超过%d字", limit)}
 				continue
+			}
+			if key == "slug" {
+				for _, r := range strings.TrimSpace(text) {
+					if !IsSafeRune(r) {
+						fields[key] = []string{"网址片段只能包含文字、数字、连字符和下划线"}
+						break
+					}
+				}
 			}
 			if (key == "slug" || key == "seo_title" || key == "search_description") && !s.canEditScheduleAndSlug(ctx.Viewer) {
 				fields[key] = []string{"没有权限修改这个字段"}
@@ -74,6 +89,16 @@ func (s *Service) validateArticleChanges(ctx *app.Ctx, changes map[string]any) (
 			id, ok := toInt64(value)
 			if !ok || id <= 0 {
 				fields[key] = []string{"编号无效"}
+				continue
+			}
+			if key == "cover_image_id" {
+				allowed, err := media.CanChooseImage(ctx.Context, s.store.d.ReadPool(), ctx.Viewer, id)
+				if err != nil {
+					return nil, err
+				}
+				if !allowed && (currentCover == nil || *currentCover != id) {
+					fields[key] = []string{"请选择有权限使用的图片"}
+				}
 				continue
 			}
 			query := "SELECT COUNT(*) FROM images WHERE id=?"
@@ -146,4 +171,21 @@ func validateCategoryValues(category *Category) error {
 		return api.InvalidFields(fields)
 	}
 	return nil
+}
+
+// Recheck a changed cover under the same writer lock as the revision save.
+func coverWriteCheck(viewer *app.Viewer, chosen, previous *int64) func(context.Context, *db.Tx) error {
+	return func(ctx context.Context, tx *db.Tx) error {
+		if chosen == nil || previous != nil && *chosen == *previous {
+			return nil
+		}
+		allowed, err := media.CanChooseImage(ctx, tx, viewer, *chosen)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return api.Forbidden()
+		}
+		return nil
+	}
 }

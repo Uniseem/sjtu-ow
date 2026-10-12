@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import { formatContentTime } from "./types"
 import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
@@ -12,7 +13,7 @@ import ContentActionMessage from "../../components/content/ContentActionMessage.
 import ConfirmContentAction from "../../components/content/ConfirmContentAction.vue"
 import { useContentResource } from "./use-resource"
 import { useContentPermissions } from "./permissions"
-import { articleStatus, articleStatuses, positiveID, type Article } from "./types"
+import { articleStatus, articleStatuses, articleStatusKinds, positiveID, type Article } from "./types"
 import { listContentArticles } from "./pending"
 
 const api = useAdminApi()
@@ -84,7 +85,7 @@ onMounted(() => { void resource.load() })
           <td><RouterLink class="b-title" :to="`/admin/articles/${item.id}/`">{{ (item.draft_title ?? item.title) || '（无标题）' }}</RouterLink></td>
           <td data-label="分类">{{ item.category_name || '未选分类' }}</td>
           <td data-label="作者">{{ item.author_name || '—' }}</td>
-          <td data-label="状态"><span class="c-status">{{ articleStatuses[articleStatus(item)] }}</span></td>
+          <td data-label="状态"><CStatus :label="articleStatuses[articleStatus(item)]" :kind="articleStatusKinds[articleStatus(item)]" /></td>
           <td data-label="最后改动"><time :datetime="item.updated_at">{{ formatContentTime(item.updated_at) }}</time></td>
           <td><div class="b-rowacts">
             <RouterLink v-if="permission.canEdit(item)" class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/articles/${item.id}/`">编辑</RouterLink>

@@ -19,6 +19,8 @@ import (
 
 // SiteSettingsDTO 是后台全站设置的出参模型。
 type SiteSettingsDTO struct {
+	MaxGameAccounts         int    `json:"max_game_accounts"`
+	ModerationImageEnabled  bool   `json:"moderation_image_enabled"`
 	ID                      int64  `json:"id"`
 	SiteDescription         string `json:"site_description"`
 	FromName                string `json:"from_name"`
@@ -59,6 +61,8 @@ type SiteSettingsDTO struct {
 
 // UpdateSettingsInput 是修改全站设置的入参。
 type UpdateSettingsInput struct {
+	MaxGameAccounts         *int             `json:"max_game_accounts,omitempty"`
+	ModerationImageEnabled  *bool            `json:"moderation_image_enabled,omitempty"`
 	BaseVersion             *int64           `json:"base_version,omitempty"`
 	Changes                 *SettingsChanges `json:"changes,omitempty"`
 	SiteDescription         *string          `json:"site_description,omitempty"`
@@ -120,7 +124,7 @@ func (s *Service) Get(ctx context.Context) (*SiteSettingsDTO, error) {
 
 func (s *Service) getWith(ctx context.Context, q db.DBTX) (*SiteSettingsDTO, error) {
 	row := q.QueryRowContext(ctx, `
-		SELECT id, site_description, from_name, email_subject_prefix,
+		SELECT max_game_accounts,moderation_image_enabled,id, site_description, from_name, email_subject_prefix,
 		       smtp_host, smtp_port, smtp_security, smtp_username, smtp_password, from_address,
 		       founded_on, default_share_image_id, hero_image_id,
 		       banner_news_id, banner_tournaments_id, banner_scrims_id, banner_teams_id, banner_members_id,
@@ -138,7 +142,7 @@ func (s *Service) getWith(ctx context.Context, q db.DBTX) (*SiteSettingsDTO, err
 	var defShare, hero, bNews, bTourn, bScrim, bTeams, bMemb sql.NullInt64
 
 	err := row.Scan(
-		&dto.ID, &dto.SiteDescription, &dto.FromName, &dto.EmailSubjectPrefix,
+		&dto.MaxGameAccounts, &dto.ModerationImageEnabled, &dto.ID, &dto.SiteDescription, &dto.FromName, &dto.EmailSubjectPrefix,
 		&dto.SmtpHost, &dto.SmtpPort, &dto.SmtpSecurity, &dto.SmtpUsername, &smtpPass, &dto.FromAddress,
 		&dto.FoundedOn, &defShare, &hero,
 		&bNews, &bTourn, &bScrim, &bTeams, &bMemb,
@@ -196,6 +200,9 @@ func (s *Service) Update(ctx *app.Ctx, in UpdateSettingsInput) (*SiteSettingsDTO
 	}
 
 	// 校验
+	if in.MaxGameAccounts != nil && (*in.MaxGameAccounts < 0 || *in.MaxGameAccounts > 2147483647) {
+		return nil, api.InvalidFields(map[string][]string{"max_game_accounts": {"请输入有效的非负整数。"}})
+	}
 	if in.QQGroupURL != nil && *in.QQGroupURL != "" {
 		trimmed := strings.TrimSpace(*in.QQGroupURL)
 		if !strings.HasPrefix(strings.ToLower(trimmed), "https://") {
@@ -384,6 +391,14 @@ func (s *Service) Update(ctx *app.Ctx, in UpdateSettingsInput) (*SiteSettingsDTO
 		if in.QQGroupURL != nil {
 			cols = append(cols, "qq_group_url = ?")
 			args = append(args, strings.TrimSpace(*in.QQGroupURL))
+		}
+		if in.MaxGameAccounts != nil {
+			cols = append(cols, "max_game_accounts = ?")
+			args = append(args, *in.MaxGameAccounts)
+		}
+		if in.ModerationImageEnabled != nil {
+			cols = append(cols, "moderation_image_enabled = ?")
+			args = append(args, *in.ModerationImageEnabled)
 		}
 		if in.TeamMaxMembers != nil {
 			cols = append(cols, "team_max_members = ?")

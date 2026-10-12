@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import { formatContentTime } from "../../pages/content/types"
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
@@ -172,22 +173,22 @@ async function openPreview(): Promise<void> {
       <ContentActionMessage :message="publish.message.value" :pending="publish.pending.value" :uncertain="publish.uncertain.value" @retry="publish.retry" />
       <ContentActionMessage :message="destroy.message.value" :pending="destroy.pending.value" :uncertain="destroy.uncertain.value" @retry="destroy.retry" />
       <fieldset class="b-fieldset" :disabled="!editable || actionBlocked">
-        <legend class="b-section__title">内容</legend>
+        <legend class="b-section__title">文章</legend>
         <ContentField name="title" label="标题" :errors="fields.title" required>
           <template #default="field"><input :id="field.id" class="c-input" name="title" :value="values.title" maxlength="255" :aria-describedby="field.describedby" @input="input('title', $event)"></template>
         </ContentField>
         <ContentField name="category_id" label="分类" :errors="fields.category_id" required>
-          <template #default="field"><select :id="field.id" class="c-input" name="category_id" :value="values.category_id ?? ''" :aria-describedby="field.describedby" @change="input('category_id', $event)"><option value="">未选分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></template>
+          <template #default="field"><select :id="field.id" class="c-input" name="category_id" :value="values.category_id ?? ''" :aria-describedby="field.describedby" @change="input('category_id', $event)"><option value="">选一个分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></template>
         </ContentField>
-        <ContentField name="cover_image_id" label="封面" :errors="fields.cover_image_id" hint="未选封面时使用默认图片。"><ImageField name="cover_image_id" label="封面" :model-value="values.cover_image_id" :disabled="!editable || actionBlocked" @update:model-value="save.set('cover_image_id', $event, 'choice')" /></ContentField>
+        <ContentField name="cover_image_id" label="封面" :errors="fields.cover_image_id" hint="空着就用默认封面图库里的一张。"><ImageField name="cover_image_id" label="封面" :model-value="values.cover_image_id" :disabled="!editable || actionBlocked" @update:model-value="save.set('cover_image_id', $event, 'choice')" /></ContentField>
         <ContentField name="summary" label="摘要" :errors="fields.summary" hint="写一两句，会显示在文章列表和分享卡片上。">
           <template #default="field"><textarea :id="field.id" class="c-input" name="summary" :value="values.summary" rows="3" :aria-describedby="field.describedby" @input="input('summary', $event)" /></template>
         </ContentField>
         <ContentField name="body_md" label="正文" :errors="fields.body_md" required>
           <template #default="field"><MarkdownEditor ref="editor" :id="field.id" :model-value="values.body_md" :disabled="!editable || actionBlocked" :describedby="field.describedby" :invalid="Boolean(fields.body_md?.length)" @update:model-value="save.set('body_md', $event)" /></template>
         </ContentField>
-        <ContentField name="related_tournament_id" label="关联赛事" :errors="fields.related_tournament_id" hint="选填，文章里会显示这项赛事。">
-          <select id="related_tournament_id" name="related_tournament_id" class="c-input" :value="values.related_tournament_id ?? ''" @change="input('related_tournament_id', $event)"><option value="">未关联</option><option v-for="item in props.detail?.tournaments ?? []" :key="item.id" :value="item.id">{{ item.title }}</option></select>
+        <ContentField name="related_tournament_id" label="赛事" :errors="fields.related_tournament_id" hint="选填，文章里会显示这项赛事。">
+          <select id="related_tournament_id" name="related_tournament_id" class="c-input" :value="values.related_tournament_id ?? ''" @change="input('related_tournament_id', $event)"><option value="">不关联赛事</option><option v-for="item in props.detail?.tournaments ?? []" :key="item.id" :value="item.id">{{ item.title }}</option></select>
         </ContentField>
       </fieldset>
       <fieldset v-if="props.detail && (props.detail.capabilities.edit_author || !props.detail.guide)" class="b-fieldset" :disabled="!editable || actionBlocked">
@@ -197,19 +198,19 @@ async function openPreview(): Promise<void> {
       </fieldset>
       <fieldset v-if="props.detail?.capabilities.edit_schedule" class="b-fieldset" :disabled="!editable || actionBlocked">
         <legend class="b-section__title">网址和发布时间</legend>
-        <ContentField name="slug" label="网址片段" :errors="fields.slug" hint="空着时按标题生成。">
+        <ContentField name="slug" label="网址片段" :errors="fields.slug" hint="文章地址的最后一段。空着就按标题生成。">
           <template #default="field"><input :id="field.id" class="c-input" name="slug" :value="values.slug" maxlength="255" :aria-describedby="field.describedby" @input="input('slug', $event)"></template>
         </ContentField>
-        <ContentField name="seo_title" label="SEO 标题" :errors="fields.seo_title">
+        <ContentField name="seo_title" label="搜索结果里的标题" :errors="fields.seo_title" hint="空着就用文章标题。">
           <template #default="field"><input :id="field.id" class="c-input" name="seo_title" :value="values.seo_title" maxlength="255" @input="input('seo_title', $event)"></template>
         </ContentField>
-        <ContentField name="search_description" label="搜索描述" :errors="fields.search_description">
+        <ContentField name="search_description" label="搜索描述" :errors="fields.search_description" hint="空着就用摘要。">
           <template #default="field"><textarea :id="field.id" class="c-input" name="search_description" :value="values.search_description" rows="3" @input="input('search_description', $event)" /></template>
         </ContentField>
-        <ContentField name="go_live_at" label="定时上线" :errors="fields.go_live_at" hint="北京时间；空着就是立即发布。">
+        <ContentField name="go_live_at" label="定时上线" :errors="fields.go_live_at" hint="到这个时间才上线。点「发布」后生效；空着就是马上上线。">
           <template #default="field"><input :id="field.id" class="c-input" name="go_live_at" type="datetime-local" :value="localDateTime(values.go_live_at)" @change="input('go_live_at', $event)"></template>
         </ContentField>
-        <ContentField name="expire_at" label="定时下线" :errors="fields.expire_at" hint="北京时间；空着就不自动撤下。">
+        <ContentField name="expire_at" label="定时下线" :errors="fields.expire_at" hint="到这个时间自动下线。">
           <template #default="field"><input :id="field.id" class="c-input" name="expire_at" type="datetime-local" :value="localDateTime(values.expire_at)" @change="input('expire_at', $event)"></template>
         </ContentField>
       </fieldset>
@@ -226,7 +227,7 @@ async function openPreview(): Promise<void> {
       <section class="b-section">
         <h2 class="b-section__title">状态</h2>
         <dl class="b-kv">
-          <dt>状态</dt><dd>{{ article?.live ? (draftChanged || save.dirty.value ? '已发布·有改动' : '已发布') : article?.go_live_at ? '定时上线' : '草稿' }}</dd>
+          <dt>状态</dt><dd><CStatus :label="article?.live ? (draftChanged || save.dirty.value ? '已发布·有改动' : '已发布') : article?.go_live_at ? '定时上线' : '草稿'" :kind="article?.live ? (draftChanged || save.dirty.value ? 'warn' : 'ok') : article?.go_live_at ? 'info' : 'done'" /></dd>
           <dt>作者</dt><dd>{{ article?.author_name || permission.user.value?.nickname }}</dd>
           <template v-if="article?.first_published_at"><dt>首次发布</dt><dd>{{ formatContentTime(article.first_published_at) }}</dd></template>
           <template v-if="article?.last_published_at"><dt>最后发布</dt><dd>{{ formatContentTime(article.last_published_at) }}</dd></template>

@@ -73,6 +73,9 @@ const (
 
 // Item 是一条待复核记录。
 type Item struct {
+	Model        string     `json:"model"`
+	AuthorName   string     `json:"author_name"`
+	ReviewerName string     `json:"reviewer_name"`
 	ID           int64      `json:"id"`
 	TargetType   string     `json:"target_type"`
 	TargetLabel  string     `json:"target_label"`
@@ -202,7 +205,7 @@ func requireReviewer(ctx *app.Ctx) (*app.Viewer, error) {
 }
 
 const itemCols = `id, target_type, target_id, field, url, author_id, excerpt, full_text, text_hash, risk, categories, reason,
-	quote, status, reviewed_by, reviewed_at, handling_note, checked_at, notified_at, attempts, last_error, failed_at, created_at`
+	quote, model, status, reviewed_by, reviewed_at, handling_note, checked_at, notified_at, attempts, last_error, failed_at, created_at`
 
 func scanItem(row interface{ Scan(...any) error }) (*Item, error) {
 	var i Item
@@ -210,7 +213,7 @@ func scanItem(row interface{ Scan(...any) error }) (*Item, error) {
 	var reviewed, checked, notified, failed sql.NullString
 	var cats, created string
 	if err := row.Scan(&i.ID, &i.TargetType, &i.TargetID, &i.Field, &i.URL, &author, &i.Excerpt, &i.FullText, &i.TextHash,
-		&i.Risk, &cats, &i.Reason, &i.Quote, &i.Status, &by, &reviewed, &i.HandlingNote, &checked, &notified,
+		&i.Risk, &cats, &i.Reason, &i.Quote, &i.Model, &i.Status, &by, &reviewed, &i.HandlingNote, &checked, &notified,
 		&i.Attempts, &i.LastError, &failed, &created); err != nil {
 		return nil, err
 	}
@@ -250,11 +253,54 @@ func getItem(ctx context.Context, q db.DBTX, id int64) (*Item, error) {
 
 // ListInput 是复核列表的筛选。
 type ListInput struct {
+	All        bool
 	Status     string
 	Risk       string
 	TargetType string
 	SinceDays  int
 	Page       int
+}
+
+func fillPeople(ctx context.Context, q db.DBTX, items []*Item) error {
+	ids := []any{}
+	seen := map[int64]bool{}
+	for _, item := range items {
+		for _, id := range []*int64{item.AuthorID, item.ReviewedBy} {
+			if id != nil && !seen[*id] {
+				ids = append(ids, *id)
+				seen[*id] = true
+			}
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := q.QueryContext(ctx, `SELECT id,nickname FROM users WHERE id IN (`+strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")+`)`, ids...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	names := map[int64]string{}
+	for rows.Next() {
+		var id int64
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return err
+		}
+		names[id] = name
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, item := range items {
+		if item.AuthorID != nil {
+			item.AuthorName = names[*item.AuthorID]
+		}
+		if item.ReviewedBy != nil {
+			item.ReviewerName = names[*item.ReviewedBy]
+		}
+	}
+	return nil
 }
 
 // ListResult 是复核列表页。
@@ -276,7 +322,7 @@ func (s *Service) List(ctx *app.Ctx, in ListInput) (*ListResult, error) {
 	}
 	rd := s.d.ReadPool()
 	status := in.Status
-	if status == "" {
+	if status == "" && !in.All {
 		status = StatusPending
 	}
 	where := []string{"risk <> 'none'"}
@@ -285,8 +331,10 @@ func (s *Service) List(ctx *app.Ctx, in ListInput) (*ListResult, error) {
 		where = append(where, "created_at >= ?")
 		args = append(args, db.FormatUTC(ctx.Now().UTC().Add(-time.Duration(in.SinceDays)*24*time.Hour)))
 	}
-	where = append(where, "status = ?")
-	args = append(args, status)
+	if status != "" {
+		where = append(where, "status = ?")
+		args = append(args, status)
+	}
 	if status == StatusPending {
 		where = append(where, "checked_at IS NOT NULL")
 	}
@@ -324,6 +372,9 @@ func (s *Service) List(ctx *app.Ctx, in ListInput) (*ListResult, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	if err := fillPeople(ctx.Context, rd, res.Items); err != nil {
+		return nil, err
+	}
 	// AI 还没读的和没看成的（待办和复核列表用，规则 205）
 	if err := rd.QueryRowContext(ctx.Context, `SELECT COUNT(*), COALESCE(SUM(failed_at IS NOT NULL), 0) FROM moderation_items WHERE checked_at IS NULL`).
 		Scan(&res.Waiting, &res.Failed); err != nil {
@@ -337,7 +388,15 @@ func (s *Service) List(ctx *app.Ctx, in ListInput) (*ListResult, error) {
 }
 
 // Detail 是复核页。
+type HistoryRow struct {
+	ID        int64  `json:"id"`
+	ActorName string `json:"actor_name"`
+	Result    string `json:"result"`
+	Note      string `json:"note"`
+	CreatedAt string `json:"created_at"`
+}
 type Detail struct {
+	HistoryRows   []HistoryRow  `json:"history_rows"`
 	Item          *Item         `json:"item"`
 	AuthorFlags   int           `json:"author_flags"`   // 这个作者还有几条别的可疑内容
 	AuthorProblem string        `json:"author_problem"` // 不能给作者发信的原因，空串表示可以
@@ -378,7 +437,10 @@ func (s *Service) Get(ctx *app.Ctx, id int64) (*Detail, error) {
 	if i == nil {
 		return nil, api.NotFound("记录不存在")
 	}
-	d := &Detail{Item: i}
+	if err := fillPeople(ctx.Context, rd, []*Item{i}); err != nil {
+		return nil, err
+	}
+	d := &Detail{Item: i, HistoryRows: []HistoryRow{}}
 	if i.AuthorID != nil {
 		if err := rd.QueryRowContext(ctx.Context, `SELECT COUNT(*) FROM moderation_items WHERE author_id = ? AND id <> ? AND risk <> 'none'`,
 			*i.AuthorID, id).Scan(&d.AuthorFlags); err != nil {
@@ -391,6 +453,21 @@ func (s *Service) Get(ctx *app.Ctx, id int64) (*Detail, error) {
 	if d.History, err = audit.For(ctx.Context, rd, "moderation_item", id); err != nil {
 		return nil, err
 	}
+	records, err := rd.QueryContext(ctx.Context, `SELECT a.id,COALESCE(u.nickname,'—'),COALESCE(json_extract(a.data,'$.result'),a.action),COALESCE(json_extract(a.data,'$.note'),''),a.created_at FROM audit_log a LEFT JOIN users u ON u.id=a.actor_id WHERE a.object_type='moderation_item' AND a.object_id=? ORDER BY a.created_at,a.id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer records.Close()
+	for records.Next() {
+		var row HistoryRow
+		if err := records.Scan(&row.ID, &row.ActorName, &row.Result, &row.Note, &row.CreatedAt); err != nil {
+			return nil, err
+		}
+		d.HistoryRows = append(d.HistoryRows, row)
+	}
+	if err := records.Err(); err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 
@@ -398,6 +475,9 @@ var handleStatus = map[string]string{"ok": StatusOK, "handled": StatusHandled, "
 
 // Handle 人工处置（规则 202）：标为无问题、已处置或忽略，写复核人、时间、说明，并进操作记录。
 func (s *Service) Handle(ctx *app.Ctx, id int64, action, note string) (*Item, error) {
+	return s.handle(ctx, id, action, note, false)
+}
+func (s *Service) handle(ctx *app.Ctx, id int64, action, note string, clearMotto bool) (*Item, error) {
 	v, err := requireReviewer(ctx)
 	if err != nil {
 		return nil, err
@@ -420,12 +500,20 @@ func (s *Service) Handle(ctx *app.Ctx, id int64, action, note string) (*Item, er
 		if i == nil {
 			return api.NotFound("记录不存在")
 		}
+		if clearMotto {
+			if i.TargetType != TargetMotto {
+				return api.Invalid("只有个人宣言记录能清空宣言。")
+			}
+			if _, err := tx.ExecContext(txCtx, `UPDATE users SET motto='',version=version+1,updated_at=? WHERE id=?`, db.FormatUTC(now), i.TargetID); err != nil {
+				return err
+			}
+		}
 		if _, err := tx.ExecContext(txCtx, `UPDATE moderation_items SET status = ?, reviewed_by = ?, reviewed_at = ?, handling_note = ? WHERE id = ?`,
 			status, v.ID, db.FormatUTC(now), note, id); err != nil {
 			return err
 		}
 		if err := audit.Record(txCtx, tx, v.ID, "moderation.handle", "moderation_item", id,
-			map[string]any{"result": action, "note": note}, now); err != nil {
+			map[string]any{"result": action, "note": note, "clear_motto": clearMotto}, now); err != nil {
 			return err
 		}
 		out, err = getItem(txCtx, tx, id)
@@ -437,7 +525,7 @@ func (s *Service) Handle(ctx *app.Ctx, id int64, action, note string) (*Item, er
 func (s *Service) reviseURL(i *Item) string {
 	switch i.TargetType {
 	case TargetNickname, TargetMotto:
-		return s.siteURL + "/me/profile/"
+		return s.siteURL + "/me/"
 	case TargetTeamName, TargetTeamDescription:
 		return fmt.Sprintf("%s/teams/%d/manage/", s.siteURL, i.TargetID)
 	case TargetApplicationMsg:

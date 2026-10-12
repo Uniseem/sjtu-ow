@@ -21,7 +21,10 @@ func NewService(d *db.DB, registry *api.Registry) *Service {
 	return &Service{d: d, registry: registry}
 }
 
-type Module struct{ svc *Service }
+type Module struct {
+	svc      *Service
+	resolver api.ViewerResolver
+}
 
 func NewModule(svc *Service) *Module { return &Module{svc: svc} }
 
@@ -77,6 +80,7 @@ var navDefinitions = []navDefinition{
 }
 
 func (m *Module) Routes(registry *api.Registry) {
+	m.legacyExportRoutes(registry)
 	api.Get(registry, "/api/admin/navigation", api.Cap(accounts.CapAdminEnter), m.navigation, api.Nav("home", "navigation"))
 	m.managementRoutes(registry)
 }

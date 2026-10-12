@@ -394,59 +394,88 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 		}
 	}
 
-	// 8. 导入头像审核记录 (accounts_avatarsubmission -> avatar_submissions)
+	// 8. Preserve each legacy avatar decision as separate reason, note and actor.
 	var hasAvatarSub bool
-	_ = legacy.QueryRowContext(ctx, `SELECT 1 FROM sqlite_master WHERE type='table' AND name='accounts_avatarsubmission'`).Scan(&hasAvatarSub)
+	if err := legacy.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='accounts_avatarsubmission')`).Scan(&hasAvatarSub); err != nil {
+		return err
+	}
 	if hasAvatarSub {
-		asRows, err := legacy.QueryContext(ctx, `SELECT
-			id, user_id, image_id, status, reason, note, reviewed_at, created_at
-			FROM accounts_avatarsubmission ORDER BY id ASC`)
-		if err == nil {
-			defer asRows.Close()
-			err = d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
-				for asRows.Next() {
-					var id, uid int64
-					var imgID sql.NullInt64
-					var status, reason, note string
-					var reviewedAt sql.NullString
-					var createdAt string
-					if err := asRows.Scan(&id, &uid, &imgID, &status, &reason, &note, &reviewedAt, &createdAt); err != nil {
-						continue
-					}
-					handlingNote := note
-					if reason != "" {
-						if handlingNote != "" {
-							handlingNote = reason + ": " + handlingNote
-						} else {
-							handlingNote = reason
-						}
-					}
-					createdUTC := parseAndFormatUTC(createdAt, now)
-					var revAt any
-					if reviewedAt.Valid && reviewedAt.String != "" {
-						revAt = parseAndFormatUTC(reviewedAt.String, now)
-					}
-					var imgAny any
-					if imgID.Valid {
-						imgAny = imgID.Int64
-					}
-					_, _ = tx.ExecContext(txCtx, `INSERT INTO avatar_submissions (
-						id, user_id, image_id, status, handling_note, reviewed_at, created_at
-					) VALUES (?, ?, ?, ?, ?, ?, ?)
-					ON CONFLICT (id) DO UPDATE SET
-						user_id = excluded.user_id,
-						image_id = excluded.image_id,
-						status = excluded.status,
-						handling_note = excluded.handling_note,
-						reviewed_at = excluded.reviewed_at`,
-						id, uid, imgAny, status, handlingNote, revAt, createdUTC,
-					)
-				}
-				return nil
-			})
-			if err != nil {
+		cols, err := legacy.QueryContext(ctx, `PRAGMA table_info(accounts_avatarsubmission)`)
+		if err != nil {
+			return err
+		}
+		hasReviewer := false
+		for cols.Next() {
+			var cid, notnull, pk int
+			var name, kind string
+			var def any
+			if err := cols.Scan(&cid, &name, &kind, &notnull, &def, &pk); err != nil {
+				cols.Close()
 				return err
 			}
+			if name == "reviewed_by_id" {
+				hasReviewer = true
+			}
+		}
+		cols.Close()
+		if err := cols.Err(); err != nil {
+			return err
+		}
+		reviewerColumn := "NULL"
+		if hasReviewer {
+			reviewerColumn = "reviewed_by_id"
+		}
+		asRows, err := legacy.QueryContext(ctx, `SELECT id,user_id,image_id,status,reason,note,reviewed_at,created_at,`+reviewerColumn+` FROM accounts_avatarsubmission ORDER BY id`)
+		if err != nil {
+			return err
+		}
+		defer asRows.Close()
+		if err := d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+			for asRows.Next() {
+				var id, uid int64
+				var image, reviewer sql.NullInt64
+				var status, reason, note, created string
+				var reviewed sql.NullString
+				if err := asRows.Scan(&id, &uid, &image, &status, &reason, &note, &reviewed, &created, &reviewer); err != nil {
+					return err
+				}
+				handling := note
+				if reason != "" {
+					handling = reason
+					if note != "" {
+						handling += ": " + note
+					}
+				}
+				var imageValue, reviewerValue, reviewedValue any
+				if image.Valid {
+					var exists bool
+					if err := tx.QueryRowContext(txCtx, `SELECT EXISTS(SELECT 1 FROM images WHERE id=?)`, image.Int64).Scan(&exists); err != nil {
+						return err
+					}
+					if exists {
+						imageValue = image.Int64
+					}
+				}
+				if reviewer.Valid {
+					var exists bool
+					if err := tx.QueryRowContext(txCtx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=?)`, reviewer.Int64).Scan(&exists); err != nil {
+						return err
+					}
+					if exists {
+						reviewerValue = reviewer.Int64
+					}
+				}
+				if reviewed.Valid && reviewed.String != "" {
+					reviewedValue = parseAndFormatUTC(reviewed.String, now)
+				}
+				if _, err := tx.ExecContext(txCtx, `INSERT INTO avatar_submissions(id,user_id,image_id,status,handling_note,reviewed_at,created_at,reason,note,reviewed_by)
+				VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id,image_id=excluded.image_id,status=excluded.status,handling_note=excluded.handling_note,reviewed_at=excluded.reviewed_at,reason=excluded.reason,note=excluded.note,reviewed_by=excluded.reviewed_by`, id, uid, imageValue, status, handling, reviewedValue, parseAndFormatUTC(created, now), reason, note, reviewerValue); err != nil {
+					return err
+				}
+			}
+			return asRows.Err()
+		}); err != nil {
+			return err
 		}
 	}
 

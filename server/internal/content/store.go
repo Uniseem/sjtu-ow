@@ -426,7 +426,7 @@ func (s *Store) CreateArticleDraft(ctx context.Context, p *Page, a *Article, rev
 }
 
 // SaveArticleDraft 保存文章草稿（支持复用/覆盖或新增修订）。
-func (s *Store) SaveArticleDraft(ctx context.Context, pageID int64, baseVersion int64, revContent string, authorID int64, overwriteRevID int64) (int64, int64, error) {
+func (s *Store) SaveArticleDraft(ctx context.Context, pageID int64, baseVersion int64, revContent string, authorID int64, overwriteRevID int64, checks ...func(context.Context, *db.Tx) error) (int64, int64, error) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	var newRevID int64
 	var newVer int64
@@ -445,6 +445,11 @@ func (s *Store) SaveArticleDraft(ctx context.Context, pageID int64, baseVersion 
 			return articleStale(txCtx, tx, pageID)
 		}
 		newVer = curVer + 1
+		for _, check := range checks {
+			if err := check(txCtx, tx); err != nil {
+				return err
+			}
+		}
 
 		if overwriteRevID > 0 {
 			// 复用当前修订

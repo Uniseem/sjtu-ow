@@ -1,15 +1,16 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
 import { PageRedirect, safeNext } from "@sjtu-ow/shared/navigation"
-import { getApiAuthEmailState } from "@sjtu-ow/api"
+import { getApiAuthEmailState, getApiAuthVerifyEmailState } from "@sjtu-ow/api"
 export async function load(ctx: LoadCtx) {
   if (ctx.query.mode === "change") {
     const state = await getApiAuthEmailState(ctx.api)
     if (!state.pending_email) throw new PageRedirect("/accounts/email/")
     return { title: "邮箱验证", email: state.pending_email, next: "/accounts/email/", change: true }
   }
-  const email = ctx.query.email?.trim()
-  if (!email) throw new PageRedirect("/accounts/login/")
+  const state = await getApiAuthVerifyEmailState(ctx.api)
+  if (!state.active || !state.email) throw new PageRedirect("/accounts/login/")
+  const email = state.email
   return { title: "邮箱验证", email, next: safeNext(ctx.query.next, "/me/"), change: false }
 }
 </script>
@@ -35,7 +36,17 @@ useHead({ title: "邮箱验证 · SJTU-OW" })
 function verify() {
   return submit(async () => {
     if (data?.change) await postApiAuthEmailChangeConfirm(api, { code: code.value.trim() })
-    else await postApiAuthVerifyEmail(api, { email: email.value, code: code.value.trim() }, { unauthorized: "throw" })
+    else {
+      try {
+        await postApiAuthVerifyEmail(api, { email: email.value, code: code.value.trim() }, { unauthorized: "throw" })
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 422) {
+          const state = await getApiAuthVerifyEmailState(api)
+          if (!state.active) { finishAccountAction("/accounts/login/"); return }
+        }
+        throw error
+      }
+    }
     finishAccountAction(safeNext(data?.next, "/me/"))
   })
 }

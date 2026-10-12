@@ -234,7 +234,8 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 		}
 	}
 
-	fieldErrors, validationErr := s.validateArticleChanges(ctx, in.Changes)
+	previousCover := revContent.CoverImageID
+	fieldErrors, validationErr := s.validateArticleChangesWithCover(ctx, in.Changes, revContent.CoverImageID)
 	if validationErr != nil {
 		return nil, validationErr
 	}
@@ -329,7 +330,10 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 				fieldErrors["slug"] = []string{"普通成员不可修改网址片段"}
 			} else if str, ok := v.(string); ok {
 				str = strings.TrimSpace(str)
-				if str != "" {
+				if str == "" {
+					revContent.Slug = ""
+					savedFields = append(savedFields, "slug")
+				} else {
 					avail, err := s.store.CheckSlugAvailable(ctx.Context, KindArticle, str, pageID)
 					if err != nil || !avail {
 						fieldErrors["slug"] = []string{"该网址片段已被使用"}
@@ -388,10 +392,10 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 
 	// 规则 57：expire_at 必须晚于 go_live_at 且在将来
 	if revContent.ExpireAt != nil {
-		if revContent.ExpireAt.Before(ctx.Now()) {
+		if _, changed := in.Changes["expire_at"]; changed && !revContent.ExpireAt.After(ctx.Now()) {
 			fieldErrors["expire_at"] = []string{"到期时间必须在未来"}
 		}
-		if revContent.GoLiveAt != nil && revContent.ExpireAt.Before(*revContent.GoLiveAt) {
+		if revContent.GoLiveAt != nil && !revContent.ExpireAt.After(*revContent.GoLiveAt) {
 			fieldErrors["expire_at"] = []string{"到期时间必须晚于上线时间"}
 		}
 	}
@@ -431,7 +435,7 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 	}
 
 	newBytes, _ := json.Marshal(revContent)
-	newVer, _, err := s.store.SaveArticleDraft(ctx.Context, pageID, in.BaseVersion, string(newBytes), ctx.Viewer.ID, overwriteRevID)
+	newVer, _, err := s.store.SaveArticleDraft(ctx.Context, pageID, in.BaseVersion, string(newBytes), ctx.Viewer.ID, overwriteRevID, coverWriteCheck(ctx.Viewer, revContent.CoverImageID, previousCover))
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,8 @@ import (
 // Secrets deliberately have no member in this autosave DTO. Their dedicated
 // explicit operation uses the original compatible flat request instead.
 type SettingsChanges struct {
+	MaxGameAccounts         *int    `json:"max_game_accounts,omitempty"`
+	ModerationImageEnabled  *bool   `json:"moderation_image_enabled,omitempty"`
 	SiteDescription         *string `json:"site_description,omitempty"`
 	FromName                *string `json:"from_name,omitempty"`
 	EmailSubjectPrefix      *string `json:"email_subject_prefix,omitempty"`
@@ -190,6 +192,10 @@ func (s *Service) patchFields(ctx *app.Ctx, base *int64, changes SettingsChanges
 		image("banner_scrims_id", changes.BannerScrimsID)
 		image("banner_teams_id", changes.BannerTeamsID)
 		image("banner_members_id", changes.BannerMembersID)
+		number("max_game_accounts", changes.MaxGameAccounts, 0, 2147483647)
+		if changes.ModerationImageEnabled != nil {
+			set("moderation_image_enabled", *changes.ModerationImageEnabled)
+		}
 		number("team_max_members", changes.TeamMaxMembers, 1, 20)
 		number("team_max_captained", changes.TeamMaxCaptained, 1, 5)
 		number("tournament_reminder_hours", changes.TournamentReminderHours, 0, 8760)

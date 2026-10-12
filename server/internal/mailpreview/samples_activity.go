@@ -13,7 +13,7 @@ func scrimSamples() []Sample {
 			Paragraphs: []string{"分队结果由管理员发到群里。临时来不了的话，请尽早告诉管理员。"},
 			Action:     []string{"查看活动页面", link}, Reason: scrimReason(),
 		}),
-		specimen("scrim-update", "内战", "内战有更新（时间改过）", "全部报名者", memberName, "server/internal/scrims/service.go", mail.Letter{
+		specimen("scrim-update", "内战", "内战有更新（管理员点「通知报名的人」，时间改过）", "全部报名者", memberName, "server/internal/scrims/service.go", mail.Letter{
 			Subject:    "内战有更新：" + scrimName,
 			Lead:       "内战「" + scrimName + "」的时间改了：原来 2026-10-04 19:30，现在 2026-10-05 19:30。",
 			Facts:      facts,
@@ -68,7 +68,7 @@ func announcementSamples() []Sample {
 
 func moderationSamples() []Sample {
 	return []Sample{
-		specimen("patrol", "审核", "AI 巡查发现可能不妥的内容", "巡查提醒的收件人", "站长", "core/email_samples.py; D5巡查执行待移植", mail.Letter{
+		specimen("patrol", "审核", "AI 巡查发现可能不妥的内容（v6.72）", "「巡查提醒发到」填的邮箱，没填是全部超级管理员", "站长", "core/email_samples.py; D5巡查执行待移植", mail.Letter{
 			Subject: "内容巡查：发现3条可能不妥的内容",
 			Lead:    "这一轮内容巡查发现了 3 条可能需要人工复核的内容。AI 的判断仅供参考。",
 			Items: [][2]string{

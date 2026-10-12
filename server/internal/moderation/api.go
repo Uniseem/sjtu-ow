@@ -14,6 +14,7 @@ func NewModule(svc *Service) *Module { return &Module{svc: svc} }
 
 // ListIn 是复核列表的筛选。
 type ListIn struct {
+	All        bool   `query:"all"`
 	Status     string `query:"status"`
 	Risk       string `query:"risk"`
 	TargetType string `query:"target_type"`
@@ -28,9 +29,10 @@ type IDIn struct {
 
 // HandleIn 是人工处置。
 type HandleIn struct {
-	ID     api.ID `path:"id"`
-	Action string `json:"action"`
-	Note   string `json:"note"`
+	ClearMotto bool   `json:"clear_motto,omitempty"`
+	ID         api.ID `path:"id"`
+	Action     string `json:"action"`
+	Note       string `json:"note"`
 }
 
 // AskIn 是发信要求作者修改。
@@ -47,7 +49,7 @@ type ItemOut struct {
 // Routes 注册审核域的接口。
 func (m *Module) Routes(r *api.Registry) {
 	gate := api.Cap(accounts.CapModerationReview)
-	nav := api.Nav("moderation", "queue")
+	nav := api.Nav("review", "moderation")
 	api.Get(r, "/api/admin/moderation", gate, m.list, nav)
 	api.Get(r, "/api/admin/moderation/{id}", gate, m.get, nav)
 	api.Post(r, "/api/admin/moderation/{id}/handle", gate, m.handle, nav, api.NoLimit("后台，有能力的门"))
@@ -55,13 +57,13 @@ func (m *Module) Routes(r *api.Registry) {
 }
 
 func (m *Module) list(ctx *app.Ctx, in ListIn) (*ListResult, error) {
-	return m.svc.List(ctx, ListInput{Status: in.Status, Risk: in.Risk, TargetType: in.TargetType, SinceDays: in.Since, Page: in.Page})
+	return m.svc.List(ctx, ListInput{All: in.All, Status: in.Status, Risk: in.Risk, TargetType: in.TargetType, SinceDays: in.Since, Page: in.Page})
 }
 
 func (m *Module) get(ctx *app.Ctx, in IDIn) (*Detail, error) { return m.svc.Get(ctx, int64(in.ID)) }
 
 func (m *Module) handle(ctx *app.Ctx, in HandleIn) (ItemOut, error) {
-	i, err := m.svc.Handle(ctx, int64(in.ID), in.Action, in.Note)
+	i, err := m.svc.handle(ctx, int64(in.ID), in.Action, in.Note, in.ClearMotto)
 	return ItemOut{Item: i}, err
 }
 

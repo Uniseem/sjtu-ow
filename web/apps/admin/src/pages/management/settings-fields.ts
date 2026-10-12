@@ -1,7 +1,7 @@
 import type { GetApiAdminSettingsOut } from "@sjtu-ow/api"
 export type Settings = NonNullable<GetApiAdminSettingsOut['settings']>
 export type SettingsValues = Pick<Settings,
-  'site_description' | 'from_name' | 'email_subject_prefix' | 'smtp_host' | 'smtp_port' | 'smtp_security' | 'smtp_username' | 'from_address' | 'founded_on' | 'qq_group_url' |
+  'max_game_accounts' | 'moderation_image_enabled' | 'site_description' | 'from_name' | 'email_subject_prefix' | 'smtp_host' | 'smtp_port' | 'smtp_security' | 'smtp_username' | 'from_address' | 'founded_on' | 'qq_group_url' |
   'team_max_members' | 'team_max_captained' | 'tournament_reminder_hours' | 'scrim_reminder_hours' |
   'moderation_enabled' | 'moderation_provider' | 'moderation_base_url' | 'moderation_model' | 'moderation_max_tokens' | 'moderation_timeout_seconds' | 'moderation_extra_params' | 'moderation_daily_limit' | 'moderation_notify_email'>
 export type SettingField = { name: keyof SettingsValues; label: string; kind: 'text' | 'number' | 'email' | 'url' | 'date' | 'textarea' | 'checkbox' | 'select'; help?: string; min?: number; max?: number; choices?: { value: string; label: string }[] }
@@ -12,7 +12,7 @@ export const settingsSections: SettingSection[] = [
     { name: 'founded_on', label: '成立日期', kind: 'date' },
     { name: 'qq_group_url', label: 'QQ 群链接', kind: 'url' },
   ] },
-  { title: '邮件', fields: [
+  { title: '邮件发送', fields: [
     { name: 'from_name', label: '发信人名称', kind: 'text' },
     { name: 'from_address', label: '发信邮箱', kind: 'email' },
     { name: 'email_subject_prefix', label: '邮件主题前缀', kind: 'text' },
@@ -21,13 +21,15 @@ export const settingsSections: SettingSection[] = [
     { name: 'smtp_security', label: '连接安全', kind: 'select', choices: [{ value: 'starttls', label: 'STARTTLS' }, { value: 'ssl', label: 'SSL/TLS' }, { value: 'none', label: '无' }] },
     { name: 'smtp_username', label: 'SMTP 用户名', kind: 'text' },
   ] },
-  { title: '报名和活动', fields: [
+  { title: '社区参数', fields: [
+    { name: 'max_game_accounts', label: '每人最多游戏 ID', kind: 'number', min: 0, max: 2147483647 },
     { name: 'team_max_members', label: '战队人数上限', kind: 'number', min: 1 },
     { name: 'team_max_captained', label: '每人担任队长上限', kind: 'number', min: 1 },
     { name: 'tournament_reminder_hours', label: '赛事提前提醒（小时）', kind: 'number', min: 0 },
     { name: 'scrim_reminder_hours', label: '内战提前提醒（小时）', kind: 'number', min: 0 },
   ] },
   { title: 'AI 审核', fields: [
+    { name: 'moderation_image_enabled', label: '送审正文里的图片', kind: 'checkbox' },
     { name: 'moderation_enabled', label: '启用 AI 内容审核', kind: 'checkbox' },
     { name: 'moderation_provider', label: '服务商', kind: 'text' },
     { name: 'moderation_base_url', label: '接口地址', kind: 'url' },
@@ -41,7 +43,7 @@ export const settingsSections: SettingSection[] = [
 ]
 export function settingsValues(settings: Settings): SettingsValues {
   return {
-    site_description: settings.site_description, from_name: settings.from_name, from_address: settings.from_address,
+    max_game_accounts:settings.max_game_accounts,moderation_image_enabled:settings.moderation_image_enabled,site_description: settings.site_description, from_name: settings.from_name, from_address: settings.from_address,
     email_subject_prefix: settings.email_subject_prefix, smtp_host: settings.smtp_host, smtp_port: settings.smtp_port,
     smtp_security: settings.smtp_security, smtp_username: settings.smtp_username, founded_on: settings.founded_on,
     qq_group_url: settings.qq_group_url, team_max_members: settings.team_max_members, team_max_captained: settings.team_max_captained,

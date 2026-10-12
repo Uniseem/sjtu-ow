@@ -198,13 +198,17 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 	rt.bind = func(cfg handlerCfg) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
 			viewer := cfg.resolve(req)
+			if rt.Pattern == "/api/auth/verify-email/state" || rt.Pattern == "/api/auth/reset-password/code-state" {
+				w.Header().Set("Cache-Control", "no-store")
+			}
 			ctx := &app.Ctx{
-				Context:      req.Context(),
-				Viewer:       viewer,
-				Clock:        clock.System{},
-				RequestID:    newRequestID(),
-				SessionToken: auth.TokenFromRequest(req),
-				ResetToken:   auth.ResetTokenFromRequest(req),
+				Context:        req.Context(),
+				Viewer:         viewer,
+				Clock:          clock.System{},
+				RequestID:      newRequestID(),
+				SessionToken:   auth.TokenFromRequest(req),
+				ResetToken:     auth.ResetTokenFromRequest(req),
+				CodeFlowTokens: auth.CodeFlowTokensFromRequest(req),
 			}
 			if err := gate.check(viewer); err != nil {
 				writeError(w, err)
@@ -294,6 +298,9 @@ func handle[In, Out any](g *Registry, method, pattern string, gate Gate,
 			// 登录这类动作发的会话 Cookie（成功路径才有；令牌只进 HttpOnly 头）
 			for _, tok := range ctx.DrainSessionCookies() {
 				auth.SetCookie(w, tok, cfg.secureCookies)
+			}
+			for _, cookie := range ctx.DrainCodeFlowCookies() {
+				auth.SetCodeFlowCookie(w, cookie.Purpose, cookie.Token, cookie.ExpiresAt, ctx.Now(), cfg.secureCookies)
 			}
 			if cookie := ctx.DrainResetCookie(); cookie != nil {
 				auth.SetResetCookie(w, cookie.Token, cookie.ExpiresAt, ctx.Now(), cfg.secureCookies)

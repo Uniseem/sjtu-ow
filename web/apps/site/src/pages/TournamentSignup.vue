@@ -8,6 +8,8 @@ export async function load(ctx:LoadCtx){const form=await getIndividualForm(ctx.a
 import { computed,inject,ref,watch } from "vue"
 import { useHead } from "@unhead/vue"
 import { postApiTournamentsIdSignup } from "@sjtu-ow/api"
+import CProfileGaps from "@sjtu-ow/ui/CProfileGaps.vue"
+import { useViewer } from "../viewer"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import CField from "@sjtu-ow/ui/CField.vue"
 import CMutationError from "@sjtu-ow/ui/CMutationError.vue"
@@ -18,6 +20,7 @@ import { useApi } from "../api"
 import { useMutation } from "../use-mutation"
 import { finishAccountAction } from "../account-form"
 import type { IndividualForm } from "../registration-form"
+const viewer=useViewer()
 const data=requirePageData(inject<{form:IndividualForm}>("page-data"))
 const form=computed(()=>data.form)
 const tournament=computed(()=>requireTournament(form.value.tournament))
@@ -33,7 +36,7 @@ function submit():void{if(form.value.can_submit&&account.value)void signup.submi
   <main id="main" class="flex-1">
     <header class="c-pagehead"><div class="l-container l-container--narrow"><nav class="c-crumbs" aria-label="位置"><a href="/">首页</a><span class="c-crumbs__sep">/</span><a href="/tournaments/">赛事</a><span class="c-crumbs__sep">/</span><a :href="'/tournaments/' + tournament.id + '/'">{{ tournament.title }}</a><span class="c-crumbs__sep">/</span><span>个人报名</span></nav><h1>个人报名</h1><p class="c-pagehead__lede"><a :href="'/tournaments/'+tournament.id+'/'" class="c-link">{{ tournament.title }}</a> · 报名后由赛事管理员编成临时队伍</p></div></header>
     <div class="l-container l-container--narrow pt-8 pb-16 lg:pb-24"><div class="flex max-w-2xl flex-col gap-8">
-      <div v-if="form.problems.length" class="c-notice c-notice--error" role="alert"><CIcon name="x-circle" /><div class="c-notice__body"><p class="font-semibold">下面的问题需要先解决：</p><ul class="mt-1 list-[square] pl-5"><li v-for="(problem,index) in form.problems" :key="index">{{ problem }}</li></ul><p class="mt-2"><a href="/me/game-accounts/" class="c-link">游戏 ID</a> · <a href="/me/contacts/" class="c-link">联系方式</a></p></div></div>
+      <div v-if="form.problems.length" class="c-notice c-notice--error" role="alert"><CIcon name="x-circle" /><div class="c-notice__body"><p class="font-semibold">下面的问题需要先解决：</p><ul class="mt-1 list-[square] pl-5"><li v-for="(problem,index) in form.problems" :key="index">{{ problem }}</li></ul><CProfileGaps :gaps="viewer.user?.profile_gaps ?? []" /></div></div>
       <div v-if="form.my_signup?.placed" class="c-notice c-notice--ok"><CIcon name="check-circle" /><p class="c-notice__body">你已经被编入「{{ form.registration_team_name }}」，要改动请联系赛事管理员。</p></div>
       <div v-else-if="!form.game_accounts.length" class="c-notice c-notice--info"><CIcon name="info" /><p class="c-notice__body">需要先绑定游戏 ID，<a href="/me/game-accounts/">去添加</a>。</p></div>
       <form v-else method="post" class="c-form" :aria-busy="signup.pending.value||undefined" @submit.prevent="submit">

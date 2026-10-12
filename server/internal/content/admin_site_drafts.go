@@ -396,7 +396,8 @@ func (m *Module) publishNewsDraft(ctx *app.Ctx, in SiteDraftPublishIn) (SiteDraf
 
 func (m *Module) listSiteParts(ctx *app.Ctx, _ struct{}) (SitePartsOut, error) {
 	out := SitePartsOut{Items: []PlainPageItem{}, Pinned: []PinnedArticleItem{}}
-	rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, "SELECT id,slug,title,live,has_unpublished_changes,updated_at,version FROM pages WHERE kind='site_page' ORDER BY id")
+	rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, `SELECT p.id,p.slug,p.title,p.live,p.has_unpublished_changes,p.updated_at,p.version,r.content FROM pages p
+        LEFT JOIN page_revisions r ON r.id=p.latest_revision_id WHERE p.kind='site_page' ORDER BY p.id`)
 	if err != nil {
 		return out, err
 	}
@@ -404,9 +405,18 @@ func (m *Module) listSiteParts(ctx *app.Ctx, _ struct{}) (SitePartsOut, error) {
 		var item PlainPageItem
 		var live, unpublished int
 		var updated string
-		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &live, &unpublished, &updated, &item.Version); err != nil {
+		var revision sql.NullString
+		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &live, &unpublished, &updated, &item.Version, &revision); err != nil {
 			rows.Close()
 			return out, err
+		}
+		if revision.Valid {
+			draft, err := readPlainRevisionContent(revision.String, PlainPageDraft{Title: item.Title})
+			if err != nil {
+				rows.Close()
+				return out, fmt.Errorf("页面草稿内容损坏: %w", err)
+			}
+			item.DraftTitle = &draft.Title
 		}
 		item.Live = live == 1
 		item.HasUnpublishedChanges = unpublished == 1

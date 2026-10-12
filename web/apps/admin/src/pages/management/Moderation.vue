@@ -4,71 +4,30 @@ import { useRoute, useRouter } from "vue-router"
 import { getApiAdminModeration } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useResource } from "./use-resource"
-import { positive, text, date, state, localHref } from "./format"
+import { positive,text,date } from "./format"
+import { statusLabels,riskLabels,targetLabels,categories } from "./moderation-labels"
 import AdminPage from "../../components/AdminPage.vue"
 import ResourceState from "../../components/management/ResourceState.vue"
 import ManagementPager from "../../components/management/ManagementPager.vue"
-const api = useAdminApi()
-const route = useRoute()
-const router = useRouter()
-const status = ref(text(route.query.status))
-const risk = ref(text(route.query.risk))
-const type = ref(text(route.query.target_type))
-const resource = useResource(() => route.fullPath, signal => getApiAdminModeration(api, { status: text(route.query.status), risk: text(route.query.risk), target_type: text(route.query.target_type), page: positive(route.query.page) }, { signal }))
-const rows = computed(() => (resource.data.value?.items ?? []).filter(item => item !== null))
-function filter() { void router.push({ path: route.path, query: { status: status.value || undefined, risk: risk.value || undefined, target_type: type.value || undefined } }) }
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
+const api=useAdminApi(),route=useRoute(),router=useRouter()
+const status=ref(route.query.status===undefined?'pending':text(route.query.status)),risk=ref(text(route.query.risk)),type=ref(text(route.query.target_type)),since=ref(text(route.query.since))
+const resource=useResource(()=>route.fullPath,signal=>getApiAdminModeration(api,{all:route.query.status==='',status:route.query.status===undefined?'pending':text(route.query.status),risk:text(route.query.risk),target_type:text(route.query.target_type),since:route.query.since?positive(route.query.since):undefined,page:positive(route.query.page)},{signal}))
+const rows=computed(()=>(resource.data.value?.items??[]).filter(item=>item!==null))
+function filter(){void router.push({path:route.path,query:{status:status.value,risk:risk.value||undefined,target_type:type.value||undefined,since:since.value||undefined}})}
 </script>
 <template>
-  <AdminPage title="内容巡查" section="审核">
-    <p class="b-section__text">巡查记录供人工复核参考。</p>
-    <form class="b-filters" @submit.prevent="filter">
-      <select v-model="status" class="c-input" aria-label="处理状态">
-        <option value="">全部状态</option>
-        <option value="unreviewed">未处理</option>
-        <option value="reviewed">已处理</option>
-        <option value="failed">巡查失败</option>
-      </select>
-      <select v-model="risk" class="c-input" aria-label="风险">
-        <option value="">全部风险</option>
-        <option value="high">高</option>
-        <option value="medium">中</option>
-        <option value="low">低</option>
-      </select>
-      <select v-model="type" class="c-input" aria-label="内容类型">
-        <option value="">全部类型</option>
-        <option value="article">文章</option>
-        <option value="comment">评论</option>
-        <option value="profile">成员资料</option>
-      </select>
-      <button class="c-btn c-btn--secondary c-btn--sm">筛选</button>
-    </form>
-    <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" :empty="!rows.length" empty-text="没有符合条件的巡查记录。" @retry="resource.refresh" />
-    <p v-if="resource.data.value" class="b-sub">{{ resource.data.value.waiting }} 件等待巡查 · {{ resource.data.value.failed }} 件失败</p>
-    <table v-if="rows.length" class="c-table">
-      <thead>
-        <tr>
-          <th scope="col">内容</th>
-          <th scope="col">风险</th>
-          <th scope="col">判断</th>
-          <th scope="col">状态</th>
-          <th scope="col">时间</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in rows" :key="item.id">
-          <td>
-            <RouterLink class="b-title" :to="`/admin/moderation/${item.id}/`">{{ item.target_label }}</RouterLink>
-            <span class="b-sub">{{ item.excerpt }}</span>
-            <a v-if="localHref(item.url)" class="c-link" :href="localHref(item.url)" target="_blank" rel="noopener">看原内容 →</a>
-          </td>
-          <td>{{ state(item.risk) }}</td>
-          <td>{{ item.reason }}<span class="b-sub">{{ item.categories.join('、') }}</span>
-          </td>
-          <td>{{ state(item.status) }}</td>
-          <td>{{ date(item.checked_at || item.created_at) }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <ManagementPager v-if="resource.data.value" :page="resource.data.value.page" :size="resource.data.value.page_size" :total="resource.data.value.total" />
-  </AdminPage>
+ <AdminPage title="巡查记录" section="审核">
+  <div class="c-notice c-notice--warn"><CIcon name="alert" /><div class="c-notice__body">AI 巡查引擎将在割接后移植，已有记录仍可查看、人工记录处理结果。</div></div>
+  <section class="b-section"><p class="b-section__text">AI 每 30 分钟巡查一次新写或改过的内容，觉得可能不妥的会发信提醒（收件人在「设置 → 全站设置 → AI 审核」里填，没填发给超级管理员）。网站默认信任所有人，这里的记录是给你查的，标不标处理结果都行。<strong>AI 只做判断，不会改动任何内容。</strong></p></section>
+  <form method="get" class="b-filters" @submit.prevent="filter">
+   <select v-model="status" name="status" class="c-input" aria-label="状态" @change="filter"><option value="">全部状态</option><option v-for="(label,value) in statusLabels" :key="value" :value="value">{{ label }}</option></select>
+   <select v-model="risk" name="risk" class="c-input" aria-label="风险" @change="filter"><option value="">全部风险</option><option v-for="(label,value) in riskLabels" :key="value" :value="value">{{ label }}</option></select>
+   <select v-model="type" name="target_type" class="c-input" aria-label="类型" @change="filter"><option value="">全部类型</option><option v-for="(label,value) in targetLabels" :key="value" :value="value">{{ label }}</option></select>
+   <select v-model="since" name="since" class="c-input" aria-label="提交时间" @change="filter"><option value="">全部时间</option><option value="1">最近 24 小时</option><option value="7">最近 7 天</option><option value="30">最近 30 天</option></select><button type="submit" class="c-btn c-btn--secondary c-btn--sm">筛选</button>
+  </form>
+  <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.refresh" />
+  <table v-if="resource.data.value" class="c-table c-table--stack"><thead><tr><th>内容</th><th>风险</th><th>类别</th><th>类型</th><th>作者</th><th>时间</th><th>状态</th></tr></thead><tbody><tr v-for="item in rows" :key="item.id"><td><RouterLink class="b-title" :to="`/admin/moderation/${item.id}/`">{{ item.excerpt.length>60?item.excerpt.slice(0,59)+'…':item.excerpt }}</RouterLink></td><td data-label="风险">{{ riskLabels[item.risk]||item.risk }}</td><td data-label="类别">{{ categories(item.categories) }}</td><td data-label="类型">{{ targetLabels[item.target_type]||item.target_label }}</td><td data-label="作者">{{ item.author_name||'—' }}</td><td data-label="时间">{{ date(item.created_at) }}</td><td data-label="状态">{{ statusLabels[item.status]||item.status }}</td></tr><tr v-if="!rows.length"><td colspan="7">没有符合条件的记录。</td></tr></tbody></table>
+  <ManagementPager v-if="resource.data.value" :page="resource.data.value.page" :size="resource.data.value.page_size" :total="resource.data.value.total" />
+ </AdminPage>
 </template>

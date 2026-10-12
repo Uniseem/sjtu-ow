@@ -19,17 +19,17 @@ function label(key: string) { return resource.data.value?.features.find(feature 
 </script>
 <template>
   <AdminPage title="角色" section="成员">
-    <nav class="b-subtabs" aria-label="用户与权限">
+    <template #subtabs><nav class="b-subtabs" aria-label="用户与权限">
       <RouterLink to="/admin/users/">用户</RouterLink>
       <RouterLink to="/admin/roles/" aria-current="page">角色</RouterLink>
-    </nav>
-    <p class="b-section__text">谁在哪个角色里，在「用户」里编辑那个人。角色本身能做什么是固定的；细粒度的权限在底层后台的用户组里，平时不用动。</p>
+    </nav></template>
+    <p class="b-section__text">谁在哪个角色里，在「用户」里编辑那个人。角色本身能做什么是固定的（设计 4.1）；细粒度的权限在 Wagtail 底层后台的用户组里，平时不用动。</p>
     <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.refresh" />
     <ActionState :message="action.message.value" :pending="action.pending.value" :uncertain="action.uncertain.value" @retry="action.retry" />
     <section v-for="group in resource.data.value?.groups" :key="group.id" class="b-section" :data-role="group.name">
       <div class="c-panel__head">
         <h2 class="b-section__title">{{ group.label || group.name }}</h2>
-        <RouterLink class="c-link" :to="{ path: '/admin/users/', query: { role: group.name } }">{{ group.people }} 人 →</RouterLink>
+        <RouterLink class="c-link" :to="{ path: '/admin/users/', query: { role: group.label || group.name } }">{{ group.people }} 人 →</RouterLink>
       </div>
       <p class="b-section__text">{{ group.summary }}</p>
       <ul v-if="group.restrictions.length" class="b-list">

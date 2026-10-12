@@ -179,7 +179,9 @@ func buildRegistry(
 		search.NewModule(searchSvc).Routes(reg)
 	}
 	if mediaSvc != nil {
-		media.NewModule(mediaSvc).Routes(reg)
+		mediaMod := media.NewModule(mediaSvc)
+		mediaMod.SetUploadResolver(opts.previewResolver)
+		mediaMod.Routes(reg)
 	}
 	if teamsSvc != nil {
 		teams.NewModule(teamsSvc).Routes(reg)
@@ -209,7 +211,9 @@ func buildRegistry(
 		auditMod.Routes(reg)
 	}
 	if activitySvc != nil {
-		activity.NewModule(activitySvc).Routes(reg)
+		activityMod := activity.NewModule(activitySvc)
+		activityMod.SetViewerResolver(opts.previewResolver)
+		activityMod.Routes(reg)
 	}
 	if manualMod != nil {
 		manualMod.Routes(reg)
@@ -218,13 +222,17 @@ func buildRegistry(
 		todo.NewModule(todoSvc).Routes(reg)
 	}
 	mailpreview.NewModule(opts.previewResolver).Routes(reg)
-	fonts.NewModule(fontService).Routes(reg)
+	fontMod := fonts.NewModule(fontService)
+	fontMod.SetViewerResolver(opts.previewResolver)
+	fontMod.Routes(reg)
 	admin := backoffice.NewService(opts.data, reg)
 	admin.SetTournamentService(tournamentsSvc)
 	if opts.dataDir != "" {
 		admin.SetBackupStatusReader(backupStatusReader(filepath.Join(opts.dataDir, "backups")))
 	}
-	backoffice.NewModule(admin).Routes(reg)
+	adminModule := backoffice.NewModule(admin)
+	adminModule.SetViewerResolver(opts.previewResolver)
+	adminModule.Routes(reg)
 	return reg
 }
 
@@ -322,6 +330,9 @@ func runWorker() error {
 		return nil
 	})
 	w.OnSchedule(jobs.SchedCleanup, func(ctx context.Context, _ *db.DB, now time.Time) error {
+		if _, err := acctSvc.CleanupCodeFlows(ctx, now); err != nil {
+			return fmt.Errorf("清理匿名验证码流程：%w", err)
+		}
 		if _, err := fonts.NewService(d, cfg.MediaDir, filepath.Join(cfg.DataDir, "fontuploads")).CleanupExpired(ctx, now); err != nil {
 			return err
 		}
@@ -543,6 +554,7 @@ func runImportMedia() error {
 		return err
 	}
 	fmt.Printf("做成母版 %d 张，已有跳过 %d 张，找不到原图 %d 张，失败 %d 张。\n", rep.Made, rep.Skipped, len(rep.Missing), len(rep.Failed))
+	fmt.Printf("保留旧缩略图地址 %d 个。\n", rep.Renditions)
 	for _, m := range rep.Missing {
 		fmt.Println("找不到：" + m)
 	}

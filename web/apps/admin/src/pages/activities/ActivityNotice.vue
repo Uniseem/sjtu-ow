@@ -92,7 +92,7 @@ onUnmounted(() => { sequence += 1; request?.abort(); if (noteTimer !== undefined
 </script>
 
 <template>
-  <AdminPage :title="title" section="activities" :back-href="activityHref(kind)">
+  <AdminPage :title="title" section="events" :back-href="activityHref(kind)">
     <AdminNotice v-if="sent" :message="sent" kind="ok" />
     <ActivityField v-if="audience === 'participants'" id="announce-note" label="说明（选填）" :errors="fields.note" :help="`最多 ${preview?.note_max ?? 500} 字，放进信里「管理员的说明」一段。`" v-slot="field">
       <textarea

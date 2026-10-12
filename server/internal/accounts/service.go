@@ -33,6 +33,7 @@ import (
 type AvatarUploader interface {
 	Upload(ctx *app.Ctx, in media.UploadInput) (*media.Image, error)
 	DeleteImage(ctx *app.Ctx, id int64) error
+	DeleteImageFiles(id int64)
 }
 
 // Service 是账号域的业务服务。
@@ -403,7 +404,7 @@ type VerifyEmailResult struct {
 
 // VerifyEmail 凭「邮箱 + 6 位码」核验（12 号文档 5.7，241 起不需要会话）。
 // 核验通过即登录：置 email_verified_at、删光该邮箱的 signup 码、建会话（R002、R008）。
-func (s *Service) VerifyEmail(ctx context.Context, in VerifyEmailInput) (*VerifyEmailResult, error) {
+func (s *Service) VerifyEmail(ctx context.Context, in VerifyEmailInput, flowTokens ...string) (*VerifyEmailResult, error) {
 	trimmedEmail := strings.TrimSpace(in.Email)
 	code := strings.TrimSpace(in.Code)
 
@@ -429,6 +430,17 @@ func (s *Service) VerifyEmail(ctx context.Context, in VerifyEmailInput) (*Verify
 	var codeOK bool
 	var verifiedUserID int64
 	err := s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		flow := ""
+		if len(flowTokens) > 0 {
+			flow = flowTokens[0]
+		}
+		active, err := reserveCodeFlow(ctx, tx, "signup", emailNorm, flow, now)
+		if err != nil {
+			return err
+		}
+		if !active {
+			return nil
+		}
 		u, err := s.store.GetByEmailNormTx(ctx, tx, emailNorm)
 		if err != nil {
 			return err
@@ -461,6 +473,9 @@ func (s *Service) VerifyEmail(ctx context.Context, in VerifyEmailInput) (*Verify
 			return err
 		}
 		if err := s.store.DeleteEmailCodes(ctx, tx, "signup", emailNorm); err != nil {
+			return err
+		}
+		if err := closeCodeFlow(ctx, tx, "signup", flow); err != nil {
 			return err
 		}
 		verifiedUserID = u.ID
@@ -1450,14 +1465,6 @@ func (s *Service) AddGameAccount(ctx *app.Ctx, in AddGameAccountInput) (*GameAcc
 		return nil, api.Unauthorized("要先登录")
 	}
 
-	cnt, err := s.store.CountGameAccountsByUserID(ctx.Context, ctx.Viewer.ID)
-	if err != nil {
-		return nil, err
-	}
-	if cnt >= 5 {
-		return nil, api.Invalid("每人最多绑定 5 个游戏 ID。")
-	}
-
 	trimmedTag := strings.TrimSpace(in.Battletag)
 	if err := ValidateBattletag(trimmedTag); err != nil {
 		return nil, api.InvalidFields(map[string][]string{"battletag": {err.Error()}})
@@ -1492,6 +1499,13 @@ func (s *Service) AddGameAccount(ctx *app.Ctx, in AddGameAccountInput) (*GameAcc
 	}
 
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		var count, limit int
+		if err := tx.QueryRowContext(txCtx, `SELECT (SELECT COUNT(*) FROM game_accounts WHERE user_id=?),CASE WHEN max_game_accounts=0 THEN 5 ELSE max_game_accounts END FROM site_settings WHERE id=1`, ctx.Viewer.ID).Scan(&count, &limit); err != nil {
+			return err
+		}
+		if count >= limit {
+			return api.Invalid(fmt.Sprintf("每人最多绑定 %d 个游戏 ID。", limit))
+		}
 		id, err := s.store.InsertGameAccount(txCtx, tx, ga)
 		if err != nil {
 			return err
@@ -1782,6 +1796,11 @@ func (s *Service) DeleteAccount(ctx *app.Ctx, in DeleteAccountInput) (*DeleteAcc
 	}
 
 	now := s.clock.Now().UTC()
+	var retiredImages []int64
+	keepBatch := ""
+	if ctx.Letters != nil {
+		keepBatch = ctx.Letters.Key
+	}
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
 		var active, captain int
 		if err := tx.QueryRowContext(txCtx, `SELECT is_active FROM users WHERE id = ?`, u.ID).Scan(&active); err != nil {
@@ -1796,10 +1815,35 @@ func (s *Service) DeleteAccount(ctx *app.Ctx, in DeleteAccountInput) (*DeleteAcc
 		if captain > 0 {
 			return api.Invalid("你仍担任未解散战队的队长，必须先转让队长或解散战队才能注销账号。")
 		}
+		rows, err := tx.QueryContext(txCtx, `SELECT DISTINCT image_id FROM avatar_submissions WHERE user_id=? AND image_id IS NOT NULL`, u.ID)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				return err
+			}
+			retiredImages = append(retiredImages, id)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		if len(retiredImages) > 0 && s.media == nil {
+			return api.NewErr(503, "unavailable", "头像处理暂时不可用。")
+		}
+		if _, err := tx.ExecContext(txCtx, `DELETE FROM email_codes WHERE email_norm=?`, u.EmailNorm); err != nil {
+			return err
+		}
+		if err := RevokeCodeFlowsForEmail(txCtx, tx, u.EmailNorm); err != nil {
+			return err
+		}
 		if err := s.store.AnonymizeUserTx(txCtx, tx, u.ID, now); err != nil {
 			return err
 		}
-		if err := s.store.DeleteUserDataTx(txCtx, tx, u.ID); err != nil {
+		if err := s.store.DeleteUserDataTx(txCtx, tx, u.ID, keepBatch); err != nil {
 			return err
 		}
 		if err := s.store.LeaveTournamentsTx(txCtx, tx, u.ID, now); err != nil {
@@ -1817,6 +1861,9 @@ func (s *Service) DeleteAccount(ctx *app.Ctx, in DeleteAccountInput) (*DeleteAcc
 		return nil, err
 	}
 
+	for _, id := range retiredImages {
+		s.media.DeleteImageFiles(id)
+	}
 	ctx.ClearSessionCookie()
 
 	return &DeleteAccountResult{
@@ -2078,8 +2125,16 @@ type UserDetailInput struct {
 	ID api.ID `path:"id"`
 }
 
+// AdminUserTeam is the read-only membership shown on the backend user page.
+type AdminUserTeam struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"`
+}
+
 // UserDetailResult 用户详情出参。
 type UserDetailResult struct {
+	Teams        []AdminUserTeam     `json:"teams"`
 	IsDeleted    bool                `json:"is_deleted"`
 	OwnAccount   bool                `json:"own_account"`
 	User         *User               `json:"user"`
@@ -2135,6 +2190,26 @@ func (s *Service) GetUserDetail(ctx *app.Ctx, in UserDetailInput) (*UserDetailRe
 		}
 	}
 
+	teamRows, err := s.d.ReadPool().QueryContext(ctx.Context, `SELECT t.id,t.name,m.role
+ FROM team_memberships m JOIN teams t ON t.id=m.team_id WHERE m.user_id=?
+ ORDER BY m.joined_at,m.id`, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	teams := []AdminUserTeam{}
+	for teamRows.Next() {
+		var team AdminUserTeam
+		if err := teamRows.Scan(&team.ID, &team.Name, &team.Role); err != nil {
+			teamRows.Close()
+			return nil, err
+		}
+		teams = append(teams, team)
+	}
+	teamRows.Close()
+	if err := teamRows.Err(); err != nil {
+		return nil, err
+	}
+
 	isDeleted := strings.HasSuffix(u.Email, "@deleted.invalid")
 	if ctx.Viewer != nil && !ctx.Viewer.Superuser {
 		u.Email = ""
@@ -2142,6 +2217,7 @@ func (s *Service) GetUserDetail(ctx *app.Ctx, in UserDetailInput) (*UserDetailRe
 	}
 
 	return &UserDetailResult{
+		Teams:        teams,
 		IsDeleted:    isDeleted,
 		OwnAccount:   ctx.Viewer != nil && ctx.Viewer.ID == u.ID,
 		User:         u,
@@ -2484,25 +2560,16 @@ func (s *Service) RemoveAvatar(ctx *app.Ctx) error {
 
 // ListAvatars 管理员查看待复核/全部头像。
 func (s *Service) ListAvatars(ctx *app.Ctx, status string, page, pageSize int) ([]AvatarSubmission, int, error) {
-	if ctx.Viewer == nil || (!ctx.Viewer.Superuser && !ctx.Viewer.HasCap(CapModerationReview)) {
+	if ctx == nil || ctx.Viewer == nil || !ctx.Viewer.HasCap(CapModerationReview) {
 		return nil, 0, api.Forbidden()
 	}
 	return s.store.ListAvatarSubmissions(ctx.Context, status, page, pageSize)
 }
 
-// TakeDownAvatar 管理员下架违规头像。
+// TakeDownAvatar retains the earlier service call for internal consumers.
+// HTTP callers choose a reason explicitly through ReviewAvatar.
 func (s *Service) TakeDownAvatar(ctx *app.Ctx, submissionID int64, note string) error {
-	if ctx.Viewer == nil || (!ctx.Viewer.Superuser && !ctx.Viewer.HasCap(CapModerationReview)) {
-		return api.Forbidden()
-	}
-	_, err := s.store.TakeDownAvatar(ctx.Context, submissionID, note, ctx.Now().UTC())
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return api.NotFound("头像记录不存在")
-		}
-		return err
-	}
-	return nil
+	return s.ReviewAvatar(ctx, submissionID, "other", note)
 }
 
 func (s *Service) SetFontCSSReader(reader func(context.Context) (string, error)) {

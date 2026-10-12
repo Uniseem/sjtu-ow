@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, shallowRef } from "vue"
+import { computed, onUnmounted, ref, shallowRef, watch } from "vue"
 import { deleteApiAdminMemberGroupPeopleId, getApiAdminMemberGroupsIdPeople, postApiAdminMemberGroupPeopleIdMove, postApiAdminMemberGroupPeopleIdTitle, postApiAdminMemberGroupsIdPeople, type GetApiAdminMemberGroupsIdOut, type GetApiAdminMemberGroupsIdPeopleOut } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useAdminAction } from "../../core/use-action"
@@ -19,18 +19,20 @@ const searchError = ref("")
 const available = computed(() => results.value.filter(result => !members.value.some(member => member.user_id === result.user_id)))
 let flight: AbortController | undefined
 let revision = 0
+let timer: ReturnType<typeof setTimeout> | undefined
 const action = useAdminAction<{ kind: 'add' | 'move' | 'remove'; id: number; step: number }, GetApiAdminMemberGroupsIdOut>(
   (body, extras) => body.kind === 'add' ? postApiAdminMemberGroupsIdPeople(api, props.id, { user_id: body.id }, extras) : body.kind === 'move' ? postApiAdminMemberGroupPeopleIdMove(api, body.id, { step: body.step }, extras) : deleteApiAdminMemberGroupPeopleId(api, body.id, extras),
   result => { members.value = result.members })
 async function act(kind: 'add' | 'move' | 'remove', id: number, step = 0) { if (await props.beforeAction()) await action.submit({ kind, id, step }) }
 async function find() {
+  if (timer) { clearTimeout(timer); timer = undefined }
   const current = ++revision
   flight?.abort()
   flight = new AbortController()
   submitted.value = search.value.trim()
   searchError.value = ""
   results.value = []
-  if (!submitted.value) return
+  if (!submitted.value) { searching.value = false; return }
   searching.value = true
   try {
     const response = await getApiAdminMemberGroupsIdPeople(api, props.id, { q: submitted.value }, { signal: flight.signal })
@@ -40,7 +42,12 @@ async function find() {
   } finally { if (current === revision) searching.value = false }
 }
 function updateMembers(next: GetApiAdminMemberGroupsIdOut) { members.value = next.members }
-onUnmounted(() => { revision++; flight?.abort() })
+watch(search, () => {
+ if (timer) clearTimeout(timer)
+ revision++; flight?.abort(); searching.value = false
+ timer = setTimeout(() => { void find() }, 250)
+})
+onUnmounted(() => { revision++; flight?.abort(); if (timer) clearTimeout(timer) })
 </script>
 <template>
   <section class="b-section" data-memberships>

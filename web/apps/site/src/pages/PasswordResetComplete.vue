@@ -1,10 +1,13 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
 import { PageRedirect } from "@sjtu-ow/shared/navigation"
-import { getApiAuthResetPasswordState } from "@sjtu-ow/api"
+import { getApiAuthResetPasswordState, getApiAuthResetPasswordCodeState } from "@sjtu-ow/api"
 export async function load(ctx: LoadCtx) {
   const state = await getApiAuthResetPasswordState(ctx.api)
-  if (!state.verified) throw new PageRedirect("/accounts/password/reset/confirm/")
+  if (!state.verified) {
+    const flow = await getApiAuthResetPasswordCodeState(ctx.api)
+    throw new PageRedirect(flow.active ? "/accounts/password/reset/confirm/" : "/accounts/password/reset/")
+  }
   return { title: "设置新密码" }
 }
 </script>

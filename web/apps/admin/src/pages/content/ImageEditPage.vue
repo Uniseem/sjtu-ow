@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from "vue"
 import { useRoute } from "vue-router"
-import { ApiError, getApiAdminImageCollections, getApiImagesId } from "@sjtu-ow/api"
+import { ApiError, getApiAdminImageCollections, getApiAdminImagesId } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import AdminPage from "../../components/AdminPage.vue"
 import ContentLoad from "../../components/content/ContentLoad.vue"
@@ -13,7 +13,7 @@ const route = useRoute()
 const id = computed(() => positiveID(route.params.id))
 const resource = useContentResource(async (signal) => {
   if (!id.value) throw new ApiError(404, "not_found", "找不到这张图片。")
-  const image = await getApiImagesId(api, id.value, { signal })
+  const image = await getApiAdminImagesId(api, id.value, { signal })
   const collections = await getApiAdminImageCollections(api, { signal })
   return { image, collections: collections.collections }
 })

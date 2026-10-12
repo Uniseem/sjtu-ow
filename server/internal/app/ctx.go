@@ -90,6 +90,9 @@ type Ctx struct {
 
 	// SessionToken 是当前请求带来的会话令牌（由 api 注册表在收到请求时从 Cookie 取出）。
 	SessionToken string
+	// CodeFlowTokens identify anonymous browser verification workflows.
+	CodeFlowTokens  map[string]string
+	codeFlowCookies []CodeFlowCookie
 	// ResetToken is a short-lived password-reset grant, never a login token.
 	ResetToken  string
 	resetCookie *ResetCookie

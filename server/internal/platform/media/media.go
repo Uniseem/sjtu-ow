@@ -36,6 +36,7 @@ var AllowedSpecs = map[string]struct {
 	"fill-96x96":        {Mode: "fill", W: 96, H: 96},
 	"fill-2400x900-c50": {Mode: "fill", W: 2400, H: 900},
 	"fill-88x88":        {Mode: "fill", W: 88, H: 88},
+	"fill-240x240":      {Mode: "fill", W: 240, H: 240},
 	"fill-176x176":      {Mode: "fill", W: 176, H: 176},
 	"fill-288x288":      {Mode: "fill", W: 288, H: 288},
 	"fill-400x400":      {Mode: "fill", W: 400, H: 400},
@@ -44,6 +45,8 @@ var AllowedSpecs = map[string]struct {
 	"fill-2400x1200":    {Mode: "fill", W: 2400, H: 1200},
 	"fill-2400x640":     {Mode: "fill", W: 2400, H: 640},
 	"fill-2400x1350":    {Mode: "fill", W: 2400, H: 1350},
+	"max-320x240":       {Mode: "max", W: 320, H: 240},
+	"max-320x200":       {Mode: "max", W: 320, H: 200},
 	"max-1600x1600":     {Mode: "max", W: 1600, H: 1600},
 	"fill-1200x630":     {Mode: "fill", W: 1200, H: 630},
 }
@@ -73,6 +76,7 @@ type Collection struct {
 	ParentID   *int64    `json:"parent_id"`
 	Version    int64     `json:"version"`
 	ImageCount int       `json:"image_count"`
+	CanUpload  bool      `json:"can_upload"`
 	CanAdd     bool      `json:"can_add"`
 	CanChange  bool      `json:"can_change"`
 	CanDelete  bool      `json:"can_delete"`
@@ -113,11 +117,12 @@ func (s *Service) ThumbnailPath(id int64, spec string) string {
 
 // UploadInput 上传图片参数。
 type UploadInput struct {
-	Title         string
-	FileName      string
-	CollectionKey string
-	Reader        io.Reader
-	FileSize      int64
+	CheckCollectionAccess bool
+	Title                 string
+	FileName              string
+	CollectionKey         string
+	Reader                io.Reader
+	FileSize              int64
 }
 
 // Upload 处理图片上传流水线（12 号文档 5.13）。
@@ -190,6 +195,20 @@ func (s *Service) Upload(ctx *app.Ctx, in UploadInput) (*Image, error) {
 
 	// 4. 插入数据库
 	err = s.db.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		if in.CheckCollectionAccess {
+			allowed, err := canUploadCollection(txCtx, tx, ctx.Viewer, in.CollectionKey)
+			if err != nil {
+				return err
+			}
+			if !allowed {
+				return api.Forbidden()
+			}
+			var id int64
+			if err := tx.QueryRowContext(txCtx, "SELECT id FROM image_collections WHERE key=?", in.CollectionKey).Scan(&id); err != nil {
+				return err
+			}
+			collectionID = &id
+		}
 		res, err := tx.ExecContext(txCtx, `
 			INSERT INTO images (collection_id, title, file_name, file_size, width, height, uploader_id, created_at, version)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
@@ -404,13 +423,27 @@ func (s *Service) DeleteImage(ctx *app.Ctx, id int64) error {
 	}
 
 	// 删除文件
+	s.DeleteImageFiles(id)
+	return nil
+}
+
+// DeleteImageFiles removes a retired image after its metadata was deleted in
+// the caller's transaction (avatar decision, notification and image together).
+func (s *Service) DeleteImageFiles(id int64) {
+	if id <= 0 {
+		return
+	}
+	s.deleteLegacyRenditionFiles(id)
 	_ = os.Remove(s.MasterPath(id))
 	_ = os.RemoveAll(filepath.Join(s.mediaDir, "r", strconv.FormatInt(id, 10)))
-	return nil
 }
 
 // ListImages 分页查询图片列表。
 func (s *Service) ListImages(ctx context.Context, collectionKey string, collectionID *int64, q string, page, pageSize int) ([]Image, int, error) {
+	return s.listImages(ctx, collectionKey, collectionID, q, page, pageSize, false)
+}
+
+func (s *Service) listImages(ctx context.Context, collectionKey string, collectionID *int64, q string, page, pageSize int, contributedOnly bool) ([]Image, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -423,6 +456,9 @@ func (s *Service) ListImages(ctx context.Context, collectionKey string, collecti
 
 	var where []string
 	var args []any
+	if contributedOnly {
+		where = append(where, "collection_id IN ("+contributedCollections+")")
+	}
 
 	if collectionKey != "" {
 		where = append(where, "collection_id = (SELECT id FROM image_collections WHERE key = ?)")

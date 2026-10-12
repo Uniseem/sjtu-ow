@@ -42,14 +42,14 @@ func (m *Module) list(ctx *app.Ctx, in ListLogIn) (ListLogOut, error) {
 	if in.Since != "" {
 		if t, err := time.Parse(time.RFC3339, in.Since); err == nil {
 			sinceTime = &t
-		} else if t, err := time.Parse("2006-01-02", in.Since); err == nil {
+		} else if t, err := time.ParseInLocation("2006-01-02", in.Since, time.FixedZone("Asia/Shanghai", 8*3600)); err == nil {
 			sinceTime = &t
 		}
 	}
 	if in.Until != "" {
 		if t, err := time.Parse(time.RFC3339, in.Until); err == nil {
 			untilTime = &t
-		} else if t, err := time.Parse("2006-01-02", in.Until); err == nil {
+		} else if t, err := time.ParseInLocation("2006-01-02", in.Until, time.FixedZone("Asia/Shanghai", 8*3600)); err == nil {
 			t = t.Add(24 * time.Hour)
 			untilTime = &t
 		}

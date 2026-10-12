@@ -11,6 +11,7 @@ import (
 )
 
 type UserSearchIn struct {
+	Sort   string `query:"sort"`
 	Query  string `query:"q"`
 	Role   string `query:"role"`
 	Active string `query:"active"`
@@ -119,8 +120,14 @@ func readUsers(ctx context.Context, q db.DBTX, in UserSearchIn) (UserSearchOut, 
 	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM users u WHERE `+where, args...).Scan(&out.Total); err != nil {
 		return out, err
 	}
+	order := "u.created_at DESC, u.id DESC"
+	if in.Sort == "nickname" {
+		order = "u.nickname, u.id"
+	} else if in.Sort != "" {
+		return out, api.InvalidFields(map[string][]string{"sort": {"请选择有效排序。"}})
+	}
 	rowArgs := append(append([]any{}, args...), out.PageSize, (out.Page-1)*out.PageSize)
-	rows, err := q.QueryContext(ctx, `SELECT u.id, u.email, u.nickname, u.is_sjtu, u.is_active, u.is_superuser, u.email_verified_at IS NOT NULL, u.created_at FROM users u WHERE `+where+` ORDER BY u.created_at DESC, u.id DESC LIMIT ? OFFSET ?`, rowArgs...)
+	rows, err := q.QueryContext(ctx, `SELECT u.id, u.email, u.nickname, u.is_sjtu, u.is_active, u.is_superuser, u.email_verified_at IS NOT NULL, u.created_at FROM users u WHERE `+where+` ORDER BY `+order+` LIMIT ? OFFSET ?`, rowArgs...)
 	if err != nil {
 		return out, err
 	}

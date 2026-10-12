@@ -19,10 +19,11 @@ const maxLegacyFile = 64 << 20
 // ImportReport 是 ImportLegacyMasters 的结果。Missing、Failed 列出图片编号和原因，
 // 命令行原样打印，不吞（frontend-migration 263 发现 content 的导入把错误全吞了）。
 type ImportReport struct {
-	Made    int
-	Skipped int
-	Missing []string
-	Failed  []string
+	Made       int
+	Renditions int
+	Skipped    int
+	Missing    []string
+	Failed     []string
 }
 
 // ImportLegacyMasters 把旧站（Wagtail）的原图过新管线做成母版：images 表里每一行，
@@ -99,6 +100,9 @@ func (s *Service) ImportLegacyMasters(ctx context.Context, legacyMediaDir string
 			continue
 		}
 		rep.Made++
+	}
+	if err := s.importLegacyRenditionFiles(ctx, root, &rep); err != nil {
+		return rep, err
 	}
 	return rep, nil
 }

@@ -328,9 +328,13 @@ func TestTypographyAtomicValidationConflictAndReferencedFontDeletion(t *testing.
 	if _, err := env.service.delete(env.ctx, font.Font.ID); err != nil {
 		t.Fatal(err)
 	}
-	// Deleting metadata must retain immutable objects referenced by already-loaded CSS.
-	if _, err := os.Stat(filepath.Join(env.media, "fonts", "objects", digest(woff2Envelope())+".woff2")); err != nil {
+	// The old immutable CSS remains available, while the last unreferenced
+	// object is reclaimed after metadata commits (shared/live claims tested separately).
+	if _, err := os.Stat(filepath.Join(env.media, strings.TrimPrefix(cssPath, "/media/"))); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(env.media, "fonts", "objects", digest(woff2Envelope())+".woff2")); !os.IsNotExist(err) {
+		t.Fatalf("last unreferenced object retained: %v", err)
 	}
 }
 func TestTypographyPreviewCannotAlterGlobalVariablesOrStoredState(t *testing.T) {

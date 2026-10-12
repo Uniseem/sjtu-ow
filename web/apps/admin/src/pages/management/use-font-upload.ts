@@ -6,7 +6,7 @@ import { importFont, type FontDetail } from "./pending"
 
 type Upload = PostApiAdminFontsUploadsOut
 type Plan = { beginKey: string; session: Upload | null; chunkKeys: Map<number, string>; sent: number }
-export function useFontUpload(success: (result: FontDetail) => void | Promise<void>) {
+export function useFontUpload(success: (result: FontDetail) => void | Promise<void>, familyID = 0) {
   const api = useAdminApi()
   const progress = ref(0)
   const stage = ref("")
@@ -38,7 +38,7 @@ export function useFontUpload(success: (result: FontDetail) => void | Promise<vo
       progress.value = Math.floor(active.sent / body.file.size * 100)
     }
     stage.value = '正在核查清单和字体分片…'
-    const result = await importFont(api, { source: 'package', package_name: body.file.name, upload_id: session.id, license_confirmed: true }, extras)
+    const result = await importFont(api, { source: 'package', family_id: familyID || undefined, package_name: body.file.name, upload_id: session.id, license_confirmed: true }, extras)
     plans.delete(extras.key)
     stage.value = '已上传。'
     return result

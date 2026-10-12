@@ -7,6 +7,7 @@ import { useAdminAction } from "../../core/use-action"
 import { settingsSections, settingsValues, type Settings, type SettingsValues } from "../../pages/management/settings-fields"
 import SaveStatus from "../SaveStatus.vue"
 import ActionState from "./ActionState.vue"
+import BackupEditor from "./BackupEditor.vue"
 import SecretEditor from "./SecretEditor.vue"
 import SettingsImages from "./SettingsImages.vue"
 const props = defineProps<{ settings: Settings }>()
@@ -21,6 +22,7 @@ const save = useAdminSave({ initial, version: props.settings.version, readCurren
 const email = useAdminAction<null, Awaited<ReturnType<typeof postApiAdminSettingsTestEmail>>>((_, extras) => postApiAdminSettingsTestEmail(api, extras), result => { emailMessage.value = result.message })
 import { ref } from "vue"
 const emailMessage = ref("")
+const backup = ref<InstanceType<typeof BackupEditor>|null>(null)
 const sidePending=ref(false)
 async function beforeSide(){if(sidePending.value)return false;if(!await save.flush())return false;sidePending.value=true;return true}
 function sideChanged(settings:Settings){save.controller.reset(settingsValues(settings),settings.version)}
@@ -61,6 +63,7 @@ function update(name: keyof SettingsValues, event: Event) {
         <SettingsImages :version="()=>save.snapshot.value.version" :settings="settings" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
         <SecretEditor field="smtp_password" label="SMTP 密码" :present="settings.has_smtp_password" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
         <SecretEditor field="moderation_api_key" label="接口密钥" :present="settings.has_moderation_api_key" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
+        <BackupEditor ref="backup" />
       </div>
       <aside class="b-aside">
         <section class="b-section">
@@ -68,6 +71,9 @@ function update(name: keyof SettingsValues, event: Event) {
           <button type="button" class="c-btn c-btn--secondary c-btn--sm" :disabled="!email.canStart.value" @click="testEmail">发送测试邮件</button>
           <p class="b-sub">发给你自己的邮箱，用于检查 SMTP 配置。发送失败时会显示原因。</p>
           <p v-if="emailMessage" class="b-sub" role="status">{{ emailMessage }}</p>
+          <p class="b-sub">AI 巡查引擎按已批准的迁移安排在割接后启用。</p>
+          <button type="button" class="c-btn c-btn--secondary c-btn--sm" :disabled="sidePending" @click="backup?.test()">测试对象存储</button>
+          <p class="b-sub">用已保存的异地备份设置往存储桶里写一个小文件再删掉，看能不能连上、有没有权限。刚改的设置会先存好再测；「备份上传到对象存储」没打开也能测。</p>
           <ActionState :message="email.message.value" :pending="email.pending.value" :uncertain="email.uncertain.value" @retry="email.retry" />
         </section>
       </aside>

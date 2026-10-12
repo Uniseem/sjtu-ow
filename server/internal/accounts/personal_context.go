@@ -45,6 +45,9 @@ func (s *Service) personalContext(ctx *app.Ctx, user *User) (PersonalContext, er
 		ProfileGaps:      []ProfileGap{},
 		DeletionBlockers: []string{},
 	}
+	if err := s.d.ReadPool().QueryRowContext(ctx.Context, `SELECT CASE WHEN max_game_accounts=0 THEN 5 ELSE max_game_accounts END FROM site_settings WHERE id=1`).Scan(&out.MaxGameAccounts); err != nil {
+		return out, err
+	}
 	pool, err := media.LoadPool(ctx.Context, s.d.ReadPool(), "default_avatar")
 	if err != nil {
 		return out, err
@@ -77,15 +80,15 @@ func (s *Service) personalContext(ctx *app.Ctx, user *User) (PersonalContext, er
 			Label: "联系方式", Href: "/me/contacts/", Hint: "至少填写 1 种联系方式",
 		})
 	}
-	var state, note string
+	var state, reason, note string
 	err = s.d.ReadPool().QueryRowContext(ctx.Context,
-		`SELECT status,handling_note FROM avatar_submissions
-		WHERE user_id=? AND status<>'withdrawn' ORDER BY created_at DESC,id DESC LIMIT 1`, user.ID).Scan(&state, &note)
+		`SELECT status,reason,note FROM avatar_submissions
+		WHERE user_id=? AND status<>'withdrawn' ORDER BY created_at DESC,id DESC LIMIT 1`, user.ID).Scan(&state, &reason, &note)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return out, err
 	}
 	if err == nil && (state == "rejected" || state == "taken_down") {
-		out.AvatarTurnedDown = &AvatarTurnedDown{Status: state, ReasonDisplay: note}
+		out.AvatarTurnedDown = &AvatarTurnedDown{Status: state, ReasonDisplay: avatarReasonLabel(reason), Note: note}
 	}
 	cutoff := db.FormatUTC(s.clock.Now().UTC().Add(-7 * 24 * time.Hour))
 	if err := s.d.ReadPool().QueryRowContext(ctx.Context,

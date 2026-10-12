@@ -36,15 +36,17 @@ async function startServers() {
   const stub = spawn(process.execPath, ["-e", `
     let user = null;
     let flash = "";
+    let flowEmail = "";
     require("node:http").createServer(async (req, res) => {
       let body = ""; for await (const chunk of req) body += chunk;
       const data = body ? JSON.parse(body) : {};
       res.setHeader("content-type", "application/json");
       if (req.url === "/api/auth/login") {
         if (data.password === "wrong") { res.statusCode = 400; res.end(JSON.stringify({ error: { code: "invalid", message: "邮箱或密码不正确。" } })); }
-        else res.end(JSON.stringify({ result: "verify_required" }));
+        else { flowEmail = data.email; res.end(JSON.stringify({ result: "verify_required" })); }
       }
-      else if (req.url === "/api/auth/register") res.end(JSON.stringify({ email: data.email, message: "请查收验证码。" }));
+      else if (req.url === "/api/auth/register") { flowEmail = data.email; res.end(JSON.stringify({ email: data.email, message: "请查收验证码。" })); }
+      else if (req.url === "/api/auth/verify-email/state") res.end(JSON.stringify({ active: Boolean(flowEmail), email: flowEmail }));
       else if (req.url === "/api/auth/resend-code") res.end(JSON.stringify({ email: data.email }));
       else if (req.url === "/api/auth/verify-email") {
         user = { id: 7, nickname: "新人", email: "new@example.com", admin: false, superuser: false, caps: [], email_verified: true, is_sjtu: false };

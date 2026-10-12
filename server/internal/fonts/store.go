@@ -11,8 +11,8 @@ import (
 )
 
 func readFonts(ctx context.Context, q db.DBTX) (FontList, error) {
-	out := FontList{Fonts: []Font{}}
-	rows, err := q.QueryContext(ctx, `SELECT id, family, display_name, css_name, source, license, status, error, created_at FROM font_families ORDER BY display_name,id`)
+	out := FontList{Fonts: []Font{}, FacesCSSURL: "/api/admin/fonts/faces.css"}
+	rows, err := q.QueryContext(ctx, `SELECT f.id,f.family,f.display_name,f.css_name,f.source,f.license,f.status,f.error,f.created_at,f.source_ref,f.license_type,f.license_note,COALESCE(u.nickname,'—') FROM font_families f LEFT JOIN users u ON u.id=f.created_by ORDER BY f.display_name,f.id`)
 	if err != nil {
 		return out, err
 	}
@@ -20,7 +20,7 @@ func readFonts(ctx context.Context, q db.DBTX) (FontList, error) {
 	for rows.Next() {
 		var font Font
 		font.Weights, font.UsedBy = []int{}, []string{}
-		if err := rows.Scan(&font.ID, &font.Family, &font.DisplayName, &font.CSSName, &font.Source, &font.License, &font.Status, &font.Error, &font.CreatedAt); err != nil {
+		if err := rows.Scan(&font.ID, &font.Family, &font.DisplayName, &font.CSSName, &font.Source, &font.License, &font.Status, &font.Error, &font.CreatedAt, &font.SourceRef, &font.LicenseType, &font.LicenseNote, &font.CreatedByName); err != nil {
 			rows.Close()
 			return out, err
 		}
@@ -94,7 +94,7 @@ func readFonts(ctx context.Context, q db.DBTX) (FontList, error) {
 	return out, nil
 }
 func readFaces(ctx context.Context, q db.DBTX, id int64) ([]Face, error) {
-	rows, err := q.QueryContext(ctx, `SELECT weight,style,slices,bytes,status,error FROM font_faces WHERE family_id=? ORDER BY weight,style`, id)
+	rows, err := q.QueryContext(ctx, `SELECT id,weight,style,slices,bytes,status,error,glyph_count FROM font_faces WHERE family_id=? ORDER BY weight,style`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func readFaces(ctx context.Context, q db.DBTX, id int64) ([]Face, error) {
 	for rows.Next() {
 		var face Face
 		var raw string
-		if err := rows.Scan(&face.Weight, &face.Style, &raw, &face.Bytes, &face.Status, &face.Error); err != nil {
+		if err := rows.Scan(&face.ID, &face.Weight, &face.Style, &raw, &face.Bytes, &face.Status, &face.Error, &face.GlyphCount); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal([]byte(raw), &face.Slices); err != nil {
@@ -114,7 +114,7 @@ func readFaces(ctx context.Context, q db.DBTX, id int64) ([]Face, error) {
 	return out, rows.Err()
 }
 func readFont(ctx context.Context, q db.DBTX, id int64) (FontDetail, error) {
-	out := FontDetail{Slices: []FaceStats{}}
+	out := FontDetail{Slices: []FaceStats{}, FacesCSSURL: "/api/admin/fonts/faces.css"}
 	all, err := readFonts(ctx, q)
 	if err != nil {
 		return out, err
@@ -134,8 +134,13 @@ func readFont(ctx context.Context, q db.DBTX, id int64) (FontDetail, error) {
 	if err != nil {
 		return out, err
 	}
+	regions, err := readRegions(ctx, q)
+	if err != nil {
+		return out, err
+	}
+	used := usedFacePairs(regions)
 	for _, face := range faces {
-		out.Slices = append(out.Slices, FaceStats{Style: face.Style, Status: face.Status, Error: face.Error, Weight: face.Weight, Files: len(face.Slices), Bytes: face.Bytes})
+		out.Slices = append(out.Slices, FaceStats{GlyphCount: face.GlyphCount, ID: face.ID, CanDelete: !used[facePair{family: id, weight: face.Weight}], Style: face.Style, Status: face.Status, Error: face.Error, Weight: face.Weight, Files: len(face.Slices), Bytes: face.Bytes})
 	}
 	return out, nil
 }

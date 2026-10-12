@@ -18,9 +18,10 @@
 # 安全头统一在这里加（12 号 3.4）。`>` 是推迟到上游答复之后再设，会覆盖上游带来的同名头，
 # 所以 SSR 不必再发 CSP。策略和 web/apps/site/server.ts 的 CSP 逐字一致（有测试比）。
 (security) {
-	@ordinary_headers not path /_styleguide/emails/*/ /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
+	@ordinary_headers not path /letters/*/*/ /admin/letters/*/*/ /_styleguide/emails/*/ /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
 	@letter_preview_headers path /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview
 	@legacy_mail_headers path /_styleguide/emails/*/
+	@legacy_held_headers path /letters/*/*/ /admin/letters/*/*/
 	# SSR supplies mail CSP only for an authorized200 document. Its hidden404
 	# uses the ordinary scriptless error policy, which can load error.css.
 	header @legacy_mail_headers {
@@ -29,6 +30,13 @@
 		>Referrer-Policy "no-referrer"
 		>X-Frame-Options "SAMEORIGIN"
 	}
+    # Go chooses mail sandbox for an authorized200 and the ordinary scriptless
+    # document for hidden404; never replace that status-specific CSP here.
+    header @legacy_held_headers {
+        >Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        >X-Content-Type-Options "nosniff"
+        >Referrer-Policy "no-referrer"
+    }
 	@content_preview_headers path /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
 	header @ordinary_headers {
 		>Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -218,6 +226,31 @@
 			header Allow "GET, HEAD"
 			respond 405
 		}
+
+        @legacy_letter_document {
+            method GET HEAD
+            path_regexp legacyletter ^/(admin/)?letters/[0-9a-f-]{36}/[0-9]{1,18}/$
+        }
+        handle @legacy_letter_document {
+            import to_api
+        }
+
+        # Bookmarked read-only CSV downloads keep the old URI/query contract.
+        @legacy_activity_csv {
+            method GET HEAD
+            path /admin/activity/
+            query format=csv
+        }
+        handle @legacy_activity_csv {
+            import to_api
+        }
+        @legacy_registration_csv {
+            method GET HEAD
+            path /admin/registrations/export.csv
+        }
+        handle @legacy_registration_csv {
+            import to_api
+        }
 
         # 独立后台 SPA：静态块带哈希，页面 shell 每次重验证。
         handle_path /admin/assets/* {

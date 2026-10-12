@@ -41,7 +41,7 @@ onBeforeRouteLeave(() => {
 })
 onMounted(async () => {
   const result = await collections.load()
-  collection.value = result?.collections[0]?.key ?? ""
+  collection.value = result?.collections.find(item => item.can_upload)?.key ?? ""
 })
 </script>
 <template>
@@ -53,7 +53,7 @@ onMounted(async () => {
           <label class="c-field__label" for="upload_collection">放进集合</label>
           <select id="upload_collection" v-model="collection" class="c-input" name="collection" required>
             <option value="" disabled>选择集合</option>
-            <option v-for="item in collections.data.value?.collections ?? []" :key="item.id" :value="item.key">{{ item.name }}</option>
+            <option v-for="item in (collections.data.value?.collections ?? []).filter(item => item.can_upload)" :key="item.id" :value="item.key">{{ item.name }}</option>
           </select>
         </div>
         <div class="c-field">

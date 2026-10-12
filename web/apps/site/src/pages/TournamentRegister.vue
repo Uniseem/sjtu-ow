@@ -1,8 +1,9 @@
 <script lang="ts">
+import { PageRedirect } from "@sjtu-ow/shared/navigation"
 import type { LoadCtx } from "../router"
 import { getRegisterForm } from "../registration-form"
 import { requireTournament as loadedTournament } from "../event-domain"
-export async function load(ctx:LoadCtx){const selected=Number(ctx.query.team);const form=await getRegisterForm(ctx.api,ctx.params.id,Number.isSafeInteger(selected)&&selected>0?selected:undefined);return{title:"为战队报名 · "+loadedTournament(form.tournament).title,form}}
+export async function load(ctx:LoadCtx){const selected=Number(ctx.query.team);const form=await getRegisterForm(ctx.api,ctx.params.id,Number.isSafeInteger(selected)&&selected>0?selected:undefined);const tournament=loadedTournament(form.tournament);if(!form.teams.length)throw new PageRedirect(`/tournaments/${tournament.id}/`,302);return{title:"为战队报名 · "+tournament.title,form}}
 </script>
 <script setup lang="ts">
 import { computed,inject,ref,watch } from "vue"

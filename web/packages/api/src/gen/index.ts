@@ -41,6 +41,16 @@ export function deleteApiAdminCategoriesId(r: Requester, id: string | number, ex
   return r<DeleteApiAdminCategoriesIdOut>("DELETE", "/api/admin/categories/{id}", { ...extras, params: { id } })
 }
 
+export interface DeleteApiAdminFontsWeightsIdOut {
+  faces_css_url: string;
+  font: {   source_ref: string;   license_type: string;   license_note: string;   created_by_name: string;   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean;   css_name: string; };
+  slices: {   glyph_count: number;   id: number;   can_delete: boolean;   style: string;   status: string;   error: string;   weight: number;   files: number;   bytes: number; }[];
+}
+
+export function deleteApiAdminFontsWeightsId(r: Requester, id: string | number, extras: CallExtras = {}): Promise<DeleteApiAdminFontsWeightsIdOut> {
+  return r<DeleteApiAdminFontsWeightsIdOut>("DELETE", "/api/admin/fonts/weights/{id}", { ...extras, params: { id } })
+}
+
 export interface DeleteApiAdminFontsIdOut {
   result: string;
 }
@@ -190,6 +200,7 @@ export interface GetApiAdminActivityQuery {
 }
 
 export interface GetApiAdminActivityOut {
+  export_url: string;
   period: {   start: string;   end: string; };
   notice?: string;
   totals: {   members: number;   sjtu_members: number;   scrims: number;   scrim_signups: number;   scrim_players: number;   scrim_people: number;   tournaments: number;   tournament_teams: number;   tournament_people: number;   articles: number;   comments: number;   teams: number; };
@@ -310,7 +321,8 @@ export interface GetApiAdminAvatarsQuery {
 }
 
 export interface GetApiAdminAvatarsOut {
-  items: ({   id: number;   user_id: number;   user_nickname: string;   image_id: number | null;   status: string;   handling_note: string;   reviewed_at?: string | null;   created_at: string; })[];
+  counts: Record<string, number>;
+  items: ({   id: number;   user_id: number;   user_nickname: string;   image_id: number | null;   status: string;   handling_note: string;   note: string;   reason: string;   reason_display: string;   reviewed_by: number | null;   reviewer_nickname: string;   is_current: boolean;   user_active: boolean;   turned_down: number;   reviewed_at?: string | null;   created_at: string; })[];
   total: number;
   page: number;
   page_size: number;
@@ -337,7 +349,7 @@ export interface GetApiAdminCommentsQuery {
 }
 
 export interface GetApiAdminCommentsOut {
-  items: {   id: number;   article_id: number;   article_title: string;   article_slug: string;   author_id: number;   author_name: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   like_count: number;   created_at: string; }[];
+  items: {   is_top_level: boolean;   id: number;   article_id: number;   article_title: string;   article_slug: string;   author_id: number;   author_name: string;   content: string;   is_pinned: boolean;   is_hidden: boolean;   is_deleted: boolean;   like_count: number;   created_at: string; }[];
   total: number;
   page: number;
   page_size: number;
@@ -356,16 +368,27 @@ export function getApiAdminFeatureRoleRestrictions(r: Requester, extras: CallExt
 }
 
 export interface GetApiAdminFontsOut {
-  fonts: {   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean; }[];
+  faces_css_url: string;
+  fonts: {   source_ref: string;   license_type: string;   license_note: string;   created_by_name: string;   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean;   css_name: string; }[];
 }
 
 export function getApiAdminFonts(r: Requester, extras: CallExtras = {}): Promise<GetApiAdminFontsOut> {
   return r<GetApiAdminFontsOut>("GET", "/api/admin/fonts", { ...extras })
 }
 
+export interface GetApiAdminFontsWeightsIdDownloadOut {
+  filename: string;
+  data_base64: string;
+}
+
+export function getApiAdminFontsWeightsIdDownload(r: Requester, id: string | number, extras: CallExtras = {}): Promise<GetApiAdminFontsWeightsIdDownloadOut> {
+  return r<GetApiAdminFontsWeightsIdDownloadOut>("GET", "/api/admin/fonts/weights/{id}/download", { ...extras, params: { id } })
+}
+
 export interface GetApiAdminFontsIdOut {
-  font: {   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean; };
-  slices: {   style: string;   status: string;   error: string;   weight: number;   files: number;   bytes: number; }[];
+  faces_css_url: string;
+  font: {   source_ref: string;   license_type: string;   license_note: string;   created_by_name: string;   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean;   css_name: string; };
+  slices: {   glyph_count: number;   id: number;   can_delete: boolean;   style: string;   status: string;   error: string;   weight: number;   files: number;   bytes: number; }[];
 }
 
 export function getApiAdminFontsId(r: Requester, id: string | number, extras: CallExtras = {}): Promise<GetApiAdminFontsIdOut> {
@@ -408,7 +431,7 @@ export function getApiAdminHomePinsDraft(r: Requester, extras: CallExtras = {}):
 }
 
 export interface GetApiAdminImageCollectionsOut {
-  collections: ({   parent_id: number | null;   version: number;   image_count: number;   can_add: boolean;   can_change: boolean;   can_delete: boolean;   id: number;   name: string;   key: string;   created_at: string; })[];
+  collections: ({   parent_id: number | null;   version: number;   image_count: number;   can_upload: boolean;   can_add: boolean;   can_change: boolean;   can_delete: boolean;   id: number;   name: string;   key: string;   created_at: string; })[];
 }
 
 export function getApiAdminImageCollections(r: Requester, extras: CallExtras = {}): Promise<GetApiAdminImageCollectionsOut> {
@@ -434,6 +457,23 @@ export function getApiAdminImages(r: Requester, query: GetApiAdminImagesQuery = 
   return r<GetApiAdminImagesOut>("GET", "/api/admin/images", { ...extras, query: { ...query } })
 }
 
+export interface GetApiAdminImagesIdOut {
+  id: number;
+  collection_id: number | null;
+  title: string;
+  file_name: string;
+  file_size: number;
+  width: number;
+  height: number;
+  uploader_id: number | null;
+  created_at: string;
+  version: number;
+}
+
+export function getApiAdminImagesId(r: Requester, id: string | number, extras: CallExtras = {}): Promise<GetApiAdminImagesIdOut> {
+  return r<GetApiAdminImagesIdOut>("GET", "/api/admin/images/{id}", { ...extras, params: { id } })
+}
+
 export interface GetApiAdminLogQuery {
   action?: string;
   actor_id?: number;
@@ -445,7 +485,8 @@ export interface GetApiAdminLogQuery {
 }
 
 export interface GetApiAdminLogOut {
-  items: ({   id: number;   actor_id: number | null;   action: string;   object_type: string;   object_id: number;   data: unknown;   created_at: string;   actor_nickname: string;   actor_email: string; })[];
+  actions: string[];
+  items: ({   label: string;   id: number;   actor_id: number | null;   action: string;   object_type: string;   object_id: number;   data: unknown;   created_at: string;   actor_nickname: string;   actor_email: string; })[];
   total: number;
   page: number;
   page_size: number;
@@ -531,6 +572,7 @@ export function getApiAdminMemberGroupsIdPeople(r: Requester, id: string | numbe
 }
 
 export interface GetApiAdminModerationQuery {
+  all?: boolean;
   status?: string;
   risk?: string;
   target_type?: string;
@@ -539,7 +581,7 @@ export interface GetApiAdminModerationQuery {
 }
 
 export interface GetApiAdminModerationOut {
-  items: ({   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null)[];
+  items: ({   model: string;   author_name: string;   reviewer_name: string;   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null)[];
   total: number;
   page: number;
   page_size: number;
@@ -554,7 +596,8 @@ export function getApiAdminModeration(r: Requester, query: GetApiAdminModeration
 }
 
 export interface GetApiAdminModerationIdOut {
-  item: {   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
+  history_rows: {   id: number;   actor_name: string;   result: string;   note: string;   created_at: string; }[];
+  item: {   model: string;   author_name: string;   reviewer_name: string;   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
   author_flags: number;
   author_problem: string;
   history: ({   id: number;   actor_id: number | null;   action: string;   object_type: string;   object_id: number;   data: unknown;   created_at: string; })[];
@@ -587,7 +630,7 @@ export function getApiAdminNewsIntro(r: Requester, extras: CallExtras = {}): Pro
 
 export interface GetApiAdminPagesOut {
   pinned: {   id: number;   title: string;   live: boolean; }[];
-  items: {   id: number;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; }[];
+  items: ({   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; })[];
   home: {   id: number;   version: number;   draft: {   article_ids: number[]; };   has_unpublished_changes: boolean;   preview_url: string | null;   can_publish: boolean; };
   news: {   id: number;   version: number;   draft: {   intro_md: string; };   has_unpublished_changes: boolean;   preview_url: string | null;   can_publish: boolean; };
 }
@@ -597,7 +640,7 @@ export function getApiAdminPages(r: Requester, extras: CallExtras = {}): Promise
 }
 
 export interface GetApiAdminPagesIdOut {
-  page: {   id: number;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; };
+  page: {   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; };
   draft: {   title: string;   body_md: string;   seo_title: string;   search_description: string; };
   version: number;
   preview_url: string | null;
@@ -616,7 +659,7 @@ export interface GetApiAdminRegistrationsQuery {
 }
 
 export interface GetApiAdminRegistrationsOut {
-  items: ({   id: number;   tournament_id: number;   tournament_title: string;   team_id: number | null;   team_name: string;   status: string;   status_note: string;   submitted_at: string;   roster_version: number;   can_approve: boolean;   can_reject: boolean;   can_dissolve: boolean; })[];
+  items: ({   member_count: number;   deactivated: number;   auto_approve: boolean;   can_revoke: boolean;   id: number;   tournament_id: number;   tournament_title: string;   team_id: number | null;   team_name: string;   status: string;   status_note: string;   submitted_at: string;   roster_version: number;   can_approve: boolean;   can_reject: boolean;   can_dissolve: boolean; })[];
   total: number;
   page: number;
   page_size: number;
@@ -628,9 +671,12 @@ export function getApiAdminRegistrations(r: Requester, query: GetApiAdminRegistr
 }
 
 export interface GetApiAdminRegistrationsIdOut {
-  registration: {   id: number;   tournament_id: number;   tournament_title: string;   team_id: number | null;   team_name: string;   status: string;   status_note: string;   submitted_at: string;   roster_version: number;   can_approve: boolean;   can_reject: boolean;   can_dissolve: boolean; };
-  roster: {   id: number;   user_id: number;   nickname: string;   battletag: string;   is_sjtu: boolean;   is_captain: boolean;   is_active: boolean;   ranks: string;   contacts?: string[]; }[];
-  logs: {   id: number;   action: string;   actor_name: string;   note: string;   created_at: string;   roster_version: number; }[];
+  added: string[];
+  removed: string[];
+  show_contacts: boolean;
+  registration: {   member_count: number;   deactivated: number;   auto_approve: boolean;   can_revoke: boolean;   id: number;   tournament_id: number;   tournament_title: string;   team_id: number | null;   team_name: string;   status: string;   status_note: string;   submitted_at: string;   roster_version: number;   can_approve: boolean;   can_reject: boolean;   can_dissolve: boolean; };
+  roster: {   tank_label: string;   damage_label: string;   support_label: string;   account_active: boolean;   id: number;   user_id: number;   nickname: string;   battletag: string;   is_sjtu: boolean;   is_captain: boolean;   is_active: boolean;   ranks: string;   contacts?: string[]; }[];
+  logs: {   from_status: string;   to_status: string;   actor_type: string;   id: number;   action: string;   actor_name: string;   note: string;   created_at: string;   roster_version: number; }[];
   warnings: string[];
 }
 
@@ -725,7 +771,7 @@ export function getApiAdminScrimsIdPublishPreview(r: Requester, id: string | num
 }
 
 export interface GetApiAdminSettingsOut {
-  settings: {   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
+  settings: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
 }
 
 export function getApiAdminSettings(r: Requester, extras: CallExtras = {}): Promise<GetApiAdminSettingsOut> {
@@ -863,7 +909,7 @@ export function getApiAdminTournamentsIdRegistrations(r: Requester, id: string |
 export interface GetApiAdminTypographyOut {
   version: number;
   regions: ({   region: string;   label: string;   mode: string;   family_id: number | null;   weight: number;   size_rem: number | null;   line_height: number | null;   letter_spacing_em: number | null;   available_weights: number[];   slices: number;   bytes: number; })[];
-  fonts: {   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean; }[];
+  fonts: {   source_ref: string;   license_type: string;   license_note: string;   created_by_name: string;   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean;   css_name: string; }[];
   warnings: string[];
   css_path: string;
   generated_at: string | null;
@@ -889,6 +935,7 @@ export function getApiAdminUsers(r: Requester, query: GetApiAdminUsersQuery = {}
 }
 
 export interface GetApiAdminUsersSearchQuery {
+  sort?: string;
   q?: string;
   role?: string;
   active?: string;
@@ -909,6 +956,7 @@ export function getApiAdminUsersSearch(r: Requester, query: GetApiAdminUsersSear
 }
 
 export interface GetApiAdminUsersIdOut {
+  teams: {   id: number;   name: string;   role: string; }[];
   is_deleted: boolean;
   own_account: boolean;
   user: {   ID: number;   Email: string;   EmailNorm: string;   Nickname: string;   IsSJTU: boolean;   AgreedTermsAt: string;   AgreedCrossBorderAt: string;   EmailVerifiedAt: string | null;   PasswordChangedAt: string | null;   Version: number;   IsActive: boolean;   IsSuperuser: boolean;   DeactivationNote: string;   Motto: string;   MainRole: string;   FlexRoles: string;   ShowRank: boolean;   AvatarImageID: number | null;   CreatedAt: string;   UpdatedAt: string; } | null;
@@ -967,6 +1015,15 @@ export function getApiAuthEmailState(r: Requester, extras: CallExtras = {}): Pro
   return r<GetApiAuthEmailStateOut>("GET", "/api/auth/email/state", { ...extras })
 }
 
+export interface GetApiAuthResetPasswordCodeStateOut {
+  active: boolean;
+  email?: string;
+}
+
+export function getApiAuthResetPasswordCodeState(r: Requester, extras: CallExtras = {}): Promise<GetApiAuthResetPasswordCodeStateOut> {
+  return r<GetApiAuthResetPasswordCodeStateOut>("GET", "/api/auth/reset-password/code-state", { ...extras })
+}
+
 export interface GetApiAuthResetPasswordStateOut {
   verified: boolean;
   email?: string;
@@ -974,6 +1031,15 @@ export interface GetApiAuthResetPasswordStateOut {
 
 export function getApiAuthResetPasswordState(r: Requester, extras: CallExtras = {}): Promise<GetApiAuthResetPasswordStateOut> {
   return r<GetApiAuthResetPasswordStateOut>("GET", "/api/auth/reset-password/state", { ...extras })
+}
+
+export interface GetApiAuthVerifyEmailStateOut {
+  active: boolean;
+  email?: string;
+}
+
+export function getApiAuthVerifyEmailState(r: Requester, extras: CallExtras = {}): Promise<GetApiAuthVerifyEmailStateOut> {
+  return r<GetApiAuthVerifyEmailStateOut>("GET", "/api/auth/verify-email/state", { ...extras })
 }
 
 export interface GetApiHomePinsOut {
@@ -1417,7 +1483,7 @@ export interface GetApiTournamentsIdOut {
   phase_label: string;
   approved_teams: ({   registration_id: number;   team_id: number | null;   team_name: string;   member_count: number;   is_adhoc: boolean; })[];
   pool?: {   total: number;   tank: number;   damage: number;   support: number;   entries: ({   avatar_image_id: number | null;   signup_id: number;   user_id: number;   nickname: string;   roles: string[]; })[]; } | null;
-  viewer: {   registration_open: boolean;   captain_teams: ({   team_id: number;   name: string;   registration: {   id: number;   status: string; } | null;   problems: string[]; })[];   on_roster: {   id: number;   status: string; } | null;   my_signup: {   registration_team_name?: string | null;   id: number;   game_account_id: number | null;   roles: string[];   placed: boolean;   registration_id: number | null;   created_at: string; } | null;   individual_problems: string[];   is_manager: boolean; };
+  viewer: {   participant_contact?: string;   registration_open: boolean;   captain_teams: ({   team_id: number;   name: string;   registration: {   team_name?: string;   id: number;   status: string; } | null;   problems: string[]; })[];   on_roster: {   team_name?: string;   id: number;   status: string; } | null;   my_signup: {   registration_team_name?: string | null;   id: number;   game_account_id: number | null;   roles: string[];   placed: boolean;   registration_id: number | null;   created_at: string; } | null;   individual_problems: string[];   is_manager: boolean; };
   card: {   id: number;   title: string;   summary: string;   cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   registration_mode: string;   sjtu_only: boolean;   status: string;   phase: string;   approved_count: number;   roster_min: number;   roster_max: number;   registration_mode_label: string;   takes_individuals: boolean;   default_cover_image_id: number | null; };
   body_html: string;
   default_cover_image_id: number | null;
@@ -1596,8 +1662,10 @@ export function patchApiAdminScrimsId(r: Requester, id: string | number, body: P
 }
 
 export interface PatchApiAdminSettingsIn {
+  max_game_accounts?: number | null;
+  moderation_image_enabled?: boolean | null;
   base_version?: number | null;
-  changes?: {   site_description?: string | null;   from_name?: string | null;   email_subject_prefix?: string | null;   smtp_host?: string | null;   smtp_port?: number | null;   smtp_security?: string | null;   smtp_username?: string | null;   from_address?: string | null;   founded_on?: string | null;   default_share_image_id?: number | null;   hero_image_id?: number | null;   banner_news_id?: number | null;   banner_tournaments_id?: number | null;   banner_scrims_id?: number | null;   banner_teams_id?: number | null;   banner_members_id?: number | null;   qq_group_url?: string | null;   team_max_members?: number | null;   team_max_captained?: number | null;   tournament_reminder_hours?: number | null;   scrim_reminder_hours?: number | null;   moderation_enabled?: boolean | null;   moderation_provider?: string | null;   moderation_base_url?: string | null;   moderation_model?: string | null;   moderation_max_tokens?: number | null;   moderation_timeout_seconds?: number | null;   moderation_extra_params?: string | null;   moderation_daily_limit?: number | null;   moderation_notify_email?: string | null; } | null;
+  changes?: {   max_game_accounts?: number | null;   moderation_image_enabled?: boolean | null;   site_description?: string | null;   from_name?: string | null;   email_subject_prefix?: string | null;   smtp_host?: string | null;   smtp_port?: number | null;   smtp_security?: string | null;   smtp_username?: string | null;   from_address?: string | null;   founded_on?: string | null;   default_share_image_id?: number | null;   hero_image_id?: number | null;   banner_news_id?: number | null;   banner_tournaments_id?: number | null;   banner_scrims_id?: number | null;   banner_teams_id?: number | null;   banner_members_id?: number | null;   qq_group_url?: string | null;   team_max_members?: number | null;   team_max_captained?: number | null;   tournament_reminder_hours?: number | null;   scrim_reminder_hours?: number | null;   moderation_enabled?: boolean | null;   moderation_provider?: string | null;   moderation_base_url?: string | null;   moderation_model?: string | null;   moderation_max_tokens?: number | null;   moderation_timeout_seconds?: number | null;   moderation_extra_params?: string | null;   moderation_daily_limit?: number | null;   moderation_notify_email?: string | null; } | null;
   site_description?: string | null;
   from_name?: string | null;
   email_subject_prefix?: string | null;
@@ -1635,11 +1703,11 @@ export interface PatchApiAdminSettingsIn {
 }
 
 export interface PatchApiAdminSettingsOut {
-  settings: {   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
+  settings: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
   version: number;
   saved: string[];
   fields?: Record<string, string[]>;
-  values?: {   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
+  values?: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
   saved_at: string;
 }
 
@@ -1929,6 +1997,7 @@ export function postApiAdminArticlesIdRevisionsRevisionRestore(r: Requester, id:
 }
 
 export interface PostApiAdminAvatarsIdTakeDownIn {
+  reason: string;
   note: string;
 }
 
@@ -1957,6 +2026,7 @@ export function postApiAdminCategories(r: Requester, body: PostApiAdminCategorie
 }
 
 export interface PostApiAdminFontsIn {
+  family_id?: number;
   source: string;
   family?: string;
   weights?: number[];
@@ -1967,8 +2037,9 @@ export interface PostApiAdminFontsIn {
 }
 
 export interface PostApiAdminFontsOut {
-  font: {   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean; };
-  slices: {   style: string;   status: string;   error: string;   weight: number;   files: number;   bytes: number; }[];
+  faces_css_url: string;
+  font: {   source_ref: string;   license_type: string;   license_note: string;   created_by_name: string;   id: number;   family: string;   display_name: string;   source: string;   license: string;   weights: number[];   status: string;   bytes: number;   slices: number;   error: string;   used_by: string[];   created_at: string;   can_delete: boolean;   css_name: string; };
+  slices: {   glyph_count: number;   id: number;   can_delete: boolean;   style: string;   status: string;   error: string;   weight: number;   files: number;   bytes: number; }[];
 }
 
 export function postApiAdminFonts(r: Requester, body: PostApiAdminFontsIn, extras: CallExtras = {}): Promise<PostApiAdminFontsOut> {
@@ -2026,7 +2097,7 @@ export interface PostApiAdminImageCollectionsIn {
 }
 
 export interface PostApiAdminImageCollectionsOut {
-  collection: {   parent_id: number | null;   version: number;   image_count: number;   can_add: boolean;   can_change: boolean;   can_delete: boolean;   id: number;   name: string;   key: string;   created_at: string; } | null;
+  collection: {   parent_id: number | null;   version: number;   image_count: number;   can_upload: boolean;   can_add: boolean;   can_change: boolean;   can_delete: boolean;   id: number;   name: string;   key: string;   created_at: string; } | null;
 }
 
 export function postApiAdminImageCollections(r: Requester, body: PostApiAdminImageCollectionsIn, extras: CallExtras = {}): Promise<PostApiAdminImageCollectionsOut> {
@@ -2112,7 +2183,7 @@ export interface PostApiAdminModerationIdAskAuthorIn {
 }
 
 export interface PostApiAdminModerationIdAskAuthorOut {
-  item: {   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
+  item: {   model: string;   author_name: string;   reviewer_name: string;   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
 }
 
 export function postApiAdminModerationIdAskAuthor(r: Requester, id: string | number, body: PostApiAdminModerationIdAskAuthorIn, extras: CallExtras = {}): Promise<PostApiAdminModerationIdAskAuthorOut> {
@@ -2120,12 +2191,13 @@ export function postApiAdminModerationIdAskAuthor(r: Requester, id: string | num
 }
 
 export interface PostApiAdminModerationIdHandleIn {
+  clear_motto?: boolean;
   action: string;
   note: string;
 }
 
 export interface PostApiAdminModerationIdHandleOut {
-  item: {   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
+  item: {   model: string;   author_name: string;   reviewer_name: string;   id: number;   target_type: string;   target_label: string;   target_id: number;   field: string;   url: string;   author_id: number | null;   excerpt: string;   full_text?: string;   text_hash: string;   risk: string;   categories: string[];   reason: string;   quote: string;   status: string;   reviewed_by: number | null;   reviewed_at: string | null;   handling_note: string;   checked_at: string | null;   notified_at: string | null;   attempts: number;   last_error: string;   failed_at: string | null;   created_at: string; } | null;
 }
 
 export function postApiAdminModerationIdHandle(r: Requester, id: string | number, body: PostApiAdminModerationIdHandleIn, extras: CallExtras = {}): Promise<PostApiAdminModerationIdHandleOut> {
@@ -2149,7 +2221,7 @@ export interface PostApiAdminPagesIdPublishIn {
 }
 
 export interface PostApiAdminPagesIdPublishOut {
-  page: {   id: number;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; };
+  page: {   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; };
   version: number;
 }
 

@@ -362,6 +362,7 @@ describe("F7 SSR event projections and explicit registration forms", () => {
     const data = tournamentPage()
     data.viewer.my_signup = { id: 82, game_account_id: 121, roles: ["tank"], placed: true, registration_id: 90, created_at: joined }
     data.tournament!.participant_contact = participantContact
+    data.viewer.participant_contact = participantContact
     const result = await page("/tournaments/7/", session().user, { "/api/tournaments/7": { data } })
     expect(result.status).toBe(200)
     expect(main(result.body)).toContain('href="/registrations/90/"')
@@ -535,6 +536,8 @@ describe("scrim SSR public roster and private placement", () => {
     const visible = main(result.body)
     expect(visible).toContain(privateGame)
     expect(visible).toContain("勾选的每个位置都要在这个游戏 ID 上填了段位")
+    expect(selectedOption(select(visible,"scrim-8-account"),121)).toMatch(/\bselected(?:\s|=|>)/)
+    expect(select(visible,"scrim-8-account")).not.toContain("请选择")
     expect(visible).not.toContain(snapshotGame)
     expect(visible).not.toContain("当前分队")
     expect(result.asked).not.toContain("/api/admin/scrims/8/board")
@@ -556,6 +559,8 @@ describe("scrim SSR public roster and private placement", () => {
     const visible = main(result.body)
     expect(visible).toContain("资料不完整（缺少联系方式）")
     expect(visible).toContain('href="/me/contacts/"')
+    expect(text(visible)).toContain("去补全：联系方式")
+    expect(visible).not.toContain('href="/me/game-accounts/" class="c-link"')
     expect(visible).not.toContain('id="scrim-8-account"')
   })
 
@@ -606,4 +611,67 @@ describe("scrim SSR public roster and private placement", () => {
     })
     expect(result.status).toBe(404)
   })
+})
+
+
+describe("完整身份矩阵的报名权限与缺项投影", () => {
+  test("非队长包括超管直接打开整队报名会回到赛事详情", async () => {
+    const form = registerForm()
+    form.teams = []; form.team = null; form.rows = []; form.can_submit = false
+    form.problems = ["需要由队长为战队报名。"]
+    for (const superuser of [false, true]) {
+      const user = session().user!; user.superuser = superuser
+      const result = await page("/tournaments/7/register/", user, {"/api/tournaments/7/register": {data: form}})
+      expect(result.status).toBe(302)
+      expect(result.headers.location).toBe("/tournaments/7/")
+    }
+  })
+
+  test("无游戏 ID 的申请提示单独显示补全段落，只链接申请所缺的游戏 ID", async () => {
+    const data = teamPage(); data.viewer.apply_reason = "请先在个人中心添加至少一个游戏 ID。"; data.viewer.needs_game_account = true
+    const user = session().user!; user.profile_gaps = [{label:"游戏 ID",href:"/me/game-accounts/",hint:""},{label:"联系方式",href:"/me/contacts/",hint:""}]
+    for (const url of ["/teams/5/", "/teams/5/apply/"]) {
+      const result = await page(url,user,{"/api/teams/5":{data}})
+      expect(result.status).toBe(200)
+      const content = main(result.body)
+      expect(content).toContain('<p class="mt-2">去补全：')
+      expect(content).toContain('href="/me/game-accounts/" class="c-link">游戏 ID</a>')
+      expect(content).not.toContain('href="/me/contacts/" class="c-link"')
+    }
+  })
+
+  test("个人报名缺项只显示真实缺项，干部兼容联系方式字段不会出现在公开详情", async () => {
+    const data = tournamentPage(); data.viewer.is_manager = true; data.tournament!.participant_contact = participantContact
+    data.viewer.individual_problems = ["你的资料不完整（缺少游戏 ID、联系方式）"]
+    const user = session().user!; user.admin = true; user.caps = ["tournaments.manage"]
+    user.profile_gaps = [{label:"游戏 ID",href:"/me/game-accounts/",hint:""},{label:"联系方式",href:"/me/contacts/",hint:""}]
+    const detail = await page("/tournaments/7/",user,{"/api/tournaments/7":{data}})
+    expect(text(main(detail.body))).toContain("去补全：游戏 ID、联系方式")
+    expect(main(detail.body)).not.toContain(participantContact)
+    const form = individualForm(); form.problems = data.viewer.individual_problems; form.game_accounts = []; form.can_submit = false
+    const signup = await page("/tournaments/7/signup/",user,{"/api/tournaments/7/signup":{data:form}})
+    expect(text(main(signup.body))).toContain("去补全：游戏 ID、联系方式")
+  })
+
+  test("非队长已报名队员看到冻结队名与自己的报名详情链接", async () => {
+    const data = tournamentPage(); data.tournament!.registration_mode = "team"; data.pool = null
+    data.viewer.on_roster = {id:90,status:"approved",team_name:"截图战队"}
+    const result = await page("/tournaments/7/",session().user,{"/api/tournaments/7":{data}})
+    expect(text(main(result.body))).toContain("你在「截图战队」的名单里")
+    expect(main(result.body)).toContain('href="/registrations/90/"')
+    expect(main(result.body)).not.toContain('href="/tournaments/7/register/"')
+  })
+})
+
+
+test("内战修改报名保留已有游戏 ID，新报名选本人第一项且不显示空选项", async () => {
+  const data = scrimForMember()
+  data.game_accounts.push({id:122,battletag:"SecondOwn#1234",rank_tank:null,rank_damage:10,rank_support:null})
+  data.mine = {id:91,game_account_id:122,battletag:"SecondOwn#1234",roles:["damage"],placement:"",can_cancel:true,can_edit:true}
+  const existing = await page("/scrims/8/",session().user,{"/api/scrims/8":{data}})
+  expect(selectedOption(select(main(existing.body),"scrim-8-account"),122)).toMatch(/\bselected(?:\s|=|>)/)
+  expect(select(main(existing.body),"scrim-8-account")).not.toContain("请选择")
+  data.mine = null
+  const fresh = await page("/scrims/8/",session().user,{"/api/scrims/8":{data}})
+  expect(selectedOption(select(main(fresh.body),"scrim-8-account"),121)).toMatch(/\bselected(?:\s|=|>)/)
 })

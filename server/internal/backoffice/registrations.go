@@ -24,6 +24,10 @@ type RegistrationQuery struct {
 	Page         int    `query:"page"`
 }
 type RegistrationRow struct {
+	MemberCount     int    `json:"member_count"`
+	Deactivated     int    `json:"deactivated"`
+	AutoApprove     bool   `json:"auto_approve"`
+	CanRevoke       bool   `json:"can_revoke"`
 	ID              int64  `json:"id"`
 	TournamentID    int64  `json:"tournament_id"`
 	TournamentTitle string `json:"tournament_title"`
@@ -76,17 +80,20 @@ func registrationWhere(in RegistrationQuery) (string, []any, error) {
 	return where, args, nil
 }
 
-const registrationColumns = `r.id, r.tournament_id, t.title, r.team_id, r.team_name, r.status, r.status_note, r.submitted_at, r.roster_version, t.status`
+const registrationColumns = `r.id, r.tournament_id, t.title, r.team_id, r.team_name, r.status, r.status_note, r.submitted_at, r.roster_version, t.status,t.auto_approve,
+ (SELECT COUNT(*) FROM registration_members rm WHERE rm.registration_id=r.id),
+ (SELECT COUNT(*) FROM registration_members rm JOIN users u ON u.id=rm.user_id WHERE rm.registration_id=r.id AND u.is_active=0)`
 const registrationJoin = ` FROM registrations r JOIN tournaments t ON t.id = r.tournament_id `
 
 func scanRegistrationRow(row interface{ Scan(...any) error }) (RegistrationRow, error) {
 	var out RegistrationRow
 	var tournamentStatus string
-	if err := row.Scan(&out.ID, &out.TournamentID, &out.TournamentTitle, &out.TeamID, &out.TeamName, &out.Status, &out.StatusNote, &out.SubmittedAt, &out.RosterVersion, &tournamentStatus); err != nil {
+	if err := row.Scan(&out.ID, &out.TournamentID, &out.TournamentTitle, &out.TeamID, &out.TeamName, &out.Status, &out.StatusNote, &out.SubmittedAt, &out.RosterVersion, &tournamentStatus, &out.AutoApprove, &out.MemberCount, &out.Deactivated); err != nil {
 		return out, err
 	}
 	open := tournamentStatus != tournaments.StatusCancelled && tournamentStatus != tournaments.StatusFinished
 	out.CanApprove = open && out.Status == tournaments.RegPending
+	out.CanRevoke = open && out.TeamID != nil && out.Status == tournaments.RegApproved
 	out.CanReject = open && out.TeamID != nil && (out.Status == tournaments.RegPending || out.Status == tournaments.RegApproved)
 	out.CanDissolve = open && out.TeamID == nil && (out.Status == tournaments.RegPending || out.Status == tournaments.RegApproved)
 	return out, nil
@@ -146,17 +153,24 @@ func (s *Service) registrations(ctx *app.Ctx, in RegistrationQuery) (Registratio
 }
 
 type RosterRow struct {
-	ID        int64    `json:"id"`
-	UserID    int64    `json:"user_id"`
-	Nickname  string   `json:"nickname"`
-	Battletag string   `json:"battletag"`
-	IsSJTU    bool     `json:"is_sjtu"`
-	IsCaptain bool     `json:"is_captain"`
-	IsActive  bool     `json:"is_active"`
-	Ranks     string   `json:"ranks"`
-	Contacts  []string `json:"contacts,omitempty"`
+	TankLabel     string   `json:"tank_label"`
+	DamageLabel   string   `json:"damage_label"`
+	SupportLabel  string   `json:"support_label"`
+	AccountActive bool     `json:"account_active"`
+	ID            int64    `json:"id"`
+	UserID        int64    `json:"user_id"`
+	Nickname      string   `json:"nickname"`
+	Battletag     string   `json:"battletag"`
+	IsSJTU        bool     `json:"is_sjtu"`
+	IsCaptain     bool     `json:"is_captain"`
+	IsActive      bool     `json:"is_active"`
+	Ranks         string   `json:"ranks"`
+	Contacts      []string `json:"contacts,omitempty"`
 }
 type RegistrationLog struct {
+	FromStatus    string `json:"from_status"`
+	ToStatus      string `json:"to_status"`
+	ActorType     string `json:"actor_type"`
 	ID            int64  `json:"id"`
 	Action        string `json:"action"`
 	ActorName     string `json:"actor_name"`
@@ -165,6 +179,9 @@ type RegistrationLog struct {
 	RosterVersion int64  `json:"roster_version"`
 }
 type RegistrationDetailOut struct {
+	Added        []string          `json:"added"`
+	Removed      []string          `json:"removed"`
+	ShowContacts bool              `json:"show_contacts"`
 	Registration RegistrationRow   `json:"registration"`
 	Roster       []RosterRow       `json:"roster"`
 	Logs         []RegistrationLog `json:"logs"`
@@ -194,7 +211,7 @@ func actionText(action string) string {
 	return action
 }
 func (s *Service) registration(ctx *app.Ctx, in IDIn) (RegistrationDetailOut, error) {
-	out := RegistrationDetailOut{Roster: []RosterRow{}, Logs: []RegistrationLog{}, Warnings: []string{}}
+	out := RegistrationDetailOut{Roster: []RosterRow{}, Logs: []RegistrationLog{}, Warnings: []string{}, Added: []string{}, Removed: []string{}, ShowContacts: ctx.Viewer != nil && ctx.Viewer.HasCap(accounts.CapContactsView)}
 	if err := require(ctx, accounts.CapTournamentsManage, false); err != nil {
 		return out, err
 	}
@@ -220,6 +237,15 @@ func (s *Service) registration(ctx *app.Ctx, in IDIn) (RegistrationDetailOut, er
 			return out, err
 		}
 		member.Ranks = rankText(tank, damage, support)
+		rank := func(value sql.NullInt64) string {
+			if !value.Valid {
+				return accounts.FormatRank(nil)
+			}
+			score := int(value.Int64)
+			return accounts.FormatRank(&score)
+		}
+		member.TankLabel, member.DamageLabel, member.SupportLabel = rank(tank), rank(damage), rank(support)
+		member.AccountActive = accountActive
 		if !accountActive {
 			out.Warnings = append(out.Warnings, member.Nickname+"的账号已停用。")
 		}
@@ -228,6 +254,40 @@ func (s *Service) registration(ctx *app.Ctx, in IDIn) (RegistrationDetailOut, er
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return out, err
+	}
+	if row.TeamID != nil {
+		current, err := q.QueryContext(ctx.Context, `SELECT u.nickname FROM team_memberships m JOIN users u ON u.id=m.user_id WHERE m.team_id=? AND NOT EXISTS(SELECT 1 FROM registration_members rm WHERE rm.registration_id=? AND rm.user_id=m.user_id) ORDER BY m.id`, *row.TeamID, int64(in.ID))
+		if err != nil {
+			return out, err
+		}
+		for current.Next() {
+			var name string
+			if err := current.Scan(&name); err != nil {
+				current.Close()
+				return out, err
+			}
+			out.Added = append(out.Added, name)
+		}
+		current.Close()
+		if err := current.Err(); err != nil {
+			return out, err
+		}
+		removed, err := q.QueryContext(ctx.Context, `SELECT rm.nickname FROM registration_members rm WHERE rm.registration_id=? AND NOT EXISTS(SELECT 1 FROM team_memberships m WHERE m.team_id=? AND m.user_id=rm.user_id) ORDER BY rm.id`, int64(in.ID), *row.TeamID)
+		if err != nil {
+			return out, err
+		}
+		for removed.Next() {
+			var name string
+			if err := removed.Scan(&name); err != nil {
+				removed.Close()
+				return out, err
+			}
+			out.Removed = append(out.Removed, name)
+		}
+		removed.Close()
+		if err := removed.Err(); err != nil {
+			return out, err
+		}
 	}
 	if ctx.Viewer.HasCap(accounts.CapContactsView) {
 		contacts, err := q.QueryContext(ctx.Context, `SELECT c.user_id, c.type, c.value FROM contacts c WHERE EXISTS (SELECT 1 FROM registration_members rm WHERE rm.registration_id = ? AND rm.user_id = c.user_id) ORDER BY c.id`, int64(in.ID))
@@ -252,14 +312,14 @@ func (s *Service) registration(ctx *app.Ctx, in IDIn) (RegistrationDetailOut, er
 			out.Roster[index].Contacts = byUser[out.Roster[index].UserID]
 		}
 	}
-	rows, err = q.QueryContext(ctx.Context, `SELECT l.id, l.action, COALESCE(u.nickname, CASE WHEN l.actor_type = 'system' THEN '系统' ELSE '已注销用户' END), l.note, l.created_at, l.roster_version FROM registration_status_logs l LEFT JOIN users u ON u.id = l.actor_user_id WHERE l.registration_id = ? ORDER BY l.created_at, l.id`, int64(in.ID))
+	rows, err = q.QueryContext(ctx.Context, `SELECT l.id, l.action, COALESCE(u.nickname, CASE WHEN l.actor_type = 'system' THEN '系统' ELSE '已注销用户' END), l.note, l.created_at, l.roster_version,l.from_status,l.to_status,l.actor_type FROM registration_status_logs l LEFT JOIN users u ON u.id = l.actor_user_id WHERE l.registration_id = ? ORDER BY l.created_at, l.id`, int64(in.ID))
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var log RegistrationLog
-		if err := rows.Scan(&log.ID, &log.Action, &log.ActorName, &log.Note, &log.CreatedAt, &log.RosterVersion); err != nil {
+		if err := rows.Scan(&log.ID, &log.Action, &log.ActorName, &log.Note, &log.CreatedAt, &log.RosterVersion, &log.FromStatus, &log.ToStatus, &log.ActorType); err != nil {
 			return out, err
 		}
 		log.Action = actionText(log.Action)
@@ -378,6 +438,7 @@ func (s *Service) exportRegistrations(ctx *app.Ctx, in RegistrationQuery) (CSVOu
 	var body strings.Builder
 	body.WriteString("\ufeff")
 	writer := csv.NewWriter(&body)
+	writer.UseCRLF = true
 	if err := writer.Write(func() []string {
 		header := []string{"赛事", "战队", "状态", "名单版本", "提交时间", "昵称", "游戏 ID", "是否交大", "是否队长"}
 		if showContacts {

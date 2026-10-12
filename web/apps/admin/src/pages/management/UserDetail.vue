@@ -43,6 +43,8 @@ const resource = useResource(() => route.params.id, signal => getAdminUser(api, 
             </template>
             <template v-if="!resource.data.value.game_accounts.length">—</template>
           </dd>
+          <dt>战队</dt>
+          <dd><template v-for="(team, index) in resource.data.value.teams" :key="team.id">{{ team.name }}（{{ team.role === 'captain' ? '队长' : '成员' }}）<br v-if="index < resource.data.value.teams.length - 1" /></template><template v-if="!resource.data.value.teams.length">—</template></dd>
           <dt>联系方式</dt>
           <dd>
             <template v-for="contact in resource.data.value.contacts" :key="contact.id">{{ contact.type_label }} {{ contact.value }}<br />

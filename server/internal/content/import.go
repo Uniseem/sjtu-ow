@@ -154,6 +154,10 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 		}
 	}
 
+	if err := importLegacyRenditions(ctx, d, legacy); err != nil {
+		return fmt.Errorf("导入旧缩略图映射: %w", err)
+	}
+
 	// 3. 导入文章分类 (content_articlecategory -> article_categories)
 	{
 		rows, err := legacy.QueryContext(ctx, `SELECT id, name, slug, sort_order, allow_submission FROM content_articlecategory ORDER BY id ASC`)

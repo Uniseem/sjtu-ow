@@ -10,8 +10,8 @@ import { useAdminApi } from "../../core/api"
 import { useAdminSave } from "../../core/use-save"
 import { useAdminAction } from "../../core/use-action"
 import type { ScrimBoard } from "../../pages/activities/domain"
-import { formatLabel, orderOptions, record, roleLabel, timestamp } from "../../pages/activities/domain"
-import { boardFromCurrent, currentSplit, moveSignup, splitValues } from "../../pages/activities/split-model"
+import { boardRank, formatLabel, orderOptions, record, roleLabel, shortTimestamp, teamSize, timestamp } from "../../pages/activities/domain"
+import { boardFromCurrent, currentSplit, moveSignup, orderedBoard, splitValues } from "../../pages/activities/split-model"
 import type { SplitValues } from "../../pages/activities/split-model"
 import SplitResults from "./SplitResults.vue"
 import AdminNotice from "../AdminNotice.vue"
@@ -28,7 +28,7 @@ const save = useAdminSave<SplitValues>({
   version: props.initial.board_version,
   readCurrent: (value) => {
     const parsed = boardFromCurrent(value)
-    if (parsed) board.value = parsed
+    if (parsed) board.value = orderedBoard(parsed, props.initial.order)
     return currentSplit(value)
   },
   available: () => !generating.value,
@@ -43,6 +43,7 @@ const save = useAdminSave<SplitValues>({
       }, { key: `${key}:selection`, signal, unauthorized: "throw" })
       version = current.board_version
       saved.push("signup_ids")
+      current = orderedBoard(current, props.initial.order)
       board.value = current
     }
     if (Object.hasOwn(body.changes, "placements")) {
@@ -57,6 +58,7 @@ const save = useAdminSave<SplitValues>({
       }, { key: `${key}:teams`, signal, unauthorized: "throw" })
       version = current.board_version
       saved.push("placements")
+      current = orderedBoard(current, props.initial.order)
       board.value = current
     }
     return { version, saved, values: splitValues(current) }
@@ -68,15 +70,16 @@ const generator = useAdminAction<{ signup_ids: number[]; base_board_version: num
     try {
       const result = await postApiAdminScrimsIdBoardGenerate(api, props.id, body, extras)
       if (!result.board) throw new ApiError(0, "invalid_receipt", "分队回执无效，请重试。")
-      return result.board
+      return orderedBoard(result.board, props.initial.order)
     } catch (error) {
       // Generation may deliberately retain its picked list after an algorithm
       // validation failure. Use the returned version before another attempt.
       if (error instanceof ApiError) {
         const current = boardFromCurrent(error.current)
         if (current && !save.controller.dirty()) {
-          board.value = current
-          save.controller.reset(splitValues(current), current.board_version)
+          const ordered = orderedBoard(current, props.initial.order)
+          board.value = ordered
+          save.controller.reset(splitValues(ordered), ordered.board_version)
         }
       }
       throw error
@@ -143,7 +146,7 @@ async function copy(): Promise<void> {
 <template>
   <section class="b-section">
     <dl class="b-kv">
-      <dt>规格</dt><dd>{{ formatLabel(board.scrim?.format ?? '') }}（共需 {{ board.needed }} 人）</dd>
+      <dt>规格</dt><dd>{{ formatLabel(board.scrim?.format ?? '') }}（每队 {{ teamSize(board.scrim?.format ?? '') }} 人，共需 {{ board.needed }} 人）</dd>
       <dt>开始时间</dt><dd>{{ timestamp(board.scrim?.starts_at) }}</dd>
       <dt>报名人数</dt><dd>{{ board.signups.length }}</dd>
     </dl>
@@ -185,10 +188,10 @@ async function copy(): Promise<void> {
             <td data-label="昵称">{{ signup.nickname }}{{ record(signup)?.is_active === false ? '（账号已停用）' : '' }}</td>
             <td data-label="游戏 ID"><span class="b-mono">{{ signup.battletag }}</span></td>
             <td data-label="位置与段位">
-              <span v-for="role in signup.roles" :key="role">{{ signup.rank_text[role] || `${roleLabel(role)}：${signup.ratings[role] ?? '—'}` }} </span>
+              <template v-for="(role, index) in signup.roles" :key="role">{{ index ? ' · ' : '' }}<span class="split-role">{{ roleLabel(role) }} {{ signup.rank_text[role] || boardRank(signup.ratings[role]) }}</span></template>
             </td>
             <td v-if="contactsVisible" data-label="联系方式">{{ signup.contacts?.join('；') || '—' }}</td>
-            <td data-label="报名时间">{{ timestamp(signup.created_at) }}</td>
+            <td data-label="报名时间">{{ shortTimestamp(signup.created_at) }}</td>
           </tr>
           <tr v-if="!board.signups.length"><td :colspan="contactsVisible ? 6 : 5">还没有人报名。</td></tr>
         </tbody>

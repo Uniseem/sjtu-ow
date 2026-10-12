@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from "vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import { useRoute } from "vue-router"
 import { useAdminSession } from "../core/session"
 
@@ -7,11 +8,13 @@ const props = defineProps<{
   title: string
   section: string
   backHref?: string
+  backLabel?: string
   subtitle?: string
 }>()
 const route = useRoute()
 const session = useAdminSession()
 const current = computed(() => session.nav.value.find((section) => section.key === props.section || section.label === props.section))
+const backText = computed(() => props.backLabel ?? session.nav.value.flatMap(section => [section, ...section.tabs, ...section.tabs.flatMap(tab => tab.tabs ?? [])]).find(item => item.url === props.backHref)?.label ?? "返回")
 const tabs = computed(() => current.value?.tabs ?? [])
 
 function selected(url: string): boolean {
@@ -26,16 +29,14 @@ watch(() => props.title, (title) => {
 <template>
   <header class="b-head">
     <div class="b-head__inner">
-      <p class="b-head__kicker">{{ current?.label }}</p>
+      <a v-if="backHref" class="b-head__back" :href="backHref"><CIcon name="arrow-left" class="size-4" />{{ backText }}</a>
+      <p v-else-if="current" class="b-head__kicker">{{ current.label }}</p>
       <div class="b-head__row">
-        <div>
-          <p v-if="backHref" class="mb-2"><a :href="backHref" class="c-link">返回列表</a></p>
-          <h1 class="b-head__title" tabindex="-1">{{ title }}</h1>
-          <p v-if="subtitle" class="mt-2 text-sm text-fg-2">{{ subtitle }}</p>
-        </div>
+        <h1 class="b-head__title" tabindex="-1">{{ title }}</h1>
         <div class="b-head__actions"><slot name="actions" /></div>
       </div>
-      <nav v-if="tabs.length > 1 && !backHref" class="b-tabs" aria-label="页面">
+      <p v-if="subtitle" class="mt-2 text-sm text-fg-2">{{ subtitle }}</p>
+      <nav v-if="tabs.length && !backHref" class="b-tabs" :aria-label="current?.label">
         <a v-for="tab in tabs" :key="tab.key" :href="tab.url" :aria-current="selected(tab.url) ? 'page' : undefined">
           {{ tab.label }}<span v-if="tab.count" class="c-tabs__count">{{ tab.count }}</span>
         </a>

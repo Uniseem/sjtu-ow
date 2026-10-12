@@ -85,8 +85,12 @@ try {
   check("unverified password login issues new SMTP code without session",sessions()===0 && (await api('/api/session')).body.user===null)
   await input('#id_code',signupCode==='000000'?'111111':'000000');await submit();await error()
   check("wrong signup code commits attempt",db("SELECT attempts FROM email_codes WHERE purpose='signup' AND email_norm=?",[email])[0].attempts===1 && sessions()===0)
-  for(let i=0;i<2;i++){await submit();await error()}
+  await submit();await error()
+  await submit();await pathIs('/accounts/login/')
   check("third wrong signup code is discarded",!db("SELECT id FROM email_codes WHERE purpose='signup' AND email_norm=?",[email]).length && sessions()===0)
+  const restartAfter=mailCount();await login(email,first);await pathIs('/accounts/confirm-email/')
+  signupCode=await mail(email,restartAfter,"邮箱验证码")
+  check("closed flow restarts only through real password login",(await api('/api/auth/verify-email/state')).body.active===true)
   let resentAfter=mailCount();await submit('#main form:nth-of-type(2)')
   signupCode=await mail(email,resentAfter,"邮箱验证码")
   await wait("document.querySelector('#main form:nth-of-type(2) button').disabled")

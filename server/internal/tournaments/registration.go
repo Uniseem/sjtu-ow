@@ -351,6 +351,15 @@ func (s *Service) Submit(ctx *app.Ctx, in SubmitInput) (*Registration, error) {
 		if t == nil || !t.IsPublic() {
 			return api.NotFound("赛事不存在")
 		}
+		// The legacy HTTP form chooses only captained teams. Check this before
+		// versions, roster diagnostics or account resolution can disclose data.
+		captain, err := isTeamCaptain(txCtx, tx, in.TeamID, v.ID)
+		if err != nil {
+			return err
+		}
+		if !captain {
+			return deny("只有队长可以为战队报名")
+		}
 		var team struct{ ID int64 }
 		var teamName string
 		var teamVersion int64

@@ -79,7 +79,7 @@ onMounted(async () => {
   dialog.value?.querySelector<HTMLInputElement>("input[type=search]")?.focus()
   void images.load()
   const result = await collections.load()
-  uploadCollection.value = result?.collections[0]?.key ?? ""
+  uploadCollection.value = result?.collections.find(item => item.can_upload)?.key ?? ""
 })
 onBeforeUnmount(() => { dialog.value?.close(); priorFocus?.focus() })
 </script>
@@ -100,7 +100,7 @@ onBeforeUnmount(() => { dialog.value?.close(); priorFocus?.focus() })
     <ContentLoad :pending="collections.pending.value" :message="collections.message.value" :status="collections.status.value" @retry="collections.load" />
     <form v-if="canUpload" class="b-filters" @submit.prevent="uploadSelected">
       <select v-model="uploadCollection" class="c-input" aria-label="放进集合" :disabled="upload.pending.value || upload.uncertain.value">
-        <option v-for="item in collections.data.value?.collections ?? []" :key="item.id" :value="item.key">{{ item.name }}</option>
+        <option v-for="item in (collections.data.value?.collections ?? []).filter(item => item.can_upload)" :key="item.id" :value="item.key">{{ item.name }}</option>
       </select>
       <input type="file" accept=".jpg,.jpeg,.png,.webp" required aria-label="选一张图片" :disabled="upload.pending.value || upload.uncertain.value" @change="selectedFile">
       <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!file || !uploadCollection || upload.pending.value || upload.uncertain.value">上传并选用</button>

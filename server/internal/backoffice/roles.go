@@ -28,13 +28,13 @@ type RolesOut struct {
 }
 
 var standardRoles = []RoleGroup{
-	{ID: 1, Name: accounts.RoleContentEditor, Label: "内容编辑", Summary: "编辑、发布全站内容，管理分类、图片、成员分组和评论。", Assignable: true},
-	{ID: 2, Name: accounts.RoleCertifiedAuthor, Label: "认证作者", Summary: "撰写并发布自己的文章，上传投稿图片。", Assignable: true},
-	{ID: 3, Name: accounts.RoleTournamentAdmin, Label: "赛事管理员", Summary: "管理赛事，审核报名和编排队伍。", Assignable: true},
-	{ID: 4, Name: accounts.RoleScrimAdmin, Label: "内战管理员", Summary: "管理内战，报名、分队和通知。", Assignable: true},
-	{ID: 5, Name: accounts.RoleContributor, Label: "投稿者", Summary: "注册并验证邮箱后，可提交自己的文章。", Assignable: false},
-	{ID: 6, Name: accounts.RoleSJTU, Label: "交大用户", Summary: "是否来自交大，由用户资料自动维护。", Assignable: false},
-	{ID: 7, Name: accounts.RoleExternal, Label: "校外用户", Summary: "非交大用户，由用户资料自动维护。", Assignable: false},
+	{ID: 1, Name: accounts.RoleContentEditor, Label: "内容编辑", Summary: "改和发布所有文章、撤下别人的文章，改网站页面、文章分类、成员分组，看 AI 巡查记录、撤下头像、隐藏评论。", Assignable: true},
+	{ID: 2, Name: accounts.RoleCertifiedAuthor, Label: "认证作者", Summary: "写文章直接发布，能设文章网址、搜索描述和定时上线下线。", Assignable: true},
+	{ID: 3, Name: accounts.RoleTournamentAdmin, Label: "赛事管理员", Summary: "建赛事、审核报名、编排队伍，能看报名者的联系方式。", Assignable: true},
+	{ID: 4, Name: accounts.RoleScrimAdmin, Label: "内战管理员", Summary: "建内战、勾选上场、调整分队，能看报名者的联系方式。", Assignable: true},
+	{ID: 5, Name: accounts.RoleContributor, Label: "投稿者", Summary: "验证过邮箱的成员都在这一组，由系统维护：能进后台写文章、发布和撤下自己的文章、上传投稿图片。", Assignable: false},
+	{ID: 6, Name: accounts.RoleSJTU, Label: "交大用户", Summary: "按「是否来自交大」自动分组，本身没有后台权限，用来按组关功能。", Assignable: false},
+	{ID: 7, Name: accounts.RoleExternal, Label: "校外用户", Summary: "按「是否来自交大」自动分组，本身没有后台权限，用来按组关功能。", Assignable: false},
 }
 
 // Built-in roles have documented fixed ids; manual roles use stable 52-bit ids.
@@ -82,7 +82,7 @@ func knownRoles(ctx context.Context, q db.DBTX) ([]RoleGroup, error) {
 			return nil, api.Invalid("角色编号冲突，请联系管理员。")
 		}
 		ids[id] = name
-		out = append(out, RoleGroup{ID: id, Name: name, Label: name, Summary: "手工分组。功能限制在这里管理；角色权限在底层后台维护。", Assignable: true})
+		out = append(out, RoleGroup{ID: id, Name: name, Label: name, Summary: "自己建的分组，用来按组关功能。", Assignable: true})
 	}
 	return out, rows.Err()
 }
@@ -194,6 +194,9 @@ func rolePeople(ctx context.Context, q db.DBTX, restrictions map[string][]Featur
 	}
 	counts := map[string]int{}
 	for _, person := range people {
+		if !person.active {
+			continue
+		}
 		stored := userRoles[person.id]
 		for _, role := range stored {
 			counts[role]++

@@ -99,6 +99,7 @@ def context(name, who, data, new_sessions, work, legacy_env):
         cursor.execute("DELETE FROM django_cache WHERE cache_key LIKE %s", ['%allauth:rl:%'])
     with sqlite3.connect(work / 'new-data/sjtuow.sqlite3') as db:
         db.execute('DELETE FROM email_changes')
+        db.execute('DELETE FROM account_code_flows')
         db.execute("DELETE FROM email_codes WHERE purpose='password_reset_grant'")
     old_key = data['sessions'].get(who)
     new = [{'name': 'ow_session', 'value': new_sessions[who]}] if who in new_sessions else []
@@ -131,4 +132,13 @@ def context(name, who, data, new_sessions, work, legacy_env):
                 db.execute('INSERT INTO email_codes (purpose,email_norm,code_hash,attempts,created_at,expires_at) VALUES (?,?,?,0,?,?)',
                            ('password_reset_grant', email, hashlib.sha256(raw).hexdigest(), now.isoformat(), (now+timedelta(minutes=3)).isoformat()))
             new.append({'name': 'ow_password_reset', 'value': token})
+    if (name == 'confirm-email' and who == 'visitor') or name == 'password-reset-confirm':
+        purpose = 'signup' if name == 'confirm-email' else 'password_reset'
+        raw = secrets.token_bytes(32)
+        token = base64.urlsafe_b64encode(raw).decode().rstrip('=')
+        now = datetime.now(timezone.utc)
+        with sqlite3.connect(work / 'new-data/sjtuow.sqlite3') as db:
+            db.execute('INSERT INTO account_code_flows(token_hash,purpose,email_norm,attempts,created_at,expires_at,closed) VALUES(?,?,?,0,?,?,0)',
+                       (hashlib.sha256(raw).hexdigest(), purpose, email, now.isoformat(), (now+timedelta(minutes=15 if purpose == 'signup' else 3)).isoformat()))
+        new.append({'name': 'ow_signup_flow' if purpose == 'signup' else 'ow_reset_code_flow', 'value': token})
     return ([{'name': 'sessionid', 'value': old_key}] if old_key else []), new, suffix

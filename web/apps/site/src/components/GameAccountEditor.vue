@@ -32,6 +32,17 @@ async function done(): Promise<void> {
     :aria-busy="save.pending.value || undefined"
     @submit.prevent="done"
   >
+    <CAutosave
+      bare
+      :idle-message="validVersion(account.version) ? '改了就自动保存' : ''"
+      :state="save.snapshot.value.state"
+      :message="save.snapshot.value.message"
+      :dirty="save.dirty.value"
+      :pending="save.pending.value"
+      :login-required="save.snapshot.value.loginRequired"
+      :login-href="'/accounts/login/?next=' + encodeURIComponent('/me/game-accounts/' + account.id + '/')"
+      @retry="save.save"
+    />
     <GameAccountFields
       :battletag="save.values.value.battletag"
       :values="save.values.value"
@@ -43,15 +54,7 @@ async function done(): Promise<void> {
       @rank="(name, value) => save.set(name, value, 'choice')"
       @blur="save.flush"
     />
-    <CAutosave
-      :state="save.snapshot.value.state"
-      :message="save.snapshot.value.message"
-      :dirty="save.dirty.value"
-      :pending="save.pending.value"
-      :login-required="save.snapshot.value.loginRequired"
-      :login-href="'/accounts/login/?next=' + encodeURIComponent('/me/game-accounts/' + account.id + '/')"
-      @retry="save.save"
-    />
+
     <p v-if="!validVersion(account.version)" class="text-sm text-fg-2" role="status">暂时无法保存，请稍后再试。</p>
     <div class="flex flex-wrap gap-3">
       <button type="submit" class="c-btn c-btn--primary" :disabled="save.pending.value">完成</button>

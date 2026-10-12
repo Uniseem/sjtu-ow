@@ -22,8 +22,8 @@ func tournamentSamples() []Sample {
 			Action:     []string{"查看赛事页面", link},
 			Reason:     "你收到这封邮件，是因为你个人报名了「" + tournamentName + "」。",
 		}),
-		specimen("tournament-update", "赛事", "赛事有更新（时间改过）", "报了名的人", memberName, "server/internal/tournaments/notify.go", updated),
-		specimen("tournament-update-again", "赛事", "赛事有更新（第二封起）", "报了名的人", memberName, "server/internal/notify/announce.go", repeat(updated, "这场赛事", "1")),
+		specimen("tournament-update", "赛事", "赛事有更新（管理员点「通知报名的人」，时间改过）", "报了名的人（名单里的、散人池里的）", memberName, "server/internal/tournaments/notify.go", updated),
+		specimen("tournament-update-again", "赛事", "赛事有更新（第二封起：开头写明之前发过几次）", "报了名的人（名单里的、散人池里的）", memberName, "server/internal/notify/announce.go", repeat(updated, "这场赛事", "1")),
 		specimen("submitted", "赛事", "报名已提交", "队长", captainName, "server/internal/tournaments/notify.go", mail.Letter{
 			Subject:    "报名已提交：" + tournamentName,
 			Lead:       "「" + teamName + "」报名「" + tournamentName + "」的名单已提交，等赛事管理员审核。",

@@ -8,6 +8,7 @@ import { patchTypography, fullRegion, type TypographyPage, type TypographyValues
 import { currentReader } from "../../pages/management/current-reader"
 import { useResource } from "../../pages/management/use-resource"
 import { date } from "../../pages/management/format"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import SaveStatus from "../SaveStatus.vue"
 const props = defineProps<{ data: TypographyPage }>()
 const api = useAdminApi()
@@ -42,14 +43,14 @@ function label(region: string) { return props.data.regions.find(row => row.regio
 const numericFields = [{ key: 'size_rem', label: '字号（rem）', step: '0.001' }, { key: 'line_height', label: '行高（倍）', step: '0.01' }, { key: 'letter_spacing_em', label: '字间距（em）', step: '0.001' }] as const
 </script>
 <template>
-  <p v-for="warning in data.warnings" :key="warning" class="c-notice c-notice--warn">{{ warning }}</p>
+  <div v-for="warning in data.warnings" :key="warning" class="c-notice c-notice--warn"><CIcon name="alert" /><div class="c-notice__body">{{ warning }}</div></div>
   <p v-if="data.css_path" class="b-section__text">当前字体样式表：<span class="b-mono">{{ data.css_path }}</span>（{{ date(data.generated_at) }}）</p>
   <p v-else class="b-section__text">还没有生成字体样式表，全站使用系统字体。</p>
   <div class="typography-layout">
     <form class="b-form" @submit.prevent="save.save">
       <div class="b-fieldset">
         <section v-for="row in rows" :key="row.region" class="typography-row" :data-region="row.region">
-          <h2 class="b-section__title">{{ label(row.region) }}</h2>
+          <h2 class="b-section__title">{{ label(row.region) }}</h2><p v-if="data.regions.find(region=>region.region===row.region)?.slices" class="b-sub">当前字重：{{ data.regions.find(region=>region.region===row.region)?.slices }} 个分片，合计 {{ data.regions.find(region=>region.region===row.region)?.bytes }} bytes</p>
           <div class="c-field">
             <label class="c-field__label" :for="`type-mode-${row.region}`">字体来源</label>
             <select :id="`type-mode-${row.region}`" class="c-input" :value="row.mode" @change="update(row.region, 'mode', $event)">
@@ -92,13 +93,13 @@ const numericFields = [{ key: 'size_rem', label: '字号（rem）', step: '0.001
       <p v-if="preview.message.value" class="c-field__error" role="alert">{{ preview.message.value }}</p>
       <div id="typography-preview">
         <div class="p-nav"><span>首页</span><span>资讯</span><span>赛事</span><span>成员</span></div>
-        <h1 class="p-h1">守望先锋，启动。</h1>
+        <h1 class="p-h1">SJTU-OW 上海交通大学守望先锋 2026 钻石 3 · Genji#51234</h1>
         <h2 class="p-h2">赛事公告：2026 春季赛报名开启</h2>
-        <p class="p-body">正文示例：本次比赛面向全体交大学生与校友，报名时请填写一个游戏 ID 与一种联系方式。</p>
+        <p >正文示例：本次比赛面向全体交大学生与校友，报名时请填写一个游戏 ID 与一种联系方式。守望先锋，启动。</p>
         <h3 class="p-h3">分组结果</h3>
         <p class="p-code">Genji#51234 · Tracer#12345 · 分队 A</p>
         <h4 class="p-h4">数据</h4>
-        <p class="p-numeric">钻石 3 · 3250 分 · 12 胜 8 负</p>
+        <p class="p-numeric">钻石 3 · 3250 分 · 12 胜 8 负 · 2026-09-16 19:30</p>
         <p><button type="button" class="p-button">报名</button></p>
       </div>
     </aside>

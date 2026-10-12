@@ -14,6 +14,7 @@ export async function load(ctx: LoadCtx) {
 import { computed, inject, ref } from "vue"
 import { useHead } from "@unhead/vue"
 import { postApiTeamsIdApplications } from "@sjtu-ow/api"
+import CProfileGaps from "@sjtu-ow/ui/CProfileGaps.vue"
 import CField from "@sjtu-ow/ui/CField.vue"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import CMutationError from "@sjtu-ow/ui/CMutationError.vue"
@@ -59,7 +60,7 @@ function apply(): void {
         <div class="c-notice c-notice--warn max-w-xl" role="status">
           <CIcon name="alert" /><div class="c-notice__body">
             <p>{{ data.viewer.apply_reason }}</p>
-            <a v-if="data.viewer.needs_game_account" href="/me/game-accounts/" class="c-link">补全游戏 ID</a>
+            <CProfileGaps v-if="data.viewer.needs_game_account" :gaps="[{label:'游戏 ID',href:'/me/game-accounts/'}]" />
           </div>
         </div>
         <p class="mt-6"><a :href="'/teams/' + data.team.id + '/'" class="c-btn c-btn--secondary">返回战队主页</a></p>

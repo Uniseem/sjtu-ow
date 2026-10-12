@@ -36,7 +36,7 @@ export default defineComponent({
     return () => h("div", { class: "flex flex-col gap-16", "data-component-samples": "" }, [...cases.map((sample, index) =>
       h("section", { "data-sample": index }, [
         h("h2", { class: "mb-4" }, `${sample.component} ${index + 1}`),
-        h('div', sample.component === 'CPagehead' ? { class: 'relative h-64 overflow-hidden' } : {}, [h(components[sample.component], sample.props, sample.control ? {
+        h('div', sample.component === 'CPagehead' ? { class: 'c-pagehead c-pagehead--picture' } : {}, [h(components[sample.component], sample.props, sample.control ? {
           // Only static repository-owned sample controls, never user content.
           default: () => createStaticVNode(sample.control!, 1),
           ...(sample.help ? { help: () => sample.help } : {}),
@@ -47,6 +47,10 @@ export default defineComponent({
       h(CAvatar, { person: { id: 7, nickname: "小满", avatar_image_id: props.imageId }, size: "lg" }),
       h(PostCard, { article: { id: 37, slug: "weekend", title: "真实封面", cover_image_id: props.imageId } }),
       h(CTeamLogo, { team: { id: 7, name: "思源", logo_image_id: props.imageId } }),
+    ]), h("section", { "data-default-image-sample": "" }, [
+      h("h2", "默认图片池"),
+      h(CAvatar, { person: { id: 7, nickname: "小满", default_avatar_image_id: props.imageId }, size: "lg" }),
+      h(PostCard, { article: { id: 37, slug: "weekend", title: "默认封面池", default_cover_image_id: props.imageId } }),
     ])] : [])])
   },
 })

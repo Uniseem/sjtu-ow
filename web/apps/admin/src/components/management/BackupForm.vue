@@ -26,6 +26,7 @@ const fields: { key: keyof Values; label: string; type: string }[] = [
 ]
 function update(key: keyof Values, event: Event) { const input = event.target as HTMLInputElement; save.set(key, (typeof save.values.value[key] === 'number' ? Number(input.value) : input.value) as never, typeof save.values.value[key] === 'number' ? 'choice' : 'text') }
 async function saveSecret() { if (secret.value && await save.flush()) await action.submit(secret.value) }
+defineExpose({test})
 async function test() { if (!(await save.flush())) return; if (secret.value && !(await action.submit(secret.value))) return; emit('test') }
 </script>
 <template>

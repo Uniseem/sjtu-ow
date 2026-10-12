@@ -385,3 +385,68 @@ func TestBackofficeRoutesGateBeforeDatabaseOrBodyMutation(t *testing.T) {
 		}
 	}
 }
+
+func TestRoleCountsOnlyIncludeActiveUsers(t *testing.T) {
+	env := managementFixture(t)
+	env.exec(`INSERT INTO user_roles(user_id,role,created_at) VALUES(2,'组织组',?)`, stamp(env.ctx.Now()))
+	env.exec(`UPDATE users SET is_active=0 WHERE id=2`)
+	result, err := env.svc.roles(env.ctx, struct{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, role := range result.Groups {
+		if role.Name == accounts.RoleTournamentAdmin || role.Name == "组织组" || role.Name == accounts.RoleExternal {
+			if role.People != 0 {
+				t.Fatalf("inactive user counted in %s: %d", role.Name, role.People)
+			}
+		}
+		if role.Name == accounts.RoleSJTU && role.People != 1 {
+			t.Fatalf("active SJTU count=%d", role.People)
+		}
+	}
+}
+
+func TestUserCandidatesSortByNicknameAndExcludeInactiveAccounts(t *testing.T) {
+	env := managementFixture(t)
+	env.exec(`UPDATE users SET nickname='Zed' WHERE id=1`)
+	env.exec(`UPDATE users SET nickname='Alice' WHERE id=2`)
+	found, err := env.svc.searchUsers(env.ctx, UserSearchIn{Sort: "nickname", Active: "yes"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found.Users) != 2 || found.Users[0].ID != 2 {
+		t.Fatalf("candidates not ordered by nickname: %+v", found.Users)
+	}
+	env.exec(`UPDATE users SET is_active=0 WHERE id=2`)
+	found, err = env.svc.searchUsers(env.ctx, UserSearchIn{Sort: "nickname", Active: "yes"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found.Users) != 1 || found.Users[0].ID != 1 {
+		t.Fatalf("inactive candidate remains: %+v", found.Users)
+	}
+	if _, err = env.svc.searchUsers(env.ctx, UserSearchIn{Sort: "arbitrary SQL"}); err == nil {
+		t.Fatal("unknown ordering accepted")
+	}
+}
+
+func TestRegistrationSearchEscapesWildcardLiterals(t *testing.T) {
+	env := managementFixture(t)
+	env.event(100, tournaments.StatusPublished)
+	env.registration(101, 100, tournaments.RegPending)
+	env.exec(`UPDATE registrations SET team_name='literal%_team' WHERE id=101`)
+	found, err := env.svc.registrations(env.ctx, RegistrationQuery{Query: "%_"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found.Items) != 1 || found.Items[0].MemberCount != 1 {
+		t.Fatalf("literal search/projection=%+v", found)
+	}
+	none, err := env.svc.registrations(env.ctx, RegistrationQuery{Query: "\\"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(none.Items) != 0 {
+		t.Fatal("backslash wildcard literal matched unrelated team")
+	}
+}

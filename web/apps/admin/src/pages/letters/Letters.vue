@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
+import { computed, ref, watch, onUnmounted } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { getApiLetters, getApiLettersBatch, postApiLettersBatch } from "@sjtu-ow/api"
 import type { GetApiLettersOut } from "@sjtu-ow/api"
-import { letterBatch, letterDate, previewURL, returnFromLetters, waitingURL, type PersonalLetterBatch } from "@sjtu-ow/shared/letters"
+import { letterBatch, previewURL, returnFromLetters, waitingURL, type PersonalLetterBatch } from "@sjtu-ow/shared/letters"
 import { readLetterBatch, readWaitingLetters } from "@sjtu-ow/shared/letter-schema"
+import { showReadError } from "../../core/read-error"
+import { shanghaiParts } from "@sjtu-ow/shared/time"
 import AdminPage from "../../components/AdminPage.vue"
 import AdminNotice from "../../components/AdminNotice.vue"
-import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import CMutationError from "@sjtu-ow/ui/CMutationError.vue"
 import { useAdminApi } from "../../core/api"
 import { useAdminAction } from "../../core/use-action"
@@ -22,7 +23,10 @@ const selected = ref<number[]>([])
 const loading = ref(false)
 const error = ref("")
 let generation = 0
-const previews = computed(() => new Map((batch.value?.letters || []).map(letter => [letter.id, previewURL(letter.preview_url, batch.value?.batch || "", letter.id)])))
+let flight: AbortController | undefined
+function waitingDate(value:string) { const p=shanghaiParts(new Date(value));return `${Number(p.month)} 月 ${Number(p.day)} 日 ${p.hour}:${p.minute}` }
+onUnmounted(()=>{ generation++; flight?.abort() })
+const previews = computed(() => new Map((batch.value?.letters || []).map(letter => [letter.id, previewURL(letter.preview_url, batch.value?.batch || "", letter.id) ? `/letters/${encodeURIComponent(batch.value?.batch || "")}/${letter.id}/` : null])))
 const complete = computed(() => Boolean(batch.value?.letters.length && batch.value.letters.every(letter => Boolean(previews.value.get(letter.id)))))
 function back(): string {
   const query = Array.isArray(route.query.back) ? route.query.back[0] : route.query.back
@@ -37,25 +41,26 @@ const action = useAdminAction((body: { batch: string; send: number[]; skip: bool
 })
 async function load(): Promise<void> {
   const current = ++generation
+  flight?.abort(); flight=new AbortController()
   loading.value = true
   error.value = ""
   try {
     const rawBatch = route.params.batch
     if (typeof rawBatch === "string") {
       const key = letterBatch(rawBatch)
-      const result = readLetterBatch(await getApiLettersBatch(api,key,{ unauthorized:"throw" }),key)
+      const result = readLetterBatch(await getApiLettersBatch(api,key,{ unauthorized:"throw", signal:flight.signal }),key)
       if (current !== generation) return
       batch.value = result
       waiting.value = null
       selected.value = result.letters.map(letter => letter.id)
       if (result.state !== "waiting") await router.replace(back())
     } else {
-      const result = readWaitingLetters(await getApiLetters(api,{ unauthorized:"throw" }))
+      const result = readWaitingLetters(await getApiLetters(api,{ unauthorized:"throw", signal:flight.signal }))
       if (current !== generation) return
       waiting.value = result
       batch.value = null
     }
-  } catch (failure) { if (current === generation) error.value = failure instanceof Error ? failure.message : "信件没有加载完成。" }
+  } catch (failure) { if (current === generation) { error.value = failure instanceof Error ? failure.message : "信件没有加载完成。"; showReadError(failure) } }
   finally { if (current === generation) loading.value = false }
 }
 function submit(skip: boolean): void {
@@ -67,19 +72,19 @@ watch(() => route.fullPath, () => { action.clear(); void load() }, { immediate: 
 </script>
 <template>
   <AdminPage :title="batch ? '要不要发信' : '还没发的信'" section="home">
-    <p v-if="loading" role="status" class="b-section__text">正在读信…</p>
+    <p v-if="loading" aria-busy="true" role="status" class="b-section__text">正在读信…</p>
     <AdminNotice v-if="error" :message="error" kind="error" />
     <button v-if="error" type="button" class="c-btn c-btn--secondary" @click="load">重新打开</button>
-    <template v-if="waiting">
-      <p class="b-section__text">做完事以后没决定发不发的信。等满 7 天作废。</p>
-      <ul v-if="waiting.batches.length" class="flex flex-col gap-4" data-held-batches>
-        <li v-for="item in waiting.batches" :key="item.batch" class="c-panel flex flex-wrap items-center justify-between gap-3">
-          <div class="min-w-0"><p class="font-semibold">{{ item.subjects.join('；') }}</p><p class="text-sm text-fg-2">{{ letterDate(item.at) }} · {{ item.people }} 人</p></div>
-          <a class="c-btn c-btn--secondary" :href="waitingURL(item.batch, item.in_back_office)">看信</a>
+    <section v-if="waiting" class="b-section">
+      <p class="b-section__text">做完事以后没决定发不发的信，等满 7 天作废。</p>
+      <ul v-if="waiting.batches.length" class="b-list" data-held-batches>
+        <li v-for="item in waiting.batches" :key="item.batch">
+          <div><strong>{{ item.subjects.join('；') }}</strong><div class="b-section__text">{{ waitingDate(item.at) }} · {{ item.people }} 人</div></div>
+          <a class="c-btn c-btn--secondary c-btn--sm" :href="waitingURL(item.batch, item.in_back_office)">看信</a>
         </li>
       </ul>
-      <CEmpty v-else title="没有等着发的信" message="做完事要发的信都处理过了。" />
-    </template>
+      <p v-else class="b-section__text">没有等着发的信。</p>
+    </section>
     <template v-if="batch && batch.state === 'waiting'">
       <p class="b-section__text">刚才的操作已经完成。它要发下面这些信：勾上的发出去，不勾的不发。</p>
       <form method="post" class="b-form" data-held-letters :aria-busy="action.pending.value || undefined" @submit.prevent="submit(false)">

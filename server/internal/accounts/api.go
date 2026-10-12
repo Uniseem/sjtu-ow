@@ -291,6 +291,7 @@ type ListAvatarsIn struct {
 
 // ListAvatarsOut 是 GET /api/admin/avatars 的出参。
 type ListAvatarsOut struct {
+	Counts   map[string]int     `json:"counts"`
 	Items    []AvatarSubmission `json:"items"`
 	Total    int                `json:"total"`
 	Page     int                `json:"page"`
@@ -299,8 +300,9 @@ type ListAvatarsOut struct {
 
 // TakeDownAvatarIn 是 POST /api/admin/avatars/{id}/take-down 的入参。
 type TakeDownAvatarIn struct {
-	ID   api.ID `path:"id"`
-	Note string `json:"note"`
+	Reason string `json:"reason"`
+	ID     api.ID `path:"id"`
+	Note   string `json:"note"`
 }
 
 // TakeDownAvatarOut 是 POST /api/admin/avatars/{id}/take-down 的出参。
@@ -474,6 +476,9 @@ func (m *Module) register(ctx *app.Ctx, in RegisterIn) (RegisterOut, error) {
 	if err != nil {
 		return RegisterOut{}, err
 	}
+	if err := m.svc.startCodeFlow(ctx, "signup", res.Email); err != nil {
+		return RegisterOut{}, err
+	}
 	return RegisterOut{
 		Email:   res.Email,
 		Message: res.Message,
@@ -481,7 +486,7 @@ func (m *Module) register(ctx *app.Ctx, in RegisterIn) (RegisterOut, error) {
 }
 
 func (m *Module) verifyEmail(ctx *app.Ctx, in VerifyEmailIn) (VerifyEmailOut, error) {
-	res, err := m.svc.VerifyEmail(ctx.Context, VerifyEmailInput(in))
+	res, err := m.svc.VerifyEmail(ctx.Context, VerifyEmailInput(in), ctx.CodeFlowTokens["signup"])
 	if err != nil {
 		return VerifyEmailOut{}, err
 	}
@@ -494,6 +499,9 @@ func (m *Module) resendCode(ctx *app.Ctx, in ResendCodeIn) (ResendCodeOut, error
 	if err != nil {
 		return ResendCodeOut{}, err
 	}
+	if err := m.svc.startCodeFlow(ctx, "signup", res.Email); err != nil {
+		return ResendCodeOut{}, err
+	}
 	return ResendCodeOut{
 		Email:   res.Email,
 		Message: res.Message,
@@ -503,6 +511,9 @@ func (m *Module) resendCode(ctx *app.Ctx, in ResendCodeIn) (ResendCodeOut, error
 func (m *Module) resetPassword(ctx *app.Ctx, in ResetPasswordIn) (ResetPasswordOut, error) {
 	res, err := m.svc.RequestPasswordReset(ctx.Context, ResetPasswordInput(in))
 	if err != nil {
+		return ResetPasswordOut{}, err
+	}
+	if err := m.svc.startCodeFlow(ctx, "password_reset", res.Email); err != nil {
 		return ResetPasswordOut{}, err
 	}
 	return ResetPasswordOut{
@@ -529,6 +540,11 @@ func (m *Module) login(ctx *app.Ctx, in LoginIn) (LoginOut, error) {
 	}
 	if res.Token != "" {
 		ctx.SetSessionCookie(res.Token)
+	}
+	if res.Result == "verify_required" {
+		if err := m.svc.startCodeFlow(ctx, "signup", in.Email); err != nil {
+			return LoginOut{}, err
+		}
 	}
 	return LoginOut{Result: res.Result, Message: res.Message}, nil
 }
@@ -739,9 +755,9 @@ func (m *Module) deleteAvatar(ctx *app.Ctx, _ struct{}) (DeleteAvatarOut, error)
 }
 
 func (m *Module) listAvatars(ctx *app.Ctx, in ListAvatarsIn) (ListAvatarsOut, error) {
-	items, total, err := m.svc.ListAvatars(ctx, in.Status, in.Page, in.PageSize)
-	if err != nil {
-		return ListAvatarsOut{}, err
+	status := in.Status
+	if status != "approved" && status != "taken_down" && status != "rejected" {
+		status = "approved"
 	}
 	page := in.Page
 	if page < 1 {
@@ -749,18 +765,24 @@ func (m *Module) listAvatars(ctx *app.Ctx, in ListAvatarsIn) (ListAvatarsOut, er
 	}
 	pageSize := in.PageSize
 	if pageSize < 1 {
-		pageSize = 50
+		pageSize = 24
 	}
-	return ListAvatarsOut{
-		Items:    items,
-		Total:    total,
-		Page:     page,
-		PageSize: pageSize,
-	}, nil
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	items, total, err := m.svc.ListAvatars(ctx, status, page, pageSize)
+	if err != nil {
+		return ListAvatarsOut{}, err
+	}
+	counts, err := m.svc.store.AvatarReviewCounts(ctx.Context)
+	if err != nil {
+		return ListAvatarsOut{}, err
+	}
+	return ListAvatarsOut{Items: items, Total: total, Page: page, PageSize: pageSize, Counts: counts}, nil
 }
 
 func (m *Module) takeDownAvatar(ctx *app.Ctx, in TakeDownAvatarIn) (TakeDownAvatarOut, error) {
-	if err := m.svc.TakeDownAvatar(ctx, int64(in.ID), in.Note); err != nil {
+	if err := m.svc.ReviewAvatar(ctx, int64(in.ID), in.Reason, in.Note); err != nil {
 		return TakeDownAvatarOut{}, err
 	}
 	return TakeDownAvatarOut{Result: "ok"}, nil

@@ -15,13 +15,16 @@ import (
 
 // Module 负责媒体域接口路由。
 type Module struct {
-	svc *Service
+	svc            *Service
+	uploadResolver api.ViewerResolver
 }
 
 // NewModule 创建媒体域模块。
 func NewModule(svc *Service) *Module {
 	return &Module{svc: svc}
 }
+
+func (m *Module) SetUploadResolver(resolve api.ViewerResolver) { m.uploadResolver = resolve }
 
 // UploadImageIn 是 POST /api/admin/images/upload 的入参（支持 base64 或常规 DataURL）。
 type UploadImageIn struct {
@@ -71,6 +74,7 @@ func (m *Module) Routes(r *api.Registry) {
 	api.Raw(r, http.MethodGet, "/media/r/{id}/{file}", nil, m.ServeThumbnailHTTP)
 
 	// 管理后台图片管理
+	api.Get(r, "/api/admin/images/{id}", api.Cap(app.Cap("images.manage")), m.getImage, api.Nav("content", "images"))
 	api.Get(r, "/api/admin/images", api.Cap(app.Cap("admin.enter")), m.listImages,
 		api.Nav("content", "images"))
 	api.Get(r, "/api/admin/image-collections", api.Cap(app.Cap("admin.enter")), m.listCollections,
@@ -83,14 +87,21 @@ func (m *Module) Routes(r *api.Registry) {
 func (m *Module) getImage(ctx *app.Ctx, in struct {
 	ID api.ID `path:"id"`
 }) (*Image, error) {
-	return m.svc.GetImageByID(ctx.Context, int64(in.ID))
+	image, err := m.svc.GetImageByID(ctx.Context, int64(in.ID))
+	if err != nil {
+		return nil, err
+	}
+	if image == nil {
+		return nil, api.NotFound("图片不存在")
+	}
+	return image, nil
 }
 
 func (m *Module) listImages(ctx *app.Ctx, in ListImagesIn) (ListImagesOut, error) {
 	if !ctx.Viewer.HasCap("images.manage") && !ctx.Viewer.HasCap("images.contribute") {
 		return ListImagesOut{}, api.Forbidden()
 	}
-	items, total, err := m.svc.ListImages(ctx.Context, in.CollectionKey, in.CollectionID, in.Q, in.Page, in.PageSize)
+	items, total, err := m.svc.listImages(ctx.Context, in.CollectionKey, in.CollectionID, in.Q, in.Page, in.PageSize, !ctx.Viewer.HasCap("images.manage"))
 	if err != nil {
 		return ListImagesOut{}, err
 	}
@@ -118,12 +129,22 @@ func (m *Module) listCollections(ctx *app.Ctx, _ struct{}) (ListCollectionsOut, 
 	if err != nil {
 		return ListCollectionsOut{}, err
 	}
+	visible := []Collection{}
 	for i := range cols {
+		allowed, err := canUploadCollection(ctx.Context, m.svc.db.ReadPool(), ctx.Viewer, cols[i].Key)
+		if err != nil {
+			return ListCollectionsOut{}, err
+		}
+		if !ctx.Viewer.HasCap("images.manage") && !allowed {
+			continue
+		}
+		cols[i].CanUpload = allowed
 		cols[i].CanAdd = ctx.Viewer != nil && ctx.Viewer.Superuser
 		cols[i].CanChange = cols[i].CanAdd && cols[i].ParentID != nil
 		cols[i].CanDelete = cols[i].CanChange && cols[i].ImageCount == 0
+		visible = append(visible, cols[i])
 	}
-	return ListCollectionsOut{Collections: cols}, nil
+	return ListCollectionsOut{Collections: visible}, nil
 }
 
 func parseDataURL(s string) ([]byte, error) {
@@ -138,17 +159,25 @@ func parseDataURL(s string) ([]byte, error) {
 }
 
 func (m *Module) uploadImage(ctx *app.Ctx, in UploadImageIn) (UploadImageOut, error) {
+	allowed, err := canUploadCollection(ctx.Context, m.svc.db.ReadPool(), ctx.Viewer, in.CollectionKey)
+	if err != nil {
+		return UploadImageOut{}, err
+	}
+	if !allowed {
+		return UploadImageOut{}, api.Forbidden()
+	}
 	raw, err := parseDataURL(in.DataURL)
 	if err != nil || len(raw) == 0 {
 		return UploadImageOut{}, api.Invalid("图片数据解析失败")
 	}
 
 	img, err := m.svc.Upload(ctx, UploadInput{
-		Title:         in.Title,
-		FileName:      in.FileName,
-		CollectionKey: in.CollectionKey,
-		Reader:        bytes.NewReader(raw),
-		FileSize:      int64(len(raw)),
+		Title:                 in.Title,
+		FileName:              in.FileName,
+		CollectionKey:         in.CollectionKey,
+		CheckCollectionAccess: true,
+		Reader:                bytes.NewReader(raw),
+		FileSize:              int64(len(raw)),
 	})
 	if err != nil {
 		return UploadImageOut{}, err
@@ -200,11 +229,28 @@ func (m *Module) ServeThumbnailHTTP(w http.ResponseWriter, r *http.Request) {
 
 // ServeUploadHTTP 支持标准 multipart/form-data 文件上传。
 func (m *Module) ServeUploadHTTP(w http.ResponseWriter, r *http.Request) {
+	if m.uploadResolver == nil {
+		http.Error(w, "上传暂时不可用", http.StatusServiceUnavailable)
+		return
+	}
+	viewer := m.uploadResolver(r)
+	if viewer == nil || viewer.Disabled {
+		http.Error(w, "要先登录", http.StatusUnauthorized)
+		return
+	}
+	if !viewer.HasCap("images.contribute") {
+		http.Error(w, "没有权限", http.StatusForbidden)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, MaxFileSize+(1<<20))
 	if err := r.ParseMultipartForm(MaxFileSize); err != nil {
 		http.Error(w, "文件过大或表单解析失败", http.StatusBadRequest)
 		return
 	}
 
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, "未找到上传的文件", http.StatusBadRequest)
@@ -215,13 +261,23 @@ func (m *Module) ServeUploadHTTP(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
 	colKey := r.FormValue("collection_key")
 
-	ctx := &app.Ctx{Context: r.Context()}
+	allowed, err := canUploadCollection(r.Context(), m.svc.db.ReadPool(), viewer, colKey)
+	if err != nil {
+		http.Error(w, "上传暂时不可用", http.StatusInternalServerError)
+		return
+	}
+	if !allowed {
+		http.Error(w, "没有权限", http.StatusForbidden)
+		return
+	}
+	ctx := &app.Ctx{Context: r.Context(), Viewer: viewer}
 	img, err := m.svc.Upload(ctx, UploadInput{
-		Title:         title,
-		FileName:      header.Filename,
-		CollectionKey: colKey,
-		Reader:        file,
-		FileSize:      header.Size,
+		Title:                 title,
+		FileName:              header.Filename,
+		CollectionKey:         colKey,
+		CheckCollectionAccess: true,
+		Reader:                file,
+		FileSize:              header.Size,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

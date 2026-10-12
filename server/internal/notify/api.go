@@ -66,6 +66,8 @@ func (m *Module) Routes(r *api.Registry) {
 	api.Get(r, "/api/letters", api.Member, m.waiting)
 	api.Get(r, "/api/letters/{batch}", api.Member, m.held)
 	api.Raw(r, http.MethodGet, "/api/letters/{batch}/{id}/preview", nil, m.svc.HeldPreview)
+	api.Raw(r, http.MethodGet, "/letters/{batch}/{id}/{$}", nil, m.svc.LegacyHeldPreview)
+	api.Raw(r, http.MethodGet, "/admin/letters/{batch}/{id}/{$}", nil, m.svc.MissingLegacyLetterPreview)
 	api.Post(r, "/api/letters/{batch}", api.Member, m.decide, api.NoLimit("只处理自己的批次，每封只认领一次"))
 
 	// 「通知全体成员」：门在服务里按种类判（文章要能改作者，赛事、内战要对应的管理权限）。

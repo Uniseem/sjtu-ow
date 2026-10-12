@@ -3,6 +3,7 @@ import { getHome } from "./pending"
 import { useAdminApi } from "../../core/api"
 import { useResource } from "./use-resource"
 import { localHref, state } from "./format"
+import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import AdminPage from "../../components/AdminPage.vue"
 import ResourceState from "../../components/management/ResourceState.vue"
 import SetupList from "../../components/management/SetupList.vue"
@@ -13,7 +14,7 @@ const resource = useResource(() => true, signal => getHome(api, { signal }))
   <AdminPage :title="resource.data.value ? `你好，${resource.data.value.nickname}` : '首页'" section="首页">
     <template #actions>
       <template v-for="action in resource.data.value?.actions" :key="action.url">
-        <a v-if="localHref(action.url)" :href="localHref(action.url)" class="c-btn c-btn--sm" :class="action.primary ? 'c-btn--primary' : 'c-btn--secondary'" :target="action.url === '/' ? '_blank' : undefined" :rel="action.url === '/' ? 'noopener' : undefined">{{ action.label }}</a>
+        <a v-if="localHref(action.url)" :href="localHref(action.url)" class="c-btn c-btn--sm" :class="action.primary ? 'c-btn--primary' : 'c-btn--secondary'" :target="action.url === '/' ? '_blank' : undefined" :rel="action.url === '/' ? 'noopener' : undefined" data-home-action>{{ action.label }}</a>
       </template>
     </template>
     <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.refresh" />
@@ -45,10 +46,10 @@ const resource = useResource(() => true, signal => getHome(api, { signal }))
         <ul v-if="resource.data.value.articles.length" class="b-list">
           <li v-for="article in resource.data.value.articles" :key="article.id">
             <RouterLink class="b-title" :to="`/admin/articles/${article.id}/`">{{ article.title || '（无标题）' }}</RouterLink>
-            <span class="c-tag">{{ state(article.status) }}</span>
+            <CStatus :label="state(article.status)" :kind="article.status === 'draft' ? 'off' : article.status === 'scheduled' ? 'warn' : 'ok'" />
           </li>
         </ul>
-        <p v-else class="b-section__text">还没写过文章。</p>
+        <p v-else class="b-section__text">还没写过文章。<template v-for="action in resource.data.value.actions" :key="action.url"><a v-if="action.label === '写文章'" class="c-link" :href="action.url">写一篇</a></template></p>
       </section>
       <section v-if="resource.data.value.setup" class="b-section" aria-labelledby="setup-heading" data-setup-list>
         <h2 id="setup-heading" class="b-section__title">上线清单<span class="b-count">只有超级管理员看得到</span>
@@ -57,7 +58,7 @@ const resource = useResource(() => true, signal => getHome(api, { signal }))
         <template v-else>
           <p class="b-section__text">
             <strong v-if="resource.data.value.setup.required.length">还有 {{ resource.data.value.setup.required.length }} 项必做</strong>
-            <span v-if="resource.data.value.setup.optional.length">，{{ resource.data.value.setup.optional.length }} 项建议做。</span>
+            <span v-if="resource.data.value.setup.required.length && resource.data.value.setup.optional.length">，</span><span v-if="resource.data.value.setup.optional.length">{{ resource.data.value.setup.optional.length }} 项建议做</span>。
           </p>
           <SetupList :items="resource.data.value.setup.required" kind="required" />
           <details v-if="resource.data.value.setup.optional.length" :open="!resource.data.value.setup.required.length">

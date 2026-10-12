@@ -1,16 +1,18 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
+import { getApiAuthResetPasswordCodeState } from "@sjtu-ow/api"
 import { PageRedirect } from "@sjtu-ow/shared/navigation"
-export function load(ctx: LoadCtx) {
-  const email = ctx.query.email?.trim()
-  if (!email) throw new PageRedirect("/accounts/password/reset/")
+export async function load(ctx: LoadCtx) {
+  const state = await getApiAuthResetPasswordCodeState(ctx.api)
+  if (!state.active || !state.email) throw new PageRedirect("/accounts/login/")
+  const email = state.email
   return { title: "找回密码", email }
 }
 </script>
 <script setup lang="ts">
 import { computed, inject, ref } from "vue"
 import { useHead } from "@unhead/vue"
-import { postApiAuthResetPasswordVerify } from "@sjtu-ow/api"
+import { postApiAuthResetPasswordVerify, ApiError } from "@sjtu-ow/api"
 import AuthLayout from "@sjtu-ow/ui/AuthLayout.vue"
 import AuthError from "@sjtu-ow/ui/AuthError.vue"
 import CField from "@sjtu-ow/ui/CField.vue"
@@ -24,7 +26,15 @@ const { pending, message, fields, submit } = useAccountForm()
 useHead({ title: "找回密码 · SJTU-OW" })
 function confirmCode() {
   return submit(async () => {
-    await postApiAuthResetPasswordVerify(api, { email: email.value, code: code.value.trim() }, { unauthorized: "throw" })
+    try {
+      await postApiAuthResetPasswordVerify(api, { email: email.value, code: code.value.trim() }, { unauthorized: "throw" })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 422) {
+        const state = await getApiAuthResetPasswordCodeState(api)
+        if (!state.active) { finishAccountAction("/accounts/login/"); return }
+      }
+      throw error
+    }
     finishAccountAction("/accounts/password/reset/complete/")
   })
 }

@@ -26,6 +26,7 @@ type Entry struct {
 
 // EntryWithActor 附带操作人基础信息。
 type EntryWithActor struct {
+	Label string `json:"label"`
 	Entry
 	ActorNickname string `json:"actor_nickname"`
 	ActorEmail    string `json:"actor_email"`
@@ -44,6 +45,7 @@ type QueryInput struct {
 
 // QueryResult 是分页查询结果。
 type QueryResult struct {
+	Actions  []string         `json:"actions"`
 	Items    []EntryWithActor `json:"items"`
 	Total    int              `json:"total"`
 	Page     int              `json:"page"`
@@ -143,11 +145,13 @@ func Query(ctx context.Context, q db.DBTX, in QueryInput) (*QueryResult, error) 
 
 	query := fmt.Sprintf(`
 		SELECT a.id, a.actor_id, a.action, a.object_type, a.object_id, a.data, a.created_at,
-		       COALESCE(u.nickname, ''), COALESCE(u.email, '')
+		       COALESCE(u.nickname, ''), COALESCE(u.email, ''),
+ COALESCE(json_extract(a.data,'$.label'),json_extract(a.data,'$.title'),json_extract(a.data,'$.name'),
+ CASE a.object_type WHEN 'article' THEN (SELECT title FROM pages WHERE id=a.object_id) WHEN 'page' THEN (SELECT title FROM pages WHERE id=a.object_id) WHEN 'team' THEN (SELECT name FROM teams WHERE id=a.object_id) WHEN 'user' THEN (SELECT nickname FROM users WHERE id=a.object_id) WHEN 'tournament' THEN (SELECT title FROM tournaments WHERE id=a.object_id) WHEN 'scrim' THEN (SELECT title FROM scrims WHERE id=a.object_id) WHEN 'registration' THEN (SELECT team_name FROM registrations WHERE id=a.object_id) WHEN 'member_group' THEN (SELECT name FROM member_groups WHERE id=a.object_id) WHEN 'font' THEN (SELECT display_name FROM font_families WHERE id=a.object_id) ELSE NULL END,a.object_type || ' #' || a.object_id)
 		FROM audit_log a
 		LEFT JOIN users u ON u.id = a.actor_id
 		%s
-		ORDER BY a.id DESC
+		ORDER BY a.created_at DESC,a.id DESC
 		LIMIT ? OFFSET ?
 	`, whereClause)
 
@@ -166,7 +170,7 @@ func Query(ctx context.Context, q db.DBTX, in QueryInput) (*QueryResult, error) 
 
 		if err := rows.Scan(
 			&item.ID, &actorID, &item.Action, &item.ObjectType, &item.ObjectID,
-			&dataStr, &atStr, &item.ActorNickname, &item.ActorEmail,
+			&dataStr, &atStr, &item.ActorNickname, &item.ActorEmail, &item.Label,
 		); err != nil {
 			return nil, err
 		}
@@ -180,7 +184,28 @@ func Query(ctx context.Context, q db.DBTX, in QueryInput) (*QueryResult, error) 
 		items = append(items, item)
 	}
 
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	actions := []string{}
+	choices, err := q.QueryContext(ctx, `SELECT DISTINCT action FROM audit_log ORDER BY action`)
+	if err != nil {
+		return nil, err
+	}
+	defer choices.Close()
+	for choices.Next() {
+		var action string
+		if err := choices.Scan(&action); err != nil {
+			return nil, err
+		}
+		actions = append(actions, action)
+	}
+	if err := choices.Err(); err != nil {
+		return nil, err
+	}
 	return &QueryResult{
+		Actions:  actions,
 		Items:    items,
 		Total:    total,
 		Page:     page,

@@ -158,12 +158,14 @@ type CaptainTeam struct {
 
 // RegRef 是一条报名的简要。
 type RegRef struct {
-	ID     int64  `json:"id"`
-	Status string `json:"status"`
+	TeamName string `json:"team_name,omitempty"`
+	ID       int64  `json:"id"`
+	Status   string `json:"status"`
 }
 
 // ViewerState 是打开赛事页的这个人和这项赛事的关系。
 type ViewerState struct {
+	ParticipantContact string        `json:"participant_contact,omitempty"`
 	RegistrationOpen   bool          `json:"registration_open"`
 	CaptainTeams       []CaptainTeam `json:"captain_teams"`
 	OnRoster           *RegRef       `json:"on_roster"`
@@ -242,12 +244,14 @@ func (s *Service) Detail(ctx *app.Ctx, id int64) (*Page, error) {
 
 	showContact := false
 	if loggedIn {
-		showContact = manager
-		if !showContact {
-			if showContact, err = s.takesPart(ctx.Context, rd, id, v.ID); err != nil {
-				return nil, err
-			}
+		participating, err := s.takesPart(ctx.Context, rd, id, v.ID)
+		if err != nil {
+			return nil, err
 		}
+		if participating {
+			page.Viewer.ParticipantContact = t.ParticipantContact
+		}
+		showContact = manager || participating
 		if t.TakesTeams() {
 			if err := s.fillCaptainState(ctx, rd, t, v, now, &page.Viewer); err != nil {
 				return nil, err
@@ -319,8 +323,8 @@ func (s *Service) fillCaptainState(ctx *app.Ctx, rd db.DBTX, t *Tournament, v *a
 	}
 	if len(teams) == 0 {
 		var ref RegRef
-		err := rd.QueryRowContext(ctx.Context, `SELECT r.id, r.status FROM registrations r JOIN registration_members m ON m.registration_id = r.id
-			WHERE r.tournament_id = ? AND m.user_id = ? AND m.is_active = 1 ORDER BY r.submitted_at DESC LIMIT 1`, t.ID, v.ID).Scan(&ref.ID, &ref.Status)
+		err := rd.QueryRowContext(ctx.Context, `SELECT r.id, r.status, r.team_name FROM registrations r JOIN registration_members m ON m.registration_id = r.id
+			WHERE r.tournament_id = ? AND m.user_id = ? AND m.is_active = 1 ORDER BY r.submitted_at DESC LIMIT 1`, t.ID, v.ID).Scan(&ref.ID, &ref.Status, &ref.TeamName)
 		if err == nil {
 			vs.OnRoster = &ref
 		} else if err != sql.ErrNoRows {

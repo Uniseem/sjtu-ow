@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
@@ -84,10 +86,14 @@ func DatesToPeriod(preset, startStr, endStr string, now time.Time) (Period, stri
 		return Period{Start: since, End: until.Add(-time.Second)}, ""
 	}
 
-	if startStr != "" && endStr != "" {
+	if startStr != "" || endStr != "" {
 		s, err1 := time.ParseInLocation("2006-01-02", startStr, shLoc)
 		e, err2 := time.ParseInLocation("2006-01-02", endStr, shLoc)
 		if err1 == nil && err2 == nil {
+			if s.Year() < 2000 || e.Year() > 2100 {
+				p, _ := DatesToPeriod("this_year", "", "", now)
+				return p, "日期只能在 2000 年到 2100 年之间，下面是本学年的数据。"
+			}
 			if s.After(e) {
 				// 错误回退到本学年
 				p, _ := DatesToPeriod("this_year", "", "", now)
@@ -98,7 +104,7 @@ func DatesToPeriod(preset, startStr, endStr string, now time.Time) (Period, stri
 			return Period{Start: since, End: until.Add(-time.Second)}, ""
 		}
 		p, _ := DatesToPeriod("this_year", "", "", now)
-		return p, "日期格式不对，下面是本学年的数据。"
+		return p, "日期没填全或格式不对，下面是本学年的数据。"
 	}
 
 	// 默认本学年
@@ -156,9 +162,13 @@ func (s *Service) QueryEvents(ctx context.Context, p Period) ([]Event, error) {
 		})
 	}
 
+	scrimRows.Close()
+	if err := scrimRows.Err(); err != nil {
+		return nil, err
+	}
 	// 2. 查询赛事
 	tournRows, err := s.d.ReadPool().QueryContext(ctx, `
-		SELECT t.id, t.title, t.status, COALESCE(t.starts_at, t.registration_closes_at, t.created_at) AS day_time,
+		SELECT t.id, t.title, t.status, COALESCE(t.starts_at, t.registration_closes_at) AS day_time,
 		       (SELECT COUNT(*) FROM registrations tr WHERE tr.tournament_id = t.id AND tr.status = 'approved') AS approved_teams,
 		       (SELECT COUNT(DISTINCT tm.user_id)
 		        FROM registration_members tm
@@ -166,8 +176,8 @@ func (s *Service) QueryEvents(ctx context.Context, p Period) ([]Event, error) {
 		        WHERE tr.tournament_id = t.id AND tr.status = 'approved' AND tm.is_active = 1) AS roster_players
 		FROM tournaments t
 		WHERE t.status IN ('published', 'finished')
-		  AND COALESCE(t.starts_at, t.registration_closes_at, t.created_at) >= ?
-		  AND COALESCE(t.starts_at, t.registration_closes_at, t.created_at) < ?
+		  AND COALESCE(t.starts_at, t.registration_closes_at) >= ?
+		  AND COALESCE(t.starts_at, t.registration_closes_at) < ?
 		ORDER BY day_time ASC
 	`, sinceStr, untilStr)
 	if err != nil {
@@ -198,6 +208,10 @@ func (s *Service) QueryEvents(ctx context.Context, p Period) ([]Event, error) {
 		})
 	}
 
+	if err := tournRows.Err(); err != nil {
+		return nil, err
+	}
+	sort.SliceStable(events, func(i, j int) bool { return events[i].When.Before(events[j].When) })
 	return events, nil
 }
 
@@ -223,56 +237,68 @@ func (s *Service) QueryTotals(ctx context.Context, p Period, evs []Event) (Total
 	rd := s.d.ReadPool()
 
 	// 独立报名内战的人数
-	_ = rd.QueryRowContext(ctx, `
+	if err := rd.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT ss.user_id)
 		FROM scrim_signups ss
 		JOIN scrims s ON s.id = ss.scrim_id
 		WHERE s.status IN ('published', 'finished')
 		  AND s.starts_at >= ? AND s.starts_at < ?
-	`, sinceStr, untilStr).Scan(&t.ScrimPeople)
+	`, sinceStr, untilStr).Scan(&t.ScrimPeople); err != nil {
+		return Totals{}, err
+	}
 
 	// 独立参赛队伍队员数
-	_ = rd.QueryRowContext(ctx, `
+	if err := rd.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT tm.user_id)
 		FROM registration_members tm
 		JOIN registrations tr ON tr.id = tm.registration_id
 		JOIN tournaments t ON t.id = tr.tournament_id
 		WHERE t.status IN ('published', 'finished')
 		  AND tr.status = 'approved' AND tm.is_active = 1
-		  AND COALESCE(t.starts_at, t.registration_closes_at, t.created_at) >= ?
-		  AND COALESCE(t.starts_at, t.registration_closes_at, t.created_at) < ?
-	`, sinceStr, untilStr).Scan(&t.TournamentPeople)
+		  AND COALESCE(t.starts_at, t.registration_closes_at) >= ?
+		  AND COALESCE(t.starts_at, t.registration_closes_at) < ?
+	`, sinceStr, untilStr).Scan(&t.TournamentPeople); err != nil {
+		return Totals{}, err
+	}
 
 	// 注册用户（已加入成员：邮箱已验证）
-	_ = rd.QueryRowContext(ctx, `
+	if err := rd.QueryRowContext(ctx, `
 		SELECT COUNT(*), COALESCE(SUM(CASE WHEN is_sjtu = 1 THEN 1 ELSE 0 END), 0)
 		FROM users
 		WHERE is_active = 1 AND email_verified_at IS NOT NULL
 		  AND created_at >= ? AND created_at < ?
-	`, sinceStr, untilStr).Scan(&t.Members, &t.SJTUMembers)
+	`, sinceStr, untilStr).Scan(&t.Members, &t.SJTUMembers); err != nil {
+		return Totals{}, err
+	}
 
 	// 文章发布数
-	_ = rd.QueryRowContext(ctx, `
+	if err := rd.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM pages
-		WHERE status = 'published'
+		WHERE kind = 'article' AND live = 1
 		  AND first_published_at >= ? AND first_published_at < ?
-	`, sinceStr, untilStr).Scan(&t.Articles)
+	`, sinceStr, untilStr).Scan(&t.Articles); err != nil {
+		return Totals{}, err
+	}
 
 	// 评论数（未删未隐）
-	_ = rd.QueryRowContext(ctx, `
+	if err := rd.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM comments
 		WHERE is_deleted = 0 AND is_hidden = 0
 		  AND created_at >= ? AND created_at < ?
-	`, sinceStr, untilStr).Scan(&t.Comments)
+	`, sinceStr, untilStr).Scan(&t.Comments); err != nil {
+		return Totals{}, err
+	}
 
 	// 战队新建数
-	_ = rd.QueryRowContext(ctx, `
+	if err := rd.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM teams
 		WHERE created_at >= ? AND created_at < ?
-	`, sinceStr, untilStr).Scan(&t.Teams)
+	`, sinceStr, untilStr).Scan(&t.Teams); err != nil {
+		return Totals{}, err
+	}
 
 	return t, nil
 }
@@ -282,6 +308,7 @@ func GenerateCSV(events []Event) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteString("\xef\xbb\xbf") // UTF-8 BOM for Excel
 	w := csv.NewWriter(&buf)
+	w.UseCRLF = true
 
 	if err := w.Write([]string{"日期", "类型", "标题", "状态", "报名人次或队伍", "上场或参赛人数"}); err != nil {
 		return nil, err
@@ -289,9 +316,9 @@ func GenerateCSV(events []Event) ([]byte, error) {
 
 	for _, e := range events {
 		row := []string{
-			e.When.Format("2006-01-02 15:04"),
+			e.When.In(shLoc).Format("2006-01-02 15:04"),
 			e.Kind,
-			e.Title,
+			protectCSV(e.Title),
 			e.Status,
 			fmt.Sprintf("%d", e.Entries),
 			fmt.Sprintf("%d", e.Players),
@@ -302,4 +329,13 @@ func GenerateCSV(events []Event) ([]byte, error) {
 	}
 	w.Flush()
 	return buf.Bytes(), w.Error()
+}
+
+// protectCSV prevents user-controlled event titles being executed by spreadsheets.
+func protectCSV(value string) string {
+	trimmed := strings.TrimLeft(value, " \t\r\n")
+	if trimmed != "" && strings.ContainsRune("=+-@", rune(trimmed[0])) {
+		return "'" + value
+	}
+	return value
 }

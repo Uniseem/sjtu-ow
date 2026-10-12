@@ -175,7 +175,7 @@ def build(family: str, display: str, license_text: str, faces: list[tuple]):
             points = list(mapping)
         finally:
             font.close()
-        face = {"weight": weight, "style": style, "slices": [], "bytes": 0}
+        face = {"weight": weight, "style": style, "slices": [], "bytes": 0, "glyph_count": len(mapping)}
         for index, group in enumerate(groups(points)):
             data = subset_bytes(source, group)
             count += 1

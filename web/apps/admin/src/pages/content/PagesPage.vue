@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import { formatContentTime } from "./types"
 import { onMounted } from "vue"
 import { useAdminApi } from "../../core/api"
@@ -35,9 +36,9 @@ onMounted(() => { void resource.load() })
           <thead><tr><th>页面</th><th>地址</th><th>状态</th><th>最后改动</th><th><span class="sr-only">操作</span></th></tr></thead>
           <tbody>
             <tr v-for="page in resource.data.value.items" :key="page.id">
-              <td><RouterLink class="b-title" :to="`/admin/pages/${page.id}/`">{{ page.title || '（无标题）' }}</RouterLink></td>
+              <td><RouterLink class="b-title" :to="`/admin/pages/${page.id}/`">{{ (page.draft_title ?? page.title) || '（无标题）' }}</RouterLink></td>
               <td data-label="地址"><span class="b-mono">/{{ page.slug }}/</span></td>
-              <td data-label="状态"><span class="c-status">{{ page.live ? page.has_unpublished_changes ? '已发布·有改动' : '已发布' : '草稿' }}</span></td>
+              <td data-label="状态"><CStatus :label="page.live ? page.has_unpublished_changes ? '已发布·有改动' : '已发布' : '草稿'" :kind="page.live ? page.has_unpublished_changes ? 'warn' : 'ok' : 'done'" /></td>
               <td data-label="最后改动">{{ formatContentTime(page.updated_at) }}</td>
               <td><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/pages/${page.id}/`">编辑</RouterLink></td>
             </tr>

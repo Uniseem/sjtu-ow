@@ -122,7 +122,22 @@ func ImportLegacySettings(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 		return fmt.Errorf("读取旧库 core_sitesettings 失败: %w", err)
 	}
 
+	maxGames, modImages := 5, 0
+	if setCols["max_game_accounts"] {
+		if err := legacy.QueryRowContext(ctx, `SELECT max_game_accounts FROM core_sitesettings LIMIT 1`).Scan(&maxGames); err != nil {
+			return err
+		}
+	}
+	if setCols["moderation_image_enabled"] {
+		if err := legacy.QueryRowContext(ctx, `SELECT moderation_image_enabled FROM core_sitesettings LIMIT 1`).Scan(&modImages); err != nil {
+			return err
+		}
+	}
 	return d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		if _, err := tx.ExecContext(txCtx, `UPDATE site_settings SET max_game_accounts=?,moderation_image_enabled=? WHERE id=1`, maxGames, modImages); err != nil {
+			return err
+		}
+
 		nowStr := db.FormatUTC(time.Now().UTC())
 		var defShareVal, heroVal, bNewsVal, bTournVal, bScrimVal, bTeamsVal, bMembVal any
 		if defShare.Valid {

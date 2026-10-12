@@ -22,6 +22,20 @@ export type SplitZone = {
   members: ScrimSignup[]
 }
 
+/** Write receipts use the default order; retain the page's selected sort. */
+export function orderedBoard(board: ScrimBoard, order: string): ScrimBoard {
+  const requested = order === "rating" ? "rating" : "created"
+  const signups = [...board.signups].sort((left, right) => {
+    if (requested === "rating") {
+      const rating = (right.best_rating ?? 0) - (left.best_rating ?? 0)
+      if (rating) return rating
+    }
+    return new Date(left.created_at).getTime() - new Date(right.created_at).getTime()
+      || left.signup_id - right.signup_id
+  })
+  return { ...board, order: requested, signups }
+}
+
 export function splitValues(board: ScrimBoard): SplitValues {
   return {
     signup_ids: board.signups.filter((signup) => signup.is_selected).map((signup) => signup.signup_id),

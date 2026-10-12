@@ -2,6 +2,7 @@ package fonts
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
@@ -24,7 +25,12 @@ func NewService(d *db.DB, mediaDir string, uploadDir string) *Service {
 	return &Service{d: d, mediaDir: mediaDir, uploadDir: uploadDir}
 }
 
-type Module struct{ svc *Service }
+type Module struct {
+	svc      *Service
+	resolver api.ViewerResolver
+}
+
+func (m *Module) SetViewerResolver(resolve api.ViewerResolver) { m.resolver = resolve }
 
 func NewModule(svc *Service) *Module { return &Module{svc: svc} }
 func requireSuperuser(ctx *app.Ctx) error {
@@ -44,45 +50,57 @@ type Slice struct {
 	Bytes        int64  `json:"bytes"`
 }
 type Face struct {
-	Status string  `json:"status,omitempty"`
-	Error  string  `json:"error,omitempty"`
-	Weight int     `json:"weight"`
-	Style  string  `json:"style"`
-	Slices []Slice `json:"slices"`
-	Bytes  int64   `json:"bytes"`
+	GlyphCount int64   `json:"glyph_count,omitempty"`
+	ID         int64   `json:"-"`
+	Status     string  `json:"status,omitempty"`
+	Error      string  `json:"error,omitempty"`
+	Weight     int     `json:"weight"`
+	Style      string  `json:"style"`
+	Slices     []Slice `json:"slices"`
+	Bytes      int64   `json:"bytes"`
 }
 type Font struct {
-	ID          int64    `json:"id"`
-	Family      string   `json:"family"`
-	DisplayName string   `json:"display_name"`
-	Source      string   `json:"source"`
-	License     string   `json:"license"`
-	Weights     []int    `json:"weights"`
-	Status      string   `json:"status"`
-	Bytes       int64    `json:"bytes"`
-	Slices      int      `json:"slices"`
-	Error       string   `json:"error"`
-	UsedBy      []string `json:"used_by"`
-	CreatedAt   string   `json:"created_at"`
-	CanDelete   bool     `json:"can_delete"`
-	CSSName     string   `json:"-"`
+	SourceRef     string   `json:"source_ref"`
+	LicenseType   string   `json:"license_type"`
+	LicenseNote   string   `json:"license_note"`
+	CreatedByName string   `json:"created_by_name"`
+	ID            int64    `json:"id"`
+	Family        string   `json:"family"`
+	DisplayName   string   `json:"display_name"`
+	Source        string   `json:"source"`
+	License       string   `json:"license"`
+	Weights       []int    `json:"weights"`
+	Status        string   `json:"status"`
+	Bytes         int64    `json:"bytes"`
+	Slices        int      `json:"slices"`
+	Error         string   `json:"error"`
+	UsedBy        []string `json:"used_by"`
+	CreatedAt     string   `json:"created_at"`
+	CanDelete     bool     `json:"can_delete"`
+	CSSName       string   `json:"css_name"`
 }
 type FontList struct {
-	Fonts []Font `json:"fonts"`
+	FacesCSSURL string `json:"faces_css_url"`
+	Fonts       []Font `json:"fonts"`
 }
 type FaceStats struct {
-	Style  string `json:"style"`
-	Status string `json:"status"`
-	Error  string `json:"error"`
-	Weight int    `json:"weight"`
-	Files  int    `json:"files"`
-	Bytes  int64  `json:"bytes"`
+	GlyphCount int64  `json:"glyph_count"`
+	ID         int64  `json:"id"`
+	CanDelete  bool   `json:"can_delete"`
+	Style      string `json:"style"`
+	Status     string `json:"status"`
+	Error      string `json:"error"`
+	Weight     int    `json:"weight"`
+	Files      int    `json:"files"`
+	Bytes      int64  `json:"bytes"`
 }
 type FontDetail struct {
-	Font   Font        `json:"font"`
-	Slices []FaceStats `json:"slices"`
+	FacesCSSURL string      `json:"faces_css_url"`
+	Font        Font        `json:"font"`
+	Slices      []FaceStats `json:"slices"`
 }
 type ImportIn struct {
+	FamilyID         int64  `json:"family_id,omitempty"`
 	Source           string `json:"source"`
 	Family           string `json:"family,omitempty"`
 	Weights          []int  `json:"weights,omitempty"`
@@ -162,4 +180,28 @@ func (s *Service) CSSPointer(ctx context.Context) (string, error) {
 	var path string
 	err := s.d.ReadPool().QueryRowContext(ctx, `SELECT css_path FROM typography_state WHERE id = 1`).Scan(&path)
 	return path, err
+}
+
+func (m *Module) facesCSS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
+	var viewer *app.Viewer
+	if m.resolver != nil {
+		viewer = m.resolver(r)
+	}
+	if viewer == nil || viewer.Disabled || viewer.ID <= 0 {
+		http.Error(w, "要先登录", http.StatusUnauthorized)
+		return
+	}
+	if !viewer.Superuser {
+		http.Error(w, "没有权限", http.StatusForbidden)
+		return
+	}
+	css, err := m.svc.libraryCSS(r.Context())
+	if err != nil {
+		http.Error(w, "暂时无法加载字体预览。", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write([]byte(css))
 }

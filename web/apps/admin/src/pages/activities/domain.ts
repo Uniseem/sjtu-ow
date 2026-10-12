@@ -67,6 +67,19 @@ export function roleLabel(role: string): string {
   return roleOptions.find((option) => option.value === role)?.label ?? "不限位置"
 }
 
+/** Board rows use the legacy rank_pairs labels, including score 0. */
+export function boardRank(score: number | null | undefined): string {
+  if (score == null || !Number.isInteger(score) || score < 0 || score > 40) return "未填段位"
+  if (score === 40) return "前 500"
+  const tiers = ["青铜", "白银", "黄金", "白金", "钻石", "大师", "宗师", "英杰"]
+  return `${tiers[Math.floor(score / 5)]} ${5 - score % 5}`
+}
+
+export function shortTimestamp(value: string): string {
+  const formatted = timestamp(value)
+  return formatted === "—" ? formatted : formatted.slice(5)
+}
+
 export function activityLabel(kind: ActivityKind): string {
   return kind === "tournaments" ? "赛事" : "内战"
 }

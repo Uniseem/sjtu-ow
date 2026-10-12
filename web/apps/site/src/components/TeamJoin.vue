@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue"
+import CProfileGaps from "@sjtu-ow/ui/CProfileGaps.vue"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import CMutationError from "@sjtu-ow/ui/CMutationError.vue"
@@ -41,7 +42,7 @@ function leave(): void {
     <a v-else-if="props.viewer.can_apply" :href="'/teams/' + team.id + '/apply/'" class="c-btn c-btn--primary">申请加入</a>
     <div v-else-if="viewer.user" class="text-sm text-fg-2">
       {{ props.viewer.apply_reason }}
-      <a v-if="props.viewer.needs_game_account" href="/me/game-accounts/" class="c-link">补全游戏 ID</a>
+      <CProfileGaps v-if="props.viewer.needs_game_account" :gaps="[{label:'游戏 ID',href:'/me/game-accounts/'}]" />
     </div>
     <a v-else :href="login" class="c-btn c-btn--primary">登录后申请</a>
     <p v-if="(props.viewer.is_member || props.viewer.is_captain) && team.member_contact" class="w-full text-sm text-fg-2" data-member-contact>

@@ -103,12 +103,14 @@ var roleCaps = map[string][]app.Cap{
 	RoleTournamentAdmin: {
 		CapAdminEnter,
 		CapTournamentsManage,
+		CapImagesContribute,
 		CapContactsView,
 		CapActivityView,
 	},
 	RoleScrimAdmin: {
 		CapAdminEnter,
 		CapScrimsManage,
+		CapImagesContribute,
 		CapContactsView,
 		CapActivityView,
 	},

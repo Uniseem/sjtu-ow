@@ -105,7 +105,7 @@ onMounted(load)
 </script>
 
 <template>
-  <AdminPage :title="actionLabel(action, kind)" section="activities" :back-href="activityHref(kind)">
+  <AdminPage :title="actionLabel(action, kind)" section="events" :back-href="activityHref(kind)">
     <p v-if="loading" role="status">正在加载…</p>
     <AdminNotice v-else-if="loadError" :message="loadError" kind="error" />
     <form v-else class="b-form" @submit.prevent="mutation.submit({ reason, announce, preview_version: publishPreview?.preview_version ?? '' })">

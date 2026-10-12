@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
-import { patchApiAdminTeamsId, postApiAdminTeamsIdAssignCaptain, postApiAdminTeamsIdDisband } from "@sjtu-ow/api"
+import { patchApiAdminTeamsId } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useAdminSave } from "../../core/use-save"
-import { useAdminAction } from "../../core/use-action"
 import SaveStatus from "../SaveStatus.vue"
-import ConfirmAction from "./ConfirmAction.vue"
-import ActionState from "./ActionState.vue"
 import type { TeamAdminPage } from "../../pages/management/pending"
-import { date } from "../../pages/management/format"
+import CStatus from "@sjtu-ow/ui/CStatus.vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
+import { day } from "../../pages/management/format"
 const props = defineProps<{ data: TeamAdminPage }>()
-const emit = defineEmits<{ changed: [] }>()
 const api = useAdminApi()
 const team = props.data.team
 if (!team) throw new Error("TeamEditor requires a team")
@@ -20,14 +17,9 @@ const initial = { name: team.name, description: team.description, is_recruiting:
 const save = useAdminSave({ initial, version: team.version, readCurrent: currentReader(initial),
   available: () => props.data.can_edit && !team.disbanded_at,
   transport: async (body, key, signal) => formReceipt(await patchApiAdminTeamsId(api, team.id, body, { key, signal }), initial) })
-const captain = ref<number | null>(null)
-const eligible = computed(() => props.data.members.filter(member => member.is_active && member.role !== "captain"))
-const action = useAdminAction<{ kind: "captain" | "disband"; user: number }, { result: string }>(
-  (body, extras) => body.kind === "captain" ? postApiAdminTeamsIdAssignCaptain(api, team.id, { user_id: body.user }, extras) : postApiAdminTeamsIdDisband(api, team.id, extras), () => emit("changed"))
 function value(event: Event) { return (event.target as HTMLInputElement).value }
 function checked(event: Event) { return (event.target as HTMLInputElement).checked }
 function role(name: string, enabled: boolean) { save.set("recruiting_roles", enabled ? [...new Set([...save.values.value.recruiting_roles, name])] : save.values.value.recruiting_roles.filter(item => item !== name), "choice") }
-async function act(kind: "captain" | "disband") { if (await save.flush()) await action.submit({ kind, user: captain.value ?? 0 }) }
 </script>
 <template>
   <div class="b-split">
@@ -57,28 +49,12 @@ async function act(kind: "captain" | "disband") { if (await save.flush()) await 
         </form>
         <aside class="b-aside">
           <section class="b-section">
-            <h2 class="b-section__title">成员（{{ data.members.length }} 人）</h2>
-            <ul class="b-list">
-              <li v-for="member in data.members" :key="member.user_id">
-                <RouterLink :to="`/admin/users/${member.user_id}/`">{{ member.nickname }}</RouterLink>
-                <span class="b-sub">{{ member.role === 'captain' ? '队长' : '成员' }}{{ member.is_active ? '' : ' · 已停用' }}</span>
-              </li>
-            </ul>
-            <p v-if="team.disbanded_at" class="b-sub">已解散 · {{ date(team.disbanded_at) }}</p>
+            <h2 class="b-section__title">状态</h2>
+            <dl class="b-kv"><dt>状态</dt><dd><CStatus :label="team.disbanded_at ? '已解散' : data.members.some(member => member.role === 'captain' && member.is_active) ? '正常' : '队长已停用'" :kind="team.disbanded_at ? 'off' : data.members.some(member => member.role === 'captain' && member.is_active) ? 'ok' : 'warn'" /></dd><dt>成立</dt><dd>{{ day(team.created_at) }}</dd><template v-if="team.disbanded_at"><dt>解散</dt><dd>{{ day(team.disbanded_at) }}</dd></template></dl>
+            <a class="c-btn c-btn--secondary c-btn--sm" :href="`/teams/${team.id}/`" target="_blank" rel="noopener">战队主页<CIcon name="external" class="size-4" /></a>
+            <div v-if="!team.disbanded_at" class="b-actions"><RouterLink v-if="data.can_assign_captain" class="c-btn c-btn--secondary c-btn--sm" :to="`/admin/teams/${team.id}/assign-captain/`">指定队长</RouterLink><RouterLink v-if="data.can_disband" class="c-btn c-btn--danger c-btn--sm" :to="`/admin/teams/${team.id}/disband/`">解散战队</RouterLink></div>
           </section>
-          <section v-if="data.can_assign_captain && !team.disbanded_at" class="b-section">
-            <h2 class="b-section__title">指定队长</h2>
-            <select v-model="captain" class="c-input" aria-label="新队长">
-              <option :value="null">选择队员</option>
-              <option v-for="member in eligible" :key="member.user_id" :value="member.user_id">{{ member.nickname }}</option>
-            </select>
-            <ConfirmAction title="指定队长" message="把战队交给这位成员？原队长将成为普通队员。" label="指定队长" :pending="!action.canStart.value || captain === null" @confirm="act('captain')" />
-          </section>
-          <section v-if="data.can_disband && !team.disbanded_at" class="b-section">
-            <h2 class="b-section__title">解散</h2>
-            <ConfirmAction title="解散战队" :message="`解散战队「${team.name}」？这个操作不能撤销。`" label="解散" danger :pending="!action.canStart.value" @confirm="act('disband')" />
-          </section>
-          <ActionState :message="action.message.value" :pending="action.pending.value" :uncertain="action.uncertain.value" @retry="action.retry" />
+          <section class="b-section"><h2 class="b-section__title">成员</h2><ul class="b-list"><li v-for="member in data.members" :key="member.user_id"><span>{{ member.nickname }}</span><span class="b-sub">{{ member.role === 'captain' ? '队长' : '成员' }}</span></li><li v-if="!data.members.length">没有成员</li></ul></section>
         </aside>
       </div>
 </template>

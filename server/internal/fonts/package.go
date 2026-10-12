@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -107,10 +108,10 @@ func preparePackage(data []byte) (preparedFont, error) {
 		if file.Mode()&os.ModeSymlink != 0 {
 			return out, api.Invalid("成品包不能包含符号链接。")
 		}
-		total += file.UncompressedSize64
-		if total > MaxPackageBytes {
+		if file.UncompressedSize64 > uint64(MaxPackageBytes)-total {
 			return out, api.Invalid("成品包解压后超过64MB。")
 		}
+		total += file.UncompressedSize64
 		entries[file.Name] = file
 	}
 	manifestFile, exists := entries["manifest.json"]
@@ -158,6 +159,9 @@ func preparePackage(data []byte) (preparedFont, error) {
 	count := 0
 	for faceIndex := range manifest.Faces {
 		face := &manifest.Faces[faceIndex]
+		if face.GlyphCount < 0 || face.GlyphCount > 2147483647 {
+			return out, api.Invalid("字符数量不正确。")
+		}
 		if !validWeight(face.Weight) || (face.Style != "normal" && face.Style != "italic") {
 			return out, api.Invalid("字重或字体样式不正确。")
 		}
@@ -214,9 +218,12 @@ func preparePackage(data []byte) (preparedFont, error) {
 	}
 	return out, nil
 }
-func (s *Service) importFont(ctx *app.Ctx, in ImportIn) (FontDetail, error) {
+func (s *Service) importFont(ctx *app.Ctx, in ImportIn) (result FontDetail, retErr error) {
 	if err := requireSuperuser(ctx); err != nil {
 		return FontDetail{}, err
+	}
+	if in.FamilyID < 0 {
+		return FontDetail{}, api.Invalid("字体编号不正确。")
 	}
 	if !in.LicenseConfirmed {
 		return FontDetail{}, api.InvalidFields(map[string][]string{"license_confirmed": {"请确认字体允许在本站使用。"}})
@@ -248,6 +255,18 @@ func (s *Service) importFont(ctx *app.Ctx, in ImportIn) (FontDetail, error) {
 	if in.Source == "package" {
 		prepared.sourceRef = in.PackageName
 	}
+	lease, err := newBlobLease()
+	if err != nil {
+		return FontDetail{}, err
+	}
+	if err := s.claimBlobPaths(ctx.Context, lease, preparedPaths(prepared.data), ctx.Now()); err != nil {
+		return FontDetail{}, err
+	}
+	defer func() {
+		if err := s.finishBlobLease(ctx.Context, lease, ctx.Now()); err != nil {
+			retErr = errors.Join(retErr, err)
+		}
+	}()
 	for hash, data := range prepared.data {
 		if err := s.writeBlob("fonts/objects/"+hash+".woff2", data); err != nil {
 			return FontDetail{}, err
@@ -260,6 +279,45 @@ func (s *Service) importFont(ctx *app.Ctx, in ImportIn) (FontDetail, error) {
 	cssName := "owfont-" + digest(content)[:24]
 	var id int64
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		if in.FamilyID > 0 {
+			var existing string
+			if err := tx.QueryRowContext(txCtx, `SELECT family FROM font_families WHERE id=?`, in.FamilyID).Scan(&existing); err == sql.ErrNoRows {
+				return api.NotFound("字体不存在")
+			} else if err != nil {
+				return err
+			}
+			if existing != prepared.manifest.Family {
+				return api.InvalidFields(map[string][]string{"family_id": {"成品包字体家族与当前字体不一致。"}})
+			}
+			if in.UploadID > 0 {
+				if _, err := readUpload(txCtx, tx, in.UploadID, ctx.Viewer.ID, ctx.Now()); err != nil {
+					return err
+				}
+			}
+			id = in.FamilyID
+			for _, face := range prepared.manifest.Faces {
+				var count int
+				if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM font_faces WHERE family_id=? AND weight=? AND style=?`, id, face.Weight, face.Style).Scan(&count); err != nil {
+					return err
+				}
+				if count > 0 {
+					return api.InvalidFields(map[string][]string{"weights": {"这个字重已经存在，请先删除原字重。"}})
+				}
+				raw, err := json.Marshal(face.Slices)
+				if err != nil {
+					return err
+				}
+				if _, err := tx.ExecContext(txCtx, `INSERT INTO font_faces(family_id,weight,style,slices,bytes,glyph_count) VALUES(?,?,?,?,?,?)`, id, face.Weight, face.Style, string(raw), face.Bytes, face.GlyphCount); err != nil {
+					return err
+				}
+			}
+			if in.UploadID > 0 {
+				if _, err := tx.ExecContext(txCtx, `UPDATE font_uploads SET state='consumed' WHERE id=? AND owner_id=?`, in.UploadID, ctx.Viewer.ID); err != nil {
+					return err
+				}
+			}
+			return audit.Record(txCtx, tx, ctx.Viewer.ID, "font.face_add", "font", id, map[string]any{"faces": len(prepared.manifest.Faces)}, ctx.Now())
+		}
 		err := tx.QueryRowContext(txCtx, `SELECT id FROM font_families WHERE css_name=?`, cssName).Scan(&id)
 		if err == nil {
 			if in.UploadID > 0 {
@@ -287,12 +345,15 @@ func (s *Service) importFont(ctx *app.Ctx, in ImportIn) (FontDetail, error) {
 		if err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(txCtx, `UPDATE font_families SET license_type='other',license_note=? WHERE id=?`, prepared.manifest.License, id); err != nil {
+			return err
+		}
 		for _, face := range prepared.manifest.Faces {
 			raw, err := json.Marshal(face.Slices)
 			if err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(txCtx, `INSERT INTO font_faces(family_id,weight,style,slices,bytes) VALUES(?,?,?,?,?)`, id, face.Weight, face.Style, string(raw), face.Bytes); err != nil {
+			if _, err := tx.ExecContext(txCtx, `INSERT INTO font_faces(family_id,weight,style,slices,bytes,glyph_count) VALUES(?,?,?,?,?,?)`, id, face.Weight, face.Style, string(raw), face.Bytes, face.GlyphCount); err != nil {
 				return err
 			}
 		}
@@ -312,6 +373,7 @@ func (s *Service) delete(ctx *app.Ctx, id int64) (Result, error) {
 	if err := requireSuperuser(ctx); err != nil {
 		return Result{}, err
 	}
+	paths := []string{}
 	err := s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
 		detail, err := readFont(txCtx, tx, id)
 		if err != nil {
@@ -320,6 +382,11 @@ func (s *Service) delete(ctx *app.Ctx, id int64) (Result, error) {
 		if !detail.Font.CanDelete {
 			return api.InvalidFields(map[string][]string{"__all__": {"字体正在被排版设置使用，不能删除。"}})
 		}
+		faces, err := readFaces(txCtx, tx, id)
+		if err != nil {
+			return err
+		}
+		paths = objectPaths(faces)
 		if _, err := tx.ExecContext(txCtx, `DELETE FROM font_families WHERE id=?`, id); err != nil {
 			return err
 		}
@@ -328,6 +395,8 @@ func (s *Service) delete(ctx *app.Ctx, id int64) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	// Content-addressed files may be shared and CSS is immutable; do not unlink them here.
+	if err := s.cleanupBlobPaths(ctx.Context, paths, ctx.Now()); err != nil {
+		return Result{}, err
+	}
 	return Result{Result: "deleted"}, nil
 }

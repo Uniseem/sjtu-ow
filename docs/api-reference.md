@@ -4,10 +4,10 @@
 
 ## 1. 架构概览与指标
 
-- **注册接口总数**：234 个
-- **公开访问接口 (Public)**：28 个
+- **注册接口总数**：239 个
+- **公开访问接口 (Public)**：30 个
 - **登录会员接口 (Member / Verified / Feature)**：70 个
-- **干部管理接口 (Cap / Superuser)**：136 个
+- **干部管理接口 (Cap / Superuser)**：139 个
 - **限流保护**：全量写接口均显式声明 `ratelimit.Decl` 集中限流规则，杜绝内联魔法数字；
 - **查询预算**：关键列表接口显式声明 `api.Budget(n)` 查询上限，防范 N+1 慢查询。
 
@@ -16,6 +16,7 @@
 | 方法 | 路径 | 准入门禁 (Gate) | 限流规则 (Rate Limits) | 查询预算 | 后台分类/标签 |
 |---|---|---|---|---|---|
 | `DELETE` | `/api/admin/categories/{id}` | Cap(article_categories.manage) | 不限流 (删除分类无需限流) | - | - |
+| `DELETE` | `/api/admin/fonts/weights/{id}` | Superuser（超级管理员） | 不限流 (超管删除未引用字重，事务内复查) | - | settings/fonts |
 | `DELETE` | `/api/admin/fonts/{id}` | Superuser（超级管理员） | 不限流 (超管删除未被引用的字体，事务内再次查引用) | - | settings/fonts |
 | `DELETE` | `/api/admin/image-collections/{id}` | Superuser（超级管理员） | 不限流 (超级管理员删除空集合) | - | content/images |
 | `DELETE` | `/api/admin/member-group-people/{id}` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
@@ -45,12 +46,14 @@
 | `GET` | `/api/admin/comments` | Cap(comments.moderate) | 默认 | - | review/comments |
 | `GET` | `/api/admin/feature-role-restrictions` | Superuser（超级管理员） | 默认 | - | roles/restrictions |
 | `GET` | `/api/admin/fonts` | Superuser（超级管理员） | 默认 | - | settings/fonts |
+| `GET` | `/api/admin/fonts/weights/{id}/download` | Superuser（超级管理员） | 默认 | - | settings/fonts |
 | `GET` | `/api/admin/fonts/{id}` | Superuser（超级管理员） | 默认 | - | settings/fonts |
 | `GET` | `/api/admin/home` | Cap(admin.enter) | 默认 | - | home/home |
 | `GET` | `/api/admin/home-pins` | Cap(articles.edit_any) | 默认 | - | content/home_pins |
 | `GET` | `/api/admin/home-pins/draft` | Cap(site_pages.manage) | 默认 | - | content/pages |
 | `GET` | `/api/admin/image-collections` | Cap(admin.enter) | 默认 | - | content/images |
 | `GET` | `/api/admin/images` | Cap(admin.enter) | 默认 | - | content/images |
+| `GET` | `/api/admin/images/{id}` | Cap(images.manage) | 默认 | - | content/images |
 | `GET` | `/api/admin/log` | Superuser（超级管理员） | 默认 | - | settings/log |
 | `GET` | `/api/admin/mail-samples` | Cap(admin.enter) | 默认 | - | - |
 | `GET` | `/api/admin/mail-samples/{key}` | Cap(admin.enter) | 默认 | - | - |
@@ -58,8 +61,8 @@
 | `GET` | `/api/admin/member-groups` | Cap(member_groups.manage) | 默认 | - | members/groups |
 | `GET` | `/api/admin/member-groups/{id}` | Cap(member_groups.manage) | 默认 | - | members/groups |
 | `GET` | `/api/admin/member-groups/{id}/people` | Cap(member_groups.manage) | 默认 | - | members/groups |
-| `GET` | `/api/admin/moderation` | Cap(moderation.review) | 默认 | - | moderation/queue |
-| `GET` | `/api/admin/moderation/{id}` | Cap(moderation.review) | 默认 | - | moderation/queue |
+| `GET` | `/api/admin/moderation` | Cap(moderation.review) | 默认 | - | review/moderation |
+| `GET` | `/api/admin/moderation/{id}` | Cap(moderation.review) | 默认 | - | review/moderation |
 | `GET` | `/api/admin/navigation` | Cap(admin.enter) | 默认 | - | home/navigation |
 | `GET` | `/api/admin/news-intro` | Cap(site_pages.manage) | 默认 | - | content/pages |
 | `GET` | `/api/admin/pages` | Cap(site_pages.manage) | 默认 | - | content/pages |
@@ -93,7 +96,9 @@
 | `GET` | `/api/announcements/unsubscribe/{token}` | Public（公开） | unsubscribe (30/1m0s) | - | - |
 | `GET` | `/api/articles/{id}/comments` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/auth/email/state` | Member（登录成员） | 默认 | - | - |
+| `GET` | `/api/auth/reset-password/code-state` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/auth/reset-password/state` | Public（公开） | auth_reset_password_confirm (20/1m0s) | - | - |
+| `GET` | `/api/auth/verify-email/state` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/home-pins` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/images/{id}` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/letters` | Member（登录成员） | 默认 | - | - |
@@ -165,8 +170,8 @@
 | `POST` | `/api/admin/member-group-people/{id}/title` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `POST` | `/api/admin/member-groups` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `POST` | `/api/admin/member-groups/{id}/people` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
-| `POST` | `/api/admin/moderation/{id}/ask-author` | Cap(moderation.review) | 不限流 (后台，有能力的门) | - | moderation/queue |
-| `POST` | `/api/admin/moderation/{id}/handle` | Cap(moderation.review) | 不限流 (后台，有能力的门) | - | moderation/queue |
+| `POST` | `/api/admin/moderation/{id}/ask-author` | Cap(moderation.review) | 不限流 (后台，有能力的门) | - | review/moderation |
+| `POST` | `/api/admin/moderation/{id}/handle` | Cap(moderation.review) | 不限流 (后台，有能力的门) | - | review/moderation |
 | `POST` | `/api/admin/news-intro/publish` | Cap(site_pages.manage) | 不限流 (发布资讯栏目介绍) | - | content/pages |
 | `POST` | `/api/admin/pages/{id}/publish` | Cap(site_pages.manage) | 不限流 (发布网站页面) | - | content/pages |
 | `POST` | `/api/admin/registrations/bulk-approve` | Cap(tournaments.manage) | 不限流 (干部批量审核，最多50份，各调用原赛事事务服务) | - | review/registrations |

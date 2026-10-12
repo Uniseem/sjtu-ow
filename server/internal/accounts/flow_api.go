@@ -7,6 +7,8 @@ import (
 )
 
 func (m *Module) registerAccountFlows(r *api.Registry) {
+	api.Get(r, "/api/auth/verify-email/state", api.Public, m.signupCodeState)
+	api.Get(r, "/api/auth/reset-password/code-state", api.Public, m.resetCodeState)
 	api.Post(r, "/api/auth/reset-password/verify", api.Public, m.verifyResetCode, api.Limit(ratelimit.AuthResetPasswordConfirm))
 	api.Get(r, "/api/auth/reset-password/state", api.Public, m.resetState, api.Limit(ratelimit.AuthResetPasswordConfirm))
 	api.Post(r, "/api/auth/reset-password/complete", api.Public, m.completeReset, api.Limit(ratelimit.AuthResetPasswordConfirm))
@@ -15,7 +17,7 @@ func (m *Module) registerAccountFlows(r *api.Registry) {
 }
 
 func (m *Module) verifyResetCode(ctx *app.Ctx, in ResetCodeInput) (VerifyEmailOut, error) {
-	grant, err := m.svc.VerifyPasswordResetCode(ctx.Context, in)
+	grant, err := m.svc.VerifyPasswordResetCode(ctx.Context, in, ctx.CodeFlowTokens["password_reset"])
 	if err != nil {
 		return VerifyEmailOut{}, err
 	}
@@ -42,4 +44,11 @@ func (m *Module) emailState(ctx *app.Ctx, _ struct{}) (*EmailState, error) {
 }
 func (m *Module) cancelEmailChange(ctx *app.Ctx, _ struct{}) (*ConfirmEmailChangeResult, error) {
 	return m.svc.CancelEmailChange(ctx)
+}
+
+func (m *Module) signupCodeState(ctx *app.Ctx, _ struct{}) (CodeFlowState, error) {
+	return m.svc.codeFlowState(ctx.Context, "signup", ctx.CodeFlowTokens["signup"])
+}
+func (m *Module) resetCodeState(ctx *app.Ctx, _ struct{}) (CodeFlowState, error) {
+	return m.svc.codeFlowState(ctx.Context, "password_reset", ctx.CodeFlowTokens["password_reset"])
 }

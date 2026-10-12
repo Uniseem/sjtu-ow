@@ -38,6 +38,17 @@ function changeType(type: string): void {
     :aria-busy="save.pending.value || undefined"
     @submit.prevent="done"
   >
+    <CAutosave
+      bare
+      :idle-message="validVersion(contact.version) ? '改了就自动保存' : ''"
+      :state="save.snapshot.value.state"
+      :message="save.snapshot.value.message"
+      :dirty="save.dirty.value"
+      :pending="save.pending.value"
+      :login-required="save.snapshot.value.loginRequired"
+      :login-href="'/accounts/login/?next=' + encodeURIComponent('/me/contacts/' + contact.id + '/')"
+      @retry="save.save"
+    />
     <ContactFields
       :values="save.values.value"
       :fields="save.fields.value"
@@ -47,15 +58,7 @@ function changeType(type: string): void {
       @value="save.set('value', $event, 'text')"
       @blur="save.flush"
     />
-    <CAutosave
-      :state="save.snapshot.value.state"
-      :message="save.snapshot.value.message"
-      :dirty="save.dirty.value"
-      :pending="save.pending.value"
-      :login-required="save.snapshot.value.loginRequired"
-      :login-href="'/accounts/login/?next=' + encodeURIComponent('/me/contacts/' + contact.id + '/')"
-      @retry="save.save"
-    />
+
     <p v-if="!validVersion(contact.version)" class="text-sm text-fg-2" role="status">暂时无法保存，请稍后再试。</p>
     <div class="flex flex-wrap gap-3">
       <button type="submit" class="c-btn c-btn--primary" :disabled="save.pending.value">完成</button>

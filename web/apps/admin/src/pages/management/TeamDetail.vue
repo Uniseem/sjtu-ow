@@ -13,6 +13,6 @@ const resource = useResource(() => route.params.id, signal => getTeamAdmin(api, 
 <template>
   <AdminPage :title="resource.data.value?.team?.name || '战队'" section="成员" back-href="/admin/teams/">
     <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.refresh" />
-    <TeamEditor v-if="resource.data.value?.team" :key="`${resource.data.value.team.id}:${resource.data.value.team.updated_at}:${resource.data.value.team.disbanded_at}`" :data="resource.data.value" @changed="resource.refresh" />
+    <TeamEditor v-if="resource.data.value?.team" :key="`${resource.data.value.team.id}:${resource.data.value.team.updated_at}:${resource.data.value.team.disbanded_at}`" :data="resource.data.value" />
   </AdminPage>
 </template>

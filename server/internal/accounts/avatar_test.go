@@ -35,6 +35,8 @@ func (m *dummyMedia) Upload(ctx *app.Ctx, in media.UploadInput) (*media.Image, e
 	}, nil
 }
 
+func (m *dummyMedia) DeleteImageFiles(id int64) { m.deleted = append(m.deleted, id) }
+
 func (m *dummyMedia) DeleteImage(ctx *app.Ctx, id int64) error {
 	m.deleted = append(m.deleted, id)
 	return nil
@@ -117,7 +119,7 @@ func TestSubmitAndRemoveAvatar(t *testing.T) {
 	adminCtx := &app.Ctx{
 		Context: context.Background(),
 		Viewer: &app.Viewer{
-			ID:        99,
+			ID:        1,
 			Superuser: true,
 		},
 	}

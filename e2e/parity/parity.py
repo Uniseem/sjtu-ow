@@ -25,6 +25,7 @@ import importlib.util
 import json
 import os
 import shutil
+import sqlite3
 import http.server
 import threading
 import subprocess
@@ -36,6 +37,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 WORK = Path("/tmp/sjtu-ow-parity")
 OUT = WORK / "out"
 SHOTS = OUT / "shots"
@@ -70,6 +72,8 @@ def seed(accounts=False) -> dict:
     data = screens.seed()
     from account_scenarios import extend_seed
     extend_seed(data)
+    from admin_scenarios import extend_seed as extend_admin_seed
+    extend_admin_seed(data)
     # screens.py intentionally makes password-less screenshot identities.
     # Account parity needs ordinary password accounts, as on the real site.
     from accounts.models import User
@@ -154,6 +158,7 @@ def prepare_new(env: dict) -> dict:
     if made.returncode:
         raise RuntimeError("import-media failed: " + made.stderr)
     print(made.stdout.strip().splitlines()[0] if made.stdout.strip() else made.stderr.strip())
+    run([str(binary), "import-fonts", str(WORK / "db.sqlite3"), str(WORK / "media")], env=env, stdout=subprocess.DEVNULL)
     sessions = {}
     for who, email in EMAILS.items():
         out = subprocess.run([str(binary), "session", email], env=env, check=True, capture_output=True, text=True)
@@ -168,6 +173,7 @@ def assets_dir() -> Path:
     shutil.copytree(ROOT / "static/img", assets / "img")
     (assets / "css").mkdir()
     shutil.copy(ROOT / "static/css/error.css", assets / "css/error.css")
+    shutil.copy(ROOT / "web/packages/styles/dist/site.css", assets / "css/reader.css")
     return assets
 
 
@@ -209,11 +215,14 @@ class RecordingDevTools(screens.DevTools):
         self.browser_errors = []
         self.request_methods = {}
         self.submissions = []
+        self.main_navigation_seen = False
         super().__init__(url)
 
     def _receive(self):
         message = super()._receive()
         method, params = message.get('method'), message.get('params', {})
+        if method == 'Page.frameNavigated' and not params.get('frame', {}).get('parentId'):
+            self.main_navigation_seen = True
         if method == 'Network.requestWillBeSent':
             self.request_methods[params['requestId']] = params['request']['method']
         elif method == 'Network.responseReceived':
@@ -296,10 +305,10 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
         {"features": [{"name": "prefers-color-scheme", "value": scheme}, {"name": "prefers-reduced-motion", "value": "reduce"}]},
     )
     tools.browser_errors.clear()
+    tools.main_navigation_seen = False
     tools.send("Page.navigate", {"url": url})
-    time.sleep(0.5)
     for _ in range(60):
-        if evaluate(tools, "document.readyState") == "complete":
+        if evaluate(tools, "document.readyState") == "complete" and tools.main_navigation_seen:
             break
         time.sleep(0.1)
     evaluate(
@@ -317,7 +326,7 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
         previous = None
         stable = 0
         for _ in range(120):
-            current = evaluate(tools, "JSON.stringify({path:location.pathname,text:document.querySelector('#main')?.innerText??'',busy:!!document.querySelector('[aria-busy=true]')})")
+            current = evaluate(tools, "JSON.stringify({path:location.pathname,text:(document.querySelector('#main')??document.body)?.innerText??'',busy:!!document.querySelector('[aria-busy=true]')})")
             value = json.loads(current)
             if value['text'].strip() and not value['busy'] and value['text'] not in ('加载中…', '正在加载…'):
                 stable = stable + 1 if current == previous else 0
@@ -329,7 +338,18 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
             time.sleep(0.1)
         else:
             raise RuntimeError('admin page never settled: ' + url)
-    time.sleep(0.3)
+    # Await actual network completion, including legacy fragments and lazy
+    # specimen frames, instead of paying a fixed delay on every settled page.
+    # Runtime RPCs also pump the CDP event queue; two idle observations ensure
+    # late page/route requests cannot be mistaken for a completed document.
+    idle = 0
+    for _ in range(200):
+        evaluate(tools, "document.readyState")
+        idle = idle + 1 if not tools.request_methods else 0
+        if idle >= 2: break
+        time.sleep(0.05)
+    else:
+        raise RuntimeError('page requests never settled: ' + url)
     # Font loading can outlive readyState/image completion, especially on long
     # Chinese pages. Capture the layout after its fonts and next paint frames.
     if urllib.parse.urlsplit(url).path.startswith('/_styleguide/emails/') and urllib.parse.urlsplit(url).path != '/_styleguide/emails/':
@@ -488,6 +508,8 @@ def main(argv: list[str]) -> int:
     new_sessions = prepare_new(env)
     from account_scenarios import validate_import
     validate_import(WORK)
+    from admin_scenarios import validate_import as validate_admin_import
+    validate_admin_import(WORK, data)
 
     procs = []
     # DEBUG's technical404 is not the production oracle. Render the frozen
@@ -497,10 +519,18 @@ def main(argv: list[str]) -> int:
     django.setup()
     from django.template.loader import render_to_string
     error_documents = {code: render_to_string(f'errors/{code}.html').encode() for code in (403,404,429)}
+    from datetime import datetime, date, timezone as datetime_timezone
+    from unittest.mock import patch
+    from django.test import override_settings
+    from core.email_samples import samples as legacy_mail_samples
+    with override_settings(SITE_URL='https://example.invalid'), patch('django.utils.timezone.localdate', return_value=date(2026, 10, 3)), patch('django.utils.timezone.now', return_value=datetime(2026, 10, 3, 6, 20, tzinfo=datetime_timezone.utc)):
+        mail_samples = legacy_mail_samples()
+        mail_list = render_to_string('core/styleguide_emails.html', {'samples': mail_samples})
+    mail_documents = {sample.key: sample.html.encode() for sample in mail_samples}
     component_payload = b''
     if components:
         from component_reference import document
-        component_payload = document(ROOT, f'http://127.0.0.1:{old_port}').encode()
+        component_payload = document(ROOT, f'http://127.0.0.1:{old_port}', data).encode()
     class Reference(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             if urllib.parse.urlsplit(self.path).path.startswith('/__error/'):
@@ -516,6 +546,15 @@ def main(argv: list[str]) -> int:
                 self.end_headers()
                 self.wfile.write(component_payload)
                 return
+            path = urllib.parse.urlsplit(self.path).path
+            # Access was checked against the real legacy endpoint before the
+            # visual oracle is selected. Only dates/site root are fixed input.
+            if path == '/_styleguide/emails/':
+                self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.end_headers()
+                self.wfile.write(mail_list.encode()); return
+            if path.startswith('/_styleguide/emails/') and path.strip('/').split('/')[-1] in mail_documents:
+                self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.end_headers()
+                self.wfile.write(mail_documents[path.strip('/').split('/')[-1]]); return
             try:
                 upstream=urllib.request.urlopen(f'http://127.0.0.1:{old_port}'+self.path,timeout=20)
             except urllib.error.HTTPError as error:
@@ -579,15 +618,36 @@ def main(argv: list[str]) -> int:
                 from account_errors import context as error_context
                 old_cookie, new_cookie, suffix = error_context(name, data, new_sessions, WORK, screens.site_env())
                 path = template + suffix
+            if name.startswith('unsubscribe-'):
+                # Visual specimens repeat a GET five times per role. Each role
+                # starts a fresh visual quota; real saturation is tested separately.
+                with sqlite3.connect(WORK / 'new-data/sjtuow.sqlite3') as db:
+                    db.execute("DELETE FROM rate_counters WHERE bucket LIKE 'unsubscribe|%'")
             cookies = lambda items: "; ".join(c["name"] + "=" + c["value"] for c in items)
             old_url = f"http://127.0.0.1:{reference.server_address[1] if components else old_port}{path}"
             status = (
                 fetch_status(old_url, cookies(old_cookie)),
                 fetch_status(f"http://127.0.0.1:{caddy_port}{path}", cookies(new_cookie)),
             )
-            if status[0][0] in (403,404,429):
+            if path.startswith('/_styleguide/emails/') and status[0][0] == 200:
+                old_url = f'http://127.0.0.1:{reference.server_address[1]}{path}'
+            if status[0][0] in (403,404,429) and not name.startswith('unsubscribe-'):
                 old_url=f'http://127.0.0.1:{reference.server_address[1]}/__error/{status[0][0]}/'
             row = {"name": name, "who": who, "path": path, "status": status, "views": []}
+            if name == 'admin-font-download' and status[0][0] == 200:
+                try:
+                    from font_download import check as check_font_download
+                    approval = check_font_download(f'http://127.0.0.1:{old_port}{path}', f'http://127.0.0.1:{api_port}', cookies(old_cookie), cookies(new_cookie), data['font_face'], env, WORK)
+                    row['approved_difference'] = approval
+                    problems = []
+                except Exception as failure:
+                    problems = [f'D4 字体下载验收失败：{failure}']
+                row['views'] = [{'view': 'real-download-roundtrip', 'ratio': 0, 'problems': problems}]
+                row['pass'] = not problems
+                results.append(row)
+                (OUT / "progress.json").write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
+                print(('通过' if row['pass'] else '不同') + ' D4 download ' + who + ' ' + path + ('；'.join(problems) if problems else ''), flush=True)
+                continue
             if name in {item[0] for item in RESOURCES}:
                 left = resource_response(f'http://127.0.0.1:{old_port}{path}', cookies(old_cookie))
                 right = resource_response(f'http://127.0.0.1:{caddy_port}{path}', cookies(new_cookie))
@@ -597,6 +657,7 @@ def main(argv: list[str]) -> int:
                 row['views'] = [{'view': 'resource', 'ratio': 0, 'problems': problems}]
                 row['pass'] = not problems
                 results.append(row)
+                (OUT / "progress.json").write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
                 print(('通过' if row['pass'] else '不同') + ' resource ' + path, flush=True)
                 continue
             admin_shell = path.startswith('/admin/') and status[1][0] == 200
@@ -624,8 +685,12 @@ def main(argv: list[str]) -> int:
                     from account_errors import context as error_context
                     old_cookie, new_cookie, suffix = error_context(name, data, new_sessions, WORK, screens.site_env())
                     path = template + suffix
-                old = look(tools, old_url, old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None)
-                new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png", name if errors else None)
+                try:
+                    old = look(tools, old_url, old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None)
+                    new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png", name if errors else None)
+                except Exception as failure:
+                    row["views"].append({"view": f"{width}-{scheme}", "ratio": 1, "problems": [f"页面采集失败：{failure}"]})
+                    continue
                 ratio, note = pixel_ratio(SHOTS / f"{stem}-old.png", SHOTS / f"{stem}-new.png")
                 effective = new['effective_status'] if admin_shell else status[1][0]
                 problems = compare(old, new, ratio, (status[0][0], effective) if (width, scheme) == views[0] else (0, 0))
@@ -642,6 +707,7 @@ def main(argv: list[str]) -> int:
                 row["views"].append(view)
             row["pass"] = all(not v["problems"] for v in row["views"])
             results.append(row)
+            (OUT / "progress.json").write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
             mark = "通过" if row["pass"] else "不同"
             print(f"{mark}  {who:8} {path}" + ("" if row["pass"] else "  ← " + "；".join(row["views"][0]["problems"])[:240]), flush=True)
     finally:

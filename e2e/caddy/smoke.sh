@@ -125,6 +125,11 @@ for method in PATCH DELETE PUT; do
   check "页面 $method 405" "405" "$(status -X "$method" "$BASE/teams/")"
 done
 check "旧预渲染设置真实301" "301 /admin/settings/" "$(status "$BASE/admin/settings/prerender/") $(header Location "$BASE/admin/settings/prerender/")"
+check "旧前台信纸路径去Go且不跳转" "api GET /letters/12345678-1234-1234-1234-123456789abc/1/" "$(who "$BASE/letters/12345678-1234-1234-1234-123456789abc/1/")"
+check "旧后台信纸路径去Go且不进SPA" "api GET /admin/letters/12345678-1234-1234-1234-123456789abc/1/" "$(who "$BASE/admin/letters/12345678-1234-1234-1234-123456789abc/1/")"
+check "旧报名CSV保留URI和query去Go" "api GET /admin/registrations/export.csv?tournament=3&status=pending" "$(who "$BASE/admin/registrations/export.csv?tournament=3&status=pending")"
+check "旧活动CSV保留URI和query去Go" "api GET /admin/activity/?start=2026-01-01&end=2026-12-31&format=csv" "$(who "$BASE/admin/activity/?start=2026-01-01&end=2026-12-31&format=csv")"
+check "普通活动页仍独立SPA" "ADMIN-SHELL" "$(body "$BASE/admin/activity/?start=2026-01-01")"
 check "一键退订 POST 去 Go" "api POST /unsubscribe/tok/" "$(who -X POST "$BASE/unsubscribe/tok/")"
 check "退订页 GET 去 SSR" "ssr GET /unsubscribe/tok/" "$(who "$BASE/unsubscribe/tok/")"
 check "sitemap 去 Go" "api GET /sitemap.xml" "$(who "$BASE/sitemap.xml")"

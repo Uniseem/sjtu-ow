@@ -66,7 +66,7 @@ def main():
         targets=json.load(urllib.request.urlopen(f'http://127.0.0.1:{debug_port}/json'))
         tools=parity.RecordingDevTools(next(item for item in targets if item.get('type')=='page')['webSocketDebuggerUrl'])
         for method in ('Page.enable','Network.enable','Runtime.enable'): tools.send(method)
-        for code,path,role in [(403,f'/teams/{data["team"]}/manage/','member'),(404,'/no/such/','visitor'),(429,'/search/?q=限流','visitor'),(500,'/news/screens-guide/','visitor'),(503,'/','visitor')]:
+        for code,path,role in [(403,'/admin/users/','member'),(404,'/no/such/','visitor'),(429,'/search/?q=限流','visitor'),(500,'/news/screens-guide/','visitor'),(503,'/','visitor')]:
             if code==429:
                 for _ in range(100):
                     if parity.fetch_status(f'http://127.0.0.1:{caddy_port}/api/search?q=limit',None)[0]==429: break
@@ -81,11 +81,17 @@ def main():
                 cookie=[{'name':'ow_session','value':sessions[role]}] if role in sessions else []
                 new_url=f'http://127.0.0.1:{caddy_port}'+__import__('urllib.parse',fromlist=['quote']).quote(path,safe='/?=&#%')
                 actual=parity.fetch_status(new_url,'; '.join(item['name']+'='+item['value'] for item in cookie))[0]
-                if actual!=code: raise RuntimeError(f'error trigger {code} returned {actual}')
+                if code == 403:
+                    # Independent SPA shell200 is approved; the real Go gate
+                    # returns403 and the settled browser paints its standalone doc.
+                    gate = parity.fetch_status(f'http://127.0.0.1:{caddy_port}/api/admin/users', '; '.join(item['name']+'='+item['value'] for item in cookie))[0]
+                    if gate != 403: raise RuntimeError(f'admin403 gate returned {gate}')
+                elif actual!=code: raise RuntimeError(f'error trigger {code} returned {actual}')
                 for width,scheme in [(1280,'light'),(375,'light'),(1280,'dark'),(375,'dark')]:
                     stem=f'error-{code}-{width}-{scheme}'
                     old=parity.look(tools,f'http://127.0.0.1:{old_port}/error/{code}/',None,width,scheme,parity.SHOTS/f'{stem}-old.png')
                     new=parity.look(tools,new_url,cookie,width,scheme,parity.SHOTS/f'{stem}-new.png')
+                    if new['effective_status'] != code: raise RuntimeError(f'error document {code} painted {new["effective_status"]}')
                     # Expected top-level 500/503 navigation is the trigger itself;
                     # this document has no scripts or dependent API requests.
                     for snap in (old,new):

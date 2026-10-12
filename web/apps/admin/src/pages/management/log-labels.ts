@@ -14,7 +14,7 @@ const actions: Record<string, string> = {
   scrim_publish: '发布内战', scrim_cancel: '取消内战', scrim_update: '修改内战',
 }
 const objects: Record<string, string> = { user: '用户', team: '战队', member_group: '成员分组', article: '文章', tournament: '赛事', scrim: '内战', registration: '报名', comment: '评论', settings: '全站设置', font: '字体', typography: '排版设置' }
-export function actionLabel(action: string) { return actions[action] ?? action }
+export function actionLabel(action: string) { return actions[action] ?? actions[action.replaceAll('.', '_')] ?? actions[action.split('.').at(-1) ?? ''] ?? action }
 export function objectLabel(type: string) { return objects[type] ?? type }
 export function objectHref(type: string, id: number): string | undefined {
   if (!Number.isSafeInteger(id) || id <= 0) return undefined

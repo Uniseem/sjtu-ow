@@ -32,12 +32,14 @@ func TestCapsForRole(t *testing.T) {
 		RoleTournamentAdmin: {
 			CapAdminEnter,
 			CapTournamentsManage,
+			CapImagesContribute,
 			CapContactsView,
 			CapActivityView,
 		},
 		RoleScrimAdmin: {
 			CapAdminEnter,
 			CapScrimsManage,
+			CapImagesContribute,
 			CapContactsView,
 			CapActivityView,
 		},

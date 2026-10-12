@@ -60,7 +60,7 @@ let editorDraft = {
 let articleVersion = 3
 let nextImage = 8
 const images = [{ id: 7, collection_id: 1, title: "Fixture image", file_name: "fixture.png", file_size: 68, width: 1, height: 1, uploader_id: 1, created_at: now, version: 1 }]
-const collections = [{ id: 1, name: "Fixture collection", key: "fixture", parent_id: null, version: 1, image_count: 1, can_add: true, can_change: false, can_delete: false, created_at: now }]
+const collections = [{ id: 1, name: "Fixture collection", key: "fixture", parent_id: null, version: 1, image_count: 1, can_add: true, can_upload: true, can_change: false, can_delete: false, created_at: now }]
 let boardVersion = 20
 let placements = [
   { signup_id: 1, team: "a", role: "tank" },
@@ -171,7 +171,7 @@ function mockResponse(url, method, body) {
     images.push(image)
     return json({ image })
   }
-  if (/^\/api\/images\/\d+$/.test(path)) return json(images.find(image => image.id === Number(path.split("/").at(-1))) || images[0])
+  if (/^\/api\/(?:admin\/)?images\/\d+$/.test(path)) return json(images.find(image => image.id === Number(path.split("/").at(-1))) || images[0])
   if (path === "/api/admin/markdown/preview") return json({ preview_url: "/api/admin/previews/browser-fixture" })
   if (path.startsWith("/api/admin/previews/") || path === "/api/admin/articles/1/preview") {
     return { status: 200, type: "text/html", policy: "default-src 'none'; style-src 'self'; frame-ancestors 'self'; sandbox", body: `<!doctype html><html><head><title>Fixture preview</title></head><body><h1>Fixture preview</h1><p>${htmlEscape(editorDraft.body_md)}</p></body></html>` }

@@ -448,6 +448,7 @@ func (s *Store) ToggleLike(ctx context.Context, commentID int64, userID int64) (
 
 // AdminCommentRow 是后台评论列表的一行数据。
 type AdminCommentRow struct {
+	IsTopLevel   bool      `json:"is_top_level"`
 	ID           int64     `json:"id"`
 	ArticleID    int64     `json:"article_id"`
 	ArticleTitle string    `json:"article_title"`
@@ -509,7 +510,7 @@ func (s *Store) ListAdminComments(ctx context.Context, q string, hidden, pinned 
 
 	query := fmt.Sprintf(`
 		SELECT c.id, c.article_id, COALESCE(p.title, ''), COALESCE(p.slug, ''), COALESCE(c.user_id, 0), COALESCE(u.nickname, ''),
-		       c.content, c.is_pinned, c.is_hidden, c.is_deleted, c.like_count, c.created_at
+		       c.content, c.is_pinned, c.is_hidden, c.is_deleted, c.like_count, c.created_at, c.parent_id IS NULL
 		FROM comments c
 		LEFT JOIN pages p ON p.id = c.article_id
 		LEFT JOIN users u ON u.id = c.user_id
@@ -532,7 +533,7 @@ func (s *Store) ListAdminComments(ctx context.Context, q string, hidden, pinned 
 		var pinInt, hideInt, delInt int
 		if err := rows.Scan(
 			&row.ID, &row.ArticleID, &row.ArticleTitle, &row.ArticleSlug, &row.AuthorID, &row.AuthorName,
-			&row.Content, &pinInt, &hideInt, &delInt, &row.LikeCount, &atStr,
+			&row.Content, &pinInt, &hideInt, &delInt, &row.LikeCount, &atStr, &row.IsTopLevel,
 		); err != nil {
 			return nil, 0, err
 		}

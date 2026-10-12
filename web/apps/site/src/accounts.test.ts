@@ -3,10 +3,15 @@ import { handle } from "../server"
 import { safeNext } from "@sjtu-ow/shared/navigation"
 
 const user = { id: 7, nickname: "成员", email: "member@example.com", admin: false, superuser: false, caps: [], email_verified: true, is_sjtu: true }
-async function page(url: string, loggedIn = false) {
+async function page(url: string, loggedIn = false, flowEmail?: string) {
   return handle({ method: "GET", url, headers: { get: () => null } }, {
     apiBase: "http://api.test",
-    fetch: async () => new Response(JSON.stringify({ user: loggedIn ? user : null }), { status: 200 }),
+    fetch: async input => {
+      const path = new URL(String(input)).pathname
+      return Response.json(path === "/api/auth/verify-email/state" || path === "/api/auth/reset-password/code-state"
+        ? { active: Boolean(flowEmail), ...(flowEmail ? { email: flowEmail } : {}) }
+        : { user: loggedIn ? user : null })
+    },
   })
 }
 test("next allows local return addresses and rejects external, encoded and malformed targets", () => {
@@ -42,7 +47,7 @@ test("protected account pages send visitors to login before painting a form", as
 test("confirmation carries its email in SSR and missing context goes to login", async () => {
   const missing = await page("/accounts/confirm-email/")
   expect([missing.status, missing.headers.location]).toEqual([302, "/accounts/login/"])
-  const result = await page("/accounts/confirm-email/?email=new%40example.com&next=%2Fme%2F")
+  const result = await page("/accounts/confirm-email/?email=new%40example.com&next=%2Fme%2F", false, "new@example.com")
   expect(result.status).toBe(200)
   expect(result.body).toContain('href="mailto:new@example.com"')
   expect(result.body).toContain('autocomplete="one-time-code"')
@@ -57,7 +62,7 @@ test("registration consents stay separate and affiliation has no default", async
 })
 
 test("reset code page matches the old single code form without an unsupported resend action", async () => {
-  const result = await page("/accounts/password/reset/confirm/?email=member%40screens.test")
+  const result = await page("/accounts/password/reset/confirm/?email=member%40screens.test", false, "member@screens.test")
   expect(result.status).toBe(200)
   expect(result.body).toContain('href="mailto:member@screens.test"')
   expect(result.body).toContain('name="code"')
@@ -86,4 +91,13 @@ test("pending email explanation is visible help content, not an unknown componen
   const plain = String(result.body).replace(/<!--.*?-->/g, "")
   expect(plain).toContain('<div class="c-field__help">新邮箱尚未验证。验证通过后才会替换。</div>')
   expect(plain).not.toContain('help="新邮箱')
+})
+
+test("verification renders only its anonymous API context and cannot be reopened by a query address", async () => {
+  const ended = await page("/accounts/confirm-email/?email=attacker%40example.com")
+  expect([ended.status, ended.headers.location]).toEqual([302, "/accounts/login/"])
+  const live = await page("/accounts/confirm-email/?email=attacker%40example.com", false, "submitted@example.com")
+  expect(live.status).toBe(200)
+  expect(live.body).toContain('href="mailto:submitted@example.com"')
+  expect(live.body).not.toContain('mailto:attacker@example.com')
 })

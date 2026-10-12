@@ -46,13 +46,14 @@ SCENARIOS.update({
 PATHS['email'] = '/accounts/email/'
 API_PATHS['email'] = '/api/auth/email/change'
 PATHS['password-reset'] = '/accounts/password/reset/'
-API_PATHS['email'] = '/accounts/email/'
-API_PATHS['email'] = '/api/auth/email/change'
-PATHS['password-reset'] = '/api/auth/reset-password'
+API_PATHS['password-reset'] = '/api/auth/reset-password'
 PAGES = [(name, who, PATHS[page]) for name, (page, who, fields) in SCENARIOS.items()]
 
 
+_fixture = {}
+
 def context(name, data, sessions, work, legacy_env):
+    global _fixture
     from account_scenarios import context as normal_context
     page, who, _ = SCENARIOS[name]
     old, new, suffix = normal_context(page, who, data, sessions, work, legacy_env)
@@ -76,19 +77,8 @@ def context(name, data, sessions, work, legacy_env):
         request = urllib.request.Request(os.environ['PARITY_API_BASE']+'/api/auth/reauthenticate', data=json.dumps({'password':PASSWORD}).encode(), headers={'Content-Type':'application/json','Cookie':'ow_session='+sessions[who]}, method='POST')
         with urllib.request.urlopen(request,timeout=20) as response:
             if response.status!=200: raise RuntimeError('new reauthentication failed')
-    if name.endswith('-expired'):
-        from django.contrib.sessions.backends.db import SessionStore
-        session = SessionStore(session_key=old[0]['value'])
-        key = 'account_email_verification_code' if page == 'confirm-email' else 'account_password_reset_verification'
-        if key not in session:
-            raise RuntimeError('missing real legacy verification state')
-        state = dict(session[key])
-        state['at'] = time.time() - 3600
-        session[key] = state
-        session.save()
-        with sqlite3.connect(work / 'new-data/sjtuow.sqlite3') as db:
-            db.execute('UPDATE email_codes SET expires_at=? WHERE purpose=? AND email_norm=?', ((now-timedelta(seconds=1)).isoformat(), purpose, email))
-    elif name == 'error-email-third-attempt':
+    _fixture = {'work': work, 'old_session': old[0]['value'] if old else None, 'page': page, 'email': email if page in ('confirm-email','password-reset-confirm') else None}
+    if name == 'error-email-third-attempt':
         from django.contrib.sessions.backends.db import SessionStore
         session = SessionStore(session_key=old[0]['value'])
         state = dict(session['account_email_verification_code'])
@@ -97,6 +87,7 @@ def context(name, data, sessions, work, legacy_env):
         session.save()
         with sqlite3.connect(work / 'new-data/sjtuow.sqlite3') as db:
             db.execute("UPDATE email_codes SET attempts=2 WHERE purpose='signup' AND email_norm=?", (email,))
+            db.execute("UPDATE account_code_flows SET attempts=2 WHERE purpose='signup' AND email_norm=?", (email,))
     return old, new, suffix
 
 
@@ -105,6 +96,20 @@ def submit(tools, name, evaluate):
     fields = SCENARIOS[name][2]
     tools.submissions.clear()
     is_new = evaluate(tools, "Boolean(document.querySelector('#ow-state'))")
+    if name.endswith('-expired'):
+        # First load a live form, then let its server-side context expire before
+        # the real POST. Expiring before GET only measures a redirect fixture.
+        if is_new:
+            purpose = 'signup' if page == 'confirm-email' else 'password_reset'
+            with sqlite3.connect(_fixture['work'] / 'new-data/sjtuow.sqlite3') as db:
+                db.execute('UPDATE email_codes SET expires_at=? WHERE purpose=? AND email_norm=?', ((datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat(), purpose, _fixture['email']))
+                db.execute('UPDATE account_code_flows SET expires_at=? WHERE purpose=? AND email_norm=?', ((datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat(), purpose, _fixture['email']))
+        else:
+            from django.contrib.sessions.backends.db import SessionStore
+            session = SessionStore(session_key=_fixture['old_session'])
+            key = 'account_email_verification_code' if page == 'confirm-email' else 'account_password_reset_verification'
+            state = dict(session[key]); state['at'] = time.time() - 3600
+            session[key] = state; session.save()
     form_index = 1 if name in ('error-resend-limit','error-resend-cooldown') else 0
     if name.endswith('-limit') or name == 'error-resend-cooldown':
         endpoint = '/api/auth/resend-code' if name in ('error-resend-limit','error-resend-cooldown') and is_new else (API_PATHS[page] if is_new else PATHS[page])
@@ -144,9 +149,9 @@ def submit(tools, name, evaluate):
     for _ in range(120):
         ready = evaluate(tools, "Boolean(document.readyState==='complete' && document.querySelector('#main .c-field__error') && !document.querySelector('#main button[type=submit]')?.disabled)")
         responses = [r for r in tools.submissions if r['path'] in (PATHS[page], '/api/auth/resend-code' if name in ('error-resend-limit','error-resend-cooldown') else API_PATHS[page])]
-        if (ready or name.endswith('-limit') or name == 'error-resend-cooldown' or name == 'error-signup-existing') and responses:
+        if (ready or name.endswith('-expired') or name == 'error-email-third-attempt' or name.endswith('-limit') or name == 'error-resend-cooldown' or name == 'error-signup-existing') and responses:
             response = responses[-1]
-            expected = 429 if name.endswith('-limit') or name == 'error-resend-cooldown' else (200 if name == 'error-signup-existing' and is_new else 302 if name == 'error-signup-existing' else (200 if response['path'] == PATHS[page] else (401 if page == 'login' else 422)))
+            expected = (422 if is_new else 302) if name.endswith('-expired') or name == 'error-email-third-attempt' else 429 if name.endswith('-limit') or name == 'error-resend-cooldown' else (200 if name == 'error-signup-existing' and is_new else 302 if name == 'error-signup-existing' else (200 if response['path'] == PATHS[page] else (401 if page == 'login' else 422)))
             if response['status'] != expected:
                 raise RuntimeError(f"unexpected rejected-form response for {name}: {response}")
             break

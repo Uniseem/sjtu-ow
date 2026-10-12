@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue"
 import type { ScrimSignup } from "../../pages/activities/domain"
-import { record, roleLabel } from "../../pages/activities/domain"
+import { boardRank, record, roleLabel } from "../../pages/activities/domain"
 import type { SplitZone } from "../../pages/activities/split-model"
 import { keyboardSide } from "../../pages/activities/split-model"
 
@@ -38,7 +38,7 @@ function keyboard(event: KeyboardEvent): void {
     <span class="split-card-rank">{{ signup.rating_used ?? '—' }}</span>
     <span class="split-card-roles">
       <template v-for="(role, index) in signup.roles" :key="role">
-        {{ index ? ' · ' : '' }}{{ signup.rank_text[role] || `${roleLabel(role)}：${signup.ratings[role] ?? '—'}` }}
+        {{ index ? ' · ' : '' }}{{ roleLabel(role) }} {{ signup.rank_text[role] || boardRank(signup.ratings[role]) }}
       </template>
     </span>
     <span class="split-card-moves">

@@ -660,7 +660,7 @@ func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
 		FROM teams t
 		LEFT JOIN team_memberships c ON c.team_id = t.id AND c.role = 'captain'
 		LEFT JOIN users u ON u.id = c.user_id
-		ORDER BY t.created_at DESC, t.id DESC`)
+		ORDER BY t.disbanded_at, t.created_at DESC, t.id DESC`)
 	if err != nil {
 		return nil, err
 	}

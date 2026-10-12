@@ -41,7 +41,8 @@ def main(binary, work):
     shutil.copytree(root/'web/apps/admin/dist',assets/'admin')
     shutil.copytree(root/'static/img',assets/'img')
     (assets/'css').mkdir()
-    for name in ('error.css','reader.css'): shutil.copy(root/'static/css'/name,assets/'css'/name)
+    shutil.copy(root/'static/css/error.css',assets/'css/error.css')
+    shutil.copy(root/'web/packages/styles/dist/site.css',assets/'css/reader.css')
     config=work/'private-browser.json'
     config.write_text(json.dumps({'base':base,'paths':paths,'sessions':sessions}))
     config.chmod(0o600)

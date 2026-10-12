@@ -226,6 +226,9 @@ func (s *Service) assembledUpload(ctx *app.Ctx, id int64) ([]byte, error) {
 // CleanupExpired removes private staging data belonging only to this font module.
 // Call it from the existing daily maintenance job; it never traverses media or backups.
 func (s *Service) CleanupExpired(ctx context.Context, now time.Time) (int, error) {
+	if err := s.cleanupExpiredBlobClaims(ctx, now); err != nil {
+		return 0, err
+	}
 	rows, err := s.d.ReadPool().QueryContext(ctx, `SELECT id,token FROM font_uploads WHERE expires_at<=? OR state='consumed'`, stamp(now))
 	if err != nil {
 		return 0, err

@@ -32,14 +32,22 @@ type User struct {
 
 // AvatarSubmission 是用户上传头像的审核记录（设计 14.1，规则 221）。
 type AvatarSubmission struct {
-	ID           int64      `json:"id"`
-	UserID       int64      `json:"user_id"`
-	UserNickname string     `json:"user_nickname"`
-	ImageID      *int64     `json:"image_id"`
-	Status       string     `json:"status"` // pending, approved, rejected, withdrawn, taken_down
-	HandlingNote string     `json:"handling_note"`
-	ReviewedAt   *time.Time `json:"reviewed_at,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
+	ID               int64      `json:"id"`
+	UserID           int64      `json:"user_id"`
+	UserNickname     string     `json:"user_nickname"`
+	ImageID          *int64     `json:"image_id"`
+	Status           string     `json:"status"` // pending, approved, rejected, withdrawn, taken_down
+	HandlingNote     string     `json:"handling_note"`
+	Note             string     `json:"note"`
+	Reason           string     `json:"reason"`
+	ReasonDisplay    string     `json:"reason_display"`
+	ReviewedBy       *int64     `json:"reviewed_by"`
+	ReviewerNickname string     `json:"reviewer_nickname"`
+	IsCurrent        bool       `json:"is_current"`
+	UserActive       bool       `json:"user_active"`
+	TurnedDown       int        `json:"turned_down"`
+	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
 }
 
 // EmailVerified 检查邮箱是否已验证。

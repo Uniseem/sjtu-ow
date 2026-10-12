@@ -4,6 +4,11 @@ export function date(value: string | null | undefined) {
   const parsed = new Date(value)
   return Number.isFinite(parsed.getTime()) ? `${owDate(parsed)} ${owTime(parsed)}` : "—"
 }
+export function day(value: string | null | undefined) {
+  if (!value) return "—"
+  const parsed = new Date(value)
+  return Number.isFinite(parsed.getTime()) ? owDate(parsed) : "—"
+}
 export function positive(value: unknown, fallback = 1): number {
   const n = Number(value)
   return Number.isSafeInteger(n) && n > 0 ? n : fallback

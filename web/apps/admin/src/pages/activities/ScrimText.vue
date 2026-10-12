@@ -47,7 +47,7 @@ onMounted(load)
 </script>
 
 <template>
-  <AdminPage :title="title" section="activities" :back-href="`/admin/scrims/${id}/split/`">
+  <AdminPage :title="title" section="events" :back-href="`/admin/scrims/${id}/split/`">
     <p v-if="pending" role="status">正在加载…</p>
     <AdminNotice v-else-if="error" :message="error" kind="error" />
     <template v-else>

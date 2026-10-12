@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed,ref,watch } from "vue"
 import { postApiScrimsIdSignup,deleteApiScrimsIdSignup } from "@sjtu-ow/api"
+import CProfileGaps from "@sjtu-ow/ui/CProfileGaps.vue"
 import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import CRoleIcon from "@sjtu-ow/ui/CRoleIcon.vue"
@@ -41,7 +42,7 @@ watch(()=>props.page.mine,mine=>{account.value=mine?.game_account_id||props.acco
         </div><p v-else class="mt-3 text-sm text-fg-2">报名已截止，不能再修改。</p>
       </div>
     </template>
-    <template v-else-if="page.problems.length"><div class="c-notice c-notice--warn max-w-2xl"><CIcon name="alert" /><div class="c-notice__body"><p>暂时不能报名：</p><ul class="mt-1 list-[square] pl-5"><li v-for="(problem,index) in page.problems" :key="index">{{ problem }}</li></ul><p class="mt-2"><a href="/me/game-accounts/" class="c-link">游戏 ID</a> · <a href="/me/contacts/" class="c-link">联系方式</a></p></div></div></template>
+    <template v-else-if="page.problems.length"><div class="c-notice c-notice--warn max-w-2xl"><CIcon name="alert" /><div class="c-notice__body"><p>暂时不能报名：</p><ul class="mt-1 list-[square] pl-5"><li v-for="(problem,index) in page.problems" :key="index">{{ problem }}</li></ul><CProfileGaps :gaps="viewer.user?.profile_gaps ?? []" /></div></div></template>
     <template v-else-if="!accounts.length"><div class="c-notice c-notice--info max-w-2xl"><CIcon name="info" /><div class="c-notice__body">需要先绑定游戏 ID，<a href="/me/game-accounts/">去添加</a>。</div></div></template>
     <template v-else-if="open"><div class="max-w-2xl"><h2 class="text-lg">报名</h2><form method="post" class="c-form mt-4" @submit.prevent="submit"><EventSignupFields :prefix="'scrim-' + page.card.id" :accounts="accounts" :account-id="account" :roles="roles" :fields="signup.fields.value" :disabled="!signup.canStart.value" :role-queue="page.card.format.startsWith('rq_')" @account="value=>account=value" @roles="value=>roles=value" /><button type="submit" class="c-btn c-btn--primary" :disabled="!signup.canStart.value || !account">报名</button></form></div></template>
     <p v-else class="text-sm text-fg-2">报名已截止，不能再报名。</p>

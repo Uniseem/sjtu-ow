@@ -51,7 +51,7 @@ func resetTokenHash(token string) string {
 
 // VerifyPasswordResetCode consumes the short code, without changing a password.
 // Wrong-code mutations must commit; the common error is returned afterwards.
-func (s *Service) VerifyPasswordResetCode(ctx context.Context, in ResetCodeInput) (*ResetGrant, error) {
+func (s *Service) VerifyPasswordResetCode(ctx context.Context, in ResetCodeInput, flowTokens ...string) (*ResetGrant, error) {
 	email, code := NormalizeEmail(in.Email), strings.TrimSpace(in.Code)
 	fields := map[string][]string{}
 	if !validateEmail(email) {
@@ -71,6 +71,17 @@ func (s *Service) VerifyPasswordResetCode(ctx context.Context, in ResetCodeInput
 	now, passed := s.clock.Now().UTC(), false
 	var expiry time.Time
 	err := s.d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
+		flow := ""
+		if len(flowTokens) > 0 {
+			flow = flowTokens[0]
+		}
+		active, err := reserveCodeFlow(ctx, tx, "password_reset", email, flow, now)
+		if err != nil {
+			return err
+		}
+		if !active {
+			return nil
+		}
 		u, err := s.store.GetByEmailNormTx(ctx, tx, email)
 		if err != nil {
 			return err
@@ -102,6 +113,9 @@ func (s *Service) VerifyPasswordResetCode(ctx context.Context, in ResetCodeInput
 			return err
 		}
 		if err := s.store.InsertEmailCode(ctx, tx, resetGrantPurpose, email, resetTokenHash(token), now, c.ExpiresAt); err != nil {
+			return err
+		}
+		if err := closeCodeFlow(ctx, tx, "password_reset", flow); err != nil {
 			return err
 		}
 		passed, expiry = true, c.ExpiresAt

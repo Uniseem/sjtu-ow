@@ -1,11 +1,14 @@
 package fonts
 
 import (
+	"net/http"
+
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 )
 
 func (m *Module) Routes(r *api.Registry) {
+	api.Raw(r, http.MethodGet, "/api/admin/fonts/faces.css", nil, m.facesCSS)
 	library := api.Nav("settings", "fonts")
 	typography := api.Nav("settings", "typography")
 	api.Get(r, "/api/admin/fonts", api.Superuser, m.list, library)
@@ -14,6 +17,8 @@ func (m *Module) Routes(r *api.Registry) {
 	api.Delete(r, "/api/admin/fonts/{id}", api.Superuser, m.deleteFont, library, api.NoLimit("超管删除未被引用的字体，事务内再次查引用"))
 	api.Post(r, "/api/admin/fonts/uploads", api.Superuser, m.beginUpload, library, api.NoLimit("超管成品包上传会话，总64MB、最多3个未完成"))
 	api.Post(r, "/api/admin/fonts/uploads/{id}/chunks", api.Superuser, m.uploadChunk, library, api.NoLimit("超管上传128KB定长分块，所有者绑定"))
+	api.Get(r, "/api/admin/fonts/weights/{id}/download", api.Superuser, m.downloadFace, library)
+	api.Delete(r, "/api/admin/fonts/weights/{id}", api.Superuser, m.deleteFace, library, api.NoLimit("超管删除未引用字重，事务内复查"))
 	api.Get(r, "/api/admin/typography", api.Superuser, m.typography, typography)
 	api.Post(r, "/api/admin/typography/preview", api.Superuser, m.preview, typography, api.NoLimit("超管排版草稿只生成作用域CSS预览，不写设置"))
 	api.Patch(r, "/api/admin/typography", api.Superuser, m.patchTypography, typography, api.NoLimit("超管排版自动保存，乐观版本且写前校验九区域"))
@@ -43,4 +48,11 @@ func (m *Module) uploadChunk(ctx *app.Ctx, in UploadChunkIn) (UploadOut, error) 
 
 func (m *Module) preview(ctx *app.Ctx, in PreviewIn) (PreviewOut, error) {
 	return m.svc.preview(ctx, in)
+}
+
+func (m *Module) downloadFace(ctx *app.Ctx, in IDIn) (DownloadOut, error) {
+	return m.svc.downloadFace(ctx, int64(in.ID))
+}
+func (m *Module) deleteFace(ctx *app.Ctx, in IDIn) (FontDetail, error) {
+	return m.svc.deleteFace(ctx, int64(in.ID))
 }

@@ -17,7 +17,15 @@ func TestPrecheckListsEveryProblem(t *testing.T) {
 	e.denied[m1] = true
 	tid := e.tour(withSjtuOnly(), withRoster(5, 6), withWindow(t0.Add(-48*time.Hour), t0.Add(-24*time.Hour)))
 	team := e.team("问题队", cap, m1, m2)
-	_, err := e.svc.Submit(e.ctx(m2), SubmitInput{TournamentID: tid, TeamID: team})
+	item, err := GetTournament(e.ctx(m2).Context, e.d.ReadPool(), tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	issues, err := e.svc.precheck(e.ctx(m2).Context, e.d.ReadPool(), item, team, m2, 0, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = problems(issues)
 	wantErr(t, err, http.StatusUnprocessableEntity, NotInWindow)
 	for _, want := range []string{
 		"只有队长可以为战队报名", "该赛事要求 5 到 6 人，你的战队现在有 3 人", "队员一 暂时无法参加赛事报名",

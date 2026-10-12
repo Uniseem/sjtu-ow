@@ -120,7 +120,7 @@ func (m *Module) editorProjection(ctx *app.Ctx, article *Article) (AdminArticleD
 		return out, err
 	}
 	for _, category := range categories {
-		if !m.svc.isPureSubmitter(ctx.Viewer) || category.AllowSubmission {
+		if strings.TrimSpace(category.Name) != "" && (!m.svc.isPureSubmitter(ctx.Viewer) || category.AllowSubmission) {
 			out.Categories = append(out.Categories, ArticleCategoryChoice{ID: category.ID, Name: category.Name, AllowSubmission: category.AllowSubmission})
 		}
 	}
@@ -143,7 +143,7 @@ func (m *Module) editorProjection(ctx *app.Ctx, article *Article) (AdminArticleD
 			return out, err
 		}
 	}
-	rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, "SELECT id,title FROM tournaments WHERE status<>'draft' ORDER BY id DESC")
+	rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, "SELECT id,title FROM tournaments ORDER BY id DESC")
 	if err != nil {
 		return out, err
 	}
@@ -486,13 +486,13 @@ func (m *Module) restoreRevision(ctx *app.Ctx, in RestoreRevisionIn) (RestoreRev
 			delete(checks, key)
 		}
 	}
-	fields, err := m.svc.validateArticleChanges(ctx, checks)
+	fields, err := m.svc.validateArticleChangesWithCover(ctx, checks, current.CoverImageID)
 	if err != nil {
 		return RestoreRevisionOut{}, err
 	}
 	if len(fields) > 0 {
 		return RestoreRevisionOut{}, api.InvalidFields(fields)
 	}
-	version, _, err := m.svc.store.SaveArticleDraft(ctx.Context, int64(in.ID), in.BaseVersion, string(raw), ctx.Viewer.ID, 0)
+	version, _, err := m.svc.store.SaveArticleDraft(ctx.Context, int64(in.ID), in.BaseVersion, string(raw), ctx.Viewer.ID, 0, coverWriteCheck(ctx.Viewer, detail.Draft.CoverImageID, current.CoverImageID))
 	return RestoreRevisionOut{Version: version}, err
 }

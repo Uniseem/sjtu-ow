@@ -9,7 +9,7 @@ import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import { useAdminApi } from "../../core/api"
 import { useResource } from "./use-resource"
-import { date, positive, text } from "./format"
+import { day, positive, text } from "./format"
 const api = useAdminApi()
 const route = useRoute()
 const router = useRouter()
@@ -47,7 +47,7 @@ function filter() { void router.push({path:route.path,query:{q:search.value||und
         <td data-label="邮箱">{{ user.email }}</td><td data-label="交大">{{ user.is_sjtu ? '是' : '否' }}</td>
         <td data-label="角色"><template v-for="name in visibleRoles(user.roles)" :key="name"><span class="c-tag">{{ roleLabel(name) }}</span>{{ ' ' }}</template><template v-if="!user.roles.length">—</template></td>
         <td data-label="状态"><CStatus :label="user.is_active ? '在用' : '已停用'" :kind="user.is_active ? 'ok' : 'off'" /></td>
-        <td data-label="注册">{{ date(user.created_at) }}</td>
+        <td data-label="注册">{{ day(user.created_at) }}</td>
       </tr></tbody>
     </table>
     <CEmpty v-else-if="!resource.pending.value && !resource.message.value" title="没有这样的用户" message="换个筛选条件试试。" />

@@ -66,8 +66,8 @@ func Catalogue() []Sample {
 	result = append(result, announcementSamples()...)
 	result = append(result, moderationSamples()...)
 	result = append(result, specimen("smtp", "后台", "SMTP 测试邮件", "操作的管理员", "管理员", "server/internal/settings/settings.go", mail.Letter{
-		Subject: "测试邮件", Lead: "这是一封来自 SJTU-OW 管理后台的测试邮件。看到这封信说明网站的 SMTP 发信配置一切正常。",
-		Paragraphs: []string{"测试时间：2026-10-03 14:20:00"},
+		Subject: "SMTP 测试邮件", Lead: "这是一封来自网站后台的测试邮件。你能读到它，说明 SMTP 配置可用。",
+		Paragraphs: []string{"正式的通知邮件也是这个样子：先说结论，再列要点，最后落款。"},
 	}))
 	return result
 }

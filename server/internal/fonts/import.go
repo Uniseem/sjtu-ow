@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -32,6 +33,7 @@ type legacyFace struct {
 	style, status, error string
 	slices               []Slice
 	bytes                int64
+	glyphCount           int64
 }
 
 func hasLegacyTable(ctx context.Context, legacy *sql.DB, name string) (bool, error) {
@@ -64,8 +66,7 @@ func readLegacyBytes(root *os.Root, name string) ([]byte, error) {
 // ImportLegacyFonts keeps Django identifiers, CSS names, selected faces and all
 // nine typography values. It opens legacy files through a read-only bounded root;
 // no Python processing, source download, or mutation of the old library occurs.
-func ImportLegacyFonts(ctx context.Context, d *db.DB, legacy *sql.DB, legacyMedia, mediaDir string) (ImportReport, error) {
-	report := ImportReport{}
+func ImportLegacyFonts(ctx context.Context, d *db.DB, legacy *sql.DB, legacyMedia, mediaDir string) (report ImportReport, retErr error) {
 	exists, err := hasLegacyTable(ctx, legacy, "core_fontfamily")
 	if err != nil || !exists {
 		return report, err
@@ -88,7 +89,28 @@ func ImportLegacyFonts(ctx context.Context, d *db.DB, legacy *sql.DB, legacyMedi
 		return report, err
 	}
 	faces := []legacyFace{}
-	rows, err = legacy.QueryContext(ctx, `SELECT id,family_id,weight,style,status,error,slices FROM core_fontface ORDER BY id`)
+	glyphColumn := "0"
+	columns, err := legacy.QueryContext(ctx, `PRAGMA table_info(core_fontface)`)
+	if err != nil {
+		return report, err
+	}
+	for columns.Next() {
+		var cid, notnull, pk int
+		var name, kind string
+		var fallback any
+		if err := columns.Scan(&cid, &name, &kind, &notnull, &fallback, &pk); err != nil {
+			columns.Close()
+			return report, err
+		}
+		if name == "glyph_count" {
+			glyphColumn = "glyph_count"
+		}
+	}
+	columns.Close()
+	if err := columns.Err(); err != nil {
+		return report, err
+	}
+	rows, err = legacy.QueryContext(ctx, `SELECT id,family_id,weight,style,status,error,slices,`+glyphColumn+` FROM core_fontface ORDER BY id`)
 	if err != nil {
 		return report, err
 	}
@@ -97,7 +119,7 @@ func ImportLegacyFonts(ctx context.Context, d *db.DB, legacy *sql.DB, legacyMedi
 	for rows.Next() {
 		var face legacyFace
 		var raw string
-		if err := rows.Scan(&face.id, &face.family, &face.weight, &face.style, &face.status, &face.error, &raw); err != nil {
+		if err := rows.Scan(&face.id, &face.family, &face.weight, &face.style, &face.status, &face.error, &raw, &face.glyphCount); err != nil {
 			rows.Close()
 			return report, err
 		}
@@ -150,6 +172,15 @@ func ImportLegacyFonts(ctx context.Context, d *db.DB, legacy *sql.DB, legacyMedi
 		defer root.Close()
 	}
 	service := NewService(d, mediaDir, "")
+	lease, err := newBlobLease()
+	if err != nil {
+		return report, err
+	}
+	defer func() {
+		if err := service.finishBlobLease(ctx, lease, time.Now().UTC()); err != nil {
+			retErr = errors.Join(retErr, err)
+		}
+	}()
 	for i := range faces {
 		face := &faces[i]
 		if face.status != "ready" {
@@ -171,6 +202,9 @@ func ImportLegacyFonts(ctx context.Context, d *db.DB, legacy *sql.DB, legacyMedi
 			slice.Path = "fonts/objects/" + hash + ".woff2"
 			slice.SHA256 = hash
 			slice.Bytes = int64(len(data))
+			if err := service.claimBlobPaths(ctx, lease, []string{slice.Path}, time.Now().UTC()); err != nil {
+				return report, err
+			}
 			if err := service.writeBlob(slice.Path, data); err != nil {
 				return report, err
 			}
@@ -190,7 +224,7 @@ func ImportLegacyFonts(ctx context.Context, d *db.DB, legacy *sql.DB, legacyMedi
 			if font.licenseNote != "" {
 				license += " · " + font.licenseNote
 			}
-			if _, err := tx.ExecContext(txCtx, `INSERT INTO font_families(id,family,display_name,css_name,source,source_ref,license,license_confirmed,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET family=excluded.family,display_name=excluded.display_name,css_name=excluded.css_name,source=excluded.source,source_ref=excluded.source_ref,license=excluded.license,license_confirmed=excluded.license_confirmed`, font.id, font.name, font.name, font.cssName, font.source, font.sourceRef, license, font.confirmed, font.actor, stamp(created)); err != nil {
+			if _, err := tx.ExecContext(txCtx, `INSERT INTO font_families(id,family,display_name,css_name,source,source_ref,license,license_confirmed,created_by,created_at,license_type,license_note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET family=excluded.family,display_name=excluded.display_name,css_name=excluded.css_name,source=excluded.source,source_ref=excluded.source_ref,license=excluded.license,license_confirmed=excluded.license_confirmed,license_type=excluded.license_type,license_note=excluded.license_note,created_by=excluded.created_by,created_at=excluded.created_at`, font.id, font.name, font.name, font.cssName, font.source, font.sourceRef, license, font.confirmed, font.actor, stamp(created), font.licenseType, font.licenseNote); err != nil {
 				return err
 			}
 			report.Families++
@@ -200,7 +234,7 @@ func ImportLegacyFonts(ctx context.Context, d *db.DB, legacy *sql.DB, legacyMedi
 			if err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(txCtx, `INSERT INTO font_faces(id,family_id,weight,style,slices,bytes,status,error) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET family_id=excluded.family_id,weight=excluded.weight,style=excluded.style,slices=excluded.slices,bytes=excluded.bytes,status=excluded.status,error=excluded.error`, face.id, face.family, face.weight, face.style, string(raw), face.bytes, face.status, face.error); err != nil {
+			if _, err := tx.ExecContext(txCtx, `INSERT INTO font_faces(id,family_id,weight,style,slices,bytes,status,error,glyph_count) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET family_id=excluded.family_id,weight=excluded.weight,style=excluded.style,slices=excluded.slices,bytes=excluded.bytes,status=excluded.status,error=excluded.error,glyph_count=excluded.glyph_count`, face.id, face.family, face.weight, face.style, string(raw), face.bytes, face.status, face.error, face.glyphCount); err != nil {
 				return err
 			}
 			report.Faces++

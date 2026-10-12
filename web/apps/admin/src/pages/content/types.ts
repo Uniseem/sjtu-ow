@@ -26,6 +26,8 @@ export const articleStatuses: Record<ArticleStatus, string> = {
   scheduled: "定时上线",
 }
 
+export const articleStatusKinds: Record<ArticleStatus, string> = { draft: "done", live: "ok", changed: "warn", scheduled: "info" }
+
 export function emptyArticle(): ArticleDraft {
   return {
     title: "",
