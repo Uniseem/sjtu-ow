@@ -95,6 +95,9 @@ func TestGetSessionApi(t *testing.T) {
 	if out.User != nil {
 		t.Fatalf("访客出参 user 应为 nil: %+v", out.User)
 	}
+	if out.Site.URL != "https://sjtu.ow-shanghaiuniversity.com" {
+		t.Fatalf("guest canonical origin missing: %+v", out.Site)
+	}
 
 	// 2. 普通交大成员（无管理角色，但作为已验证投稿者有 CapAdminEnter）
 	vMember, err := svc.BuildViewer(ctx, member.ID)

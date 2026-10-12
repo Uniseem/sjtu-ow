@@ -2,7 +2,7 @@
 import { formatContentTime } from "./types"
 import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { getApiAdminCategories, postApiArticlesIdUnpublish } from "@sjtu-ow/api"
+import { postApiArticlesIdUnpublish } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useAdminAction } from "../../core/use-action"
 import AdminPage from "../../components/AdminPage.vue"
@@ -32,7 +32,6 @@ const resource = useContentResource((signal) => listContentArticles(api, {
   page: positiveID(route.query.page) ?? 1,
   page_size: 25,
 }, { signal }))
-const categories = useContentResource((signal) => getApiAdminCategories(api, { signal }))
 const rows = computed(() => (resource.data.value?.items ?? []).filter((item): item is Article => item !== null))
 const action = useAdminAction(
   (id: number, extras) => postApiArticlesIdUnpublish(api, id, extras),
@@ -57,7 +56,7 @@ watch(() => route.fullPath, () => {
   mine.value = route.query.mine === "1"
   void resource.load()
 })
-onMounted(() => { void resource.load(); void categories.load() })
+onMounted(() => { void resource.load() })
 </script>
 <template>
   <AdminPage title="文章" section="content">
@@ -66,7 +65,7 @@ onMounted(() => { void resource.load(); void categories.load() })
       <input v-model="query" class="c-input" type="search" name="q" maxlength="50" placeholder="搜标题" aria-label="搜标题">
       <select v-model="category" name="category" class="c-input" aria-label="分类" @change="filter">
         <option value="">全部分类</option>
-        <option v-for="item in categories.data.value?.items ?? []" :key="item?.id" :value="String(item?.id)">{{ item?.name }}</option>
+        <option v-for="item in resource.data.value?.categories ?? []" :key="item.id" :value="String(item.id)">{{ item.name }}</option>
       </select>
       <select v-model="status" name="status" class="c-input" aria-label="状态" @change="filter">
         <option value="">全部状态</option>

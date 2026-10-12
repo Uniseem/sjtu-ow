@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 import type { AdminSession } from "./core/session"
+import { ApiError } from "@sjtu-ow/api"
+import { showReadError } from "./core/read-error"
 import { contentRoutes } from "./pages/content/routes"
 import { activitiesRoutes } from "./pages/activities/routes"
 import { mailpreviewRoutes } from "./pages/mailpreview/routes"
@@ -23,7 +25,7 @@ export function createAdminRouter(session: AdminSession) {
   router.beforeEach(async to => {
     if (!session.ready.value) await session.refresh()
     if (!session.user.value) { window.location.assign("/accounts/login/?next="+encodeURIComponent(to.fullPath));return false }
-    if (!session.can("admin.enter")) return to.path === "/admin/forbidden/" ? true : "/admin/forbidden/"
+    if (!session.can("admin.enter")) { showReadError(new ApiError(403,"forbidden","没有权限")); return false }
     return true
   })
   return router

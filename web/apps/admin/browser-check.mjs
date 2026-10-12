@@ -489,11 +489,12 @@ async function main() {
   const permitted = await evaluate("[...document.querySelectorAll('nav.b-tabs a')].map(node=>node.getAttribute('href'))")
   assert("contributor navigation omits forbidden categories and pages", permitted.includes("/admin/articles/") && permitted.includes("/admin/images/") && !permitted.includes("/admin/categories/") && !permitted.includes("/admin/pages/"), permitted)
   await navigate("/admin/categories/")
-  await waitFor("document.querySelector('[role=alert]')?.textContent.includes('权限')")
+  await waitFor("document.querySelector('h1')?.textContent === '没有权限'")
   assert("direct forbidden page displays 403 without private rows", await evaluate("!document.querySelector('tbody tr')"))
+  assert("forbidden page is the standalone scriptless document", await evaluate("document.querySelector('.code')?.textContent==='403' && document.scripts.length===0"))
   await quiet("permission handling produces no runtime or CSP errors")
   await navigate("/admin/articles/404/")
-  await waitFor("document.querySelector('[role=alert]')?.textContent.includes('找不到')")
+  await waitFor("document.querySelector('h1')?.textContent === '页面不存在'")
   assert("missing article stays a 404 state", await evaluate("!document.querySelector('input[name=title]')"))
   await navigate("/admin/does-not-exist/")
   await waitFor("document.querySelector('h1')?.textContent.includes('页面不存在')")
@@ -503,7 +504,7 @@ async function main() {
   stage = "entry permission and anonymous redirect"
   identity = "blocked"
   await navigate("/admin/articles/")
-  await waitFor("location.pathname === '/admin/forbidden/' && document.querySelector('h1')?.textContent.includes('权限')")
+  await waitFor("location.pathname === '/admin/articles/' && document.querySelector('h1')?.textContent.includes('权限')")
   assert("user without admin.enter receives explicit forbidden entry", await evaluate("!document.querySelector('input[name=title]')"))
   await quiet("blocked entry has no runtime or CSP errors")
   identity = "anonymous"

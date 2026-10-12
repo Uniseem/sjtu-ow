@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 	_ "modernc.org/sqlite"
@@ -56,175 +59,153 @@ func Reconcile(ctx context.Context, d *db.DB, legacyPath string) (*ReconcileResu
 	}
 	result.IntegrityOK = true
 
-	// 2. 外键引用完整性检查
-	fkRows, err := newDB.QueryContext(ctx, "PRAGMA foreign_key_check;")
-	if err == nil {
-		defer fkRows.Close()
-		result.FKCheckOK = true
-		for fkRows.Next() {
-			var table, parent string
-			var rowid, fkid int64
-			if err := fkRows.Scan(&table, &rowid, &parent, &fkid); err == nil {
-				result.FKCheckOK = false
-				result.OverallOK = false
-				result.FKViolations = append(result.FKViolations, fmt.Sprintf("表 %s (rowid %d) -> 父表 %s (fkid %d)", table, rowid, parent, fkid))
-			}
+	// Every query error is a failed gate, never a manufactured zero count.
+	fkRows, err := newDB.QueryContext(ctx, "PRAGMA foreign_key_check")
+	if err != nil {
+		return result, err
+	}
+	result.FKCheckOK = true
+	for fkRows.Next() {
+		var table, parent string
+		var rowid, fkid int64
+		if err := fkRows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+			fkRows.Close()
+			return result, err
+		}
+		result.FKCheckOK = false
+		result.OverallOK = false
+		result.FKViolations = append(result.FKViolations, fmt.Sprintf("表 %s rowid=%d 父表 %s", table, rowid, parent))
+	}
+	fkRows.Close()
+	if err := fkRows.Err(); err != nil {
+		return result, err
+	}
+	metrics := []struct {
+		name, query string
+		user        bool
+	}{
+		{"total_users", "SELECT count(*) FROM users", true},
+		{"active_users", "SELECT count(*) FROM users WHERE is_active=1", true},
+		{"superusers", "SELECT count(*) FROM users WHERE is_superuser=1", true},
+		{"verified_users", "SELECT count(*) FROM users WHERE email_verified_at IS NOT NULL", true},
+		{"sjtu_users", "SELECT count(*) FROM users WHERE is_sjtu=1", true},
+		{"articles_published", "SELECT count(*) FROM articles a JOIN pages p ON p.id=a.page_id WHERE p.live=1", false},
+		{"articles_draft", "SELECT count(*) FROM articles a JOIN pages p ON p.id=a.page_id WHERE p.live=0", false},
+		{"tournaments_active", "SELECT count(*) FROM tournaments WHERE status='published'", false},
+		{"tournaments_reg_open", "SELECT count(*) FROM tournaments WHERE status='published' AND registration_opens_at<=? AND registration_closes_at>?", false},
+		{"scrims_active", "SELECT count(*) FROM scrims WHERE status='published'", false},
+		{"scrims_open", "SELECT count(*) FROM scrims WHERE status='published' AND COALESCE(signup_closes_at,starts_at)>?", false},
+		{"teams_active", "SELECT count(*) FROM teams WHERE disbanded_at IS NULL", false},
+		{"teams_disbanded", "SELECT count(*) FROM teams WHERE disbanded_at IS NOT NULL", false},
+		{"registrations_confirmed", "SELECT count(*) FROM registrations WHERE status='approved'", false},
+		{"registrations_pending", "SELECT count(*) FROM registrations WHERE status='pending'", false},
+		{"comments_normal", "SELECT count(*) FROM comments WHERE is_hidden=0", false},
+		{"comments_hidden", "SELECT count(*) FROM comments WHERE is_hidden=1", false},
+	}
+	now := db.FormatUTC(time.Now().UTC())
+	for _, metric := range metrics {
+		args := []any{}
+		for i := 0; i < strings.Count(metric.query, "?"); i++ {
+			args = append(args, now)
+		}
+		var count int64
+		if err := newDB.QueryRowContext(ctx, metric.query, args...).Scan(&count); err != nil {
+			return result, fmt.Errorf("对账指标%s读取失败: %w", metric.name, err)
+		}
+		if metric.user {
+			result.UserStats[metric.name] = count
+		} else {
+			result.DomainStats[metric.name] = count
 		}
 	}
-
-	// 3. 用户与各领域指标统计（按状态分组，12 号文档 8.3）
-	countQuery := func(query string) int64 {
-		var cnt int64
-		_ = newDB.QueryRowContext(ctx, query).Scan(&cnt)
-		return cnt
-	}
-
-	result.UserStats["total_users"] = countQuery("SELECT count(*) FROM users")
-	result.UserStats["active_users"] = countQuery("SELECT count(*) FROM users WHERE is_active = 1")
-	result.UserStats["superusers"] = countQuery("SELECT count(*) FROM users WHERE is_superuser = 1")
-	result.UserStats["verified_users"] = countQuery("SELECT count(*) FROM users WHERE email_verified_at IS NOT NULL")
-	result.UserStats["sjtu_users"] = countQuery("SELECT count(*) FROM users WHERE is_sjtu = 1")
-
-	// 领域指标状态分组
-	result.DomainStats["articles_published"] = countQuery("SELECT count(*) FROM articles WHERE live = 1")
-	result.DomainStats["articles_draft"] = countQuery("SELECT count(*) FROM articles WHERE live = 0")
-	result.DomainStats["tournaments_active"] = countQuery("SELECT count(*) FROM tournaments WHERE is_active = 1")
-	result.DomainStats["tournaments_reg_open"] = countQuery("SELECT count(*) FROM tournaments WHERE registration_open = 1")
-	result.DomainStats["scrims_active"] = countQuery("SELECT count(*) FROM scrims WHERE is_active = 1")
-	result.DomainStats["scrims_open"] = countQuery("SELECT count(*) FROM scrims WHERE is_open = 1")
-	result.DomainStats["teams_active"] = countQuery("SELECT count(*) FROM teams WHERE disbanded_at IS NULL")
-	result.DomainStats["teams_disbanded"] = countQuery("SELECT count(*) FROM teams WHERE disbanded_at IS NOT NULL")
-	result.DomainStats["registrations_confirmed"] = countQuery("SELECT count(*) FROM registrations WHERE status = 'confirmed'")
-	result.DomainStats["registrations_pending"] = countQuery("SELECT count(*) FROM registrations WHERE status = 'pending'")
-	result.DomainStats["comments_normal"] = countQuery("SELECT count(*) FROM comments WHERE is_hidden = 0")
-	result.DomainStats["comments_hidden"] = countQuery("SELECT count(*) FROM comments WHERE is_hidden = 1")
-
-	// 4. 统计新表行数与新旧表对照
-	tableMappings := []struct {
-		entity string
-		newTab string
-		legTab string
-	}{
+	mappings := []struct{ entity, newTable, legacyTable string }{
 		{"用户账号", "users", "accounts_user"},
+		{"游戏ID", "game_accounts", "accounts_gameaccount"},
+		{"联系方式", "contacts", "accounts_contactmethod"},
 		{"战队", "teams", "teams_team"},
 		{"战队成员", "team_memberships", "teams_teammembership"},
 		{"赛事", "tournaments", "tournaments_tournament"},
 		{"赛事报名", "registrations", "tournaments_registration"},
+		{"赛事名单", "registration_members", "tournaments_registrationmember"},
+		{"个人报名", "individual_signups", "tournaments_individualsignup"},
 		{"内战", "scrims", "scrims_scrim"},
 		{"内战报名", "scrim_signups", "scrims_scrimsignup"},
 		{"文章", "articles", "content_articlepage"},
+		{"普通页", "site_pages", "content_standardpage"},
 		{"评论", "comments", "comments_comment"},
 		{"图片母版", "images", "wagtailimages_image"},
+		{"图片集合", "image_collections", "wagtailcore_collection"},
 		{"成员分组", "member_groups", "members_membergroup"},
 		{"审核记录", "moderation_items", "moderation_moderationitem"},
+		{"站点设置", "site_settings", "core_sitesettings"},
+		{"字体", "font_families", "core_fontfamily"},
+		{"字体切片记录", "font_faces", "core_fontface"},
+		{"冻结信", "held_letters", "core_heldletter"},
 	}
-
 	var legacyDB *sql.DB
 	if legacyPath != "" {
-		ldb, err := sql.Open("sqlite", fmt.Sprintf("file:%s?mode=ro", legacyPath))
-		if err == nil {
-			legacyDB = ldb
-			defer legacyDB.Close()
+		if info, err := os.Stat(legacyPath); err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
+			return result, fmt.Errorf("旧库输入不存在或为空")
+		}
+		legacyDB, err = sql.Open("sqlite", (&url.URL{Scheme: "file", Path: legacyPath, RawQuery: "mode=ro"}).String())
+		if err != nil {
+			return result, err
+		}
+		defer legacyDB.Close()
+		if err := legacyDB.PingContext(ctx); err != nil {
+			return result, err
 		}
 	}
-
-	for _, m := range tableMappings {
-		newCnt := countQuery(fmt.Sprintf("SELECT count(*) FROM %s", m.newTab))
-		var legCnt int64 = -1
-		status := "OK"
-
+	for _, mapping := range mappings {
+		stat := TableStat{EntityName: mapping.entity, NewTable: mapping.newTable, LegacyTable: mapping.legacyTable, LegacyCount: -1, Status: "OK"}
+		if err := newDB.QueryRowContext(ctx, "SELECT count(*) FROM "+mapping.newTable).Scan(&stat.NewCount); err != nil {
+			return result, err
+		}
 		if legacyDB != nil {
-			var cnt int64
-			err := legacyDB.QueryRowContext(ctx, fmt.Sprintf("SELECT count(*) FROM %s", m.legTab)).Scan(&cnt)
-			if err == nil {
-				legCnt = cnt
-				if newCnt == legCnt {
-					status = "MATCH"
+			if err := legacyDB.QueryRowContext(ctx, "SELECT count(*) FROM "+mapping.legacyTable).Scan(&stat.LegacyCount); err != nil {
+				stat.Status = "LEGACY_QUERY_FAILED"
+				result.OverallOK = false
+			} else if stat.NewCount != stat.LegacyCount {
+				stat.Status = "COUNT_DIFF"
+				result.OverallOK = false
+			} else {
+				stat.Status = "MATCH"
+			}
+		}
+		result.Tables = append(result.Tables, stat)
+	}
+	// Identity/title samples compare by preserved IDs. Reports contain counts
+	// and flags only: no actual addresses, nicknames or article titles.
+	if legacyDB != nil {
+		for _, sample := range []struct{ name, current, legacy string }{
+			{"users", "SELECT id,is_superuser,is_active FROM users ORDER BY id LIMIT 5", "SELECT is_superuser,is_active FROM accounts_user WHERE id=?"},
+			{"articles", "SELECT p.id,p.title,p.slug FROM articles a JOIN pages p ON p.id=a.page_id ORDER BY p.id LIMIT 3", "SELECT p.title,p.slug FROM content_articlepage a JOIN wagtailcore_page p ON p.id=a.page_ptr_id WHERE p.id=?"},
+			{"teams", "SELECT id,name,name FROM teams ORDER BY id LIMIT 3", "SELECT name,name FROM teams_team WHERE id=?"},
+		} {
+			rows, err := newDB.QueryContext(ctx, sample.current)
+			if err != nil {
+				return result, err
+			}
+			matched, checked := 0, 0
+			for rows.Next() {
+				var id int64
+				var first, second, oldFirst, oldSecond string
+				if err := rows.Scan(&id, &first, &second); err != nil {
+					rows.Close()
+					return result, err
+				}
+				checked++
+				if err := legacyDB.QueryRowContext(ctx, sample.legacy, id).Scan(&oldFirst, &oldSecond); err == nil && first == oldFirst && second == oldSecond {
+					matched++
 				} else {
-					status = "COUNT_DIFF"
 					result.OverallOK = false
 				}
-			} else {
-				status = "LEGACY_TABLE_MISSING"
 			}
-		}
-
-		result.Tables = append(result.Tables, TableStat{
-			EntityName:  m.entity,
-			NewTable:    m.newTab,
-			LegacyTable: m.legTab,
-			NewCount:    newCnt,
-			LegacyCount: legCnt,
-			Status:      status,
-		})
-	}
-
-	// 5. 若有旧库，抽样比对超级管理员、文章与战队（12 号文档 8.3）
-	if legacyDB != nil {
-		// (1) 用户抽样
-		rows, err := newDB.QueryContext(ctx, "SELECT email, is_superuser, is_active FROM users ORDER BY id LIMIT 5")
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var email string
-				var isSuper, isActive int
-				if err := rows.Scan(&email, &isSuper, &isActive); err == nil {
-					var legSuper, legActive int
-					q := "SELECT is_superuser, is_active FROM accounts_user WHERE email = ? LIMIT 1"
-					err := legacyDB.QueryRowContext(ctx, q, email).Scan(&legSuper, &legActive)
-					if err == nil {
-						match := (isSuper == legSuper) && (isActive == legActive)
-						result.SampleReport = append(result.SampleReport,
-							fmt.Sprintf("用户 %s: 新库 (super=%d, active=%d) vs 旧库 (super=%d, active=%d) -> match=%v",
-								email, isSuper, isActive, legSuper, legActive, match))
-						if !match {
-							result.OverallOK = false
-						}
-					} else {
-						result.SampleReport = append(result.SampleReport, fmt.Sprintf("用户 %s: 旧库中未检索到同邮箱记录", email))
-					}
-				}
+			rows.Close()
+			if err := rows.Err(); err != nil {
+				return result, err
 			}
-		}
-
-		// (2) 文章抽样
-		artRows, err := newDB.QueryContext(ctx, "SELECT id, title, slug FROM articles ORDER BY id LIMIT 3")
-		if err == nil {
-			defer artRows.Close()
-			for artRows.Next() {
-				var id int64
-				var title, slug string
-				if err := artRows.Scan(&id, &title, &slug); err == nil {
-					var legTitle string
-					q := "SELECT p.title FROM content_articlepage a JOIN wagtailcore_page p ON a.page_ptr_id = p.id WHERE a.page_ptr_id = ?"
-					err := legacyDB.QueryRowContext(ctx, q, id).Scan(&legTitle)
-					if err == nil {
-						match := (title == legTitle)
-						result.SampleReport = append(result.SampleReport,
-							fmt.Sprintf("文章 #%d: 新库「%s」vs 旧库「%s」-> match=%v", id, title, legTitle, match))
-					}
-				}
-			}
-		}
-
-		// (3) 战队抽样
-		teamRows, err := newDB.QueryContext(ctx, "SELECT id, name FROM teams ORDER BY id LIMIT 3")
-		if err == nil {
-			defer teamRows.Close()
-			for teamRows.Next() {
-				var id int64
-				var name string
-				if err := teamRows.Scan(&id, &name); err == nil {
-					var legName string
-					q := "SELECT name FROM teams_team WHERE id = ?"
-					err := legacyDB.QueryRowContext(ctx, q, id).Scan(&legName)
-					if err == nil {
-						match := (name == legName)
-						result.SampleReport = append(result.SampleReport,
-							fmt.Sprintf("战队 #%d: 新库「%s」vs 旧库「%s」-> match=%v", id, name, legName, match))
-					}
-				}
-			}
+			result.SampleReport = append(result.SampleReport, fmt.Sprintf("%s checked=%d matched=%d", sample.name, checked, matched))
 		}
 	}
 

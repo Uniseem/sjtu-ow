@@ -162,8 +162,14 @@ func remoteError(response *http.Response) error {
 		Code string `xml:"Code"`
 	}
 	_ = xml.Unmarshal(raw, &body)
-	safe := regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
-	if !safe.MatchString(body.Code) {
+	// A syntactically harmless Code can still echo an access key or secret.
+	// Return only known protocol codes; never provider-controlled free text.
+	switch body.Code {
+	case "AccessDenied", "NoSuchBucket", "NoSuchKey", "InvalidAccessKeyId",
+		"SignatureDoesNotMatch", "RequestTimeTooSkewed", "AuthorizationHeaderMalformed",
+		"ExpiredToken", "InvalidToken", "SlowDown", "InternalError", "ServiceUnavailable",
+		"AccountProblem", "BadDigest", "NoSuchUpload", "InvalidArgument":
+	default:
 		body.Code = ""
 	}
 	return &RemoteError{Status: response.StatusCode, Code: body.Code}

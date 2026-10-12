@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import type { AdminFailure } from "../core/error"
-defineProps<{ failure: AdminFailure; loginHref: string }>()
+import { useHead } from "@unhead/vue"
+import { onMounted } from "vue"
+import { ApiError } from "@sjtu-ow/api"
+import { showReadError } from "../core/read-error"
+const props = defineProps<{ failure: AdminFailure; loginHref: string }>()
+useHead(() => ({ title: `${props.failure.title} · SJTU-OW` }))
+onMounted(() => showReadError(new ApiError(props.failure.status,"read",props.failure.message)))
 const emit = defineEmits<{ retry: [] }>()
 </script>
 <template>
-  <main id="main" class="b-main"><section class="c-panel" role="alert"><h1>{{ failure.title }}</h1><p class="mt-3">{{ failure.message }}</p><div class="c-formbar"><a v-if="failure.status === 401" :href="loginHref" class="c-btn c-btn--primary">重新登录</a><button v-if="failure.retry" type="button" class="c-btn c-btn--primary" @click="emit('retry')">重新打开</button><a href="/admin/" class="c-btn c-btn--secondary">后台首页</a></div></section></main>
+  <main id="main" class="b-main" :data-page-status="failure.status"><section class="c-panel" role="alert"><h1>{{ failure.title }}</h1><p class="mt-3">{{ failure.message }}</p><div class="c-formbar"><a v-if="failure.status === 401" :href="loginHref" class="c-btn c-btn--primary">重新登录</a><button v-if="failure.retry" type="button" class="c-btn c-btn--primary" @click="emit('retry')">重新打开</button><a href="/admin/" class="c-btn c-btn--secondary">后台首页</a></div></section></main>
 </template>

@@ -241,6 +241,24 @@ func TestRemoteFailureAndRedirectNeverLeakProviderBody(t *testing.T) {
 	}
 }
 
+func TestProviderCannotEchoSecretsThroughSafeLookingErrorCode(t *testing.T) {
+	for _, secret := range []string{"AsciiSecret123456", "test-access-id", "test-secret-not-production"} {
+		t.Run(secret, func(t *testing.T) {
+			client := storageTestClient(t, storageTestTransport(func(request *http.Request) (*http.Response, error) {
+				return storageTestResponse(request, 403, "<Error><Code>"+secret+"</Code></Error>"), nil
+			}))
+			_, err := client.Get(context.Background(), "private-object", 100)
+			if err == nil || strings.Contains(err.Error(), secret) {
+				t.Fatalf("provider Code leaked its echo: %v", err)
+			}
+			var remote *RemoteError
+			if !errors.As(err, &remote) || remote.Status != 403 || remote.Code != "" {
+				t.Fatalf("unknown code was exposed: %v", err)
+			}
+		})
+	}
+}
+
 func TestPutFileSendsExactlyHashedBytesAndRejectsWrongSize(t *testing.T) {
 	calls := 0
 	data := []byte("encrypted binary backup\x00\x80\xff")

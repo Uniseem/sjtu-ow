@@ -139,10 +139,19 @@ export async function handle(
 
 function errorResponse(status: ErrorStatus, req: Incoming) {
   const body = errorDocument(status, req.headers.get("x-request-id"))
-  return { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }, body }
+  return { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-security-policy": CSP }, body }
 }
 
 function toResponse(rendered: Rendered, assets: Assets, req: Incoming): { status: number; headers: Record<string, string>; body: string } {
+  if (rendered.kind === "document") return {
+    status: 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8", "cache-control": "private, no-store",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox",
+      "x-frame-options": "SAMEORIGIN", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
+    },
+    body: rendered.html,
+  }
   if (rendered.kind === "slash") return { status: 301, headers: { location: rendered.location }, body: "" }
   if (rendered.kind === "redirect") return { status: rendered.status, headers: { location: rendered.location, "cache-control": "no-store" }, body: "" }
   if (rendered.kind === "login") {
@@ -249,7 +258,7 @@ if (isMain) {
     }
     handle({ method: req.method ?? "GET", url: req.url ?? "/", headers }, { apiBase, fetch, assets }).then((out) => {
       if (strict && (out.headers["content-type"] ?? "").startsWith("text/html")) {
-        out.headers["content-security-policy"] = CSP
+        out.headers["content-security-policy"] ??= CSP
       }
       res.writeHead(out.status, out.headers)
       res.end(out.body)

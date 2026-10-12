@@ -11,26 +11,31 @@ import (
 
 // ImportLegacySettings 从现行 Django SQLite 库导入全站设置数据。
 func ImportLegacySettings(ctx context.Context, d *db.DB, legacy *sql.DB) error {
-	var hasTable bool
-	_ = legacy.QueryRowContext(ctx, `SELECT 1 FROM sqlite_master WHERE type='table' AND name='core_sitesettings'`).Scan(&hasTable)
-	if !hasTable {
+	var exists int
+	if err := legacy.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='core_sitesettings'`).Scan(&exists); err != nil {
+		return fmt.Errorf("检查旧设置表: %w", err)
+	}
+	if exists == 0 {
 		return nil
 	}
-
 	setCols := make(map[string]bool)
-	{
-		sRows, err := legacy.QueryContext(ctx, `PRAGMA table_info(core_sitesettings)`)
-		if err == nil {
-			defer sRows.Close()
-			for sRows.Next() {
-				var cid, notnull, pk int
-				var name, ctype string
-				var dflt any
-				if err := sRows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err == nil {
-					setCols[name] = true
-				}
-			}
+	rows, err := legacy.QueryContext(ctx, `PRAGMA table_info(core_sitesettings)`)
+	if err != nil {
+		return fmt.Errorf("读取旧设置结构: %w", err)
+	}
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, ctype string
+		var fallback any
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &fallback, &pk); err != nil {
+			rows.Close()
+			return err
 		}
+		setCols[name] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
 	}
 	colHero := "NULL AS hero_image_id"
 	if setCols["hero_image_id"] {
@@ -101,7 +106,7 @@ func ImportLegacySettings(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 	var defShare, hero, bNews, bTourn, bScrim, bTeams, bMemb sql.NullInt64
 	var modEnabled int
 
-	err := row.Scan(
+	err = row.Scan(
 		&siteDesc, &fromName, &prefix,
 		&smtpHost, &smtpPort, &smtpSecurity, &smtpUser, &smtpPass, &fromAddr,
 		&foundedOn, &defShare, &hero,

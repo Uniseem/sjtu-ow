@@ -1,132 +1,77 @@
 #!/usr/bin/env bash
-# SJTU-OW 生产割接自动化执行脚本（12 号文档 8.4、M10/M11）
+# Run only after explicit user deployment authorization and green final batch.
+# Required: old database path, old media directory, separate reviewed next .env.
 set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-NEW_COMPOSE="${SCRIPT_DIR}/docker-compose.new.yml"
-OLD_COMPOSE="${SCRIPT_DIR}/docker-compose.yml"
-OLD_COMPOSE_VPS="${SCRIPT_DIR}/docker-compose.vps.yml"
-ENV_FILE="${REPO_DIR}/.env"
-
-echo "============================================="
-echo "   SJTU-OW 生产停机割接自动化流水线"
-echo "============================================="
-
-# 0. 验证环境配置
-if [[ ! -f "$NEW_COMPOSE" ]]; then
-    echo "错误: 找不到新栈 Compose 文件 $NEW_COMPOSE" >&2
-    exit 1
+umask 077
+REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+if [[ $# -ne 3 || "${CUTOVER_AUTHORIZED:-}" != yes ]]; then
+    echo "需用户明确授权后: CUTOVER_AUTHORIZED=yes bash deploy/cutover.sh <旧库绝对路径> <旧媒体绝对目录> <新栈.env绝对路径>" >&2
+    exit 64
 fi
-
-COMPOSE_NEW="docker compose -p sjtu-ow -f $NEW_COMPOSE"
-if [[ -f "$ENV_FILE" ]]; then
-    COMPOSE_NEW="$COMPOSE_NEW --env-file $ENV_FILE"
+LEGACY_DB=$1
+LEGACY_MEDIA=$2
+NEXT_ENV=$3
+[[ "$LEGACY_DB" = /* && -s "$LEGACY_DB" && "$LEGACY_MEDIA" = /* && -d "$LEGACY_MEDIA" && "$NEXT_ENV" = /* && -f "$NEXT_ENV" ]]
+OLD_ENV="$REPO_DIR/.env"
+[[ -f "$OLD_ENV" && "$NEXT_ENV" != "$OLD_ENV" ]]
+OLD=(docker compose -p sjtu-ow -f "$REPO_DIR/deploy/docker-compose.yml" -f "$REPO_DIR/deploy/docker-compose.vps.yml" --env-file "$OLD_ENV")
+NEXT=(docker compose -p sjtu-ow-next -f "$REPO_DIR/deploy/docker-compose.new.yml" --env-file "$NEXT_ENV")
+# Optional reviewed, host-specific next override; never reuse the old override.
+if [[ -f "$REPO_DIR/deploy/docker-compose.next-vps.yml" ]]; then
+    NEXT+=(-f "$REPO_DIR/deploy/docker-compose.next-vps.yml")
 fi
-
-AUTO_CONFIRM=0
-if [[ "${1:-}" == "--yes" || "${1:-}" == "-y" ]]; then
-    AUTO_CONFIRM=1
-fi
-
-if [[ $AUTO_CONFIRM -eq 0 ]]; then
-    echo "警告: 即将执行停机割接流水线！旧栈写入服务将被停止，数据将导入新栈。"
-    read -p "是否确认开始执行割接? [y/N] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "割接已取消。"
-        exit 0
-    fi
-fi
-
-START_TIME=$(date +%s)
-
-# 1. 预先构建新栈容器镜像（缩短停机时间）
-echo "[1/6] 构建新栈应用镜像..."
-$COMPOSE_NEW build
-
-# 2. 停用旧栈服务（进入只读维护）
-echo "[2/6] 停止旧栈运行容器..."
-if docker compose -p sjtu-ow -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" ps -q 2>/dev/null | grep -q .; then
-    docker compose -p sjtu-ow -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" down || true
-elif docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" ps -q 2>/dev/null | grep -q .; then
-    docker compose -f "$OLD_COMPOSE" -f "$OLD_COMPOSE_VPS" down || true
-else
-    echo "  旧栈服务未在运行，继续割接流程..."
-fi
-
-# 3. 创建旧库最终快照
-echo "[3/6] 创建旧库只读快照..."
-LEGACY_DB=""
-for cand in \
-    "/var/lib/docker/volumes/sjtu-ow_data/_data/db.sqlite3" \
-    "/srv/sjtu-ow/data/db.sqlite3" \
-    "/srv/sjtu-ow/data/sjtuow.sqlite3" \
-    "${REPO_DIR}/data/db.sqlite3"; do
-    if [[ -f "$cand" ]]; then
-        LEGACY_DB="$cand"
-        break
-    fi
+"${OLD[@]}" config --quiet
+"${NEXT[@]}" config --quiet
+# Disk probe happens only in an authorized deployment; no automatic pruning.
+python3 - "$REPO_DIR" <<'CHECK_DISK'
+import shutil, sys
+s = shutil.disk_usage(sys.argv[1])
+if s.free / s.total < 0.25 or s.free < 5 * 1024**3:
+    raise SystemExit('割接前需至少25%且5GiB空闲；请先由用户授权处理磁盘')
+CHECK_DISK
+BACKUP_DIR=/root/sjtu-ow-backups/cutover-$(date +%Y%m%d%H%M%S)
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+# Pin the actual running images, not whichever latest tag currently points at.
+for service in web worker; do
+    container=$("${OLD[@]}" ps -q "$service")
+    [[ -n "$container" ]]
+    image=$(docker inspect --format '{{.Image}}' "$container")
+    docker tag "$image" "sjtu-ow-$service:legacy"
 done
-
-SNAPSHOT_DIR="/root/sjtu-ow-backups"
-mkdir -p "$SNAPSHOT_DIR" 2>/dev/null || SNAPSHOT_DIR="/tmp"
-SNAPSHOT_DB="${SNAPSHOT_DIR}/legacy-final-$(date +%Y%m%d%H%M%S).sqlite3"
-
-if [[ -n "$LEGACY_DB" && -f "$LEGACY_DB" ]]; then
-    cp "$LEGACY_DB" "$SNAPSHOT_DB"
-    echo "  已从 $LEGACY_DB 创建最终快照: $SNAPSHOT_DB"
-else
-    echo "  注意: 未检测到宿主旧库，使用临时测试快照"
-    SNAPSHOT_DB="/tmp/legacy-empty.sqlite3"
-    touch "$SNAPSHOT_DB"
-fi
-
-# 4. 初始化新库模式
-echo "[4/6] 初始化新栈数据库模式..."
-$COMPOSE_NEW run --rm server migrate
-
-# 5. 执行全领域数据导入
-echo "[5/6] 导入存量历史数据..."
-if [[ -s "$SNAPSHOT_DB" ]]; then
-    $COMPOSE_NEW run --rm -v "$(realpath "$SNAPSHOT_DB")":/tmp/legacy.sqlite3:ro server import /tmp/legacy.sqlite3
-fi
-
-# 6. 全量数据对账自检（门禁红线）
-echo "[6/6] 运行对账自检与一致性核验..."
-if [[ -s "$SNAPSHOT_DB" ]]; then
-    $COMPOSE_NEW run --rm -v "$(realpath "$SNAPSHOT_DB")":/tmp/legacy.sqlite3:ro server reconcile /tmp/legacy.sqlite3
-else
-    $COMPOSE_NEW run --rm server reconcile
-fi
-
-# 7. 启动新栈全量容器集群
-echo "启动新栈应用集群 (Server + Worker + Web + Proxy)..."
-$COMPOSE_NEW up -d
-
-# 8. 冒烟健康检查
-echo "等待新栈就绪与健康检查..."
-MAX_RETRIES=20
-READY=0
-PORT_CHECK="${PORT:-22887}"
-for i in $(seq 1 $MAX_RETRIES); do
-    if curl -fsSL "http://127.0.0.1:${PORT_CHECK}/healthz" > /dev/null 2>&1; then
-        READY=1
-        break
-    fi
-    echo "  等待应用响应中 ($i/$MAX_RETRIES)..."
+cat > "$BACKUP_DIR/legacy-images.yml" <<'IMAGES'
+services:
+  web:
+    image: sjtu-ow-web:legacy
+  worker:
+    image: sjtu-ow-worker:legacy
+IMAGES
+cp -p /etc/cron.d/sjtu-ow "$BACKUP_DIR/cron.d-sjtu-ow"
+# Isolated project/images are built before entering the maintenance window.
+"${NEXT[@]}" build
+# Fail rather than import into a previously used Go database.
+"${NEXT[@]}" run --rm --no-deps --entrypoint sh server -c 'test ! -e /srv/sjtuow/data/sjtuow.sqlite3'
+STARTED=$(date +%s)
+# Preserve every old container/volume. Stop writers individually; no down -v.
+"${OLD[@]}" stop worker
+"${OLD[@]}" stop web
+mv /etc/cron.d/sjtu-ow "$BACKUP_DIR/cron.disabled"
+# A coherent SQLite backup incorporates WAL; copying only the .sqlite3 would not.
+python3 "$REPO_DIR/deploy/rehearsal_input.py" "$LEGACY_DB" "$LEGACY_MEDIA" "$BACKUP_DIR" > "$BACKUP_DIR/media-path"
+"${NEXT[@]}" run --rm --no-deps server migrate
+"${NEXT[@]}" run --rm --no-deps -v "$BACKUP_DIR/legacy-source.sqlite3:/input/legacy.sqlite3:ro" server import /input/legacy.sqlite3
+"${NEXT[@]}" run --rm --no-deps -v "$LEGACY_MEDIA:/input/media:ro" server import-media /input/media
+"${NEXT[@]}" run --rm --no-deps -v "$BACKUP_DIR/legacy-source.sqlite3:/input/legacy.sqlite3:ro" -v "$LEGACY_MEDIA:/input/media:ro" server import-fonts /input/legacy.sqlite3 /input/media
+"${NEXT[@]}" run --rm --no-deps -v "$BACKUP_DIR/legacy-source.sqlite3:/input/legacy.sqlite3:ro" server reconcile /input/legacy.sqlite3
+# The old proxy still serves existing public prerenders during import.
+"${OLD[@]}" stop proxy
+"${NEXT[@]}" up -d
+# After this point new writes may exist: never restore an old database blindly.
+port=${CUTOVER_PORT:-22887}
+ready=0
+for attempt in $(seq 1 30); do
+    if curl --fail --silent "http://127.0.0.1:$port/healthz" > /dev/null; then ready=1; break; fi
     sleep 2
 done
-
-END_TIME=$(date +%s)
-DURATION=$((END_TIME - START_TIME))
-
-if [[ $READY -eq 1 ]]; then
-    echo "============================================="
-    echo "   割接成功完成！总停机耗时: ${DURATION} 秒"
-    echo "   新站已正式对外提供服务！"
-    echo "============================================="
-else
-    echo "错误: 新栈健康检查未能在预定时间内通过！请检查容器日志并按 docs/cutover.md 执行回滚！" >&2
-    exit 1
-fi
+[[ "$ready" = 1 ]] || { echo '健康检查失败；保留新旧库，按cutover.md的数据闸处理，禁止覆盖恢复' >&2; exit 1; }
+echo "CUTOVER-HEALTH-OK elapsed=$(( $(date +%s) - STARTED )) backup=$BACKUP_DIR"

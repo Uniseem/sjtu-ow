@@ -9,7 +9,7 @@ export async function load(ctx: LoadCtx) {
   } catch (error) {
     // Invalid signed links have a real explanation page in the old site.
     if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
-      return { title: "退订活动通知", subscription: null, token: ctx.params.token, invalid: true }
+      return { title: "退订活动通知", status: 404, subscription: null, token: ctx.params.token, invalid: true }
     }
     throw error
   }

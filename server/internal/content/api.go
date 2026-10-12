@@ -1,10 +1,12 @@
 package content
 
 import (
+	"database/sql"
 	"net/http"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
+	"github.com/Uniseem/sjtu-ow/server/internal/comments"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
 )
 
@@ -14,7 +16,10 @@ type Module struct {
 	previewResolver   api.ViewerResolver
 	previewStylesheet string
 	previews          contentPreviewCache
+	comments          *comments.Service
 }
+
+func (m *Module) SetComments(service *comments.Service) { m.comments = service }
 
 // NewModule 创建内容域模块。
 func NewModule(svc *Service) *Module {
@@ -26,6 +31,23 @@ type NewsListIn struct {
 	Category string `query:"category"`
 	Page     int    `query:"page"`
 	PageSize int    `query:"page_size"`
+}
+
+type StyleguideOut struct {
+	ImageID *int64 `json:"image_id"`
+}
+
+func (m *Module) styleguide(ctx *app.Ctx, _ struct{}) (StyleguideOut, error) {
+	// A published cover is public; no pending member avatar or private upload.
+	var id int64
+	err := m.svc.store.d.ReadPool().QueryRowContext(ctx.Context, `SELECT a.cover_image_id FROM articles a JOIN pages p ON p.id=a.page_id WHERE p.live=1 AND p.is_public=1 AND a.cover_image_id IS NOT NULL ORDER BY p.id LIMIT 1`).Scan(&id)
+	if err == sql.ErrNoRows {
+		return StyleguideOut{}, nil
+	}
+	if err != nil {
+		return StyleguideOut{}, err
+	}
+	return StyleguideOut{ImageID: &id}, nil
 }
 
 // NewsItemOut 是文章列表项。
@@ -59,7 +81,9 @@ type NewsListOut struct {
 
 // NewsDetailIn 是 GET /api/page/news/{slug} 的入参。
 type NewsDetailIn struct {
-	Slug string `path:"slug"`
+	Slug     string `path:"slug"`
+	Sort     string `query:"sort"`
+	Comments int    `query:"comments"`
 }
 
 // HeadingOut 是文章目录标题节点。
@@ -71,32 +95,33 @@ type HeadingOut struct {
 
 // NewsDetailOut 是 GET /api/page/news/{slug} 的出参。
 type NewsDetailOut struct {
-	ID                  int64                 `json:"id"`
-	Slug                string                `json:"slug"`
-	Title               string                `json:"title"`
-	CategoryName        string                `json:"category_name"`
-	CoverImageID        *int64                `json:"cover_image_id,omitempty"`
-	Summary             string                `json:"summary"`
-	BodyHTML            string                `json:"body_html"`
-	CharCount           int                   `json:"char_count"`
-	ReadingTime         int                   `json:"reading_time"`
-	AuthorName          string                `json:"author_name"`
-	CommentsEnabled     bool                  `json:"comments_enabled"`
-	RelatedTournamentID *int64                `json:"related_tournament_id,omitempty"`
-	FirstPublishedAt    *time.Time            `json:"first_published_at,omitempty"`
-	Headings            []*HeadingOut         `json:"headings"`
-	CategorySlug        string                `json:"category_slug"`
-	DefaultCoverImageID *int64                `json:"default_cover_image_id"`
-	Author              *ArticleAuthorOut     `json:"author"`
-	AuthorArticleCount  int                   `json:"author_article_count"`
-	LastPublishedAt     *time.Time            `json:"last_published_at"`
-	CommentTotal        int                   `json:"comment_total"`
-	Older               *ArticleNeighbourOut  `json:"older"`
-	Newer               *ArticleNeighbourOut  `json:"newer"`
-	Related             []*NewsItemOut        `json:"related"`
-	Tournament          *ArticleTournamentOut `json:"tournament"`
-	SeoTitle            string                `json:"seo_title"`
-	SearchDescription   string                `json:"search_description"`
+	ID                  int64                        `json:"id"`
+	Slug                string                       `json:"slug"`
+	Title               string                       `json:"title"`
+	CategoryName        string                       `json:"category_name"`
+	CoverImageID        *int64                       `json:"cover_image_id,omitempty"`
+	Summary             string                       `json:"summary"`
+	BodyHTML            string                       `json:"body_html"`
+	CharCount           int                          `json:"char_count"`
+	ReadingTime         int                          `json:"reading_time"`
+	AuthorName          string                       `json:"author_name"`
+	CommentsEnabled     bool                         `json:"comments_enabled"`
+	RelatedTournamentID *int64                       `json:"related_tournament_id,omitempty"`
+	FirstPublishedAt    *time.Time                   `json:"first_published_at,omitempty"`
+	Headings            []*HeadingOut                `json:"headings"`
+	CategorySlug        string                       `json:"category_slug"`
+	DefaultCoverImageID *int64                       `json:"default_cover_image_id"`
+	Author              *ArticleAuthorOut            `json:"author"`
+	AuthorArticleCount  int                          `json:"author_article_count"`
+	LastPublishedAt     *time.Time                   `json:"last_published_at"`
+	CommentTotal        int                          `json:"comment_total"`
+	Older               *ArticleNeighbourOut         `json:"older"`
+	Newer               *ArticleNeighbourOut         `json:"newer"`
+	Related             []*NewsItemOut               `json:"related"`
+	Tournament          *ArticleTournamentOut        `json:"tournament"`
+	SeoTitle            string                       `json:"seo_title"`
+	SearchDescription   string                       `json:"search_description"`
+	Thread              *comments.ListCommentsResult `json:"thread,omitempty"`
 }
 
 // SitePageIn 是 GET /api/page/{slug} 的入参。
@@ -146,10 +171,11 @@ type AdminListArticlesIn struct {
 
 // AdminListArticlesOut 是 GET /api/admin/articles 的出参。
 type AdminListArticlesOut struct {
-	Total    int        `json:"total"`
-	Page     int        `json:"page"`
-	PageSize int        `json:"page_size"`
-	Items    []*Article `json:"items"`
+	Categories []ArticleCategoryChoice `json:"categories,omitempty"`
+	Total      int                     `json:"total"`
+	Page       int                     `json:"page"`
+	PageSize   int                     `json:"page_size"`
+	Items      []*Article              `json:"items"`
 }
 
 // CategoryListIn 是 GET /api/admin/categories 的入参（空）。
@@ -273,6 +299,7 @@ func (m *Module) Routes(r *api.Registry) {
 	api.Raw(r, http.MethodGet, "/sitemap.xml", nil, m.ServeSitemap)
 	api.Raw(r, http.MethodGet, "/robots.txt", nil, m.ServeRobots)
 	api.Get(r, "/api/page/home", api.Public, m.getHomePage)
+	api.Get(r, "/api/page/styleguide", api.Cap("admin.enter"), m.styleguide)
 	api.Get(r, "/api/page/news", api.Public, m.listNews)
 	api.Get(r, "/api/page/news/{slug}", api.Public, m.getNewsDetail)
 	api.Get(r, "/api/page/{slug}", api.Public, m.getSitePage)
@@ -318,7 +345,12 @@ func (m *Module) listNews(ctx *app.Ctx, in NewsListIn) (NewsListOut, error) {
 }
 
 func (m *Module) getNewsDetail(ctx *app.Ctx, in NewsDetailIn) (NewsDetailOut, error) {
-	return m.svc.ArticlePage(ctx, in.Slug)
+	out, err := m.svc.ArticlePage(ctx, in.Slug)
+	if err != nil || m.comments == nil {
+		return out, err
+	}
+	out.Thread, err = m.comments.ListComments(ctx, out.ID, comments.ListCommentsInput{SortBy: in.Sort, Page: in.Comments, PageSize: 20})
+	return out, err
 }
 
 func (m *Module) getSitePage(ctx *app.Ctx, in SitePageIn) (SitePageOut, error) {
@@ -385,7 +417,18 @@ func (m *Module) deleteArticle(ctx *app.Ctx, in DeleteArticleIn) (DeleteArticleO
 }
 
 func (m *Module) adminListArticles(ctx *app.Ctx, in AdminListArticlesIn) (AdminListArticlesOut, error) {
-	return m.listEditableArticles(ctx, in)
+	out, err := m.listEditableArticles(ctx, in)
+	if err != nil {
+		return out, err
+	}
+	choices, err := m.svc.store.ListCategories(ctx.Context)
+	if err != nil {
+		return out, err
+	}
+	for _, category := range choices {
+		out.Categories = append(out.Categories, ArticleCategoryChoice{ID: category.ID, Name: category.Name, AllowSubmission: category.AllowSubmission})
+	}
+	return out, nil
 }
 
 func (m *Module) adminGetArticleDetail(ctx *app.Ctx, in AdminArticleDetailIn) (AdminArticleDetailOut, error) {

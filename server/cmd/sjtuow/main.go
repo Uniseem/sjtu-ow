@@ -167,6 +167,7 @@ func buildRegistry(
 	}
 	if contentSvc != nil {
 		module := content.NewModule(contentSvc)
+		module.SetComments(commentsSvc)
 		module.SetPreviewResolver(opts.previewResolver)
 		module.SetPreviewStylesheet("/static/css/reader.css")
 		module.Routes(reg)

@@ -18,8 +18,17 @@
 # 安全头统一在这里加（12 号 3.4）。`>` 是推迟到上游答复之后再设，会覆盖上游带来的同名头，
 # 所以 SSR 不必再发 CSP。策略和 web/apps/site/server.ts 的 CSP 逐字一致（有测试比）。
 (security) {
-	@ordinary_headers not path /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
+	@ordinary_headers not path /_styleguide/emails/*/ /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
 	@letter_preview_headers path /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview
+	@legacy_mail_headers path /_styleguide/emails/*/
+	# SSR supplies mail CSP only for an authorized200 document. Its hidden404
+	# uses the ordinary scriptless error policy, which can load error.css.
+	header @legacy_mail_headers {
+		>Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		>X-Content-Type-Options "nosniff"
+		>Referrer-Policy "no-referrer"
+		>X-Frame-Options "SAMEORIGIN"
+	}
 	@content_preview_headers path /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
 	header @ordinary_headers {
 		>Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -54,12 +63,20 @@
 (to_api) {
 	reverse_proxy {$API_UPSTREAM:server:8080} {
 		header_up X-Real-IP {client_ip}
+		@upstream_unavailable status 502 503 504
+		handle_response @upstream_unavailable {
+			error "upstream unavailable" {rp.status_code}
+		}
 	}
 }
 
 (to_ssr) {
 	reverse_proxy {$SSR_UPSTREAM:web:5173} {
 		header_up X-Real-IP {client_ip}
+		@upstream_unavailable status 502 503 504
+		handle_response @upstream_unavailable {
+			error "upstream unavailable" {rp.status_code}
+		}
 	}
 }
 
@@ -90,6 +107,10 @@
 	}
 
 	route {
+		# 266 decision: retired prerender settings entrance is a real 301.
+		handle /admin/settings/prerender/ {
+			redir * /admin/settings/ 301
+		}
 		request_body @uploads {
 			max_size 16MB
 		}
@@ -164,7 +185,7 @@
 		}
 
 		# 字体：只给带哈希的样式表和切片；原文件不公开（旧站 v7.18）
-		@hashed_fonts path_regexp ^/media/fonts/(css/(fonts|preview)\.[a-f0-9]{12}\.css|[0-9]+/[^/]+\.woff2)$
+		@hashed_fonts path_regexp ^/media/fonts/(css/(fonts|preview)\.([a-f0-9]{12}|[a-f0-9]{20})\.css|objects/[a-f0-9]{64}\.woff2|[0-9]+/[a-zA-Z0-9_-]+\.woff2)$
 		handle @hashed_fonts {
 			root * {$MEDIA_PARENT:/var}
 			header Cache-Control "public, max-age=31536000, immutable"

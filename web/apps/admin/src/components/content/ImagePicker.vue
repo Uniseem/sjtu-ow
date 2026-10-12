@@ -20,13 +20,13 @@ const file = ref<File | null>(null)
 const page = ref(1)
 const submitted = ref({ q: "", collection: "" })
 const canUpload = computed(() => Boolean(user.value?.superuser || user.value?.caps.includes("images.contribute")))
-const collections = useContentResource((signal) => getApiAdminImageCollections(api, { signal }))
+const collections = useContentResource((signal) => getApiAdminImageCollections(api, { signal }), false)
 const images = useContentResource((signal) => getApiAdminImages(api, {
   q: submitted.value.q,
   collection_id: positiveID(submitted.value.collection) ?? undefined,
   page: page.value,
   page_size: 48,
-}, { signal }))
+}, { signal }), false)
 const pages = computed(() => Math.max(1, Math.ceil((images.data.value?.total ?? 0) / 48)))
 const upload = useUploadQueue(api, (image) => emit("select", image))
 let priorFocus: HTMLElement | null = null

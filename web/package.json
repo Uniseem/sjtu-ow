@@ -11,6 +11,7 @@
     "@types/node": "24.19.2",
     "typescript": "6.0.3",
     "vitest": "^3.2.4",
-    "vue-tsc": "3.3.12"
+    "vue-tsc": "3.3.12",
+    "playwright": "1.64.0"
   }
 }

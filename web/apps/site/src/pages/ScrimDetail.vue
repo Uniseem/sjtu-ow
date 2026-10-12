@@ -1,12 +1,11 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
-import { getApiScrimsId as loadScrim,getApiMeProfile } from "@sjtu-ow/api"
+import { getApiScrimsId as loadScrim } from "@sjtu-ow/api"
 import { httpError } from "../router"
 export async function load(ctx:LoadCtx){
-  const viewer=await ctx.viewer()
-  const [page,profile]=await Promise.all([loadScrim(ctx.api,ctx.params.id),viewer.user?getApiMeProfile(ctx.api):Promise.resolve(null)])
+  const page=await loadScrim(ctx.api,ctx.params.id)
   if(!page.scrim)throw httpError(404)
-  return{title:page.scrim.title,page,accounts:profile?.game_accounts||[]}
+  return{title:page.scrim.title,page,accounts:page.game_accounts}
 }
 </script>
 <script setup lang="ts">

@@ -28,14 +28,33 @@ func NewModule(resolve api.ViewerResolver) *Module {
 }
 
 type ListIn struct {
-	Group string `query:"group"`
-	Q     string `query:"q"`
+	Group  string `query:"group"`
+	Q      string `query:"q"`
+	Legacy bool   `query:"legacy"`
 }
+
+var legacySampleKeys = []string{
+	"verify", "reset", "unknown", "exists", "smtp", "apply", "apply-ok", "apply-no", "applications-waiting", "removed",
+	"unplaced-reminder", "tournament-update", "tournament-update-again", "member-left", "captain", "disbanded",
+	"submitted", "entered", "approved", "rejected", "cancelled", "formed", "returned", "left", "tournament-reminder",
+	"reminder", "new-tournament", "new-article", "new-scrim", "scrim-update", "scrim-cancelled", "patrol", "ask-author", "avatar-taken-down",
+}
+
+func legacySample(key string) bool {
+	for _, old := range legacySampleKeys {
+		if old == key {
+			return true
+		}
+	}
+	return false
+}
+
 type SampleIn struct {
 	Key string `path:"key"`
 }
 
 type SampleOut struct {
+	HTML             string `json:"html,omitempty"`
 	Key              string `json:"key"`
 	Group            string `json:"group"`
 	Title            string `json:"title"`
@@ -81,10 +100,14 @@ func describe(sample Sample) SampleOut {
 }
 
 func (m *Module) list(ctx *app.Ctx, in ListIn) (ListOut, error) {
-	out := ListOut{Items: []SampleOut{}, Groups: []SampleGroup{}, Total: len(m.samples), RootURL: sampleRoot, Prefix: mail.DefaultPrefix}
+	out := ListOut{Items: []SampleOut{}, Groups: []SampleGroup{}, RootURL: sampleRoot, Prefix: mail.DefaultPrefix}
 	counts := map[string]int{}
 	order := []string{}
 	for _, sample := range m.samples {
+		if in.Legacy && !legacySample(sample.Key) {
+			continue
+		}
+		out.Total++
 		if counts[sample.Group] == 0 {
 			order = append(order, sample.Group)
 		}
@@ -93,11 +116,21 @@ func (m *Module) list(ctx *app.Ctx, in ListIn) (ListOut, error) {
 	for _, group := range order {
 		out.Groups = append(out.Groups, SampleGroup{Name: group, Count: counts[group]})
 	}
+	samples := m.samples
+	if in.Legacy {
+		samples = []Sample{}
+		for _, key := range legacySampleKeys {
+			samples = append(samples, m.byKey[key])
+		}
+	}
 	query := strings.ToLower(strings.TrimSpace(in.Q))
 	if len([]rune(query)) > 50 {
 		return out, api.InvalidFields(map[string][]string{"q": {"搜索不超过50字"}})
 	}
-	for _, sample := range m.samples {
+	for _, sample := range samples {
+		if in.Legacy && !legacySample(sample.Key) {
+			continue
+		}
 		if in.Group != "" && sample.Group != in.Group {
 			continue
 		}
@@ -114,7 +147,13 @@ func (m *Module) detail(ctx *app.Ctx, in SampleIn) (SampleOut, error) {
 	if !found {
 		return SampleOut{}, api.NotFound("邮件样张不存在")
 	}
-	return describe(sample), nil
+	out := describe(sample)
+	body, err := BrowserHTML(sample.Letter, sample.Name)
+	if err != nil {
+		return SampleOut{}, err
+	}
+	out.HTML = body
+	return out, nil
 }
 
 func (m *Module) authorize(w http.ResponseWriter, r *http.Request) bool {

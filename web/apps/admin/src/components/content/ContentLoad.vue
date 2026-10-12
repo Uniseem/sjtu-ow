@@ -4,7 +4,7 @@ defineEmits<{ retry: [] }>()
 </script>
 <template>
   <p v-if="pending" class="b-sub" role="status" aria-live="polite">正在加载…</p>
-  <div v-else-if="message" class="c-notice c-notice--error" role="alert" tabindex="-1">
+  <div v-else-if="message" class="c-notice c-notice--error" role="alert" tabindex="-1" :data-page-status="status ?? 0">
     <div class="c-notice__body">
       <p v-if="status === 403">你没有使用这一页的权限。</p>
       <p v-else-if="status === 404">找不到这项内容。</p>

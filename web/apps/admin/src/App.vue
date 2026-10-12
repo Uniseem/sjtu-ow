@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onErrorCaptured, ref, watch } from "vue"
 import { useRoute } from "vue-router"
+import { useHead } from "@unhead/vue"
 import AdminTop from "./components/AdminTop.vue"
 import AdminError from "./components/AdminError.vue"
 import AdminNotice from "./components/AdminNotice.vue"
 import { useAdminSession } from "./core/session"
 import { adminFailure, type AdminFailure } from "./core/error"
 const route = useRoute()
+useHead({ meta: [{ name: "robots", content: "noindex" }] })
 const session = useAdminSession()
 const failure = ref<AdminFailure | null>(null)
 const reloadKey = ref(0)

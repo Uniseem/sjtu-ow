@@ -1,479 +1,222 @@
 #!/usr/bin/env node
-/**
- * 新栈自动化端到端测试与真实浏览器全流程检验套件（对照旧站 scripts/journey.py）。
- *
- * 用法：
- *   node scripts/journey.mjs         # 新人的第一晚（注册 -> 验证码登录 -> 填资料 -> 报内战 -> 申请战队 -> 首页验证）
- *   node scripts/journey.mjs pages   # 全站页面遍历巡检（访客、成员、超管，确保 0 报错、0 异常、0 CSP 违规）
- *   node scripts/journey.mjs admin   # 干部那一晚（内战分队板与管理后台）
- */
-
-import { spawn, execSync } from "node:child_process"
-import { mkdtempSync, writeFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
-import { DatabaseSync } from "node:sqlite"
-import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
-
+// Production Go/worker/SMTP/Caddy journeys; browser events are fatal.
+import { spawnSync } from "node:child_process"
+import { readFileSync } from "node:fs"
+import { createRequire } from "node:module"
+import { resolve } from "node:path"
+const root = resolve(import.meta.dirname, "..")
 const mode = process.argv[2] ?? "newbie"
-const ROOT = resolve(import.meta.dirname, "..")
-
-// 探测 Chromium / Chrome 路径
-const chromeCandidates = [
-  process.env.CHROME_BIN,
-  "/usr/bin/chromium",
-  "/usr/bin/google-chrome",
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/Applications/Chromium.app/Contents/MacOS/Chromium",
-]
-const chrome = chromeCandidates.find((c) => c && existsSync(c))
-if (!chrome) {
-  console.error("未找到可用 Chromium 或 Chrome 浏览器。")
-  process.exit(1)
+const option = name => process.argv.find(arg => arg.startsWith(`--${name}=`))?.split("=").slice(1).join("=")
+const engine = option("engine") ?? "chromium"
+if (!["newbie", "admin", "pages"].includes(mode) || !["chromium", "webkit"].includes(engine)) throw new Error("unknown journey/engine")
+const fixture = option("fixture")
+if (!fixture) {
+  const result = spawnSync("uv", ["run", "python", "e2e/journeys/run.py", mode, engine], { cwd: root, stdio: "inherit" })
+  process.exit(result.status ?? 1)
 }
-
-const workDir = mkdtempSync(join(tmpdir(), "sjtu-ow-journey-"))
-const dataDir = join(workDir, "data")
-mkdirSync(dataDir, { recursive: true })
-
-const apiPort = 4800 + Math.floor(Math.random() * 200)
-const ssrPort = 4200 + Math.floor(Math.random() * 200)
-const apiBase = `http://127.0.0.1:${apiPort}`
-const ssrBase = `http://127.0.0.1:${ssrPort}`
-
-const children = []
-const events = []
-const failures = []
-
-function fail(name, detail = "") {
-  failures.push(`${name} ${detail}`)
-  console.error(`✗ BAD ${name} ${detail}`)
-}
-
-function step(name, ok, detail = "") {
-  if (ok) {
-    console.log(`✓ ok  ${name} ${detail}`)
-  } else {
-    fail(name, detail)
-  }
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-
-// 1. 初始化数据库并打入基础种子数据
-console.log(`[1/4] 初始化测试数据库并植入种子数据 (${dataDir})...`)
-const env = {
-  ...process.env,
-  DATA_DIR: dataDir,
-  SITE_URL: ssrBase,
-  SIGNING_KEY: "journey-test-signing-key-32-chars-long",
-  FIELD_ENCRYPTION_KEY: "journey-test-field-key-32-chars-long1",
-}
-
-execSync("go run ./cmd/sjtuow migrate", { cwd: join(ROOT, "server"), env, stdio: "ignore" })
-const seedRaw = execSync("go run ./cmd/sjtuow seed", { cwd: join(ROOT, "server"), env, encoding: "utf8" })
-const seedData = JSON.parse(seedRaw.trim().split("\n").pop())
-
-// 2. 启动 Go API 与 Node SSR 服务
-console.log(`[2/4] 启动 Go API (: ${apiPort}) 与 Vue 3 SSR (: ${ssrPort})...`)
-const apiProc = spawn("go", ["run", "./cmd/sjtuow", "serve"], {
-  cwd: join(ROOT, "server"),
-  env: { ...env, SJTUOW_HTTP_ADDR: `127.0.0.1:${apiPort}` },
-  stdio: ["ignore", "ignore", "inherit"],
-})
-children.push(apiProc)
-
-// 确保 web 构建存在
-if (!existsSync(join(ROOT, "web/apps/site/dist/server/server.js"))) {
-  console.log("正在构建前端 SSR 与资源产物...")
-  execSync("pnpm --filter @sjtu-ow/site build", { cwd: ROOT, stdio: "inherit" })
-}
-
-const ssrProc = spawn(process.execPath, ["dist/server/server.js"], {
-  cwd: join(ROOT, "web/apps/site"),
-  env: {
-    ...process.env,
-    NODE_ENV: "production",
-    STRICT_CSP: "1",
-    PORT: String(ssrPort),
-    API_BASE: apiBase,
-  },
-  stdio: ["ignore", "ignore", "inherit"],
-})
-children.push(ssrProc)
-
-// 等待服务就绪
-let ready = false
-for (let i = 0; i < 50; i++) {
-  try {
-    const res = await fetch(`${ssrBase}/`)
-    if (res.ok) {
-      ready = true
-      break
+const config = JSON.parse(readFileSync(fixture, "utf8"))
+const require = createRequire(resolve(root, "web/package.json"))
+const { chromium, webkit } = require("playwright")
+const browser = await (engine === "webkit" ? webkit : chromium).launch(engine === "chromium" ? { executablePath: "/usr/bin/chromium", args: ["--no-sandbox"] } : {})
+const failures = [], contexts = [], checks = []
+const check = (name, condition) => { if (!condition) throw new Error(name); checks.push(name); console.log(`PASS JOURNEY ${engine} ${mode} ${name}`) }
+async function context(role = "visitor", ip = "203.0.113.90") {
+  const ctx = await browser.newContext({ baseURL: config.base, extraHTTPHeaders: { "X-Forwarded-For": ip }, reducedMotion: "reduce" })
+  contexts.push(ctx)
+  if (config.sessions[role]) await ctx.addCookies([{ name: "ow_session", value: config.sessions[role], url: config.base }])
+  await ctx.addInitScript(() => document.addEventListener("securitypolicyviolation", event => console.error("JOURNEY-CSP", event.violatedDirective)))
+  const page = await ctx.newPage()
+  page.on("dialog", async dialog => { if (dialog.type() === "confirm") await dialog.accept(); else failures.push("unexpected dialog " + dialog.type()) })
+  page.on("pageerror", error => failures.push("runtime " + error.message))
+  page.on("console", message => {
+    const text = message.text()
+    if (/Hydration/i.test(text) || message.type() === "error") {
+      // Browser-generated log of an expected gate is accounted for by pages
+      // status assertions. Application console errors are never suppressed.
+      if (!/^Failed to load resource:.*status of (401|403|404|429)/.test(text)) failures.push("console " + text)
     }
-  } catch {}
-  await sleep(200)
-}
-if (!ready) {
-  console.error("SSR 服务未能成功启动。")
-  cleanup()
-  process.exit(1)
-}
-
-// 3. 启动无头 Chromium 并建立 CDP 调试连接
-console.log(`[3/4] 启动无头 Chromium (${chrome})...`)
-const debugPort = 9400 + Math.floor(Math.random() * 400)
-const browserProc = spawn(
-  chrome,
-  [
-    "--headless=new",
-    `--remote-debugging-port=${debugPort}`,
-    `--user-data-dir=${join(workDir, "chrome-profile")}`,
-    "--no-first-run",
-    "--no-sandbox",
-    "--window-size=1280,900",
-    "about:blank",
-  ],
-  { stdio: "ignore" },
-)
-children.push(browserProc)
-
-let wsUrl = ""
-for (let i = 0; i < 50 && !wsUrl; i++) {
-  try {
-    const list = await (await fetch(`http://127.0.0.1:${debugPort}/json`)).json()
-    wsUrl = list.find((t) => t.type === "page")?.webSocketDebuggerUrl
-  } catch {}
-  if (!wsUrl) await sleep(200)
-}
-if (!wsUrl) {
-  console.error("未能连接到 Chromium DevTools 接口。")
-  cleanup()
-  process.exit(1)
-}
-
-const ws = new WebSocket(wsUrl)
-await new Promise((r) => (ws.onopen = r))
-
-let cdpId = 0
-const waitingMap = new Map()
-ws.onmessage = (m) => {
-  const msg = JSON.parse(m.data)
-  if (msg.id && waitingMap.has(msg.id)) {
-    waitingMap.get(msg.id)(msg)
-    waitingMap.delete(msg.id)
-  } else {
-    events.push(msg)
-  }
-}
-
-const send = (method, params = {}) =>
-  new Promise((r) => {
-    const i = ++cdpId
-    waitingMap.set(i, r)
-    ws.send(JSON.stringify({ id: i, method, params }))
   })
-
-const evaluate = async (expression) => {
-  const r = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })
-  if (r.result?.exceptionDetails) {
-    throw new Error(JSON.stringify(r.result.exceptionDetails))
+  page.on("response", response => { if (response.status() >= 500) failures.push("HTTP " + response.status() + " " + new URL(response.url()).pathname) })
+  return { ctx, page }
+}
+async function settle(page) {
+  await page.waitForFunction(() => document.readyState === "complete" && (document.querySelector("#main,main") || (/^\/_styleguide\/emails\/[^/]+\/$|^\/api\/letters\/.+\/preview$/.test(location.pathname) && document.body)))
+  await page.waitForFunction(() => ![...document.querySelectorAll("[role=status]")].some(node => /^正在加载…$|^加载中…$/.test(node.textContent.trim())))
+  await page.evaluate(() => document.fonts.ready)
+}
+async function go(page, path) { const response = await page.goto(path); await settle(page); return response }
+async function json(page, path, options = {}) {
+  return page.evaluate(async ({ path, options }) => {
+    const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", ...(options.headers ?? {}) } })
+    const body = await response.json()
+    if (!response.ok) throw new Error(`API ${path}: ${response.status} ${body.error?.message}`)
+    return body
+  }, { path, options })
+}
+async function mailbox(email, start = 0) {
+  for (let attempts = 0; attempts < 300; attempts++) {
+    let rows = []
+    try { rows = readFileSync(config.mailbox, "utf8").trim().split("\n").filter(Boolean).map(JSON.parse) } catch {}
+    const mail = rows.slice(start).filter(row => row.to === email && row.code && row.valid_mime).at(-1)
+    if (mail) return mail.code
+    await new Promise(resolve => setTimeout(resolve, 100))
   }
-  return r.result?.result?.value
+  throw new Error("actual SMTP verification mail missing")
 }
-
-await send("Runtime.enable")
-await send("Log.enable")
-await send("Page.enable")
-await send("Network.enable")
-
-const go = async (path) => {
-  await send("Page.navigate", { url: path.startsWith("http") ? path : ssrBase + path })
-  for (let i = 0; i < 50; i++) {
-    const st = await evaluate("document.readyState").catch(() => "")
-    if (st === "complete") break
-    await sleep(100)
-  }
-  await sleep(300)
+async function register(index) {
+  const current = await context("visitor", `203.0.113.${100 + index}`)
+  const { page } = current
+  const email = `journey${index}@example.test`
+  await go(page, "/accounts/signup/")
+  await page.locator("#id_email").fill(email)
+  await page.locator("#id_nickname").fill(`Journey ${index}`)
+  await page.locator("#id_password1").fill("Birch!Comet736")
+  await page.locator("#id_password2").fill("Birch!Comet736")
+  await page.locator("#id_is_sjtu_0").check()
+  await page.locator("#id_agreed_terms").check()
+  await page.locator("#id_agreed_cross_border").check()
+  await page.locator("#main form button[type=submit]").click()
+  await page.waitForURL("**/accounts/confirm-email/**")
+  await page.locator("#id_code").fill(await mailbox(email))
+  await page.locator("#main form").first().locator("button[type=submit]").click()
+  await page.waitForURL("**/me/")
+  check("actual SMTP registration " + index, (await json(page, "/api/session")).user.email === email)
+  await go(page, "/me/game-accounts/?new=1")
+  await page.locator("#create-game-account input[name=battletag]").fill(`Journey${index}#12345`)
+  for (const role of ["tank", "damage", "support"]) await page.locator(`#create-game-account select[name=rank_${role}]`).selectOption("20")
+  await page.locator("#create-game-account button[type=submit]").click()
+  await page.waitForFunction(() => !document.querySelector("#create-game-account") || document.querySelector("#game-account-list")?.textContent.includes("Journey"))
+  await go(page, "/me/contacts/?new=1")
+  await page.locator("#create-contact input[name=value]").fill(`1234567${index}`)
+  await page.locator("#create-contact button[type=submit]").click()
+  await go(page, "/me/")
+  const profile = await json(page, "/api/me/profile")
+  check("real game ID/contact persistence " + index, profile.game_accounts.length === 1 && profile.contacts.length === 1)
+  return { ...current, account: profile.game_accounts[0].id }
 }
-
-const fillAndSubmit = async (fnScript) => {
-  await evaluate(`
-    window.__setVal = (el, val) => {
-      if (!el) return;
-      el.value = val;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    };
-  `)
-  await evaluate(fnScript)
-  await evaluate("document.querySelector('form[data-journey]')?.requestSubmit?.() || document.querySelector('form[data-journey] button[type=submit]')?.click()")
-  await sleep(1000)
+async function signupScrim(page) {
+  await go(page, `/scrims/${config.data.scrim}/`)
+  for (const checkbox of await page.locator("#slot-scrim-actions input[name=roles]").all()) await checkbox.check()
+  await page.locator("#slot-scrim-actions button[type=submit]").filter({ hasText: /^报名$/ }).click()
+  await page.getByText("已报名", { exact: true }).waitFor()
+  const personal = await json(page, "/api/me/scrims")
+  check("real scrim persisted", JSON.stringify(personal).includes(String(config.data.scrim)))
 }
-
-const pageSays = async (text) => {
-  const bodyText = await evaluate("document.body.innerText")
-  return (bodyText ?? "").includes(text)
+async function letters(page) {
+  if (!new URL(page.url()).pathname.includes("/letters/")) await page.waitForURL("**/letters/**")
+  await settle(page)
+  const submit = page.locator("#main button[type=submit]").filter({ hasText: /发出|发送|决定|确认/ }).first()
+  await submit.click()
+  await page.waitForURL(url => !url.pathname.includes("/letters/"))
+  await settle(page)
 }
-
-const setSessionCookie = async (token) => {
-  await send("Network.clearBrowserCookies")
-  if (token) {
-    await send("Network.setCookie", {
-      name: "ow_session",
-      value: token,
-      domain: "127.0.0.1",
-      path: "/",
-    })
-  }
-}
-
-// 4. 执行对应测试流程
-console.log(`[4/4] 执行测试流程: [${mode}]...`)
-
-if (mode === "newbie") {
-  // === 新人的第一晚 ===
-  const EMAIL = "newbie@journey.test"
-  const NICKNAME = "新来的"
-  const PASSWORD = "SJTU-Ow-Player#2026!Sec"
-
-  await go("/accounts/signup/")
-  await fillAndSubmit(`(() => {
-    const f = document.querySelector('form[action*="signup"]');
-    window.__setVal(f.querySelector('[name=email]'), ${JSON.stringify(EMAIL)});
-    window.__setVal(f.querySelector('[name=nickname]'), ${JSON.stringify(NICKNAME)});
-    window.__setVal(f.querySelector('[name=password1]'), ${JSON.stringify(PASSWORD)});
-    window.__setVal(f.querySelector('[name=password2]'), ${JSON.stringify(PASSWORD)});
-    const sjtu = f.querySelector('[name=is_sjtu][value=true]');
-    if (sjtu && !sjtu.checked) {
-      sjtu.click();
-    }
-    f.querySelectorAll('input[type=checkbox]').forEach(b => {
-      if (!b.checked) b.click();
-    });
-    f.setAttribute('data-journey', '1');
-  })()`)
-  await sleep(1500)
-  const signupPath = await evaluate("location.pathname")
-  const signupErr = (await evaluate("document.querySelector('.c-notice--err')?.textContent")) ?? ""
-  step("注册表单提交", signupPath === "/accounts/confirm-email/", signupPath + (signupErr ? ` (${signupErr})` : ""))
-
-  // 从 jobs 表中读取邮件车道上的验证码明文
-  let code = ""
-  for (let i = 0; i < 30; i++) {
-    try {
-      const dbPath = join(dataDir, "sjtuow.sqlite3")
-      if (existsSync(dbPath)) {
-        const db = new DatabaseSync(dbPath, { readOnly: true })
-        const row = db.prepare("SELECT args FROM jobs WHERE kind = 'mail.letter' ORDER BY id DESC LIMIT 1").get()
-        db.close()
-        if (row && row.args) {
-          const payload = JSON.parse(row.args)
-          const c = payload?.letter?.code || payload?.Letter?.Code || payload?.Letter?.code
-          if (c && c.length === 6) {
-            code = c
-            break
-          }
+try {
+  if (mode === "pages") {
+    for (const role of ["visitor", "member", "captain", "tournament_admin", "scrim_admin", "content_editor", "officer"]) {
+      const { ctx, page } = await context(role)
+      for (const item of config.pages.filter(row => row.role === role)) {
+        if (item.path.startsWith('/accounts/')) {
+          const fresh = spawnSync('uv',['run','python','e2e/journeys/account_context.py',fixture,item.name,role,item.path],{cwd:root,encoding:'utf8'})
+          if (fresh.status !== 0) throw new Error('account context setup failed')
+          const data = JSON.parse(fresh.stdout.trim().split('\n').at(-1))
+          Object.assign(item,{path:data.path,status:data.status,location:data.location})
+          await ctx.clearCookies()
+          await ctx.addCookies(data.cookies.map(cookie => ({...cookie,url:config.base})))
         }
+        if (["/sitemap.xml", "/robots.txt", "/favicon.ico", "/apple-touch-icon.png"].includes(item.path)) {
+          const resource = await ctx.request.get(item.path)
+          check(role + " resource " + item.path, resource.status() < 400 && (await resource.body()).length > 0)
+          continue
+        }
+        const responses = []
+        const listen = response => { if (new URL(response.url()).pathname.startsWith("/api/")) responses.push(response.status()) }
+        page.on("response", listen)
+        const response = await go(page, item.path)
+        let actual = response.status()
+        if (item.path.startsWith("/admin/")) {
+          if (new URL(page.url()).pathname === "/accounts/login/") actual = 302
+          else actual = await page.locator("[data-page-status]").first().getAttribute("data-page-status").then(Number).catch(() => responses.filter(code => code >= 400).at(-1) ?? 200)
+        }
+        if (item.status >= 300 && item.status < 400) {
+          const expected = new URL(item.location, config.base)
+          const current = new URL(page.url())
+          check(role + " redirect " + item.path, current.pathname === expected.pathname && current.searchParams.toString() === expected.searchParams.toString())
+        } else check(role + " status " + item.path, actual === item.status)
+        check(role + " body " + item.path, (await page.locator("body").innerText()).trim().length > 0)
+        check(role + " no broken images " + item.path, await page.evaluate(() => [...document.images].filter(image => image.complete && image.naturalWidth === 0).length) === 0)
+        page.off("response", listen)
       }
-    } catch {}
-    await sleep(200)
-  }
-  step("验证码邮件发出", Boolean(code), code)
-
-  if (code) {
-    await fillAndSubmit(`(() => {
-      const f = document.querySelector('form');
-      const emailField = f.querySelector('input[name=email]');
-      if (emailField) window.__setVal(emailField, ${JSON.stringify(EMAIL)});
-      const field = f.querySelector('input[name=code]');
-      window.__setVal(field, ${JSON.stringify(code)});
-      f.setAttribute('data-journey', '1');
-    })()`)
-  }
-  await sleep(1500)
-  const verifiedPath = await evaluate("location.pathname")
-  step("验证后到了个人中心", verifiedPath === "/me/", verifiedPath)
-
-  // 加游戏 ID
-  await go("/me/game-accounts/?new=1")
-  await fillAndSubmit(`(() => {
-    const f = document.querySelector('main form');
-    window.__setVal(f.querySelector('[name=battletag]'), 'Newbie#1234');
-    f.setAttribute('data-journey', '1');
-  })()`)
-  await sleep(1000)
-  step("加了游戏 ID", await pageSays("Newbie#1234"))
-
-  // 加联系方式
-  await go("/me/contacts/?new=1")
-  await fillAndSubmit(`(() => {
-    const f = document.querySelector('main form');
-    window.__setVal(f.querySelector('[name=value]'), '123456789');
-    f.setAttribute('data-journey', '1');
-  })()`)
-  await sleep(1000)
-  step("加了联系方式", await pageSays("123456789"))
-
-  // 资料自动保存
-  await go("/me/")
-  await evaluate(`(() => {
-    const motto = document.querySelector('form[data-autosave] [name=motto]');
-    motto.value = '浏览器里自动保存的宣言';
-    motto.dispatchEvent(new Event('input', { bubbles: true }));
-  })()`)
-  await sleep(1500)
-  const autoStatus = await evaluate("document.querySelector('[data-autosave-status]')?.textContent")
-  step("资料改了就自动保存", (autoStatus ?? "").includes("已保存"), autoStatus)
-  await go("/me/")
-  const keptMotto = await evaluate("document.querySelector('[name=motto]')?.value")
-  step("刷新以后还在", keptMotto === "浏览器里自动保存的宣言", keptMotto)
-
-  // 报内战
-  await go(`/scrims/${seedData.scrim}/`)
-  await fillAndSubmit(`(() => {
-    const f = document.querySelector('form[action*="/signup/"]');
-    if (f) {
-      f.querySelectorAll('input[type=checkbox]').forEach(b => {
-        b.checked = true;
-        b.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-      f.setAttribute('data-journey', '1');
+      await ctx.close()
     }
-  })()`)
-  await sleep(1000)
-  step("报了内战", await pageSays("报名成功"))
-
-  // 申请战队
-  await go(`/teams/${seedData.team}/apply/`)
-  await fillAndSubmit(`(() => {
-    const f = document.querySelector('main form');
-    if (f) {
-      f.querySelectorAll('input[type=checkbox]').forEach(b => {
-        b.checked = true;
-        b.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-      f.setAttribute('data-journey', '1');
+  } else if (mode === "newbie") {
+    const { page } = await register(1)
+    await signupScrim(page)
+    await go(page, `/teams/${config.data.team}/apply/`)
+    await page.locator("#id_role_support").check()
+    await page.locator("#id_message").fill("新人旅程申请")
+    await page.getByRole("button", { name: "提交申请", exact: true }).click()
+    await letters(page)
+    const teams = await json(page, "/api/me/teams")
+    check("application persisted after letters", JSON.stringify(teams).includes("pending"))
+    await go(page, "/")
+    check("home my agenda", (await page.locator("#main").innerText()).includes("截图内战"))
+    await go(page, "/me/teams/")
+    await page.getByRole("button", { name: "撤回", exact: true }).click()
+    await page.getByText("入队申请已撤回。", { exact: true }).waitFor()
+    await go(page, "/me/teams/")
+    check("cross page application cancellation", JSON.stringify(await json(page, "/api/me/teams")).includes("cancelled"))
+  } else {
+    for (let index = 1; index <= 10; index++) {
+      const { page, ctx, account } = await register(index)
+      await signupScrim(page)
+      // Prepare three real individual registrations through the public API;
+      // the admin composition and save itself are exercised with UI clicks.
+      if (index <= 3) await json(page, `/api/tournaments/${config.data.cup}/signup`, { method: "POST", body: JSON.stringify({ game_account_id: account, roles: ["support"] }) })
+      await ctx.close()
     }
-  })()`)
-  await sleep(1000)
-  step("申请了战队", await pageSays("申请已提交"))
-
-  // 回首页看近期内战
-  await go("/")
-  step("首页有这场内战", await pageSays("截图内战"))
-} else if (mode === "pages") {
-  // === 全站页面遍历巡检 ===
-  const publicRoutes = [
-    "/",
-    "/news/",
-    "/tournaments/",
-    "/scrims/",
-    "/teams/",
-    "/members/",
-    "/about/",
-    "/terms/",
-    "/privacy/",
-    "/accounts/login/",
-    "/accounts/signup/",
-    "/accounts/confirm-email/",
-  ]
-  const memberRoutes = [
-    "/me/",
-    "/me/game-accounts/",
-    "/me/contacts/",
-    "/me/registrations/",
-    "/me/teams/",
-    "/me/scrims/",
-    `/teams/${seedData.team}/`,
-    `/scrims/${seedData.scrim}/`,
-    `/tournaments/${seedData.cup}/`,
-  ]
-  const adminRoutes = [
-    "/admin/",
-    "/admin/tournaments/",
-    "/admin/scrims/",
-    "/admin/users/",
-    "/admin/teams/",
-    "/admin/articles/",
-    "/admin/categories/",
-    "/admin/home-pins/",
-    "/admin/images/",
-    "/admin/roles/",
-  ]
-
-  // 1. 访客视角
-  await setSessionCookie(null)
-  for (const r of publicRoutes) {
-    await go(r)
-    const domOk = await evaluate("document.body.children.length > 0")
-    step(`[访客] 页面正常: ${r}`, domOk)
+    const { page } = await context("officer")
+    await go(page, `/admin/scrims/${config.data.scrim}/split/`)
+    const choices = page.locator("table input[type=checkbox]")
+    check("at least ten actual registrations", await choices.count() >= 10)
+    for (const checkbox of (await choices.all()).slice(0, 10)) await checkbox.check()
+    await page.getByRole("button", { name: "生成分队", exact: true }).click()
+    await page.locator("[data-split-board]").waitFor()
+    const card = page.locator('[data-team-panel=a] [data-signup]').first()
+    const signup = await card.getAttribute("data-signup")
+    await card.getByRole("button", { name: "缓冲", exact: true }).click()
+    const buffered = page.locator(`[data-board-zone=buffer] [data-signup="${signup}"]`)
+    await buffered.waitFor()
+    await buffered.getByRole("button", { name: "A", exact: true }).click()
+    await page.locator(`[data-team-panel=a] [data-signup="${signup}"]`).waitFor()
+    await go(page, `/admin/scrims/${config.data.scrim}/split/`)
+    check("split movement persisted across reload", await page.locator(`[data-team-panel=a] [data-signup="${signup}"]`).count() === 1)
+    await go(page, `/admin/tournaments/${config.data.cup}/teams/`)
+    await page.getByRole("button", { name: "再加一支队伍", exact: true }).click()
+    const zone = page.locator("[data-team-panel]").last()
+    await zone.locator("input").fill("Journey队伍")
+    for (let index = 0; index < 3; index++) await page.locator('[data-board-zone=""] [data-signup]').first().getByRole("button", { name: "Journey队伍", exact: true }).click()
+    await page.getByRole("button", { name: "保存编队", exact: true }).click()
+    await letters(page)
+    await go(page, `/admin/tournaments/${config.data.cup}/teams/`)
+    check("team composition persisted", (await page.locator("#main").innerText()).includes("Journey队伍"))
+    await go(page, "/admin/articles/new/")
+    await page.locator("input[name=title]").fill("Journey真实发布")
+    await page.locator("select[name=category_id]").selectOption(String(config.data.category))
+    const editor = page.locator(".cm-content").first()
+    await editor.fill("真实浏览器里撰写的文章正文。")
+    await page.locator(".b-picker button").filter({ hasText: /^选择$/ }).first().click()
+    await page.locator('[role=dialog] button').filter({ has: page.locator('img') }).first().click()
+    await page.getByRole("button", { name: "发布", exact: true }).click()
+    await page.getByText("文章已发布。", { exact: true }).waitFor()
+    const published = await json(page, "/api/page/news")
+    check("article publicly published with selected cover", JSON.stringify(published).includes("Journey真实发布"))
   }
-
-  // 2. 成员视角
-  await setSessionCookie(seedData.member)
-  for (const r of memberRoutes) {
-    await go(r)
-    const domOk = await evaluate("document.body.children.length > 0")
-    step(`[成员] 页面正常: ${r}`, domOk)
-  }
-
-  // 3. 超管视角
-  await setSessionCookie(seedData.officer)
-  for (const r of adminRoutes) {
-    await go(r)
-    const domOk = await evaluate("document.body.children.length > 0")
-    step(`[超管] 页面正常: ${r}`, domOk)
-  }
-} else if (mode === "admin") {
-  // === 干部那一晚 ===
-  await setSessionCookie(seedData.officer)
-  await go("/admin/scrims/")
-  step("管理员进入内战管理后台", await pageSays("内战管理"))
-
-  await go("/admin/tournaments/")
-  step("管理员进入赛事管理后台", await pageSays("赛事管理"))
-
-  await go("/admin/users/")
-  step("管理员进入用户管理后台", await pageSays("用户管理"))
-
-  await go("/admin/teams/")
-  step("管理员进入战队管理后台", await pageSays("战队管理"))
-}
-
-// 检查所有浏览器控制台报错与未捕获异常
-const relevantErrors = events.filter((e) => {
-  if (e.method === "Log.entryAdded" && e.params?.entry?.level === "error") {
-    const text = e.params.entry.text || ""
-    if (/favicon|\/img\/placeholders\//i.test(text)) return false
-    return true
-  }
-  if (e.method === "Runtime.exceptionThrown") return true
-  if (e.method === "Runtime.consoleAPICalled" && e.params?.type === "error") return true
-  return false
-})
-
-if (relevantErrors.length > 0) {
-  for (const err of relevantErrors) {
-    console.error("  浏览器错误:", JSON.stringify(err))
-  }
-  fail("浏览器报告错误", `(${relevantErrors.length} 条)`)
-} else {
-  step("浏览器零控制台报错与零未捕获异常", true)
-}
-
-cleanup()
-if (failures.length > 0) {
-  console.error(`\n共 ${failures.length} 项测试失败。`)
-  process.exit(1)
-} else {
-  console.log(`\n🎉 全部测试顺利通过！`)
-  process.exit(0)
-}
-
-function cleanup() {
-  for (const c of children) {
-    try {
-      c.kill("SIGTERM")
-    } catch {}
-  }
+  check("zero runtime/console/CSP/hydration/500", failures.length === 0)
+  console.log(`JOURNEY-OK ${mode} ${engine} ${checks.length}`)
+} catch (error) {
+  console.error("JOURNEY-FAILED", error.stack, JSON.stringify(failures))
+  process.exitCode = 1
+} finally {
+  for (const ctx of contexts) await ctx.close().catch(() => {})
+  await browser.close()
 }

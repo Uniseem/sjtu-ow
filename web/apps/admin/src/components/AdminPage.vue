@@ -19,7 +19,7 @@ function selected(url: string): boolean {
   return route.path === url || route.path.startsWith(url)
 }
 watch(() => props.title, (title) => {
-  document.title = `${title} · 管理后台 · SJTU-OW`
+  document.title = `${title} · 管理后台`
 }, { immediate: true })
 </script>
 
@@ -42,5 +42,6 @@ watch(() => props.title, (title) => {
       </nav>
     </div>
   </header>
+  <slot name="subtabs" />
   <main id="main" class="b-main"><slot /></main>
 </template>

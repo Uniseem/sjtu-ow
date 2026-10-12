@@ -18,16 +18,20 @@ import type { LoadCtx } from "../router"
 // wide screens, the author, the article before and after, comments, and more
 // from the category. Go's 404 (missing, not live, no permission) stays a 404.
 export async function load(ctx: LoadCtx) {
-  const article: ArticleDetail = await getApiPageNewsSlug(ctx.api, ctx.params.slug!)
   const sort = ctx.query.sort === "top" ? "top" : "new"
   const page = Math.max(1, Number.parseInt(ctx.query.comments ?? "", 10) || 1)
+  const article: ArticleDetail = await getApiPageNewsSlug(ctx.api, ctx.params.slug!, { sort, comments: page })
   // The page may be withdrawn between the projection and comment reads.
   // Public draft previews are rejected before this point.
-  let thread: CommentThread = { total: 0, page, page_size: 20, comments: [] }
-  try {
-    thread = await commentThread(ctx.api, article.id, { sort, page })
-  } catch (err) {
-    if (typeof err !== "object" || err === null || !("status" in err) || Number(err.status) !== 404) throw err
+  let thread: CommentThread = article.thread ?? { total: 0, page, page_size: 20, comments: [] }
+  if (!article.thread) {
+    // Compatibility with an older Go server. The current page endpoint supplies
+    // the actual thread; only later sorting/replies use the resource endpoint.
+    try {
+      thread = await commentThread(ctx.api, article.id, { sort, page })
+    } catch (err) {
+      if (typeof err !== "object" || err === null || !("status" in err) || Number(err.status) !== 404) throw err
+    }
   }
   return {
     title: article.seo_title || article.title,

@@ -25,6 +25,7 @@ const api = createClient({
       (body) => {
         syncFontCSS((body as typeof body & {font_css_path?:string}).font_css_path)
  viewer.user = body.user && typeof body.user.nickname === "string" ? body.user : null
+        viewer.site = (body as typeof body & { site?: Viewer["site"] }).site
       },
       () => {},
     )
@@ -99,14 +100,15 @@ router.beforeResolve(async (to, from) => {
     // 401: the client has already sent the browser to the login page.
     if (status === 401) return false
     // Not reachable at all: stay on this page and say so.
-    if (status === 0) {
+    if (status === 0 || status === undefined || status >= 500) {
       bar.stop()
-      toast("网络连不上，请稍后再试", "error")
+      toast(status === 0 ? "网络连不上，请稍后再试" : "暂时无法加载，请稍后再试", "error")
       return false
     }
     return leave(to.fullPath)
   }
   // Replace, not merge: keys from the previous page must not linger.
+  if (data.document) return leave(to.fullPath)
   for (const key of Object.keys(page)) {
     if (!(key in data)) delete page[key]
   }

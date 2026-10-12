@@ -125,11 +125,15 @@ flowchart LR
 | `/api/*`、`/healthz`、`/calendar/*`、`/sitemap.xml`、`/robots.txt` | api | 由 api 决定 |
 | `POST /unsubscribe/*` | api（RFC 8058 一键退订，发信服务商直接 POST 这个地址，旧信里的地址也得接住） | no-store |
 | `GET /admin/*` | assets 卷里后台 SPA 的 `index.html` | no-cache |
+| `/admin/settings/prerender/` | 真正301到 `/admin/settings/`（266决定） | — |
+| `/_styleguide/emails/<key>/` | SSR转交Go生成的独立信纸文档，旧地址200保留 | private, no-store |
 | 其余 `GET`/`HEAD` | ssr | 由 ssr 决定 |
 | 其余写请求 | 405 | — |
 | 502/503/504 | `maintenance.html`（照旧） | no-store |
 
 **安全头统一由 Caddy 加**（CSP、HSTS、`X-Content-Type-Options`、`Referrer-Policy`、`frame-ancestors`），按路径三套：前台、后台、邮件预览。一处定义，e2e 测试对真实响应断言（对应 16-2「没有测试检查响应真的带严格 CSP」）。请求体上限：上传接口 10 MB，其余 1 MB（对应 14-2）。
+
+293实现核对：10MB是Go校验的图片文件上限；既有JSON/base64上传的Caddy传输上限为16MB以容纳编码开销，不改变文件上限，其他接口仍1MB。旧邮件样张由SSR只在已授权200文档上发信纸CSP，隐藏404仍用可加载error.css的普通错误策略；Caddy对这条精确路径补其他安全头并保留对应SSR策略。502–504包含上游实际返回的状态，不能只检查断连。字体CSS兼容既有12位和Go实际生成的20位哈希，当前字体对象仅放行`fonts/objects/<64位哈希>.woff2`，不公开原件。
 
 ### 3.5 为什么是「每次现渲染」，以及另外两个方案
 
@@ -270,6 +274,8 @@ func (m *Module) Routes(r *api.Registry) {
 | `/api/auth/...` | 认证动作 | 登录、注册、验证码、重置、改密码、改邮箱、重新认证、退出 |
 | `/api/...` | 前台动作 | 业务动作用「资源 + 动词」：`POST /api/team-applications/{id}/approve` |
 | `/api/admin/...` | 后台 | 页面数据和动作都在这下面 |
+
+293兼容添加：session的公开`site`投影仅含SITE_URL、站点描述和默认分享图编号，供SSR/SPA统一生成canonical与分享元信息，不含业务密钥。文章页面接口按`sort/comments`聚合完整评论thread；内战详情直接提供本人的game_accounts，首屏不另读个人资料。旧邮件样张列表仍在`/_styleguide/emails/`，单封由样张详情的可选html字段提供生产信纸，SSR直接回独立无脚本文档，不能跳转改变旧地址的状态码。
 
 **错误**：统一一种形状，字段错误和自动保存共用。
 
@@ -500,6 +506,8 @@ CREATE TABLE jobs (
 **`/healthz`**：数据库写探测（事务里写一行再回滚）、data 卷剩余 > 20%、worker 心跳 120 秒内、积压（`ready` 且 `run_after` 早于 10 分钟前的任务数，按到期时间算，修 09-4）。对外只给总状态和各项真假，详情只给超管（照旧）。ssr 另有自己的存活检查给 Compose 用。
 
 **日志**：`slog` 输出 JSON 到标准输出；不记 IP、密码、验证码、联系方式、Cookie、请求体（设计 15.5）；请求编号由服务器生成（ssr 生成后经内网传给 api，api 只信可信代理传来的）；500 一定落完整堆栈和请求编号。
+
+293对账门补齐：任何新库指标/外键查询失败都返回错误；显式旧库路径不存在或为空立即失败，旧表查询失败不能算匹配。文章发布状态读pages、活动状态读status，不使用不存在的旧列。普通页、集合、字体、站点设置与冻结信等逐表计数纳入；抽样仅输出检查数/匹配数，不输出真实邮箱、昵称或标题。演练要求显式旧库+媒体或备份包，安全解包并以SQLite backup纳入WAL；媒体和字体导入后再对账，完整900秒计时，使用真实备份后的私有目录按授权删除。
 
 ### 5.16 配置与密钥
 

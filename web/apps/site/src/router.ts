@@ -24,7 +24,7 @@ export type SampleClock = {
   pastTime: string
 }
 
-export type PageData = { title: string; marker?: string; clock?: SampleClock; [key: string]: unknown }
+export type PageData = { title: string; status?: number; document?: { kind: "mail"; html: string }; marker?: string; clock?: SampleClock; [key: string]: unknown }
 // What a page's load() gets (frontend-migration A2). `api` is the one way to
 // Go: pass it to the generated functions (getApiTeamsId(ctx.api, id)). Errors
 // are not caught here: an ApiError's status decides the response (401 → login,
@@ -63,6 +63,7 @@ export function createSiteRouter(ssr: boolean) {
       { path: "/", component: Home, meta: { load: loadHome satisfies Load } },
       { path: "/teams/", component: Teams, meta: { load: loadTeams satisfies Load } },
       { path: "/_styleguide/", component: () => import("./pages/Styleguide.vue"), meta: { load: loadStyleguide satisfies Load } },
+      { path: "/_styleguide/components/", component: () => import("./pages/ComponentSpecimen.vue"), meta: { load: loadStyleguide satisfies Load } },
       {path:"/admin/:pathMatch(.*)*",component:()=>import("./pages/Page.vue"),meta:{load:()=>{throw httpError(404)}}},
       ...PAGES,
     ],

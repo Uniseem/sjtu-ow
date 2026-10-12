@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { showReadError } from "../../core/read-error"
 import { onMounted, shallowRef } from "vue"
 import { useRoute } from "vue-router"
 import { ApiError, getApiAdminScrimsIdBoard } from "@sjtu-ow/api"
@@ -26,6 +27,7 @@ async function load(): Promise<void> {
     title.value = `分队文字：${result.scrim.title}`
     text.value = result.copy_text
   } catch (failure) {
+    showReadError(failure)
     error.value = failure instanceof Error ? failure.message : "暂时无法加载，请稍后再试。"
   } finally {
     pending.value = false

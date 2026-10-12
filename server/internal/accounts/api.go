@@ -30,8 +30,17 @@ type SessionUser struct {
 // SessionOut 是 GET /api/session 的出参。访客为 { "user": null }。
 type SessionOut struct {
 	FontCSSPath string       `json:"font_css_path,omitempty"`
+	Site        SessionSite  `json:"site,omitempty"`
 	User        *SessionUser `json:"user"`
 	Flash       string       `json:"flash,omitempty"`
+}
+
+// SessionSite is the public metadata needed by every document, including guests.
+// SMTP and business credentials never belong in this projection.
+type SessionSite struct {
+	URL                 string `json:"url"`
+	Description         string `json:"description"`
+	DefaultShareImageID *int64 `json:"default_share_image_id"`
 }
 
 // RegisterIn 是 POST /api/auth/register 的入参。
@@ -398,6 +407,10 @@ func (m *Module) Routes(r *api.Registry) {
 }
 
 func (m *Module) getSession(ctx *app.Ctx, in SessionIn) (SessionOut, error) {
+	site := SessionSite{URL: m.svc.siteURL}
+	if err := m.svc.d.ReadPool().QueryRowContext(ctx.Context, `SELECT site_description,default_share_image_id FROM site_settings WHERE id=1`).Scan(&site.Description, &site.DefaultShareImageID); err != nil {
+		return SessionOut{}, err
+	}
 	cssPath := ""
 	if m.svc.fontCSSReader != nil {
 		var err error
@@ -407,14 +420,14 @@ func (m *Module) getSession(ctx *app.Ctx, in SessionIn) (SessionOut, error) {
 		}
 	}
 	if ctx.Viewer == nil || ctx.Viewer.Disabled || ctx.Viewer.ID == 0 {
-		return SessionOut{User: nil, FontCSSPath: cssPath}, nil
+		return SessionOut{User: nil, FontCSSPath: cssPath, Site: site}, nil
 	}
 	u, err := m.svc.store.GetByID(ctx.Context, ctx.Viewer.ID)
 	if err != nil {
-		return SessionOut{User: nil, FontCSSPath: cssPath}, err
+		return SessionOut{User: nil, FontCSSPath: cssPath, Site: site}, err
 	}
 	if u == nil || !u.IsActive {
-		return SessionOut{User: nil, FontCSSPath: cssPath}, nil
+		return SessionOut{User: nil, FontCSSPath: cssPath, Site: site}, nil
 	}
 	var caps []string
 	if ctx.Viewer != nil && ctx.Viewer.Caps != nil {
@@ -437,6 +450,7 @@ func (m *Module) getSession(ctx *app.Ctx, in SessionIn) (SessionOut, error) {
 		}
 	}
 	return SessionOut{
+		Site:        site,
 		Flash:       notice,
 		FontCSSPath: cssPath,
 		User: &SessionUser{

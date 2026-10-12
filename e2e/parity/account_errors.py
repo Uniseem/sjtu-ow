@@ -30,6 +30,25 @@ API_PATHS = {
     'password-reset-confirm': '/api/auth/reset-password/verify',
     'password-reset-complete': '/api/auth/reset-password/complete',
 }
+# Additional real states. No API error or DOM is manufactured.
+SCENARIOS.update({
+    'error-email-expired': ('confirm-email', 'visitor', {'code': '001234'}),
+    'error-email-third-attempt': ('confirm-email', 'visitor', {'code': '999999'}),
+    'error-reset-expired': ('password-reset-confirm', 'visitor', {'code': '001234'}),
+    'error-signup-existing': ('signup', 'visitor', {'email': 'member@screens.test', 'nickname': '已注册测试', 'password1': STRONG, 'password2': STRONG, 'is_sjtu': 'true', 'agreed_terms': True, 'agreed_cross_border': True}),
+    'error-login-limit': ('login', 'visitor', {'login': 'member@screens.test', 'password': 'Wrong!Orbit829'}),
+    'error-signup-limit': ('signup', 'visitor', {'email': 'limited@example.test', 'nickname': '限流新人', 'password1': STRONG, 'password2': 'Mismatch!Orbit829', 'is_sjtu': 'true', 'agreed_terms': True, 'agreed_cross_border': True}),
+    'error-reset-limit': ('password-reset', 'visitor', {'email': 'member@screens.test'}),
+    'error-resend-limit': ('confirm-email', 'visitor', {}),
+    'error-email-occupied': ('email', 'member', {'email': 'captain@screens.test'}),
+    'error-resend-cooldown': ('confirm-email', 'visitor', {}),
+})
+PATHS['email'] = '/accounts/email/'
+API_PATHS['email'] = '/api/auth/email/change'
+PATHS['password-reset'] = '/accounts/password/reset/'
+API_PATHS['email'] = '/accounts/email/'
+API_PATHS['email'] = '/api/auth/email/change'
+PATHS['password-reset'] = '/api/auth/reset-password'
 PAGES = [(name, who, PATHS[page]) for name, (page, who, fields) in SCENARIOS.items()]
 
 
@@ -47,6 +66,37 @@ def context(name, data, sessions, work, legacy_env):
     # Each viewport is a fresh rejected attempt, not a three-attempt journey.
     with sqlite3.connect(work / 'new-data/sjtuow.sqlite3') as db:
         db.execute('DELETE FROM rate_counters')
+    if name == 'error-email-occupied':
+        from django.test import Client
+        client = Client()
+        client.cookies['sessionid'] = old[0]['value']
+        response = client.post('/accounts/reauthenticate/', {'password': PASSWORD})
+        if response.status_code not in (200,302): raise RuntimeError('legacy reauthentication failed')
+        import os, urllib.request
+        request = urllib.request.Request(os.environ['PARITY_API_BASE']+'/api/auth/reauthenticate', data=json.dumps({'password':PASSWORD}).encode(), headers={'Content-Type':'application/json','Cookie':'ow_session='+sessions[who]}, method='POST')
+        with urllib.request.urlopen(request,timeout=20) as response:
+            if response.status!=200: raise RuntimeError('new reauthentication failed')
+    if name.endswith('-expired'):
+        from django.contrib.sessions.backends.db import SessionStore
+        session = SessionStore(session_key=old[0]['value'])
+        key = 'account_email_verification_code' if page == 'confirm-email' else 'account_password_reset_verification'
+        if key not in session:
+            raise RuntimeError('missing real legacy verification state')
+        state = dict(session[key])
+        state['at'] = time.time() - 3600
+        session[key] = state
+        session.save()
+        with sqlite3.connect(work / 'new-data/sjtuow.sqlite3') as db:
+            db.execute('UPDATE email_codes SET expires_at=? WHERE purpose=? AND email_norm=?', ((now-timedelta(seconds=1)).isoformat(), purpose, email))
+    elif name == 'error-email-third-attempt':
+        from django.contrib.sessions.backends.db import SessionStore
+        session = SessionStore(session_key=old[0]['value'])
+        state = dict(session['account_email_verification_code'])
+        state['failed_attempts'] = 2
+        session['account_email_verification_code'] = state
+        session.save()
+        with sqlite3.connect(work / 'new-data/sjtuow.sqlite3') as db:
+            db.execute("UPDATE email_codes SET attempts=2 WHERE purpose='signup' AND email_norm=?", (email,))
     return old, new, suffix
 
 
@@ -54,8 +104,32 @@ def submit(tools, name, evaluate):
     page = SCENARIOS[name][0]
     fields = SCENARIOS[name][2]
     tools.submissions.clear()
+    is_new = evaluate(tools, "Boolean(document.querySelector('#ow-state'))")
+    form_index = 1 if name in ('error-resend-limit','error-resend-cooldown') else 0
+    if name.endswith('-limit') or name == 'error-resend-cooldown':
+        endpoint = '/api/auth/resend-code' if name in ('error-resend-limit','error-resend-cooldown') and is_new else (API_PATHS[page] if is_new else PATHS[page])
+        # Saturate the actual server bucket, never write counters or lower limits.
+        prime = {'email': 'member@screens.test', 'password': 'Wrong!Orbit829'} if page == 'login' else {'email': 'pending@screens.test' if page == 'confirm-email' else 'member@screens.test'}
+        if page == 'signup':
+            prime = {'email': 'limited@example.test', 'nickname': '限流新人', 'password': 'abc', 'confirm_password': 'abc', 'is_sjtu': True, 'agree_terms': True, 'agree_cross_border': True}
+        hit = evaluate(tools, f"""(async()=>{{
+          const form=document.querySelectorAll('#main form')[{form_index}];
+          if(!form)throw new Error('missing rate-limit form');
+          let code=0;
+          for(let i=0;i<40;i++){{
+            const oldBody=new URLSearchParams(new FormData(form));
+            for(const [key,value] of Object.entries({json.dumps(SCENARIOS[name][2])}))oldBody.set(key,String(value));
+            if({json.dumps(name)}==='error-resend-limit'||{json.dumps(name)}==='error-resend-cooldown')oldBody.set('action','resend');
+            const response=await fetch({json.dumps(endpoint)},{{method:'POST',headers:{{'Content-Type':{json.dumps('application/json' if is_new else 'application/x-www-form-urlencoded')}}}},body:{json.dumps(json.dumps(prime)) if is_new else 'oldBody'},redirect:'manual'}});
+            code=response.status;if(code===429)return true;
+          }}
+          throw new Error('real rate bucket did not reach429, last='+code);
+        }})()""")
+        if not hit:
+            raise RuntimeError('rate saturation failed')
+        tools.submissions.clear()
     evaluate(tools, f'''(() => {{
-      const form=document.querySelector('#main form');
+      const form=document.querySelectorAll('#main form')[{form_index}];
       if(!form)throw new Error('missing account form');
       for(const [name,value] of Object.entries({json.dumps(fields, ensure_ascii=True)})) {{
         const nodes=[...form.querySelectorAll('[name="'+name+'"]')];
@@ -69,10 +143,10 @@ def submit(tools, name, evaluate):
     }})()''')
     for _ in range(120):
         ready = evaluate(tools, "Boolean(document.readyState==='complete' && document.querySelector('#main .c-field__error') && !document.querySelector('#main button[type=submit]')?.disabled)")
-        responses = [r for r in tools.submissions if r['path'] in (PATHS[page], API_PATHS[page])]
-        if ready and responses:
+        responses = [r for r in tools.submissions if r['path'] in (PATHS[page], '/api/auth/resend-code' if name in ('error-resend-limit','error-resend-cooldown') else API_PATHS[page])]
+        if (ready or name.endswith('-limit') or name == 'error-resend-cooldown' or name == 'error-signup-existing') and responses:
             response = responses[-1]
-            expected = 200 if response['path'] == PATHS[page] else (401 if page == 'login' else 422)
+            expected = 429 if name.endswith('-limit') or name == 'error-resend-cooldown' else (200 if name == 'error-signup-existing' and is_new else 302 if name == 'error-signup-existing' else (200 if response['path'] == PATHS[page] else (401 if page == 'login' else 422)))
             if response['status'] != expected:
                 raise RuntimeError(f"unexpected rejected-form response for {name}: {response}")
             break

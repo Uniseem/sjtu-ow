@@ -19,7 +19,7 @@ const initial: TypographyValues = { regions: props.data.regions.map(editable) }
 const save = useAdminSave<TypographyValues>({ initial, version: props.data.version, readCurrent: currentReader(initial),
   transport: (body, key, signal) => patchTypography(api, body, { key, signal }) })
 const rows = computed(() => save.values.value.regions)
-const preview = useResource(() => JSON.stringify(rows.value), signal => postApiAdminTypographyPreview(api, { regions: rows.value.map(fullRegion) }, { signal }), 600)
+const preview = useResource(() => JSON.stringify(rows.value), signal => postApiAdminTypographyPreview(api, { regions: rows.value.map(fullRegion) }, { signal }), 600, false)
 useHead(() => ({ link: preview.data.value?.css_path.startsWith('/media/fonts/css/preview.')
   ? [{ rel: 'stylesheet', href: preview.data.value.css_path }] : [] }))
 function update(region: string, key: keyof TypographyRegionValues, event: Event) {

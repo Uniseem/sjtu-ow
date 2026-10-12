@@ -55,6 +55,46 @@ test("only GET and HEAD are accepted", async () => {
   expect(out.headers.allow).toBe("GET, HEAD")
 })
 
+test("invalid unsubscribe retains its explanation and has a real 404 status", async () => {
+  const result = await handle(incoming("GET", "/unsubscribe/invalid/"), {
+    ...base,
+    fetch: async input => new URL(String(input)).pathname === "/api/session"
+      ? Response.json({ user: null })
+      : Response.json({ error: { code: "not_found", message: "这个链接无效" } }, { status: 404 }),
+    assets: ASSETS,
+  })
+  expect(result.status).toBe(404)
+  expect(result.headers["cache-control"]).toBe("no-store")
+  expect(result.body).toContain("这个退订链接无效")
+  expect(result.body).toContain("去账号安全")
+})
+
+test("legacy single mail specimen remains a scriptless200 document with isolated CSP", async () => {
+  const mail = '<!doctype html><html><head><title>邮件</title></head><body><p>真实信纸样张</p></body></html>'
+  const calls: string[] = []
+  const result = await handle(incoming("GET", "/_styleguide/emails/verify/"), {
+    ...base,
+    fetch: async input => {
+      const path = new URL(String(input)).pathname
+      calls.push(path)
+      return Response.json(path === "/api/session"
+        ? { user: { id: 7, nickname: "干部", admin: true, superuser: false, caps: ["admin.enter"] } }
+        : { title: "验证码", html: mail })
+    },
+    assets: ASSETS,
+  })
+  expect(result.status).toBe(200)
+  expect(result.body).toBe(mail)
+  expect(result.body).not.toContain("ow-state")
+  expect(result.headers["content-security-policy"]).not.toContain("script-src")
+  expect(result.headers["content-security-policy"]).toContain("default-src 'none'")
+  expect(result.headers["x-frame-options"]).toBe("SAMEORIGIN")
+  expect(calls).toHaveLength(2)
+  const hidden = await handle(incoming("GET", "/_styleguide/emails/verify/"), { ...base, fetch: api(200, { user: null }), assets: ASSETS })
+  expect(hidden.status).toBe(404)
+  expect(hidden.headers["content-security-policy"]).toBe(CSP)
+})
+
 test("a missing trailing slash redirects when the slashed path exists", async () => {
   const out = await handle(incoming("GET", "/teams?x=1"), { ...base, fetch: api(200, { user: null }) })
   expect(out.status).toBe(301)
@@ -170,7 +210,10 @@ test("the style guide is a 404 unless the viewer is staff", async () => {
   expect(html).toContain("/static/img/placeholders/cover-07.svg")
   expect(html).toContain("#9B3A33")
   expect(html).not.toContain('style="')
-  expect((html.match(/is-taken/g) ?? []).length).toBe(36)
+  const historic = html.split('<section aria-labelledby="sg-components">')[0]
+  expect((historic.match(/is-taken/g) ?? []).length).toBe(36)
+  expect(html).toContain("完整部件与布局样张")
+  expect(html).toContain("data-component-samples")
 })
 
 test("an unreachable API is a 503 page", async () => {

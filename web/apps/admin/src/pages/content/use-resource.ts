@@ -1,7 +1,8 @@
 import { computed, onScopeDispose, shallowRef } from "vue"
 import { ApiError } from "@sjtu-ow/api"
+import { showReadError } from "../../core/read-error"
 
-export function useContentResource<T>(read: (signal: AbortSignal) => Promise<T>) {
+export function useContentResource<T>(read: (signal: AbortSignal) => Promise<T>, documentErrors = true) {
   const data = shallowRef<T | null>(null)
   const pending = shallowRef(false)
   const error = shallowRef<ApiError | null>(null)
@@ -26,6 +27,7 @@ export function useContentResource<T>(read: (signal: AbortSignal) => Promise<T>)
       error.value = cause instanceof ApiError
         ? cause
         : new ApiError(0, "network", "暂时无法加载，请稍后再试。")
+      if (documentErrors) showReadError(cause)
       return null
     } finally {
       if (!disposed && current === sequence) pending.value = false

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { showReadError } from "../../core/read-error"
 import { onMounted, onUnmounted, shallowRef } from "vue"
 import { useRoute } from "vue-router"
 import { ApiError, getApiAdminTournamentsId, getApiAdminTournamentsIdBoard } from "@sjtu-ow/api"
@@ -36,6 +37,7 @@ async function load(): Promise<void> {
     minimum.value = detail.tournament.roster_min
   } catch (failure) {
     if (controller.signal.aborted) return
+    showReadError(failure)
     error.value = failure instanceof Error ? failure.message : "暂时无法加载，请稍后再试。"
   } finally {
     if (!controller.signal.aborted) pending.value = false

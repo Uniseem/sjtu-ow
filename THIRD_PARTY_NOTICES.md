@@ -273,3 +273,7 @@ CodeMirror 6（`@codemirror/state`、`view`、`commands`、`lang-markdown`、`la
 - https://github.com/SortableJS/Sortable/blob/master/LICENSE
 
 Markdown 使用现代 `@codemirror/lang-markdown` 与 `@codemirror/language` 接口，不依赖早期文档所写的独立 `@codemirror/streamparser` 包。
+
+## Playwright（293 收尾浏览器验收）
+
+Playwright 1.64.0 / playwright-core（Microsoft），Apache-2.0。仅验收脚本使用，不打进站点。用户在 frontend-migration 第10节第3项及291批次批准；编码前从官方 npm registry核对版本、许可证及Node>=20。源码与许可证：https://github.com/microsoft/playwright/blob/main/LICENSE 。锁文件由测试机生成。

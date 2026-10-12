@@ -11,6 +11,7 @@ import { VIEWER, type Viewer } from "./viewer"
 import { PageRedirect, safeNext } from "@sjtu-ow/shared/navigation"
 
 export type Rendered =
+  | { kind: "document"; html: string }
   | { kind: "slash"; location: string }
   | { kind: "redirect"; location: string; status: 301 | 302 }
   | { kind: "login"; next: string }
@@ -94,6 +95,12 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
     return error(errorStatusOf(loadR.reason), viewer)
   }
   if (styleguideHidden(pathname, viewer.user?.admin === true)) return error(404, viewer)
+  if (loadR.value.document) {
+    if (!/^\/_styleguide\/emails\/[a-z][a-z0-9-]{0,63}\/$/.test(pathname) || loadR.value.document.kind !== "mail") {
+      throw new Error("Unexpected standalone document loader")
+    }
+    return { kind: "document", html: loadR.value.document.html }
+  }
   const fontPath=fontCSSPath(viewer.font_css_path)
  if(fontPath)head.push({link:[{rel:"stylesheet",href:fontPath,"data-site-font-css":""}]})
  app.provide(VIEWER, viewer)
@@ -101,7 +108,7 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   app.provide("page-data", loadR.value)
   const html = await renderToString(app)
   const tags = await renderSSRHead(head)
-  return { kind: "page", status: 200, html, head: tags.headTags, state: { data: loadR.value, viewer }, viewer }
+  return { kind: "page", status: loadR.value.status ?? 200, html, head: tags.headTags, state: { data: loadR.value, viewer }, viewer }
 }
 
 // Which error page a failed call becomes: 403, 404 and 429 as they are; Go
@@ -127,8 +134,9 @@ async function fetchSession(api: Requester): Promise<Viewer> {
     const user = body.user
     // Go always sends a nickname; anything else is not a session to trust.
     const font_css_path=(body as typeof body & {font_css_path?:string}).font_css_path
- if (!user || typeof user.nickname !== "string") return {user:null,font_css_path}
- return { user,flash:body.flash,font_css_path }
+ const site = (body as typeof body & { site?: Viewer["site"] }).site
+ if (!user || typeof user.nickname !== "string") return {user:null,font_css_path,site}
+ return { user,flash:body.flash,font_css_path,site }
   } catch (err) {
     if (statusOf(err) === 401) return VISITOR
     throw err

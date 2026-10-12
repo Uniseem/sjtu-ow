@@ -184,6 +184,15 @@ const commentRow = (over: Record<string, unknown> = {}) => ({
   ...over,
 })
 const thread = (comments: unknown[], total = comments.length) => ({ total, page: 1, page_size: 20, comments })
+
+test("current article page supplies comments in the one page read", async () => {
+  const result = await page("/news/guide/?sort=top&comments=2", {
+    "/api/page/news/guide": { body: { ...article, thread: { total: 0, page: 2, page_size: 20, comments: [] } } },
+  })
+  expect(result.status).toBe(200)
+  expect(result.asked).toEqual(expect.arrayContaining(["/api/session", "/api/page/news/guide"]))
+  expect(result.asked).toHaveLength(2)
+})
 const memberSession = { ...member, id: 5, nickname: "夜蛾" }
 
 test("an article: cover head with the category link, facts, prose; a visitor reads only", async () => {

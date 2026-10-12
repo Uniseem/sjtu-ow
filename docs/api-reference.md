@@ -4,10 +4,10 @@
 
 ## 1. 架构概览与指标
 
-- **注册接口总数**：233 个
+- **注册接口总数**：234 个
 - **公开访问接口 (Public)**：28 个
 - **登录会员接口 (Member / Verified / Feature)**：70 个
-- **干部管理接口 (Cap / Superuser)**：135 个
+- **干部管理接口 (Cap / Superuser)**：136 个
 - **限流保护**：全量写接口均显式声明 `ratelimit.Decl` 集中限流规则，杜绝内联魔法数字；
 - **查询预算**：关键列表接口显式声明 `api.Budget(n)` 查询上限，防范 N+1 慢查询。
 
@@ -111,6 +111,7 @@
 | `GET` | `/api/page/home` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/page/news` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/page/news/{slug}` | Public（公开） | 默认 | - | - |
+| `GET` | `/api/page/styleguide` | Cap(admin.enter) | 默认 | - | - |
 | `GET` | `/api/page/{slug}` | Public（公开） | 默认 | - | - |
 | `GET` | `/api/registrations/{id}` | Member（登录成员） | 默认 | - | - |
 | `GET` | `/api/scrims` | Public（公开） | 默认 | - | - |

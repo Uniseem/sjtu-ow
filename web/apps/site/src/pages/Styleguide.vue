@@ -10,6 +10,7 @@ import CSeats from "@sjtu-ow/ui/CSeats.vue"
 import CField from "@sjtu-ow/ui/CField.vue"
 import CAvatar from "@sjtu-ow/ui/CAvatar.vue"
 import CRegStatus from "@sjtu-ow/ui/CRegStatus.vue"
+import ComponentSamples from "../components/ComponentSamples.vue"
 import SectionHead from "../components/SectionHead.vue"
 import { initial } from "../initial"
 import type { PageData } from "../router"
@@ -422,6 +423,10 @@ const coverArticle = "/static/img/placeholders/cover-05.svg"
           <li class="c-comment"><p class="c-comment__placeholder">评论已删除。</p></li>
         </ol>
       </div>
+    </section>
+    <section aria-labelledby="sg-components">
+      <SectionHead heading-id="sg-components" title="完整部件与布局样张" />
+      <ComponentSamples :image-id="typeof data?.imageId === 'number' ? data.imageId : undefined" />
     </section>
   </div>
   </main>

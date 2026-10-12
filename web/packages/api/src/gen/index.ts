@@ -234,6 +234,7 @@ export interface GetApiAdminArticlesQuery {
 }
 
 export interface GetApiAdminArticlesOut {
+  categories?: {   id: number;   name: string;   allow_submission: boolean; }[];
   total: number;
   page: number;
   page_size: number;
@@ -457,10 +458,11 @@ export function getApiAdminLog(r: Requester, query: GetApiAdminLogQuery = {}, ex
 export interface GetApiAdminMailSamplesQuery {
   group?: string;
   q?: string;
+  legacy?: boolean;
 }
 
 export interface GetApiAdminMailSamplesOut {
-  items: {   key: string;   group: string;   title: string;   to: string;   subject: string;   delivered_subject: string;   text: string;   preview_url: string;   text_url: string;   source: string;   fictional: boolean;   date: string; }[];
+  items: {   html?: string;   key: string;   group: string;   title: string;   to: string;   subject: string;   delivered_subject: string;   text: string;   preview_url: string;   text_url: string;   source: string;   fictional: boolean;   date: string; }[];
   groups: {   name: string;   count: number; }[];
   total: number;
   root_url: string;
@@ -472,6 +474,7 @@ export function getApiAdminMailSamples(r: Requester, query: GetApiAdminMailSampl
 }
 
 export interface GetApiAdminMailSamplesKeyOut {
+  html?: string;
   key: string;
   group: string;
   title: string;
@@ -1187,6 +1190,11 @@ export function getApiPageNews(r: Requester, query: GetApiPageNewsQuery = {}, ex
   return r<GetApiPageNewsOut>("GET", "/api/page/news", { ...extras, query: { ...query } })
 }
 
+export interface GetApiPageNewsSlugQuery {
+  sort?: string;
+  comments?: number;
+}
+
 export interface GetApiPageNewsSlugOut {
   id: number;
   slug: string;
@@ -1214,10 +1222,19 @@ export interface GetApiPageNewsSlugOut {
   tournament: {   id: number;   title: string;   phase: string;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   cover_image_id: number | null;   default_cover_image_id: number | null;   roster_min: number;   roster_max: number;   registration_mode_label: string;   takes_individuals: boolean;   sjtu_only: boolean; } | null;
   seo_title: string;
   search_description: string;
+  thread?: {   total: number;   page: number;   page_size: number;   comments: (ApiCommentsComment_d56a38 | null)[]; } | null;
 }
 
-export function getApiPageNewsSlug(r: Requester, slug: string | number, extras: CallExtras = {}): Promise<GetApiPageNewsSlugOut> {
-  return r<GetApiPageNewsSlugOut>("GET", "/api/page/news/{slug}", { ...extras, params: { slug } })
+export function getApiPageNewsSlug(r: Requester, slug: string | number, query: GetApiPageNewsSlugQuery = {}, extras: CallExtras = {}): Promise<GetApiPageNewsSlugOut> {
+  return r<GetApiPageNewsSlugOut>("GET", "/api/page/news/{slug}", { ...extras, params: { slug }, query: { ...query } })
+}
+
+export interface GetApiPageStyleguideOut {
+  image_id: number | null;
+}
+
+export function getApiPageStyleguide(r: Requester, extras: CallExtras = {}): Promise<GetApiPageStyleguideOut> {
+  return r<GetApiPageStyleguideOut>("GET", "/api/page/styleguide", { ...extras })
 }
 
 export interface GetApiPageSlugOut {
@@ -1320,6 +1337,7 @@ export interface GetApiSessionQuery {
 
 export interface GetApiSessionOut {
   font_css_path?: string;
+  site?: {   url: string;   description: string;   default_share_image_id: number | null; };
   user: {   avatar_image_id: number | null;   default_avatar_image_id: number | null;   avatar_can_upload: boolean;   avatar_denied: string;   avatar_turned_down: {   status: string;   reason_display: string;   note: string; } | null;   max_game_accounts: number;   profile_gaps: {   label: string;   href: string;   hint: string; }[];   waiting_letters: number;   deletion_blockers: string[];   id: number;   nickname: string;   email: string;   admin: boolean;   superuser: boolean;   caps: string[];   email_verified: boolean;   is_sjtu: boolean;   can_submit_article: boolean;   can_comment: boolean; } | null;
   flash?: string;
 }

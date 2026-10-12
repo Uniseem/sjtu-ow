@@ -24,7 +24,7 @@ API=$((19000 + RANDOM % 500))
 SSR=$((19500 + RANDOM % 500))
 
 # ---- 卷里的东西 ----
-mkdir -p "$TMP/assets/assets" "$TMP/assets/img" "$TMP/assets/css" "$TMP/assets/admin/assets" \
+mkdir -p "$TMP/assets/assets" "$TMP/assets/img" "$TMP/assets/css" "$TMP/assets/admin/assets" "$TMP/media/fonts/objects" \
   "$TMP/media/r/5" "$TMP/media/images" "$TMP/media/original_images" "$TMP/media/fonts/css" "$TMP/error_pages"
 echo "ENTRY" >"$TMP/assets/assets/entry-abc.js"
 echo "THEME" >"$TMP/assets/theme.js"
@@ -39,6 +39,10 @@ echo "OLD-JPG" >"$TMP/media/images/old.jpg"
 echo "SECRET" >"$TMP/media/original_images/secret.jpg"
 echo "FONT-CSS" >"$TMP/media/fonts/css/fonts.0123456789ab.css"
 echo "FONT-PREVIEW" >"$TMP/media/fonts/css/preview.0123456789ab.css"
+echo "CURRENT-FONT-CSS" >"$TMP/media/fonts/css/fonts.0123456789abcdef0123.css"
+echo "CURRENT-PREVIEW" >"$TMP/media/fonts/css/preview.0123456789abcdef0123.css"
+FONT_HASH=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+echo "CURRENT-WOFF2" >"$TMP/media/fonts/objects/$FONT_HASH.woff2"
 echo "RAW-TTF" >"$TMP/media/fonts/raw.ttf"
 cp "$ROOT/deploy/error_pages/maintenance.html" "$TMP/error_pages/maintenance.html"
 
@@ -54,7 +58,8 @@ class H(BaseHTTPRequestHandler):
             self.rfile.read(length)
         body = json.dumps({"who": who, "method": self.command, "path": self.path,
                            "real_ip": self.headers.get("X-Real-IP")}).encode()
-        self.send_response(200)
+        code = int(self.path.rsplit('/', 1)[-1]) if self.path.startswith('/upstream-status/') else 200
+        self.send_response(code)
         self.send_header("Content-Type", "application/json")
         if who == "ssr":
             self.send_header("Content-Security-Policy", "default-src *")
@@ -116,6 +121,10 @@ check "接口的访客 IP" "203.0.113.9" \
   "$(body -H 'X-Forwarded-For: 203.0.113.9' "$BASE/api/session" | python3 -c 'import json,sys; print(json.load(sys.stdin)["real_ip"])')"
 check "接口的写请求去 Go" "api POST /api/teams/1/applications" "$(who -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/api/teams/1/applications")"
 check "页面地址的写请求 405" "405" "$(status -X POST "$BASE/teams/")"
+for method in PATCH DELETE PUT; do
+  check "页面 $method 405" "405" "$(status -X "$method" "$BASE/teams/")"
+done
+check "旧预渲染设置真实301" "301 /admin/settings/" "$(status "$BASE/admin/settings/prerender/") $(header Location "$BASE/admin/settings/prerender/")"
 check "一键退订 POST 去 Go" "api POST /unsubscribe/tok/" "$(who -X POST "$BASE/unsubscribe/tok/")"
 check "退订页 GET 去 SSR" "ssr GET /unsubscribe/tok/" "$(who "$BASE/unsubscribe/tok/")"
 check "sitemap 去 Go" "api GET /sitemap.xml" "$(who "$BASE/sitemap.xml")"
@@ -143,6 +152,10 @@ check "旧缩略图原样给" "OLD-JPG" "$(body "$BASE/media/images/old.jpg")"
 check "原图不公开" "404" "$(status "$BASE/media/original_images/secret.jpg")"
 check "带哈希的字体样式表给" "FONT-CSS" "$(body "$BASE/media/fonts/css/fonts.0123456789ab.css")"
 check "字体原件不给" "404" "$(status "$BASE/media/fonts/raw.ttf")"
+check "实际Go字体20位哈希" "CURRENT-FONT-CSS" "$(body "$BASE/media/fonts/css/fonts.0123456789abcdef0123.css")"
+check "实际Go预览20位哈希" "CURRENT-PREVIEW" "$(body "$BASE/media/fonts/css/preview.0123456789abcdef0123.css")"
+check "实际Go字体对象切片" "CURRENT-WOFF2" "$(body "$BASE/media/fonts/objects/$FONT_HASH.woff2")"
+check "非哈希字体对象不给" "404" "$(status "$BASE/media/fonts/objects/raw.woff2")"
 
 check "独立后台 shell 不走 SSR" "ADMIN-SHELL" "$(body "$BASE/admin/articles/5/")"
 check "后台 shell 重新验证缓存" "no-cache" "$(header Cache-Control "$BASE/admin/articles/5/")"
@@ -164,6 +177,11 @@ check "私有信件预览同站可嵌入" "SAMEORIGIN" "$(header X-Frame-Options
 check "信纸 CSP 隔离脚本" "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox" "$(header Content-Security-Policy "$BASE/api/letters/batch/1/preview")"
 check "Markdown 预览只允许外部阅读样式" "default-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; frame-src https://player.bilibili.com; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-same-origin" "$(header Content-Security-Policy "$BASE/api/admin/previews/token")"
 check "样张同站可嵌入" "SAMEORIGIN" "$(header X-Frame-Options "$BASE/api/admin/mail-samples/signup/preview")"
+check "后台CSP和前台一致" "$CSP" "$(header Content-Security-Policy "$BASE/admin/")"
+for path in /admin/ /api/letters/batch/1/preview /api/admin/previews/token; do
+  check "$path HSTS" "max-age=31536000; includeSubDomains; preload" "$(header Strict-Transport-Security "$BASE$path")"
+  check "$path nosniff" "nosniff" "$(header X-Content-Type-Options "$BASE$path")"
+done
 
 
 echo "请求体上限"
@@ -171,6 +189,25 @@ head -c 2000000 /dev/zero | tr '\0' 'a' >"$TMP/big"
 check "普通接口超过 1 MB 是 413" "413" "$(status -X POST -H 'Content-Type: application/json' --data-binary @"$TMP/big" "$BASE/api/teams/1/applications")"
 check "传头像 2 MB 放行" "200" "$(status -X POST -H 'Content-Type: application/json' --data-binary @"$TMP/big" "$BASE/api/me/avatar")"
 check "传队标 2 MB 放行" "200" "$(status -X POST -H 'Content-Type: application/json' --data-binary @"$TMP/big" "$BASE/api/teams/3/logo")"
+head -c 17000000 /dev/zero >"$TMP/too-big"
+check "上传编码请求超过16MB拒绝" "413" "$(status -X POST --data-binary @"$TMP/too-big" "$BASE/api/admin/images/upload")"
+
+# This checks upstream response statuses, not just a disconnected socket.
+for code in 502 503 504; do
+  check "上游$code出维护页" "1" "$(body "$BASE/upstream-status/$code" | grep -c 网站维护中 || true)"
+  check "上游$code保留状态" "$code" "$(status "$BASE/upstream-status/$code")"
+  check "上游$code不缓存" "no-store" "$(header Cache-Control "$BASE/upstream-status/$code")"
+done
+
+# Comparator negative probe: do not let a broken check() report a green suite.
+before_probe=$FAILS
+check "故意损坏响应头负探针" "nosniff" "broken-header"
+if (( FAILS != before_probe + 1 )); then
+  echo CADDY-NEGATIVE-PROBE-MISSED >&2
+  exit 1
+fi
+FAILS=$before_probe
+echo CADDY-NEGATIVE-PROBE-OK
 
 echo "维护页"
 kill -TERM "$SSR_PID"

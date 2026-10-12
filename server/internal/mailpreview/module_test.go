@@ -33,6 +33,17 @@ func TestMailSampleJSONAndRawDocumentsRequireAdminCapability(t *testing.T) {
 	if result := request("/api/admin/mail-samples"); result.Code != http.StatusOK {
 		t.Fatalf("admin catalogue: %d %s", result.Code, result.Body.String())
 	}
+	result := request("/api/admin/mail-samples/verify")
+	var output SampleOut
+	if result.Code != http.StatusOK || json.Unmarshal(result.Body.Bytes(), &output) != nil || !strings.Contains(output.HTML, "data:image/png;base64,") {
+		t.Fatalf("detail lacks production mail document: %d", result.Code)
+	}
+	var catalogue ListOut
+	legacy := request("/api/admin/mail-samples?legacy=true")
+	if legacy.Code != http.StatusOK || json.Unmarshal(legacy.Body.Bytes(), &catalogue) != nil || len(catalogue.Items) != 34 || catalogue.Total != 34 {
+		t.Fatalf("legacy list does not preserve its34 kinds: total=%d items=%d", catalogue.Total, len(catalogue.Items))
+	}
+
 	viewer = &app.Viewer{ID: 2, EmailVerified: true, Caps: map[app.Cap]struct{}{}}
 	if result := request("/api/admin/mail-samples"); result.Code != http.StatusForbidden {
 		t.Fatalf("member catalogue: %d", result.Code)

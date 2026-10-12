@@ -1,7 +1,8 @@
 import { computed, onUnmounted, shallowRef, watch, type WatchSource } from "vue"
 import { ApiError } from "@sjtu-ow/api"
+import { showReadError } from "../../core/read-error"
 /** Latest-route-wins reader. A failed refresh leaves the previous value available. */
-export function useResource<T>(source: WatchSource<unknown>, read: (signal: AbortSignal) => Promise<T>, delay = 0) {
+export function useResource<T>(source: WatchSource<unknown>, read: (signal: AbortSignal) => Promise<T>, delay = 0, documentErrors = true) {
   const data = shallowRef<T | null>(null)
   const pending = shallowRef(false)
   const message = shallowRef("")
@@ -25,6 +26,7 @@ export function useResource<T>(source: WatchSource<unknown>, read: (signal: Abor
       if (current !== generation || disposed) return
       status.value = error instanceof ApiError ? error.status : 0
       message.value = error instanceof ApiError ? error.message : "暂时无法加载，请稍后再试。"
+      if (documentErrors) showReadError(error)
     } finally {
       if (current === generation && !disposed) pending.value = false
     }

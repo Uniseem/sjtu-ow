@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { showReadError } from "../../core/read-error"
 import { computed, onMounted, onUnmounted, shallowRef, watch } from "vue"
 import { useRoute } from "vue-router"
 import { ApiError, getApiAdminScrimsIdBoard } from "@sjtu-ow/api"
@@ -34,6 +35,7 @@ async function load(): Promise<void> {
     board.value = result
   } catch (error) {
     if (sequence !== token || request.signal.aborted) return
+    showReadError(error)
     message.value = error instanceof Error ? error.message : "暂时无法加载，请稍后再试。"
   } finally {
     if (sequence === token) pending.value = false

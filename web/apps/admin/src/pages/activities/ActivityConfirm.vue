@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { showReadError } from "../../core/read-error"
 import { computed, onMounted, shallowRef } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import {
@@ -84,6 +85,7 @@ async function load(): Promise<void> {
       if (!scrim.value.scrim) throw new ApiError(404, "not_found", "找不到这个页面")
     }
   } catch (error) {
+    showReadError(error)
     loadError.value = error instanceof Error ? error.message : "暂时无法打开，请稍后再试。"
   } finally {
     loading.value = false

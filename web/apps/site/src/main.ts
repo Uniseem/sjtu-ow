@@ -17,6 +17,11 @@ export function createApp(ssr: boolean) {
   const router = createSiteRouter(ssr)
   const head = ssr ? createServerHead() : createClientHead()
   head.push({
+    link: [
+      { rel: "icon", href: "/static/img/favicon.ico", sizes: "48x48" },
+      { rel: "icon", href: "/static/img/favicon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/static/img/apple-touch-icon.png" },
+    ],
     meta: [
       { charset: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },

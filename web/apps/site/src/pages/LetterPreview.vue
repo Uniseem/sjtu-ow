@@ -4,6 +4,7 @@ import { PageRedirect } from "@sjtu-ow/shared/navigation"
 import { letterBatch,previewURL } from "@sjtu-ow/shared/letters"
 import { httpError,type LoadCtx } from "../router"
 export async function load(ctx:LoadCtx):Promise<never>{
+ if(!(await ctx.viewer()).user)throw httpError(404)
  const batch=letterBatch(ctx.params.batch)
  const id=Number(ctx.params.id)
  if(!Number.isSafeInteger(id)||id<1)throw httpError(404)

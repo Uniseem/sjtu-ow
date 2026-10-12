@@ -17,6 +17,7 @@ import { useHead } from "@unhead/vue"
 import {
   postApiTeamsIdLeave,
   postApiTeamApplicationsIdCancel,
+  getApiMeTeams as refreshMeTeams,
 } from "@sjtu-ow/api"
 import { useConfirm } from "@sjtu-ow/shared/confirm"
 import { owDate } from "@sjtu-ow/shared/time"
@@ -43,9 +44,9 @@ const leavingId = ref<number | null>(null)
 const cancelId = ref<number | null>(null)
 const leave = useMutation(
   (id: number, extras) => postApiTeamsIdLeave(api, id, extras),
-  () => {
-    memberships.teams = memberships.teams.filter((team) => team.team_id !== leavingId.value)
+  async () => {
     notice.value = "已退出战队。"
+    Object.assign(memberships, personalMemberships(await refreshMeTeams(api)))
   },
 )
 const cancel = useMutation(

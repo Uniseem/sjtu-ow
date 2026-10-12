@@ -1663,14 +1663,6 @@ func (s *Service) AddContact(ctx *app.Ctx, in AddContactInput) (*ContactResult, 
 		return nil, api.InvalidFields(map[string][]string{"value": {err.Error()}})
 	}
 
-	existing, err := s.store.GetContactByUserAndType(ctx.Context, ctx.Viewer.ID, cType)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil {
-		return nil, api.InvalidFields(map[string][]string{"type": {"每种联系方式只能填写一次。"}})
-	}
-
 	now := s.clock.Now().UTC()
 	contact := &Contact{
 		UserID:    ctx.Viewer.ID,
@@ -1680,7 +1672,19 @@ func (s *Service) AddContact(ctx *app.Ctx, in AddContactInput) (*ContactResult, 
 		UpdatedAt: now,
 	}
 
-	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+	err := s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		// Recheck uniqueness under the writer lock. Concurrent tabs must receive
+		// the ordinary field rejection, not leak a SQLite constraint as a 500.
+		if err := s.patchActor(ctx, txCtx, tx); err != nil {
+			return err
+		}
+		var count int
+		if err := tx.QueryRowContext(txCtx, `SELECT COUNT(*) FROM contacts WHERE user_id=? AND type=?`, ctx.Viewer.ID, cType).Scan(&count); err != nil {
+			return err
+		}
+		if count > 0 {
+			return api.InvalidFields(map[string][]string{"type": {"每种联系方式只能填写一次。"}})
+		}
 		id, err := s.store.InsertContact(txCtx, tx, contact)
 		if err != nil {
 			return err

@@ -1,6 +1,8 @@
 // Sample data for /_styleguide/ (design 13.2.7). Same labels and made-up
 // rows as core/styleguide.py. No database.
 import type { SampleClock } from "./router"
+import type { LoadCtx } from "./router"
+import { getApiPageStyleguide } from "@sjtu-ow/api"
 import { owDate, owDay, owMd, owMonthNum, owTime, owWeekday, shanghaiEvening } from "./time"
 
 export const COLOURS: [string, string, string, string][] = [
@@ -104,8 +106,10 @@ for (let variant = 0; variant < 4; variant++) {
 
 export { seatCells as seats, rankParts } from "@sjtu-ow/shared/display"
 
-export function loadStyleguide(): { title: string; clock: SampleClock } {
-  return { title: "设计体系样张", clock: sampleClock() }
+export async function loadStyleguide(ctx: LoadCtx) {
+  const viewer = await ctx.viewer()
+  const sample = viewer.user?.admin ? await getApiPageStyleguide(ctx.api) : null
+  return { title: "设计体系样张", clock: sampleClock(), imageId: sample?.image_id ?? null }
 }
 
 export function sampleClock(now: Date = new Date()): SampleClock {

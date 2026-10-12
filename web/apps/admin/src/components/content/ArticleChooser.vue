@@ -17,7 +17,7 @@ const resource = useContentResource((signal) => listContentArticles(api, {
   status: "live",
   page: page.value,
   page_size: 25,
-}, { signal }))
+}, { signal }), false)
 const rows = computed(() => (resource.data.value?.items ?? []).filter((article): article is Article => article !== null && article.live))
 const pages = computed(() => Math.max(1, Math.ceil((resource.data.value?.total ?? 0) / 25)))
 let oldFocus: HTMLElement | null = null

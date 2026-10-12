@@ -1,116 +1,68 @@
-# SJTU-OW 生产割接操作剧本与应急回滚预案 (M10/M11)
+# 新栈割接与回滚剧本
 
-本文档是现行 Django 站向 Vue 3 + Go 新栈平滑割接的**官方操作剧本**（依据 `docs/rewrite-research/12-architecture.md` 第 8 节与第 13 节）。
+仅在收尾批次全部验收完成、用户明确授权割接时间及正式站操作后执行。当前部署与授权状态见 handoff/STATUS.md。割接前不部署试用站、不安排干部试用（291 用户确认）。
 
----
+## 1. 前提与数据边界
 
-## 1. 割接目标与不变量
+- 逐页全身份四组合、后台逐页、真实旅程 Chromium/WebKit、响应头、预算、290 全范围复核、两次真实旧库演练通过；第二次总耗时 ≤900 秒。15 分钟是预算，实际耗时由演练证据决定。
+- 正式站是真实数据，禁止用旧备份覆盖当前库。旧 Django 库、媒体、容器及镜像保留，旧库不做新栈迁移。
+- 新栈独立 Compose 项目 `sjtu-ow-next`，镜像 `sjtu-ow-next-server:latest`、`sjtu-ow-next-web:latest`；新媒体卷默认 `sjtu-ow-next_media`，不能共享可写旧媒体卷。
+- 新栈单独环境文件 `/srv/sjtu-ow/.env.next`，旧站仍 `.env`。SITE_URL 相同；SIGNING_KEY 必须沿用旧 DJANGO_SECRET_KEY，FIELD_ENCRYPTION_KEY/BACKUP_ENCRYPTION_KEY 沿用旧密钥。仅在服务器环境文件中配置，不回显或提交。
+- 新库为空才可导入；编号、密码、签名地址、冻结信、图片与字体均从最新旧库和媒体只读迁入。现有会话需要重新登录。
 
-1. **零数据丢失**：正式停机后以 SQLite 原生只读快照导出全部业务数据；
-2. **全编号沿用**：用户、战队、赛事、文章、图片编号 100% 保持原样，外链与公开 URL 零断链；
-3. **安全凭证无缝迁移**：
-   - 存量密码（Argon2id 与 PBKDF2）完全继承，割接后用户无须重置密码；
-   - 现存日历订阅链接与退订链接（`SIGNING_KEY` = 旧 `DJANGO_SECRET_KEY`）100% 持续有效；
-   - 数据库敏感密文字段（`FIELD_ENCRYPTION_KEY`）平滑继承；
-4. **会话处理**：全员重新登录（提前在 QQ 交流群及站内公告声明）；
-5. **门禁红线**：割接流水线中 `sjtuow reconcile` 对账自检**不全绿绝不开站**。
+## 2. 授权后的预检与两次演练
 
----
+机器访问与备份操作先读 operations.md。磁盘重测/清理、R2、外部网络与邮箱验收需用户授权；禁止全局清理。割接脚本要求本站目录所在盘至少25%且5GiB空闲，不足就停下处理，不会自动清理。
 
-## 2. 停机割接时间窗口与耗时模型
-
-基于测试机 staging 演练实测，停机维护窗口预估 **15 分钟**（预留冗余至 30 分钟）。
-
-| 序号 | 阶段步骤 | 执行命令/动作 | 预估耗时 | 责任人 |
-|---|---|---|---|---|
-| T-7d | 提前公告 | QQ 群、站内首页发布停机维护与重新登录预告 | — | 管理员 |
-| T-0 | 进入维护期 | Caddy 切换至静态维护页，切断外部写流量 | 10 秒 | 运维 |
-| T+1m | 停止旧站写容器 | `docker compose stop web worker` | 20 秒 | 运维 |
-| T+2m | 生产最终热备 | 导出最终 `db.sqlite3` 与 `media/` | 1 分钟 | 自动化 |
-| T+3m | 数据完整导入 | `sjtuow import /data/legacy.sqlite3` | 1 分钟 | 自动化 |
-| T+4m | 全域数据对账 | `sjtuow reconcile /data/legacy.sqlite3` | 30 秒 | 自动化 |
-| T+5m | 启动新栈集群 | `docker compose -f deploy/docker-compose.new.yml up -d` | 30 秒 | 自动化 |
-| T+6m | 服务自检冒烟 | `/healthz` 写探测与关键页面探针 | 1 分钟 | 运维 |
-| T+7m | 切换反代流量 | Caddy 切至生产新栈路由，下线维护页 | 10 秒 | 运维 |
-| T+8m | 生产联调验证 | 超管登录、查看赛事/内战/文章、测试发信 | 3 分钟 | 站长/干部 |
-
----
-
-## 3. 标准割接执行步骤
-
-### 步骤零：staging 全流程模拟演练（割接前至少演练两次）
-
-依据 `12-architecture.md` 第 8.4 节要求，割接前必须在 staging（测试机）使用正式站备份完整演练至少两次：
+测试机演练的输入必须明确存在，不回退空库：
 
 ```bash
-# 执行模拟演练流水线并记录各阶段耗时
-bash deploy/rehearse.sh /srv/sjtu-ow/data/demo-final.sqlite3
-
-# 执行端到端新旧对拍与兼容性核验
-sjtuow parity --new-url http://127.0.0.1:4000 --media-dir /srv/sjtu-ow/data/media
+bash deploy/rehearse.sh /srv/sjtu-ow-rehearsal/latest.tar.gz
+# 或已有只读旧库与旧媒体
+bash deploy/rehearse.sh /srv/sjtu-ow-rehearsal/db.sqlite3 /srv/sjtu-ow-rehearsal/media
 ```
 
-演练报告输出 5 项关键指标（快照、模式迁移、全域导入、对账自检、契约审计与对拍），耗时必须严格控制在 900 秒（15 分钟）以内。
+脚本安全解包、SQLite backup（含 WAL）→ migrate → import → import-media → import-fonts → reconcile → rulecheck → parity，逐步计时并检查900秒预算。原始数据及诊断仅留权限700的测试目录，用完删除；日志只保留计数、耗时与错误类型。实际页面、坏图、真实旧正文等价和逐表对账另按 final-batch.md 4.10 验。
 
-### 步骤一：前置检查（割接前 30 分钟）
+## 3. 正式站文件与执行
+
+正式站旧 `deploy/docker-compose.vps.yml`、`Caddyfile.vps` 不进仓库。新栈不得复用旧覆盖文件。准备并审阅 `deploy/docker-compose.next-vps.yml`（同样不提交）：proxy `ports: !override ["22887:80"]`、挂载 `Caddyfile.next-vps`。后者以仓库 `Caddyfile.new` 为基础；其中已含 `trusted_proxies static private_ranges 100.96.0.0/12` 和 `trusted_proxies_strict`，保留。不要覆盖旧 Caddyfile.vps。
 
 ```bash
-# 1. 验证新镜像与配置完整性
 cd /srv/sjtu-ow
-docker compose -f deploy/docker-compose.new.yml config
-
-# 2. 验证宿主环境变量
-test -n "$SIGNING_KEY" && test -n "$FIELD_ENCRYPTION_KEY" && echo "密钥完整"
+# 仅输出检查结果，绝不打印完整展开配置或环境变量
+docker compose -p sjtu-ow-next -f deploy/docker-compose.new.yml -f deploy/docker-compose.next-vps.yml --env-file /srv/sjtu-ow/.env.next config --quiet
+# DB 与媒体绝对路径由只读 docker volume inspect /现有 Compose 挂载核实，禁止猜测
+CUTOVER_AUTHORIZED=yes bash deploy/cutover.sh "$LEGACY_DB_PATH" "$LEGACY_MEDIA_PATH" /srv/sjtu-ow/.env.next
 ```
 
-### 步骤二：自动化割接执行
+流水线实际行为：
 
-执行封装好的割接脚本：
-```bash
-bash deploy/cutover.sh
-```
+1. 验配置、磁盘、输入和空新库，给**正在运行**的旧 web/worker 镜像按 image ID 打 legacy 标签，留项目专用回滚覆盖文件与 cron 备份。
+2. 用隔离名称提前构建新镜像，不碰旧标签。
+3. 分别 TERM 停旧 worker、web；把 `/etc/cron.d/sjtu-ow` 移到本次备份目录（不是 cron.d 内改名）。新 worker 按 Asia/Shanghai 自行定时，不能再让宿主 cron 调 manage.py。
+4. 旧库原生 SQLite backup；新库迁移、导入、图片和字体、对账。不通过不开新站，旧数据不修改。失败时由用户按下节决定回退。
+5. 停旧 proxy，起新栈；健康检查。此后可能已有新写入，禁止自动用旧库覆盖。
 
-流水线内部自动执行：
-1. **下发维护页**：Caddy 重载至 `deploy/maintenance.html`，外部写请求全部友好拦截；
-2. **冻结旧站写入**：停止 Django 容器；
-3. **最终数据镜像**：原子快照生成 `/srv/sjtu-ow/data/legacy-final.sqlite3`；
-4. **全新新库构建**：`sjtuow migrate` 初始化空库；
-5. **全领域无损导入**：按「设置 → 账号与角色 → 战队 → 分组 → 赛事 → 内战 → 页面与分类 → 评论 → 审核」流水线只读导入；
-6. **对账门禁拦截**：执行 `sjtuow reconcile`，核对行数与外键，不通过则自动中断并回滚；
-7. **启动新栈容器**：启动 Go 后端、Worker、Vue 3 SSR 与 Caddy 反代；
-8. **健康冒烟探测**：循环等待 `/healthz` 响应 200。
+割接后验证访客主要页、旧密码登录、七身份门、真实图片、超管后台及 worker 心跳；收信和外部网络/监控按用户批准的清单验。明确公告重新登录。实际结果写 STATUS。
 
-### 步骤三：割接后验证清单（Checklist）
+## 4. 回滚：先确认新写入，再切服务
 
-1. [ ] 访客访问首页：页面极速服务端渲染，首屏加载条正常，样式/深色主题无错乱；
-2. [ ] 访客访问 `/news/` 资讯：存量文章正常排版，Markdown 图注与 B 站内嵌正常；
-3. [ ] 现有账号登录：使用旧密码成功登录，跳转个人资料中心；
-4. [ ] 超级管理员进入 `/admin/`：八大类管理导航可用，待办事项无异常堆积；
-5. [ ] 检查 `/healthz`：数据库写入探测正常，数据卷剩余空间充足，Worker 120 秒心跳活跃。
-
----
-
-## 4. 48 小时应急回滚预案（Rollback）
-
-如果在割接上线后 48 小时内发现未预期的重大致命缺陷（如数据损坏、核心权限失控）：
-
-> [!CAUTION]
-> 割接 48 小时内旧站镜像与最终备份数据库处于只读留存状态，支持一键无缝秒级回滚。
-
-### 回滚命令
+不能承诺48小时内无损秒回滚。只要新站有一条写入，时间再短也必须先保全新库/媒体，评估差异，取得用户的数据处理决定；禁止直接恢复旧备份。以下命令仅用于**确认新站尚无业务写入，或用户已决定差异处理**之后：
 
 ```bash
-# 1. 停止新栈服务
-docker compose -f deploy/docker-compose.new.yml down
-
-# 2. 恢复旧站 Compose 拓扑
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.vps.yml up -d
-
-# 3. 校验旧站健康状态
-curl -f http://127.0.0.1:22887/healthz
+cd /srv/sjtu-ow
+# BACKUP_DIR 为 cutover.sh 输出的本轮项目备份目录，不用“最新一个”猜
+# 保留新旧数据卷与容器，不 down -v
+docker compose -p sjtu-ow-next -f deploy/docker-compose.new.yml -f deploy/docker-compose.next-vps.yml --env-file /srv/sjtu-ow/.env.next stop worker
+docker compose -p sjtu-ow-next -f deploy/docker-compose.new.yml -f deploy/docker-compose.next-vps.yml --env-file /srv/sjtu-ow/.env.next stop server web proxy
+# 旧库从未修改，不需要也不允许整库覆盖
+cp -p "$BACKUP_DIR/cron.d-sjtu-ow" /etc/cron.d/sjtu-ow
+docker compose -p sjtu-ow -f deploy/docker-compose.yml -f deploy/docker-compose.vps.yml -f "$BACKUP_DIR/legacy-images.yml" --env-file /srv/sjtu-ow/.env up -d --no-build
+curl --fail --silent http://127.0.0.1:22887/healthz
 ```
 
-48 小时窗口过后，新站产生大量新业务数据，原则上不再回滚，遇问题一律向前修补升级。
+若未配置新栈专用覆盖文件，命令里的相应 `-f` 可省略，其他参数完整保留。旧镜像已 pin，不需现场重建；旧 cron 恢复到北京时间判定版本。回滚成功需核对 Compose 镜像 ID、访客页面、备份/预渲染及真实数据计数，结果照实记录。
 
 ---
 
@@ -124,3 +76,6 @@ curl -f http://127.0.0.1:22887/healthz
 2. 新栈换一个项目名或服务名（比如项目 `sjtu-ow-next`），两套不共用镜像名
 3. 停新栈、起旧站的命令都带 `--env-file /srv/sjtu-ow/.env`
 4. 恢复定时任务：割接时改过的 `/etc/cron.d/sjtu-ow` 要先备份，回滚时换回
+
+
+293 轮更正：上面保留的是265历史教训，现行操作已落实在第1–4节及脚本；新旧项目/镜像/媒体隔离、正在运行镜像pin、所有Compose命令带环境文件、停用/恢复宿主cron、原库不覆盖。旧版“48小时内一键无损回滚”的承诺已撤销。

@@ -25,6 +25,8 @@ import importlib.util
 import json
 import os
 import shutil
+import http.server
+import threading
 import subprocess
 import sys
 import time
@@ -50,69 +52,14 @@ screens = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(screens)
 screens.WORK = WORK
 
-# (名字, 身份, 地址)。地址里的 {team} 这类来自种子数据。身份：visitor、member、captain、officer。
-PAGES = [
-    # 内容
-    ("home", "visitor", "/"),
-    ("home", "member", "/"),
-    ("news", "visitor", "/news/"),
-    ("article", "visitor", "/news/screens-guide/"),
-    ("article", "member", "/news/screens-guide/"),
-    ("about", "visitor", "/about/"),
-    ("terms", "visitor", "/terms/"),
-    ("privacy", "visitor", "/privacy/"),
-    ("search", "visitor", "/search/?q=截图"),
-    ("submit", "visitor", "/submit/"),
-    ("submit", "member", "/submit/"),
-    # 战队、成员
-    ("teams", "visitor", "/teams/"),
-    ("team", "visitor", "/teams/{team}/"),
-    ("team", "member", "/teams/{team}/"),
-    ("team-new", "member", "/teams/new/"),
-    ("team-apply", "officer", "/teams/{team}/apply/"),
-    ("team-manage", "captain", "/teams/{team}/manage/"),
-    ("members", "visitor", "/members/"),
-    ("members-filter", "visitor", "/members/?role=support&free=1"),
-    ("member", "visitor", "/members/{member}/"),
-    # 赛事、内战
-    ("tournaments", "visitor", "/tournaments/"),
-    ("cup", "visitor", "/tournaments/{cup}/"),
-    ("cup", "member", "/tournaments/{cup}/"),
-    ("teamcup", "captain", "/tournaments/{teamcup}/"),
-    ("cup-signup", "member", "/tournaments/{cup}/signup/"),
-    ("teamcup-register", "captain", "/tournaments/{teamcup}/register/"),
-    ("registration", "captain", "/registrations/{registration}/"),
-    ("scrims", "visitor", "/scrims/"),
-    ("scrim", "visitor", "/scrims/{scrim}/"),
-    ("scrim", "member", "/scrims/{scrim}/"),
-    # 个人中心、发信
-    ("me", "visitor", "/me/"),
-    ("me", "member", "/me/"),
-    ("me-game-accounts", "member", "/me/game-accounts/"),
-    ("me-contacts", "member", "/me/contacts/"),
-    ("me-security", "member", "/me/security/"),
-    ("me-delete", "member", "/me/delete/"),
-    ("me-teams", "member", "/me/teams/"),
-    ("me-registrations", "member", "/me/registrations/"),
-    ("me-scrims", "member", "/me/scrims/"),
-    ("letters", "member", "/letters/"),
-    ("letters-confirm", "member", "/letters/{front_letters}/"),
-    # 账号入口
-    ("login", "visitor", "/accounts/login/"),
-    ("signup", "visitor", "/accounts/signup/"),
-    ("password-reset", "visitor", "/accounts/password/reset/"),
-    ("password-change", "member", "/accounts/password/change/"),
-    ("email", "member", "/accounts/email/"),
-    ("logout", "member", "/accounts/logout/"),
-    # 其他。404 不在这里比：旧站跑的是开发设置（DEBUG），给的是 Django 的调试页，不是
-    # templates/errors/404.html；错误页逐字照旧站由 web/apps/site 的测试和 browser-check 管（263）。
-    ("styleguide", "officer", "/_styleguide/"),
-]
+from page_matrix import PAGES, RESOURCES, negative_probe
+from account_scenarios import EXTRA_EMAILS
 
 EMAILS = {
     "member": "member@screens.test",
     "captain": "captain@screens.test",
     "officer": "officer@screens.test",
+    **EXTRA_EMAILS,
 }
 
 
@@ -121,9 +68,8 @@ EMAILS = {
 
 def seed(accounts=False) -> dict:
     data = screens.seed()
-    if accounts:
-        from account_scenarios import extend_seed
-        extend_seed(data)
+    from account_scenarios import extend_seed
+    extend_seed(data)
     # screens.py intentionally makes password-less screenshot identities.
     # Account parity needs ordinary password accounts, as on the real site.
     from accounts.models import User
@@ -141,6 +87,22 @@ def seed(accounts=False) -> dict:
 
     registration = Registration.objects.filter(tournament_id=data["teamcup"]).order_by("pk").first()
     data["registration"] = registration.pk if registration else 0
+    from core.models import HeldLetter
+    from core.services import unsubscribe_token
+    from wagtail.images import get_image_model
+    member = User.objects.get(pk=data['member'])
+    data['game_account'] = member.game_accounts.first().pk
+    data['contact'] = member.contact_methods.first().pk
+    data['image'] = get_image_model().objects.order_by('pk').first().pk
+    data['front_letter'] = HeldLetter.objects.filter(batch=data['front_letters']).order_by('pk').first().pk
+    data['back_letter'] = HeldLetter.objects.filter(batch=data['back_letters']).order_by('pk').first().pk
+    from content.models import ArticlePage
+    data['revision'] = ArticlePage.objects.get(pk=data['article']).get_latest_revision().pk
+    data['unsubscribe'] = unsubscribe_token(member)
+    done = User.objects.get(email='captain@screens.test')
+    done.accepts_announcements = False
+    done.save(update_fields=['accepts_announcements'])
+    data['unsubscribe_done'] = unsubscribe_token(done)
     return data
 
 
@@ -189,6 +151,8 @@ def prepare_new(env: dict) -> dict:
     run([str(binary), "migrate"], env=env, stdout=subprocess.DEVNULL)
     run([str(binary), "import", str(WORK / "db.sqlite3")], env=env, stdout=subprocess.DEVNULL)
     made = subprocess.run([str(binary), "import-media", str(WORK / "media")], env=env, capture_output=True, text=True)
+    if made.returncode:
+        raise RuntimeError("import-media failed: " + made.stderr)
     print(made.stdout.strip().splitlines()[0] if made.stdout.strip() else made.stderr.strip())
     sessions = {}
     for who, email in EMAILS.items():
@@ -317,6 +281,7 @@ SNAPSHOT = """(() => {
     return {selector,height:rect.height,top:rect.top,display:css.display,minHeight:css.minHeight,flex:css.flex,padding:css.padding,margin:css.margin,font:css.font,children:[...node.children].map(child=>({tag:child.tagName,class:child.className,height:child.getBoundingClientRect().height}))};
   });
   return { title: document.title, text, links, fields, broken, shell,
+           effective_status: Number((main.querySelector('[data-page-status]') || main).dataset.pageStatus || main.querySelector('.code')?.textContent || 200), path: location.pathname + location.search,
            box: { x: box.left + scrollX, y: box.top + scrollY, width: box.width, height: box.height } };
 })()"""
 
@@ -347,13 +312,41 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
         if evaluate(tools, "[...document.images].filter((img) => !img.complete).length") == 0:
             break
         time.sleep(0.25)
+    if urllib.parse.urlsplit(url).path.startswith('/admin/'):
+        # Wait for session, lazy route and its page request; an empty shell is never a page.
+        previous = None
+        stable = 0
+        for _ in range(120):
+            current = evaluate(tools, "JSON.stringify({path:location.pathname,text:document.querySelector('#main')?.innerText??'',busy:!!document.querySelector('[aria-busy=true]')})")
+            value = json.loads(current)
+            if value['text'].strip() and not value['busy'] and value['text'] not in ('加载中…', '正在加载…'):
+                stable = stable + 1 if current == previous else 0
+                if stable >= 3:
+                    break
+            else:
+                stable = 0
+            previous = current
+            time.sleep(0.1)
+        else:
+            raise RuntimeError('admin page never settled: ' + url)
     time.sleep(0.3)
     # Font loading can outlive readyState/image completion, especially on long
     # Chinese pages. Capture the layout after its fonts and next paint frames.
-    evaluate(tools, "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))")
+    if urllib.parse.urlsplit(url).path.startswith('/_styleguide/emails/') and urllib.parse.urlsplit(url).path != '/_styleguide/emails/':
+        # CSP sandbox intentionally disables in-document script scheduling.
+        # System-font mail documents can be polled synchronously; screenshots
+        # force a compositor paint, without weakening the real mail sandbox.
+        for _ in range(60):
+            if evaluate(tools, "document.fonts.status") == 'loaded': break
+            time.sleep(0.1)
+        else: raise RuntimeError('mail fonts never loaded')
+    else:
+        evaluate(tools, "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))")
     if invalid:
         from account_errors import submit
         submission = submit(tools, invalid, evaluate)
+    if urllib.parse.urlsplit(url).path == '/_styleguide/':
+        evaluate(tools, "document.querySelector('[aria-labelledby=sg-components]')?.remove()")
     snap = evaluate(tools, SNAPSHOT)
     if invalid:
         snap['submission'] = submission
@@ -422,6 +415,23 @@ def canonical_location(location):
             urllib.parse.parse_qsl(target.query, keep_blank_values=True), target.fragment)
 
 
+def resource_response(url, cookie):
+    request = urllib.request.Request(url, headers={"Cookie": cookie} if cookie else {})
+    try:
+        response = urllib.request.urlopen(request, timeout=20)
+    except urllib.error.HTTPError as error:
+        response = error
+    with response:
+        payload = response.read()
+        kind = response.headers.get('Content-Type', '').lower()
+        # Same fictional SITE_URL, distinct ephemeral ports. Replace only the
+        # concrete server origin, never paths, fields or resource content.
+        if 'text/' in kind or 'xml' in kind:
+            origin = urllib.parse.urlsplit(url)
+            payload = payload.replace(f'{origin.scheme}://{origin.netloc}'.encode(), TEST_SITE_URL.encode())
+        return response.status, kind, payload
+
+
 def redirect_problems(status):
     old, new = status
     if old[0] != new[0] or canonical_location(old[1]) != canonical_location(new[1]):
@@ -446,13 +456,18 @@ def main(argv: list[str]) -> int:
     wide = "--wide" in argv
     strict = "--strict" in argv
     errors = "--account-errors" in argv
+    components = "--components" in argv
     accounts = "--accounts" in argv or errors
     if accounts:
         from account_scenarios import PAGES as account_pages, EXTRA_EMAILS
         EMAILS.update(EXTRA_EMAILS)
         if errors:
             from account_errors import PAGES as account_pages
-    pages = [p for p in (account_pages if accounts else PAGES) if not only or any(
+    if components:
+        account_pages = [("component-specimen", "officer", "/_styleguide/components/")]
+    negative_probe(compare)
+    print("PARITY-MATRIX-NEGATIVE-PROBES-OK", flush=True)
+    pages = [p for p in (account_pages if accounts or components else PAGES) if not only or any(
         prefix and (p[0].startswith(prefix) or p[2].startswith(prefix)) for prefix in only
     )]
     if not pages:
@@ -466,14 +481,53 @@ def main(argv: list[str]) -> int:
     data = prepare_legacy(accounts)
     ports = [screens.free_port() for _ in range(5)]
     old_port, api_port, ssr_port, caddy_port, debug_port = ports
+    reference = None
     env = new_env(api_port)
+    os.environ["PARITY_API_BASE"] = f"http://127.0.0.1:{api_port}"
     print("== 新站：迁移、导入、图片母版、会话")
     new_sessions = prepare_new(env)
-    if accounts:
-        from account_scenarios import validate_import
-        validate_import(WORK)
+    from account_scenarios import validate_import
+    validate_import(WORK)
 
     procs = []
+    # DEBUG's technical404 is not the production oracle. Render the frozen
+    # standalone templates, while keeping the real old endpoint status gate.
+    os.environ.update(screens.site_env())
+    import django
+    django.setup()
+    from django.template.loader import render_to_string
+    error_documents = {code: render_to_string(f'errors/{code}.html').encode() for code in (403,404,429)}
+    component_payload = b''
+    if components:
+        from component_reference import document
+        component_payload = document(ROOT, f'http://127.0.0.1:{old_port}').encode()
+    class Reference(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if urllib.parse.urlsplit(self.path).path.startswith('/__error/'):
+                code=int(self.path.split('/')[2])
+                self.send_response(code)
+                self.send_header('Content-Type','text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(error_documents[code])
+                return
+            if components and urllib.parse.urlsplit(self.path).path == '/_styleguide/components/':
+                self.send_response(200)
+                self.send_header('Content-Type','text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(component_payload)
+                return
+            try:
+                upstream=urllib.request.urlopen(f'http://127.0.0.1:{old_port}'+self.path,timeout=20)
+            except urllib.error.HTTPError as error:
+                upstream=error
+            with upstream:
+                self.send_response(upstream.status)
+                self.send_header('Content-Type',upstream.headers.get('Content-Type','application/octet-stream'))
+                self.end_headers()
+                self.wfile.write(upstream.read())
+        def log_message(self,*args): pass
+    reference=http.server.ThreadingHTTPServer(('127.0.0.1',0),Reference)
+    threading.Thread(target=reference.serve_forever,daemon=True).start()
     try:
         procs.append(
             subprocess.Popen(
@@ -526,27 +580,58 @@ def main(argv: list[str]) -> int:
                 old_cookie, new_cookie, suffix = error_context(name, data, new_sessions, WORK, screens.site_env())
                 path = template + suffix
             cookies = lambda items: "; ".join(c["name"] + "=" + c["value"] for c in items)
+            old_url = f"http://127.0.0.1:{reference.server_address[1] if components else old_port}{path}"
             status = (
-                fetch_status(f"http://127.0.0.1:{old_port}{path}", cookies(old_cookie)),
+                fetch_status(old_url, cookies(old_cookie)),
                 fetch_status(f"http://127.0.0.1:{caddy_port}{path}", cookies(new_cookie)),
             )
+            if status[0][0] in (403,404,429):
+                old_url=f'http://127.0.0.1:{reference.server_address[1]}/__error/{status[0][0]}/'
             row = {"name": name, "who": who, "path": path, "status": status, "views": []}
+            if name in {item[0] for item in RESOURCES}:
+                left = resource_response(f'http://127.0.0.1:{old_port}{path}', cookies(old_cookie))
+                right = resource_response(f'http://127.0.0.1:{caddy_port}{path}', cookies(new_cookie))
+                problems = []
+                if left != right:
+                    problems = ['资源状态/类型/正文不同（已跟随图标跳转）']
+                row['views'] = [{'view': 'resource', 'ratio': 0, 'problems': problems}]
+                row['pass'] = not problems
+                results.append(row)
+                print(('通过' if row['pass'] else '不同') + ' resource ' + path, flush=True)
+                continue
+            admin_shell = path.startswith('/admin/') and status[1][0] == 200
+            # The approved independent SPA sends its static shell before its
+            # real Go gate. Compare the settled result, not a misleading 200.
+            if admin_shell and 300 <= status[0][0] < 400:
+                new = look(tools, f'http://127.0.0.1:{caddy_port}{path}', new_cookie, 1280, 'light', SHOTS / f'{name}-{who}-gate.png')
+                actual = new['path']
+                if canonical_location(actual) != canonical_location(status[0][1]):
+                    problems = [f'SPA登录跳转 {actual} / {status[0][1]}']
+                else:
+                    problems = list(new['browser_errors'])
+                row['approved_difference'] = '12-architecture.md §6.8：静态SPA shell后经真实接口决定登录去向'
+                row['views'] = [{'view': 'spa-redirect', 'ratio': 0, 'problems': problems}]
             if 300 <= status[0][0] < 400 or 300 <= status[1][0] < 400:
                 allowed = approved_redirect(name, who, status) if not errors else None
                 if allowed:
                     row['approved_difference'] = allowed
                 problems = ['错误态夹具未进入可提交表单'] if errors else ([] if allowed else redirect_problems(status))
-                row["views"] = [{"view": "redirect", "ratio": 0, "problems": problems}]
+                if not row['views']:
+                    row["views"] = [{"view": "redirect", "ratio": 0, "problems": problems}]
             for width, scheme in ([] if row["views"] else views):
                 stem = f"{name}-{who}-{width}-{scheme}"
                 if errors:
                     from account_errors import context as error_context
                     old_cookie, new_cookie, suffix = error_context(name, data, new_sessions, WORK, screens.site_env())
                     path = template + suffix
-                old = look(tools, f"http://127.0.0.1:{old_port}{path}", old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None)
+                old = look(tools, old_url, old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None)
                 new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png", name if errors else None)
                 ratio, note = pixel_ratio(SHOTS / f"{stem}-old.png", SHOTS / f"{stem}-new.png")
-                problems = compare(old, new, ratio, (status[0][0], status[1][0]) if (width, scheme) == views[0] else (0, 0))
+                effective = new['effective_status'] if admin_shell else status[1][0]
+                problems = compare(old, new, ratio, (status[0][0], effective) if (width, scheme) == views[0] else (0, 0))
+                if admin_shell:
+                    if new['effective_status'] != status[0][0]:
+                        problems.append(f'SPA权限结果 {new["effective_status"]} / {status[0][0]}')
                 if note:
                     problems.append(note)
                 view = {"view": f"{width}-{scheme}", "ratio": ratio, "problems": problems}
@@ -558,8 +643,10 @@ def main(argv: list[str]) -> int:
             row["pass"] = all(not v["problems"] for v in row["views"])
             results.append(row)
             mark = "通过" if row["pass"] else "不同"
-            print(f"{mark}  {who:8} {path}" + ("" if row["pass"] else "  ← " + "；".join(row["views"][0]["problems"])[:240]))
+            print(f"{mark}  {who:8} {path}" + ("" if row["pass"] else "  ← " + "；".join(row["views"][0]["problems"])[:240]), flush=True)
     finally:
+        if reference:
+            reference.shutdown(); reference.server_close()
         subprocess.run(["docker", "rm", "-f", "ow-parity-caddy"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for proc in procs:
             proc.terminate()
