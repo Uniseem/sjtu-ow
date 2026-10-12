@@ -55,6 +55,11 @@ func (s *Service) ArticlePage(ctx *app.Ctx, slug string) (NewsDetailOut, error) 
 	if article == nil || !article.Live || !article.Public {
 		return NewsDetailOut{}, api.NotFound("文章不存在")
 	}
+	return s.articleProjection(ctx, article)
+}
+
+// articleProjection is shared by public articles and authorized draft previews.
+func (s *Service) articleProjection(ctx *app.Ctx, article *Article) (NewsDetailOut, error) {
 	_, headings := markdown.AnchorHeadings(article.BodyHTML)
 	headingOuts := make([]*HeadingOut, 0, len(headings))
 	for _, h := range headings {

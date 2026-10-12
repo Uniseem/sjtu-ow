@@ -174,6 +174,11 @@ func Reconcile(ctx context.Context, d *db.DB, legacyPath string) (*ReconcileResu
 		}
 		result.Tables = append(result.Tables, stat)
 	}
+	if legacyDB != nil {
+		if err := reconcileAudit(ctx, newDB, legacyDB, result); err != nil {
+			return result, err
+		}
+	}
 	// Identity/title samples compare by preserved IDs. Reports contain counts
 	// and flags only: no actual addresses, nicknames or article titles.
 	if legacyDB != nil {

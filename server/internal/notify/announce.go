@@ -41,10 +41,12 @@ var shanghai = time.FixedZone("Asia/Shanghai", 8*3600)
 
 // Subject 是一个种类的对象现在的样子。
 type Subject struct {
-	Title    string
-	Live     bool       // 已发布
-	GoLiveAt *time.Time // 文章：安排了定时上线、还没上线时的时间
-	SJTUOnly bool       // 只通知交大成员
+	StartsAt  *time.Time
+	MovedFrom *time.Time
+	Title     string
+	Live      bool       // 已发布
+	GoLiveAt  *time.Time // 文章：安排了定时上线、还没上线时的时间
+	SJTUOnly  bool       // 只通知交大成员
 }
 
 // Kind 是一类能被通知的东西。各域各交一个，notify 不认识它们。

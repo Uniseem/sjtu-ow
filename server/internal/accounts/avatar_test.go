@@ -37,7 +37,7 @@ func (m *dummyMedia) Upload(ctx *app.Ctx, in media.UploadInput) (*media.Image, e
 
 func (m *dummyMedia) DeleteImageFiles(id int64) { m.deleted = append(m.deleted, id) }
 
-func (m *dummyMedia) DeleteImage(ctx *app.Ctx, id int64) error {
+func (m *dummyMedia) RetireUnusedUserAvatar(ctx *app.Ctx, id int64) error {
 	m.deleted = append(m.deleted, id)
 	return nil
 }

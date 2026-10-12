@@ -32,7 +32,7 @@ import (
 // AvatarUploader 是头像图片上传器接口（由 media.Service 实现）。
 type AvatarUploader interface {
 	Upload(ctx *app.Ctx, in media.UploadInput) (*media.Image, error)
-	DeleteImage(ctx *app.Ctx, id int64) error
+	RetireUnusedUserAvatar(ctx *app.Ctx, id int64) error
 	DeleteImageFiles(id int64)
 }
 
@@ -489,7 +489,7 @@ func (s *Service) VerifyEmail(ctx context.Context, in VerifyEmailInput, flowToke
 		return nil, errBadCode
 	}
 
-	token, err := s.sessions.CreateWithNotice(ctx, verifiedUserID, "欢迎加入社区！先在这里补全游戏 ID 和联系方式，就能报名赛事和内战；也可以去「战队」找一支招募中的队伍。")
+	token, err := s.sessions.CreateLoginWithNotice(ctx, verifiedUserID, "欢迎加入社区！先在这里补全游戏 ID 和联系方式，就能报名赛事和内战；也可以去「战队」找一支招募中的队伍。")
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +623,7 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (*LoginResult, error
 		}
 	}
 
-	token, err := s.sessions.Create(ctx, u.ID)
+	token, err := s.sessions.CreateLoginWithNotice(ctx, u.ID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -2134,6 +2134,7 @@ type AdminUserTeam struct {
 
 // UserDetailResult 用户详情出参。
 type UserDetailResult struct {
+	LastLoginAt  *time.Time          `json:"last_login_at"`
 	Teams        []AdminUserTeam     `json:"teams"`
 	IsDeleted    bool                `json:"is_deleted"`
 	OwnAccount   bool                `json:"own_account"`
@@ -2210,6 +2211,18 @@ func (s *Service) GetUserDetail(ctx *app.Ctx, in UserDetailInput) (*UserDetailRe
 		return nil, err
 	}
 
+	var loginRaw sql.NullString
+	if err := s.d.ReadPool().QueryRowContext(ctx.Context, `SELECT last_login_at FROM users WHERE id=?`, u.ID).Scan(&loginRaw); err != nil {
+		return nil, err
+	}
+	var lastLogin *time.Time
+	if loginRaw.Valid {
+		parsed, err := db.ParseUTC(loginRaw.String)
+		if err != nil {
+			return nil, fmt.Errorf("读取最后登录时间失败: %w", err)
+		}
+		lastLogin = &parsed
+	}
 	isDeleted := strings.HasSuffix(u.Email, "@deleted.invalid")
 	if ctx.Viewer != nil && !ctx.Viewer.Superuser {
 		u.Email = ""
@@ -2217,6 +2230,7 @@ func (s *Service) GetUserDetail(ctx *app.Ctx, in UserDetailInput) (*UserDetailRe
 	}
 
 	return &UserDetailResult{
+		LastLoginAt:  lastLogin,
 		Teams:        teams,
 		IsDeleted:    isDeleted,
 		OwnAccount:   ctx.Viewer != nil && ctx.Viewer.ID == u.ID,
@@ -2517,7 +2531,7 @@ func (s *Service) SubmitAvatar(ctx *app.Ctx, fileName, dataURL string) (*media.I
 
 	if oldID != nil {
 		if _, ok := ownedIDs[*oldID]; ok {
-			_ = s.media.DeleteImage(ctx, *oldID)
+			_ = s.media.RetireUnusedUserAvatar(ctx, *oldID)
 		}
 	}
 
@@ -2552,7 +2566,7 @@ func (s *Service) RemoveAvatar(ctx *app.Ctx) error {
 
 	if _, ok := ownedIDs[oldID]; ok {
 		if s.media != nil {
-			_ = s.media.DeleteImage(ctx, oldID)
+			_ = s.media.RetireUnusedUserAvatar(ctx, oldID)
 		}
 	}
 	return nil

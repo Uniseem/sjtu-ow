@@ -100,30 +100,25 @@ async function remove(): Promise<void> {
       <p v-if="notice" class="c-notice c-notice--ok" role="status">{{ notice }}</p>
       <ContentActionMessage :message="deletion.message.value" :pending="deletion.pending.value" :uncertain="deletion.uncertain.value" @retry="deletion.retry" />
       <fieldset class="b-fieldset" :disabled="!permission.manageCategories.value || deletion.pending.value || deletion.uncertain.value">
-        <ContentField name="name" label="名称" :errors="fields.name" hint="名称空着时网站上不显示。">
+        <ContentField name="name" label="名称" :errors="fields.name" hint="名称或网址片段空着时，网站上不出现这个分类。">
           <template #default="field">
             <input :id="field.id" class="c-input" name="name" :value="values.name" maxlength="255" :aria-describedby="field.describedby" @input="input('name', $event)">
           </template>
         </ContentField>
-        <ContentField name="slug" label="网址片段" :errors="fields.slug" hint="网址片段空着时网站上不显示。">
+        <ContentField name="slug" label="网址片段" :errors="fields.slug" hint="资讯栏目按分类筛选时地址里用的词，只用字母、数字和连字符。">
           <template #default="field">
             <input :id="field.id" class="c-input" name="slug" :value="values.slug" maxlength="255" :aria-describedby="field.describedby" @input="input('slug', $event)">
           </template>
         </ContentField>
-        <ContentField name="description" label="说明" :errors="fields.description">
-          <template #default="field">
-            <textarea :id="field.id" class="c-input" name="description" :value="values.description" rows="4" @input="input('description', $event)" />
-          </template>
-        </ContentField>
-        <ContentField name="sort_order" label="排序" :errors="fields.sort_order" hint="数字小的排在前面。">
+        <ContentField name="sort_order" label="排序" required :errors="fields.sort_order" hint="数字小的排在前面。">
           <template #default="field">
             <input :id="field.id" class="c-input" name="sort_order" type="number" step="1" :value="values.sort_order" @change="order">
           </template>
         </ContentField>
-        <label class="c-check"><input type="checkbox" name="allow_submission" :checked="values.allow_submission" @change="submission">开放投稿</label>
+        <div class="c-field"><label class="c-check"><input type="checkbox" name="allow_submission" :checked="values.allow_submission" @change="submission"><span>开放投稿</span></label><div class="c-field__help">关掉后普通成员写文章时不能选这个分类。</div></div>
       </fieldset>
-      <div class="b-actions">
-        <button type="submit" class="c-btn c-btn--primary" :disabled="!permission.manageCategories.value || deletion.pending.value || deletion.uncertain.value || save.pending.value">保存</button>
+      <div class="b-actions" hidden>
+        <button hidden type="submit" class="c-btn c-btn--primary" :disabled="!permission.manageCategories.value || deletion.pending.value || deletion.uncertain.value || save.pending.value">保存</button>
       </div>
       <ConfirmContentAction v-if="confirmation" :title="`删除分类「${values.name}」？`" description="删除后不能恢复。" :pending="deletion.pending.value" danger @confirm="remove" @cancel="confirmation = false" />
     </form>
@@ -133,8 +128,7 @@ async function remove(): Promise<void> {
         <p v-if="category?.article_count" class="b-section__text">有 {{ category.article_count }} 篇文章在这个分类里，要删先把它们改到别的分类。</p>
         <p v-else-if="category?.article_count === 0" class="b-section__text">没有文章在用。</p>
         <p v-else class="b-section__text">文章数暂未提供，删除操作不可用。</p>
-        <RouterLink v-if="category?.article_count" class="c-link" :to="`/admin/articles/?category=${id}`">查看分类里的文章</RouterLink>
-        <button v-if="canDelete" type="button" class="c-btn c-btn--danger c-btn--sm" :disabled="!deletion.canStart.value" @click="confirmation = true">删除分类</button>
+        <button v-if="canDelete" type="submit" class="c-btn c-btn--danger c-btn--sm" :disabled="!deletion.canStart.value" @click.prevent="confirmation = true">删除分类</button>
       </section>
     </aside>
   </div>

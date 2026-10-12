@@ -86,11 +86,11 @@ onMounted(() => { void resource.load() })
               <RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/categories/${item.id}/`">编辑</RouterLink>
               <button
                 v-if="permission.manageCategories.value && item.article_count === 0"
-                type="button"
+                type="submit"
                 class="c-btn c-btn--quiet c-btn--sm"
                 :disabled="!action.canStart.value"
                 data-delete-category
-                @click="confirmation = item"
+                @click.prevent="confirmation = item"
               >删除</button>
             </div>
           </td>

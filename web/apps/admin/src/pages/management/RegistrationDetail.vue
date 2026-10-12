@@ -21,7 +21,7 @@ function act(kind:'approve'|'reject'){if(action.canStart.value && confirm(kind==
 const actorLabels:Record<string,string>={captain:'队长',admin:'本站管理员',system:'系统',member:'队员'}
 </script>
 <template>
-  <AdminPage :title="resource.data.value?.registration.team_name || '报名详情'" section="审核" back-href="/admin/registrations/">
+  <AdminPage :title="resource.data.value ? `${resource.data.value.registration.team_name} · ${resource.data.value.registration.tournament_title}` : '报名详情'" section="审核" back-href="/admin/registrations/">
     <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.refresh" />
     <div v-if="resource.data.value" class="b-split">
       <div class="b-form">

@@ -330,9 +330,7 @@ func (s *Service) buildBoard(ctx context.Context, q db.DBTX, scrimID int64, orde
 	b.Gap = abs(totals["a"] - totals["b"])
 	b.HasTeams = len(by["a"]) > 0 || len(by["b"]) > 0
 	b.TeamsStale = teamsStale(sc)
-	if b.HasTeams {
-		b.CopyText = copyText(sc, rows)
-	}
+	b.CopyText = copyText(sc, rows)
 	return b, nil
 }
 

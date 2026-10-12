@@ -6,6 +6,7 @@ import { useAdminSession } from "../core/session"
 
 const props = defineProps<{
   title: string
+  documentTitle?: string
   section: string
   backHref?: string
   backLabel?: string
@@ -21,8 +22,8 @@ function selected(url: string): boolean {
   if (url === "/admin/") return route.path === url
   return route.path === url || route.path.startsWith(url)
 }
-watch(() => props.title, (title) => {
-  document.title = `${title} · 管理后台`
+watch(() => [props.title, props.documentTitle], ([title, documentTitle]) => {
+  document.title = `${documentTitle || title} · 管理后台`
 }, { immediate: true })
 </script>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { runtimeStyle } from "../runtime-style"
 // The site's own right-click menu (design 13.2.6), as a global component
 // that owns the listeners (12-architecture 6.6). The browser's menu stays
 // where it is needed: Shift + right click, form fields and editable areas
@@ -32,8 +33,8 @@ function note(text: string) {
   el.className = "c-ctxmenu-toast"
   el.setAttribute("role", "status")
   el.textContent = text
-  el.style.left = x + 12 + "px"
-  el.style.top = y + 12 + "px"
+  runtimeStyle('.c-ctxmenu-toast').setProperty('left', x + 12 + 'px')
+  runtimeStyle('.c-ctxmenu-toast').setProperty('top', y + 12 + 'px')
   document.body.appendChild(el)
   setTimeout(() => el.remove(), 1400)
 }
@@ -44,8 +45,7 @@ function copy(text: string) {
     const area = document.createElement("textarea")
     area.value = text
     area.setAttribute("readonly", "")
-    area.style.position = "fixed"
-    area.style.opacity = "0"
+    area.className = 'sr-only'
     document.body.appendChild(area)
     area.select()
     try {
@@ -149,8 +149,8 @@ function place(panel: HTMLDivElement) {
   const height = panel.offsetHeight
   const left = Math.min(x, window.innerWidth - width - gap)
   const top = y + height + gap > window.innerHeight ? y - height : y
-  panel.style.left = Math.max(gap, left) + "px"
-  panel.style.top = Math.max(gap, top) + "px"
+  runtimeStyle('.c-ctxmenu').setProperty('left', Math.max(gap, left) + 'px')
+  runtimeStyle('.c-ctxmenu').setProperty('top', Math.max(gap, top) + 'px')
 }
 
 function items() {

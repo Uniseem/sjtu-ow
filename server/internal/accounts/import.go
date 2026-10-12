@@ -104,14 +104,19 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 		avatarCol = "avatar_id"
 	}
 
+	lastLoginCol := "NULL AS last_login"
+	if userCols["last_login"] {
+		lastLoginCol = "last_login"
+	}
+
 	query := fmt.Sprintf(`SELECT
 		id, email, password, nickname, is_sjtu,
 		agreed_terms_at, agreed_cross_border_at, date_joined,
 		is_active, is_superuser, %s, %s,
-		%s, %s, %s, %s, %s, %s
+		%s, %s, %s, %s, %s, %s, %s
 		FROM accounts_user ORDER BY id ASC`,
 		deactCol, mottoCol, mainRoleCol, flexRolesCol, showRankCol,
-		acceptsAnnouncementsCol, calendarVersionCol, avatarCol)
+		acceptsAnnouncementsCol, calendarVersionCol, avatarCol, lastLoginCol)
 	userRows, err := legacy.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("读取旧库 accounts_user 失败: %w", err)
@@ -125,16 +130,27 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 			var isSJTU, isActive, isSuperuser, showRank, acceptsAnnouncements, calendarVersion int
 			var agreedTerms, agreedCB, dateJoined string
 			var avatarID sql.NullInt64
+			var lastLogin sql.NullString
 
 			if err := userRows.Scan(
 				&id, &email, &password, &nickname, &isSJTU,
 				&agreedTerms, &agreedCB, &dateJoined,
 				&isActive, &isSuperuser, &deactivationNote, &motto,
-				&mainRole, &flexRoles, &showRank, &acceptsAnnouncements, &calendarVersion, &avatarID,
+				&mainRole, &flexRoles, &showRank, &acceptsAnnouncements, &calendarVersion, &avatarID, &lastLogin,
 			); err != nil {
 				return fmt.Errorf("解析 accounts_user 行失败: %w", err)
 			}
 
+			var lastLoginUTC any
+			// The frozen deletion path kept last_login; do not restore personal
+			// history for an already anonymized account during migration.
+			if lastLogin.Valid && !strings.HasSuffix(email, "@deleted.invalid") {
+				parsed, err := db.ParseUTC(lastLogin.String)
+				if err != nil {
+					return fmt.Errorf("旧账号 %d 最后登录时间格式无效: %w", id, err)
+				}
+				lastLoginUTC = db.FormatUTC(parsed)
+			}
 			emailNorm := NormalizeEmail(email)
 			agreedTermsUTC := parseAndFormatUTC(agreedTerms, now)
 			agreedCBUTC := parseAndFormatUTC(agreedCB, now)
@@ -159,8 +175,8 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 				id, email, email_norm, password_hash, nickname, is_sjtu,
 				agreed_terms_at, agreed_cross_border_at, email_verified_at, password_changed_at,
 				version, is_active, is_superuser, deactivation_note, motto, main_role, flex_roles, show_rank,
-				accepts_announcements, calendar_version, avatar_image_id, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				accepts_announcements, calendar_version, avatar_image_id, created_at, updated_at, last_login_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				email = excluded.email,
 				email_norm = excluded.email_norm,
@@ -180,11 +196,12 @@ func ImportLegacyAccounts(ctx context.Context, d *db.DB, legacy *sql.DB) error {
 				accepts_announcements = excluded.accepts_announcements,
 				calendar_version = excluded.calendar_version,
 				avatar_image_id = excluded.avatar_image_id,
+				last_login_at = excluded.last_login_at,
 				updated_at = excluded.updated_at`,
 				id, email, emailNorm, password, nickname, isSJTU,
 				agreedTermsUTC, agreedCBUTC, emailVerifiedStr,
 				isActive, isSuperuser, deactivationNote, motto, mainRole, flexRoles, showRank,
-				acceptsAnnouncements, calendarVersion, avatarVal, dateJoinedUTC, dateJoinedUTC,
+				acceptsAnnouncements, calendarVersion, avatarVal, dateJoinedUTC, dateJoinedUTC, lastLoginUTC,
 			)
 			if err != nil {
 				return fmt.Errorf("写入 users 用户 %d 失败: %w", id, err)

@@ -151,7 +151,7 @@ func Query(ctx context.Context, q db.DBTX, in QueryInput) (*QueryResult, error) 
 		FROM audit_log a
 		LEFT JOIN users u ON u.id = a.actor_id
 		%s
-		ORDER BY a.created_at DESC,a.id DESC
+		ORDER BY a.created_at DESC,COALESCE(json_extract(a.data,'$.legacy_id'),a.id) DESC,a.id DESC
 		LIMIT ? OFFSET ?
 	`, whereClause)
 

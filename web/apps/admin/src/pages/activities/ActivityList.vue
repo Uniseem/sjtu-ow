@@ -66,6 +66,12 @@ function pageHref(page: number) {
   return { path: activityHref(props.kind), query: { ...route.query, page: String(page) } }
 }
 
+function compareActivityTime(a: string | null | undefined, b: string | null | undefined): number {
+  if (!a) return b ? -1 : 0
+  if (!b) return 1
+  return Date.parse(b) - Date.parse(a)
+}
+
 async function load(): Promise<void> {
   request?.abort()
   request = new AbortController()
@@ -76,11 +82,11 @@ async function load(): Promise<void> {
     if (props.kind === "tournaments") {
       const result = await getApiAdminTournaments(api, { signal: request.signal })
       if (sequence !== token) return
-      tournaments.value = result.tournaments
+      tournaments.value = [...result.tournaments].sort((a, b) => compareActivityTime(a.registration_opens_at, b.registration_opens_at) || b.id - a.id)
     } else {
       const result = await getApiAdminScrims(api, { signal: request.signal })
       if (sequence !== token) return
-      scrims.value = result.scrims
+      scrims.value = [...result.scrims].sort((a, b) => compareActivityTime(a.starts_at, b.starts_at) || b.id - a.id)
     }
   } catch (error) {
     if (sequence !== token || request.signal.aborted) return

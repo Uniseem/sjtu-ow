@@ -143,6 +143,11 @@ function errorResponse(status: ErrorStatus, req: Incoming) {
 }
 
 function toResponse(rendered: Rendered, assets: Assets, req: Incoming): { status: number; headers: Record<string, string>; body: string } {
+  if (rendered.kind === "document" && rendered.contentType === 'text/plain') return {
+    status: 200,
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'private, no-store', vary: 'Cookie', 'x-content-type-options': 'nosniff', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' },
+    body: rendered.html,
+  }
   if (rendered.kind === "document") return {
     status: 200,
     headers: {

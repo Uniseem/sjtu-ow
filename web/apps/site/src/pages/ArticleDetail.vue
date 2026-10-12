@@ -5,6 +5,7 @@ import {
   type GetApiPageNewsSlugOut as ArticleDetail,
   deleteApiCommentsId,
   getApiPageNewsSlug,
+  getApiAdminArticlesIdPreviewPage,
   patchApiCommentsId,
   postApiArticlesIdComments,
   postApiCommentsIdHide,
@@ -20,7 +21,9 @@ import type { LoadCtx } from "../router"
 export async function load(ctx: LoadCtx) {
   const sort = ctx.query.sort === "top" ? "top" : "new"
   const page = Math.max(1, Number.parseInt(ctx.query.comments ?? "", 10) || 1)
-  const article: ArticleDetail = await getApiPageNewsSlug(ctx.api, ctx.params.slug!, { sort, comments: page })
+  const article: ArticleDetail = ctx.url.startsWith('/admin/articles/')
+    ? await getApiAdminArticlesIdPreviewPage(ctx.api, ctx.params.id!, { sort, comments: page })
+    : await getApiPageNewsSlug(ctx.api, ctx.params.slug!, { sort, comments: page })
   // The page may be withdrawn between the projection and comment reads.
   // Public draft previews are rejected before this point.
   let thread: CommentThread = article.thread ?? { total: 0, page, page_size: 20, comments: [] }

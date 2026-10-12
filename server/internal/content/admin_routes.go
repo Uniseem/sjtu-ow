@@ -17,6 +17,7 @@ func (m *Module) registerContentEditing(r *api.Registry) {
 		api.Nav("content", "articles"), api.NoLimit("预览缓存有总量和正文大小限制"))
 	api.Raw(r, http.MethodGet, "/api/admin/previews/{token}", nil, m.serveMarkdownPreview)
 	api.Raw(r, http.MethodGet, "/api/admin/articles/{id}/preview", nil, m.serveArticlePreview)
+	api.Get(r, "/api/admin/articles/{id}/preview-page", api.Cap("admin.enter"), m.articlePreviewPage, api.Nav("content", "articles"))
 	api.Get(r, "/api/admin/pages", api.Cap(CapSitePagesManage), m.listSiteParts, api.Nav("content", "pages"))
 	api.Get(r, "/api/admin/pages/{id}", api.Cap(CapSitePagesManage), m.readPlainPage, api.Nav("content", "pages"))
 	api.Patch(r, "/api/admin/pages/{id}", api.Cap(CapSitePagesManage), m.patchPlainPage,

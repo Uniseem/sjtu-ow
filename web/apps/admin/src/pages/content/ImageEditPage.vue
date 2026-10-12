@@ -21,7 +21,7 @@ onMounted(() => { void resource.load() })
 watch(() => route.params.id, () => { void resource.load() })
 </script>
 <template>
-  <AdminPage title="编辑图片" section="content" back-href="/admin/images/">
+  <AdminPage :title="resource.data.value?.image.title || '编辑图片'" section="content" back-href="/admin/images/">
     <ContentLoad :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.load" />
     <ImageEditor v-if="resource.data.value && !resource.pending.value" :key="id ?? 'missing'" :image="resource.data.value.image" :collections="resource.data.value.collections" />
   </AdminPage>

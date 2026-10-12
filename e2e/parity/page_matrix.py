@@ -91,12 +91,21 @@ for kind, key in (('tournaments', 'cup'), ('scrims', 'scrim')):
     )
     for action in ('publish', 'finish'):
         suffix = 'action/' + action if kind == 'tournaments' else action
-        ADMIN += ((f'admin-{kind}-{action}', f'/admin/{kind}/{placeholder}/{suffix}/'),)
+        action_placeholder = '{' + key + '_draft}' if action == 'publish' else placeholder
+        ADMIN += ((f'admin-{kind}-{action}', f'/admin/{kind}/{action_placeholder}/{suffix}/'),)
 
 RESOURCES = (
     ('sitemap', '/sitemap.xml'), ('robots', '/robots.txt'),
     ('favicon', '/favicon.ico'), ('apple-touch-icon', '/apple-touch-icon.png'),
 )
+
+# 295 user-approved additions: equivalent legacy gate, no legacy visual page.
+APPROVED_ADDITIONS = {
+    'admin-article-revisions': ('文章修订', '/admin/articles/{article}/'),
+    'admin-article-revision': ('查看修订', '/admin/articles/{article}/'),
+    'admin-mail-samples': ('邮件样张', '/admin/letters/'),
+    'admin-mail-sample': ('注册 / 修改邮箱验证码', '/admin/letters/'),
+}
 
 
 def expand(addresses, roles=ROLES):
@@ -106,7 +115,27 @@ def expand(addresses, roles=ROLES):
     return result
 
 
-PAGES = expand(FRONT) + expand(ADMIN) + expand(RESOURCES, ('visitor',))
+def admin_roles(name):
+    """Distinct gate states required by final-batch §3.2b.
+
+    Keep all seven where owner data, writer fields or role-specific content
+    differ. Do not screenshot the same forbidden document for every cadre.
+    The Go capability matrix still covers every role on every API.
+    """
+    if name.startswith(('admin-tournaments', 'admin-tournament-announce')) or name in ('admin-team-board', 'admin-registrations', 'admin-registration'):
+        return ('visitor', 'scrim_admin', 'tournament_admin', 'officer')
+    if name.startswith(('admin-scrims', 'admin-scrim-announce', 'admin-split')):
+        return ('visitor', 'tournament_admin', 'scrim_admin', 'officer')
+    if name.startswith(('admin-categor', 'admin-page', 'admin-group', 'admin-moderation')) or name in ('admin-pins', 'admin-intro', 'admin-comments', 'admin-avatars'):
+        return ('visitor', 'tournament_admin', 'content_editor', 'officer')
+    if name.startswith(('admin-font', 'admin-user', 'admin-role', 'admin-team-', 'admin-collection')) or name in ('admin-settings', 'admin-typography', 'admin-log', 'admin-prerender-redirect', 'admin-teams'):
+        return ('visitor', 'content_editor', 'officer')
+    if name == 'admin-activity':
+        return ('visitor', 'member', 'tournament_admin', 'officer')
+    return ROLES
+
+
+PAGES = expand(FRONT) + [row for name, path in ADMIN for row in expand(((name, path),), admin_roles(name))] + expand(RESOURCES, ('visitor',))
 
 
 def negative_probe(compare):

@@ -20,7 +20,7 @@ onMounted(() => { void resource.load() })
 watch(() => route.params.id, () => { void resource.load() })
 </script>
 <template>
-  <AdminPage :title="resource.data.value?.page.title || '编辑页面'" section="content" back-href="/admin/pages/">
+  <AdminPage :title="resource.data.value?.page.draft_title || resource.data.value?.page.title || '编辑页面'" section="content" back-href="/admin/pages/">
     <ContentLoad :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.load" />
     <PlainPageEditor v-if="resource.data.value && !resource.pending.value" :key="id ?? 'missing'" :detail="resource.data.value" />
   </AdminPage>

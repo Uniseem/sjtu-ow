@@ -32,15 +32,15 @@ function label(key: string) { return resource.data.value?.features.find(item => 
       </li>
     </ul>
     <form v-if="resource.data.value" class="b-filters" @submit.prevent="action.submit({ kind: 'add', feature, allowed, note, rule: 0 })">
-      <select v-model="feature" class="c-input" aria-label="功能" required>
-        <option value="">选择功能</option>
+      <select v-model="feature" name="feature" class="c-input" aria-label="功能" required>
+        <option value="">选一项功能</option>
         <option v-for="item in resource.data.value.features" :key="item.key" :value="item.key" :disabled="resource.data.value.rules.some(rule => rule.feature === item.key)">{{ item.label }}</option>
       </select>
-      <select v-model="allowed" class="c-input" aria-label="允许或禁止">
-        <option :value="true">单独允许</option>
+      <select v-model="allowed" name="allowed" class="c-input" aria-label="允许或禁止">
         <option :value="false">单独禁止</option>
+        <option :value="true">单独允许</option>
       </select>
-      <input v-model="note" class="c-input" maxlength="200" placeholder="原因（只有管理员看得到）" aria-label="原因" />
+      <input v-model="note" name="note" class="c-input" maxlength="200" placeholder="原因（只有管理员看得到）" aria-label="原因" />
       <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!action.canStart.value || !feature">加一条</button>
     </form>
     <ActionState :message="action.message.value" :pending="action.pending.value" :uncertain="action.uncertain.value" @retry="action.retry" />

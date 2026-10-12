@@ -154,8 +154,8 @@ type UserRulesOut struct {
 }
 
 var features = []FeatureChoice{
-	{"team_create", "创建战队"}, {"team_apply", "申请入队"}, {"tournament_register", "赛事报名"},
-	{"scrim_signup", "内战报名"}, {"article_submit", "投稿"}, {"article_comment", "评论"}, {"avatar_upload", "上传头像"},
+	{"team_create", "创建战队"}, {"team_apply", "申请加入战队"}, {"tournament_register", "报名赛事"},
+	{"scrim_signup", "报名内战"}, {"article_submit", "投稿"}, {"article_comment", "评论文章"}, {"avatar_upload", "上传头像"},
 }
 
 func featureID(name string) int64 {

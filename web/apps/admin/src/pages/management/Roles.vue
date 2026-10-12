@@ -41,11 +41,11 @@ function label(key: string) { return resource.data.value?.features.find(feature 
         </li>
       </ul>
       <form class="b-filters" @submit.prevent="action.submit({ kind: 'add', id: group.id, rule: 0, ...form(group.id) })">
-        <select v-model="form(group.id).feature" class="c-input" aria-label="功能" required>
-          <option value="">选择功能</option>
+        <select v-model="form(group.id).feature" name="feature" class="c-input" aria-label="功能" required>
+          <option value="">选一项功能</option>
           <option v-for="feature in resource.data.value?.features" :key="feature.key" :value="feature.key" :disabled="group.restrictions.some(rule => rule.feature === feature.key)">{{ feature.label }}</option>
         </select>
-        <input v-model="form(group.id).note" class="c-input" maxlength="200" aria-label="原因" placeholder="原因" />
+        <input v-model="form(group.id).note" name="note" class="c-input" maxlength="200" aria-label="原因" placeholder="原因（只有管理员看得到）" />
         <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!action.canStart.value || !form(group.id).feature">对这组关掉</button>
       </form>
     </section>

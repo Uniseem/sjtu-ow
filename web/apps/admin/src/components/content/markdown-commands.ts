@@ -1,6 +1,6 @@
 export type EditorSelection = { text: string; from: number; to: number }
 export type TextEdit = { from: number; to: number; insert: string; anchor: number; head?: number }
-export type MarkdownCommand = "bold" | "italic" | "strike" | "heading" | "quote" | "unordered" | "ordered" | "code" | "rule" | "link" | "image" | "table"
+export type MarkdownCommand = "bold" | "italic" | "strike" | "heading" | "heading3" | "quote" | "unordered" | "ordered" | "code" | "rule" | "link" | "image" | "table"
 
 export function surround(selection: EditorSelection, before: string, after: string, fallback: string): TextEdit {
   const selected = selection.text.slice(selection.from, selection.to)
@@ -34,12 +34,38 @@ export function lines(selection: EditorSelection, prefix: (index: number) => str
   return { from: start, to: end, insert, anchor: start, head: start + insert.length }
 }
 
+/** Match the existing heading buttons: selecting an active level removes it;
+ * another heading level is replaced rather than accumulating Markdown hashes. */
+export function headingEdit(selection: EditorSelection, level: 2 | 3): TextEdit {
+  const start = selection.from === 0 ? 0 : selection.text.lastIndexOf("\n", selection.from - 1) + 1
+  const next = selection.text.indexOf("\n", selection.to)
+  const end = next < 0 ? selection.text.length : next
+  const current = selection.text.slice(start, end).split("\n")
+  const prefix = "#".repeat(level) + " "
+  const remove = current.every(line => line.startsWith(prefix))
+  const insert = current.map(line => {
+    const bare = line.replace(/^#{1,6}\s+/, "")
+    return remove ? bare : prefix + bare
+  }).join("\n")
+  return { from: start, to: end, insert, anchor: start, head: start + insert.length }
+}
+
+/** The legacy video button inserts a URL on its own line; the server decides
+ * how to render it, so the editor never creates HTML or embedded scripts. */
+export function insertVideo(selection: EditorSelection, url: string | null): TextEdit | null {
+  const link = url?.trim()
+  if (!link) return null
+  const insert = "\n\n" + link + "\n\n"
+  return { from: selection.from, to: selection.to, insert, anchor: selection.from + insert.length }
+}
+
 export function commandEdit(command: MarkdownCommand, selection: EditorSelection): TextEdit {
   switch (command) {
     case "bold": return surround(selection, "**", "**", "加粗文字")
     case "italic": return surround(selection, "*", "*", "斜体文字")
     case "strike": return surround(selection, "~~", "~~", "删除文字")
-    case "heading": return lines(selection, () => "## ")
+    case "heading": return headingEdit(selection, 2)
+    case "heading3": return headingEdit(selection, 3)
     case "quote": return lines(selection, () => "> ")
     case "unordered": return lines(selection, () => "- ")
     case "ordered": return lines(selection, (index) => `${index + 1}. `)
@@ -74,7 +100,8 @@ export const toolbarCommands: { command: MarkdownCommand; label: string; shortcu
   { command: "bold", label: "加粗", shortcut: "Ctrl+B" },
   { command: "italic", label: "斜体", shortcut: "Ctrl+I" },
   { command: "strike", label: "删除线" },
-  { command: "heading", label: "标题" },
+  { command: "heading", label: "二级标题" },
+  { command: "heading3", label: "三级标题" },
   { command: "quote", label: "引用" },
   { command: "unordered", label: "无序列表" },
   { command: "ordered", label: "有序列表" },

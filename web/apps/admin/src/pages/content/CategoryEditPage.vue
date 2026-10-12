@@ -24,7 +24,7 @@ onMounted(() => { void resource.load() })
 watch(() => route.params.id, () => { void resource.load() })
 </script>
 <template>
-  <AdminPage :title="id ? '编辑分类' : '新建分类'" section="content" back-href="/admin/categories/">
+  <AdminPage :title="id ? resource.data.value?.category?.name || '未命名分类' : '新建分类'" section="content" back-href="/admin/categories/">
     <ContentLoad :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.load" />
     <CategoryEditor v-if="resource.data.value && !resource.pending.value" :key="id ?? 'new'" :category="resource.data.value.category" />
   </AdminPage>

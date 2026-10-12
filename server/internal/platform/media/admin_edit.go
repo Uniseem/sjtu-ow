@@ -67,7 +67,7 @@ type CollectionDeleteOut struct {
 }
 
 func (m *Module) registerAdminEditing(r *api.Registry) {
-	api.Patch(r, "/api/admin/images/{id}", api.Cap(app.Cap("images.manage")), m.editImage,
+	api.Patch(r, "/api/admin/images/{id}", api.Cap(app.Cap("admin.enter")), m.editImage,
 		api.Nav("content", "images"), api.NoLimit("图片元信息自动保存由客户端防抖"))
 	api.Post(r, "/api/admin/image-collections", api.Superuser, m.createCollection,
 		api.Nav("content", "images"), api.NoLimit("超级管理员创建集合"))
@@ -98,6 +98,9 @@ func imageCollectionID(value any) (*int64, bool) {
 func (m *Module) editImage(ctx *app.Ctx, in EditImageIn) (EditImageOut, error) {
 	out := EditImageOut{Saved: []string{}, Fields: map[string][]string{}}
 	err := m.svc.db.WriteTx(ctx.Context, func(c context.Context, tx *db.Tx) error {
+		if err := requireImageManagement(c, tx, ctx.Viewer, int64(in.ID)); err != nil {
+			return err
+		}
 		var version int64
 		err := tx.QueryRowContext(c, "SELECT title, collection_id, version FROM images WHERE id=?", int64(in.ID)).Scan(
 			&out.Values.Title, &out.Values.CollectionID, &version,
@@ -131,6 +134,14 @@ func (m *Module) editImage(ctx *app.Ctx, in EditImageIn) (EditImageOut, error) {
 				id, ok := imageCollectionID(value)
 				if !ok {
 					out.Fields[key] = []string{"请选择有效集合"}
+					continue
+				}
+				allowed, err := canMoveImageToCollection(c, tx, ctx.Viewer, id)
+				if err != nil {
+					return err
+				}
+				if !allowed {
+					out.Fields[key] = []string{"你不能把图片放进这个集合"}
 					continue
 				}
 				if id != nil {

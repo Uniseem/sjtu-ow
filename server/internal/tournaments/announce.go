@@ -34,7 +34,7 @@ func (s *Service) AnnounceKind() notify.Kind {
 			if err != nil || t == nil {
 				return nil, err
 			}
-			return &notify.Subject{Title: t.Title, Live: t.Status == StatusPublished, SJTUOnly: t.SjtuOnly}, nil
+			return &notify.Subject{StartsAt: t.StartsAt, MovedFrom: t.MovedFrom, Title: t.Title, Live: t.Status == StatusPublished, SJTUOnly: t.SjtuOnly}, nil
 		},
 		Letter: func(ctx context.Context, q db.DBTX, id int64, unsubscribe string, now time.Time) (mail.Letter, error) {
 			t, err := GetTournament(ctx, q, id)

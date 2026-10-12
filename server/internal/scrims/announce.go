@@ -31,7 +31,7 @@ func (s *Service) AnnounceKind() notify.Kind {
 			if err != nil || sc == nil {
 				return nil, err
 			}
-			return &notify.Subject{Title: sc.Title, Live: sc.Status == StatusPublished, SJTUOnly: sc.SjtuOnly}, nil
+			return &notify.Subject{StartsAt: sc.StartsAt, MovedFrom: sc.MovedFrom, Title: sc.Title, Live: sc.Status == StatusPublished, SJTUOnly: sc.SjtuOnly}, nil
 		},
 		Letter: func(ctx context.Context, q db.DBTX, id int64, unsubscribe string, _ time.Time) (mail.Letter, error) {
 			sc, err := GetScrim(ctx, q, id)

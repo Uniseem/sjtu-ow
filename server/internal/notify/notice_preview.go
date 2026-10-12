@@ -31,6 +31,10 @@ type ParticipantDraft struct {
 // NoticePreview is tied to the actor, object, audience, recipients and body.
 // A send may proceed only if the signed digest still describes the same draft.
 type NoticePreview struct {
+	StartsAt    *time.Time `json:"starts_at"`
+	MovedFrom   *time.Time `json:"moved_from"`
+	ObjectTitle string     `json:"object_title"`
+	SJTUOnly    bool       `json:"sjtu_only"`
 	Status
 	Audience       string `json:"audience"`
 	Subject        string `json:"subject"`
@@ -121,6 +125,12 @@ func (s *Service) makeNoticeDraft(ctx *app.Ctx, q db.DBTX, kind string, id int64
 	}
 	now := ctx.Now().UTC()
 	draft := &noticeDraft{subject: subject, note: note}
+	draft.preview.ObjectTitle = subject.Title
+	draft.preview.SJTUOnly = subject.SJTUOnly
+	if audience == Participants {
+		draft.preview.StartsAt = subject.StartsAt
+		draft.preview.MovedFrom = subject.MovedFrom
+	}
 	draft.preview.Audience = audience
 	draft.preview.NoteMax = NoteMax
 	if audience == Participants {

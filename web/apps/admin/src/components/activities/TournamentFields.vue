@@ -83,6 +83,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
     <ActivityField id="description" label="详细说明" :errors="fields.description" help="支持 Markdown。" v-slot="field">
       <MarkdownEditor
         id="description"
+        name="description"
         label="详细说明"
         :model-value="values.description"
         :disabled="disabled"

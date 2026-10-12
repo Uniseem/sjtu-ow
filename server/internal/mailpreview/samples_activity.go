@@ -69,7 +69,7 @@ func announcementSamples() []Sample {
 func moderationSamples() []Sample {
 	return []Sample{
 		specimen("patrol", "审核", "AI 巡查发现可能不妥的内容（v6.72）", "「巡查提醒发到」填的邮箱，没填是全部超级管理员", "站长", "core/email_samples.py; D5巡查执行待移植", mail.Letter{
-			Subject: "内容巡查：发现3条可能不妥的内容",
+			Subject: "AI 巡查发现 3 条可能不妥的内容",
 			Lead:    "这一轮内容巡查发现了 3 条可能需要人工复核的内容。AI 的判断仅供参考。",
 			Items: [][2]string{
 				{"评论 · 高风险：你这种水平也配打天梯？", sampleURL("/admin/moderation/42/")},

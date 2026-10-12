@@ -7,6 +7,10 @@ import AdminPage from "../../components/AdminPage.vue"
 import ContentLoad from "../../components/content/ContentLoad.vue"
 import { useContentResource } from "./use-resource"
 import { readSiteParts } from "./pending"
+function truncateIntro(value: string): string {
+  const chars = Array.from(value)
+  return chars.length > 120 ? chars.slice(0, 119).join("") + "…" : value
+}
 const api = useAdminApi()
 const resource = useContentResource((signal) => readSiteParts(api, { signal }))
 onMounted(() => { void resource.load() })
@@ -28,7 +32,7 @@ onMounted(() => { void resource.load() })
           <h2 class="b-section__title">资讯栏目的介绍 <span v-if="resource.data.value.news.has_unpublished_changes" class="b-sub" data-unpublished>有改动还没发布</span></h2>
           <RouterLink class="c-btn c-btn--secondary c-btn--sm" to="/admin/pages/intro/">改介绍</RouterLink>
         </div>
-        <p class="b-section__text">{{ resource.data.value.news.draft.intro_md.slice(0, 120) || '还没写介绍。' }}</p>
+        <p class="b-section__text">{{ truncateIntro(resource.data.value.news.intro_md) || '还没写介绍。' }}</p>
       </section>
       <section class="b-form" data-site-part="pages">
         <h2 class="b-section__title">页面</h2>
@@ -38,9 +42,9 @@ onMounted(() => { void resource.load() })
             <tr v-for="page in resource.data.value.items" :key="page.id">
               <td><RouterLink class="b-title" :to="`/admin/pages/${page.id}/`">{{ (page.draft_title ?? page.title) || '（无标题）' }}</RouterLink></td>
               <td data-label="地址"><span class="b-mono">/{{ page.slug }}/</span></td>
-              <td data-label="状态"><CStatus :label="page.live ? page.has_unpublished_changes ? '已发布·有改动' : '已发布' : '草稿'" :kind="page.live ? page.has_unpublished_changes ? 'warn' : 'ok' : 'done'" /></td>
-              <td data-label="最后改动">{{ formatContentTime(page.updated_at) }}</td>
-              <td><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/pages/${page.id}/`">编辑</RouterLink></td>
+              <td data-label="状态"><CStatus :label="page.live ? page.has_unpublished_changes ? '已发布·有改动' : '已发布' : page.expired ? '已下线' : page.approved_schedule ? '定时上线' : '草稿'" :kind="page.live ? page.has_unpublished_changes ? 'warn' : 'ok' : page.expired ? 'off' : page.approved_schedule ? 'info' : 'done'" /></td>
+              <td data-label="最后改动">{{ page.latest_revision_created_at ? formatContentTime(page.latest_revision_created_at) : '—' }}</td>
+              <td><div class="b-rowacts"><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/pages/${page.id}/`">编辑</RouterLink></div></td>
             </tr>
           </tbody>
         </table>

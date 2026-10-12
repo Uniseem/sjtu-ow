@@ -64,7 +64,7 @@ onMounted(async () => {
 })
 </script>
 <template>
-  <AdminPage title="集合" section="content" back-href="/admin/images/">
+  <AdminPage title="集合" document-title="图片集合" section="content" back-href="/admin/images/">
     <ContentLoad :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.load" />
     <p v-if="notice" class="c-notice c-notice--ok" role="status">{{ notice }}</p>
     <ContentActionMessage :message="creation.message.value" :pending="creation.pending.value" :uncertain="creation.uncertain.value" @retry="creation.retry" />
@@ -75,15 +75,13 @@ onMounted(async () => {
       <tbody>
         <tr v-for="row in rows" :key="row.node.id">
           <td>
-            <span v-if="row.depth" aria-hidden="true">{{ '—'.repeat(row.depth) }}</span>
-            <CollectionName v-if="row.node.can_change" :node="row.node" :path="row.path" @saved="(version, name) => renamed(row.node.id, version, name)" />
+            <CollectionName v-if="row.node.can_change && row.node.parent_id !== null" :node="row.node" :path="row.path" :indent="'　'.repeat(Math.max(0, row.depth - 1))" @saved="(version, name) => renamed(row.node.id, version, name)" />
             <span v-else>{{ row.node.key === 'root' ? '（根）' : row.node.name }}</span>
             <span v-if="row.orphaned" class="b-sub">集合关系异常，请联系管理员。</span>
           </td>
           <td data-label="图片" class="is-num">{{ row.node.image_count }}</td>
           <td>
             <div class="b-rowacts">
-              <RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/images/?collection=${row.node.id}`">查看图片</RouterLink>
               <button v-if="canDelete(row.node)" type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="!deletion.canStart.value" @click="confirmation = row.node">删除</button>
             </div>
           </td>
@@ -92,13 +90,13 @@ onMounted(async () => {
     </table>
     <form class="b-form" novalidate @submit.prevent="create">
       <fieldset class="b-fieldset" :disabled="!permission.superuser.value || !creation.canStart.value">
-        <legend class="b-section__title">新建集合</legend>
+        <h2 class="b-section__title">新建集合</h2>
         <p class="b-section__text">「默认封面」「默认头像」可以分子文件夹：把新集合放在它们下面，里面的图也算。</p>
-        <ContentField name="parent_id" label="放在哪个集合下" :errors="creation.fields.value.parent_id">
-          <select id="parent_id" v-model="parent" class="c-input" name="parent_id"><option v-for="row in parents" :key="row.node.id" :value="row.node.id">{{ row.path }}</option></select>
+        <ContentField name="name" label="名称" required :errors="creation.fields.value.name">
+          <input id="name" v-model="name" class="c-input" name="name" maxlength="255" required>
         </ContentField>
-        <ContentField name="name" label="名称" :errors="creation.fields.value.name">
-          <input id="name" v-model="name" class="c-input" name="name" maxlength="255">
+        <ContentField name="parent" label="放在" required :errors="creation.fields.value.parent_id">
+          <select id="parent" v-model="parent" class="c-input" name="parent"><option v-for="row in parents" :key="row.node.id" :value="row.node.id">{{ row.node.parent_id === null ? '（根）' : '　'.repeat(Math.max(0, row.depth - 1)) + row.node.name }}</option></select>
         </ContentField>
       </fieldset>
       <div class="b-actions"><button class="c-btn c-btn--primary" :disabled="!parent || !permission.superuser.value || !creation.canStart.value">建好</button></div>

@@ -70,6 +70,11 @@ EMAILS = {
 
 def seed(accounts=False) -> dict:
     data = screens.seed()
+    if '--components' in sys.argv:
+        # The component oracle explicitly exercises this public cover. The
+        # ordinary page seed has a library image but no article referencing it.
+        from content.models import ArticlePage
+        ArticlePage.objects.filter(pk=data['article']).update(cover_id=data['image'])
     from account_scenarios import extend_seed
     extend_seed(data)
     from admin_scenarios import extend_seed as extend_admin_seed
@@ -129,14 +134,14 @@ def new_env(api_port: int) -> dict:
     }
 
 
-def prepare_legacy(accounts=False) -> dict:
+def prepare_legacy(accounts=False, components=False) -> dict:
     if not (ROOT / "static/css/app.css").exists():
         screens.manage("tailwind", "build")
     screens.manage("migrate", "--noinput", stdout=subprocess.DEVNULL)
     screens.manage("createcachetable")
     screens.manage("init_site", "--verbosity", "0", stdout=subprocess.DEVNULL)
     seeded = subprocess.run(
-        [sys.executable, __file__, "seed"] + (["--accounts"] if accounts else []),
+        [sys.executable, __file__, "seed"] + (["--accounts"] if accounts else []) + (["--components"] if components else []),
         cwd=ROOT,
         env=screens.site_env(),
         check=False,
@@ -214,6 +219,9 @@ class RecordingDevTools(screens.DevTools):
     def __init__(self, url):
         self.browser_errors = []
         self.request_methods = {}
+        self.request_urls = {}
+        self.request_types = {}
+        self.debug_http = 'http://' + urllib.parse.urlsplit(url).netloc
         self.submissions = []
         self.main_navigation_seen = False
         super().__init__(url)
@@ -225,21 +233,53 @@ class RecordingDevTools(screens.DevTools):
             self.main_navigation_seen = True
         if method == 'Network.requestWillBeSent':
             self.request_methods[params['requestId']] = params['request']['method']
+            self.request_urls[params['requestId']] = params['request']['url']
+            self.request_types[params['requestId']] = params.get('type')
         elif method == 'Network.responseReceived':
             response = params.get('response', {})
             if self.request_methods.get(params['requestId']) == 'POST':
                 self.submissions.append({'path': urllib.parse.urlsplit(response['url']).path, 'status': response['status']})
         elif method in ('Network.loadingFinished', 'Network.loadingFailed'):
             self.request_methods.pop(params['requestId'], None)
+            self.request_urls.pop(params['requestId'], None)
+            self.request_types.pop(params['requestId'], None)
         if method == 'Runtime.exceptionThrown':
             self.browser_errors.append('runtime: ' + params.get('exceptionDetails', {}).get('text', 'exception'))
         elif method == 'Runtime.consoleAPICalled' and any(a.get('value') == 'PARITY-CSP' for a in params.get('args', [])):
             self.browser_errors.append('CSP violation')
         elif method == 'Runtime.consoleAPICalled' and params.get('type') in ('error', 'assert'):
             self.browser_errors.append('console error: ' + ' '.join(str(a.get('value', a.get('description', ''))) for a in params.get('args', [])))
+        elif method == 'Runtime.consoleAPICalled' and params.get('type') == 'warning':
+            detail = ' '.join(str(a.get('value', a.get('description', ''))) for a in params.get('args', []))
+            if 'hydration' in detail.lower():
+                self.browser_errors.append('hydration warning: ' + detail)
         elif method == 'Network.responseReceived' and params.get('response', {}).get('status', 0) >= 500:
             self.browser_errors.append('HTTP 500+: ' + params['response']['url'])
         return message
+
+    def settle_remote_frames(self):
+        # Opaque-origin mail sandboxes move to an out-of-process iframe. Chrome
+        # reports the request on this target but its completion on that target.
+        # Verify the actual child document before retiring the parent record.
+        documents = [(key, url) for key, url in self.request_urls.items() if self.request_types.get(key) == 'Document']
+        if not documents:
+            return
+        targets = json.load(urllib.request.urlopen(self.debug_http + '/json', timeout=5))
+        for key, url in documents:
+            target = next((item for item in targets if item.get('type') == 'iframe' and item.get('url') == url and item.get('webSocketDebuggerUrl')), None)
+            if not target:
+                continue
+            child = RecordingDevTools(target['webSocketDebuggerUrl'])
+            try:
+                child.send('Runtime.enable')
+                ready = evaluate(child, "document.readyState === 'complete' && document.fonts.status === 'loaded' && [...document.images].every(image => image.complete)")
+                if ready:
+                    self.browser_errors.extend(child.browser_errors)
+                    self.request_methods.pop(key, None)
+                    self.request_urls.pop(key, None)
+                    self.request_types.pop(key, None)
+            finally:
+                child.sock.close()
 
 
 def evaluate(tools, expression: str):
@@ -280,8 +320,8 @@ SNAPSHOT = """(() => {
     return u.origin === location.origin ? u.pathname + u.search + u.hash : u.href;
   }))].sort();
   const fields = [...main.querySelectorAll('input,select,textarea,button')]
-    .filter((el) => el.type !== 'hidden' && el.name !== 'csrfmiddlewaretoken')
-    .map((el) => `${el.tagName.toLowerCase()}:${el.type || ''}:${el.name || ''}`).sort();
+    .filter((el) => el.type !== 'hidden' && el.name !== 'csrfmiddlewaretoken' && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden')
+    .map((el) => `${el.tagName.toLowerCase()}:${el.tagName === 'BUTTON' ? 'action' : el.type || ''}:${el.name || ''}`).sort();
   const broken = [...document.images].filter((img) => img.complete && img.naturalWidth === 0).map((img) => img.getAttribute('src'));
   const box = main.getBoundingClientRect();
   const shell = ['body','#app','.c-masthead','#main','.c-footer'].map(selector => {
@@ -305,15 +345,29 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
         {"features": [{"name": "prefers-color-scheme", "value": scheme}, {"name": "prefers-reduced-motion", "value": "reduce"}]},
     )
     tools.browser_errors.clear()
+    # A cancelled request from a previous document is not pending work for the
+    # next page. Keep tracking all requests generated by this navigation.
+    tools.request_methods.clear()
+    tools.request_urls.clear()
+    tools.request_types.clear()
     tools.main_navigation_seen = False
     tools.send("Page.navigate", {"url": url})
     for _ in range(60):
         if evaluate(tools, "document.readyState") == "complete" and tools.main_navigation_seen:
             break
         time.sleep(0.1)
+    # Do not change lazy-image attributes while Vue is still hydrating them.
+    # readyState=complete can precede router.isReady()/mount for lazy routes.
+    if evaluate(tools, "!!document.getElementById('ow-state')"):
+        for _ in range(100):
+            if evaluate(tools, "document.documentElement.classList.contains('js-ready')"):
+                break
+            time.sleep(0.1)
+        else:
+            raise RuntimeError('SSR page never hydrated: ' + url)
     evaluate(
         tools,
-        """(() => { for (const img of document.images) img.loading = 'eager';
+        """(() => { for (const item of document.querySelectorAll('img,iframe')) item.loading = 'eager';
           const step = Math.max(innerHeight, 1); const limit = document.documentElement.scrollHeight;
           for (let y = 0; y <= limit; y += step) scrollTo(0, y); scrollTo(0, 0); })()""",
     )
@@ -345,14 +399,15 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
     idle = 0
     for _ in range(200):
         evaluate(tools, "document.readyState")
+        tools.settle_remote_frames()
         idle = idle + 1 if not tools.request_methods else 0
         if idle >= 2: break
         time.sleep(0.05)
     else:
-        raise RuntimeError('page requests never settled: ' + url)
+        raise RuntimeError('page requests never settled: ' + url + ' pending=' + repr(list(tools.request_urls.values())))
     # Font loading can outlive readyState/image completion, especially on long
     # Chinese pages. Capture the layout after its fonts and next paint frames.
-    if urllib.parse.urlsplit(url).path.startswith('/_styleguide/emails/') and urllib.parse.urlsplit(url).path != '/_styleguide/emails/':
+    if evaluate(tools, "document.scripts.length === 0"):
         # CSP sandbox intentionally disables in-document script scheduling.
         # System-font mail documents can be polled synchronously; screenshots
         # force a compositor paint, without weakening the real mail sandbox.
@@ -367,6 +422,17 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
         submission = submit(tools, invalid, evaluate)
     if urllib.parse.urlsplit(url).path == '/_styleguide/':
         evaluate(tools, "document.querySelector('[aria-labelledby=sg-components]')?.remove()")
+    if evaluate(tools, "document.querySelectorAll('iframe').length"):
+        # Chromium does not paint offscreen out-of-process sandbox frames into
+        # a beyond-viewport screenshot merely because their network is idle.
+        # Visit every real frame and allow compositor paints before capture.
+        evaluate(tools, """(async () => {
+          const paint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          for (const frame of document.querySelectorAll('iframe')) {
+            frame.scrollIntoView({block: 'center'}); await paint();
+          }
+          scrollTo(0, 0); await paint();
+        })()""")
     snap = evaluate(tools, SNAPSHOT)
     if invalid:
         snap['submission'] = submission
@@ -411,7 +477,7 @@ def compare(old: dict, new: dict, ratio: float, status: tuple) -> list[str]:
     if old["title"] != new["title"]:
         problems.append(f"标题「{old['title']}」/「{new['title']}」")
     if old["text"] != new["text"]:
-        diff = [line for line in difflib.unified_diff(old["text"], new["text"], lineterm="", n=0) if line[:1] in "+-" and line[:3] not in ("+++", "---")]
+        diff = [line for line in list(difflib.unified_diff(old["text"], new["text"], lineterm="", n=0))[2:] if line[:1] in "+-"]
         problems.append("正文不同：" + "；".join(diff[:6]) + ("…" if len(diff) > 6 else ""))
     if old["links"] != new["links"]:
         gone = sorted(set(old["links"]) - set(new["links"]))
@@ -449,6 +515,14 @@ def resource_response(url, cookie):
         if 'text/' in kind or 'xml' in kind:
             origin = urllib.parse.urlsplit(url)
             payload = payload.replace(f'{origin.scheme}://{origin.netloc}'.encode(), TEST_SITE_URL.encode())
+        if urllib.parse.urlsplit(url).path == '/sitemap.xml' and response.status == 200:
+            # XML declaration spelling and template indentation are not sitemap
+            # semantics. Compare every expanded tag, attribute, value and order.
+            import xml.etree.ElementTree as ET
+            def node(element):
+                return (element.tag, sorted(element.attrib.items()), (element.text or '').strip(),
+                        [(node(child), (child.tail or '').strip()) for child in element])
+            payload = node(ET.fromstring(payload))
         return response.status, kind, payload
 
 
@@ -498,7 +572,7 @@ def main(argv: list[str]) -> int:
     SHOTS.mkdir(parents=True)
 
     print("== 旧站：迁移、种子数据")
-    data = prepare_legacy(accounts)
+    data = prepare_legacy(accounts, components)
     ports = [screens.free_port() for _ in range(5)]
     old_port, api_port, ssr_port, caddy_port, debug_port = ports
     reference = None
@@ -526,7 +600,8 @@ def main(argv: list[str]) -> int:
     with override_settings(SITE_URL='https://example.invalid'), patch('django.utils.timezone.localdate', return_value=date(2026, 10, 3)), patch('django.utils.timezone.now', return_value=datetime(2026, 10, 3, 6, 20, tzinfo=datetime_timezone.utc)):
         mail_samples = legacy_mail_samples()
         mail_list = render_to_string('core/styleguide_emails.html', {'samples': mail_samples})
-    mail_documents = {sample.key: sample.html.encode() for sample in mail_samples}
+    from core.email_art import for_browser
+    mail_documents = {sample.key: for_browser(sample.html).encode() for sample in mail_samples}
     component_payload = b''
     if components:
         from component_reference import document
@@ -634,6 +709,31 @@ def main(argv: list[str]) -> int:
             if status[0][0] in (403,404,429) and not name.startswith('unsubscribe-'):
                 old_url=f'http://127.0.0.1:{reference.server_address[1]}/__error/{status[0][0]}/'
             row = {"name": name, "who": who, "path": path, "status": status, "views": []}
+            if name == 'admin-prerender-redirect':
+                # 266 explicitly retired this entrance. Verify the real HTTP
+                # 301 and the destination's existing gate for every identity.
+                problems = []
+                if status[1] != (301, '/admin/settings/'):
+                    problems.append(f'预渲染入口未真正301到设置：{status[1]}')
+                gate = fetch_status(f'http://127.0.0.1:{old_port}/admin/settings/', cookies(old_cookie))
+                for width, scheme in views:
+                    new = look(tools, f'http://127.0.0.1:{caddy_port}{path}', new_cookie, width, scheme, SHOTS / f'{name}-{who}-{width}-{scheme}-new.png')
+                    failures = list(problems) + list(new['browser_errors'])
+                    if 300 <= gate[0] < 400:
+                        expected = '/accounts/login/?' + urllib.parse.urlencode({'next': '/admin/settings/'})
+                        if canonical_location(new['path']) != canonical_location(expected):
+                            failures.append('设置入口登录去向错误')
+                    elif new['effective_status'] != gate[0]:
+                        failures.append(f'设置入口权限 {new["effective_status"]} / {gate[0]}')
+                    elif gate[0] == 200 and ('全站设置' not in new['title'] or not new['fields'] or new['broken']):
+                        failures.append('设置入口内容不完整')
+                    row['views'].append({'view': f'{width}-{scheme}', 'ratio': None, 'problems': failures})
+                row['approved_difference'] = 'frontend-migration.md §10 #5（266）：预渲染入口301到设置'
+                row['pass'] = all(not view['problems'] for view in row['views'])
+                results.append(row)
+                (OUT / 'progress.json').write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding='utf-8')
+                print(('通过' if row['pass'] else '不同') + f' approved-redirect {who} {path}', flush=True)
+                continue
             if name == 'admin-font-download' and status[0][0] == 200:
                 try:
                     from font_download import check as check_font_download
@@ -660,7 +760,48 @@ def main(argv: list[str]) -> int:
                 (OUT / "progress.json").write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
                 print(('通过' if row['pass'] else '不同') + ' resource ' + path, flush=True)
                 continue
+            from page_matrix import APPROVED_ADDITIONS
+            additions = APPROVED_ADDITIONS
+            if name in additions:
+                # 295 user-approved additions have no frozen visual counterpart.
+                # Keep every identity/viewport; compare their gate with the old
+                # article editor or admin entrance, and inspect the actual page.
+                title, gate_template = additions[name]
+                gate_path = gate_template.format(**data)
+                gate = fetch_status(f'http://127.0.0.1:{old_port}{gate_path}', cookies(old_cookie))
+                # The new private revision resource hides inaccessible objects
+                # with 404 (frontend-migration I2); old editor access determines
+                # the allowed identities, not a nonexistent revision's status.
+                expected_status = 404 if name.startswith('admin-article-revision') and gate[0] == 403 else gate[0]
+                row['approved_difference'] = 'design-next.md §7.7：295用户批准新增修订/后台邮件样张页面'
+                for width, scheme in views:
+                    new = look(tools, f'http://127.0.0.1:{caddy_port}{path}', new_cookie, width, scheme, SHOTS / f'{name}-{who}-{width}-{scheme}-new.png')
+                    problems = list(new['browser_errors'])
+                    if 300 <= gate[0] < 400:
+                        expected = '/accounts/login/?' + urllib.parse.urlencode({'next': path})
+                        if canonical_location(new['path']) != canonical_location(expected):
+                            problems.append('新增页未转到带原地址的登录页')
+                    elif new['effective_status'] != expected_status:
+                        problems.append(f'新增页权限结果 {new["effective_status"]} / {expected_status}')
+                    elif expected_status == 200:
+                        if title not in new['title'] or not new['text'] or new['broken']:
+                            problems.append('新增页标题/内容/图片不完整')
+                        if 'revisions' in path and not any('/admin/articles/' in link for link in new['links']):
+                            problems.append('修订页缺少实际文章/修订链接')
+                        if name == 'admin-mail-samples' and not any('/admin/settings/email-samples/' in link for link in new['links']):
+                            problems.append('样张列表缺少单封入口')
+                    row['views'].append({'view': f'{width}-{scheme}', 'ratio': None, 'problems': problems})
+                row['pass'] = all(not view['problems'] for view in row['views'])
+                results.append(row)
+                (OUT / 'progress.json').write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding='utf-8')
+                print(('通过' if row['pass'] else '不同') + f' approved-addition {who} {path}', flush=True)
+                continue
             admin_shell = path.startswith('/admin/') and status[1][0] == 200
+            expected_old_status = status[0][0]
+            if name in ('admin-article', 'admin-article-preview') and status[0][0] == 403:
+                expected_old_status = 404
+                old_url = f'http://127.0.0.1:{reference.server_address[1]}/__error/404/'
+                row['approved_difference'] = 'design-next.md §7.8：295用户批准私有文章无权访问隐藏为404'
             # The approved independent SPA sends its static shell before its
             # real Go gate. Compare the settled result, not a misleading 200.
             if admin_shell and 300 <= status[0][0] < 400:
@@ -693,10 +834,10 @@ def main(argv: list[str]) -> int:
                     continue
                 ratio, note = pixel_ratio(SHOTS / f"{stem}-old.png", SHOTS / f"{stem}-new.png")
                 effective = new['effective_status'] if admin_shell else status[1][0]
-                problems = compare(old, new, ratio, (status[0][0], effective) if (width, scheme) == views[0] else (0, 0))
+                problems = compare(old, new, ratio, (expected_old_status, effective) if (width, scheme) == views[0] else (0, 0))
                 if admin_shell:
-                    if new['effective_status'] != status[0][0]:
-                        problems.append(f'SPA权限结果 {new["effective_status"]} / {status[0][0]}')
+                    if new['effective_status'] != expected_old_status:
+                        problems.append(f'SPA权限结果 {new["effective_status"]} / {expected_old_status}')
                 if note:
                     problems.append(note)
                 view = {"view": f"{width}-{scheme}", "ratio": ratio, "problems": problems}
@@ -735,7 +876,7 @@ def main(argv: list[str]) -> int:
     for r in results:
         problems = "；".join(p for v in r["views"] for p in v["problems"]).replace("|", "\\|")
         if r.get('approved_difference'):
-            problems = '已批准差异：' + r['approved_difference']
+            problems = '已批准差异：' + r['approved_difference'] + ('；' + problems if problems else '')
         lines.append(f"| {'通过' if r['pass'] else '不同'} | {r['who']} | `{r['path']}` | {r['status'][0][0]} / {r['status'][1][0]} | {problems[:400]} |")
     (OUT / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"\nPARITY {passed}/{len(results)} 通过；报告 {OUT / 'report.md'}，截图 {SHOTS}")

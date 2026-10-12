@@ -24,28 +24,29 @@ async function deleteGroup() { if (await save.flush()) await remove.submit(null)
 <template>
   <div class="b-form">
     <form class="b-form" @submit.prevent="save.save">
+      <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
       <div class="b-fieldset">
         <div class="c-field" :class="{ 'is-invalid': save.fields.value.name?.length }">
           <label for="group-name" class="c-field__label">名称</label>
-          <input id="group-name" class="c-input" :value="save.values.value.name" maxlength="80" @input="save.set('name', value($event), 'text')" @blur="save.flush" />
+          <input id="group-name" name="name" class="c-input" :value="save.values.value.name" maxlength="20" @input="save.set('name', value($event), 'text')" @blur="save.flush" />
           <p v-for="error in save.fields.value.name" :key="error" class="c-field__error" role="alert">{{ error }}</p>
-          <p v-if="!save.values.value.name" class="b-sub">名称空着的分组不显示在网站上。</p>
+          <p class="c-field__help">名称空着时成员展示页上不出现这个分组。</p>
         </div>
         <div class="c-field">
           <label for="group-description" class="c-field__label">简介</label>
-          <textarea id="group-description" class="c-input" rows="4" :value="save.values.value.description" @input="save.set('description', value($event), 'text')" @blur="save.flush" />
+          <input type="text" id="group-description" name="description" class="c-input" maxlength="200" :value="save.values.value.description" @input="save.set('description', value($event), 'text')" @blur="save.flush" />
         </div>
         <label class="c-check">
-          <input type="checkbox" :checked="save.values.value.is_visible" @change="save.set('is_visible', checked($event), 'choice')" />显示</label>
+          <input name="is_visible" type="checkbox" :checked="save.values.value.is_visible" @change="save.set('is_visible', checked($event), 'choice')" />显示</label><p class="c-field__help">不显示的分组不出现在成员展示页上，组里的人仍然在「全部成员」里。</p>
           <div class="c-field">
-            <label for="group-order" class="c-field__label">排序</label>
-            <input id="group-order" class="c-input" type="number" :value="save.values.value.sort_order" @change="save.set('sort_order', Number(value($event)), 'choice')" />
-            <p v-for="error in save.fields.value.sort_order" :key="error" class="c-field__error" role="alert">{{ error }}</p>
+            <label for="group-order" class="c-field__label">排序<span class="c-field__req" aria-hidden="true">*</span></label>
+            <input id="group-order" name="sort_order" class="c-input" type="number" required min="0" max="32767" :value="save.values.value.sort_order" @change="save.set('sort_order', Number(value($event)), 'choice')" />
+            <p class="c-field__help">数字小的排在前面。</p><p v-for="error in save.fields.value.sort_order" :key="error" class="c-field__error" role="alert">{{ error }}</p>
           </div>
         </div>
-        <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
-        <div class="b-formbar">
-          <button type="submit" class="c-btn c-btn--primary" :disabled="save.pending.value">保存</button>
+
+        <div class="b-formbar" hidden>
+          <button hidden type="submit" class="c-btn c-btn--primary" :disabled="save.pending.value">保存</button>
         </div>
       </form>
       <GroupMembers :id="group.id" :initial="data.members" :before-action="save.flush" />

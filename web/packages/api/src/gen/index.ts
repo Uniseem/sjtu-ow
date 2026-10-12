@@ -67,9 +67,17 @@ export function deleteApiAdminImageCollectionsId(r: Requester, id: string | numb
   return r<DeleteApiAdminImageCollectionsIdOut>("DELETE", "/api/admin/image-collections/{id}", { ...extras, params: { id } })
 }
 
+export interface DeleteApiAdminImagesIdOut {
+  result: string;
+}
+
+export function deleteApiAdminImagesId(r: Requester, id: string | number, extras: CallExtras = {}): Promise<DeleteApiAdminImagesIdOut> {
+  return r<DeleteApiAdminImagesIdOut>("DELETE", "/api/admin/images/{id}", { ...extras, params: { id } })
+}
+
 export interface DeleteApiAdminMemberGroupPeopleIdOut {
   group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
-  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+  members: ({   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean;   avatar_image_id: number | null;   default_avatar_image_id: number | null;   is_active: boolean; })[];
 }
 
 export function deleteApiAdminMemberGroupPeopleId(r: Requester, id: string | number, extras: CallExtras = {}): Promise<DeleteApiAdminMemberGroupPeopleIdOut> {
@@ -218,6 +226,10 @@ export interface GetApiAdminAnnounceKindIdQuery {
 }
 
 export interface GetApiAdminAnnounceKindIdOut {
+  starts_at: string | null;
+  moved_from: string | null;
+  object_title: string;
+  sjtu_only: boolean;
   problem: string;
   recipients: number;
   will_wait: boolean;
@@ -290,6 +302,45 @@ export interface GetApiAdminArticlesIdOut {
 
 export function getApiAdminArticlesId(r: Requester, id: string | number, extras: CallExtras = {}): Promise<GetApiAdminArticlesIdOut> {
   return r<GetApiAdminArticlesIdOut>("GET", "/api/admin/articles/{id}", { ...extras, params: { id } })
+}
+
+export interface GetApiAdminArticlesIdPreviewPageQuery {
+  sort?: string;
+  comments?: number;
+}
+
+export interface GetApiAdminArticlesIdPreviewPageOut {
+  id: number;
+  slug: string;
+  title: string;
+  category_name: string;
+  cover_image_id?: number | null;
+  summary: string;
+  body_html: string;
+  char_count: number;
+  reading_time: number;
+  author_name: string;
+  comments_enabled: boolean;
+  related_tournament_id?: number | null;
+  first_published_at?: string | null;
+  headings: ({   level: number;   text: string;   id: string; } | null)[];
+  category_slug: string;
+  default_cover_image_id: number | null;
+  author: {   user_id: number;   nickname: string;   avatar_image_id: number | null;   is_active: boolean;   motto: string; } | null;
+  author_article_count: number;
+  last_published_at: string | null;
+  comment_total: number;
+  older: {   slug: string;   title: string; } | null;
+  newer: {   slug: string;   title: string; } | null;
+  related: ({   id: number;   slug: string;   title: string;   category_name: string;   cover_image_id?: number | null;   default_cover_image_id: number | null;   summary: string;   reading_time: number;   author_name: string;   author: {   id: number;   nickname: string;   avatar_image_id: number | null;   is_active: boolean; } | null;   first_published_at?: string | null;   pinned?: boolean; } | null)[];
+  tournament: {   id: number;   title: string;   phase: string;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   cover_image_id: number | null;   default_cover_image_id: number | null;   roster_min: number;   roster_max: number;   registration_mode_label: string;   takes_individuals: boolean;   sjtu_only: boolean; } | null;
+  seo_title: string;
+  search_description: string;
+  thread?: {   total: number;   page: number;   page_size: number;   comments: (ApiCommentsComment_d56a38 | null)[]; } | null;
+}
+
+export function getApiAdminArticlesIdPreviewPage(r: Requester, id: string | number, query: GetApiAdminArticlesIdPreviewPageQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminArticlesIdPreviewPageOut> {
+  return r<GetApiAdminArticlesIdPreviewPageOut>("GET", "/api/admin/articles/{id}/preview-page", { ...extras, params: { id }, query: { ...query } })
 }
 
 export interface GetApiAdminArticlesIdRevisionsOut {
@@ -418,6 +469,8 @@ export function getApiAdminHomePins(r: Requester, extras: CallExtras = {}): Prom
 }
 
 export interface GetApiAdminHomePinsDraftOut {
+  live: boolean;
+  last_published_at: string | null;
   id: number;
   version: number;
   draft: {   article_ids: number[]; };
@@ -447,7 +500,7 @@ export interface GetApiAdminImagesQuery {
 }
 
 export interface GetApiAdminImagesOut {
-  items: ({   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; })[];
+  items: ({   can_change: boolean;   can_delete: boolean;   uploader_nickname: string;   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; })[];
   total: number;
   page: number;
   page_size: number;
@@ -458,6 +511,9 @@ export function getApiAdminImages(r: Requester, query: GetApiAdminImagesQuery = 
 }
 
 export interface GetApiAdminImagesIdOut {
+  can_change: boolean;
+  can_delete: boolean;
+  uploader_nickname: string;
   id: number;
   collection_id: number | null;
   title: string;
@@ -552,7 +608,7 @@ export function getApiAdminMemberGroups(r: Requester, extras: CallExtras = {}): 
 
 export interface GetApiAdminMemberGroupsIdOut {
   group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
-  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+  members: ({   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean;   avatar_image_id: number | null;   default_avatar_image_id: number | null;   is_active: boolean; })[];
 }
 
 export function getApiAdminMemberGroupsId(r: Requester, id: string | number, extras: CallExtras = {}): Promise<GetApiAdminMemberGroupsIdOut> {
@@ -616,6 +672,9 @@ export function getApiAdminNavigation(r: Requester, extras: CallExtras = {}): Pr
 }
 
 export interface GetApiAdminNewsIntroOut {
+  intro_md: string;
+  live: boolean;
+  last_published_at: string | null;
   id: number;
   version: number;
   draft: {   intro_md: string; };
@@ -630,9 +689,9 @@ export function getApiAdminNewsIntro(r: Requester, extras: CallExtras = {}): Pro
 
 export interface GetApiAdminPagesOut {
   pinned: {   id: number;   title: string;   live: boolean; }[];
-  items: ({   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; })[];
-  home: {   id: number;   version: number;   draft: {   article_ids: number[]; };   has_unpublished_changes: boolean;   preview_url: string | null;   can_publish: boolean; };
-  news: {   id: number;   version: number;   draft: {   intro_md: string; };   has_unpublished_changes: boolean;   preview_url: string | null;   can_publish: boolean; };
+  items: ({   expired: boolean;   approved_schedule: boolean;   last_published_at: string | null;   latest_revision_created_at: string | null;   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; })[];
+  home: {   live: boolean;   last_published_at: string | null;   id: number;   version: number;   draft: {   article_ids: number[]; };   has_unpublished_changes: boolean;   preview_url: string | null;   can_publish: boolean; };
+  news: {   intro_md: string;   live: boolean;   last_published_at: string | null;   id: number;   version: number;   draft: {   intro_md: string; };   has_unpublished_changes: boolean;   preview_url: string | null;   can_publish: boolean; };
 }
 
 export function getApiAdminPages(r: Requester, extras: CallExtras = {}): Promise<GetApiAdminPagesOut> {
@@ -640,7 +699,8 @@ export function getApiAdminPages(r: Requester, extras: CallExtras = {}): Promise
 }
 
 export interface GetApiAdminPagesIdOut {
-  page: {   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; };
+  body_html: string;
+  page: {   expired: boolean;   approved_schedule: boolean;   last_published_at: string | null;   latest_revision_created_at: string | null;   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; };
   draft: {   title: string;   body_md: string;   seo_title: string;   search_description: string; };
   version: number;
   preview_url: string | null;
@@ -710,6 +770,7 @@ export function getApiAdminScrimsEditorDefaults(r: Requester, extras: CallExtras
 }
 
 export interface GetApiAdminScrimsIdOut {
+  creator_nickname: string;
   scrim: {   default_cover_image_id: number | null;   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
   row: {   id: number;   title: string;   starts_at: string | null;   signup_deadline: string | null;   format: string;   format_label: string;   sjtu_only: boolean;   status: string;   signup_open: boolean;   signup_total: number;   players_needed: number;   default_cover_image_id: number | null;   missing: string[];   can_delete: boolean;   teams_stale: boolean;   description: string;   everyone_notices: number;   participant_notices: number; } | null;
 }
@@ -744,6 +805,7 @@ export function getApiAdminScrimsIdBoard(r: Requester, id: string | number, quer
 }
 
 export interface GetApiAdminScrimsIdCopyPreviewOut {
+  creator_nickname: string;
   scrim: {   default_cover_image_id: number | null;   id: number;   title: string;   description: string;   starts_at: string | null;   signup_closes_at: string | null;   format: string;   sjtu_only: boolean;   status: string;   teams_generated_at?: string | null;   roster_changed_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   created_by?: number | null;   version: number;   board_version: number;   created_at: string;   updated_at: string; } | null;
   row: {   id: number;   title: string;   starts_at: string | null;   signup_deadline: string | null;   format: string;   format_label: string;   sjtu_only: boolean;   status: string;   signup_open: boolean;   signup_total: number;   players_needed: number;   default_cover_image_id: number | null;   missing: string[];   can_delete: boolean;   teams_stale: boolean;   description: string;   everyone_notices: number;   participant_notices: number; } | null;
 }
@@ -753,6 +815,10 @@ export function getApiAdminScrimsIdCopyPreview(r: Requester, id: string | number
 }
 
 export interface GetApiAdminScrimsIdPublishPreviewOut {
+  starts_at: string | null;
+  moved_from: string | null;
+  object_title: string;
+  sjtu_only: boolean;
   problem: string;
   recipients: number;
   will_wait: boolean;
@@ -838,6 +904,8 @@ export function getApiAdminTournamentsEditorDefaults(r: Requester, extras: CallE
 }
 
 export interface GetApiAdminTournamentsIdOut {
+  creator_nickname: string;
+  registration_count: number;
   tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   default_cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
   missing: string[];
   has_entries: boolean;
@@ -864,6 +932,8 @@ export function getApiAdminTournamentsIdBoard(r: Requester, id: string | number,
 }
 
 export interface GetApiAdminTournamentsIdCopyPreviewOut {
+  creator_nickname: string;
+  registration_count: number;
   tournament: {   id: number;   title: string;   summary: string;   description: string;   cover_image_id: number | null;   default_cover_image_id: number | null;   starts_at: string | null;   registration_opens_at: string | null;   registration_closes_at: string | null;   roster_min: number;   roster_max: number;   sjtu_only: boolean;   registration_mode: string;   auto_approve: boolean;   status: string;   created_by?: number | null;   published_at?: string | null;   reminder_sent_at?: string | null;   moved_from?: string | null;   participant_contact?: string;   version: number;   created_at: string;   updated_at: string; } | null;
   missing: string[];
   has_entries: boolean;
@@ -877,6 +947,10 @@ export function getApiAdminTournamentsIdCopyPreview(r: Requester, id: string | n
 }
 
 export interface GetApiAdminTournamentsIdPublishPreviewOut {
+  starts_at: string | null;
+  moved_from: string | null;
+  object_title: string;
+  sjtu_only: boolean;
   problem: string;
   recipients: number;
   will_wait: boolean;
@@ -956,6 +1030,7 @@ export function getApiAdminUsersSearch(r: Requester, query: GetApiAdminUsersSear
 }
 
 export interface GetApiAdminUsersIdOut {
+  last_login_at: string | null;
   teams: {   id: number;   name: string;   role: string; }[];
   is_deleted: boolean;
   own_account: boolean;
@@ -1051,6 +1126,9 @@ export function getApiHomePins(r: Requester, extras: CallExtras = {}): Promise<G
 }
 
 export interface GetApiImagesIdOut {
+  can_change: boolean;
+  can_delete: boolean;
+  uploader_nickname: string;
   id: number;
   collection_id: number | null;
   title: string;
@@ -2112,7 +2190,7 @@ export interface PostApiAdminImagesUploadIn {
 }
 
 export interface PostApiAdminImagesUploadOut {
-  image: {   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
+  image: {   can_change: boolean;   can_delete: boolean;   uploader_nickname: string;   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
 }
 
 export function postApiAdminImagesUpload(r: Requester, body: PostApiAdminImagesUploadIn, extras: CallExtras = {}): Promise<PostApiAdminImagesUploadOut> {
@@ -2137,7 +2215,7 @@ export interface PostApiAdminMemberGroupPeopleIdMoveIn {
 
 export interface PostApiAdminMemberGroupPeopleIdMoveOut {
   group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
-  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+  members: ({   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean;   avatar_image_id: number | null;   default_avatar_image_id: number | null;   is_active: boolean; })[];
 }
 
 export function postApiAdminMemberGroupPeopleIdMove(r: Requester, id: string | number, body: PostApiAdminMemberGroupPeopleIdMoveIn, extras: CallExtras = {}): Promise<PostApiAdminMemberGroupPeopleIdMoveOut> {
@@ -2150,7 +2228,7 @@ export interface PostApiAdminMemberGroupPeopleIdTitleIn {
 
 export interface PostApiAdminMemberGroupPeopleIdTitleOut {
   group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
-  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+  members: ({   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean;   avatar_image_id: number | null;   default_avatar_image_id: number | null;   is_active: boolean; })[];
 }
 
 export function postApiAdminMemberGroupPeopleIdTitle(r: Requester, id: string | number, body: PostApiAdminMemberGroupPeopleIdTitleIn, extras: CallExtras = {}): Promise<PostApiAdminMemberGroupPeopleIdTitleOut> {
@@ -2171,7 +2249,7 @@ export interface PostApiAdminMemberGroupsIdPeopleIn {
 
 export interface PostApiAdminMemberGroupsIdPeopleOut {
   group: {   id: number;   name: string;   description: string;   is_visible: boolean;   sort_order: number;   version: number;   created_at: string;   updated_at: string; };
-  members: {   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean; }[];
+  members: ({   id: number;   user_id: number;   nickname: string;   email?: string;   title: string;   sort_order: number;   joined: boolean;   avatar_image_id: number | null;   default_avatar_image_id: number | null;   is_active: boolean; })[];
 }
 
 export function postApiAdminMemberGroupsIdPeople(r: Requester, id: string | number, body: PostApiAdminMemberGroupsIdPeopleIn, extras: CallExtras = {}): Promise<PostApiAdminMemberGroupsIdPeopleOut> {
@@ -2221,7 +2299,7 @@ export interface PostApiAdminPagesIdPublishIn {
 }
 
 export interface PostApiAdminPagesIdPublishOut {
-  page: {   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; };
+  page: {   expired: boolean;   approved_schedule: boolean;   last_published_at: string | null;   latest_revision_created_at: string | null;   id: number;   slug: string;   title: string;   draft_title: string | null;   live: boolean;   has_unpublished_changes: boolean;   updated_at: string;   version: number; };
   version: number;
 }
 
@@ -2940,7 +3018,7 @@ export interface PostApiMeAvatarIn {
 }
 
 export interface PostApiMeAvatarOut {
-  image: {   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
+  image: {   can_change: boolean;   can_delete: boolean;   uploader_nickname: string;   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
 }
 
 export function postApiMeAvatar(r: Requester, body: PostApiMeAvatarIn, extras: CallExtras = {}): Promise<PostApiMeAvatarOut> {
@@ -3094,7 +3172,7 @@ export interface PostApiTeamsLogoIn {
 }
 
 export interface PostApiTeamsLogoOut {
-  image: {   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
+  image: {   can_change: boolean;   can_delete: boolean;   uploader_nickname: string;   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
 }
 
 export function postApiTeamsLogo(r: Requester, body: PostApiTeamsLogoIn, extras: CallExtras = {}): Promise<PostApiTeamsLogoOut> {
@@ -3136,7 +3214,7 @@ export interface PostApiTeamsIdLogoIn {
 }
 
 export interface PostApiTeamsIdLogoOut {
-  image: {   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
+  image: {   can_change: boolean;   can_delete: boolean;   uploader_nickname: string;   id: number;   collection_id: number | null;   title: string;   file_name: string;   file_size: number;   width: number;   height: number;   uploader_id: number | null;   created_at: string;   version: number; } | null;
 }
 
 export function postApiTeamsIdLogo(r: Requester, id: string | number, body: PostApiTeamsIdLogoIn, extras: CallExtras = {}): Promise<PostApiTeamsIdLogoOut> {

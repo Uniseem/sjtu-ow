@@ -4,10 +4,10 @@
 
 ## 1. 架构概览与指标
 
-- **注册接口总数**：239 个
+- **注册接口总数**：241 个
 - **公开访问接口 (Public)**：30 个
 - **登录会员接口 (Member / Verified / Feature)**：70 个
-- **干部管理接口 (Cap / Superuser)**：139 个
+- **干部管理接口 (Cap / Superuser)**：141 个
 - **限流保护**：全量写接口均显式声明 `ratelimit.Decl` 集中限流规则，杜绝内联魔法数字；
 - **查询预算**：关键列表接口显式声明 `api.Budget(n)` 查询上限，防范 N+1 慢查询。
 
@@ -19,6 +19,7 @@
 | `DELETE` | `/api/admin/fonts/weights/{id}` | Superuser（超级管理员） | 不限流 (超管删除未引用字重，事务内复查) | - | settings/fonts |
 | `DELETE` | `/api/admin/fonts/{id}` | Superuser（超级管理员） | 不限流 (超管删除未被引用的字体，事务内再次查引用) | - | settings/fonts |
 | `DELETE` | `/api/admin/image-collections/{id}` | Superuser（超级管理员） | 不限流 (超级管理员删除空集合) | - | content/images |
+| `DELETE` | `/api/admin/images/{id}` | Cap(admin.enter) | 不限流 (图片管理删除) | - | content/images |
 | `DELETE` | `/api/admin/member-group-people/{id}` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `DELETE` | `/api/admin/member-groups/{id}` | Cap(member_groups.manage) | 不限流 (后台，有能力的门) | - | members/groups |
 | `DELETE` | `/api/admin/roles/{id}/restrictions/{rule}` | Superuser（超级管理员） | 不限流 (超管删除指定角色的单功能限制) | - | members/roles |
@@ -28,7 +29,7 @@
 | `DELETE` | `/api/articles/{id}` | Member（登录成员） | 不限流 (删除文章无需限流) | - | - |
 | `DELETE` | `/api/auth/email/change` | Member（登录成员） | 不限流 (只删除当前账号的待验证邮箱) | - | - |
 | `DELETE` | `/api/comments/{id}` | Member（登录成员） | 不限流 (删除评论无需限流) | - | - |
-| `DELETE` | `/api/images/{id}` | Cap(images.manage) | 不限流 (管理员删除图片无需限流) | - | - |
+| `DELETE` | `/api/images/{id}` | Cap(admin.enter) | 不限流 (管理员删除图片无需限流) | - | - |
 | `DELETE` | `/api/me/avatar` | Member（登录成员） | 不限流 (移除头像无需限流) | - | - |
 | `DELETE` | `/api/me/contacts/{id}` | Member（登录成员） | 不限流 (删除联系方式无需限流) | - | - |
 | `DELETE` | `/api/me/game-accounts/{id}` | Member（登录成员） | 不限流 (删除游戏ID无需限流) | - | - |
@@ -39,6 +40,7 @@
 | `GET` | `/api/admin/articles` | Cap(admin.enter) | 默认 | - | content/articles |
 | `GET` | `/api/admin/articles/new` | Cap(admin.enter) | 默认 | - | content/articles |
 | `GET` | `/api/admin/articles/{id}` | Cap(admin.enter) | 默认 | - | content/article_edit |
+| `GET` | `/api/admin/articles/{id}/preview-page` | Cap(admin.enter) | 默认 | - | content/articles |
 | `GET` | `/api/admin/articles/{id}/revisions` | Cap(admin.enter) | 默认 | - | content/articles |
 | `GET` | `/api/admin/articles/{id}/revisions/{revision}` | Cap(admin.enter) | 默认 | - | content/articles |
 | `GET` | `/api/admin/avatars` | Cap(moderation.review) | 默认 | - | review/avatars |
@@ -53,7 +55,7 @@
 | `GET` | `/api/admin/home-pins/draft` | Cap(site_pages.manage) | 默认 | - | content/pages |
 | `GET` | `/api/admin/image-collections` | Cap(admin.enter) | 默认 | - | content/images |
 | `GET` | `/api/admin/images` | Cap(admin.enter) | 默认 | - | content/images |
-| `GET` | `/api/admin/images/{id}` | Cap(images.manage) | 默认 | - | content/images |
+| `GET` | `/api/admin/images/{id}` | Cap(admin.enter) | 默认 | - | content/images |
 | `GET` | `/api/admin/log` | Superuser（超级管理员） | 默认 | - | settings/log |
 | `GET` | `/api/admin/mail-samples` | Cap(admin.enter) | 默认 | - | - |
 | `GET` | `/api/admin/mail-samples/{key}` | Cap(admin.enter) | 默认 | - | - |
@@ -135,7 +137,7 @@
 | `PATCH` | `/api/admin/categories/{id}` | Cap(article_categories.manage) | 不限流 (修改分类无需限流) | - | - |
 | `PATCH` | `/api/admin/home-pins/draft` | Cap(site_pages.manage) | 不限流 (首页置顶自动保存由客户端防抖) | - | content/pages |
 | `PATCH` | `/api/admin/image-collections/{id}` | Superuser（超级管理员） | 不限流 (集合名称自动保存由客户端防抖) | - | content/images |
-| `PATCH` | `/api/admin/images/{id}` | Cap(images.manage) | 不限流 (图片元信息自动保存由客户端防抖) | - | content/images |
+| `PATCH` | `/api/admin/images/{id}` | Cap(admin.enter) | 不限流 (图片元信息自动保存由客户端防抖) | - | content/images |
 | `PATCH` | `/api/admin/member-groups/{id}` | Cap(member_groups.manage) | 不限流 (后台自动保存) | - | members/groups |
 | `PATCH` | `/api/admin/news-intro` | Cap(site_pages.manage) | 不限流 (资讯栏目介绍自动保存由客户端防抖) | - | content/pages |
 | `PATCH` | `/api/admin/pages/{id}` | Cap(site_pages.manage) | 不限流 (普通页自动保存由客户端防抖) | - | content/pages |

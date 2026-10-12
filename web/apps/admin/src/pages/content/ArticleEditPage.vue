@@ -22,7 +22,7 @@ onMounted(() => { void resource.load() })
 watch(() => route.fullPath, () => { void resource.load() })
 </script>
 <template>
-  <AdminPage :title="id ? '编辑文章' : '写文章'" section="content" back-href="/admin/articles/">
+  <AdminPage :title="id ? (resource.data.value?.detail.revision?.title || resource.data.value?.detail.article?.title || '（无标题）') : '写文章'" section="content" back-href="/admin/articles/">
     <ContentLoad :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.load" />
     <ArticleEditor v-if="resource.data.value && !resource.pending.value" :key="id ?? 'new'" :detail="resource.data.value.detail" :categories="resource.data.value.categories" />
   </AdminPage>

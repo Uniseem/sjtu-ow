@@ -589,12 +589,14 @@ func (s *Service) AdminList(ctx *app.Ctx) ([]AdminRow, error) {
 
 // AdminDetail 是后台编辑一项赛事要的全部。
 type AdminDetail struct {
-	Tournament *Tournament `json:"tournament"`
-	Missing    []string    `json:"missing"`
-	HasEntries bool        `json:"has_entries"`
-	HasRegs    bool        `json:"has_registrations"`
-	CanDelete  bool        `json:"can_delete"`
-	TeamMax    int         `json:"team_max_members"`
+	CreatorNickname   string      `json:"creator_nickname"`
+	RegistrationCount int         `json:"registration_count"`
+	Tournament        *Tournament `json:"tournament"`
+	Missing           []string    `json:"missing"`
+	HasEntries        bool        `json:"has_entries"`
+	HasRegs           bool        `json:"has_registrations"`
+	CanDelete         bool        `json:"can_delete"`
+	TeamMax           int         `json:"team_max_members"`
 }
 
 // AdminGet 后台读一项赛事（含草稿和选手联系方式）。
@@ -619,6 +621,15 @@ func (s *Service) AdminGet(ctx *app.Ctx, id int64) (*AdminDetail, error) {
 	}
 	if d.HasRegs, err = hasRegistrations(ctx.Context, rd, id); err != nil {
 		return nil, err
+	}
+	if err := rd.QueryRowContext(ctx.Context, `SELECT COUNT(*) FROM registrations WHERE tournament_id = ?`, id).Scan(&d.RegistrationCount); err != nil {
+		return nil, err
+	}
+	if t.CreatedBy != nil {
+		err := rd.QueryRowContext(ctx.Context, `SELECT nickname FROM users WHERE id = ?`, *t.CreatedBy).Scan(&d.CreatorNickname)
+		if err != nil && err != sql.ErrNoRows {
+			return nil, err
+		}
 	}
 	d.CanDelete = t.PublishedAt == nil && t.Status == StatusDraft
 	return d, nil

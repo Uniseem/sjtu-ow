@@ -253,6 +253,27 @@
         }
 
         # 独立后台 SPA：静态块带哈希，页面 shell 每次重验证。
+        @legacy_article_preview {
+            method GET HEAD
+            path_regexp articlepreview ^/admin/articles/[0-9]{1,18}/preview/$
+        }
+        handle @legacy_article_preview {
+            import to_ssr
+        }
+        @legacy_page_preview {
+            method GET HEAD
+            path_regexp pagepreview ^/admin/pages/[0-9]{1,18}/preview/$
+        }
+        handle @legacy_page_preview {
+            import to_ssr
+        }
+        @legacy_scrim_text {
+            method GET HEAD
+            path_regexp scrimtext ^/admin/scrims/[0-9]{1,18}/split/text/$
+        }
+        handle @legacy_scrim_text {
+            import to_ssr
+        }
         handle_path /admin/assets/* {
             root * {$ASSETS_ROOT:/var/assets}/admin/assets
             header Cache-Control "public, max-age=31536000, immutable"

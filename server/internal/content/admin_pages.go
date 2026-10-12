@@ -25,17 +25,22 @@ type PlainPageDraft struct {
 }
 
 type PlainPageItem struct {
-	ID                    int64     `json:"id"`
-	Slug                  string    `json:"slug"`
-	Title                 string    `json:"title"`
-	DraftTitle            *string   `json:"draft_title"`
-	Live                  bool      `json:"live"`
-	HasUnpublishedChanges bool      `json:"has_unpublished_changes"`
-	UpdatedAt             time.Time `json:"updated_at"`
-	Version               int64     `json:"version"`
+	Expired                 bool       `json:"expired"`
+	ApprovedSchedule        bool       `json:"approved_schedule"`
+	LastPublishedAt         *time.Time `json:"last_published_at"`
+	LatestRevisionCreatedAt *time.Time `json:"latest_revision_created_at"`
+	ID                      int64      `json:"id"`
+	Slug                    string     `json:"slug"`
+	Title                   string     `json:"title"`
+	DraftTitle              *string    `json:"draft_title"`
+	Live                    bool       `json:"live"`
+	HasUnpublishedChanges   bool       `json:"has_unpublished_changes"`
+	UpdatedAt               time.Time  `json:"updated_at"`
+	Version                 int64      `json:"version"`
 }
 
 type PlainPageDetail struct {
+	BodyHTML   string         `json:"body_html"`
 	Page       PlainPageItem  `json:"page"`
 	Draft      PlainPageDraft `json:"draft"`
 	Version    int64          `json:"version"`
@@ -71,14 +76,14 @@ type PlainPagePublishOut struct {
 
 func readPlainPageRow(ctx context.Context, q db.DBTX, id int64) (PlainPageDetail, error) {
 	out := PlainPageDetail{CanPublish: true}
-	var live, unpublished int
+	var live, unpublished, expired, scheduled int
 	var updated string
-	var revision sql.NullString
+	var revision, published, revised sql.NullString
 	err := q.QueryRowContext(ctx, `SELECT p.id,p.slug,p.title,p.live,p.has_unpublished_changes,p.updated_at,p.version,
-        sp.body_md,p.seo_title,p.search_description,r.content FROM pages p JOIN site_pages sp ON sp.page_id=p.id
+        sp.body_md,p.seo_title,p.search_description,r.content,p.last_published_at,r.created_at,p.expired,EXISTS(SELECT 1 FROM page_revisions schedule WHERE schedule.page_id=p.id AND schedule.approved_go_live_at IS NOT NULL) FROM pages p JOIN site_pages sp ON sp.page_id=p.id
         LEFT JOIN page_revisions r ON r.id=p.latest_revision_id WHERE p.kind='site_page' AND p.id=?`, id).Scan(
 		&out.Page.ID, &out.Page.Slug, &out.Page.Title, &live, &unpublished, &updated, &out.Page.Version,
-		&out.Draft.BodyMD, &out.Draft.SeoTitle, &out.Draft.SearchDescription, &revision,
+		&out.Draft.BodyMD, &out.Draft.SeoTitle, &out.Draft.SearchDescription, &revision, &published, &revised, &expired, &scheduled,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return out, api.NotFound("页面不存在")
@@ -86,9 +91,25 @@ func readPlainPageRow(ctx context.Context, q db.DBTX, id int64) (PlainPageDetail
 	if err != nil {
 		return out, err
 	}
+	out.Page.Expired = expired == 1
+	out.Page.ApprovedSchedule = scheduled == 1
 	out.Page.Live = live == 1
 	out.Page.HasUnpublishedChanges = unpublished == 1
 	out.Page.UpdatedAt, _ = db.ParseUTC(updated)
+	if published.Valid {
+		value, err := db.ParseUTC(published.String)
+		if err != nil {
+			return out, err
+		}
+		out.Page.LastPublishedAt = &value
+	}
+	if revised.Valid {
+		value, err := db.ParseUTC(revised.String)
+		if err != nil {
+			return out, err
+		}
+		out.Page.LatestRevisionCreatedAt = &value
+	}
 	out.Draft.Title = out.Page.Title
 	out.Version = out.Page.Version
 	if revision.Valid {
@@ -98,13 +119,19 @@ func readPlainPageRow(ctx context.Context, q db.DBTX, id int64) (PlainPageDetail
 			return out, fmt.Errorf("页面草稿内容损坏: %w", err)
 		}
 	}
+	out.Page.DraftTitle = &out.Draft.Title
 	url := fmt.Sprintf("/api/admin/pages/%d/preview", id)
 	out.PreviewURL = &url
 	return out, nil
 }
 
 func (m *Module) readPlainPage(ctx *app.Ctx, in PlainPageIn) (PlainPageDetail, error) {
-	return readPlainPageRow(ctx.Context, m.svc.store.d.ReadPool(), int64(in.ID))
+	out, err := readPlainPageRow(ctx.Context, m.svc.store.d.ReadPool(), int64(in.ID))
+	if err != nil {
+		return out, err
+	}
+	out.BodyHTML, _, err = markdown.Render(out.Draft.BodyMD, m.svc.siteURL, nil)
+	return out, err
 }
 
 func plainTextField(key string, value any) (string, string) {
@@ -236,10 +263,13 @@ func (m *Module) publishPlainPage(ctx *app.Ctx, in PlainPagePublishIn) (PlainPag
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(c, `UPDATE pages SET title=?,seo_title=?,search_description=?,live=1,has_unpublished_changes=0,
+		_, err = tx.ExecContext(c, `UPDATE pages SET title=?,seo_title=?,search_description=?,live=1,expired=0,has_unpublished_changes=0,
             live_revision_id=latest_revision_id,version=version+1,last_published_at=?,first_published_at=COALESCE(first_published_at,?),updated_at=? WHERE id=? AND version=?`,
 			current.Draft.Title, current.Draft.SeoTitle, current.Draft.SearchDescription, now, now, now, int64(in.ID), in.BaseVersion)
 		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(c, "UPDATE page_revisions SET approved_go_live_at=NULL WHERE page_id=?", int64(in.ID)); err != nil {
 			return err
 		}
 		out.Version = current.Version + 1
@@ -247,6 +277,10 @@ func (m *Module) publishPlainPage(ctx *app.Ctx, in PlainPagePublishIn) (PlainPag
 		out.Page.Version = out.Version
 		out.Page.Title = current.Draft.Title
 		out.Page.Live = true
+		out.Page.Expired = false
+		out.Page.ApprovedSchedule = false
+		stamp := ctx.Now().UTC()
+		out.Page.LastPublishedAt = &stamp
 		out.Page.HasUnpublishedChanges = false
 		out.Page.UpdatedAt = ctx.Now().UTC()
 		return contentAudit(c, tx, ctx.Viewer.ID, "page.publish", "page", int64(in.ID), nil, ctx.Now())

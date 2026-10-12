@@ -559,7 +559,7 @@ describe("scrim SSR public roster and private placement", () => {
     const visible = main(result.body)
     expect(visible).toContain("资料不完整（缺少联系方式）")
     expect(visible).toContain('href="/me/contacts/"')
-    expect(text(visible)).toContain("去补全：联系方式")
+    expect(text(visible)).toMatch(/去补全：\s*联系方式/)
     expect(visible).not.toContain('href="/me/game-accounts/" class="c-link"')
     expect(visible).not.toContain('id="scrim-8-account"')
   })
@@ -646,11 +646,11 @@ describe("完整身份矩阵的报名权限与缺项投影", () => {
     const user = session().user!; user.admin = true; user.caps = ["tournaments.manage"]
     user.profile_gaps = [{label:"游戏 ID",href:"/me/game-accounts/",hint:""},{label:"联系方式",href:"/me/contacts/",hint:""}]
     const detail = await page("/tournaments/7/",user,{"/api/tournaments/7":{data}})
-    expect(text(main(detail.body))).toContain("去补全：游戏 ID、联系方式")
+    expect(text(main(detail.body))).toMatch(/去补全：\s*游戏 ID\s*、\s*联系方式/)
     expect(main(detail.body)).not.toContain(participantContact)
     const form = individualForm(); form.problems = data.viewer.individual_problems; form.game_accounts = []; form.can_submit = false
     const signup = await page("/tournaments/7/signup/",user,{"/api/tournaments/7/signup":{data:form}})
-    expect(text(main(signup.body))).toContain("去补全：游戏 ID、联系方式")
+    expect(text(main(signup.body))).toMatch(/去补全：\s*游戏 ID\s*、\s*联系方式/)
   })
 
   test("非队长已报名队员看到冻结队名与自己的报名详情链接", async () => {

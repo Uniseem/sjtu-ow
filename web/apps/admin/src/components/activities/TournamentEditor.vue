@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, shallowRef } from "vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import {
   ApiError,
   getApiAdminTournamentsId,
@@ -10,7 +11,7 @@ import {
 import type { GetApiAdminTournamentsIdOut } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useAdminSave } from "../../core/use-save"
-import { activityHref, actionHref, notifyHref, statusLabel, timestamp } from "../../pages/activities/domain"
+import { actionHref, notifyHref, statusLabel, timestamp, noticeTime } from "../../pages/activities/domain"
 import { blankTournament, currentTournament, tournamentValues } from "../../pages/activities/form-schema"
 import type { TournamentValues } from "../../pages/activities/form-schema"
 import TournamentFields from "./TournamentFields.vue"
@@ -73,7 +74,7 @@ const state = computed(() => savedObject.value ? detail.value?.tournament?.statu
 const missing = computed(() => detail.value?.missing ?? [])
 const notice = computed(() => {
   const moved = detail.value?.tournament?.moved_from
-  return moved ? `报名的人原来知道的开始时间是 ${timestamp(moved)}。接下来请通知报名的人。` : ""
+  return moved && state.value === "published" ? `开始时间从 ${noticeTime(moved)} 改到了 ${noticeTime(detail.value?.tournament?.starts_at)}，报名的人还不知道。` : ""
 })
 
 function change<K extends keyof TournamentValues>(name: K, value: TournamentValues[K], kind: "text" | "choice"): void {
@@ -87,10 +88,10 @@ function fieldChange(name: keyof TournamentValues, value: string | number | bool
 </script>
 
 <template>
+  <div :class="id !== null ? 'b-split' : 'b-single'">
   <form class="b-form" @submit.prevent="save.flush()">
     <AdminNotice v-if="mode === 'copy' && id === null && source" :message="`从「${source.title}」复制：内容和规则照抄，时间按整周挪到将来。改一处就建成一份新的草稿。`" kind="info" />
     <SaveStatus :snapshot="snapshot" :dirty="dirty" :pending="pending" @retry="save.save()" />
-    <AdminNotice v-if="notice" :message="notice" kind="warn" />
     <AdminNotice
       v-if="id !== null && mode !== 'edit'"
       :message="mode === 'copy' ? '已复制为一项新的草稿，原来的赛事不变。' : '草稿已建立。'"
@@ -107,21 +108,37 @@ function fieldChange(name: keyof TournamentValues, value: string | number | bool
       @change="fieldChange"
       @blur="save.flush()"
     />
-    <section v-if="id !== null" class="b-section">
-      <h2 class="b-section__title">接下来</h2>
-      <p class="b-section__text">当前状态：{{ statusLabel(state) }}</p>
-      <p v-if="state === 'draft' && missing.length" class="b-section__text">还没填好：{{ missing.join('、') }}。</p>
-      <div class="b-actions">
-        <RouterLink v-if="state === 'draft'" class="c-btn c-btn--primary" :to="actionHref('tournaments', id, 'publish')">发布赛事</RouterLink>
-        <RouterLink v-if="state === 'published'" class="c-btn c-btn--secondary" :to="actionHref('tournaments', id, 'finish')">标记为已结束</RouterLink>
-        <RouterLink v-if="state !== 'draft'" class="c-btn c-btn--secondary" :to="notifyHref('tournaments', id, true)">通知报名的人</RouterLink>
-        <RouterLink v-if="mode !== 'edit'" class="c-btn c-btn--secondary" :to="activityHref('tournaments', id)">继续编辑</RouterLink>
-        <a class="c-btn c-btn--quiet" :href="`/tournaments/${id}/`" target="_blank" rel="noopener">打开网站</a>
-      </div>
-    </section>
     <div class="b-formbar">
       <span v-if="id === null" class="b-formbar__note">改一处就建成草稿，必填项空着也存；填好以后在「更多」里发布。</span>
-      <RouterLink class="c-btn c-btn--secondary" to="/admin/tournaments/">返回</RouterLink>
     </div>
   </form>
+  <aside v-if="id !== null" class="b-aside">
+    <section class="b-section">
+      <h2 class="b-section__title">状态</h2>
+      <dl class="b-kv">
+        <dt>状态</dt><dd>{{ statusLabel(state) }}</dd>
+        <template v-if="detail?.tournament?.published_at"><dt>首次发布</dt><dd>{{ timestamp(detail.tournament.published_at) }}</dd></template>
+        <template v-if="detail?.creator_nickname"><dt>建立人</dt><dd>{{ detail.creator_nickname }}</dd></template>
+        <dt>报名</dt><dd>{{ detail?.registration_count ?? 0 }} 份</dd>
+      </dl>
+      <a v-if="state !== 'draft'" class="c-btn c-btn--secondary c-btn--sm" :href="`/tournaments/${id}/`" target="_blank" rel="noopener">看活动页</a>
+    </section>
+    <section class="b-section">
+      <h2 class="b-section__title">接下来</h2>
+      <div v-if="notice" class="c-notice c-notice--warn" data-time-moved>
+        <CIcon name="clock" /><div class="c-notice__body">{{ notice }}<RouterLink :to="notifyHref('tournaments', id, true)">通知报名的人</RouterLink></div>
+      </div>
+      <ul class="b-list">
+        <li v-if="state === 'draft'"><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="actionHref('tournaments', id, 'publish')">发布</RouterLink></li>
+        <li v-if="state === 'published'"><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="notifyHref('tournaments', id)">通知全体成员</RouterLink></li>
+        <li v-if="state === 'published'"><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="notifyHref('tournaments', id, true)">通知报名的人</RouterLink></li>
+        <li v-if="state === 'published'"><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="actionHref('tournaments', id, 'finish')">标记为已结束</RouterLink></li>
+        <li><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/registrations/?tournament=${id}&status=pending`">审核报名</RouterLink></li><li v-if="values.registration_mode === 'individual'"><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/tournaments/${id}/teams/`">队伍编排</RouterLink></li>
+        <li><RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/tournaments/copy/${id}/`">复制</RouterLink></li>
+        <li v-if="state !== 'cancelled' && (state !== 'draft' || !missing.length)"><RouterLink class="c-btn c-btn--quiet c-btn--sm is-danger" :to="actionHref('tournaments', id, 'cancel')">取消赛事</RouterLink></li>
+        <li v-if="detail?.can_delete"><RouterLink class="c-btn c-btn--quiet c-btn--sm is-danger" :to="actionHref('tournaments', id, 'delete')">删除</RouterLink></li>
+      </ul>
+    </section>
+  </aside>
+  </div>
 </template>

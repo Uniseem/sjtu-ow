@@ -1,4 +1,10 @@
 const actions: Record<string, string> = {
+  'wagtail.create': '创建', 'wagtail.edit': '编辑', 'wagtail.delete': '删除', 'wagtail.publish': '发布', 'wagtail.unpublish': '撤下',
+  'wagtail.copy': '复制', 'wagtail.move': '移动', 'wagtail.revert': '还原',
+  'tournaments.finish': '标记赛事结束', 'tournaments.arrange': '保存队伍编排',
+  'scrims.finish': '标记内战结束', 'scrims.select': '保存上场名单', 'scrims.generate': '生成分队', 'scrims.save_teams': '保存分队',
+  'tournaments.announce': '通知全体成员', 'scrims.announce': '通知全体成员', 'articles.announce': '通知全体成员',
+  'users.reactivate': '重新启用账号', 'tournaments.notify_participants': '通知报名的人', 'scrims.notify_participants': '通知报名的人',
   create: '新建', update: '修改', delete: '删除', publish: '发布', unpublish: '撤下',
   approve: '通过', reject: '驳回', withdraw: '撤回', dissolve: '撤销报名', disband: '解散战队',
   activate: '启用账号', deactivate: '停用账号', hide: '隐藏评论', unhide: '恢复评论',

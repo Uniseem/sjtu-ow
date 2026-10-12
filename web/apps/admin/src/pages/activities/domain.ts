@@ -123,6 +123,15 @@ export function timestamp(value: string | null | undefined): string {
   return `${part("year")}.${part("month")}.${part("day")} ${part("hour")}:${part("minute")}`
 }
 
+/** The legacy notice uses month/day without leading zeroes, in Shanghai. */
+export function noticeTime(value: string | null | undefined): string {
+  const formatted = timestamp(value)
+  if (formatted === "—") return formatted
+  const [date, time] = formatted.split(" ")
+  const [, month, day] = date!.split(".")
+  return `${Number(month)} 月 ${Number(day)} 日 ${time}`
+}
+
 /** datetime-local is a Shanghai wall-clock input, regardless of the laptop zone. */
 export function localMinute(value: string | null | undefined): string {
   if (!value) return ""

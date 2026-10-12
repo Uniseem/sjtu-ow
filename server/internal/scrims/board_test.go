@@ -255,11 +255,15 @@ func TestCopyText(t *testing.T) {
 	if !strings.Contains(text, " / ") {
 		t.Fatalf("同位置多人用 / 分隔：\n%s", text)
 	}
-	// 没有分队时没有文案
+	// 独立纯文本沿用旧站：空板也输出活动标题和两队总分 0。
 	s2 := e.scrim()
-	b2, _ := e.svc.GetBoard(e.mgr(), s2, "")
-	if b2.CopyText != "" || b2.HasTeams {
-		t.Fatal("没有分队就没有文案")
+	b2, err := e.svc.GetBoard(e.mgr(), s2, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantEmpty := "【周五内战】2026-10-19 20:00 · 角色限定 5v5\n\nA 队（总分 0）\n\nB 队（总分 0）"
+	if b2.CopyText != wantEmpty || b2.HasTeams {
+		t.Fatalf("空板文案：got %q, want %q, has_teams=%v", b2.CopyText, wantEmpty, b2.HasTeams)
 	}
 	// 游戏 ID 被删了：写占位
 	e.exec(`UPDATE scrim_signups SET game_account_id = NULL WHERE id = ?`, ids[0])

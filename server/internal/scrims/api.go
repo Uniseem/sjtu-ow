@@ -1,6 +1,7 @@
 package scrims
 
 import (
+	"database/sql"
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
@@ -54,8 +55,9 @@ type AdminListOut struct {
 
 // AdminGetOut 是后台读一场内战。
 type AdminGetOut struct {
-	Scrim *Scrim    `json:"scrim"`
-	Row   *AdminRow `json:"row"`
+	CreatorNickname string    `json:"creator_nickname"`
+	Scrim           *Scrim    `json:"scrim"`
+	Row             *AdminRow `json:"row"`
 }
 
 // PatchIn 是 PATCH /api/admin/scrims/{id}（自动保存协议 v2）。
@@ -163,7 +165,17 @@ func (m *Module) create(ctx *app.Ctx, _ struct{}) (ScrimOut, error) {
 
 func (m *Module) adminGet(ctx *app.Ctx, in IDIn) (AdminGetOut, error) {
 	row, sc, err := m.svc.AdminGet(ctx, int64(in.ID))
-	return AdminGetOut{Scrim: sc, Row: row}, err
+	if err != nil {
+		return AdminGetOut{}, err
+	}
+	out := AdminGetOut{Scrim: sc, Row: row}
+	if sc != nil && sc.CreatedBy != nil {
+		err := m.svc.d.ReadPool().QueryRowContext(ctx.Context, `SELECT nickname FROM users WHERE id = ?`, *sc.CreatedBy).Scan(&out.CreatorNickname)
+		if err != nil && err != sql.ErrNoRows {
+			return AdminGetOut{}, err
+		}
+	}
+	return out, nil
 }
 
 func (m *Module) patch(ctx *app.Ctx, in PatchIn) (*SaveResult, error) {

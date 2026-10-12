@@ -10,12 +10,13 @@ import { imageUrl } from "@sjtu-ow/shared/media"
 import ImagePicker from "./ImagePicker.vue"
 import MarkdownHelp from "./MarkdownHelp.vue"
 import MarkdownPreview from "./MarkdownPreview.vue"
-import { commandEdit, insertImage, toolbarCommands, type MarkdownCommand } from "./markdown-commands"
+import { commandEdit, insertImage, insertVideo, toolbarCommands, type MarkdownCommand } from "./markdown-commands"
 import type { Collection, Image } from "../../pages/content/types"
 
 const props = withDefaults(defineProps<{
   modelValue: string
   id?: string
+  name?: string
   label?: string
   disabled?: boolean
   describedby?: string
@@ -23,6 +24,7 @@ const props = withDefaults(defineProps<{
   previewUrl?: string | null
 }>(), {
   id: "body_md",
+  name: "body",
   label: "正文",
   disabled: false,
   invalid: false,
@@ -43,6 +45,10 @@ const loadError = ref("")
 const help = ref(false)
 const picker = ref(false)
 const preview = ref(false)
+const sideBySide = ref(false)
+const fullscreen = ref(false)
+const container = ref<HTMLDivElement | null>(null)
+let fullscreenFocus: HTMLElement | null = null
 const wordCount = computed(() => [...props.modelValue.replace(/\s/g, "")].length)
 let view: EditorView | null = null
 let destroyed = false
@@ -83,6 +89,61 @@ function apply(edit: ReturnType<typeof commandEdit>): void {
 
 function run(command: MarkdownCommand): void {
   apply(commandEdit(command, selection()))
+}
+
+function video(): void {
+  if (props.disabled) return
+  const current = selection()
+  const edit = insertVideo(current, window.prompt("粘贴 B 站视频链接（bilibili.com/video/… 或 b23.tv/…）："))
+  if (edit) apply(edit)
+}
+function togglePreview(): void {
+  preview.value = !preview.value
+  sideBySide.value = false
+  if (!preview.value) void nextTick(() => { view ? view.focus() : fallback.value?.focus() })
+}
+function toggleSideBySide(): void {
+  sideBySide.value = !sideBySide.value
+  preview.value = false
+  void nextTick(() => { view?.requestMeasure(); view ? view.focus() : fallback.value?.focus() })
+}
+function toggleFullscreen(): void {
+  if (!fullscreen.value) {
+    fullscreenFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    fullscreen.value = true
+  } else {
+    fullscreen.value = false
+  }
+  void nextTick(() => {
+    view?.requestMeasure()
+    document.documentElement.classList.toggle("has-fullscreen-markdown-editor", Boolean(document.querySelector(".markdown-editor.is-fullscreen")))
+    if (fullscreen.value) { view ? view.focus() : fallback.value?.focus() }
+    else { fullscreenFocus?.focus(); fullscreenFocus = null }
+  })
+}
+function fullscreenKey(event: KeyboardEvent): void {
+  if (!fullscreen.value || !container.value || event.defaultPrevented || picker.value) return
+  if (event.key === "Escape") { event.preventDefault(); toggleFullscreen(); return }
+  if (event.key !== "Tab") return
+  const controls: HTMLElement[] = []
+  // Include the editable node inside the open shadow root in document order.
+  for (const node of container.value.querySelectorAll<HTMLElement>("button,a[href],input,select,textarea,iframe,[tabindex],.markdown-editor__host")) {
+    if (node === host.value && view?.contentDOM) controls.push(view.contentDOM)
+    else if (!node.hasAttribute("disabled") && node.tabIndex >= 0 && node.getClientRects().length) controls.push(node)
+  }
+  const available = controls.filter(node => node.getClientRects().length)
+  const first = available[0], last = available.at(-1)
+  const originDocument = event.view?.document
+  if (originDocument && originDocument !== document) {
+    const frameControls = [...originDocument.querySelectorAll<HTMLElement>("a[href],button,input,select,textarea,[tabindex]")].filter(node => !node.hasAttribute("disabled") && node.tabIndex >= 0 && node.getClientRects().length)
+    const active = originDocument.activeElement
+    if (!event.shiftKey && (!frameControls.length || active === frameControls.at(-1)) && document.activeElement === last && first) { event.preventDefault(); first.focus() }
+    else if (event.shiftKey && (!frameControls.length || active === frameControls[0]) && document.activeElement === first && last) { event.preventDefault(); last.focus() }
+    return
+  }
+  const active = host.value?.shadowRoot?.activeElement ?? document.activeElement
+  if (event.shiftKey && active === first && last) { event.preventDefault(); last.focus() }
+  else if (!event.shiftKey && active === last && first) { event.preventDefault(); first.focus() }
 }
 
 function chooseImage(): void {
@@ -221,7 +282,11 @@ async function initialize(): Promise<void> {
             indentWithTab,
           ]),
           View.updateListener.of((update) => {
-            if (update.docChanged && !changingFromProp) emit("update:modelValue", update.state.doc.toString())
+            if (update.docChanged && !changingFromProp) {
+              const source = update.state.doc.toString()
+              if (fallback.value) fallback.value.value = source
+              emit("update:modelValue", source)
+            }
           }),
           View.domEventHandlers({
             blur: () => { emit("blur"); return false },
@@ -232,6 +297,7 @@ async function initialize(): Promise<void> {
       }),
     })
     editorReady.value = true
+    void nextTick(() => { view?.requestMeasure() })
     watch(() => props.disabled, (disabled) => {
       view?.dispatch({ effects: editable.reconfigure(View.editable.of(!disabled)) })
     })
@@ -252,6 +318,7 @@ async function initialize(): Promise<void> {
 }
 
 watch(() => props.modelValue, (text) => {
+  if (fallback.value) fallback.value.value = text
   if (!view || view.state.doc.toString() === text) return
   changingFromProp = true
   try {
@@ -260,22 +327,34 @@ watch(() => props.modelValue, (text) => {
     changingFromProp = false
   }
 })
-onMounted(() => { void initialize(); void loadCollections() })
-onBeforeUnmount(() => { destroyed = true; view?.destroy(); view = null })
+onMounted(() => { void initialize(); void loadCollections(); document.addEventListener("keydown", fullscreenKey) })
+onBeforeUnmount(() => {
+  destroyed = true
+  document.removeEventListener("keydown", fullscreenKey)
+  if (fullscreen.value && document.querySelectorAll(".markdown-editor.is-fullscreen").length <= 1) document.documentElement.classList.remove("has-fullscreen-markdown-editor")
+  view?.destroy(); view = null
+})
 defineExpose({ insertImage: selected, focus: () => { view ? view.focus() : fallback.value?.focus() } })
 </script>
 <template>
-  <div class="c-field">
+  <div ref="container" class="c-field markdown-editor" :class="{ 'is-fullscreen': fullscreen }" data-markdown-editor :data-markdown-field="name">
     <div class="b-rowacts" role="toolbar" :aria-label="`${label}工具栏`">
-      <button v-for="item in toolbarCommands" :key="item.command" type="button" class="c-btn c-btn--quiet c-btn--sm" :title="item.shortcut ? `${item.label}（${item.shortcut}）` : item.label" :disabled="disabled" @click="run(item.command)">{{ item.label }}</button>
-      <button type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="disabled" @click="chooseImage">插入图片</button>
-      <button type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="disabled" :aria-pressed="preview" @click="preview = !preview">预览</button>
+      <button v-for="item in toolbarCommands" :key="item.command" :data-markdown-command="item.command" type="button" class="c-btn c-btn--quiet c-btn--sm" :title="item.shortcut ? `${item.label}（${item.shortcut}）` : item.label" :disabled="disabled" @click="run(item.command)">{{ item.label }}</button>
+      <button type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="disabled" data-markdown-command="image-upload" @click="chooseImage">插入图片</button>
+      <button type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="disabled" data-markdown-command="video" @click="video">B 站视频</button>
+      <button type="button" class="c-btn c-btn--quiet c-btn--sm" :aria-pressed="preview" data-markdown-command="preview" @click="togglePreview">预览</button>
+      <button type="button" class="c-btn c-btn--quiet c-btn--sm markdown-editor__desktop-action" :aria-pressed="sideBySide" data-markdown-command="side-by-side" @click="toggleSideBySide">并排预览</button>
+      <button type="button" class="c-btn c-btn--quiet c-btn--sm markdown-editor__desktop-action" :aria-pressed="fullscreen" data-markdown-command="fullscreen" @click="toggleFullscreen">{{ fullscreen ? '退出全屏' : '全屏' }}</button>
       <button type="button" class="c-btn c-btn--quiet c-btn--sm" :aria-expanded="help" @click="help = !help">写法</button>
     </div>
     <p v-if="loadError" class="c-field__help" role="status">{{ loadError }}</p>
-    <div v-show="!preview" ref="host" class="c-input" :aria-hidden="!editorReady" />
-    <textarea v-if="!editorReady" :id="id" ref="fallback" class="c-input" :name="id" :value="modelValue" :disabled="disabled" :aria-label="label" :aria-describedby="describedby" :aria-invalid="invalid" rows="18" @input="fallbackInput" @keydown="fallbackKey" @paste="pasted" @drop="dropped" @blur="$emit('blur')" />
-    <MarkdownPreview :body="modelValue" :open="preview" />
+    <div class="markdown-editor__panes" :class="{ 'is-side-by-side': sideBySide }">
+      <div class="markdown-editor__source" :hidden="preview && !sideBySide">
+        <div :hidden="!editorReady" ref="host" class="c-input markdown-editor__host" :aria-hidden="!editorReady" />
+        <textarea :hidden="editorReady" data-markdown-source :id="id" ref="fallback" class="c-input" :name="name" :value="modelValue" :disabled="disabled" :aria-label="label" :aria-describedby="describedby" :aria-invalid="invalid" rows="18" @input="fallbackInput" @keydown="fallbackKey" @paste="pasted" @drop="dropped" @blur="$emit('blur')" />
+      </div>
+      <MarkdownPreview :body="modelValue" :open="preview || sideBySide" @frame-keydown="fullscreenKey" />
+    </div>
     <p class="c-field__help">{{ wordCount }} 字。图片可粘贴或拖入，上传后才会插入正文。</p>
     <section v-if="uploads.items.value.length || uploadMessage" class="b-section" aria-label="正文图片上传">
       <h2 class="b-section__title">上传正文图片</h2>
@@ -297,3 +376,31 @@ defineExpose({ insertImage: selected, focus: () => { view ? view.focus() : fallb
     <ImagePicker v-if="picker" @select="selected" @close="closePicker" />
   </div>
 </template>
+
+<style scoped>
+.markdown-editor__panes { min-width: 0; }
+.markdown-editor__source { min-width: 0; }
+.markdown-editor__source[hidden], .markdown-editor__source [hidden] { display: none; }
+.markdown-editor__desktop-action { display: none; }
+.markdown-editor.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  margin: 0;
+  padding: 1rem;
+  background: var(--color-surface);
+}
+.markdown-editor.is-fullscreen .markdown-editor__panes { flex: 1; }
+:global(html.has-fullscreen-markdown-editor) { overflow: hidden; }
+@media (min-width: 769px) {
+  .markdown-editor__desktop-action { display: inline-flex; }
+  .markdown-editor__panes.is-side-by-side {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+  }
+}
+</style>

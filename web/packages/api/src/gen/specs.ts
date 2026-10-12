@@ -17,6 +17,7 @@ export const IMAGE_SPECS = [
   "max-1600x1600",
   "max-320x200",
   "max-320x240",
+  "max-800x600",
 ] as const
 
 export type ImageSpec = (typeof IMAGE_SPECS)[number]

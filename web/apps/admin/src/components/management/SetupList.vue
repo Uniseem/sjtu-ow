@@ -4,7 +4,7 @@ import { localHref } from "../../pages/management/format"
 defineProps<{ items: SetupCheck[]; kind: 'required' | 'optional' | 'done' }>()
 </script>
 <template>
-  <ul class="b-list b-checks mt-3" :data-setup="kind">
+  <ul class="b-list b-checks" :class="{ 'mt-3': kind === 'optional' }" :data-setup="kind">
     <li v-for="item in items" :key="item.label">
       <span class="c-tag" :class="{ 'c-tag--accent': kind === 'required' }">{{ kind === 'required' ? '必做' : kind === 'optional' ? '建议' : '已完成' }}</span>
       <span>

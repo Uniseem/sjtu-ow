@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref,watch } from "vue"
-import { patchApiAdminSettings } from "@sjtu-ow/api"
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
+import { ApiError, patchApiAdminSettings } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useAdminAction } from "../../core/use-action"
 import ActionState from "./ActionState.vue"
 import ConfirmAction from "./ConfirmAction.vue"
-const props = defineProps<{ field: 'smtp_password' | 'moderation_api_key'; label: string; present: boolean; beforeAction: () => Promise<boolean> }>()
+const props = defineProps<{ field: 'smtp_password' | 'moderation_api_key'; label: string; present: boolean; embedded?: boolean; beforeAction: () => Promise<boolean> }>()
 const emit=defineEmits<{changed:[settings:NonNullable<Awaited<ReturnType<typeof patchApiAdminSettings>>["settings"]>];settled:[]}>()
 const api = useAdminApi()
 const value = ref("")
@@ -15,28 +16,31 @@ const action = useAdminAction<{ value: string; clear: boolean }, Awaited<ReturnT
   const changes = props.field === 'smtp_password' ? body.clear ? { clear_smtp_password: true } : { smtp_password: body.value } : body.clear ? { clear_moderation_api_key: true } : { moderation_api_key: body.value }
   return patchApiAdminSettings(api, changes, extras)
 }, result => {
-  if (!result.settings) return
+  if (!result.settings) throw new ApiError(0,"invalid_receipt","密钥保存回执无效，请重试。")
   hasSecret.value = props.field === 'smtp_password' ? result.settings.has_smtp_password : result.settings.has_moderation_api_key
   emit("changed",result.settings)
   value.value = ""
   savedMessage.value = '已保存。'
 })
-async function submit(clear: boolean) { if (!clear && !value.value) return; if (await props.beforeAction()) await action.submit({ value: clear ? '' : value.value, clear }) }
+async function submit(clear: boolean) { if (!action.canStart.value) return; if (!clear && !value.value) return; if (await props.beforeAction()) await action.submit({ value: clear ? '' : value.value, clear }) }
+async function leave() { if (value.value && action.canStart.value) await submit(false); return !value.value && !action.pending.value && !action.uncertain.value }
+onBeforeRouteLeave(leave)
+onBeforeRouteUpdate(leave)
 watch(()=>[action.pending.value,action.uncertain.value],([pending,uncertain])=>{if(!pending&&!uncertain)emit("settled")})
 </script>
 <template>
-  <section class="b-section">
-    <h2 class="b-section__title">{{ label }}</h2>
-    <p class="b-sub">{{ hasSecret ? '现在有已保存的密钥。' : '现在没有保存密钥。' }} 密钥不回显，空着不改。</p>
-    <form @submit.prevent="submit(false)">
-      <label class="c-field__label" :for="`secret-${field}`">新的{{ label }}</label>
-      <input :id="`secret-${field}`" v-model="value" type="password" autocomplete="new-password" class="c-input" :disabled="!action.canStart.value" />
-      <div class="b-actions">
+  <div :class="embedded ? 'c-field' : 'b-section'">
+    <h2 v-if="!embedded" class="b-section__title">{{ label }}</h2>
+    <p v-if="!embedded" class="b-sub">{{ hasSecret ? '现在有已保存的密钥。' : '现在没有保存密钥。' }} 密钥不回显，空着不改。</p>
+    <component :is="embedded ? 'div' : 'form'" @submit.prevent="submit(false)">
+      <label class="c-field__label" :for="`secret-${field}`">{{ embedded ? label : `新的${label}` }}</label>
+      <input :id="`secret-${field}`" v-model="value" type="password" autocomplete="new-password" class="c-input" :name="field" :placeholder="hasSecret ? '已保存（留空不修改）' : ''" :disabled="!action.canStart.value" @blur="submit(false)" />
+      <p v-if="embedded" class="c-field__help">加密存储。后台表单不回显原值，留空表示不修改。</p><div v-if="!embedded" class="b-actions">
         <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!value || !action.canStart.value">保存{{ label }}</button>
         <ConfirmAction v-if="hasSecret" title="清除密钥" :message="`清除已保存的${label}？`" label="清除" danger :pending="!action.canStart.value" @confirm="submit(true)" />
       </div>
-    </form>
+    </component>
     <p v-if="savedMessage" class="b-sub" role="status">{{ savedMessage }}</p>
     <ActionState :message="action.message.value" :pending="action.pending.value" :uncertain="action.uncertain.value" @retry="action.retry" />
-  </section>
+  </div>
 </template>

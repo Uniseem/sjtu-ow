@@ -699,6 +699,7 @@ func (s *Store) AnonymizeUserTx(ctx context.Context, tx *db.Tx, userID int64, at
 		is_active = 0,
 		is_superuser = 0,
 		deactivation_note = '用户自行注销',
+		last_login_at = NULL,
 		motto = '',
 		main_role = '',
 		flex_roles = '',

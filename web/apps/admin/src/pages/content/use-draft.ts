@@ -15,6 +15,7 @@ export type DraftOptions<T extends object> = {
   publish: (version: number, extras: CallExtras) => Promise<{ version: number }>
   refresh: () => Promise<{ version: number; draft: T; preview_url: string | null; has_unpublished_changes?: boolean }>
   preview_url?: string | null
+  previewRoute?: string
   readCurrent?: (value: unknown) => { version: number; values: T } | null
 }
 
@@ -70,7 +71,7 @@ export function useContentDraft<T extends object>(options: DraftOptions<T>) {
     if (!await save.flush()) { target?.close(); return }
     try {
       const current = await options.refresh()
-      previewURL.value = contentPreviewURL(current.preview_url)
+      previewURL.value = options.previewRoute ?? contentPreviewURL(current.preview_url)
       if (!previewURL.value) {
         target?.close()
         notice.value = "预览暂时不可用，请稍后再试。"

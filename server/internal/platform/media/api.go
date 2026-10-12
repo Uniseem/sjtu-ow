@@ -2,6 +2,7 @@ package media
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/api"
+	"github.com/Uniseem/sjtu-ow/server/internal/platform/db"
 )
 
 // Module 负责媒体域接口路由。
@@ -66,15 +68,16 @@ func (m *Module) Routes(r *api.Registry) {
 	m.registerAdminEditing(r)
 	// 图片信息读取
 	api.Get(r, "/api/images/{id}", api.Public, m.getImage)
-	api.Delete(r, "/api/images/{id}", api.Cap(app.Cap("images.manage")), m.deleteImage,
+	api.Delete(r, "/api/images/{id}", api.Cap(app.Cap("admin.enter")), m.deleteImage,
 		api.NoLimit("管理员删除图片无需限流"))
+	api.Delete(r, "/api/admin/images/{id}", api.Cap(app.Cap("admin.enter")), m.deleteImage, api.Nav("content", "images"), api.NoLimit("图片管理删除"))
 	// 缩略图本身（12 号文档 3.4）：文件在 media 卷里就由 Caddy 直接给，不在才到这里
 	// 现做。原来的 GET /api/media/r/{id}/{spec} 回的是 JSON 和服务器上的文件路径，
 	// 前端没法当 <img src> 用，还把内部路径露了出去，去掉（frontend-migration S2、B1）。
 	api.Raw(r, http.MethodGet, "/media/r/{id}/{file}", nil, m.ServeThumbnailHTTP)
 
 	// 管理后台图片管理
-	api.Get(r, "/api/admin/images/{id}", api.Cap(app.Cap("images.manage")), m.getImage, api.Nav("content", "images"))
+	api.Get(r, "/api/admin/images/{id}", api.Cap(app.Cap("admin.enter")), m.adminGetImage, api.Nav("content", "images"))
 	api.Get(r, "/api/admin/images", api.Cap(app.Cap("admin.enter")), m.listImages,
 		api.Nav("content", "images"))
 	api.Get(r, "/api/admin/image-collections", api.Cap(app.Cap("admin.enter")), m.listCollections,
@@ -94,6 +97,41 @@ func (m *Module) getImage(ctx *app.Ctx, in struct {
 	if image == nil {
 		return nil, api.NotFound("图片不存在")
 	}
+	if image.UploaderID != nil && ctx.Viewer != nil && ctx.Viewer.HasCap("images.manage") {
+		if err := m.svc.db.ReadPool().QueryRowContext(ctx.Context, "SELECT COALESCE((SELECT nickname FROM users WHERE id=?),'')", *image.UploaderID).Scan(&image.UploaderNickname); err != nil {
+			return nil, err
+		}
+	}
+	return image, nil
+}
+
+func (m *Module) adminGetImage(ctx *app.Ctx, in struct {
+	ID api.ID `path:"id"`
+}) (*Image, error) {
+	if ctx.Viewer == nil || ctx.Viewer.Disabled || (!ctx.Viewer.HasCap("images.manage") && !ctx.Viewer.HasCap("images.contribute")) {
+		return nil, api.Forbidden()
+	}
+	// The row and ownership predicate share one read snapshot; a concurrent move
+	// cannot turn a prior permission check into a metadata disclosure.
+	query := `SELECT i.id,i.collection_id,i.title,i.file_name,i.file_size,i.width,i.height,i.uploader_id,i.created_at,i.version,COALESCE(u.nickname,'') FROM images i LEFT JOIN users u ON u.id=i.uploader_id WHERE i.id=?`
+	args := []any{int64(in.ID)}
+	if !ctx.Viewer.HasCap("images.manage") {
+		query += " AND i.uploader_id=? AND i.collection_id IN (" + contributedCollections + ")"
+		args = append(args, ctx.Viewer.ID)
+	}
+	image := &Image{CanChange: true, CanDelete: true}
+	var stamp string
+	err := m.svc.db.ReadPool().QueryRowContext(ctx.Context, query, args...).Scan(&image.ID, &image.CollectionID, &image.Title, &image.FileName, &image.FileSize, &image.Width, &image.Height, &image.UploaderID, &stamp, &image.Version, &image.UploaderNickname)
+	if errors.Is(err, sql.ErrNoRows) {
+		if ctx.Viewer.HasCap("images.manage") {
+			return nil, api.NotFound("图片不存在")
+		}
+		return nil, api.Forbidden()
+	}
+	if err != nil {
+		return nil, err
+	}
+	image.CreatedAt, _ = db.ParseUTC(stamp)
 	return image, nil
 }
 
@@ -104,6 +142,11 @@ func (m *Module) listImages(ctx *app.Ctx, in ListImagesIn) (ListImagesOut, error
 	items, total, err := m.svc.listImages(ctx.Context, in.CollectionKey, in.CollectionID, in.Q, in.Page, in.PageSize, !ctx.Viewer.HasCap("images.manage"))
 	if err != nil {
 		return ListImagesOut{}, err
+	}
+	for i := range items {
+		allowed := ctx.Viewer.HasCap("images.manage") || items[i].UploaderID != nil && *items[i].UploaderID == ctx.Viewer.ID
+		items[i].CanChange = allowed
+		items[i].CanDelete = allowed
 	}
 	page := in.Page
 	if page < 1 {

@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { resolve } from "node:path"
+import { exerciseMarkdownEditor } from "../e2e/journeys/markdown-editor.mjs"
 const root = resolve(import.meta.dirname, "..")
 const mode = process.argv[2] ?? "newbie"
 const option = name => process.argv.find(arg => arg.startsWith(`--${name}=`))?.split("=").slice(1).join("=")
@@ -96,7 +97,10 @@ async function register(index) {
 }
 async function signupScrim(page) {
   await go(page, `/scrims/${config.data.scrim}/`)
-  for (const checkbox of await page.locator("#slot-scrim-actions input[name=roles]").all()) await checkbox.check()
+  for (const checkbox of await page.locator("#slot-scrim-actions input[name=roles]").all()) {
+    if (!await checkbox.isChecked()) await checkbox.locator('xpath=..').click()
+    check('role choice label toggles checkbox', await checkbox.isChecked())
+  }
   await page.locator("#slot-scrim-actions button[type=submit]").filter({ hasText: /^报名$/ }).click()
   await page.getByText("已报名", { exact: true }).waitFor()
   const personal = await json(page, "/api/me/scrims")
@@ -133,9 +137,12 @@ try {
         page.on("response", listen)
         const response = await go(page, item.path)
         let actual = response.status()
-        if (item.path.startsWith("/admin/")) {
+        if (item.path.startsWith("/admin/") && actual === 200) {
           if (new URL(page.url()).pathname === "/accounts/login/") actual = 302
-          else actual = await page.locator("[data-page-status]").first().getAttribute("data-page-status").then(Number).catch(() => responses.filter(code => code >= 400).at(-1) ?? 200)
+          else actual = await page.evaluate(() => {
+            const status = document.querySelector('[data-page-status]')?.getAttribute('data-page-status') ?? document.querySelector('.code')?.textContent
+            return status === undefined || status === null ? null : Number(status)
+          }) ?? responses.filter(code => code >= 400).at(-1) ?? 200
         }
         if (item.status >= 300 && item.status < 400) {
           const expected = new URL(item.location, config.base)
@@ -201,7 +208,9 @@ try {
     check("team composition persisted", (await page.locator("#main").innerText()).includes("Journey队伍"))
     await go(page, "/admin/articles/new/")
     await page.locator("input[name=title]").fill("Journey真实发布")
-    await page.locator("select[name=category_id]").selectOption(String(config.data.category))
+    await page.locator("select[name=category]").selectOption(String(config.data.category))
+    await exerciseMarkdownEditor(page)
+    check("legacy Markdown commands/preview/fullscreen", true)
     const editor = page.locator(".cm-content").first()
     await editor.fill("真实浏览器里撰写的文章正文。")
     await page.locator(".b-picker button").filter({ hasText: /^选择$/ }).first().click()

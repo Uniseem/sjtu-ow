@@ -160,6 +160,9 @@ func (s *Service) checkLogo(ctx context.Context, q db.DBTX, v *app.Viewer, image
 	if err != nil {
 		return "队标图片不存在。"
 	}
+	if v.Superuser {
+		return ""
+	}
 	if !key.Valid || key.String != "team_logo" {
 		return "队标要先用队标上传入口上传。"
 	}
@@ -300,7 +303,7 @@ func (s *Service) discardLogo(ctx *app.Ctx, imageID int64) {
 	if !key.Valid || key.String != "team_logo" || used > 0 {
 		return
 	}
-	if err := s.media.DeleteImage(ctx, imageID); err != nil {
+	if err := s.media.RetireUnusedTeamLogo(ctx, imageID); err != nil {
 		slog.Warn("删除队标失败", "image", imageID, "err", err.Error())
 	}
 }

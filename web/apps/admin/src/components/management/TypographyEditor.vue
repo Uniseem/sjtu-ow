@@ -7,6 +7,7 @@ import { useAdminSave } from "../../core/use-save"
 import { patchTypography, fullRegion, type TypographyPage, type TypographyValues, type TypographyRegionValues } from "../../pages/management/pending"
 import { currentReader } from "../../pages/management/current-reader"
 import { useResource } from "../../pages/management/use-resource"
+import { bytes } from "../../pages/management/font-format"
 import { date } from "../../pages/management/format"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import SaveStatus from "../SaveStatus.vue"
@@ -48,10 +49,11 @@ const numericFields = [{ key: 'size_rem', label: '字号（rem）', step: '0.001
   <p v-else class="b-section__text">还没有生成字体样式表，全站使用系统字体。</p>
   <div class="typography-layout">
     <form class="b-form" @submit.prevent="save.save">
+      <SaveStatus idle-message="改了就自动保存，并重新生成字体样式表" :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
       <div class="b-fieldset">
         <section v-for="row in rows" :key="row.region" class="typography-row" :data-region="row.region">
-          <h2 class="b-section__title">{{ label(row.region) }}</h2><p v-if="data.regions.find(region=>region.region===row.region)?.slices" class="b-sub">当前字重：{{ data.regions.find(region=>region.region===row.region)?.slices }} 个分片，合计 {{ data.regions.find(region=>region.region===row.region)?.bytes }} bytes</p>
-          <div class="c-field">
+          <h2 class="b-section__title">{{ label(row.region) }}</h2><p v-if="data.regions.find(region=>region.region===row.region)?.slices" class="b-sub">当前字重：{{ data.regions.find(region=>region.region===row.region)?.slices }} 个分片，合计 {{ bytes(data.regions.find(region=>region.region===row.region)?.bytes ?? 0) }}</p>
+          <div class="fields"><div class="c-field">
             <label class="c-field__label" :for="`type-mode-${row.region}`">字体来源</label>
             <select :id="`type-mode-${row.region}`" class="c-input" :value="row.mode" @change="update(row.region, 'mode', $event)">
               <option value="system">系统字体</option>
@@ -59,7 +61,7 @@ const numericFields = [{ key: 'size_rem', label: '字号（rem）', step: '0.001
               <option value="custom">字体库中的字体</option>
             </select>
           </div>
-          <div v-if="row.mode === 'custom'" class="c-field">
+          <div class="c-field">
             <label class="c-field__label" :for="`type-family-${row.region}`">字体</label>
             <select :id="`type-family-${row.region}`" class="c-input" :value="row.family_id ?? ''" @change="update(row.region, 'family_id', $event)">
               <option value="">（未选择）</option>
@@ -77,12 +79,12 @@ const numericFields = [{ key: 'size_rem', label: '字号（rem）', step: '0.001
             <label class="c-field__label" :for="`type-${field.key}-${row.region}`">{{ field.label }}</label>
             <input :id="`type-${field.key}-${row.region}`" class="c-input" type="number" :step="field.step" :value="row[field.key] ?? ''" @input="update(row.region, field.key, $event)" @blur="save.flush" />
           </div>
-        </section>
+        </div></section>
       </div>
       <p v-for="error in save.fields.value.regions" :key="error" class="c-field__error" role="alert">{{ error }}</p>
-      <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
+
       <div class="b-formbar">
-        <button class="c-btn c-btn--primary" :disabled="save.pending.value">保存并生成样式表</button>
+        <button hidden class="c-btn c-btn--primary" :disabled="save.pending.value">保存并生成样式表</button>
         <RouterLink to="/admin/settings/fonts/" class="c-btn c-btn--secondary">返回字体库</RouterLink>
       </div>
     </form>

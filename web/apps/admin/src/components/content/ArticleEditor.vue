@@ -22,7 +22,6 @@ import SubmissionGuide from "./SubmissionGuide.vue"
 import { readArticleCurrent, validateArticleValue } from "../../pages/content/article-values"
 import { useContentPermissions } from "../../pages/content/permissions"
 import { readArticleEditor, type ArticleEditorProjection } from "../../pages/content/pending"
-import { contentPreviewURL } from "../../pages/content/preview-url"
 import { articleStatus, articleStatuses, draftFromArticle, emptyArticle, localDateTime, wireDateTime, type Article, type ArticleDraft, type Category } from "../../pages/content/types"
 
 const props = defineProps<{ detail: ArticleEditorProjection | null; categories: Pick<Category, "id" | "name" | "allow_submission">[] }>()
@@ -38,7 +37,7 @@ const publication = ref(false)
 const destructive = ref<"unpublish" | "delete" | null>(null)
 const notice = ref("")
 const editor = ref<InstanceType<typeof MarkdownEditor> | null>(null)
-const previewURL = computed(() => contentPreviewURL(props.detail?.preview_url))
+const previewURL = computed(() => id.value ? `/admin/articles/${id.value}/preview/` : null)
 const editable = computed(() => props.detail?.capabilities.edit ?? (!article.value || permission.canEdit(article.value)))
 const canPublish = computed(() => props.detail?.capabilities.publish ?? (article.value ? permission.canPublish(article.value)
   : Boolean(permission.user.value?.superuser || permission.user.value?.caps.includes("articles.publish_own") || permission.everyArticle.value)))
@@ -167,8 +166,8 @@ async function openPreview(): Promise<void> {
 <template>
   <div :class="article ? 'b-split' : 'b-single'">
     <form class="b-form" novalidate @submit.prevent="save.save">
+      <SaveStatus idle-message="改了就自动存成草稿，点「发布」才上线" :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
       <SubmissionGuide v-if="props.detail?.guide" />
-      <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
       <p v-if="notice" class="c-notice c-notice--ok" role="status">{{ notice }}</p>
       <ContentActionMessage :message="publish.message.value" :pending="publish.pending.value" :uncertain="publish.uncertain.value" @retry="publish.retry" />
       <ContentActionMessage :message="destroy.message.value" :pending="destroy.pending.value" :uncertain="destroy.uncertain.value" @retry="destroy.retry" />
@@ -178,13 +177,13 @@ async function openPreview(): Promise<void> {
           <template #default="field"><input :id="field.id" class="c-input" name="title" :value="values.title" maxlength="255" :aria-describedby="field.describedby" @input="input('title', $event)"></template>
         </ContentField>
         <ContentField name="category_id" label="分类" :errors="fields.category_id" required>
-          <template #default="field"><select :id="field.id" class="c-input" name="category_id" :value="values.category_id ?? ''" :aria-describedby="field.describedby" @change="input('category_id', $event)"><option value="">选一个分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></template>
+          <template #default="field"><select :id="field.id" class="c-input" name="category" :value="values.category_id ?? ''" :aria-describedby="field.describedby" @change="input('category_id', $event)"><option value="">选一个分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></template>
         </ContentField>
         <ContentField name="cover_image_id" label="封面" :errors="fields.cover_image_id" hint="空着就用默认封面图库里的一张。"><ImageField name="cover_image_id" label="封面" :model-value="values.cover_image_id" :disabled="!editable || actionBlocked" @update:model-value="save.set('cover_image_id', $event, 'choice')" /></ContentField>
-        <ContentField name="summary" label="摘要" :errors="fields.summary" hint="写一两句，会显示在文章列表和分享卡片上。">
-          <template #default="field"><textarea :id="field.id" class="c-input" name="summary" :value="values.summary" rows="3" :aria-describedby="field.describedby" @input="input('summary', $event)" /></template>
+        <ContentField name="summary" label="摘要" :errors="fields.summary">
+          <template #default="field"><input :id="field.id" class="c-input" name="summary" :value="values.summary" maxlength="255" :aria-describedby="field.describedby" @input="input('summary', $event)"></template>
         </ContentField>
-        <ContentField name="body_md" label="正文" :errors="fields.body_md" required>
+        <ContentField name="body_md" label="正文" :errors="fields.body_md">
           <template #default="field"><MarkdownEditor ref="editor" :id="field.id" :model-value="values.body_md" :disabled="!editable || actionBlocked" :describedby="field.describedby" :invalid="Boolean(fields.body_md?.length)" @update:model-value="save.set('body_md', $event)" /></template>
         </ContentField>
         <ContentField name="related_tournament_id" label="赛事" :errors="fields.related_tournament_id" hint="选填，文章里会显示这项赛事。">
@@ -216,8 +215,8 @@ async function openPreview(): Promise<void> {
       </fieldset>
       <div class="b-formbar">
         <button v-if="canPublish" type="button" class="c-btn c-btn--primary" :disabled="save.pending.value || actionBlocked || !publish.canStart.value" @click="preparePublication">发布</button>
-        <button type="submit" class="c-btn c-btn--secondary" :disabled="!editable || actionBlocked || save.pending.value">保存草稿</button>
-        <button v-if="id" type="button" class="c-btn c-btn--quiet" :disabled="save.pending.value" @click="openPreview">预览草稿</button>
+        <button type="submit" class="c-btn c-btn--secondary" hidden :disabled="!editable || actionBlocked || save.pending.value">保存草稿</button>
+        <a v-if="id" class="c-btn c-btn--quiet" :href="previewURL || undefined" target="_blank" rel="noopener" @click.prevent="openPreview">预览草稿</a>
         <span v-if="article?.live && (draftChanged || save.dirty.value)" class="b-formbar__note">有改动还没发布</span>
       </div>
       <ArticlePublication v-if="publication" :draft="values" :pending="publish.pending.value" @publish="publishNow" @cancel="publication = false" />

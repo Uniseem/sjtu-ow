@@ -64,7 +64,7 @@ func accountSamples() []Sample {
 			Reason:     "你收到这封邮件，是因为这是该账号原来的登录邮箱。",
 		}),
 		specimen("avatar-taken-down", "账号", "头像被撤下", "上传的人", memberName, "server/internal/settings/avatars.go", mail.Letter{
-			Subject:    "你的头像已撤下",
+			Subject:    "你的头像已被撤下",
 			Lead:       "管理员撤下了你上传的头像，网站会使用默认头像。",
 			Facts:      [][2]string{{"原因", "色情低俗"}},
 			Paragraphs: []string{"你可以上传符合社区规则的新头像。如果有疑问，请联系管理员。"},

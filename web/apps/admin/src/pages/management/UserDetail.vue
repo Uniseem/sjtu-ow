@@ -4,6 +4,8 @@ import { getAdminUser } from "./pending"
 import AdminPage from "../../components/AdminPage.vue"
 import ResourceState from "../../components/management/ResourceState.vue"
 import UserEditor from "../../components/management/UserEditor.vue"
+import UserAccountState from "../../components/management/UserAccountState.vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import UserRules from "../../components/management/UserRules.vue"
 import { useResource } from "./use-resource"
 import { useAdminApi } from "../../core/api"
@@ -29,11 +31,13 @@ const resource = useResource(() => route.params.id, signal => getAdminUser(api, 
             </dd>
             <dt>注册</dt>
             <dd>{{ date(resource.data.value.user.CreatedAt) }}</dd>
+            <dt>最后登录</dt><dd>{{ date(resource.data.value.last_login_at) }}</dd>
             <dt v-if="resource.data.value.user.IsSuperuser">身份</dt>
             <dd v-if="resource.data.value.user.IsSuperuser">超级管理员</dd>
           </dl>
-          <a class="c-btn c-btn--secondary c-btn--sm" :href="`/members/${resource.data.value.user.ID}/`" target="_blank" rel="noopener">成员页 →</a>
+          <a class="c-btn c-btn--secondary c-btn--sm" :href="`/members/${resource.data.value.user.ID}/`" target="_blank" rel="noopener">成员页<CIcon name="external" class="size-4" /></a>
         </section>
+        <UserAccountState :key="`${resource.data.value.user.ID}:${resource.data.value.user.IsActive}`" :data="resource.data.value" @changed="resource.refresh" />
         <section class="b-section">
           <h2 class="b-section__title">游戏和战队</h2>
           <dl class="b-kv">

@@ -153,7 +153,6 @@ async function copy(): Promise<void> {
   </section>
   <AdminNotice v-if="board.teams_stale" message="分队有变化：保存分队之后有人取消报名或换了游戏 ID，请重新生成或手动调整。" kind="warn" />
   <AdminNotice v-for="(item, index) in board.warnings ?? []" :key="index" :message="item" kind="warn" />
-  <SaveStatus :snapshot="snapshot" :dirty="dirty" :pending="pending" @retry="save.save()" />
   <AdminNotice v-if="warning" :message="warning" kind="warn" />
   <AdminNotice v-if="generateMessage" :message="generateMessage" kind="error" />
   <section class="b-form">
@@ -169,6 +168,7 @@ async function copy(): Promise<void> {
       </nav>
     </div>
     <form class="b-form" @submit.prevent="generate">
+      <SaveStatus :snapshot="snapshot" :dirty="dirty" :pending="pending" idle-message="勾上、取消就自动保存" @retry="save.save()" />
       <table class="c-table c-table--stack">
         <thead><tr><th scope="col">上场</th><th scope="col">昵称</th><th scope="col">游戏 ID</th><th scope="col">能打的位置与段位</th><th v-if="contactsVisible" scope="col">联系方式</th><th scope="col">报名时间</th></tr></thead>
         <tbody>

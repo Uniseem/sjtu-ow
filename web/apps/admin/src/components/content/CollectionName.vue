@@ -6,7 +6,7 @@ import { primitiveValues, readSaveReceipt } from "@sjtu-ow/shared/save-receipt"
 import { readContentCurrent } from "../../pages/content/save-values"
 import { renameCollection, type CollectionNode } from "../../pages/content/pending"
 import SaveStatus from "../SaveStatus.vue"
-const props = defineProps<{ node: CollectionNode; path: string }>()
+const props = defineProps<{ node: CollectionNode; path: string; indent?: string }>()
 const api = useAdminApi()
 const emit = defineEmits<{ saved: [version: number, name: string] }>()
 const shape = { name: props.node.name }
@@ -30,8 +30,10 @@ function input(event: Event): void {
 </script>
 <template>
   <form class="b-filters" @submit.prevent="save.save">
-    <input type="text" name="name" class="c-input" :value="name" maxlength="255" :aria-label="`集合名称（改了就存）：${path}`" :disabled="!node.can_change" :aria-invalid="Boolean(save.fields.value.name?.length)" @input="input">
-    <button class="c-btn c-btn--quiet c-btn--sm" :disabled="!node.can_change || save.pending.value">改名</button>
-    <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
+    <SaveStatus idle-message="" :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
+    <span v-if="indent" aria-hidden="true">{{ indent }}</span>
+    <input type="text" name="name" class="c-input" :value="name" maxlength="255" aria-label="集合名称（改了就存）" :disabled="!node.can_change" :aria-invalid="Boolean(save.fields.value.name?.length)" @input="input">
+    <button hidden type="submit" class="c-btn c-btn--quiet c-btn--sm" :disabled="!node.can_change || save.pending.value">改名</button>
+
   </form>
 </template>

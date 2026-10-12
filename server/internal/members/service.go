@@ -470,13 +470,16 @@ type Group struct {
 
 // GroupMember 是分组里的一个人。
 type GroupMember struct {
-	ID        int64  `json:"id"`
-	UserID    int64  `json:"user_id"`
-	Nickname  string `json:"nickname"`
-	Email     string `json:"email,omitempty"` // 只给超管看
-	Title     string `json:"title"`
-	SortOrder int    `json:"sort_order"`
-	Joined    bool   `json:"joined"` // 现在还算不算已加入；不算的不会出现在成员墙上
+	ID                   int64  `json:"id"`
+	UserID               int64  `json:"user_id"`
+	Nickname             string `json:"nickname"`
+	Email                string `json:"email,omitempty"` // 只给超管看
+	Title                string `json:"title"`
+	SortOrder            int    `json:"sort_order"`
+	Joined               bool   `json:"joined"` // 现在还算不算已加入；不算的不会出现在成员墙上
+	AvatarImageID        *int64 `json:"avatar_image_id"`
+	DefaultAvatarImageID *int64 `json:"default_avatar_image_id"`
+	IsActive             bool   `json:"is_active"`
 }
 
 // GroupDetail 是一个分组连同组里的人。
@@ -567,8 +570,12 @@ func (s *Service) groupDetail(ctx context.Context, q db.DBTX, id int64, withEmai
 	if err != nil {
 		return nil, err
 	}
+	pool, err := media.LoadPool(ctx, q, "default_avatar")
+	if err != nil {
+		return nil, err
+	}
 	rows, err := q.QueryContext(ctx, `SELECT m.id, m.user_id, u.nickname, u.email, m.title, m.sort_order,
-		CASE WHEN `+joinedWhere+` THEN 1 ELSE 0 END
+		CASE WHEN `+joinedWhere+` THEN 1 ELSE 0 END, u.avatar_image_id, u.main_role, u.flex_roles, u.is_active
 		FROM member_group_memberships m JOIN users u ON u.id = m.user_id
 		WHERE m.group_id = ? ORDER BY m.sort_order, m.id`, id)
 	if err != nil {
@@ -578,11 +585,17 @@ func (s *Service) groupDetail(ctx context.Context, q db.DBTX, id int64, withEmai
 	d := &GroupDetail{Group: *g, Members: []GroupMember{}}
 	for rows.Next() {
 		var m GroupMember
-		var joined int
-		if err := rows.Scan(&m.ID, &m.UserID, &m.Nickname, &m.Email, &m.Title, &m.SortOrder, &joined); err != nil {
+		var joined, active int
+		var main, flex string
+		if err := rows.Scan(&m.ID, &m.UserID, &m.Nickname, &m.Email, &m.Title, &m.SortOrder, &joined, &m.AvatarImageID, &main, &flex, &active); err != nil {
 			return nil, err
 		}
 		m.Joined = joined == 1
+		m.IsActive = active == 1
+		if _, ok := accounts.RoleLabels[main]; !ok {
+			main = ""
+		}
+		m.DefaultAvatarImageID = media.PickAvatar(pool, m.UserID, avatarRole(main, accounts.PublicPositions(main, flex)))
 		if !withEmail {
 			m.Email = ""
 		}

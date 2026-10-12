@@ -10,7 +10,7 @@ function toggle(code:string,event:Event):void{const selected=new Set(props.roles
 </script>
 <template>
   <CField label="游戏 ID" :input-id="prefix + '-account'" :errors="fields.game_account_id" required>
-    <select :id="prefix + '-account'" name="game_account" :value="accountId || ''" required :disabled="disabled" @change="select"><option v-for="account in accounts" :key="account.id" :value="account.id">{{ account.battletag }}</option></select>
+    <select :id="prefix + '-account'" name="game_account" :value="accountId || ''" required :disabled="disabled" @change="select"><option v-for="account in accounts" :key="account.id" :value="account.id" :selected="account.id === accountId">{{ account.battletag }}</option></select>
   </CField>
   <fieldset class="c-field" :disabled="disabled">
     <legend class="c-field__label mb-2">能打的位置（至少一个）</legend>

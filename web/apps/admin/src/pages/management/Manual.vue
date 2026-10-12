@@ -18,7 +18,7 @@ const resource = useResource(() => true, signal => getApiAdminManual(api, { sign
     <section v-for="part in resource.data.value?.parts" :id="`manual-${part.key}`" :key="part.key" class="b-section" :data-manual-part="part.key">
       <h2 class="b-section__title">{{ part.title }}</h2>
       <ol class="b-steps">
-        <li v-for="(step, index) in part.steps" :key="index">{{ step.text }}<a v-if="step.link_url && localHref(step.link_url)" class="c-link" :href="localHref(step.link_url)">{{ step.link_label || '打开' }} →</a>
+        <li v-for="(step, index) in part.steps" :key="index">{{ step.text }} <a v-if="step.link_url && localHref(step.link_url)" class="c-link" :href="localHref(step.link_url)">{{ step.link_label || '打开' }} →</a>
         </li>
       </ol>
     </section>

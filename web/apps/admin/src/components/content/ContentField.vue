@@ -10,7 +10,7 @@ withDefaults(defineProps<{
 <template>
   <div class="c-field" :class="{ 'is-invalid': errors.length > 0 }">
     <label class="c-field__label" :for="name">
-      {{ label }}<span v-if="required" aria-hidden="true"> *</span>
+      {{ label }}<span v-if="required" class="c-field__req" aria-hidden="true">*</span>
     </label>
     <slot :id="name" :describedby="errors.length ? `${name}-error` : hint ? `${name}-hint` : undefined" />
     <p v-if="hint" :id="`${name}-hint`" class="c-field__help">{{ hint }}</p>

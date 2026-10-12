@@ -22,7 +22,12 @@ const tournament = shallowRef<GetApiAdminTournamentsIdOut | null>(null)
 const scrim = shallowRef<GetApiAdminScrimsIdOut | null>(null)
 const pending = shallowRef(true)
 const error = shallowRef("")
-const title = computed(() => `${props.mode === "new" ? "新建" : props.mode === "copy" ? "复制" : "编辑"}${activityLabel(props.kind)}`)
+const title = computed(() => {
+  const name = tournament.value?.tournament?.title ?? scrim.value?.scrim?.title ?? ""
+  if (props.mode === "new") return `新建${activityLabel(props.kind)}`
+  if (props.mode === "copy") return `复制${activityLabel(props.kind)}：${name}`
+  return name || `（未命名${activityLabel(props.kind)}）`
+})
 let request: AbortController | null = null
 let sequence = 0
 

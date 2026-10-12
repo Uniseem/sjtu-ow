@@ -476,7 +476,7 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 
 	if err := d.WriteTx(ctx, func(ctx context.Context, tx *db.Tx) error {
 		_, err := tx.ExecContext(ctx, `UPDATE pages SET latest_revision_id=(SELECT id FROM page_revisions r WHERE r.page_id=pages.id ORDER BY created_at DESC,id DESC LIMIT 1)
- WHERE kind='news_index' AND EXISTS(SELECT 1 FROM page_revisions r WHERE r.page_id=pages.id)`)
+ WHERE kind IN ('news_index','site_page') AND EXISTS(SELECT 1 FROM page_revisions r WHERE r.page_id=pages.id)`)
 		return err
 	}); err != nil {
 		return fmt.Errorf("column latest revision: %w", err)
@@ -496,6 +496,14 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 
 		defer rows.Close()
 		if err := d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+			var edited int
+			if err := tx.QueryRowContext(txCtx, "SELECT COUNT(*) FROM content_editor_drafts WHERE scope='home_pins'").Scan(&edited); err != nil {
+				return err
+			}
+			// Re-running an import must not restore old online pins after a new publication.
+			if edited > 0 {
+				return nil
+			}
 			for rows.Next() {
 				var articleID int64
 				var sortOrder int
@@ -515,6 +523,13 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 		}); err != nil {
 			return fmt.Errorf("7. 导入首页置顶 (content_homepagepinnedarticle -> home_pins)：写入失败: %w", err)
 		}
+	}
+
+	if err := importHomeState(ctx, d, legacy); err != nil {
+		return fmt.Errorf("导入首页状态和修订: %w", err)
+	}
+	if err := importPlainPageState(ctx, d, legacy); err != nil {
+		return err
 	}
 
 	// 8. 导入评论 (comments_comment -> comments)

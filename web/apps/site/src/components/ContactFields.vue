@@ -27,7 +27,8 @@ defineEmits<{
       :disabled="disabled"
       @change="$emit('type', ($event.target as HTMLSelectElement).value)"
     >
-      <option v-for="type in CONTACT_TYPES" :key="type.value" :value="type.value">{{ type.label }}</option>
+      <option value="" :selected="!values.type">---------</option>
+      <option v-for="type in CONTACT_TYPES" :key="type.value" :value="type.value" :selected="values.type === type.value">{{ type.label }}</option>
     </select>
   </CField>
   <CField label="内容" :input-id="prefix + '_value'" required :errors="fields.value">

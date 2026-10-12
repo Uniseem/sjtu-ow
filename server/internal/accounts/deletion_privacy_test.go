@@ -22,7 +22,7 @@ func deletionPrivacyFixture(t *testing.T) (*db.DB, *Service, *User, *app.Ctx, *d
 	execAll(t, d,
 		`INSERT INTO images(id,title,file_name,file_size,width,height,created_at,version) VALUES(7,'旧头像','old.webp',100,100,100,'2026-01-01',1),(9,'新头像','new.webp',100,100,100,'2026-01-01',1),(11,'默认图库','default.webp',100,100,100,'2026-01-01',1)`,
 		`INSERT INTO avatar_submissions(user_id,image_id,status,created_at) VALUES(`+itoa(owner.ID)+`,7,'approved','2026-01-01'),(`+itoa(owner.ID)+`,9,'approved','2026-01-02')`,
-		`UPDATE users SET avatar_image_id=9 WHERE id=`+itoa(owner.ID),
+		`UPDATE users SET avatar_image_id=9,last_login_at='2026-10-12T08:09:10Z' WHERE id=`+itoa(owner.ID),
 	)
 	if err := d.WriteTx(ctx.Context, func(c context.Context, tx *db.Tx) error {
 		if _, err := tx.ExecContext(c, `INSERT INTO email_codes(purpose,email_norm,code_hash,created_at,expires_at) VALUES('password_reset',?,'hash','2026-01-01','2099-01-01')`, owner.EmailNorm); err != nil {
@@ -66,7 +66,7 @@ func TestDeletionRemovesUploadedImagesAndOldHeldLettersKeepsCurrentBatch(t *test
 	if _, err := svc.DeleteAccount(ctx, DeleteAccountInput{Password: "Password123!@#"}); err != nil {
 		t.Fatal(err)
 	}
-	if countOf(t, d, `SELECT COUNT(*) FROM images WHERE id IN(7,9)`) != 0 || countOf(t, d, `SELECT COUNT(*) FROM images WHERE id=11`) != 1 || countOf(t, d, `SELECT COUNT(*) FROM avatar_submissions WHERE user_id=?`, owner.ID) != 0 || countOf(t, d, `SELECT COUNT(*) FROM users WHERE id=? AND avatar_image_id IS NOT NULL`, owner.ID) != 0 {
+	if countOf(t, d, `SELECT COUNT(*) FROM images WHERE id IN(7,9)`) != 0 || countOf(t, d, `SELECT COUNT(*) FROM images WHERE id=11`) != 1 || countOf(t, d, `SELECT COUNT(*) FROM avatar_submissions WHERE user_id=?`, owner.ID) != 0 || countOf(t, d, `SELECT COUNT(*) FROM users WHERE id=? AND (avatar_image_id IS NOT NULL OR last_login_at IS NOT NULL)`, owner.ID) != 0 {
 		t.Fatal("uploaded avatar identity remained or default-pool image was removed")
 	}
 	if countOf(t, d, `SELECT COUNT(*) FROM email_codes WHERE email_norm=?`, owner.EmailNorm) != 0 || countOf(t, d, `SELECT COUNT(*) FROM account_code_flows WHERE email_norm=?`, owner.EmailNorm) != 0 {

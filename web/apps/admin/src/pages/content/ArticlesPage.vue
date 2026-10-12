@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import CStatus from "@sjtu-ow/ui/CStatus.vue"
 import { formatContentTime } from "./types"
 import { computed, onMounted, ref, watch } from "vue"
@@ -96,11 +97,7 @@ onMounted(() => { void resource.load() })
         </tr>
       </tbody>
     </table>
-    <section v-else-if="resource.data.value" class="c-empty">
-      <h2 class="c-empty__title">没有文章</h2>
-      <p>换个筛选条件，或者写一篇。</p>
-      <RouterLink v-if="permission.writeArticle.value" class="c-btn c-btn--primary" to="/admin/articles/new/">写文章</RouterLink>
-    </section>
+    <CEmpty v-else-if="resource.data.value" title="没有文章" message="换个筛选条件，或者写一篇。" :action-url="permission.writeArticle.value ? '/admin/articles/new/' : undefined" :action-label="permission.writeArticle.value ? '写文章' : undefined" />
     <ContentPager v-if="resource.data.value" :page="resource.data.value.page" :total="resource.data.value.total" :page-size="resource.data.value.page_size" :pending="resource.pending.value" />
   </AdminPage>
 </template>

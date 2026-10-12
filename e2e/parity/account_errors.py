@@ -125,7 +125,7 @@ def submit(tools, name, evaluate):
             const oldBody=new URLSearchParams(new FormData(form));
             for(const [key,value] of Object.entries({json.dumps(SCENARIOS[name][2])}))oldBody.set(key,String(value));
             if({json.dumps(name)}==='error-resend-limit'||{json.dumps(name)}==='error-resend-cooldown')oldBody.set('action','resend');
-            const response=await fetch({json.dumps(endpoint)},{{method:'POST',headers:{{'Content-Type':{json.dumps('application/json' if is_new else 'application/x-www-form-urlencoded')}}}},body:{json.dumps(json.dumps(prime)) if is_new else 'oldBody'},redirect:'manual'}});
+            const response=await fetch({json.dumps(endpoint)},{{method:'POST',headers:{{'Content-Type':{json.dumps('application/json' if is_new else 'application/x-www-form-urlencoded')}}},body:{json.dumps(json.dumps(prime)) if is_new else 'oldBody'},redirect:'manual'}});
             code=response.status;if(code===429)return true;
           }}
           throw new Error('real rate bucket did not reach429, last='+code);

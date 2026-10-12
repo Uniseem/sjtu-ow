@@ -20,6 +20,10 @@ import {
 } from "@sjtu-ow/api"
 
 export interface ActivityNoticePreview {
+  starts_at?: string | null
+  moved_from?: string | null
+  object_title?: string
+  sjtu_only?: boolean
   audience: "all" | "participants"
   subject: string
   body_text: string
@@ -43,6 +47,10 @@ export function noticePreview(value: unknown): ActivityNoticePreview | null {
   if (item.note_max !== undefined && (typeof item.note_max !== "number" || !Number.isSafeInteger(item.note_max) || item.note_max < 0)) return null
   if (typeof item.preview_version !== "string" || !item.preview_version) return null
   return {
+    ...(typeof item.starts_at === "string" || item.starts_at === null ? { starts_at: item.starts_at } : {}),
+    ...(typeof item.moved_from === "string" || item.moved_from === null ? { moved_from: item.moved_from } : {}),
+    ...(typeof item.object_title === "string" ? { object_title: item.object_title } : {}),
+    ...(typeof item.sjtu_only === "boolean" ? { sjtu_only: item.sjtu_only } : {}),
     audience: item.audience,
     subject: item.subject,
     body_text: item.body_text,

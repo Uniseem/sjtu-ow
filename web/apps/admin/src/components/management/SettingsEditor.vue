@@ -20,13 +20,15 @@ const initial = settingsValues(props.settings)
 const save = useAdminSave({ initial, version: props.settings.version, readCurrent: currentReader(initial),
   transport: (body, key, signal) => patch(body, { key, signal }) })
 const email = useAdminAction<null, Awaited<ReturnType<typeof postApiAdminSettingsTestEmail>>>((_, extras) => postApiAdminSettingsTestEmail(api, extras), result => { emailMessage.value = result.message })
-import { ref } from "vue"
+import { ref, computed } from "vue"
+const orderedSections = computed(() => ["站点信息", "栏目横幅", "社区参数", "邮件发送", "AI 审核"].map(title => { const section = settingsSections.find(section => section.title === title); if (!section) return { title, fields: [] }; const orders: Record<string, string[]> = { "社区参数": ["team_max_members","team_max_captained","max_game_accounts","scrim_reminder_hours","tournament_reminder_hours"], "邮件发送": ["smtp_host","smtp_port","smtp_security","smtp_username","from_address","from_name","email_subject_prefix"], "AI 审核": ["moderation_enabled","moderation_base_url","moderation_model","moderation_notify_email","moderation_daily_limit","moderation_image_enabled","moderation_extra_params","moderation_timeout_seconds","moderation_max_tokens"] }; return { title, fields: [...section.fields].sort((a,b) => (orders[title]?.indexOf(a.name) ?? 0) - (orders[title]?.indexOf(b.name) ?? 0)) } }))
 const emailMessage = ref("")
 const backup = ref<InstanceType<typeof BackupEditor>|null>(null)
 const sidePending=ref(false)
-async function beforeSide(){if(sidePending.value)return false;if(!await save.flush())return false;sidePending.value=true;return true}
+async function beforeSide(){if(sidePending.value)return false;sidePending.value=true;if(!await save.flush()){sidePending.value=false;return false}return true}
 function sideChanged(settings:Settings){save.controller.reset(settingsValues(settings),settings.version)}
 function sideSettled(){sidePending.value=false}
+async function saveAll() { if (await save.flush()) await backup.value?.flush() }
 async function testEmail() { if (!sidePending.value && await save.flush()) { await email.submit(null) } }
 function update(name: keyof SettingsValues, event: Event) {
   const input = event.target as HTMLInputElement
@@ -38,32 +40,34 @@ function update(name: keyof SettingsValues, event: Event) {
 <template>
   <div class="b-split">
     <div class="b-form">
-      <form class="b-form" novalidate @submit.prevent="save.save">
-        <fieldset :disabled="sidePending" v-for="section in settingsSections" :key="section.title" class="b-fieldset">
+      <form class="b-form" novalidate @submit.prevent="saveAll">
+      <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
+        <fieldset :disabled="sidePending" v-for="section in orderedSections" :key="section.title" class="b-fieldset">
           <legend class="b-fieldset__legend">{{ section.title }}</legend>
-          <div v-for="field in section.fields" :key="field.name" class="c-field" :class="{ 'is-invalid': save.fields.value[field.name]?.length }">
-            <label v-if="field.kind !== 'checkbox'" class="c-field__label" :for="`setting-${field.name}`">{{ field.label }}</label>
+          <template v-for="field in section.fields" :key="field.name"><div class="c-field" :class="{ 'is-invalid': save.fields.value[field.name]?.length }">
+            <label v-if="field.kind !== 'checkbox'" class="c-field__label" :for="`setting-${field.name}`">{{ field.label }}<span v-if="field.required" class="c-field__req" aria-hidden="true">*</span></label>
             <label v-if="field.kind === 'checkbox'" class="c-check">
-              <input :id="`setting-${field.name}`" type="checkbox" :checked="Boolean(save.values.value[field.name])" @change="update(field.name, $event)" />{{ field.label }}</label>
-              <textarea v-else-if="field.kind === 'textarea'" :id="`setting-${field.name}`" class="c-input" rows="4" :value="String(save.values.value[field.name])" @input="update(field.name, $event)" @blur="save.flush" />
-              <select v-else-if="field.kind === 'select'" :id="`setting-${field.name}`" class="c-input" :value="save.values.value[field.name]" @change="update(field.name, $event)">
+              <input :name="field.name" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" type="checkbox" :checked="Boolean(save.values.value[field.name])" @change="update(field.name, $event)" />{{ field.label }}<span v-if="field.required" class="c-field__req" aria-hidden="true">*</span></label>
+              <textarea v-else-if="field.kind === 'textarea'" :name="field.name" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" class="c-input" rows="3" :value="String(save.values.value[field.name])" @input="update(field.name, $event)" @blur="save.flush" />
+              <select v-else-if="field.kind === 'select'" :name="field.name" :required="field.required" :id="`setting-${field.name}`" class="c-input" :value="save.values.value[field.name]" @change="update(field.name, $event)">
                 <option v-for="choice in field.choices" :key="choice.value" :value="choice.value">{{ choice.label }}</option>
               </select>
-              <input v-else :id="`setting-${field.name}`" class="c-input" :type="field.kind" :value="save.values.value[field.name]" :min="field.min" :max="field.max" @input="update(field.name, $event)" @blur="save.flush" />
+              <input v-else :name="field.name" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" class="c-input" :type="field.kind" :value="save.values.value[field.name]" :min="field.min" :max="field.max" @input="update(field.name, $event)" @blur="save.flush" />
               <p v-if="field.help" class="c-field__help">{{ field.help }}</p>
               <p v-for="error in save.fields.value[field.name]" :key="error" class="c-field__error" role="alert">{{ error }}</p>
             </div>
+<SettingsImages v-if="field.name === 'site_description'" only="site" :version="()=>save.snapshot.value.version" :settings="settings" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
+<SecretEditor v-if="field.name === 'smtp_username' || field.name === 'moderation_enabled'" embedded :field="field.name === 'smtp_username' ? 'smtp_password' : 'moderation_api_key'" :label="field.name === 'smtp_username' ? 'SMTP 密码' : '接口密钥'" :present="field.name === 'smtp_username' ? settings.has_smtp_password : settings.has_moderation_api_key" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
+</template>
+<SettingsImages v-if="section.title === '栏目横幅'" only="banners" :version="()=>save.snapshot.value.version" :settings="settings" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
           </fieldset>
-          <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
+          <BackupEditor ref="backup" embedded />
+
           <div class="b-formbar">
-            <button class="c-btn c-btn--primary" :disabled="save.pending.value">保存</button>
-            <span class="b-formbar__note">改了就自动保存；首页、横幅这些页面会跟着重新生成。</span>
+            <button hidden class="c-btn c-btn--primary" :disabled="save.pending.value">保存</button>
+            <span class="b-formbar__note">改了就自动保存（密钥离开框时才存）；首页、横幅这些页面会跟着重新生成。</span>
           </div>
         </form>
-        <SettingsImages :version="()=>save.snapshot.value.version" :settings="settings" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
-        <SecretEditor field="smtp_password" label="SMTP 密码" :present="settings.has_smtp_password" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
-        <SecretEditor field="moderation_api_key" label="接口密钥" :present="settings.has_moderation_api_key" :before-action="beforeSide" @changed="sideChanged" @settled="sideSettled" />
-        <BackupEditor ref="backup" />
       </div>
       <aside class="b-aside">
         <section class="b-section">

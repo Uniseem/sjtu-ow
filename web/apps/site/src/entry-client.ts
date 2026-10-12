@@ -10,6 +10,7 @@ import { styleguideHidden } from "./specimen"
 import { toast } from "./toasts"
 import { VIEWER, type Viewer } from "./viewer"
 import { installDropdowns } from "./dropdowns"
+import { runtimeStyle } from "./runtime-style"
 import { PageRedirect, safeNext } from "@sjtu-ow/shared/navigation"
 
 const raw = document.getElementById("ow-state")?.textContent ?? "null"
@@ -40,7 +41,7 @@ installDropdowns()
 
 // The route loadbar: not on the first (server-rendered) page, only on
 // navigations from one page to another.
-const bar = new Loadbar(document.documentElement, () =>
+const bar = new Loadbar({ classList: document.documentElement.classList, style: runtimeStyle(':root') }, () =>
   progressFromMatrix(getComputedStyle(document.querySelector(".c-loadbar") ?? document.body).transform),
 )
 router.beforeEach((_to, from) => {
@@ -94,6 +95,7 @@ router.beforeResolve(async (to, from) => {
   let data: PageData
   try {
     data = await load({ params: flat(to.params), query: flat(to.query), url: to.fullPath, api, viewer: async () => viewer, fetch, apiBase: "" })
+    if (data.document) return leave(to.fullPath)
   } catch (err) {
     if (err instanceof PageRedirect) return leave(err.location)
     const status = statusOf(err)

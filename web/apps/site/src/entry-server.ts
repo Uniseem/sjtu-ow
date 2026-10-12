@@ -11,7 +11,7 @@ import { VIEWER, type Viewer } from "./viewer"
 import { PageRedirect, safeNext } from "@sjtu-ow/shared/navigation"
 
 export type Rendered =
-  | { kind: "document"; html: string }
+  | { kind: "document"; html: string; contentType?: "text/plain" }
   | { kind: "slash"; location: string }
   | { kind: "redirect"; location: string; status: 301 | 302 }
   | { kind: "login"; next: string }
@@ -96,6 +96,9 @@ export async function render(url: string, opts: RenderOpts): Promise<Rendered> {
   }
   if (styleguideHidden(pathname, viewer.user?.admin === true)) return error(404, viewer)
   if (loadR.value.document) {
+    if (loadR.value.document.kind === 'plain' && /^\/admin\/scrims\/\d{1,18}\/split\/text\/$/.test(pathname)) {
+      return { kind: 'document', html: loadR.value.document.text, contentType: 'text/plain' }
+    }
     if (!/^\/_styleguide\/emails\/[a-z][a-z0-9-]{0,63}\/$/.test(pathname) || loadR.value.document.kind !== "mail") {
       throw new Error("Unexpected standalone document loader")
     }

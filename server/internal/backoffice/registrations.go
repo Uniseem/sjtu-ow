@@ -131,7 +131,7 @@ func listRegistrations(ctx context.Context, q db.DBTX, in RegistrationQuery) (Re
 	if err := rows.Err(); err != nil {
 		return out, err
 	}
-	rows, err = q.QueryContext(ctx, `SELECT id, title FROM tournaments ORDER BY created_at DESC, id DESC`)
+	rows, err = q.QueryContext(ctx, `SELECT id, title FROM tournaments ORDER BY registration_opens_at DESC, id ASC`)
 	if err != nil {
 		return out, err
 	}
@@ -302,7 +302,7 @@ func (s *Service) registration(ctx *app.Ctx, in IDIn) (RegistrationDetailOut, er
 				contacts.Close()
 				return out, err
 			}
-			byUser[user] = append(byUser[user], kind+" "+value)
+			byUser[user] = append(byUser[user], contactLabel(kind)+" "+value)
 		}
 		contacts.Close()
 		if err := contacts.Err(); err != nil {

@@ -17,6 +17,6 @@ export function useContentPermissions() {
     canEdit: (article: Article) => has("articles.edit_any") || article.owner_id === user.value?.id,
     canPublish: (article: Article) => has("articles.edit_any")
       || has("articles.publish_own") && article.owner_id === user.value?.id,
-    canUnpublish: (article: Article) => has("articles.edit_any") && article.live,
+    canUnpublish: (article: Article) => article.live && (has("articles.edit_any") || article.owner_id === user.value?.id),
   }
 }

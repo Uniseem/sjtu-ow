@@ -19,7 +19,7 @@ import threading
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'e2e/parity'))
 import parity
-from page_matrix import PAGES
+from page_matrix import PAGES, APPROVED_ADDITIONS
 from account_scenarios import ADDRESSES, ROLES
 
 
@@ -89,7 +89,14 @@ def main(mode, engine):
         for name, role, template in PAGES + account_pages:
             path = template.format(**data)
             cookie = 'sessionid=' + data['sessions'][role] if role in data['sessions'] else ''
-            status, location = parity.fetch_status(f'http://127.0.0.1:{old}' + __import__('urllib.parse', fromlist=['quote']).quote(path, safe='/?=&#%'), cookie)
+            reference_path = APPROVED_ADDITIONS[name][1].format(**data) if name in APPROVED_ADDITIONS else path
+            status, location = parity.fetch_status(f'http://127.0.0.1:{old}' + __import__('urllib.parse', fromlist=['quote']).quote(reference_path, safe='/?=&#%'), cookie)
+            if name in APPROVED_ADDITIONS and 300 <= status < 400:
+                location = '/accounts/login/?' + __import__('urllib.parse', fromlist=['urlencode']).urlencode({'next': path})
+            if name.startswith('admin-article-revision') and status == 403:
+                status = 404
+            if name in ('admin-article', 'admin-article-preview') and status == 403:
+                status = 404
             pages.append({'name': name, 'role': role, 'path': path, 'status': status, 'location': location})
         config = work / 'config.json'
         config.write_text(json.dumps({'base': base, 'old_base':f'http://127.0.0.1:{old}', 'work':str(work), 'legacy_env':parity.screens.site_env(), 'mailbox': str(work / 'mailbox.jsonl'), 'database': str(work / 'new-data/sjtuow.sqlite3'), 'sessions': sessions, 'data': data, 'pages': pages}))

@@ -50,15 +50,14 @@ onMounted(async () => {
     <form class="b-form" @submit.prevent="upload">
       <fieldset class="b-fieldset" :disabled="!canUpload || queue.pending.value || queue.uncertain.value">
         <div class="c-field">
-          <label class="c-field__label" for="upload_collection">放进集合</label>
+          <label class="c-field__label" for="upload_collection">放进集合<span class="c-field__req" aria-hidden="true">*</span></label>
           <select id="upload_collection" v-model="collection" class="c-input" name="collection" required>
-            <option value="" disabled>选择集合</option>
-            <option v-for="item in (collections.data.value?.collections ?? []).filter(item => item.can_upload)" :key="item.id" :value="item.key">{{ item.name }}</option>
+            <option v-for="item in (collections.data.value?.collections ?? []).filter(item => item.can_upload)" :key="item.id" :value="item.key">{{ item.parent_id === null ? '（根）' : item.name }}</option>
           </select>
         </div>
         <div class="c-field">
           <label class="c-field__label" for="files">图片<span class="c-field__req" aria-hidden="true">*</span></label>
-          <input id="files" ref="input" type="file" name="files" accept=".jpg,.jpeg,.png,.webp" multiple aria-describedby="files-help" @change="files">
+          <input id="files" ref="input" type="file" name="files" :required="!waiting" accept=".jpg,.jpeg,.png,.webp" multiple aria-describedby="files-help" @change="files">
           <div id="files-help" class="c-field__help">可以一次选多张。JPG、PNG、WebP，每张不超过 5 MB；JPG 和 PNG 会转成 WebP。标题先用文件名，传完可以改。</div>
         </div>
         <button v-if="chosen.length" type="button" class="c-btn c-btn--secondary c-btn--sm" @click="enqueue">加入上传列表（{{ chosen.length }} 张）</button>
@@ -67,7 +66,7 @@ onMounted(async () => {
       <p v-if="queue.message.value" class="c-notice c-notice--error" role="alert">{{ queue.message.value }}</p>
       <p v-if="queue.items.value.length" class="b-count" role="status">已上传 {{ queue.complete.value }} / {{ queue.items.value.length }} 张</p>
       <div class="b-actions">
-        <button class="c-btn c-btn--primary" :disabled="!canUpload || queue.pending.value || queue.uncertain.value || (!chosen.length && !waiting)">{{ queue.pending.value ? '正在上传…' : '上传' }}</button>
+        <button class="c-btn c-btn--primary" :disabled="!canUpload || queue.pending.value || queue.uncertain.value">{{ queue.pending.value ? '正在上传…' : '上传' }}</button>
         <button v-if="queue.uncertain.value" type="button" class="c-btn c-btn--secondary" :disabled="queue.pending.value" @click="queue.retry">重试上次上传</button>
         <RouterLink v-if="!queue.pending.value && !queue.uncertain.value" class="c-btn c-btn--secondary" to="/admin/images/">{{ queue.complete.value ? '返回图片' : '不传了' }}</RouterLink>
       </div>

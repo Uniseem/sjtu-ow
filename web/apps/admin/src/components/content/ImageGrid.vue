@@ -22,6 +22,7 @@ function collectionName(id: number | null, collections: Collection[]): string {
         <span class="b-grid__name">{{ image.title }}</span>
         <span class="b-grid__meta">{{ collectionName(image.collection_id, collections) }}<template v-if="!choose"> · {{ image.width }}×{{ image.height }}</template></span>
       </RouterLink>
+
     </li>
   </ul>
 </template>

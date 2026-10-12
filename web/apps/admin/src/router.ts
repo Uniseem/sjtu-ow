@@ -26,6 +26,9 @@ export function createAdminRouter(session: AdminSession) {
     if (!session.ready.value) await session.refresh()
     if (!session.user.value) { window.location.assign("/accounts/login/?next="+encodeURIComponent(to.fullPath));return false }
     if (!session.can("admin.enter")) { showReadError(new ApiError(403,"forbidden","没有权限")); return false }
+    if (to.meta.superuser && !session.user.value.superuser || typeof to.meta.cap === 'string' && !session.can(to.meta.cap)) {
+      showReadError(new ApiError(403, 'forbidden', '没有权限')); return false
+    }
     return true
   })
   return router

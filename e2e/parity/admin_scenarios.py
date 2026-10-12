@@ -90,6 +90,10 @@ def extend_seed(data: dict) -> dict:
     from django.core.files.storage import default_storage
     from django.utils import timezone
     from moderation.models import ModerationItem, Risk, TargetType, Category
+    from tournaments.models import Tournament
+    from tournaments import services as tournament_services
+    from scrims.models import Scrim
+    from scrims import services as scrim_services
 
     actor = User.objects.get(email='officer@screens.test')
     member = User.objects.get(pk=data['member'])
@@ -147,8 +151,33 @@ def extend_seed(data: dict) -> dict:
             'status': ModerationItem.Status.PENDING,
         })
     ModerationItem.objects.filter(pk__in=[item.pk, motto.pk]).update(created_at=now)
+    # Publish screenshots exercise the legitimate draft -> published path.
+    # Keep cup/scrim published for every other page and illegal-operation gates.
+    drafts = {}
+    reset_fields = {'status', 'published_at', 'reminder_sent_at', 'moved_from',
+                    'teams_generated_at', 'roster_changed_at', 'created_by'}
+    for model, source_key, services in ((Tournament, 'cup', tournament_services),
+                                        (Scrim, 'scrim', scrim_services)):
+        source = model.objects.get(pk=data[source_key])
+        values = {
+            field.attname: getattr(source, field.attname)
+            for field in model._meta.concrete_fields
+            if not field.primary_key and field.name not in reset_fields
+            and field.name != 'title' and not getattr(field, 'auto_now', False)
+            and not getattr(field, 'auto_now_add', False)
+        }
+        values.update(status='draft', created_by=actor)
+        for field in model._meta.concrete_fields:
+            if field.name in reset_fields - {'status', 'created_by'}:
+                values[field.attname] = None
+        draft, _ = model.objects.update_or_create(
+            title='发布验收：' + source.title, defaults=values)
+        gaps = services.missing(draft)
+        if gaps:
+            raise RuntimeError('publish parity draft is incomplete: ' + ', '.join(gaps))
+        drafts[source_key + '_draft'] = draft.pk
     identifiers = {'font': family.pk, 'font_face': face.pk,
-                   'moderation': item.pk, 'moderation_motto': motto.pk}
+                   'moderation': item.pk, 'moderation_motto': motto.pk, **drafts}
     data.update(identifiers)
     return identifiers
 
@@ -176,6 +205,11 @@ def validate_import(work: Path, data: dict) -> None:
         with TTFont(io.BytesIO(payload)) as font_file:
             if not font_file.getBestCmap():
                 raise RuntimeError('backend parity font cannot be decoded')
+        for table, key in (('tournaments', 'cup_draft'), ('scrims', 'scrim_draft')):
+            row = database.execute(f'SELECT status FROM {table} WHERE id=?',
+                                   (data[key],)).fetchone()
+            if row != ('draft',):
+                raise RuntimeError('publish parity draft was not imported: ' + key)
         for key in ('moderation', 'moderation_motto'):
             row = database.execute('SELECT checked_at FROM moderation_items WHERE id=?',
                                    (data[key],)).fetchone()

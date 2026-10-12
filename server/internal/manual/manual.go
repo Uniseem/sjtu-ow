@@ -37,7 +37,7 @@ var ownerPart = Part{
 			Text: "出问题时看待办：邮件发不出去、后台任务没在运行、备份没跑或上传失败、AI 审核有内容没看成，每条都写了原因和去哪儿处理。",
 		},
 		{
-			Text: "每天夜里服务器的定时任务会备份、清理旧数据（顺带提醒和关闭没人处理的入队申请），见 README「定时维护」。",
+			Text: "每天夜里服务器的定时任务会备份、清理旧数据（顺带提醒和关闭没人处理的入队申请），见 README「定时维护」。异地备份填完对象存储后先点全站设置里的「测试对象存储」。",
 		},
 		{
 			Text:      "年审、换届总结要报的数（办了几场内战和赛事、多少人参加、新增多少成员）在「数据」，选好时间段可以下载逐场的表。",
@@ -97,7 +97,7 @@ var tournamentsPart = Part{
 	Title: "赛事管理员",
 	Steps: []Step{
 		{
-			Text:      "新建赛事：后台首页的「新建赛事」，或者「活动 → 赛事」右上的「新建赛事」。标题、报名开始和截止时间必填；填了比赛时间，开赛前才会自动提醒。报名方式默认是个人报名（每人自己报，你来编队），整队报名由队长为全队报。「选手联系方式」（比如选手群号）只给报了名的人看。每年都办的赛事，在去年那场的「更多 → 复制」里建，时间按整周挪到今年。详细说明用 Markdown 写，图片直接拖进来或粘贴就上传，B 站视频把链接单独贴一行。",
+			Text:      "新建赛事：后台首页的「新建赛事」，或者「活动 → 赛事」右上的「新建赛事」。标题、报名开始和截止时间必填；填了比赛时间，开赛前才会自动提醒。报名方式默认是个人报名（每人自己报，你来编队），整队报名由队长为全队报。「选手联系方式」（比如选手群号）只给报了名的人看。每年都办的赛事，在去年那场的「更多 → 复制」里建，时间按整周挪到今年。详细说明用 Markdown 写（192 起）：工具栏有标题、加粗、列表、链接等按钮，点「?」看写法、点眼睛图标看排出来的样子；图片直接拖进来或粘贴就上传，B 站视频把链接单独贴一行。",
 			LinkURL:   "/admin/tournaments/new/",
 			LinkLabel: "新建赛事",
 		},
@@ -107,7 +107,7 @@ var tournamentsPart = Part{
 			LinkLabel: "赛事列表",
 		},
 		{
-			Text:      "审核报名：首页待办会写有几份等你审，「审核 → 报名」标签上也写着件数；在「活动 → 赛事」列表的「待审核」一列可以直接点进那项赛事的。逐条通过或驳回（驳回要写备注），也可以勾选后一起通过。做完会问要不要给队长发信（做完事顺带的信都先问一句，可以不发）。",
+			Text:      "审核报名：首页待办会写有几份等你审，「审核 → 报名」标签上也写着件数；在「活动 → 赛事」列表的「待审核」一列可以直接点进那项赛事的。逐条通过或驳回（驳回要写备注），也可以勾选后一起通过。做完会问要不要给队长发信（v7.8 起做完事顺带的信都先问一句，可以不发）。",
 			LinkURL:   "/admin/registrations/",
 			LinkLabel: "报名审核",
 		},
@@ -164,7 +164,7 @@ func PartsFor(v *app.Viewer) []Part {
 		return nil
 	}
 	if v.Superuser {
-		return []Part{ownerPart, contentPart, tournamentsPart, scrimsPart, authorsPart}
+		return []Part{ownerPart, contentPart, tournamentsPart, scrimsPart}
 	}
 
 	var parts []Part
@@ -177,7 +177,7 @@ func PartsFor(v *app.Viewer) []Part {
 	if v.HasRole(accounts.RoleScrimAdmin) || v.HasCap(accounts.CapScrimsManage) {
 		parts = append(parts, scrimsPart)
 	}
-	if v.HasRole(accounts.RoleCertifiedAuthor) && len(parts) == 0 {
+	if v.HasRole(accounts.RoleCertifiedAuthor) && !v.HasRole(accounts.RoleContentEditor) {
 		parts = append(parts, authorsPart)
 	}
 	return parts

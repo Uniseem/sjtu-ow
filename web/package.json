@@ -4,7 +4,7 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "scripts": {
-    "test": "pnpm typecheck && pnpm --filter @sjtu-ow/styles build && vitest run && pnpm --filter @sjtu-ow/site test && pnpm --filter @sjtu-ow/admin test",
+    "test": "pnpm typecheck && pnpm --filter @sjtu-ow/site test && vitest run && pnpm --filter @sjtu-ow/admin test",
     "typecheck": "vue-tsc --noEmit"
   },
   "devDependencies": {

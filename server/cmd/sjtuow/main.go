@@ -532,6 +532,10 @@ func runImport() error {
 	}
 
 	fmt.Println("全站设置数据导入成功。")
+	if err := audit.ImportLegacyLogs(ctx, d, legacyDB); err != nil {
+		return fmt.Errorf("导入操作记录失败: %w", err)
+	}
+	fmt.Println("操作记录数据导入成功。")
 	return nil
 }
 

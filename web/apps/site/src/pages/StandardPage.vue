@@ -1,11 +1,16 @@
 <script lang="ts">
 import type { LoadCtx } from "../router"
-import { getApiPageSlug, type GetApiPageSlugOut } from "@sjtu-ow/api"
+import { getApiPageSlug, getApiAdminPagesId, type GetApiPageSlugOut } from "@sjtu-ow/api"
 
 // content/templates/content/standard_page.html: /about/, /terms/, /privacy/
 // and any other page an editor made under the home page (/<slug>/). Go's 404
 // (missing or not live) goes through untouched: the router paints the 404 page.
 export async function load(ctx: LoadCtx) {
+  if (ctx.url.startsWith('/admin/pages/')) {
+    const draft = await getApiAdminPagesId(ctx.api, ctx.params.id!)
+    const page: GetApiPageSlugOut = { slug: draft.page.slug, title: draft.draft.title, body_html: draft.body_html, seo_title: draft.draft.seo_title, search_description: draft.draft.search_description, last_published_at: draft.page.last_published_at }
+    return { title: page.seo_title || page.title, page }
+  }
   const slug = ctx.params.slug ?? new URL(ctx.url, "http://site").pathname.split("/").filter(Boolean)[0]
   const page: GetApiPageSlugOut = await getApiPageSlug(ctx.api, slug)
   return { title: page.seo_title || page.title, page }
@@ -13,13 +18,11 @@ export async function load(ctx: LoadCtx) {
 </script>
 <script setup lang="ts">
 import { computed, inject } from "vue"
-import { useRoute } from "vue-router"
 import { owDate, owISO } from "@sjtu-ow/shared/time"
 import { usePageMeta } from "../meta"
 
 const data = inject<{ title: string; page: GetApiPageSlugOut }>("page-data")
 const page = computed(() => data?.page)
-const route = useRoute()
 const updated = computed(() => (page.value?.last_published_at ? new Date(page.value.last_published_at) : null))
 // The three about pages switch with one row of links (design 13.2.7).
 const tabs = [
@@ -34,7 +37,7 @@ usePageMeta(() => ({ title: data?.title ?? "", description: page.value?.search_d
     <article v-if="page" class="c-article">
       <header class="c-article__head">
         <nav class="c-tabs" aria-label="关于本站">
-          <a v-for="tab in tabs" :key="tab.href" :href="tab.href" :aria-current="route.path === tab.href ? 'page' : undefined">{{ tab.title }}</a>
+          <a v-for="tab in tabs" :key="tab.href" :href="tab.href" :aria-current="`/${page.slug}/` === tab.href ? 'page' : undefined">{{ tab.title }}</a>
         </nav>
         <h1 class="c-article__title">{{ page.title }}</h1>
         <p v-if="updated" class="c-article__meta">最后更新 <time class="font-numeric" :datetime="owISO(updated)">{{ owDate(updated) }}</time></p>

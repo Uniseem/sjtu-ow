@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import { getApiAdminImages, getApiAdminImageCollections } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useAdminSession } from "../../core/session"
@@ -46,13 +47,13 @@ onMounted(() => { void resource.load(); void collections.load() })
   <AdminPage title="图片" section="content">
     <template #actions>
       <RouterLink v-if="user?.superuser" class="c-btn c-btn--secondary c-btn--sm" to="/admin/images/collections/">集合</RouterLink>
-      <RouterLink v-if="canUpload" class="c-btn c-btn--primary c-btn--sm" to="/admin/images/upload/">上传图片</RouterLink>
+      <RouterLink v-if="canUpload" class="c-btn c-btn--primary c-btn--sm" to="/admin/images/upload/"><CIcon name="plus" />上传图片</RouterLink>
     </template>
     <form class="b-filters" role="search" @submit.prevent="filter">
       <input v-model="query" type="search" name="q" class="c-input" maxlength="50" placeholder="搜标题" aria-label="搜标题">
       <select v-model="collection" class="c-input" name="collection" aria-label="集合" @change="filter">
         <option value="">全部集合</option>
-        <option v-for="item in collections.data.value?.collections ?? []" :key="item.id" :value="String(item.id)">{{ item.name }}</option>
+        <option v-for="item in (collections.data.value?.collections ?? []).filter(item => item.image_count > 0)" :key="item.id" :value="String(item.id)">{{ item.name }}</option>
       </select>
       <button class="c-btn c-btn--secondary c-btn--sm">筛选</button>
       <span v-if="resource.data.value" class="b-count">{{ resource.data.value.total }} 张</span>

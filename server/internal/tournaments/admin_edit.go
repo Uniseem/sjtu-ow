@@ -126,6 +126,8 @@ func (s *Service) CopyPreview(ctx *app.Ctx, id int64) (*AdminDetail, error) {
 	if detail.Missing == nil {
 		detail.Missing = []string{}
 	}
+	detail.CreatorNickname = ""
+	detail.RegistrationCount = 0
 	detail.HasEntries = false
 	detail.HasRegs = false
 	detail.CanDelete = false

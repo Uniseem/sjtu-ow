@@ -6,6 +6,15 @@ import { createMarkdownPreview } from "../../pages/content/pending"
 import { contentPreviewURL } from "../../pages/content/preview-url"
 
 const props = defineProps<{ body: string; open: boolean }>()
+const emit = defineEmits<{ "frame-keydown": [event: KeyboardEvent] }>()
+let previewDocument: Document | null = null
+function frameKeydown(event: KeyboardEvent): void { emit("frame-keydown", event) }
+function frameReady(event: Event): void {
+  if (!(event.target instanceof HTMLIFrameElement)) return
+  previewDocument?.removeEventListener("keydown", frameKeydown)
+  previewDocument = event.target.contentDocument
+  previewDocument?.addEventListener("keydown", frameKeydown)
+}
 const api = useAdminApi()
 const pending = ref(false)
 const message = ref("")
@@ -15,8 +24,10 @@ const stale = computed(() => Boolean(url.value && source.value !== props.body))
 let controller: AbortController | null = null
 let generation = 0
 let disposed = false
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
 async function load(): Promise<void> {
+  if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null }
   controller?.abort()
   controller = new AbortController()
   const current = ++generation
@@ -41,9 +52,24 @@ async function load(): Promise<void> {
   }
 }
 watch(() => props.open, (open) => {
-  if (open && (!url.value || stale.value)) void load()
+  if (open && (!url.value || stale.value)) {
+    if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null }
+    void load()
+  } else if (!open) {
+    if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null }
+    controller?.abort()
+    generation += 1
+    pending.value = false
+  }
 }, { immediate: true })
-onBeforeUnmount(() => { disposed = true; controller?.abort() })
+watch(() => props.body, () => {
+  if (refreshTimer) clearTimeout(refreshTimer)
+  if (!props.open) return
+  controller?.abort()
+  generation += 1
+  refreshTimer = setTimeout(() => { refreshTimer = null; void load() }, 300)
+})
+onBeforeUnmount(() => { previewDocument?.removeEventListener("keydown", frameKeydown); disposed = true; controller?.abort(); if (refreshTimer) clearTimeout(refreshTimer) })
 </script>
 <template>
   <section v-if="open" class="b-section" aria-label="正文预览">
@@ -51,6 +77,6 @@ onBeforeUnmount(() => { disposed = true; controller?.abort() })
     <p v-if="message" class="c-notice c-notice--error" role="alert">{{ message }}</p>
     <p v-if="stale" class="c-field__help">正文已修改，下面是上一份预览。</p>
     <button v-if="message || stale" type="button" class="c-btn c-btn--secondary c-btn--sm" :disabled="pending" @click="load">重新生成预览</button>
-    <iframe v-if="url" :src="url" title="正文预览" class="w-full min-h-96 border-0" sandbox="allow-same-origin" />
+    <iframe v-if="url" :src="url" title="正文预览" class="w-full min-h-96 border-0" sandbox="allow-same-origin" @load="frameReady" />
   </section>
 </template>

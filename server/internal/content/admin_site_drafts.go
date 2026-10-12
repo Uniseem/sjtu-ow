@@ -25,20 +25,25 @@ type NewsDraft struct {
 	IntroMD string `json:"intro_md"`
 }
 type HomeDraftOut struct {
-	ID                    int64     `json:"id"`
-	Version               int64     `json:"version"`
-	Draft                 HomeDraft `json:"draft"`
-	HasUnpublishedChanges bool      `json:"has_unpublished_changes"`
-	PreviewURL            *string   `json:"preview_url"`
-	CanPublish            bool      `json:"can_publish"`
+	Live                  bool       `json:"live"`
+	LastPublishedAt       *time.Time `json:"last_published_at"`
+	ID                    int64      `json:"id"`
+	Version               int64      `json:"version"`
+	Draft                 HomeDraft  `json:"draft"`
+	HasUnpublishedChanges bool       `json:"has_unpublished_changes"`
+	PreviewURL            *string    `json:"preview_url"`
+	CanPublish            bool       `json:"can_publish"`
 }
 type NewsDraftOut struct {
-	ID                    int64     `json:"id"`
-	Version               int64     `json:"version"`
-	Draft                 NewsDraft `json:"draft"`
-	HasUnpublishedChanges bool      `json:"has_unpublished_changes"`
-	PreviewURL            *string   `json:"preview_url"`
-	CanPublish            bool      `json:"can_publish"`
+	IntroMD               string     `json:"intro_md"`
+	Live                  bool       `json:"live"`
+	LastPublishedAt       *time.Time `json:"last_published_at"`
+	ID                    int64      `json:"id"`
+	Version               int64      `json:"version"`
+	Draft                 NewsDraft  `json:"draft"`
+	HasUnpublishedChanges bool       `json:"has_unpublished_changes"`
+	PreviewURL            *string    `json:"preview_url"`
+	CanPublish            bool       `json:"can_publish"`
 }
 type PinnedArticleItem struct {
 	ID    int64  `json:"id"`
@@ -165,6 +170,9 @@ func (m *Module) readHomeDraft(ctx *app.Ctx, _ struct{}) (HomeDraftOut, error) {
 	}
 	out.Version = version
 	out.HasUnpublishedChanges = !equivalentScopeDraft(content, live)
+	if err := readHomeDraftState(ctx.Context, m.svc.store.d.ReadPool(), &out); err != nil {
+		return out, err
+	}
 	url := "/api/admin/home-pins/preview"
 	out.PreviewURL = &url
 	return out, nil
@@ -179,9 +187,17 @@ func (m *Module) readNewsDraft(ctx *app.Ctx, _ struct{}) (NewsDraftOut, error) {
 	if err := json.Unmarshal([]byte(content), &out.Draft); err != nil {
 		return out, err
 	}
+	var publishedDraft NewsDraft
+	if err := json.Unmarshal([]byte(live), &publishedDraft); err != nil {
+		return out, err
+	}
+	out.IntroMD = publishedDraft.IntroMD
 	out.Version = version
 	out.HasUnpublishedChanges = !equivalentScopeDraft(content, live)
 	if err := m.svc.store.d.ReadPool().QueryRowContext(ctx.Context, "SELECT id FROM pages WHERE kind='news_index' AND slug='news' LIMIT 1").Scan(&out.ID); err != nil {
+		return out, err
+	}
+	if err := readSiteDraftState(ctx.Context, m.svc.store.d.ReadPool(), "news_index", &out.Live, &out.LastPublishedAt); err != nil {
 		return out, err
 	}
 	url := "/api/admin/news-intro/preview"
@@ -269,6 +285,9 @@ func (m *Module) patchHomeDraft(ctx *app.Ctx, in SiteDraftPatchIn) (HomeDraftPat
 			return err
 		}
 		out.Version++
+		if _, err := tx.ExecContext(c, "UPDATE content_home_state SET has_unpublished_changes=1"); err != nil {
+			return err
+		}
 		return contentAudit(c, tx, ctx.Viewer.ID, "home.save_draft", "home", 0, nil, ctx.Now())
 	})
 	return out, err
@@ -352,6 +371,9 @@ func (m *Module) publishHomeDraft(ctx *app.Ctx, in SiteDraftPublishIn) (SiteDraf
 		if err := writeScope(c, tx, "home_pins", version, content, content, ctx.Viewer.ID, ctx.Now()); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(c, "UPDATE content_home_state SET live=1,has_unpublished_changes=0,last_published_at=?", db.FormatUTC(ctx.Now())); err != nil {
+			return err
+		}
 		out.Version = version + 1
 		return contentAudit(c, tx, ctx.Viewer.ID, "home.publish", "home", 0, nil, ctx.Now())
 	})
@@ -396,17 +418,17 @@ func (m *Module) publishNewsDraft(ctx *app.Ctx, in SiteDraftPublishIn) (SiteDraf
 
 func (m *Module) listSiteParts(ctx *app.Ctx, _ struct{}) (SitePartsOut, error) {
 	out := SitePartsOut{Items: []PlainPageItem{}, Pinned: []PinnedArticleItem{}}
-	rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, `SELECT p.id,p.slug,p.title,p.live,p.has_unpublished_changes,p.updated_at,p.version,r.content FROM pages p
-        LEFT JOIN page_revisions r ON r.id=p.latest_revision_id WHERE p.kind='site_page' ORDER BY p.id`)
+	rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, `SELECT p.id,p.slug,p.title,p.live,p.has_unpublished_changes,p.updated_at,p.version,r.content,p.last_published_at,r.created_at,p.expired,EXISTS(SELECT 1 FROM page_revisions schedule WHERE schedule.page_id=p.id AND schedule.approved_go_live_at IS NOT NULL) FROM pages p
+        LEFT JOIN page_revisions r ON r.id=p.latest_revision_id WHERE p.kind='site_page' ORDER BY CASE p.slug WHEN 'about' THEN 0 WHEN 'terms' THEN 1 WHEN 'privacy' THEN 2 ELSE 99 END,p.id`)
 	if err != nil {
 		return out, err
 	}
 	for rows.Next() {
 		var item PlainPageItem
-		var live, unpublished int
+		var live, unpublished, expired, scheduled int
 		var updated string
-		var revision sql.NullString
-		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &live, &unpublished, &updated, &item.Version, &revision); err != nil {
+		var revision, published, revised sql.NullString
+		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &live, &unpublished, &updated, &item.Version, &revision, &published, &revised, &expired, &scheduled); err != nil {
 			rows.Close()
 			return out, err
 		}
@@ -418,6 +440,24 @@ func (m *Module) listSiteParts(ctx *app.Ctx, _ struct{}) (SitePartsOut, error) {
 			}
 			item.DraftTitle = &draft.Title
 		}
+		if published.Valid {
+			value, err := db.ParseUTC(published.String)
+			if err != nil {
+				rows.Close()
+				return out, err
+			}
+			item.LastPublishedAt = &value
+		}
+		if revised.Valid {
+			value, err := db.ParseUTC(revised.String)
+			if err != nil {
+				rows.Close()
+				return out, err
+			}
+			item.LatestRevisionCreatedAt = &value
+		}
+		item.Expired = expired == 1
+		item.ApprovedSchedule = scheduled == 1
 		item.Live = live == 1
 		item.HasUnpublishedChanges = unpublished == 1
 		item.UpdatedAt, _ = db.ParseUTC(updated)
@@ -436,7 +476,12 @@ func (m *Module) listSiteParts(ctx *app.Ctx, _ struct{}) (SitePartsOut, error) {
 	if err != nil {
 		return out, err
 	}
-	for _, id := range out.Home.Draft.ArticleIDs {
+	pins, err := m.svc.store.GetHomePins(ctx.Context)
+	if err != nil {
+		return out, err
+	}
+	for _, pin := range pins {
+		id := pin.ArticlePageID
 		var item PinnedArticleItem
 		var live int
 		err := m.svc.store.d.ReadPool().QueryRowContext(ctx.Context, "SELECT id,title,live FROM pages WHERE id=? AND kind='article'", id).Scan(&item.ID, &item.Title, &live)
@@ -516,4 +561,48 @@ func equivalentScopeDraft(left, right string) bool {
 		return false
 	}
 	return reflect.DeepEqual(a, b)
+}
+
+func readSiteDraftState(ctx context.Context, q db.DBTX, kind string, live *bool, published **time.Time) error {
+	var active int
+	var stamp sql.NullString
+	err := q.QueryRowContext(ctx, "SELECT live,last_published_at FROM pages WHERE kind=? ORDER BY id LIMIT 1", kind).Scan(&active, &stamp)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	*live = active == 1
+	if stamp.Valid {
+		value, err := db.ParseUTC(stamp.String)
+		if err != nil {
+			return err
+		}
+		*published = &value
+	}
+	return nil
+}
+
+func readHomeDraftState(ctx context.Context, q db.DBTX, out *HomeDraftOut) error {
+	var live, unpublished int
+	var published sql.NullString
+	err := q.QueryRowContext(ctx, "SELECT id,live,has_unpublished_changes,last_published_at FROM content_home_state ORDER BY id LIMIT 1").Scan(&out.ID, &live, &unpublished, &published)
+	if errors.Is(err, sql.ErrNoRows) {
+		out.Live = true
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	out.Live = live == 1
+	out.HasUnpublishedChanges = out.HasUnpublishedChanges || unpublished == 1
+	if published.Valid {
+		value, err := db.ParseUTC(published.String)
+		if err != nil {
+			return err
+		}
+		out.LastPublishedAt = &value
+	}
+	return nil
 }

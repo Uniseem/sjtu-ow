@@ -84,6 +84,10 @@ async function load(): Promise<void> {
       scrim.value = await getApiAdminScrimsId(api, id)
       if (!scrim.value.scrim) throw new ApiError(404, "not_found", "找不到这个页面")
     }
+    if (props.action === "delete" && !canDelete.value) {
+      await router.replace(activityHref(props.kind, id))
+      return
+    }
   } catch (error) {
     showReadError(error)
     loadError.value = error instanceof Error ? error.message : "暂时无法打开，请稍后再试。"
@@ -105,7 +109,7 @@ onMounted(load)
 </script>
 
 <template>
-  <AdminPage :title="actionLabel(action, kind)" section="events" :back-href="activityHref(kind)">
+  <AdminPage :title="`${actionLabel(action, kind)}：${name ?? ''}`" section="events" :back-href="activityHref(kind)">
     <p v-if="loading" role="status">正在加载…</p>
     <AdminNotice v-else-if="loadError" :message="loadError" kind="error" />
     <form v-else class="b-form" @submit.prevent="mutation.submit({ reason, announce, preview_version: publishPreview?.preview_version ?? '' })">
@@ -144,17 +148,17 @@ onMounted(load)
       <AdminNotice v-if="action === 'publish' && missing.length" :message="`还没填好：${missing.join('、')}。填好再发布。`" kind="warn" />
       <RouterLink v-if="action === 'publish' && missing.length" class="c-link" :to="activityHref(kind, id)">去填</RouterLink>
       <AdminNotice v-else-if="unavailable" message="当前状态不能执行这个操作，请重新打开页面。" kind="warn" />
-      <section v-if="action === 'publish' && publishPreview" class="b-section">
+      <fieldset v-if="action === 'publish' && publishPreview" class="b-fieldset">
+        <legend class="b-fieldset__legend">活动通知</legend>
         <AdminNotice v-if="publishPreview.problem" :message="`发布后不能马上通知全体成员：${publishPreview.problem}`" kind="warn" />
-        <label v-else class="c-check">
-          <input v-model="announce" type="checkbox" :disabled="pending || uncertain || !publishPreview.recipients">
-          发布后同时通知全体成员（{{ publishPreview.recipients }} 人）
-        </label>
-        <details v-if="publishPreview.preview_url" class="b-section">
-          <summary>信的正文（预览）</summary>
-          <iframe class="b-letter" width="100%" height="600" :src="publishPreview.preview_url" title="发布通知预览" sandbox="" />
-        </details>
-      </section>
+        <div v-else class="c-field">
+          <label class="c-check">
+            <input v-model="announce" type="checkbox" :disabled="pending || uncertain || !publishPreview.recipients">
+            <span>发布后同时通知全体成员（{{ publishPreview.recipients }} 人）</span>
+          </label>
+          <div class="c-field__help">发给开着「活动通知」的成员。不勾也可以之后在列表的「更多」里发，发之前能看到信的样子；以后有修改还可以再发。</div>
+        </div>
+      </fieldset>
       <AdminNotice v-if="action === 'publish' && publishPreviewError" :message="publishPreviewError" kind="warn" />
       <AdminNotice v-if="message" :message="message" kind="error" />
       <div class="b-actions">

@@ -47,6 +47,7 @@ var AllowedSpecs = map[string]struct {
 	"fill-2400x1350":    {Mode: "fill", W: 2400, H: 1350},
 	"max-320x240":       {Mode: "max", W: 320, H: 240},
 	"max-320x200":       {Mode: "max", W: 320, H: 200},
+	"max-800x600":       {Mode: "max", W: 800, H: 600},
 	"max-1600x1600":     {Mode: "max", W: 1600, H: 1600},
 	"fill-1200x630":     {Mode: "fill", W: 1200, H: 630},
 }
@@ -59,16 +60,19 @@ const (
 
 // Image 表示媒体图片记录。
 type Image struct {
-	ID           int64     `json:"id"`
-	CollectionID *int64    `json:"collection_id"`
-	Title        string    `json:"title"`
-	FileName     string    `json:"file_name"`
-	FileSize     int64     `json:"file_size"`
-	Width        int       `json:"width"`
-	Height       int       `json:"height"`
-	UploaderID   *int64    `json:"uploader_id"`
-	CreatedAt    time.Time `json:"created_at"`
-	Version      int64     `json:"version"`
+	CanChange        bool      `json:"can_change"`
+	CanDelete        bool      `json:"can_delete"`
+	UploaderNickname string    `json:"uploader_nickname"`
+	ID               int64     `json:"id"`
+	CollectionID     *int64    `json:"collection_id"`
+	Title            string    `json:"title"`
+	FileName         string    `json:"file_name"`
+	FileSize         int64     `json:"file_size"`
+	Width            int       `json:"width"`
+	Height           int       `json:"height"`
+	UploaderID       *int64    `json:"uploader_id"`
+	CreatedAt        time.Time `json:"created_at"`
+	Version          int64     `json:"version"`
 }
 
 // Collection 表示图片集合。
@@ -405,6 +409,9 @@ func (s *Service) RenderThumbnail(ctx context.Context, id int64, spec string) (s
 // DeleteImage 删除图片及其母版和缩略图。
 func (s *Service) DeleteImage(ctx *app.Ctx, id int64) error {
 	err := s.db.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		if err := requireImageManagement(txCtx, tx, ctx.Viewer, id); err != nil {
+			return err
+		}
 		res, err := tx.ExecContext(txCtx, `DELETE FROM images WHERE id = ?`, id)
 		if err != nil {
 			return err
@@ -547,7 +554,49 @@ func (s *Service) ListCollections(ctx context.Context) ([]Collection, error) {
 		c.CreatedAt = t
 		cols = append(cols, c)
 	}
-	return cols, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Wagtail Collection paths sort siblings by name and keep each subtree
+	// together. Imported/default IDs do not preserve that display order.
+	children := map[int64][]Collection{}
+	for _, item := range cols {
+		parent := int64(0)
+		if item.ParentID != nil {
+			parent = *item.ParentID
+		}
+		children[parent] = append(children[parent], item)
+	}
+	for parent := range children {
+		sort.SliceStable(children[parent], func(i, j int) bool {
+			left, right := children[parent][i], children[parent][j]
+			if left.Name == right.Name {
+				return left.ID < right.ID
+			}
+			return left.Name < right.Name
+		})
+	}
+	ordered := make([]Collection, 0, len(cols))
+	seen := map[int64]bool{}
+	var visit func(Collection)
+	visit = func(item Collection) {
+		if seen[item.ID] {
+			return
+		}
+		seen[item.ID] = true
+		ordered = append(ordered, item)
+		for _, child := range children[item.ID] {
+			visit(child)
+		}
+	}
+	for _, item := range children[0] {
+		visit(item)
+	}
+	// Preserve malformed/orphaned legacy nodes rather than hiding metadata.
+	for _, item := range cols {
+		visit(item)
+	}
+	return ordered, nil
 }
 
 // SpecsTS 把缩略图规格白名单写成前端用的 TS（sjtuow apigen 一起生成，

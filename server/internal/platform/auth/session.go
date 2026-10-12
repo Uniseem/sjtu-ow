@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/platform/clock"
@@ -64,6 +65,16 @@ func (s *Store) Create(ctx context.Context, userID int64) (string, error) {
 
 // CreateWithNotice 将首次整页显示的提示与新会话一起保存。
 func (s *Store) CreateWithNotice(ctx context.Context, userID int64, notice string) (string, error) {
+	return s.createWithNotice(ctx, userID, notice, false)
+}
+
+// CreateLoginWithNotice records an actual account login atomically with its
+// session. Administrative CLI sessions keep using Create and do not alter it.
+func (s *Store) CreateLoginWithNotice(ctx context.Context, userID int64, notice string) (string, error) {
+	return s.createWithNotice(ctx, userID, notice, true)
+}
+
+func (s *Store) createWithNotice(ctx context.Context, userID int64, notice string, login bool) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
@@ -74,7 +85,23 @@ func (s *Store) CreateWithNotice(ctx context.Context, userID int64, notice strin
 			(token_hash, user_id, created_at, expires_at, reauth_at, last_seen_at, flash_message)
 			VALUES (?, ?, ?, ?, '', ?, ?)`,
 			hashToken(raw), userID, db.FormatUTC(now), db.FormatUTC(now.Add(SessionTTL)), db.FormatUTC(now), notice)
-		return err
+		if err != nil {
+			return err
+		}
+		if login {
+			result, err := tx.ExecContext(ctx, `UPDATE users SET last_login_at=? WHERE id=? AND is_active=1`, db.FormatUTC(now), userID)
+			if err != nil {
+				return err
+			}
+			changed, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if changed != 1 {
+				return fmt.Errorf("账号不存在或已停用")
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return "", err

@@ -71,7 +71,7 @@ function submit(skip: boolean): void {
 watch(() => route.fullPath, () => { action.clear(); void load() }, { immediate: true })
 </script>
 <template>
-  <AdminPage :title="batch ? '要不要发信' : '还没发的信'" section="home">
+  <AdminPage :title="batch ? '要不要发信' : '还没发的信'" :document-title="batch ? '发信' : undefined" section="home">
     <p v-if="loading" aria-busy="true" role="status" class="b-section__text">正在读信…</p>
     <AdminNotice v-if="error" :message="error" kind="error" />
     <button v-if="error" type="button" class="c-btn c-btn--secondary" @click="load">重新打开</button>
@@ -94,7 +94,7 @@ watch(() => route.fullPath, () => { action.clear(); void load() }, { immediate: 
           <dl class="b-kv"><dt>发给</dt><dd>{{ letter.who }}<template v-if="letter.count > 1">（{{ letter.count }} 人，每人一封）</template></dd><dt>主题</dt><dd>{{ letter.subject }}</dd></dl>
           <details :open="index === 0"><summary class="cursor-pointer text-fg-2">信的样子</summary><iframe v-if="previews.get(letter.id)" class="c-mailframe mt-3" :src="previews.get(letter.id) || undefined" :title="'「' + letter.subject + '」的样子'" loading="lazy" sandbox="" referrerpolicy="no-referrer" /><p v-else class="mt-3 text-sm text-fg-2">信件预览暂时无法打开，请重新打开页面。</p></details>
         </section>
-        <div class="b-actions"><button type="submit" class="c-btn c-btn--primary" :disabled="!action.canStart.value || !complete">发出勾选的信</button><button type="button" class="c-btn c-btn--secondary" :disabled="!action.canStart.value" @click="submit(true)">都不发</button></div>
+        <div class="b-actions"><button type="submit" class="c-btn c-btn--primary" :disabled="!action.canStart.value || !complete">发出勾选的信</button><button type="submit" name="skip" value="1" class="c-btn c-btn--secondary" :disabled="!action.canStart.value" @click.prevent="submit(true)">都不发</button></div>
       </form>
     </template>
   </AdminPage>

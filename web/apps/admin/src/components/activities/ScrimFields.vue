@@ -56,6 +56,7 @@ function check(event: Event): void {
     <ActivityField id="description" label="说明" help="支持 Markdown。" :errors="fields.description" v-slot="field">
       <MarkdownEditor
         id="description"
+        name="description"
         label="说明"
         :model-value="values.description"
         :disabled="disabled"

@@ -38,6 +38,9 @@ export const PAGES: RouteRecordRaw[] = [
   // The slug follows Wagtail's (word characters and hyphens, Unicode
   // allowed, so percent-encoded bytes too); never a dot.
   dynamicPage(`/news/:slug([\\w%\\u0080-\\uffff-]+)/`, () => import("./pages/ArticleDetail.vue"), "文章"),
+  dynamicPage(`/admin/articles/${id}/preview/`, () => import("./pages/ArticleDetail.vue"), "文章预览", MEMBER),
+  dynamicPage(`/admin/scrims/${id}/split/text/`, () => import("./pages/ScrimPlainText.vue"), "分队文字", MEMBER),
+  dynamicPage(`/admin/pages/${id}/preview/`, standardPage, "页面预览", MEMBER),
   dynamicPage("/about/", standardPage, "关于我们"),
   dynamicPage("/terms/", standardPage, "用户协议"),
   dynamicPage("/privacy/", standardPage, "隐私政策"),

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { formatContentTime } from "../../pages/content/types"
+import CStatus from "@sjtu-ow/ui/CStatus.vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import { computed, ref } from "vue"
 import { primitiveValues, readSaveReceipt } from "@sjtu-ow/shared/save-receipt"
 import { useAdminApi } from "../../core/api"
@@ -20,6 +23,7 @@ const draft = useContentDraft({
   unpublished: props.detail.page.has_unpublished_changes,
   available: () => permission.managePages.value,
   preview_url: props.detail.preview_url,
+  previewRoute: `/admin/pages/${props.detail.page.id}/preview/`,
   transport: async (body, extras) => readSaveReceipt(
     await savePlainPage(api, props.detail.page.id, body, extras),
     props.detail.draft,
@@ -43,17 +47,17 @@ function text(name: "title" | "body_md" | "seo_title" | "search_description", ev
 <template>
   <div class="b-split">
     <form class="b-form" novalidate @submit.prevent="save.save">
-      <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
+      <SaveStatus idle-message="改了就自动存成草稿，点「发布」才上线" :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
       <p v-if="draft.notice.value" class="c-notice c-notice--info" role="status">{{ draft.notice.value }}</p>
       <ContentActionMessage :message="draft.publication.message.value" :pending="draft.publication.pending.value" :uncertain="draft.publication.uncertain.value" @retry="draft.publication.retry" />
       <fieldset class="b-fieldset" :disabled="!permission.managePages.value || draft.blocked.value">
         <ContentField name="title" label="标题" :errors="fields.title" required>
           <template #default="field"><input :id="field.id" class="c-input" name="title" :value="values.title" maxlength="255" :aria-describedby="field.describedby" @input="text('title', $event)"></template>
         </ContentField>
-        <ContentField name="body_md" label="正文" :errors="fields.body_md">
-          <template #default="field"><MarkdownEditor ref="editor" :id="field.id" :model-value="values.body_md" :disabled="!permission.managePages.value || draft.blocked.value" :invalid="Boolean(fields.body_md?.length)" :describedby="field.describedby" @update:model-value="save.set('body_md', $event)" /></template>
+        <ContentField name="body" label="正文" :errors="fields.body_md">
+          <template #default="field"><MarkdownEditor ref="editor" name="body" :id="field.id" :model-value="values.body_md" :disabled="!permission.managePages.value || draft.blocked.value" :invalid="Boolean(fields.body_md?.length)" :describedby="field.describedby" @update:model-value="save.set('body_md', $event)" /></template>
         </ContentField>
-        <ContentField name="seo_title" label="SEO 标题" :errors="fields.seo_title">
+        <ContentField name="seo_title" label="搜索结果里的标题" hint="空着就用页面标题。" :errors="fields.seo_title">
           <template #default="field"><input :id="field.id" class="c-input" name="seo_title" :value="values.seo_title" maxlength="255" @input="text('seo_title', $event)"></template>
         </ContentField>
         <ContentField name="search_description" label="搜索描述" :errors="fields.search_description">
@@ -61,9 +65,9 @@ function text(name: "title" | "body_md" | "seo_title" | "search_description", ev
         </ContentField>
       </fieldset>
       <div class="b-formbar">
-        <button v-if="detail.can_publish" type="button" class="c-btn c-btn--primary" :disabled="!draft.publication.canStart.value || save.pending.value" @click="draft.prepare">发布</button>
-        <button class="c-btn c-btn--secondary" :disabled="!permission.managePages.value || draft.blocked.value || save.pending.value">保存草稿</button>
-        <button type="button" class="c-btn c-btn--quiet" :disabled="save.pending.value" @click="draft.openPreview">预览草稿</button>
+        <button v-if="detail.can_publish" type="submit" name="publish" value="1" class="c-btn c-btn--primary" :disabled="!draft.publication.canStart.value || save.pending.value" @click.prevent="draft.prepare">发布</button>
+        <button type="submit" name="save" value="1" class="c-btn c-btn--secondary" hidden :disabled="!permission.managePages.value || draft.blocked.value || save.pending.value">保存草稿</button>
+        <a class="c-btn c-btn--quiet" :href="`/admin/pages/${detail.page.id}/preview/`" target="_blank" rel="noopener" @click.prevent="draft.openPreview">预览草稿</a>
       </div>
       <DraftPublication v-if="draft.confirmation.value" title="页面" :pending="draft.publication.pending.value" :missing="missing" @confirm="draft.publish" @cancel="draft.confirmation.value = false" />
     </form>
@@ -71,11 +75,10 @@ function text(name: "title" | "body_md" | "seo_title" | "search_description", ev
       <section class="b-section">
         <h2 class="b-section__title">状态</h2>
         <dl class="b-kv">
-          <dt>状态</dt><dd>{{ draft.unpublished.value || save.dirty.value ? '有改动还没发布' : detail.page.live ? '已发布' : '草稿' }}</dd>
-          <dt>地址</dt><dd class="b-mono">/{{ detail.page.slug }}/</dd>
+          <dt>状态</dt><dd><CStatus :label="detail.page.live ? draft.unpublished.value || save.dirty.value ? '已发布·有改动' : '已发布' : detail.page.expired ? '已下线' : detail.page.approved_schedule ? '定时上线' : '草稿'" :kind="detail.page.live ? draft.unpublished.value || save.dirty.value ? 'warn' : 'ok' : detail.page.expired ? 'off' : detail.page.approved_schedule ? 'info' : 'done'" /></dd>
+          <dt>地址</dt><dd class="b-mono">/{{ detail.page.slug }}/</dd><template v-if="detail.page.last_published_at"><dt>最后发布</dt><dd>{{ formatContentTime(detail.page.last_published_at) }}</dd></template>
         </dl>
-        <p class="b-section__text">「有改动」是说草稿里有还没发布的改动；网站上还是上次发布的样子。</p>
-        <a v-if="detail.page.live" class="c-btn c-btn--secondary c-btn--sm" :href="`/${encodeURIComponent(detail.page.slug)}/`" target="_blank" rel="noopener">打开页面</a>
+        <div v-if="detail.page.live" class="b-actions"><a class="c-btn c-btn--secondary c-btn--sm" :href="`/${encodeURIComponent(detail.page.slug)}/`" target="_blank" rel="noopener">打开页面<CIcon name="external" class="size-4" /></a></div>
       </section>
     </aside>
   </div>

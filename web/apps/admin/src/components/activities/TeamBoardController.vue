@@ -164,7 +164,7 @@ useSortableBoard(root, () => layout.value, () => !disabled.value, move, (value) 
     <div class="split-teams">
       <div v-for="zone in layout.zones" :key="zone.key" class="split-team" :data-team-panel="zone.key">
         <h3 class="b-section__title">
-          <label :for="`name-${zone.key}`">{{ zone.registration_id ? '队名' : '新队伍' }}</label>
+          <label :for="`name-${zone.key}`">{{ zone.registration_id ? '队名' : '新队伍' }}
           <input
             :id="`name-${zone.key}`"
             class="c-input split-name"
@@ -174,11 +174,11 @@ useSortableBoard(root, () => layout.value, () => !disabled.value, move, (value) 
             :disabled="disabled"
             :placeholder="zone.registration_id ? '' : '拖人进来后填队名'"
             @input="rename(zone.key, $event)"
-          >
+          ></label>
         </h3>
         <p v-if="zoneProblems(zone, minimum, board.roster_max).length" class="split-problem">{{ zoneProblems(zone, minimum, board.roster_max).join('、') }}</p>
         <section class="split-zone">
-          <h4 class="split-zone-title">名单（{{ zone.signup_ids.length }}/{{ board.roster_max }}）</h4>
+          <h4 class="split-zone-title">{{ zone.registration_id ? '名单' : '名单（保存后成为一支新队伍）' }}（{{ zone.signup_ids.length }}/{{ board.roster_max }}）</h4>
           <ul class="split-list" :data-board-zone="zone.key" :aria-label="`${zone.name || '新队伍'}名单`">
             <TeamBoardCard
               v-for="entry in zoneEntries(board, zone)"
