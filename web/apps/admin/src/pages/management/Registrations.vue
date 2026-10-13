@@ -89,7 +89,7 @@ function filter() { void router.push({ path: route.path, query: { q: search.valu
       </tbody>
     </table>
     <div v-if="resource.data.value.items.length" class="b-actions">
-      <button type="submit" class="c-btn c-btn--primary" :disabled="!selection.length || !action.canStart.value">批量通过所选</button>
+      <button type="submit" class="c-btn c-btn--primary" :disabled="!action.canStart.value">批量通过所选</button>
     </div>
     </form>
     <ManagementPager v-if="resource.data.value" :total="resource.data.value.total" :page="resource.data.value.page" :size="resource.data.value.page_size" />

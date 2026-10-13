@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
+import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import { deleteApiAdminCategoriesId, getApiAdminCategories } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useAdminAction } from "../../core/use-action"
@@ -17,8 +19,7 @@ const confirmation = ref<Category | null>(null)
 const notice = ref("")
 const resource = useContentResource((signal) => getApiAdminCategories(api, { signal }))
 const rows = computed(() => (resource.data.value?.items ?? [])
-  .filter((item): item is Category => item !== null)
-  .sort((left, right) => left.sort_order - right.sort_order || left.name.localeCompare(right.name, "zh-CN") || left.id - right.id))
+  .filter((item): item is Category => item !== null))
 const action = useAdminAction(
   (id: number, extras) => deleteApiAdminCategoriesId(api, id, extras),
   async () => {
@@ -28,7 +29,7 @@ const action = useAdminAction(
   },
 )
 function remove(): void {
-  if (!confirmation.value || !permission.manageCategories.value || confirmation.value.article_count !== 0) return
+  if (!confirmation.value || !permission.manageCategories.value || !confirmation.value.can_delete) return
   void action.submit(confirmation.value.id)
 }
 onMounted(() => { void resource.load() })
@@ -36,7 +37,7 @@ onMounted(() => { void resource.load() })
 <template>
   <AdminPage title="分类" section="content">
     <template #actions>
-      <RouterLink v-if="permission.manageCategories.value" class="c-btn c-btn--primary c-btn--sm" to="/admin/categories/new/">新建分类</RouterLink>
+      <RouterLink v-if="permission.manageCategories.value" class="c-btn c-btn--primary c-btn--sm" to="/admin/categories/new/"><CIcon name="plus" />新建分类</RouterLink>
     </template>
     <ContentLoad
       :pending="resource.pending.value"
@@ -85,7 +86,7 @@ onMounted(() => { void resource.load() })
             <div class="b-rowacts">
               <RouterLink class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/categories/${item.id}/`">编辑</RouterLink>
               <button
-                v-if="permission.manageCategories.value && item.article_count === 0"
+                v-if="permission.manageCategories.value && item.can_delete"
                 type="submit"
                 class="c-btn c-btn--quiet c-btn--sm"
                 :disabled="!action.canStart.value"
@@ -97,10 +98,6 @@ onMounted(() => { void resource.load() })
         </tr>
       </tbody>
     </table>
-    <section v-else-if="resource.data.value" class="c-empty">
-      <h2 class="c-empty__title">还没有分类</h2>
-      <p>写文章要先选分类。</p>
-      <RouterLink v-if="permission.manageCategories.value" class="c-btn c-btn--primary" to="/admin/categories/new/">新建分类</RouterLink>
-    </section>
+    <CEmpty v-else-if="resource.data.value" title="还没有分类" message="写文章要先选分类。" :action-url="permission.manageCategories.value ? '/admin/categories/new/' : undefined" :action-label="permission.manageCategories.value ? '新建分类' : undefined" />
   </AdminPage>
 </template>

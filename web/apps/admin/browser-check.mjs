@@ -14,7 +14,7 @@ const appRoot = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(appRoot, "../../..")
 const chromium = process.argv[2] || "/usr/bin/chromium"
 const givenBase = process.argv[3]?.replace(/\/$/, "")
-const policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+const policy = "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1sAAAAASUVORK5CYII="
 const now = "2026-10-11T08:00:00Z"
 const failures = []
@@ -114,7 +114,7 @@ function article() {
 function articleDetail() {
   return {
     article: article(), revision: { ...editorDraft }, version: articleVersion,
-    capabilities: { edit: true, publish: true, unpublish: false, delete: true, announce: false, edit_author: true, edit_schedule: true },
+    capabilities: { edit: true, publish: true, unpublish: false, delete: true, announce: false, edit_author: true, edit_schedule: true, edit_comments: true },
     guide: false, categories: [{ id: 1, name: "Fixture category", allow_submission: true }],
     authors: [{ id: 1, nickname: "Browser Editor" }], tournaments: [],
     preview_url: "/api/admin/articles/1/preview", announced: 0, verdict: null,
@@ -292,7 +292,7 @@ async function main() {
   const document = await fetch(base + "/admin/articles/1/", { signal: AbortSignal.timeout(10000) })
   const header = document.headers.get("content-security-policy") || ""
   await document.arrayBuffer()
-  assert("parent strict CSP header", header.includes("script-src 'self'") && header.includes("style-src 'self'") && !header.includes("unsafe-inline") && !header.includes("unsafe-eval"), { header })
+  assert("parent CSP permits only editor style attributes", header === policy, { header })
   profile = mkdtempSync(join(tmpdir(), "sjtuow-admin-browser-"))
   // Size both the native window and screen to fit the board drag endpoints.
   // CSS viewport emulation alone does not resize the native drag surface.
@@ -528,8 +528,8 @@ async function main() {
   // Deliberate forbidden nodes prove the header is enforced, not just present.
   // These exact security log events are excluded only during this probe.
   probeActive = true
-  const probe = await evaluate(`(async()=>{window.__adminCsp=[];const plain=document.createElement('div');const styled=document.createElement('div');plain.id='csp-plain';styled.id='csp-styled';document.body.append(plain,styled);styled.setAttribute('style','color:rgb(255,0,0)');const script=document.createElement('script');script.id='csp-script';script.textContent='window.__adminInlineRan=true';document.body.append(script);await new Promise(resolve=>setTimeout(resolve,150));const result={ran:!!window.__adminInlineRan,plain:getComputedStyle(plain).color,styled:getComputedStyle(styled).color,violations:window.__adminCsp};plain.remove();styled.remove();script.remove();window.__adminCsp=[];return result})()`)
-  assert("CSP rejects both inline script and inline style attribute", !probe.ran && probe.plain === probe.styled && probe.violations.length === 2 && probe.violations.some(value => value.directive.startsWith("script-src")) && probe.violations.some(value => value.directive.startsWith("style-src")), probe)
+  const probe = await evaluate(`(async()=>{window.__adminCsp=[];const plain=document.createElement('div');const styled=document.createElement('div');plain.id='csp-plain';styled.id='csp-styled';document.body.append(plain,styled);styled.setAttribute('style','color:rgb(255,0,0)');const sheet=document.createElement('style');sheet.textContent='#csp-plain{color:rgb(0,0,255)}';document.head.append(sheet);const script=document.createElement('script');script.id='csp-script';script.textContent='window.__adminInlineRan=true';document.body.append(script);await new Promise(resolve=>setTimeout(resolve,150));const result={ran:!!window.__adminInlineRan,plain:getComputedStyle(plain).color,styled:getComputedStyle(styled).color,violations:window.__adminCsp};plain.remove();styled.remove();sheet.remove();script.remove();window.__adminCsp=[];return result})()`)
+  assert("CSP allows editor attributes but rejects inline scripts and style elements", !probe.ran && probe.styled === 'rgb(255, 0, 0)' && probe.plain !== 'rgb(0, 0, 255)' && probe.violations.length === 2 && probe.violations.some(value => value.directive.startsWith("script-src")) && probe.violations.some(value => value.directive === "style-src-elem"), probe)
   await sleep(100)
   probeActive = false
   console.log(JSON.stringify({ mode: "STUB-API", passed: passed.length, failures, requestCount: requests.length, realGoPersistenceVerified: false }))

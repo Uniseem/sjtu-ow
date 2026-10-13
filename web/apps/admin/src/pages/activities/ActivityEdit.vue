@@ -82,7 +82,7 @@ onUnmounted(() => { sequence += 1; request?.abort() })
 </script>
 
 <template>
-  <AdminPage :title="title" section="events" :back-href="activityHref(kind)">
+  <AdminPage :title="title" section="activities" :back-href="activityHref(kind)">
     <p v-if="pending" role="status">正在加载…</p>
     <AdminNotice v-else-if="error" :message="error" kind="error" />
     <template v-else>

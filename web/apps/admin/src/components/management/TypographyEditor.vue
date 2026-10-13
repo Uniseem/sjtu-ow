@@ -7,7 +7,7 @@ import { useAdminSave } from "../../core/use-save"
 import { patchTypography, fullRegion, type TypographyPage, type TypographyValues, type TypographyRegionValues } from "../../pages/management/pending"
 import { currentReader } from "../../pages/management/current-reader"
 import { useResource } from "../../pages/management/use-resource"
-import { bytes } from "../../pages/management/font-format"
+import { bytes, weightChoices } from "../../pages/management/font-format"
 import { date } from "../../pages/management/format"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import SaveStatus from "../SaveStatus.vue"
@@ -36,10 +36,10 @@ function update(region: string, key: keyof TypographyRegionValues, event: Event)
   })
   save.set('regions', next, key === 'mode' || key === 'family_id' || key === 'weight' ? 'choice' : 'text')
 }
-function effectiveID(row: TypographyRegionValues) {
-  return row.mode === 'inherit' ? rows.value.find(item => item.region === 'body')?.family_id : row.mode === 'custom' ? row.family_id : null
+function weightAvailable(row: TypographyRegionValues, value: number) {
+  const font = row.mode === 'custom' ? props.data.fonts.find(font => font.id === row.family_id) : undefined
+  return !font || font.weights.includes(value)
 }
-function weights(row: TypographyRegionValues) { return props.data.fonts.find(font => font.id === effectiveID(row))?.weights ?? [100, 200, 300, 400, 500, 600, 700, 800, 900] }
 function label(region: string) { return props.data.regions.find(row => row.region === region)?.label ?? region }
 const numericFields = [{ key: 'size_rem', label: '字号（rem）', step: '0.001' }, { key: 'line_height', label: '行高（倍）', step: '0.01' }, { key: 'letter_spacing_em', label: '字间距（em）', step: '0.001' }] as const
 </script>
@@ -48,14 +48,14 @@ const numericFields = [{ key: 'size_rem', label: '字号（rem）', step: '0.001
   <p v-if="data.css_path" class="b-section__text">当前字体样式表：<span class="b-mono">{{ data.css_path }}</span>（{{ date(data.generated_at) }}）</p>
   <p v-else class="b-section__text">还没有生成字体样式表，全站使用系统字体。</p>
   <div class="typography-layout">
-    <form class="b-form" @submit.prevent="save.save">
+    <form id="typography-form" class="b-form" novalidate @submit.prevent="save.save">
       <SaveStatus idle-message="改了就自动保存，并重新生成字体样式表" :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
       <div class="b-fieldset">
-        <section v-for="row in rows" :key="row.region" class="typography-row" :data-region="row.region">
+        <div v-for="(row, index) in rows" :key="row.region" class="typography-row" :data-region="row.region">
           <h2 class="b-section__title">{{ label(row.region) }}</h2><p v-if="data.regions.find(region=>region.region===row.region)?.slices" class="b-sub">当前字重：{{ data.regions.find(region=>region.region===row.region)?.slices }} 个分片，合计 {{ bytes(data.regions.find(region=>region.region===row.region)?.bytes ?? 0) }}</p>
           <div class="fields"><div class="c-field">
-            <label class="c-field__label" :for="`type-mode-${row.region}`">字体来源</label>
-            <select :id="`type-mode-${row.region}`" class="c-input" :value="row.mode" @change="update(row.region, 'mode', $event)">
+            <label class="c-field__label" :for="`type-mode-${row.region}`">字体来源<span class="c-field__req" aria-hidden="true">*</span></label>
+            <select :id="`type-mode-${row.region}`" :name="`form-${index}-mode`" class="c-input" required :value="row.mode" @change="update(row.region, 'mode', $event)">
               <option value="system">系统字体</option>
               <option v-if="row.region !== 'body'" value="inherit">跟随正文</option>
               <option value="custom">字体库中的字体</option>
@@ -63,23 +63,22 @@ const numericFields = [{ key: 'size_rem', label: '字号（rem）', step: '0.001
           </div>
           <div class="c-field">
             <label class="c-field__label" :for="`type-family-${row.region}`">字体</label>
-            <select :id="`type-family-${row.region}`" class="c-input" :value="row.family_id ?? ''" @change="update(row.region, 'family_id', $event)">
+            <select :id="`type-family-${row.region}`" :name="`form-${index}-family`" class="c-input" :value="row.family_id ?? ''" @change="update(row.region, 'family_id', $event)">
               <option value="">（未选择）</option>
               <option v-for="font in data.fonts" :key="font.id" :value="font.id">{{ font.display_name || font.family }}</option>
             </select>
           </div>
           <div class="c-field">
-            <label class="c-field__label" :for="`type-weight-${row.region}`">字重</label>
-            <select :id="`type-weight-${row.region}`" class="c-input" :value="row.weight" @change="update(row.region, 'weight', $event)">
-              <option v-for="weight in weights(row)" :key="weight" :value="weight">{{ weight }}</option>
-              <option v-if="!weights(row).includes(row.weight)" :value="row.weight">{{ row.weight }}（没有可用分片）</option>
+            <label class="c-field__label" :for="`type-weight-${row.region}`">字重<span class="c-field__req" aria-hidden="true">*</span></label>
+            <select :id="`type-weight-${row.region}`" :name="`form-${index}-weight`" class="c-input" required :value="row.weight" @change="update(row.region, 'weight', $event)">
+              <option v-for="choice in weightChoices" :key="choice.value" :value="choice.value" :disabled="!weightAvailable(row, choice.value)" :hidden="!weightAvailable(row, choice.value)">{{ choice.label }}</option>
             </select>
           </div>
           <div v-for="field in numericFields" :key="field.key" class="c-field">
             <label class="c-field__label" :for="`type-${field.key}-${row.region}`">{{ field.label }}</label>
-            <input :id="`type-${field.key}-${row.region}`" class="c-input" type="number" :step="field.step" :value="row[field.key] ?? ''" @input="update(row.region, field.key, $event)" @blur="save.flush" />
+            <input :id="`type-${field.key}-${row.region}`" :name="`form-${index}-${field.key}`" class="c-input" type="number" :step="field.step" :value="row[field.key] ?? ''" @input="update(row.region, field.key, $event)" @blur="save.flush" />
           </div>
-        </div></section>
+        </div></div>
       </div>
       <p v-for="error in save.fields.value.regions" :key="error" class="c-field__error" role="alert">{{ error }}</p>
 

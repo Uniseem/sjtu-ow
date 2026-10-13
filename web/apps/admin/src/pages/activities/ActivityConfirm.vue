@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { showReadError } from "../../core/read-error"
 import { computed, onMounted, shallowRef } from "vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import { useRoute, useRouter } from "vue-router"
 import {
   ApiError,
@@ -109,7 +110,7 @@ onMounted(load)
 </script>
 
 <template>
-  <AdminPage :title="`${actionLabel(action, kind)}：${name ?? ''}`" section="events" :back-href="activityHref(kind)">
+  <AdminPage :title="`${actionLabel(action, kind)}：${name ?? ''}`" section="activities" :back-href="activityHref(kind)">
     <p v-if="loading" role="status">正在加载…</p>
     <AdminNotice v-else-if="loadError" :message="loadError" kind="error" />
     <form v-else class="b-form" @submit.prevent="mutation.submit({ reason, announce, preview_version: publishPreview?.preview_version ?? '' })">
@@ -145,15 +146,14 @@ onMounted(load)
           >
         </ActivityField>
       </section>
-      <AdminNotice v-if="action === 'publish' && missing.length" :message="`还没填好：${missing.join('、')}。填好再发布。`" kind="warn" />
-      <RouterLink v-if="action === 'publish' && missing.length" class="c-link" :to="activityHref(kind, id)">去填</RouterLink>
+      <div v-if="action === 'publish' && missing.length" class="c-notice c-notice--warn" data-publish-missing><CIcon name="alert" /><div class="c-notice__body">还没填好：{{ missing.join('、') }}。<RouterLink class="c-link" :to="activityHref(kind, id)">去填</RouterLink>，填好再发布。</div></div>
       <AdminNotice v-else-if="unavailable" message="当前状态不能执行这个操作，请重新打开页面。" kind="warn" />
       <fieldset v-if="action === 'publish' && publishPreview" class="b-fieldset">
         <legend class="b-fieldset__legend">活动通知</legend>
         <AdminNotice v-if="publishPreview.problem" :message="`发布后不能马上通知全体成员：${publishPreview.problem}`" kind="warn" />
         <div v-else class="c-field">
           <label class="c-check">
-            <input v-model="announce" type="checkbox" :disabled="pending || uncertain || !publishPreview.recipients">
+            <input v-model="announce" type="checkbox" name="announce" value="1" :disabled="pending || uncertain || !publishPreview.recipients">
             <span>发布后同时通知全体成员（{{ publishPreview.recipients }} 人）</span>
           </label>
           <div class="c-field__help">发给开着「活动通知」的成员。不勾也可以之后在列表的「更多」里发，发之前能看到信的样子；以后有修改还可以再发。</div>

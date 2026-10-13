@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, shallowRef } from "vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import {
   ApiError,
   postApiAdminScrimsIdBoardGenerate,
@@ -22,6 +23,8 @@ const api = useAdminApi()
 const board = shallowRef(props.initial)
 const warning = shallowRef("")
 const clipboardMessage = shallowRef("")
+const copyText = shallowRef<HTMLTextAreaElement | null>(null)
+const preparing = shallowRef(false)
 const generating = shallowRef(false)
 const save = useAdminSave<SplitValues>({
   initial: splitValues(props.initial),
@@ -94,11 +97,11 @@ const generator = useAdminAction<{ signup_ids: number[]; base_board_version: num
 )
 const { pending: generatePending, message: generateMessage, uncertain: generateUncertain } = generator
 const selectedCount = computed(() => values.value.signup_ids.length)
-const disabled = computed(() => generating.value || generatePending.value || generateUncertain.value || snapshot.value.loginRequired)
+const disabled = computed(() => preparing.value || generating.value || generatePending.value || generateUncertain.value || snapshot.value.loginRequired)
 const copyAllowed = computed(() => !dirty.value && !pending.value && !disabled.value && board.value.has_teams && Boolean(board.value.copy_text))
 const contactsVisible = computed(() => record(board.value)?.show_contacts === true || board.value.signups.some((signup) => signup.contacts !== undefined))
 const showResults = computed(() => board.value.has_teams)
-const generationAllowed = computed(() => selectedCount.value === board.value.needed && !disabled.value && !pending.value)
+const generationAllowed = computed(() => selectedCount.value === board.value.needed && !disabled.value)
 
 function pick(id: number, event: Event): void {
   if (disabled.value || !(event.target instanceof HTMLInputElement)) return
@@ -122,23 +125,34 @@ function move(id: number, zone: string): void {
 
 async function generate(): Promise<void> {
   if (!generationAllowed.value) return
-  const clean = await save.flush()
-  if (!clean || selectedCount.value !== board.value.needed) return
-  generating.value = true
+  // Keep the action available while the final choice is being saved, then
+  // freeze further edits and drain that save before using its board version.
+  preparing.value = true
   try {
+    const clean = await save.flush()
+    if (!clean || selectedCount.value !== board.value.needed) return
+    generating.value = true
     await generator.submit({ signup_ids: [...values.value.signup_ids], base_board_version: snapshot.value.version })
   } finally {
     generating.value = false
+    preparing.value = false
   }
 }
 
 async function copy(): Promise<void> {
   if (!copyAllowed.value) return
+  const selectText = () => { copyText.value?.focus(); copyText.value?.select() }
+  if (!navigator.clipboard || !window.isSecureContext) {
+    selectText()
+    clipboardMessage.value = "文本已选中，按 Ctrl+C 复制。"
+    return
+  }
   try {
     await navigator.clipboard.writeText(board.value.copy_text)
-    clipboardMessage.value = "已复制分队文字。"
+    clipboardMessage.value = "已复制，可以发到群里了。"
   } catch {
-    clipboardMessage.value = "无法自动复制，请选中下面的文字复制。"
+    selectText()
+    clipboardMessage.value = "浏览器不让直接复制，文本已选中，按 Ctrl+C 复制。"
   }
 }
 </script>
@@ -158,11 +172,11 @@ async function copy(): Promise<void> {
   <section class="b-form">
     <div class="c-panel__head">
       <h2 class="b-section__title">勾选上场</h2>
-      <nav aria-label="排序" class="c-tabs">
+      <nav aria-label="排序" class="b-chips">
         <RouterLink
           v-for="option in orderOptions"
           :key="option.value"
-          :class="{ 'is-active': board.order === option.value }"
+          :aria-current="board.order === option.value ? 'true' : undefined"
           :to="`/admin/scrims/${id}/split/?order=${option.value}`"
         >{{ option.label }}</RouterLink>
       </nav>
@@ -177,6 +191,7 @@ async function copy(): Promise<void> {
               <label class="c-check">
                 <input
                   type="checkbox"
+                  name="signups"
                   :value="signup.signup_id"
                   :checked="values.signup_ids.includes(signup.signup_id)"
                   :disabled="disabled"
@@ -200,23 +215,25 @@ async function copy(): Promise<void> {
       <div class="b-formbar">
         <span>已选 <strong>{{ selectedCount }}</strong> / 需要 {{ board.needed }} 人</span>
         <span v-if="selectedCount !== board.needed" class="b-formbar__note">人数正好等于需要人数时才能生成分队。</span>
-        <button type="submit" class="c-btn c-btn--primary" :disabled="!generationAllowed">{{ generating || generatePending ? '正在生成…' : '生成分队' }}</button>
+        <button type="submit" name="action" value="generate" class="c-btn c-btn--primary" :disabled="!generationAllowed">{{ preparing || generating || generatePending ? '正在生成…' : '生成分队' }}</button>
         <button v-if="generateUncertain" type="button" class="c-btn c-btn--secondary" :disabled="generatePending" @click="generator.retry()">重试上次生成</button>
       </div>
     </form>
   </section>
-  <template v-if="showResults">
-    <SplitResults :board="board" :values="values" :disabled="disabled" @move="move" @warning="warning = $event" />
+  <div data-split-board><template v-if="showResults">
+    <SplitResults :board="board" :values="values" :disabled="disabled" @move="move" @warning="warning = $event">
+      <template #actions><RouterLink v-if="copyAllowed" class="c-btn c-btn--secondary" :to="`/admin/scrims/${id}/split/text/`" target="_blank" rel="noopener">查看纯文本</RouterLink></template>
+    </SplitResults>
     <ul v-if="fields.placements?.length" class="c-field__error" role="alert"><li v-for="error in fields.placements" :key="error">{{ error }}</li></ul>
-    <section class="b-section">
-      <h2 class="b-section__title">复制结果</h2>
-      <p class="b-sub">存好后复制文字跟着换。</p>
-      <textarea class="split-copy" rows="12" readonly :value="dirty ? '' : board.copy_text" aria-label="分队文字" />
-      <div class="b-actions">
-        <button type="button" class="c-btn c-btn--primary" :disabled="!copyAllowed" @click="copy">复制文字</button>
-        <RouterLink v-if="copyAllowed" class="c-btn c-btn--secondary" :to="`/admin/scrims/${id}/split/text/`" target="_blank" rel="noopener">查看纯文本</RouterLink>
+    <section class="b-section" data-split-copy>
+      <div class="c-panel__head">
+        <h2 class="b-section__title">复制结果</h2>
+        <div class="b-actions">
+          <button type="button" class="c-btn c-btn--secondary c-btn--sm" :disabled="!copyAllowed" @click="copy"><CIcon name="copy" />复制</button>
+          <span class="b-sub" role="status">{{ clipboardMessage || '复制后发到群里。' }}</span>
+        </div>
       </div>
-      <p v-if="clipboardMessage" role="status">{{ clipboardMessage }}</p>
+      <div class="c-field"><textarea ref="copyText" class="split-copy" rows="12" readonly :value="dirty ? '' : board.copy_text" aria-label="分队结果" /></div>
     </section>
-  </template>
+  </template></div>
 </template>

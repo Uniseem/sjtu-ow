@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import CStatus from "@sjtu-ow/ui/CStatus.vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import { formatContentTime } from "./types"
 import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
@@ -14,7 +15,7 @@ import ContentActionMessage from "../../components/content/ContentActionMessage.
 import ConfirmContentAction from "../../components/content/ConfirmContentAction.vue"
 import { useContentResource } from "./use-resource"
 import { useContentPermissions } from "./permissions"
-import { articleStatus, articleStatuses, articleStatusKinds, positiveID, type Article } from "./types"
+import { articleStatus, articleStatuses, articleFilterStatuses, articleStatusKinds, positiveID, type Article } from "./types"
 import { listContentArticles } from "./pending"
 
 const api = useAdminApi()
@@ -32,7 +33,7 @@ const resource = useContentResource((signal) => listContentArticles(api, {
   mine: route.query.mine === "1",
   category: String(route.query.category ?? ""),
   page: positiveID(route.query.page) ?? 1,
-  page_size: 25,
+  page_size: 30,
 }, { signal }))
 const rows = computed(() => (resource.data.value?.items ?? []).filter((item): item is Article => item !== null))
 const action = useAdminAction(
@@ -62,7 +63,7 @@ onMounted(() => { void resource.load() })
 </script>
 <template>
   <AdminPage title="文章" section="content">
-    <template #actions><RouterLink v-if="permission.writeArticle.value" class="c-btn c-btn--primary c-btn--sm" to="/admin/articles/new/">写文章</RouterLink></template>
+    <template #actions><RouterLink v-if="permission.writeArticle.value" class="c-btn c-btn--primary c-btn--sm" to="/admin/articles/new/"><CIcon name="plus" />写文章</RouterLink></template>
     <form class="b-filters" role="search" @submit.prevent="filter">
       <input v-model="query" class="c-input" type="search" name="q" maxlength="50" placeholder="搜标题" aria-label="搜标题">
       <select v-model="category" name="category" class="c-input" aria-label="分类" @change="filter">
@@ -71,7 +72,7 @@ onMounted(() => { void resource.load() })
       </select>
       <select v-model="status" name="status" class="c-input" aria-label="状态" @change="filter">
         <option value="">全部状态</option>
-        <option v-for="(label, value) in articleStatuses" :key="value" :value="value">{{ label }}</option>
+        <option v-for="(label, value) in articleFilterStatuses" :key="value" :value="value">{{ label }}</option>
       </select>
       <label v-if="permission.everyArticle.value" class="c-check"><input v-model="mine" type="checkbox" name="mine" value="1" @change="filter">只看我的</label>
       <button class="c-btn c-btn--secondary c-btn--sm">筛选</button>
@@ -87,12 +88,12 @@ onMounted(() => { void resource.load() })
           <td data-label="分类">{{ item.category_name || '未选分类' }}</td>
           <td data-label="作者">{{ item.author_name || '—' }}</td>
           <td data-label="状态"><CStatus :label="articleStatuses[articleStatus(item)]" :kind="articleStatusKinds[articleStatus(item)]" /></td>
-          <td data-label="最后改动"><time :datetime="item.updated_at">{{ formatContentTime(item.updated_at) }}</time></td>
+          <td data-label="最后改动"><time v-if="item.latest_revision_created_at" :datetime="item.latest_revision_created_at">{{ formatContentTime(item.latest_revision_created_at) }}</time><template v-else>—</template></td>
           <td><div class="b-rowacts">
             <RouterLink v-if="permission.canEdit(item)" class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/articles/${item.id}/`">编辑</RouterLink>
             <a v-if="item.live" class="c-btn c-btn--quiet c-btn--sm" :href="`/news/${encodeURIComponent(item.slug)}/`" target="_blank" rel="noopener">看文章</a>
-            <RouterLink v-if="permission.everyArticle.value && (item.live || item.go_live_at)" class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/announce/article/${item.id}/`">{{ item.live ? '通知全体成员' : '上线时通知全体成员' }}</RouterLink>
-            <button v-if="permission.canUnpublish(item)" type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="!action.canStart.value" @click="confirmation = item">撤下</button>
+            <RouterLink v-if="item.can_announce" class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/announce/article/${item.id}/`">{{ item.live ? '通知全体成员' : '上线时通知全体成员' }}<span v-if="item.announced">（发过 {{ item.announced }} 次）</span></RouterLink>
+            <form v-if="permission.canUnpublish(item)" @submit.prevent="confirmation = item"><button type="submit" class="c-btn c-btn--quiet c-btn--sm" :disabled="!action.canStart.value">撤下</button></form>
           </div></td>
         </tr>
       </tbody>

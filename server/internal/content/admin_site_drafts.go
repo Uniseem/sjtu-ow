@@ -79,7 +79,9 @@ type SiteDraftPublishIn struct {
 	BaseVersion int64 `json:"base_version"`
 }
 type SiteDraftPublishOut struct {
-	Version int64 `json:"version"`
+	Version         int64     `json:"version"`
+	Live            bool      `json:"live"`
+	LastPublishedAt time.Time `json:"last_published_at"`
 }
 
 func readScope(ctx context.Context, q db.DBTX, scope string) (int64, string, string, error) {
@@ -375,6 +377,8 @@ func (m *Module) publishHomeDraft(ctx *app.Ctx, in SiteDraftPublishIn) (SiteDraf
 			return err
 		}
 		out.Version = version + 1
+		out.Live = true
+		out.LastPublishedAt = ctx.Now().UTC()
 		return contentAudit(c, tx, ctx.Viewer.ID, "home.publish", "home", 0, nil, ctx.Now())
 	})
 	return out, err
@@ -411,6 +415,8 @@ func (m *Module) publishNewsDraft(ctx *app.Ctx, in SiteDraftPublishIn) (SiteDraf
 			return err
 		}
 		out.Version = version + 1
+		out.Live = true
+		out.LastPublishedAt = ctx.Now().UTC()
 		return contentAudit(c, tx, ctx.Viewer.ID, "news.publish", "page", pageID, nil, ctx.Now())
 	})
 	return out, err

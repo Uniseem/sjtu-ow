@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
+import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import { getApiAdminImages, getApiAdminImageCollections } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
 import { useAdminSession } from "../../core/session"
@@ -61,11 +62,8 @@ onMounted(() => { void resource.load(); void collections.load() })
     <ContentLoad :pending="collections.pending.value" :message="collections.message.value" :status="collections.status.value" @retry="collections.load" />
     <ContentLoad :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.load" />
     <template v-if="resource.data.value">
-      <ImageGrid :images="resource.data.value.items" :collections="collections.data.value?.collections" />
-      <section v-if="!resource.data.value.items.length" class="c-empty">
-        <h2 class="c-empty__title">没有图片</h2>
-        <p>换个筛选条件，或者上传几张。</p>
-      </section>
+      <ImageGrid v-if="resource.data.value.items.length" :images="resource.data.value.items" :collections="collections.data.value?.collections" />
+      <CEmpty v-else title="没有图片" message="换个筛选条件，或者上传几张。" />
       <ContentPager :page="resource.data.value.page" :total="resource.data.value.total" :page-size="resource.data.value.page_size" :pending="resource.pending.value" />
     </template>
   </AdminPage>

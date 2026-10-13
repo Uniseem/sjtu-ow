@@ -48,7 +48,7 @@ onUnmounted(() => { sequence += 1; request?.abort() })
 </script>
 
 <template>
-  <AdminPage :title="board ? `分队：${board.scrim?.title ?? ''}` : '分队'" section="events" back-href="/admin/scrims/">
+  <AdminPage :title="board ? `分队：${board.scrim?.title ?? ''}` : '分队'" :document-title="board ? `${board.scrim?.title ?? ''} · 分队` : '分队'" section="activities" back-href="/admin/scrims/">
     <p v-if="pending" role="status">正在加载…</p>
     <AdminNotice v-else-if="message" :message="message" kind="error" />
     <SplitController v-else-if="board" :key="`${id}-${order}`" :initial="board" :id="id" />

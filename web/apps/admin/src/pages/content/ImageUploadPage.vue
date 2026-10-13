@@ -9,6 +9,7 @@ import ContentLoad from "../../components/content/ContentLoad.vue"
 import UploadRows from "../../components/content/UploadRows.vue"
 import { useContentResource } from "./use-resource"
 import { useUploadQueue } from "./use-upload-queue"
+import { collectionChoiceLabel } from "./collection-tree"
 
 const api = useAdminApi()
 const { user } = useAdminSession()
@@ -52,7 +53,7 @@ onMounted(async () => {
         <div class="c-field">
           <label class="c-field__label" for="upload_collection">放进集合<span class="c-field__req" aria-hidden="true">*</span></label>
           <select id="upload_collection" v-model="collection" class="c-input" name="collection" required>
-            <option v-for="item in (collections.data.value?.collections ?? []).filter(item => item.can_upload)" :key="item.id" :value="item.key">{{ item.parent_id === null ? '（根）' : item.name }}</option>
+            <option v-for="item in (collections.data.value?.collections ?? []).filter(item => item.can_upload)" :key="item.id" :value="item.key">{{ collectionChoiceLabel(item, collections.data.value?.collections ?? []) }}</option>
           </select>
         </div>
         <div class="c-field">

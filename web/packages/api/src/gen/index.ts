@@ -261,7 +261,7 @@ export interface GetApiAdminArticlesOut {
   total: number;
   page: number;
   page_size: number;
-  items: ({   draft_title?: string | null;   id: number;   kind: string;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   go_live_at?: string | null;   expire_at?: string | null;   first_published_at?: string | null;   last_published_at?: string | null;   live_revision_id?: number | null;   latest_revision_id?: number | null;   owner_id?: number | null;   seo_title: string;   search_description: string;   version: number;   created_at: string;   updated_at: string;   category_id?: number | null;   category_name?: string;   cover_image_id?: number | null;   summary: string;   body_md: string;   body_html: string;   body_plain: string;   char_count: number;   reading_time: number;   author_id?: number | null;   author_name?: string;   comments_enabled: boolean;   related_tournament_id?: number | null;   search_text: string;   renderer_version: number; } | null)[];
+  items: ({   draft_title?: string | null;   expired: boolean;   approved_schedule: boolean;   latest_revision_created_at: string | null;   announced: number;   can_announce: boolean;   id: number;   kind: string;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   go_live_at?: string | null;   expire_at?: string | null;   first_published_at?: string | null;   last_published_at?: string | null;   live_revision_id?: number | null;   latest_revision_id?: number | null;   owner_id?: number | null;   seo_title: string;   search_description: string;   version: number;   created_at: string;   updated_at: string;   category_id?: number | null;   category_name?: string;   cover_image_id?: number | null;   summary: string;   body_md: string;   body_html: string;   body_plain: string;   char_count: number;   reading_time: number;   author_id?: number | null;   author_name?: string;   comments_enabled: boolean;   related_tournament_id?: number | null;   search_text: string;   renderer_version: number; } | null)[];
 }
 
 export function getApiAdminArticles(r: Requester, query: GetApiAdminArticlesQuery = {}, extras: CallExtras = {}): Promise<GetApiAdminArticlesOut> {
@@ -269,15 +269,15 @@ export function getApiAdminArticles(r: Requester, query: GetApiAdminArticlesQuer
 }
 
 export interface GetApiAdminArticlesNewOut {
-  capabilities: {   edit: boolean;   publish: boolean;   unpublish: boolean;   delete: boolean;   announce: boolean;   edit_author: boolean;   edit_schedule: boolean; };
+  capabilities: {   edit: boolean;   publish: boolean;   unpublish: boolean;   delete: boolean;   announce: boolean;   edit_author: boolean;   edit_comments: boolean;   edit_schedule: boolean; };
   guide: boolean;
   categories: {   id: number;   name: string;   allow_submission: boolean; }[];
-  authors: {   id: number;   nickname: string; }[];
+  authors: {   id: number;   nickname: string;   label: string; }[];
   tournaments: {   id: number;   title: string; }[];
   preview_url: string | null;
   announced: number;
   verdict: {   id: number;   risk: string;   reason: string;   quote: string;   checked_at: string | null; } | null;
-  article: {   draft_title?: string | null;   id: number;   kind: string;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   go_live_at?: string | null;   expire_at?: string | null;   first_published_at?: string | null;   last_published_at?: string | null;   live_revision_id?: number | null;   latest_revision_id?: number | null;   owner_id?: number | null;   seo_title: string;   search_description: string;   version: number;   created_at: string;   updated_at: string;   category_id?: number | null;   category_name?: string;   cover_image_id?: number | null;   summary: string;   body_md: string;   body_html: string;   body_plain: string;   char_count: number;   reading_time: number;   author_id?: number | null;   author_name?: string;   comments_enabled: boolean;   related_tournament_id?: number | null;   search_text: string;   renderer_version: number; } | null;
+  article: {   draft_title?: string | null;   expired: boolean;   approved_schedule: boolean;   latest_revision_created_at: string | null;   announced: number;   can_announce: boolean;   id: number;   kind: string;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   go_live_at?: string | null;   expire_at?: string | null;   first_published_at?: string | null;   last_published_at?: string | null;   live_revision_id?: number | null;   latest_revision_id?: number | null;   owner_id?: number | null;   seo_title: string;   search_description: string;   version: number;   created_at: string;   updated_at: string;   category_id?: number | null;   category_name?: string;   cover_image_id?: number | null;   summary: string;   body_md: string;   body_html: string;   body_plain: string;   char_count: number;   reading_time: number;   author_id?: number | null;   author_name?: string;   comments_enabled: boolean;   related_tournament_id?: number | null;   search_text: string;   renderer_version: number; } | null;
   revision?: {   title: string;   slug: string;   category_id: number | null;   cover_image_id: number | null;   summary: string;   body_md: string;   author_id: number | null;   comments_enabled: boolean;   related_tournament_id: number | null;   seo_title: string;   search_description: string;   go_live_at: string | null;   expire_at: string | null; } | null;
   version: number;
 }
@@ -287,15 +287,15 @@ export function getApiAdminArticlesNew(r: Requester, extras: CallExtras = {}): P
 }
 
 export interface GetApiAdminArticlesIdOut {
-  capabilities: {   edit: boolean;   publish: boolean;   unpublish: boolean;   delete: boolean;   announce: boolean;   edit_author: boolean;   edit_schedule: boolean; };
+  capabilities: {   edit: boolean;   publish: boolean;   unpublish: boolean;   delete: boolean;   announce: boolean;   edit_author: boolean;   edit_comments: boolean;   edit_schedule: boolean; };
   guide: boolean;
   categories: {   id: number;   name: string;   allow_submission: boolean; }[];
-  authors: {   id: number;   nickname: string; }[];
+  authors: {   id: number;   nickname: string;   label: string; }[];
   tournaments: {   id: number;   title: string; }[];
   preview_url: string | null;
   announced: number;
   verdict: {   id: number;   risk: string;   reason: string;   quote: string;   checked_at: string | null; } | null;
-  article: {   draft_title?: string | null;   id: number;   kind: string;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   go_live_at?: string | null;   expire_at?: string | null;   first_published_at?: string | null;   last_published_at?: string | null;   live_revision_id?: number | null;   latest_revision_id?: number | null;   owner_id?: number | null;   seo_title: string;   search_description: string;   version: number;   created_at: string;   updated_at: string;   category_id?: number | null;   category_name?: string;   cover_image_id?: number | null;   summary: string;   body_md: string;   body_html: string;   body_plain: string;   char_count: number;   reading_time: number;   author_id?: number | null;   author_name?: string;   comments_enabled: boolean;   related_tournament_id?: number | null;   search_text: string;   renderer_version: number; } | null;
+  article: {   draft_title?: string | null;   expired: boolean;   approved_schedule: boolean;   latest_revision_created_at: string | null;   announced: number;   can_announce: boolean;   id: number;   kind: string;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   go_live_at?: string | null;   expire_at?: string | null;   first_published_at?: string | null;   last_published_at?: string | null;   live_revision_id?: number | null;   latest_revision_id?: number | null;   owner_id?: number | null;   seo_title: string;   search_description: string;   version: number;   created_at: string;   updated_at: string;   category_id?: number | null;   category_name?: string;   cover_image_id?: number | null;   summary: string;   body_md: string;   body_html: string;   body_plain: string;   char_count: number;   reading_time: number;   author_id?: number | null;   author_name?: string;   comments_enabled: boolean;   related_tournament_id?: number | null;   search_text: string;   renderer_version: number; } | null;
   revision?: {   title: string;   slug: string;   category_id: number | null;   cover_image_id: number | null;   summary: string;   body_md: string;   author_id: number | null;   comments_enabled: boolean;   related_tournament_id: number | null;   seo_title: string;   search_description: string;   go_live_at: string | null;   expire_at: string | null; } | null;
   version: number;
 }
@@ -384,7 +384,7 @@ export function getApiAdminAvatars(r: Requester, query: GetApiAdminAvatarsQuery 
 }
 
 export interface GetApiAdminCategoriesOut {
-  items: ({   id: number;   name: string;   slug: string;   description: string;   sort_order: number;   allow_submission: boolean;   version: number;   created_at: string;   updated_at: string;   article_count: number; } | null)[];
+  items: ({   id: number;   name: string;   slug: string;   description: string;   sort_order: number;   allow_submission: boolean;   version: number;   created_at: string;   updated_at: string;   article_count: number;   can_delete: boolean; } | null)[];
 }
 
 export function getApiAdminCategories(r: Requester, extras: CallExtras = {}): Promise<GetApiAdminCategoriesOut> {
@@ -837,7 +837,7 @@ export function getApiAdminScrimsIdPublishPreview(r: Requester, id: string | num
 }
 
 export interface GetApiAdminSettingsOut {
-  settings: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
+  settings: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   image_titles: Record<string, string>;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
 }
 
 export function getApiAdminSettings(r: Requester, extras: CallExtras = {}): Promise<GetApiAdminSettingsOut> {
@@ -1614,7 +1614,7 @@ export interface PatchApiAdminCategoriesIdIn {
 }
 
 export interface PatchApiAdminCategoriesIdOut {
-  category: {   id: number;   name: string;   slug: string;   description: string;   sort_order: number;   allow_submission: boolean;   version: number;   created_at: string;   updated_at: string;   article_count: number; } | null;
+  category: {   id: number;   name: string;   slug: string;   description: string;   sort_order: number;   allow_submission: boolean;   version: number;   created_at: string;   updated_at: string;   article_count: number;   can_delete: boolean; } | null;
 }
 
 export function patchApiAdminCategoriesId(r: Requester, id: string | number, body: PatchApiAdminCategoriesIdIn, extras: CallExtras = {}): Promise<PatchApiAdminCategoriesIdOut> {
@@ -1781,11 +1781,11 @@ export interface PatchApiAdminSettingsIn {
 }
 
 export interface PatchApiAdminSettingsOut {
-  settings: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
+  settings: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   image_titles: Record<string, string>;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
   version: number;
   saved: string[];
   fields?: Record<string, string[]>;
-  values?: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
+  values?: {   max_game_accounts: number;   moderation_image_enabled: boolean;   id: number;   site_description: string;   from_name: string;   email_subject_prefix: string;   smtp_host: string;   smtp_port: number;   smtp_security: string;   smtp_username: string;   has_smtp_password: boolean;   from_address: string;   founded_on: string;   default_share_image_id: number | null;   hero_image_id: number | null;   banner_news_id: number | null;   banner_tournaments_id: number | null;   banner_scrims_id: number | null;   banner_teams_id: number | null;   banner_members_id: number | null;   image_titles: Record<string, string>;   qq_group_url: string;   team_max_members: number;   team_max_captained: number;   tournament_reminder_hours: number;   scrim_reminder_hours: number;   moderation_enabled: boolean;   moderation_configured: boolean;   moderation_provider: string;   has_moderation_api_key: boolean;   moderation_base_url: string;   moderation_model: string;   moderation_max_tokens: number;   moderation_timeout_seconds: number;   moderation_extra_params: string;   moderation_daily_limit: number;   moderation_notify_email: string;   version: number;   updated_at: string; } | null;
   saved_at: string;
 }
 
@@ -2096,7 +2096,7 @@ export interface PostApiAdminCategoriesIn {
 }
 
 export interface PostApiAdminCategoriesOut {
-  category: {   id: number;   name: string;   slug: string;   description: string;   sort_order: number;   allow_submission: boolean;   version: number;   created_at: string;   updated_at: string;   article_count: number; } | null;
+  category: {   id: number;   name: string;   slug: string;   description: string;   sort_order: number;   allow_submission: boolean;   version: number;   created_at: string;   updated_at: string;   article_count: number;   can_delete: boolean; } | null;
 }
 
 export function postApiAdminCategories(r: Requester, body: PostApiAdminCategoriesIn, extras: CallExtras = {}): Promise<PostApiAdminCategoriesOut> {
@@ -2107,6 +2107,7 @@ export interface PostApiAdminFontsIn {
   family_id?: number;
   source: string;
   family?: string;
+  display_name?: string;
   weights?: number[];
   package_name?: string;
   package_base64?: string;
@@ -2163,6 +2164,8 @@ export interface PostApiAdminHomePinsPublishIn {
 
 export interface PostApiAdminHomePinsPublishOut {
   version: number;
+  live: boolean;
+  last_published_at: string;
 }
 
 export function postApiAdminHomePinsPublish(r: Requester, body: PostApiAdminHomePinsPublishIn, extras: CallExtras = {}): Promise<PostApiAdminHomePinsPublishOut> {
@@ -2288,6 +2291,8 @@ export interface PostApiAdminNewsIntroPublishIn {
 
 export interface PostApiAdminNewsIntroPublishOut {
   version: number;
+  live: boolean;
+  last_published_at: string;
 }
 
 export function postApiAdminNewsIntroPublish(r: Requester, body: PostApiAdminNewsIntroPublishIn, extras: CallExtras = {}): Promise<PostApiAdminNewsIntroPublishOut> {
@@ -2743,7 +2748,7 @@ export interface PostApiArticlesIdPublishIn {
 }
 
 export interface PostApiArticlesIdPublishOut {
-  article: {   draft_title?: string | null;   id: number;   kind: string;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   go_live_at?: string | null;   expire_at?: string | null;   first_published_at?: string | null;   last_published_at?: string | null;   live_revision_id?: number | null;   latest_revision_id?: number | null;   owner_id?: number | null;   seo_title: string;   search_description: string;   version: number;   created_at: string;   updated_at: string;   category_id?: number | null;   category_name?: string;   cover_image_id?: number | null;   summary: string;   body_md: string;   body_html: string;   body_plain: string;   char_count: number;   reading_time: number;   author_id?: number | null;   author_name?: string;   comments_enabled: boolean;   related_tournament_id?: number | null;   search_text: string;   renderer_version: number; } | null;
+  article: {   draft_title?: string | null;   expired: boolean;   approved_schedule: boolean;   latest_revision_created_at: string | null;   announced: number;   can_announce: boolean;   id: number;   kind: string;   slug: string;   title: string;   live: boolean;   has_unpublished_changes: boolean;   go_live_at?: string | null;   expire_at?: string | null;   first_published_at?: string | null;   last_published_at?: string | null;   live_revision_id?: number | null;   latest_revision_id?: number | null;   owner_id?: number | null;   seo_title: string;   search_description: string;   version: number;   created_at: string;   updated_at: string;   category_id?: number | null;   category_name?: string;   cover_image_id?: number | null;   summary: string;   body_md: string;   body_html: string;   body_plain: string;   char_count: number;   reading_time: number;   author_id?: number | null;   author_name?: string;   comments_enabled: boolean;   related_tournament_id?: number | null;   search_text: string;   renderer_version: number; } | null;
 }
 
 export function postApiArticlesIdPublish(r: Requester, id: string | number, body: PostApiArticlesIdPublishIn, extras: CallExtras = {}): Promise<PostApiArticlesIdPublishOut> {

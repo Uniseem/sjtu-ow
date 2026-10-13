@@ -32,10 +32,10 @@ watch(()=>[action.pending.value,action.uncertain.value],([pending,uncertain])=>{
   <div :class="embedded ? 'c-field' : 'b-section'">
     <h2 v-if="!embedded" class="b-section__title">{{ label }}</h2>
     <p v-if="!embedded" class="b-sub">{{ hasSecret ? '现在有已保存的密钥。' : '现在没有保存密钥。' }} 密钥不回显，空着不改。</p>
-    <component :is="embedded ? 'div' : 'form'" @submit.prevent="submit(false)">
+    <component :is="embedded ? 'div' : 'form'" :class="embedded ? 'contents' : undefined" @submit.prevent="submit(false)">
       <label class="c-field__label" :for="`secret-${field}`">{{ embedded ? label : `新的${label}` }}</label>
-      <input :id="`secret-${field}`" v-model="value" type="password" autocomplete="new-password" class="c-input" :name="field" :placeholder="hasSecret ? '已保存（留空不修改）' : ''" :disabled="!action.canStart.value" @blur="submit(false)" />
-      <p v-if="embedded" class="c-field__help">加密存储。后台表单不回显原值，留空表示不修改。</p><div v-if="!embedded" class="b-actions">
+      <input :id="`secret-${field}`" v-model="value" type="password" autocomplete="new-password" class="c-input" :name="field" :placeholder="!embedded && hasSecret ? '已保存（留空不修改）' : undefined" :disabled="!action.canStart.value" @blur="submit(false)" />
+      <p v-if="embedded" class="c-field__help">{{ field === 'smtp_password' ? '加密存储。留空表示不修改已保存的密码。' : '服务商给的 API Key，加密存储。留空表示不修改已保存的密钥。' }}{{ hasSecret ? '现在：已保存。' : '现在：还没有。' }}</p><div v-if="!embedded" class="b-actions">
         <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!value || !action.canStart.value">保存{{ label }}</button>
         <ConfirmAction v-if="hasSecret" title="清除密钥" :message="`清除已保存的${label}？`" label="清除" danger :pending="!action.canStart.value" @confirm="submit(true)" />
       </div>

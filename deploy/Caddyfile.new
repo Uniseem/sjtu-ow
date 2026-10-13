@@ -18,7 +18,11 @@
 # 安全头统一在这里加（12 号 3.4）。`>` 是推迟到上游答复之后再设，会覆盖上游带来的同名头，
 # 所以 SSR 不必再发 CSP。策略和 web/apps/site/server.ts 的 CSP 逐字一致（有测试比）。
 (security) {
-	@ordinary_headers not path /letters/*/*/ /admin/letters/*/*/ /_styleguide/emails/*/ /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
+	@ordinary_headers not path /admin/* /letters/*/*/ /_styleguide/emails/*/ /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview /api/admin/articles/*/preview /api/admin/previews/* /api/admin/home-pins/preview /api/admin/news-intro/preview /api/admin/pages/*/preview
+	@admin_headers {
+		path /admin/*
+		not path /admin/letters/*/*/
+	}
 	@letter_preview_headers path /api/letters/*/*/preview /api/admin/announce/*/*/preview /api/admin/mail-samples/*/preview
 	@legacy_mail_headers path /_styleguide/emails/*/
 	@legacy_held_headers path /letters/*/*/ /admin/letters/*/*/
@@ -53,6 +57,16 @@
         >X-Frame-Options "SAMEORIGIN"
         >Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; frame-src https://player.bilibili.com; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-same-origin"
     }
+	# 298 user-approved CodeMirror attribute policy; style elements and scripts
+	# remain self-only. Private standalone letters retain their sandbox policy.
+	header @admin_headers {
+		>Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		>X-Content-Type-Options "nosniff"
+		>Referrer-Policy "same-origin"
+		>Cross-Origin-Opener-Policy "same-origin"
+		>X-Frame-Options "DENY"
+		>Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	}
 	# 邮件独立文档沿用旧站 EMAIL_CSP：信纸内联排版，禁止所有脚本与表单。
 	# 仅这个精确的私有预览模式可嵌入同站页面，其他页面仍 DENY。
 	header @letter_preview_headers {

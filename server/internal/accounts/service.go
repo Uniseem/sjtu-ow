@@ -1166,14 +1166,6 @@ func (s *Service) RequestEmailChange(ctx *app.Ctx, in RequestEmailChangeInput) (
 		return nil, api.InvalidFields(map[string][]string{"new_email": {"新邮箱不能与当前邮箱相同。"}})
 	}
 
-	existing, err := s.store.GetByEmailNorm(ctx.Context, newEmailNorm)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil && existing.ID != u.ID {
-		return nil, api.InvalidFields(map[string][]string{"new_email": {"该邮箱已被其他账号占用。"}})
-	}
-
 	code, codeHash, err := s.codeGen()
 	if err != nil {
 		return nil, err
@@ -1181,16 +1173,30 @@ func (s *Service) RequestEmailChange(ctx *app.Ctx, in RequestEmailChangeInput) (
 
 	now := s.clock.Now().UTC()
 	err = s.d.WriteTx(ctx.Context, func(txCtx context.Context, tx *db.Tx) error {
+		existing, err := s.store.GetByEmailNormTx(txCtx, tx, newEmailNorm)
+		if err != nil {
+			return err
+		}
+		occupied := existing != nil && existing.ID != u.ID
+		storedHash := codeHash
+		if occupied {
+			// Match the frozen allauth anti-enumeration response. Keep the same
+			// pending flow but no valid code and no mail to another account.
+			storedHash = ""
+		}
 		ec := &EmailChange{
 			UserID:       u.ID,
 			NewEmail:     trimmedEmail,
 			NewEmailNorm: newEmailNorm,
-			CodeHash:     codeHash,
+			CodeHash:     storedHash,
 			CreatedAt:    now,
 			ExpiresAt:    now.Add(15 * time.Minute),
 		}
 		if err := s.store.InsertEmailChange(txCtx, tx, ec); err != nil {
 			return err
+		}
+		if occupied {
+			return nil
 		}
 
 		letter := mail.Letter{
@@ -1200,7 +1206,7 @@ func (s *Service) RequestEmailChange(ctx *app.Ctx, in RequestEmailChangeInput) (
 			Note:    "验证码 15 分钟内有效、最多尝试 3 次。如果这不是你本人的操作，请忽略这封邮件。",
 			Reason:  "你收到这封邮件，是因为有人申请将此邮箱绑定为 SJTU-OW 账号。",
 		}
-		_, err := outbox.Send(txCtx, tx, nil, s.siteURL, letter, []mail.Person{{Address: trimmedEmail, Name: u.Nickname}}, now)
+		_, err = outbox.Send(txCtx, tx, nil, s.siteURL, letter, []mail.Person{{Address: trimmedEmail, Name: u.Nickname}}, now)
 		return err
 	})
 	if err != nil {

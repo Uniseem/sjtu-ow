@@ -21,9 +21,13 @@ func (s *Service) AnnounceKind() notify.Kind {
 		Load: func(ctx context.Context, q db.DBTX, id int64) (*notify.Subject, error) {
 			var title string
 			var live int
+			var scheduled int
 			var goLive sql.NullString
-			err := q.QueryRowContext(ctx, `SELECT title, live, go_live_at FROM pages WHERE id = ? AND kind = 'article'`, id).
-				Scan(&title, &live, &goLive)
+			err := q.QueryRowContext(ctx, `SELECT title, live,
+                (SELECT schedule.approved_go_live_at FROM page_revisions schedule WHERE schedule.page_id=pages.id AND schedule.approved_go_live_at IS NOT NULL ORDER BY schedule.id DESC LIMIT 1),
+                EXISTS(SELECT 1 FROM page_revisions schedule WHERE schedule.page_id=pages.id AND schedule.approved_go_live_at IS NOT NULL)
+                FROM pages WHERE id = ? AND kind = 'article'`, id).
+				Scan(&title, &live, &goLive, &scheduled)
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, nil
 			}
@@ -31,8 +35,8 @@ func (s *Service) AnnounceKind() notify.Kind {
 				return nil, err
 			}
 			subj := &notify.Subject{Title: title, Live: live == 1}
-			if live == 0 && goLive.Valid && goLive.String != "" {
-				if t, err := time.Parse(time.RFC3339Nano, goLive.String); err == nil {
+			if live == 0 && scheduled == 1 && goLive.Valid && goLive.String != "" {
+				if t, err := db.ParseUTC(goLive.String); err == nil {
 					subj.GoLiveAt = &t
 				}
 			}

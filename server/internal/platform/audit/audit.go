@@ -52,7 +52,7 @@ type QueryResult struct {
 	PageSize int              `json:"page_size"`
 }
 
-// ActionCatalog mirrors the frozen site's registered custom log actions. Keep
+// ActionCatalog mirrors the frozen site's full registered log action order. Keep
 // this stable even before a given action has occurred, so the filter is a
 // complete directory rather than a history-dependent subset.
 var ActionCatalog = []string{
@@ -60,6 +60,17 @@ var ActionCatalog = []string{
 	"scrims.publish", "scrims.finish", "scrims.cancel", "scrims.select", "scrims.generate", "scrims.save_teams",
 	"teams.assign_captain", "teams.disband", "tournaments.announce", "scrims.announce", "articles.announce",
 	"users.deactivate", "users.reactivate", "tournaments.notify_participants", "scrims.notify_participants",
+	"tournaments.export_registrations", "moderation.handle", "moderation.ask_author",
+	"wagtail.create", "wagtail.edit", "wagtail.delete", "wagtail.apitoken.create", "wagtail.apitoken.revoke",
+	"wagtail.publish", "wagtail.publish.scheduled", "wagtail.unpublish", "wagtail.unpublish.scheduled",
+	"wagtail.lock", "wagtail.unlock", "wagtail.moderation.approve", "wagtail.moderation.reject",
+	"wagtail.rename", "wagtail.revert", "wagtail.copy", "wagtail.copy_for_translation",
+	"wagtail.create_alias", "wagtail.convert_alias", "wagtail.move", "wagtail.reorder",
+	"wagtail.publish.schedule", "wagtail.schedule.cancel",
+	"wagtail.view_restriction.create", "wagtail.view_restriction.edit", "wagtail.view_restriction.delete",
+	"wagtail.comments.create", "wagtail.comments.edit", "wagtail.comments.delete", "wagtail.comments.resolve",
+	"wagtail.comments.create_reply", "wagtail.comments.edit_reply", "wagtail.comments.delete_reply",
+	"wagtail.workflow.start", "wagtail.workflow.approve", "wagtail.workflow.reject", "wagtail.workflow.resume", "wagtail.workflow.cancel",
 }
 
 // Record 记一条。actor 为 0 表示系统。data 可以是 nil，也可以是任何能转成 JSON 的东西。

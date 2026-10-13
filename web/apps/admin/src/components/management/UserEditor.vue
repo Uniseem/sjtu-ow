@@ -37,18 +37,18 @@ async function saveRoles() { if (await save.flush()) await roleAction.submit([..
         <input id="user-nickname" name="nickname" required minlength="2" class="c-input" maxlength="16" :value="save.values.value.nickname" @input="save.set('nickname', value($event), 'text')" @blur="save.flush" />
         <p v-for="error in save.fields.value.nickname" :key="error" class="c-field__error" role="alert">{{ error }}</p>
       </div>
-      <label class="c-check">
-        <input name="is_sjtu" type="checkbox" :checked="save.values.value.is_sjtu" @change="save.set('is_sjtu', checked($event), 'choice')" />是否来自交大</label>
-    <div class="c-field">
-      <span class="c-field__label">角色</span>
+      <div class="c-field"><label class="c-check">
+        <input name="is_sjtu" type="checkbox" :checked="save.values.value.is_sjtu" @change="save.set('is_sjtu', checked($event), 'choice')" /><span>是否来自交大</span></label></div>
+    <fieldset class="c-field">
+      <legend class="c-field__label mb-2">角色</legend>
 
       <p v-if="choices.message.value" class="c-field__error" role="alert">{{ choices.message.value }}</p>
 
-        <label v-for="role in assignable" :key="role.id" class="c-check">
-          <input name="roles" :value="role.name" type="checkbox" :checked="roles.includes(role.name)" :disabled="!roleAction.canStart.value" @change="changeRole(role.name, checked($event))" />{{ role.label || role.name }}</label>
+        <div><div v-for="role in assignable" :key="role.id"><label class="c-check">
+          <input name="roles" :value="role.name" type="checkbox" :checked="roles.includes(role.name)" :disabled="!roleAction.canStart.value" @change="changeRole(role.name, checked($event))" />{{ role.label || role.name }}</label></div></div>
 <p class="c-field__help">投稿者、交大用户、校外用户由系统按账号情况维护，不在这里改。</p>
         <ActionState :message="roleAction.message.value" :pending="roleAction.pending.value" :uncertain="roleAction.uncertain.value" @retry="roleAction.retry" />
-      </div>
+      </fieldset>
 
       </div>
 

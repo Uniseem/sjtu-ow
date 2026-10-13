@@ -37,8 +37,8 @@ function check(event: Event): void {
 </script>
 
 <template>
-  <fieldset class="b-section" :disabled="disabled">
-    <legend class="b-section__title">内容</legend>
+  <fieldset class="b-fieldset" :disabled="disabled">
+    <legend class="b-fieldset__legend">内容</legend>
     <ActivityField id="title" label="标题" :errors="fields.title" required v-slot="field">
       <input
         id="title"
@@ -53,7 +53,7 @@ function check(event: Event): void {
         @blur="emit('blur')"
       >
     </ActivityField>
-    <ActivityField id="description" label="说明" help="支持 Markdown。" :errors="fields.description" v-slot="field">
+    <ActivityField id="description" label="说明" :errors="fields.description" v-slot="field">
       <MarkdownEditor
         id="description"
         name="description"
@@ -67,9 +67,9 @@ function check(event: Event): void {
       />
     </ActivityField>
   </fieldset>
-  <fieldset class="b-section" :disabled="disabled">
-    <legend class="b-section__title">时间</legend>
-    <ActivityField id="starts_at" label="开始时间" help="北京时间；只修改到分钟。" :errors="fields.starts_at" required v-slot="field">
+  <fieldset class="b-fieldset" :disabled="disabled">
+    <legend class="b-fieldset__legend">时间</legend>
+    <ActivityField id="starts_at" label="开始时间" :errors="fields.starts_at" required v-slot="field">
       <input
         id="starts_at"
         name="starts_at"
@@ -98,9 +98,9 @@ function check(event: Event): void {
       >
     </ActivityField>
   </fieldset>
-  <fieldset class="b-section" :disabled="disabled">
-    <legend class="b-section__title">规则</legend>
-    <ActivityField id="format" label="规格" :errors="fields.format" v-slot="field">
+  <fieldset class="b-fieldset" :disabled="disabled">
+    <legend class="b-fieldset__legend">规则</legend>
+    <ActivityField id="format" label="规格" :errors="fields.format" required v-slot="field">
       <select
         id="format"
         name="format"
@@ -113,7 +113,7 @@ function check(event: Event): void {
         <option v-for="option in formatOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
       </select>
     </ActivityField>
-    <ActivityField id="sjtu_only" label="仅限交大" :errors="fields.sjtu_only" v-slot="field">
+    <ActivityField id="sjtu_only" label="仅限交大" :errors="fields.sjtu_only" checkbox v-slot="field">
       <label class="c-check">
         <input
           id="sjtu_only"
@@ -123,7 +123,7 @@ function check(event: Event): void {
           :aria-invalid="Boolean(fields.sjtu_only?.length)"
           :aria-describedby="field.describedby"
           @change="check"
-        >仅限交大
+        ><span>仅限交大</span>
       </label>
     </ActivityField>
   </fieldset>

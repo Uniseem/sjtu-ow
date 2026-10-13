@@ -49,7 +49,7 @@ onUnmounted(() => request?.abort())
 </script>
 
 <template>
-  <AdminPage :title="board ? `队伍编排：${board.tournament?.title ?? ''}` : '队伍编排'" section="events" back-href="/admin/tournaments/">
+  <AdminPage :title="board ? `队伍编排：${board.tournament?.title ?? ''}` : '队伍编排'" :document-title="board ? `${board.tournament?.title ?? ''} · 队伍编排` : '队伍编排'" section="activities" back-href="/admin/tournaments/">
     <p v-if="pending" role="status">正在加载…</p>
     <AdminNotice v-else-if="error" :message="error" kind="error" />
     <TeamBoardController v-else-if="board" :initial="board" :minimum="minimum" :id="id" />

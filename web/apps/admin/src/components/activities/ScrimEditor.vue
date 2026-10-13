@@ -75,8 +75,8 @@ function fieldChange(name: keyof ScrimValues, value: string | boolean | null, ki
 <template>
   <div :class="id !== null ? 'b-split' : 'b-single'">
   <form class="b-form" @submit.prevent="save.flush()">
-    <AdminNotice v-if="mode === 'copy' && id === null && source" :message="`从「${source.title}」复制：内容和规则照抄，时间按整周挪到将来。改一处就建成一份新的草稿。`" kind="info" />
     <SaveStatus :snapshot="snapshot" :dirty="dirty" :pending="pending" @retry="save.save()" />
+    <div v-if="mode === 'copy' && id === null && source" class="c-notice c-notice--info"><CIcon name="copy" /><div class="c-notice__body">从「{{ source.title }}」复制：内容和规则照抄，时间按整周挪到将来。改一处就建成一份新的草稿。</div></div>
     <AdminNotice
       v-if="id !== null && mode !== 'edit'"
       :message="mode === 'copy' ? '已复制为一项新的草稿，原来的内战不变。' : '草稿已建立。'"
@@ -90,7 +90,7 @@ function fieldChange(name: keyof ScrimValues, value: string | boolean | null, ki
       @change="fieldChange"
       @blur="save.flush()"
     />
-    <div class="b-formbar">
+    <div v-if="id === null" class="b-formbar">
       <span v-if="id === null" class="b-formbar__note">改一处就建成草稿，必填项空着也存；填好以后在「更多」里发布。</span>
     </div>
   </form>
@@ -99,11 +99,11 @@ function fieldChange(name: keyof ScrimValues, value: string | boolean | null, ki
       <h2 class="b-section__title">状态</h2>
       <dl class="b-kv">
         <dt>状态</dt><dd>{{ statusLabel(state) }}</dd>
+        <dt>报名</dt><dd>{{ detail?.row?.signup_total ?? 0 }} 人</dd>
         <template v-if="detail?.scrim?.teams_generated_at"><dt>分队</dt><dd>{{ timestamp(detail.scrim.teams_generated_at) }}</dd></template>
         <template v-if="detail?.creator_nickname"><dt>建立人</dt><dd>{{ detail.creator_nickname }}</dd></template>
-        <dt>报名</dt><dd>{{ detail?.row?.signup_total ?? 0 }} 人</dd>
       </dl>
-      <a v-if="state !== 'draft'" class="c-btn c-btn--secondary c-btn--sm" :href="`/scrims/${id}/`" target="_blank" rel="noopener">看活动页</a>
+      <a v-if="state !== 'draft'" class="c-btn c-btn--secondary c-btn--sm" :href="`/scrims/${id}/`" target="_blank" rel="noopener">看活动页<CIcon name="external" class="size-4" /></a>
     </section>
     <section class="b-section">
       <h2 class="b-section__title">接下来</h2>

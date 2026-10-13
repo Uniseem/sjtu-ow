@@ -18,7 +18,7 @@ export const settingsSections: SettingSection[] = [
     { name: 'email_subject_prefix', label: "邮件主题前缀", kind: 'text', required: true, maxlength: 40 },
     { name: 'smtp_host', label: "SMTP 服务器", kind: 'text', maxlength: 255 },
     { name: 'smtp_port', label: "SMTP 端口", kind: 'number', min: 1, max: 65535, required: true },
-    { name: 'smtp_security', label: "加密方式", kind: 'select', choices: [{ value: 'starttls', label: 'STARTTLS' }, { value: 'ssl', label: 'SSL' }, { value: 'none', label: '无' }], required: true, maxlength: 16 },
+    { name: 'smtp_security', label: "加密方式", kind: 'select', choices: [{ value: 'none', label: '无' }, { value: 'starttls', label: 'STARTTLS' }, { value: 'ssl', label: 'SSL' }], required: true, maxlength: 16 },
     { name: 'smtp_username', label: "SMTP 账号", kind: 'text', maxlength: 255 },
   ] },
   { title: '社区参数', fields: [

@@ -15,6 +15,7 @@ import ConfirmContentAction from "./ConfirmContentAction.vue"
 import { saveImage, type ImageEditValues } from "../../pages/content/pending"
 import { readContentCurrent } from "../../pages/content/save-values"
 import { type Collection, type ImageDetail } from "../../pages/content/types"
+import { collectionChoiceLabel } from "../../pages/content/collection-tree"
 
 const props = defineProps<{ image: ImageDetail; collections: Collection[] }>()
 const api = useAdminApi()
@@ -73,7 +74,7 @@ async function remove(): Promise<void> {
         <ContentField name="collection_id" label="集合" required :errors="fields.collection_id">
           <template #default="field">
             <select :id="field.id" class="c-input" name="collection" :value="values.collection_id ?? ''" :aria-describedby="field.describedby" @change="collection">
-              <option v-for="item in collections.filter(item => item.can_upload)" :key="item.id" :value="item.id">{{ item.parent_id === null ? '（根）' : item.name }}</option>
+              <option v-for="item in collections.filter(item => item.can_upload)" :key="item.id" :value="item.id">{{ collectionChoiceLabel(item, collections) }}</option>
             </select>
           </template>
         </ContentField>

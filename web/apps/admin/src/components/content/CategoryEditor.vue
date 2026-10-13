@@ -29,7 +29,7 @@ const initial: CategoryDraft = props.category ? {
   sort_order: props.category.sort_order,
   allow_submission: props.category.allow_submission,
 } : emptyCategory()
-const canDelete = computed(() => permission.manageCategories.value && category.value?.article_count === 0)
+const canDelete = computed(() => permission.manageCategories.value && category.value?.can_delete === true)
 const save: ReturnType<typeof useAdminSave<CategoryDraft>> = useAdminSave<CategoryDraft>({
   initial,
   version: props.category?.version ?? 0,

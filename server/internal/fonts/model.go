@@ -16,9 +16,10 @@ const MaxSlices = 1024
 const ChunkBytes = 128 << 10
 
 type Service struct {
-	d         *db.DB
-	mediaDir  string
-	uploadDir string
+	d            *db.DB
+	mediaDir     string
+	uploadDir    string
+	googleClient *http.Client
 }
 
 func NewService(d *db.DB, mediaDir string, uploadDir string) *Service {
@@ -103,6 +104,7 @@ type ImportIn struct {
 	FamilyID         int64  `json:"family_id,omitempty"`
 	Source           string `json:"source"`
 	Family           string `json:"family,omitempty"`
+	DisplayName      string `json:"display_name,omitempty"`
 	Weights          []int  `json:"weights,omitempty"`
 	PackageName      string `json:"package_name,omitempty"`
 	PackageBase64    string `json:"package_base64,omitempty"`

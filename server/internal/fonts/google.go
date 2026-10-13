@@ -132,7 +132,7 @@ func declaration(body, name string) string {
 	}
 	return strings.TrimSpace(match[1])
 }
-func prepareGoogle(ctx context.Context, family string, weights []int) (preparedFont, error) {
+func prepareGoogle(ctx context.Context, family string, weights []int, client *http.Client) (preparedFont, error) {
 	family = strings.TrimSpace(family)
 	out := preparedFont{source: "google", sourceRef: family, data: map[string][]byte{}}
 	if !familyPattern.MatchString(family) {
@@ -158,8 +158,10 @@ func prepareGoogle(ctx context.Context, family string, weights []int) (preparedF
 		axis = append(axis, strconv.Itoa(weight))
 	}
 	query := url.Values{"family": {family + ":wght@" + strings.Join(axis, ";")}, "display": {"swap"}}
-	client := fontHTTPClient()
-	defer client.CloseIdleConnections()
+	if client == nil {
+		client = fontHTTPClient()
+		defer client.CloseIdleConnections()
+	}
 	css, err := fetchGoogle(ctx, client, "https://fonts.googleapis.com/css2?"+query.Encode(), "fonts.googleapis.com", 2<<20)
 	if err != nil {
 		return out, err

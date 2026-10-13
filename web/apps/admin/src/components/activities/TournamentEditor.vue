@@ -90,8 +90,8 @@ function fieldChange(name: keyof TournamentValues, value: string | number | bool
 <template>
   <div :class="id !== null ? 'b-split' : 'b-single'">
   <form class="b-form" @submit.prevent="save.flush()">
-    <AdminNotice v-if="mode === 'copy' && id === null && source" :message="`从「${source.title}」复制：内容和规则照抄，时间按整周挪到将来。改一处就建成一份新的草稿。`" kind="info" />
     <SaveStatus :snapshot="snapshot" :dirty="dirty" :pending="pending" @retry="save.save()" />
+    <div v-if="mode === 'copy' && id === null && source" class="c-notice c-notice--info"><CIcon name="copy" /><div class="c-notice__body">从「{{ source.title }}」复制：内容和规则照抄，时间按整周挪到将来。改一处就建成一份新的草稿。</div></div>
     <AdminNotice
       v-if="id !== null && mode !== 'edit'"
       :message="mode === 'copy' ? '已复制为一项新的草稿，原来的赛事不变。' : '草稿已建立。'"
@@ -104,11 +104,11 @@ function fieldChange(name: keyof TournamentValues, value: string | number | bool
       :disabled="snapshot.loginRequired"
       :has-entries="lockedMode"
       :has-registrations="lockedApproval"
-      :team-maximum="detail?.team_max_members ?? props.defaults?.team_max_members ?? null"
+      :team-maximum="detail?.team_max_members ?? props.detail?.team_max_members ?? props.defaults?.team_max_members ?? null"
       @change="fieldChange"
       @blur="save.flush()"
     />
-    <div class="b-formbar">
+    <div v-if="id === null" class="b-formbar">
       <span v-if="id === null" class="b-formbar__note">改一处就建成草稿，必填项空着也存；填好以后在「更多」里发布。</span>
     </div>
   </form>
@@ -118,10 +118,10 @@ function fieldChange(name: keyof TournamentValues, value: string | number | bool
       <dl class="b-kv">
         <dt>状态</dt><dd>{{ statusLabel(state) }}</dd>
         <template v-if="detail?.tournament?.published_at"><dt>首次发布</dt><dd>{{ timestamp(detail.tournament.published_at) }}</dd></template>
-        <template v-if="detail?.creator_nickname"><dt>建立人</dt><dd>{{ detail.creator_nickname }}</dd></template>
         <dt>报名</dt><dd>{{ detail?.registration_count ?? 0 }} 份</dd>
+        <template v-if="detail?.creator_nickname"><dt>建立人</dt><dd>{{ detail.creator_nickname }}</dd></template>
       </dl>
-      <a v-if="state !== 'draft'" class="c-btn c-btn--secondary c-btn--sm" :href="`/tournaments/${id}/`" target="_blank" rel="noopener">看活动页</a>
+      <a v-if="state !== 'draft'" class="c-btn c-btn--secondary c-btn--sm" :href="`/tournaments/${id}/`" target="_blank" rel="noopener">看活动页<CIcon name="external" class="size-4" /></a>
     </section>
     <section class="b-section">
       <h2 class="b-section__title">接下来</h2>

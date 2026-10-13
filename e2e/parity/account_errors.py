@@ -109,7 +109,8 @@ def submit(tools, name, evaluate, is_new):
             key = 'account_email_verification_code' if page == 'confirm-email' else 'account_password_reset_verification'
             state = dict(session[key]); state['at'] = time.time() - 3600
             session[key] = state; session.save()
-    form_index = 1 if name in ('error-resend-limit','error-resend-cooldown') or (name == 'error-email-occupied' and not is_new) else 0
+    form_index = 1 if name in ('error-resend-limit','error-resend-cooldown') else 0
+    form_expression = "document.querySelector('#main input[name=email]:not([type=hidden]):not([type=radio]):not(:disabled)')?.closest('form')" if name == 'error-email-occupied' else f"document.querySelectorAll('#main form')[{form_index}]"
     if name.endswith('-limit') or name == 'error-resend-cooldown':
         endpoint = '/api/auth/resend-code' if name in ('error-resend-limit','error-resend-cooldown') and is_new else (API_PATHS[page] if is_new else PATHS[page])
         # Saturate the actual server bucket, never write counters or lower limits.
@@ -133,7 +134,7 @@ def submit(tools, name, evaluate, is_new):
             raise RuntimeError('rate saturation failed')
         tools.submissions.clear()
     evaluate(tools, f'''(() => {{
-      const form=document.querySelectorAll('#main form')[{form_index}];
+      const form={form_expression};
       if(!form)throw new Error('missing account form');
       for(const [name,value] of Object.entries({json.dumps(fields, ensure_ascii=True)})) {{
         const nodes=[...form.querySelectorAll('[name="'+name+'"]')];
@@ -143,13 +144,15 @@ def submit(tools, name, evaluate, is_new):
         else {{nodes[0].value=value;nodes[0].dispatchEvent(new Event('input',{{bubbles:true}}))}}
       }}
       if(!form.checkValidity())throw new Error('invalid fixture: native validation blocked submission');
-      form.requestSubmit();return true;
+      const submitter=form.querySelector('button[name=action_add]');
+      if(submitter)form.requestSubmit(submitter);else form.requestSubmit();return true;
     }})()''')
     navigation_outcomes = {
         'error-email-expired': '/accounts/login/',
         'error-email-third-attempt': '/accounts/login/',
         'error-reset-expired': '/accounts/login/',
         'error-signup-existing': '/accounts/confirm-email/',
+        'error-email-occupied': '/accounts/confirm-email/',
     }
     navigated = False
     for _ in range(120):
@@ -169,6 +172,12 @@ def submit(tools, name, evaluate, is_new):
             response = {'path': 'navigation:' + current_path, 'status': 0}
             navigated = True
             break
+        if name in navigation_outcomes:
+            # A rejected API response can arrive before the document redirect.
+            # Wait for the required destination before taking fonts/snapshot;
+            # otherwise the next Runtime call races the destroyed context.
+            time.sleep(0.05)
+            continue
         responses = [r for r in tools.submissions if r['path'] in (PATHS[page], '/api/auth/resend-code' if name in ('error-resend-limit','error-resend-cooldown') else API_PATHS[page])]
         if (ready or name.endswith('-expired') or name == 'error-email-third-attempt' or name.endswith('-limit') or name == 'error-resend-cooldown' or name == 'error-signup-existing') and responses:
             response = responses[-1]

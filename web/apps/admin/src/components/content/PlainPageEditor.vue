@@ -14,6 +14,7 @@ import { useContentPermissions } from "../../pages/content/permissions"
 import { useContentDraft } from "../../pages/content/use-draft"
 import { publishPlainPage, readPlainPage, savePlainPage, type PlainPageDetail } from "../../pages/content/pending"
 const props = defineProps<{ detail: PlainPageDetail }>()
+const page = ref(props.detail.page)
 const api = useAdminApi()
 const permission = useContentPermissions()
 const editor = ref<InstanceType<typeof MarkdownEditor> | null>(null)
@@ -29,7 +30,11 @@ const draft = useContentDraft({
     props.detail.draft,
     primitiveValues(props.detail.draft),
   ),
-  publish: (version, extras) => publishPlainPage(api, props.detail.page.id, version, extras),
+  publish: async (version, extras) => {
+    const result = await publishPlainPage(api, props.detail.page.id, version, extras)
+    page.value = result.page
+    return result
+  },
   refresh: () => readPlainPage(api, props.detail.page.id),
 })
 const save = draft.save
@@ -60,8 +65,8 @@ function text(name: "title" | "body_md" | "seo_title" | "search_description", ev
         <ContentField name="seo_title" label="搜索结果里的标题" hint="空着就用页面标题。" :errors="fields.seo_title">
           <template #default="field"><input :id="field.id" class="c-input" name="seo_title" :value="values.seo_title" maxlength="255" @input="text('seo_title', $event)"></template>
         </ContentField>
-        <ContentField name="search_description" label="搜索描述" :errors="fields.search_description">
-          <template #default="field"><textarea :id="field.id" class="c-input" name="search_description" :value="values.search_description" rows="3" @input="text('search_description', $event)" /></template>
+        <ContentField name="search_description" label="搜索描述" :errors="fields.search_description" hint="显示在搜索引擎结果中，位于标题之下的描述性文字。">
+          <template #default="field"><textarea :id="field.id" class="c-input" name="search_description" :value="values.search_description" rows="3" :aria-describedby="field.describedby" @input="text('search_description', $event)" /></template>
         </ContentField>
       </fieldset>
       <div class="b-formbar">
@@ -75,10 +80,10 @@ function text(name: "title" | "body_md" | "seo_title" | "search_description", ev
       <section class="b-section">
         <h2 class="b-section__title">状态</h2>
         <dl class="b-kv">
-          <dt>状态</dt><dd><CStatus :label="detail.page.live ? draft.unpublished.value || save.dirty.value ? '已发布·有改动' : '已发布' : detail.page.expired ? '已下线' : detail.page.approved_schedule ? '定时上线' : '草稿'" :kind="detail.page.live ? draft.unpublished.value || save.dirty.value ? 'warn' : 'ok' : detail.page.expired ? 'off' : detail.page.approved_schedule ? 'info' : 'done'" /></dd>
-          <dt>地址</dt><dd class="b-mono">/{{ detail.page.slug }}/</dd><template v-if="detail.page.last_published_at"><dt>最后发布</dt><dd>{{ formatContentTime(detail.page.last_published_at) }}</dd></template>
+          <dt>状态</dt><dd><CStatus :label="page.live ? draft.unpublished.value || save.dirty.value ? '已发布·有改动' : '已发布' : page.expired ? '已下线' : page.approved_schedule ? '定时上线' : '草稿'" :kind="page.live ? draft.unpublished.value || save.dirty.value ? 'warn' : 'ok' : page.expired ? 'off' : page.approved_schedule ? 'info' : 'done'" /></dd>
+          <dt>地址</dt><dd class="b-mono">/{{ page.slug }}/</dd><template v-if="page.last_published_at"><dt>最后发布</dt><dd>{{ formatContentTime(page.last_published_at) }}</dd></template>
         </dl>
-        <div v-if="detail.page.live" class="b-actions"><a class="c-btn c-btn--secondary c-btn--sm" :href="`/${encodeURIComponent(detail.page.slug)}/`" target="_blank" rel="noopener">打开页面<CIcon name="external" class="size-4" /></a></div>
+        <div v-if="page.live" class="b-actions"><a class="c-btn c-btn--secondary c-btn--sm" :href="`/${encodeURIComponent(page.slug)}/`" target="_blank" rel="noopener">打开页面<CIcon name="external" class="size-4" /></a></div>
       </section>
     </aside>
   </div>

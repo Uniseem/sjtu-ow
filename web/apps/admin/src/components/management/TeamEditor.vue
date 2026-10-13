@@ -42,12 +42,12 @@ function role(name: string, enabled: boolean) { save.set("recruiting_roles", ena
           <textarea id="team-description" name="description" class="c-input" rows="10" maxlength="500" :value="save.values.value.description" @input="save.set('description', value($event), 'text')" @blur="save.flush" />
         </div>
         <div class="c-field"><label class="c-field__label">队标</label><ImageField :model-value="save.values.value.logo_image_id" name="logo" label="队标" :disabled="!data.can_edit || Boolean(team.disbanded_at)" @update:model-value="logo" /><p v-for="message in save.fields.value.logo_image_id" :key="message" class="c-field__error">{{ message }}</p></div>
-        <label class="c-check">
-          <input name="is_recruiting" type="checkbox" :checked="save.values.value.is_recruiting" @change="save.set('is_recruiting', checked($event), 'choice')" />招募中</label>
+        <div class="c-field"><label class="c-check">
+          <input name="is_recruiting" type="checkbox" :checked="save.values.value.is_recruiting" @change="save.set('is_recruiting', checked($event), 'choice')" /><span>招募中</span></label></div>
           <fieldset class="c-field">
             <legend class="c-field__label mb-2">缺的位置</legend>
-            <label v-for="position in [{ key: 'tank', label: '坦克' }, { key: 'damage', label: '输出' }, { key: 'support', label: '支援' }]" :key="position.key" class="c-check">
-              <input name="recruiting_roles" :value="position.key" type="checkbox" :checked="save.values.value.recruiting_roles.includes(position.key)" @change="role(position.key, checked($event))" />{{ position.label }}</label>
+            <div><div v-for="position in [{ key: 'tank', label: '坦克' }, { key: 'damage', label: '输出' }, { key: 'support', label: '支援' }]" :key="position.key"><label class="c-check">
+              <input name="recruiting_roles" :value="position.key" type="checkbox" :checked="save.values.value.recruiting_roles.includes(position.key)" @change="role(position.key, checked($event))" />{{ position.label }}</label></div></div>
             <p class="c-field__help">招募中时显示在战队卡和战队主页上。都不勾表示哪个位置都要。</p></fieldset>
           </fieldset>
 

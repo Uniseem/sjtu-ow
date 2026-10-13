@@ -19,44 +19,45 @@ import (
 
 // SiteSettingsDTO 是后台全站设置的出参模型。
 type SiteSettingsDTO struct {
-	MaxGameAccounts         int    `json:"max_game_accounts"`
-	ModerationImageEnabled  bool   `json:"moderation_image_enabled"`
-	ID                      int64  `json:"id"`
-	SiteDescription         string `json:"site_description"`
-	FromName                string `json:"from_name"`
-	EmailSubjectPrefix      string `json:"email_subject_prefix"`
-	SmtpHost                string `json:"smtp_host"`
-	SmtpPort                int    `json:"smtp_port"`
-	SmtpSecurity            string `json:"smtp_security"`
-	SmtpUsername            string `json:"smtp_username"`
-	HasSmtpPassword         bool   `json:"has_smtp_password"`
-	FromAddress             string `json:"from_address"`
-	FoundedOn               string `json:"founded_on"`
-	DefaultShareImageID     *int64 `json:"default_share_image_id"`
-	HeroImageID             *int64 `json:"hero_image_id"`
-	BannerNewsID            *int64 `json:"banner_news_id"`
-	BannerTournamentsID     *int64 `json:"banner_tournaments_id"`
-	BannerScrimsID          *int64 `json:"banner_scrims_id"`
-	BannerTeamsID           *int64 `json:"banner_teams_id"`
-	BannerMembersID         *int64 `json:"banner_members_id"`
-	QQGroupURL              string `json:"qq_group_url"`
-	TeamMaxMembers          int    `json:"team_max_members"`
-	TeamMaxCaptained        int    `json:"team_max_captained"`
-	TournamentReminderHours int    `json:"tournament_reminder_hours"`
-	ScrimReminderHours      int    `json:"scrim_reminder_hours"`
-	ModerationEnabled       bool   `json:"moderation_enabled"`
-	ModerationConfigured    bool   `json:"moderation_configured"`
-	ModerationProvider      string `json:"moderation_provider"`
-	HasModerationAPIKey     bool   `json:"has_moderation_api_key"`
-	ModerationBaseURL       string `json:"moderation_base_url"`
-	ModerationModel         string `json:"moderation_model"`
-	ModerationMaxTokens     int    `json:"moderation_max_tokens"`
-	ModerationTimeoutSecs   int    `json:"moderation_timeout_seconds"`
-	ModerationExtraParams   string `json:"moderation_extra_params"`
-	ModerationDailyLimit    int    `json:"moderation_daily_limit"`
-	ModerationNotifyEmail   string `json:"moderation_notify_email"`
-	Version                 int64  `json:"version"`
-	UpdatedAt               string `json:"updated_at"`
+	MaxGameAccounts         int               `json:"max_game_accounts"`
+	ModerationImageEnabled  bool              `json:"moderation_image_enabled"`
+	ID                      int64             `json:"id"`
+	SiteDescription         string            `json:"site_description"`
+	FromName                string            `json:"from_name"`
+	EmailSubjectPrefix      string            `json:"email_subject_prefix"`
+	SmtpHost                string            `json:"smtp_host"`
+	SmtpPort                int               `json:"smtp_port"`
+	SmtpSecurity            string            `json:"smtp_security"`
+	SmtpUsername            string            `json:"smtp_username"`
+	HasSmtpPassword         bool              `json:"has_smtp_password"`
+	FromAddress             string            `json:"from_address"`
+	FoundedOn               string            `json:"founded_on"`
+	DefaultShareImageID     *int64            `json:"default_share_image_id"`
+	HeroImageID             *int64            `json:"hero_image_id"`
+	BannerNewsID            *int64            `json:"banner_news_id"`
+	BannerTournamentsID     *int64            `json:"banner_tournaments_id"`
+	BannerScrimsID          *int64            `json:"banner_scrims_id"`
+	BannerTeamsID           *int64            `json:"banner_teams_id"`
+	BannerMembersID         *int64            `json:"banner_members_id"`
+	ImageTitles             map[string]string `json:"image_titles"`
+	QQGroupURL              string            `json:"qq_group_url"`
+	TeamMaxMembers          int               `json:"team_max_members"`
+	TeamMaxCaptained        int               `json:"team_max_captained"`
+	TournamentReminderHours int               `json:"tournament_reminder_hours"`
+	ScrimReminderHours      int               `json:"scrim_reminder_hours"`
+	ModerationEnabled       bool              `json:"moderation_enabled"`
+	ModerationConfigured    bool              `json:"moderation_configured"`
+	ModerationProvider      string            `json:"moderation_provider"`
+	HasModerationAPIKey     bool              `json:"has_moderation_api_key"`
+	ModerationBaseURL       string            `json:"moderation_base_url"`
+	ModerationModel         string            `json:"moderation_model"`
+	ModerationMaxTokens     int               `json:"moderation_max_tokens"`
+	ModerationTimeoutSecs   int               `json:"moderation_timeout_seconds"`
+	ModerationExtraParams   string            `json:"moderation_extra_params"`
+	ModerationDailyLimit    int               `json:"moderation_daily_limit"`
+	ModerationNotifyEmail   string            `json:"moderation_notify_email"`
+	Version                 int64             `json:"version"`
+	UpdatedAt               string            `json:"updated_at"`
 }
 
 // UpdateSettingsInput 是修改全站设置的入参。
@@ -188,6 +189,23 @@ func (s *Service) getWith(ctx context.Context, q db.DBTX) (*SiteSettingsDTO, err
 	if bMemb.Valid {
 		v := bMemb.Int64
 		dto.BannerMembersID = &v
+	}
+	dto.ImageTitles = map[string]string{}
+	images, err := q.QueryContext(ctx, `SELECT id,title FROM images WHERE id IN (?,?,?,?,?,?,?)`, defShare, hero, bNews, bTourn, bScrim, bTeams, bMemb)
+	if err != nil {
+		return nil, fmt.Errorf("读取设置图片失败: %w", err)
+	}
+	defer images.Close()
+	for images.Next() {
+		var id int64
+		var title string
+		if err := images.Scan(&id, &title); err != nil {
+			return nil, err
+		}
+		dto.ImageTitles[fmt.Sprint(id)] = title
+	}
+	if err := images.Err(); err != nil {
+		return nil, err
 	}
 
 	return &dto, nil

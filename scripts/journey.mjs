@@ -37,7 +37,10 @@ async function context(role = "visitor", ip = "203.0.113.90") {
     else console.error("JOURNEY-CSP", ...parts)
   }))
   const page = await ctx.newPage()
-  page.on("dialog", async dialog => { if (dialog.type() === "confirm") await dialog.accept(); else failures.push("unexpected dialog " + dialog.type()) })
+  page.on("dialog", async dialog => {
+    if (dialog.type() === "confirm") await dialog.accept()
+    else if (dialog.type() !== "prompt" || page.expectedMarkdownPrompt !== dialog.message()) failures.push("unexpected dialog " + dialog.type())
+  })
   page.on("pageerror", error => failures.push("runtime " + error.message))
   page.on("console", message => {
     const text = message.text()
@@ -215,18 +218,36 @@ try {
     check("at least ten actual registrations", await choices.count() >= 10)
     for (const checkbox of (await choices.all()).slice(0, 10)) await checkbox.check()
     await page.getByRole("button", { name: "生成分队", exact: true }).click()
-    await page.locator("[data-split-board]").waitFor()
+    await page.locator("[data-split-board] [data-team-panel=a]").waitFor()
     const card = page.locator('[data-team-panel=a] [data-signup]').first()
     const signup = await card.getAttribute("data-signup")
+    const movedToBuffer=page.waitForResponse(response => response.request().method()==='POST' && new URL(response.url()).pathname===`/api/admin/scrims/${config.data.scrim}/board/teams` && response.ok())
     await card.getByRole("button", { name: "缓冲", exact: true }).click()
     const buffered = page.locator(`[data-board-zone=buffer] [data-signup="${signup}"]`)
     await buffered.waitFor()
-    await buffered.getByRole("button", { name: "A", exact: true }).click()
+    await movedToBuffer
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-autosave-status]')].length>0 && [...document.querySelectorAll('[data-autosave-status]')].every(node => node.dataset.state==='saved' && !node.textContent.includes('尚未保存')))
+    await go(page, `/admin/scrims/${config.data.scrim}/split/`)
+    const persistedBuffer=page.locator(`[data-board-zone=buffer] [data-signup="${signup}"]`)
+    await persistedBuffer.waitFor()
+    check('buffer movement persisted across reload', await persistedBuffer.count()===1)
+    const returned=page.waitForResponse(response => response.request().method()==='POST' && new URL(response.url()).pathname===`/api/admin/scrims/${config.data.scrim}/board/teams` && response.ok())
+    await persistedBuffer.getByRole("button", { name: "A", exact: true }).click()
+    await returned
     await page.locator(`[data-team-panel=a] [data-signup="${signup}"]`).waitFor()
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-autosave-status]')].every(node => ['idle','saved'].includes(node.dataset.state) && !node.textContent.includes('尚未保存')))
+    await page.getByRole('button', { name: '复制', exact: true }).click()
+    // Clipboard completion and the following Vue paint are asynchronous.
+    // Wait for the actual result before inspecting the selected fallback.
+    const copyCompleted = () => {
+      const source=document.querySelector('textarea[aria-label="分队结果"]')
+      return document.querySelector('[data-split-copy]')?.innerText.includes('已复制') || Boolean(source && source.value.length>0 && source.selectionStart===0 && source.selectionEnd===source.value.length)
+    }
+    await page.waitForFunction(copyCompleted)
+    check('split copy succeeds or selects complete text', await page.evaluate(copyCompleted))
     await go(page, `/admin/scrims/${config.data.scrim}/split/`)
     check("split movement persisted across reload", await page.locator(`[data-team-panel=a] [data-signup="${signup}"]`).count() === 1)
     await go(page, `/admin/tournaments/${config.data.cup}/teams/`)
-    await page.getByRole("button", { name: "再加一支队伍", exact: true }).click()
     const zone = page.locator("[data-team-panel]").last()
     await zone.locator("input").fill("Journey队伍")
     for (let index = 0; index < 3; index++) await page.locator('[data-board-zone=""] [data-signup]').first().getByRole("button", { name: "Journey队伍", exact: true }).click()

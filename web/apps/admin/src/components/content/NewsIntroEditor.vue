@@ -14,6 +14,7 @@ import { useContentPermissions } from "../../pages/content/permissions"
 import { readNewsDraft, saveNewsDraft, publishNewsDraft, type NewsDraftProjection } from "../../pages/content/pending"
 
 const props = defineProps<{ detail: NewsDraftProjection }>()
+const publicationState = ref({ live: props.detail.live, last_published_at: props.detail.last_published_at })
 const api = useAdminApi()
 const permission = useContentPermissions()
 const editor = ref<InstanceType<typeof MarkdownEditor> | null>(null)
@@ -24,7 +25,11 @@ const draft = useContentDraft({
   available: () => permission.managePages.value,
   preview_url: props.detail.preview_url,
   transport: async (body, extras) => readSaveReceipt(await saveNewsDraft(api, body, extras), props.detail.draft, primitiveValues(props.detail.draft)),
-  publish: (version, extras) => publishNewsDraft(api, version, extras),
+  publish: async (version, extras) => {
+    const result = await publishNewsDraft(api, version, extras)
+    publicationState.value = { live: result.live, last_published_at: result.last_published_at }
+    return result
+  },
   refresh: () => readNewsDraft(api),
 })
 const save = draft.save
@@ -47,7 +52,7 @@ const save = draft.save
       <DraftPublication v-if="draft.confirmation.value" title="栏目介绍" :pending="draft.publication.pending.value" @confirm="draft.publish" @cancel="draft.confirmation.value = false" />
     </form>
     <aside class="b-aside" aria-label="状态">
-      <section class="b-section"><h2 class="b-section__title">状态</h2><dl class="b-kv"><dt>状态</dt><dd data-draft-status><CStatus :label="detail.live ? draft.unpublished.value || save.dirty.value ? '已发布·有改动' : '已发布' : '草稿'" :kind="detail.live ? draft.unpublished.value || save.dirty.value ? 'warn' : 'ok' : 'done'" /></dd><template v-if="detail.last_published_at"><dt>最后发布</dt><dd>{{ formatContentTime(detail.last_published_at) }}</dd></template></dl><p class="b-section__text">「有改动」是说草稿里有还没发布的改动；网站上还是上次发布的样子。</p></section>
+      <section class="b-section"><h2 class="b-section__title">状态</h2><dl class="b-kv"><dt>状态</dt><dd data-draft-status><CStatus :label="publicationState.live ? draft.unpublished.value || save.dirty.value ? '已发布·有改动' : '已发布' : '草稿'" :kind="publicationState.live ? draft.unpublished.value || save.dirty.value ? 'warn' : 'ok' : 'done'" /></dd><template v-if="publicationState.last_published_at"><dt>最后发布</dt><dd>{{ formatContentTime(publicationState.last_published_at) }}</dd></template></dl><p class="b-section__text">「有改动」是说草稿里有还没发布的改动；网站上还是上次发布的样子。</p></section>
     </aside>
   </div>
 </template>

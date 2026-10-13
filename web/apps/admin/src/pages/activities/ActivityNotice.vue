@@ -96,7 +96,7 @@ onUnmounted(() => { sequence += 1; request?.abort(); if (noteTimer !== undefined
 </script>
 
 <template>
-  <AdminPage :title="`${title}：${preview?.object_title ?? ''}`" section="events" :back-href="activityHref(kind)">
+  <AdminPage :title="title" section="activities" :back-href="activityHref(kind)">
     <AdminNotice v-if="sent" :message="sent" kind="ok" />
     <p v-if="loading" role="status">正在加载预览…</p>
     <AdminNotice v-if="error" :message="error" kind="error" />
@@ -104,7 +104,7 @@ onUnmounted(() => { sequence += 1; request?.abort(); if (noteTimer !== undefined
       <section class="b-section">
         <h2 class="b-section__title">信的正文（预览）</h2>
         <p class="b-section__text">每人一封、互相看不到；{{ audience === 'participants' ? '写的说明会放进「管理员的说明」一段。' : '底部有各自的退订链接。' }}下面是写给你自己的样子。</p>
-        <pre class="b-letter">{{ preview.body_text }}</pre>
+        <div class="b-letter">{{ preview.body_text }}</div>
       </section>
       <aside class="b-aside">
         <section class="b-section">
@@ -122,6 +122,7 @@ onUnmounted(() => { sequence += 1; request?.abort(); if (noteTimer !== undefined
     <ActivityField v-if="audience === 'participants'" id="announce-note" label="说明（选填）" :errors="fields.note" :help="`最多 ${preview?.note_max ?? 500} 字，放进信里「管理员的说明」一段。`" v-slot="field">
       <textarea
         id="announce-note"
+        name="note"
         class="c-input"
         rows="4"
         :value="note"

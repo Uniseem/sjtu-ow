@@ -10,7 +10,7 @@ import CollectionName from "../../components/content/CollectionName.vue"
 import ContentActionMessage from "../../components/content/ContentActionMessage.vue"
 import ConfirmContentAction from "../../components/content/ConfirmContentAction.vue"
 import { useContentResource } from "./use-resource"
-import { collectionRows, hasCollectionChildren } from "./collection-tree"
+import { collectionChoiceLabel, collectionRows, hasCollectionChildren, isCollectionRoot } from "./collection-tree"
 import { createCollection, deleteCollection, readCollectionTree, type CollectionCreateInput, type CollectionNode } from "./pending"
 import { useContentPermissions } from "./permissions"
 
@@ -76,13 +76,13 @@ onMounted(async () => {
         <tr v-for="row in rows" :key="row.node.id">
           <td>
             <CollectionName v-if="row.node.can_change && row.node.parent_id !== null" :node="row.node" :path="row.path" :indent="'　'.repeat(Math.max(0, row.depth - 1))" @saved="(version, name) => renamed(row.node.id, version, name)" />
-            <span v-else>{{ row.node.key === 'root' ? '（根）' : row.node.name }}</span>
+            <span v-else>{{ isCollectionRoot(row.node) ? '（根）' : row.node.name }}</span>
             <span v-if="row.orphaned" class="b-sub">集合关系异常，请联系管理员。</span>
           </td>
           <td data-label="图片" class="is-num">{{ row.node.image_count }}</td>
           <td>
             <div class="b-rowacts">
-              <button v-if="canDelete(row.node)" type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="!deletion.canStart.value" @click="confirmation = row.node">删除</button>
+              <form v-if="canDelete(row.node)" @submit.prevent="confirmation = row.node"><button type="submit" class="c-btn c-btn--quiet c-btn--sm" :disabled="!deletion.canStart.value">删除</button></form>
             </div>
           </td>
         </tr>
@@ -96,7 +96,7 @@ onMounted(async () => {
           <input id="name" v-model="name" class="c-input" name="name" maxlength="255" required>
         </ContentField>
         <ContentField name="parent" label="放在" required :errors="creation.fields.value.parent_id">
-          <select id="parent" v-model="parent" class="c-input" name="parent"><option v-for="row in parents" :key="row.node.id" :value="row.node.id">{{ row.node.parent_id === null ? '（根）' : '　'.repeat(Math.max(0, row.depth - 1)) + row.node.name }}</option></select>
+          <select id="parent" v-model="parent" class="c-input" name="parent"><option v-for="row in parents" :key="row.node.id" :value="row.node.id">{{ collectionChoiceLabel(row.node, resource.data.value?.collections ?? []) }}</option></select>
         </ContentField>
       </fieldset>
       <div class="b-actions"><button class="c-btn c-btn--primary" :disabled="!parent || !permission.superuser.value || !creation.canStart.value">建好</button></div>

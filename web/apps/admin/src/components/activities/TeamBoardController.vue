@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef } from "vue"
+import CIcon from "@sjtu-ow/ui/CIcon.vue"
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router"
 import { ApiError, getApiAdminTournamentsIdBoard } from "@sjtu-ow/api"
 import { useAdminApi } from "../../core/api"
@@ -82,12 +83,6 @@ function rename(key: string, event: Event): void {
   success.value = ""
 }
 
-function add(): void {
-  if (disabled.value) return
-  newNumber += 1
-  layout.value = addZone(layout.value, `new-${newNumber}`)
-}
-
 function confirmDissolve(): void {
   if (disabled.value || !dissolve.value) return
   layout.value = dissolveZone(layout.value, dissolve.value.key)
@@ -155,7 +150,6 @@ useSortableBoard(root, () => layout.value, () => !disabled.value, move, (value) 
   </section>
   <AdminNotice v-if="board.tournament?.registration_mode !== 'individual'" message="这项赛事是整队报名，不收个人报名。已有的临时队伍仍可以在这里调整。" kind="warn" />
   <AdminNotice v-if="layout.base_pool_version === null" message="名单暂时无法保存，请刷新名单后再试。" kind="warn" />
-  <AdminNotice message="把散人拖进队伍，或者用卡片上的按钮移动。队伍满员时不能直接拖进去，先把要换下来的人拖回散人池。人数低于下限的队伍标红，但仍然可以保存。保存后问你要不要给新编入的人发信。" kind="info" />
   <AdminNotice v-if="success" :message="success" kind="ok" />
   <AdminNotice v-if="warning" :message="warning" kind="warn" />
   <AdminNotice v-if="message" :message="message" kind="error" />
@@ -163,12 +157,14 @@ useSortableBoard(root, () => layout.value, () => !disabled.value, move, (value) 
   <ul v-if="errors.length" class="c-field__error" role="alert"><li v-for="error in errors" :key="error">{{ error }}</li></ul>
   <ul v-for="(items, field) in fields" :key="field" class="c-field__error" role="alert"><li v-for="error in items" :key="error">{{ error }}</li></ul>
   <form ref="root" class="b-form" @submit.prevent="save">
+    <div class="c-notice c-notice--info" data-drag-help><CIcon name="info" /><div class="c-notice__body">把散人拖进队伍，或者用卡片上的按钮移动。<strong>队伍满员时不能直接拖进去</strong>，先把要换下来的人拖回散人池。人数低于下限的队伍标红，但仍然可以保存。保存后问你要不要给新编入的人发信。</div></div>
     <div class="split-teams">
       <div v-for="zone in layout.zones" :key="zone.key" class="split-team" :data-team-panel="zone.key">
         <h3 class="b-section__title">
           <label :for="`name-${zone.key}`">{{ zone.registration_id ? '队名' : '新队伍' }}
           <input
             :id="`name-${zone.key}`"
+            :name="zone.registration_id ? `name-${zone.key}` : 'name-new'"
             class="c-input split-name"
             type="text"
             maxlength="16"
@@ -180,7 +176,7 @@ useSortableBoard(root, () => layout.value, () => !disabled.value, move, (value) 
         </h3>
         <p v-if="zoneProblems(zone, minimum, board.roster_max).length" class="split-problem">{{ zoneProblems(zone, minimum, board.roster_max).join('、') }}</p>
         <section class="split-zone">
-          <h4 class="split-zone-title">{{ zone.registration_id ? '名单' : '名单（保存后成为一支新队伍）' }}（{{ zone.signup_ids.length }}/{{ board.roster_max }}）</h4>
+          <h4 class="split-zone-title">{{ zone.registration_id ? '名单' : '名单（保存后成为一支新队伍）' }} <span class="split-count"><span>{{ zone.signup_ids.length }}</span> / {{ board.roster_max }}</span></h4>
           <ul class="split-list" :data-board-zone="zone.key" :aria-label="`${zone.name || '新队伍'}名单`">
             <TeamBoardCard
               v-for="entry in zoneEntries(board, zone)"
@@ -193,14 +189,13 @@ useSortableBoard(root, () => layout.value, () => !disabled.value, move, (value) 
             />
           </ul>
         </section>
-        <button v-if="zone.registration_id !== null || zone.signup_ids.length || zone.name" type="button" class="c-btn c-btn--danger c-btn--sm" :disabled="disabled" @click="dissolve = zone">解散</button>
+        <button v-if="zone.registration_id !== null" type="button" class="c-btn c-btn--danger c-btn--sm" :disabled="disabled" @click="dissolve = zone">解散</button>
         <RouterLink v-if="zone.registration_id" class="c-btn c-btn--quiet c-btn--sm" :to="`/admin/registrations/${zone.registration_id}/`">报名详情</RouterLink>
       </div>
     </div>
-    <button type="button" class="c-btn c-btn--secondary" :disabled="disabled" @click="add">再加一支队伍</button>
     <div class="split-buffer">
       <section class="split-zone">
-        <h4 class="split-zone-title">散人池（等待编队）（{{ bench.length }}）</h4>
+        <h4 class="split-zone-title">散人池（等待编队） <span class="split-count"><span>{{ bench.length }}</span></span></h4>
         <ul class="split-list" data-board-zone="" aria-label="散人池（等待编队）">
           <TeamBoardCard v-for="entry in bench" :key="entry.signup_id" :entry="entry" :targets="layout.zones" current="" :disabled="disabled" @move="move" />
         </ul>
@@ -216,11 +211,10 @@ useSortableBoard(root, () => layout.value, () => !disabled.value, move, (value) 
       </div>
     </section>
     <div class="b-formbar">
-      <button type="submit" class="c-btn c-btn--primary" :disabled="!canSave">{{ pending ? '正在保存…' : '保存编队' }}</button>
+      <button type="submit" name="action" value="save" class="c-btn c-btn--primary" :disabled="disabled || errors.length > 0 || layout.base_pool_version === null">{{ pending ? '正在保存…' : '保存编队' }}</button>
       <button v-if="uncertain" type="button" class="c-btn c-btn--secondary" :disabled="pending" @click="mutation.retry()">重试上次保存</button>
       <button v-if="reloadError" type="button" class="c-btn c-btn--secondary" :disabled="reloading" @click="() => refreshAfterSave()">重试刷新名单</button>
       <button v-if="dirty && !uncertain && !pending && !reloadError" type="button" class="c-btn c-btn--quiet" @click="discardAndReload">放弃本次调整并刷新名单</button>
-      <span class="b-formbar__note">{{ dirty ? '编队还没保存。' : '当前没有待保存的调整。' }}</span>
     </div>
   </form>
 </template>

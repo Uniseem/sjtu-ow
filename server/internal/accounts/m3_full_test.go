@@ -94,11 +94,28 @@ func TestReauthenticateAndEmailChange(t *testing.T) {
 		t.Fatal("换成相同邮箱应报错")
 	}
 
-	// 5. 换成已被他人绑定的邮箱 -> 报错
+	// 5. 占用地址与可用地址同样进入验证，不能枚举、发信或换绑。
 	newVerifiedUser(t, d, "taken@sjtu.edu.cn", "别人", "Password123!@#", true)
-	_, err = svc.RequestEmailChange(appCtx, RequestEmailChangeInput{NewEmail: "taken@sjtu.edu.cn"})
-	if err == nil {
-		t.Fatal("换成他人已占用邮箱应报错")
+	var queuedBefore, queuedAfter int
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT COUNT(*) FROM jobs WHERE kind='mail.letter'").Scan(&queuedBefore); err != nil {
+		t.Fatal(err)
+	}
+	occupiedResult, err := svc.RequestEmailChange(appCtx, RequestEmailChangeInput{NewEmail: "taken@sjtu.edu.cn"})
+	if err != nil || occupiedResult.Result != "ok" {
+		t.Fatalf("占用地址泄漏不同请求结果: %+v %v", occupiedResult, err)
+	}
+	if err := d.ReadPool().QueryRowContext(ctx, "SELECT COUNT(*) FROM jobs WHERE kind='mail.letter'").Scan(&queuedAfter); err != nil {
+		t.Fatal(err)
+	}
+	if queuedAfter != queuedBefore {
+		t.Fatal("占用地址不应给别人的账号发验证码")
+	}
+	if _, err := svc.ConfirmEmailChange(appCtx, ConfirmEmailChangeInput{Code: "123456"}); err == nil {
+		t.Fatal("占用邮箱不能通过验证码换绑")
+	}
+	unchanged, err := svc.store.GetByID(ctx, u.ID)
+	if err != nil || unchanged.Email != "old@sjtu.edu.cn" {
+		t.Fatalf("占用地址改变了当前邮箱: %+v %v", unchanged, err)
 	}
 
 	// 6. 申请换绑 -> 成功发码入库

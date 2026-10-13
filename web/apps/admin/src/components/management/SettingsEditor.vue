@@ -23,6 +23,11 @@ const email = useAdminAction<null, Awaited<ReturnType<typeof postApiAdminSetting
 import { ref, computed } from "vue"
 const orderedSections = computed(() => ["站点信息", "栏目横幅", "社区参数", "邮件发送", "AI 审核"].map(title => { const section = settingsSections.find(section => section.title === title); if (!section) return { title, fields: [] }; const orders: Record<string, string[]> = { "社区参数": ["team_max_members","team_max_captained","max_game_accounts","scrim_reminder_hours","tournament_reminder_hours"], "邮件发送": ["smtp_host","smtp_port","smtp_security","smtp_username","from_address","from_name","email_subject_prefix"], "AI 审核": ["moderation_enabled","moderation_base_url","moderation_model","moderation_notify_email","moderation_daily_limit","moderation_image_enabled","moderation_extra_params","moderation_timeout_seconds","moderation_max_tokens"] }; return { title, fields: [...section.fields].sort((a,b) => (orders[title]?.indexOf(a.name) ?? 0) - (orders[title]?.indexOf(b.name) ?? 0)) } }))
 const emailMessage = ref("")
+const fieldNames: Partial<Record<keyof SettingsValues, string>> = {
+  moderation_notify_email: 'moderation_alert_email', moderation_extra_params: 'moderation_extra_body',
+  moderation_timeout_seconds: 'moderation_timeout', moderation_max_tokens: 'moderation_max_output_tokens',
+}
+function fieldName(name: keyof SettingsValues) { return fieldNames[name] ?? name }
 const backup = ref<InstanceType<typeof BackupEditor>|null>(null)
 const sidePending=ref(false)
 async function beforeSide(){if(sidePending.value)return false;sidePending.value=true;if(!await save.flush()){sidePending.value=false;return false}return true}
@@ -47,12 +52,12 @@ function update(name: keyof SettingsValues, event: Event) {
           <template v-for="field in section.fields" :key="field.name"><div class="c-field" :class="{ 'is-invalid': save.fields.value[field.name]?.length }">
             <label v-if="field.kind !== 'checkbox'" class="c-field__label" :for="`setting-${field.name}`">{{ field.label }}<span v-if="field.required" class="c-field__req" aria-hidden="true">*</span></label>
             <label v-if="field.kind === 'checkbox'" class="c-check">
-              <input :name="field.name" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" type="checkbox" :checked="Boolean(save.values.value[field.name])" @change="update(field.name, $event)" />{{ field.label }}<span v-if="field.required" class="c-field__req" aria-hidden="true">*</span></label>
-              <textarea v-else-if="field.kind === 'textarea'" :name="field.name" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" class="c-input" rows="3" :value="String(save.values.value[field.name])" @input="update(field.name, $event)" @blur="save.flush" />
-              <select v-else-if="field.kind === 'select'" :name="field.name" :required="field.required" :id="`setting-${field.name}`" class="c-input" :value="save.values.value[field.name]" @change="update(field.name, $event)">
+              <input :name="fieldName(field.name)" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" type="checkbox" :checked="Boolean(save.values.value[field.name])" @change="update(field.name, $event)" /><span>{{ field.label }}<span v-if="field.required" class="c-field__req" aria-hidden="true">*</span></span></label>
+              <textarea v-else-if="field.kind === 'textarea'" :name="fieldName(field.name)" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" class="c-input" rows="3" :value="String(save.values.value[field.name])" @input="update(field.name, $event)" @blur="save.flush" />
+              <select v-else-if="field.kind === 'select'" :name="fieldName(field.name)" :required="field.required" :id="`setting-${field.name}`" class="c-input" :value="save.values.value[field.name]" @change="update(field.name, $event)">
                 <option v-for="choice in field.choices" :key="choice.value" :value="choice.value">{{ choice.label }}</option>
               </select>
-              <input v-else :name="field.name" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" class="c-input" :type="field.kind" :value="save.values.value[field.name]" :min="field.min" :max="field.max" @input="update(field.name, $event)" @blur="save.flush" />
+              <input v-else :name="fieldName(field.name)" :required="field.required" :maxlength="field.maxlength" :id="`setting-${field.name}`" class="c-input" :type="field.kind" :value="save.values.value[field.name]" :min="field.min" :max="field.max" @input="update(field.name, $event)" @blur="save.flush" />
               <p v-if="field.help" class="c-field__help">{{ field.help }}</p>
               <p v-for="error in save.fields.value[field.name]" :key="error" class="c-field__error" role="alert">{{ error }}</p>
             </div>
@@ -72,12 +77,14 @@ function update(name: keyof SettingsValues, event: Event) {
       <aside class="b-aside">
         <section class="b-section">
           <h2 class="b-section__title">检查</h2>
-          <button type="button" class="c-btn c-btn--secondary c-btn--sm" :disabled="!email.canStart.value" @click="testEmail">发送测试邮件</button>
+          <form class="b-form" @submit.prevent="testEmail"><button type="submit" class="c-btn c-btn--secondary c-btn--sm" :disabled="!email.canStart.value">发送测试邮件</button>
           <p class="b-sub">发给你自己的邮箱，用于检查 SMTP 配置。发送失败时会显示原因。</p>
+          </form>
           <p v-if="emailMessage" class="b-sub" role="status">{{ emailMessage }}</p>
           <p class="b-sub">AI 巡查引擎按已批准的迁移安排在割接后启用。</p>
-          <button type="button" class="c-btn c-btn--secondary c-btn--sm" :disabled="sidePending" @click="backup?.test()">测试对象存储</button>
+          <form class="b-form" @submit.prevent="backup?.test()"><button type="submit" class="c-btn c-btn--secondary c-btn--sm" :disabled="sidePending">测试对象存储</button>
           <p class="b-sub">用已保存的异地备份设置往存储桶里写一个小文件再删掉，看能不能连上、有没有权限。刚改的设置会先存好再测；「备份上传到对象存储」没打开也能测。</p>
+          </form>
           <ActionState :message="email.message.value" :pending="email.pending.value" :uncertain="email.uncertain.value" @retry="email.retry" />
         </section>
       </aside>

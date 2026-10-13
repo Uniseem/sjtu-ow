@@ -12,11 +12,12 @@ export type Image = GetApiAdminImagesOut["items"][number]
 export type ImageDetail = GetApiImagesIdOut
 export type Collection = GetApiAdminImageCollectionsOut["collections"][number]
 export type ArticleDraft = NonNullable<GetApiAdminArticlesIdOut["revision"]>
-export type ArticleStatus = "draft" | "live" | "changed" | "scheduled"
+export type ArticleStatus = "draft" | "live" | "changed" | "scheduled" | "expired"
 
 export function articleStatus(article: Article): ArticleStatus {
   if (article.live) return article.has_unpublished_changes ? "changed" : "live"
-  return article.go_live_at ? "scheduled" : "draft"
+  if (article.expired) return "expired"
+  return article.approved_schedule ? "scheduled" : "draft"
 }
 
 export const articleStatuses: Record<ArticleStatus, string> = {
@@ -24,9 +25,12 @@ export const articleStatuses: Record<ArticleStatus, string> = {
   live: "已发布",
   changed: "已发布·有改动",
   scheduled: "定时上线",
+  expired: "已下线",
 }
 
-export const articleStatusKinds: Record<ArticleStatus, string> = { draft: "done", live: "ok", changed: "warn", scheduled: "info" }
+export const articleFilterStatuses = { draft: "草稿", live: "已发布", changed: "已发布·有改动", scheduled: "定时上线" }
+
+export const articleStatusKinds: Record<ArticleStatus, string> = { draft: "done", live: "ok", changed: "warn", scheduled: "info", expired: "off" }
 
 export function emptyArticle(): ArticleDraft {
   return {

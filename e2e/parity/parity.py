@@ -74,6 +74,10 @@ def seed(accounts=False) -> dict:
     extend_seed(data)
     from admin_scenarios import extend_seed as extend_admin_seed
     extend_admin_seed(data)
+    # Both services lazily create this real built-in collection. Initialize
+    # it before importing so both sides compare the same complete media tree.
+    from content.services import ensure_team_logo_collection
+    ensure_team_logo_collection()
     # screens.py intentionally makes password-less screenshot identities.
     # Account parity needs ordinary password accounts, as on the real site.
     from accounts.models import User
@@ -351,7 +355,7 @@ SNAPSHOT = """(() => {
 })()"""
 
 
-def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: str, shot: Path, invalid=None, invalid_new=False) -> dict:
+def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: str, shot: Path, invalid=None, invalid_new=False, projection=None) -> dict:
     tools.send("Network.clearBrowserCookies")
     for item in (cookie if isinstance(cookie, list) else [cookie] if cookie else []):
         tools.send("Network.setCookie", {**item, "domain": "127.0.0.1", "path": "/"})
@@ -392,11 +396,15 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
             break
         time.sleep(0.25)
     if urllib.parse.urlsplit(url).path.startswith('/admin/'):
+        if urllib.parse.urlsplit(url).path == '/admin/settings/typography/':
+            # The preview starts after a 600ms debounce; an initially idle
+            # page is not evidence that the generated stylesheet is ready.
+            time.sleep(0.7)
         # Wait for session, lazy route and its page request; an empty shell is never a page.
         previous = None
         stable = 0
         for _ in range(120):
-            current = evaluate(tools, "JSON.stringify({path:location.pathname,text:(document.querySelector('#main')??document.body)?.innerText??'',busy:!!document.querySelector('[aria-busy=true]')})")
+            current = evaluate(tools, "JSON.stringify({path:location.pathname,text:(document.querySelector('#main')??document.body)?.innerText??'',busy:!!document.querySelector('[aria-busy=true]') || !![...document.querySelectorAll('#main p')].find(node=>node.textContent==='正在生成预览…')})")
             value = json.loads(current)
             if value['text'].strip() and not value['busy'] and value['text'] not in ('加载中…', '正在加载…'):
                 stable = stable + 1 if current == previous else 0
@@ -416,14 +424,20 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
     for _ in range(200):
         evaluate(tools, "document.readyState")
         tools.settle_remote_frames()
-        idle = idle + 1 if not tools.request_methods else 0
+        # Browser-chrome favicon loads can remain pending after the page's
+        # redirect. They do not participate in #main layout; the explicit
+        # favicon resource row still checks its real status/type/bytes.
+        pending = [key for key in tools.request_methods if not (
+            tools.request_types.get(key) == 'Other'
+            and urllib.parse.urlsplit(tools.request_urls.get(key, '')).path == '/favicon.ico')]
+        idle = idle + 1 if not pending else 0
         if idle >= 2: break
         time.sleep(0.05)
     else:
         raise RuntimeError('page requests never settled: ' + url + ' pending=' + repr(list(tools.request_urls.values())))
     # Font loading can outlive readyState/image completion, especially on long
     # Chinese pages. Capture the layout after its fonts and next paint frames.
-    if evaluate(tools, "document.scripts.length === 0"):
+    if evaluate(tools, "document.scripts.length === 0") and urllib.parse.urlsplit(url).path != '/_styleguide/components/':
         # CSP sandbox intentionally disables in-document script scheduling.
         # System-font mail documents can be polled synchronously; screenshots
         # force a compositor paint, without weakening the real mail sandbox.
@@ -470,17 +484,42 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
           }
           scrollTo(0, 0); await paint();
         })()""")
+    approved = {}
+    timed_recipients = []
+    if urllib.parse.urlsplit(url).path.startswith('/admin/announce/'):
+        from approved_projection import normalize_timed_links
+        timed_recipients = normalize_timed_links(tools, evaluate)
+    if projection:
+        from approved_projection import project
+        approved = project(tools, evaluate, *projection)
+        evaluate(tools, 'document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))')
     snap = evaluate(tools, SNAPSHOT)
+    snap['approved_projection'] = approved
+    snap['preview_recipients'] = timed_recipients
     if invalid:
         snap['submission'] = submission
     snap['browser_errors'] = list(tools.browser_errors)
     box = snap.pop("box")
     if box["width"] > 0 and box["height"] > 0:
-        data = tools.send(
-            "Page.captureScreenshot",
-            {"format": "png", "captureBeyondViewport": True, "clip": {**box, "scale": 1}},
-        )
-        shot.write_bytes(base64.b64decode(data["data"]))
+        if box['height'] > 8000:
+            # The component composite exceeds Chromium's 32768px compositor
+            # texture limit. Capture small bands using the same document
+            # coordinates; keep every pixel and the original size/threshold.
+            from PIL import Image
+            import io
+            result = Image.new('RGB', (round(box['width']), round(box['height'])))
+            for offset in range(0, result.height, 4096):
+                clip = {**box, 'y': box['y'] + offset, 'height': min(4096, result.height-offset), 'scale': 1}
+                data = tools.send('Page.captureScreenshot', {'format':'png','captureBeyondViewport':True,'clip':clip})
+                result.paste(Image.open(io.BytesIO(base64.b64decode(data['data']))), (0, offset))
+            result.save(shot)
+        else:
+            data = tools.send(
+                "Page.captureScreenshot",
+                {"format": "png", "captureBeyondViewport": True, "clip": {**box, "scale": 1}},
+            )
+            shot.write_bytes(base64.b64decode(data["data"]))
+    shot.with_suffix('.json').write_text(json.dumps(snap, ensure_ascii=False), encoding='utf-8')
     return snap
 
 
@@ -585,6 +624,8 @@ def compare(old: dict, new: dict, ratio: float, status: tuple) -> list[str]:
         problems.append(f"表单 {old['fields']} / {new['fields']}")
     if new["broken"]:
         problems.append(f"新站坏图 {new['broken'][:3]}")
+    if old.get('preview_recipients', []) != new.get('preview_recipients', []):
+        problems.append('通知预览的已验证退订收件人不同')
     for label, value in (('旧站', old), ('新站', new)):
         if value.get('browser_errors'):
             problems.append(label + '浏览器异常：' + str(value['browser_errors']))
@@ -658,6 +699,8 @@ def main(argv: list[str]) -> int:
     if components:
         account_pages = [("component-specimen", "officer", "/_styleguide/components/")]
     negative_probe(compare)
+    from approved_projection import negative_probe as projection_probe
+    projection_probe()
     print("PARITY-MATRIX-NEGATIVE-PROBES-OK", flush=True)
     pages = [p for p in (account_pages if accounts or components else PAGES) if not only or any(
         prefix and (p[0].startswith(prefix) or p[2].startswith(prefix)) for prefix in only
@@ -925,12 +968,12 @@ def main(argv: list[str]) -> int:
                     old_cookie, new_cookie, suffix = error_context(name, data, new_sessions, WORK, screens.site_env())
                     path = template + suffix
                 try:
-                    old = look(tools, old_url, old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None, False)
+                    old = look(tools, old_url, old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None, False, (name, False) if not errors and path.startswith('/admin/') and expected_old_status == 200 else None)
                     if errors and (name.endswith('-limit') or name == 'error-resend-cooldown'):
                         submission = old['submission']
                         old = look(tools, f'http://127.0.0.1:{reference.server_address[1]}/__error/429/', None, width, scheme, SHOTS / f"{stem}-old.png")
                         old['submission'] = submission
-                    new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png", name if errors else None, True)
+                    new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png", name if errors else None, True, (name, True) if not errors and path.startswith('/admin/') and expected_old_status == 200 else None)
                 except Exception as failure:
                     row["views"].append({"view": f"{width}-{scheme}", "ratio": 1, "problems": [f"页面采集失败：{failure}"]})
                     continue
@@ -948,6 +991,10 @@ def main(argv: list[str]) -> int:
                     compared_old = {**old, 'text': [line.replace('5 项建议做','4 项建议做').replace('建议做的 5 项','建议做的 4 项') for line in old['text'] if '异地备份' not in line]}
                     row['approved_difference'] = '296 用户决定不考虑异地备份：上线清单不再显示 R2 项'
                 problems = compare(compared_old, new, ratio, (expected_old_status, effective) if (width, scheme) == views[0] else (0, 0))
+                from approved_projection import compare as compare_projection
+                problems.extend(compare_projection(old.get('approved_projection', {}), new.get('approved_projection', {})))
+                if old.get('approved_projection') or new.get('approved_projection'):
+                    row['approved_difference'] = 'design-next.md D4/D5/§7.4、7.7及296决定：仅投影已批准的字体管线、AI引擎、编辑器或修订入口，真实控件和共同内容仍比较'
                 if components:
                     layout = lambda page: [(image['alt'], round(image['x']), round(image['y']), round(image['width']), round(image['height'])) for image in page.get('images', [])]
                     if layout(old) != layout(new):
@@ -962,6 +1009,8 @@ def main(argv: list[str]) -> int:
                 if note:
                     problems.append(note)
                 view = {"view": f"{width}-{scheme}", "ratio": ratio, "problems": problems}
+                if old.get('approved_projection') or new.get('approved_projection'):
+                    view['approved_projection'] = {'old': old.get('approved_projection'), 'new': new.get('approved_projection')}
                 if problems:
                     view['shell'] = {'old': old.get('shell'), 'new': new.get('shell')}
                 if errors:

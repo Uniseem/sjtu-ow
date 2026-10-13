@@ -121,7 +121,7 @@ onUnmounted(() => { sequence += 1; request?.abort() })
 </script>
 
 <template>
-  <AdminPage :title="activityLabel(kind)" section="events">
+  <AdminPage :title="activityLabel(kind)" section="activities">
     <template #actions>
       <RouterLink class="c-btn c-btn--primary c-btn--sm" :to="`${activityHref(kind)}new/`"><CIcon name="plus" />新建{{ activityLabel(kind) }}</RouterLink>
     </template>
@@ -153,8 +153,7 @@ onUnmounted(() => { sequence += 1; request?.abort() })
         <tbody>
           <tr v-for="item in visibleTournaments" :key="item.id" :data-tournament-row="item.id">
             <td>
-              <RouterLink class="b-title" :to="activityHref('tournaments', item.id)">{{ item.title || '（未命名赛事）' }}</RouterLink>
-              <span class="b-sub">{{ modeLabel(item.registration_mode) }}</span>
+              <RouterLink class="b-title" :to="activityHref('tournaments', item.id)">{{ item.title || '（未命名赛事）' }}</RouterLink><span class="b-sub">{{ modeLabel(item.registration_mode) }}</span>
             </td>
             <td data-label="状态">{{ statusLabel(item.status) }}</td>
             <td data-label="报名开始">{{ item.registration_opens_at ? timestamp(item.registration_opens_at) : '' }}</td>

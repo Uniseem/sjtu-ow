@@ -64,7 +64,7 @@ onUnmounted(() => { revision++; flight?.abort(); if (timer) clearTimeout(timer) 
       <li v-for="person in available" :key="person.user_id">
         <span>{{ person.nickname }}<span class="b-sub">{{ person.email || `#${person.user_id}` }}</span>
       </span>
-      <button type="button" class="c-btn c-btn--secondary c-btn--sm" :disabled="!action.canStart.value" @click="act('add', person.user_id)">加入</button>
+      <form @submit.prevent="act('add', person.user_id)"><button type="submit" class="c-btn c-btn--secondary c-btn--sm" :disabled="!action.canStart.value">加入</button></form>
     </li>
     <li v-if="submitted && !searching && !searchError && !available.length">
       <span>没有找到「{{ submitted }}」：只列已加入、还不在组里的人。</span>
@@ -78,8 +78,8 @@ onUnmounted(() => { revision++; flight?.abort(); if (timer) clearTimeout(timer) 
     </span>
     <GroupMemberTitle :key="`${row.id}:${row.title}`" :member="row" @changed="updateMembers" />
     <span class="b-rowacts">
-      <button type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="index === 0 || !action.canStart.value" @click="act('move', row.id, -1)">上移</button>
-      <button type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="index === members.length - 1 || !action.canStart.value" @click="act('move', row.id, 1)">下移</button>
+      <form @submit.prevent="act('move', row.id, -1)"><button type="submit" class="c-btn c-btn--quiet c-btn--sm" :disabled="index === 0 || !action.canStart.value">上移</button></form>
+      <form @submit.prevent="act('move', row.id, 1)"><button type="submit" class="c-btn c-btn--quiet c-btn--sm" :disabled="index === members.length - 1 || !action.canStart.value">下移</button></form>
       <ConfirmAction title="移出分组" :message="`把「${row.nickname}」移出这个分组？`" label="移出" danger :pending="!action.canStart.value" @confirm="act('remove', row.id)" />
     </span>
   </li>

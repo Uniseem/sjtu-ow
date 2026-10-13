@@ -54,6 +54,7 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 				return fmt.Errorf("释放预置集合 key: %w", err)
 			}
 			claimedKeys := map[string]bool{}
+			var importedRoot int64
 			for rows.Next() {
 				var id int64
 				var name string
@@ -75,6 +76,12 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 				case "队标":
 					key = "team_logo"
 				}
+				if hasPath && !parent.Valid {
+					key = "root"
+					if importedRoot == 0 {
+						importedRoot = id
+					}
+				}
 				if claimedKeys[key] {
 					key = fmt.Sprintf("collection_%d", id)
 				}
@@ -82,7 +89,10 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 				if _, err := tx.ExecContext(txCtx, `
 							INSERT INTO image_collections (id, name, key, created_at, parent_id)
 							VALUES (?, ?, ?, ?, ?)
-							ON CONFLICT (id) DO UPDATE SET name = excluded.name, key = excluded.key, parent_id = excluded.parent_id
+							ON CONFLICT (id) DO UPDATE SET name = excluded.name,
+                                key = CASE WHEN excluded.key='root' AND image_collections.key='collection_' || excluded.id
+                                           THEN image_collections.key ELSE excluded.key END,
+                                parent_id = excluded.parent_id
 						`, id, name, key, nowStr, parent); err != nil {
 					return fmt.Errorf("1. 导入图片集合 (wagtailcore_collection -> image_collections)：SQL 写入失败: %w", err)
 				}
@@ -100,6 +110,11 @@ func ImportLegacyContent(ctx context.Context, d *db.DB, legacy *sql.DB, siteURL 
 				if _, err := tx.ExecContext(txCtx, `INSERT INTO image_collections (name, key, created_at)
                     SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM image_collections WHERE key = ?)`, builtin.name, builtin.key, nowStr, builtin.key); err != nil {
 					return err
+				}
+				if importedRoot != 0 {
+					if _, err := tx.ExecContext(txCtx, "UPDATE image_collections SET parent_id=? WHERE key=? AND parent_id IS NULL AND id<>?", importedRoot, builtin.key, importedRoot); err != nil {
+						return err
+					}
 				}
 			}
 			return rows.Err()

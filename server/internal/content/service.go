@@ -79,10 +79,16 @@ func (s *Service) canEditScheduleAndSlug(v *app.Viewer) bool {
 
 // isPureSubmitter 校验是否为纯投稿者（规则 53）。
 func (s *Service) isPureSubmitter(v *app.Viewer) bool {
-	if v == nil || v.Superuser {
+	return s.isPlainWriter(v) && !v.HasRole("tournament_admin") && !v.HasRole("scrim_admin")
+}
+
+// Tournament and scrim managers still receive the writing guide and cannot
+// edit addresses or schedules, although they are not pure submitters.
+func (s *Service) isPlainWriter(v *app.Viewer) bool {
+	if v == nil || v.Disabled || v.ID <= 0 || v.Superuser {
 		return false
 	}
-	return !v.HasCap(CapArticlesEditAny) && !v.HasRole("certified_author")
+	return !v.HasCap(CapArticlesEditAny) && !v.HasRole("content_editor") && !v.HasRole("certified_author")
 }
 
 // CreateDraftInput 创建草稿入参。
@@ -317,7 +323,12 @@ func (s *Service) SaveDraft(ctx *app.Ctx, pageID int64, in SaveDraftInput) (*Sav
 			if !s.canEditAuthor(ctx.Viewer) {
 				fieldErrors["author_id"] = []string{"仅内容编辑或超管可修改作者"}
 			} else if v == nil {
-				revContent.AuthorID = nil
+				owner := ctx.Viewer.ID
+				if curArticle.OwnerID != nil {
+					owner = *curArticle.OwnerID
+				}
+				revContent.AuthorID = &owner
+				retValues["author_id"] = owner
 				savedFields = append(savedFields, "author_id")
 			} else if num, ok := toInt64(v); ok {
 				revContent.AuthorID = &num
@@ -487,6 +498,13 @@ func (s *Service) Publish(ctx *app.Ctx, pageID int64, in PublishInput) (*Article
 	if err != nil {
 		return nil, api.Invalid("修订内容损坏")
 	}
+	if revContent.AuthorID == nil {
+		owner := ctx.Viewer.ID
+		if curArticle.OwnerID != nil {
+			owner = *curArticle.OwnerID
+		}
+		revContent.AuthorID = &owner
+	}
 
 	// 整表单校验（规则 46）
 	title := strings.TrimSpace(revContent.Title)
@@ -517,6 +535,17 @@ func (s *Service) Publish(ctx *app.Ctx, pageID int64, in PublishInput) (*Article
 	uniqueSlug, err := s.store.ResolveUniqueSlug(ctx.Context, KindArticle, slug, pageID)
 	if err != nil {
 		return nil, err
+	}
+	// Approving a future revision must not replace the version currently live.
+	// The worker will render and publish this exact revision when it is due.
+	if revContent.GoLiveAt != nil && revContent.GoLiveAt.After(ctx.Now()) {
+		planned := curArticle.Page
+		planned.Live = false
+		planned.GoLiveAt = revContent.GoLiveAt
+		if err := s.store.PublishArticle(ctx.Context, pageID, &planned, curArticle, latestRev.ID); err != nil {
+			return nil, err
+		}
+		return s.store.GetArticleByID(ctx.Context, pageID)
 	}
 
 	// 规则 61–72：Markdown 渲染与元数据提取
@@ -626,64 +655,52 @@ func (s *Service) Delete(ctx *app.Ctx, pageID int64) error {
 
 // CheckScheduledWorker 由后台 worker 每 30 秒执行一次定时发布与到期撤下（规则 54–57）。
 func (s *Service) CheckScheduledWorker(ctx context.Context, now time.Time) error {
-	nowStr := now.UTC().Format(time.RFC3339Nano)
-
-	// 1. 到期上线：live=0 且 go_live_at <= now 且 (expire_at IS NULL OR expire_at > now)
-	rows, err := s.store.d.ReadPool().QueryContext(ctx, `
-		SELECT id FROM pages
-		WHERE kind = 'article' AND live = 0 AND go_live_at IS NOT NULL AND go_live_at <= ?
-		  AND (expire_at IS NULL OR expire_at > ?)
-	`, nowStr, nowStr)
-	if err == nil {
-		defer rows.Close()
-		var ids []int64
-		for rows.Next() {
-			var id int64
-			if err := rows.Scan(&id); err == nil {
-				ids = append(ids, id)
-			}
-		}
-		for _, id := range ids {
-			_ = s.store.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
-				if _, err := tx.ExecContext(txCtx, `
-					UPDATE pages SET live = 1, last_published_at = ?, version = version + 1
-					WHERE id = ?
-				`, nowStr, id); err != nil {
-					return err
-				}
-				// 上线那一刻放出「上线时通知全体成员」（规则 55）
-				_, err := notify.SendWaiting(txCtx, tx, notify.KindArticle, id, now)
-				return err
-			})
+	// Match the frozen worker: expiry runs first and cancels the page's plans.
+	expired, err := expiryCandidates(ctx, s.store.d.ReadPool(), now)
+	if err != nil {
+		return err
+	}
+	failures := []error{}
+	for _, candidate := range expired {
+		if err := s.store.d.WriteTx(ctx, func(c context.Context, tx *db.Tx) error {
+			return expireArticleCandidate(c, tx, candidate, now)
+		}); err != nil {
+			failures = append(failures, fmt.Errorf("文章%d到期撤下: %w", candidate.PageID, err))
 		}
 	}
-
-	// 2. 到期撤下：live=1 且 expire_at IS NOT NULL 且 expire_at <= now
-	expRows, err := s.store.d.ReadPool().QueryContext(ctx, `
-		SELECT id FROM pages
-		WHERE kind = 'article' AND live = 1 AND expire_at IS NOT NULL AND expire_at <= ?
-	`, nowStr)
-	if err == nil {
-		defer expRows.Close()
-		var ids []int64
-		for expRows.Next() {
-			var id int64
-			if err := expRows.Scan(&id); err == nil {
-				ids = append(ids, id)
+	approved, err := approvedArticleCandidates(ctx, s.store.d.ReadPool(), now)
+	if err != nil {
+		return joinScheduledErrors(append(failures, err))
+	}
+	for _, candidate := range approved {
+		var published *Article
+		err := s.store.d.WriteTx(ctx, func(c context.Context, tx *db.Tx) error {
+			article, err := s.publishApprovedArticle(c, tx, candidate, now)
+			if err != nil || article == nil {
+				return err
+			}
+			if _, err := notify.SendWaiting(c, tx, notify.KindArticle, article.ID, now); err != nil {
+				return err
+			}
+			published = article
+			return nil
+		})
+		if err != nil {
+			failures = append(failures, fmt.Errorf("文章%d定时发布: %w", candidate.PageID, err))
+			continue
+		}
+		if published != nil && s.mod != nil {
+			var author int64
+			if published.AuthorID != nil {
+				author = *published.AuthorID
+			}
+			text := strings.TrimSpace(strings.Join([]string{published.Title, published.Summary, published.BodyMD}, "\n\n"))
+			if err := s.mod.Submit(ctx, "article", published.ID, "content", text, "/news/"+published.Slug+"/", author); err != nil {
+				slog.Warn("文章定时上线送审失败", "id", published.ID, "err", err.Error())
 			}
 		}
-		for _, id := range ids {
-			_ = s.store.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
-				_, err := tx.ExecContext(txCtx, `
-					UPDATE pages SET live = 0, version = version + 1
-					WHERE id = ?
-				`, id)
-				return err
-			})
-		}
 	}
-
-	return nil
+	return joinScheduledErrors(failures)
 }
 
 func toInt64(v any) (int64, bool) {

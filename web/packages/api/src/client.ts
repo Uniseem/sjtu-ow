@@ -44,8 +44,9 @@ export type ClientDeps = {
   timeoutMs?: number
   location?: () => string
   /** A successful write may leave for held-letter confirmation. Let the app
-   * disarm its unload guard for that server-directed navigation first. */
-  beforeAssign?: () => void
+   * disarm its unload guard for that server-directed navigation first. A
+   * returned cleanup function revokes permission when assigning fails. */
+  beforeAssign?: () => unknown
   assign?: (url: string) => void
   onWrite?: () => void
   newKey?: () => string
@@ -142,8 +143,13 @@ export function createClient(deps: ClientDeps = {}): Requester {
     if (batch) {
       const here = locate()
       const letters = here.startsWith("/admin/") ? "/admin/letters/" : "/letters/"
-      deps.beforeAssign?.()
-      assign(letters + encodeURIComponent(batch) + "/?back=" + encodeURIComponent(here))
+      const cancelAssign = deps.beforeAssign?.()
+      try {
+        assign(letters + encodeURIComponent(batch) + "/?back=" + encodeURIComponent(here))
+      } catch (error) {
+        if (typeof cancelAssign === "function") cancelAssign()
+        throw error
+      }
     }
     if (WRITE.has(method)) deps.onWrite?.()
     return (payload ?? {}) as T

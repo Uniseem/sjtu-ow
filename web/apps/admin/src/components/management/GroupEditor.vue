@@ -23,7 +23,7 @@ async function deleteGroup() { if (await save.flush()) await remove.submit(null)
 </script>
 <template>
   <div class="b-form">
-    <form class="b-form" @submit.prevent="save.save">
+    <form class="b-form" novalidate @submit.prevent="save.save">
       <SaveStatus :snapshot="save.snapshot.value" :dirty="save.dirty.value" :pending="save.pending.value" @retry="save.save" />
       <div class="b-fieldset">
         <div class="c-field" :class="{ 'is-invalid': save.fields.value.name?.length }">
@@ -36,8 +36,8 @@ async function deleteGroup() { if (await save.flush()) await remove.submit(null)
           <label for="group-description" class="c-field__label">简介</label>
           <input type="text" id="group-description" name="description" class="c-input" maxlength="200" :value="save.values.value.description" @input="save.set('description', value($event), 'text')" @blur="save.flush" />
         </div>
-        <label class="c-check">
-          <input name="is_visible" type="checkbox" :checked="save.values.value.is_visible" @change="save.set('is_visible', checked($event), 'choice')" />显示</label><p class="c-field__help">不显示的分组不出现在成员展示页上，组里的人仍然在「全部成员」里。</p>
+        <div class="c-field"><label class="c-check">
+          <input name="is_visible" type="checkbox" :checked="save.values.value.is_visible" @change="save.set('is_visible', checked($event), 'choice')" /><span>显示</span></label><p class="c-field__help">不显示的分组不出现在成员展示页上，组里的人仍然在「全部成员」里。</p></div>
           <div class="c-field">
             <label for="group-order" class="c-field__label">排序<span class="c-field__req" aria-hidden="true">*</span></label>
             <input id="group-order" name="sort_order" class="c-input" type="number" required min="0" max="32767" :value="save.values.value.sort_order" @change="save.set('sort_order', Number(value($event)), 'choice')" />

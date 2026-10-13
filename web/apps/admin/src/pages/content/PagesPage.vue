@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CStatus from "@sjtu-ow/ui/CStatus.vue"
+import CEmpty from "@sjtu-ow/ui/CEmpty.vue"
 import { formatContentTime } from "./types"
 import { onMounted } from "vue"
 import { useAdminApi } from "../../core/api"
@@ -48,7 +49,7 @@ onMounted(() => { void resource.load() })
             </tr>
           </tbody>
         </table>
-        <section v-else class="c-empty"><h2 class="c-empty__title">还没有页面</h2><p>运行 init_site 建好关于我们和两份协议。</p></section>
+        <CEmpty v-else title="还没有页面" message="运行 init_site 建好关于我们和两份协议。" />
       </section>
     </template>
   </AdminPage>

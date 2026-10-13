@@ -117,6 +117,23 @@ try {
   check("wrong reauthentication leaves state unchanged",!(await api('/api/auth/email/state')).body.reauthenticated)
   await input('#id_password',second);await submit();await pathIs('/accounts/email/')
   check("reauthentication restores email draft",await evaluate(`document.querySelector('#id_email').value===${JSON.stringify(changed)}`) && (await api('/api/auth/email/state')).body.reauthenticated)
+  const occupied='occupied@example.test'
+  const postFixture=async(path,body)=>{
+    const response=await fetch(config.base+path,{method:'POST',headers:{'content-type':'application/json',Origin:config.base},body:JSON.stringify(body)})
+    if(!response.ok)throw new Error('occupied-account fixture '+response.status+' '+path)
+    return response.json()
+  }
+  const occupiedMailStart=mailCount()
+  await postFixture('/api/auth/register',{email:occupied,nickname:'Occupied member',password:first,confirm_password:first,is_sjtu:false,agree_terms:true,agree_cross_border:true})
+  await postFixture('/api/auth/verify-email',{email:occupied,code:await mail(occupied,occupiedMailStart,'邮箱验证码')})
+  const queuedMail=()=>db("SELECT COUNT(*) AS n FROM jobs WHERE kind='mail.letter'")[0].n
+  const occupiedQueueStart=queuedMail()
+  await input('#id_email',occupied);await submit();await pathIs('/accounts/confirm-email/')
+  check('occupied email keeps generic confirmation without sending mail',user().email===email && (await api('/api/auth/email/state')).body.pending_email===occupied && queuedMail()===occupiedQueueStart && db('SELECT code_hash FROM email_changes WHERE user_id=?',[user().id])[0].code_hash==='')
+  await input('#id_code','123456');await submit();await error()
+  check('occupied email cannot replace either account',user().email===email && db('SELECT id FROM users WHERE email=?',[occupied]).length===1)
+  await go('/accounts/email/');await click('button[name=action_remove]');await wait("!document.querySelector('#pending-email')")
+  await input('#id_email',changed)
   let before=mailCount();await submit();await pathIs('/accounts/confirm-email/')
   const emailCode=await mail(changed,before,"验证你的新邮箱")
   check("new address is pending until verified",user().email===email && (await api('/api/auth/email/state')).body.pending_email===changed)

@@ -8,7 +8,7 @@ if [[ $# -lt 1 || $# -gt 2 || ! -f "$1" ]]; then
     echo "用法: rehearse.sh <旧库> <旧媒体目录> 或 rehearse.sh <旧备份.tar.gz>" >&2
     exit 64
 fi
-WORK_DIR=$(mktemp -d /tmp/sjtuow-rehearsal-XXXXXX)
+WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/sjtuow-rehearsal-XXXXXX")
 cleanup() {
     rm -rf -- "$WORK_DIR"
     test ! -e "$WORK_DIR" && echo REHEARSAL-PRIVATE-WORK-REMOVED

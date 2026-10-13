@@ -1,9 +1,11 @@
 // Invoke on a fresh, writable seeded editor page. Exercises real Vue/CodeMirror
 // controls and the server preview; it intentionally changes the draft body.
 export async function exerciseMarkdownEditor(page) {
+  const beganAsNew = new URL(page.url()).pathname === "/admin/articles/new/"
   const editor = page.locator("div[data-markdown-editor]").first()
   const source = editor.locator(".cm-content")
   await source.waitFor({ state: "visible" })
+  const writingSession = await editor.elementHandle()
   const backing = editor.locator("textarea[data-markdown-source]")
   await source.fill("小标题")
   await editor.locator('[data-markdown-command="heading3"]').click()
@@ -13,9 +15,11 @@ export async function exerciseMarkdownEditor(page) {
 
   await source.fill("视频占位")
   await source.press(process.platform === "darwin" ? "Meta+A" : "Control+A")
+  page.expectedMarkdownPrompt = "粘贴 B 站视频链接（bilibili.com/video/… 或 b23.tv/…）："
   page.once("dialog", async dialog => {
-    if (dialog.type() !== "prompt") throw new Error("B站视频没有打开链接输入")
+    if (dialog.type() !== "prompt" || dialog.message() !== page.expectedMarkdownPrompt) throw new Error("B站视频没有打开链接输入")
     await dialog.accept("https://www.bilibili.com/video/BV1xx411c7mD/")
+    delete page.expectedMarkdownPrompt
   })
   await editor.locator('[data-markdown-command="video"]').click()
   if (!(await backing.inputValue()).includes("https://www.bilibili.com/video/BV1xx411c7mD/")) throw new Error("视频链接没有写进真实编辑正文")
@@ -26,7 +30,23 @@ export async function exerciseMarkdownEditor(page) {
   if (!(await source.isVisible())) throw new Error("并排预览隐藏了正文编辑区")
   await editor.frameLocator("iframe").getByText("并排初始正文", { exact: false }).first().waitFor({ state: "visible" })
   await source.fill("并排修改后的正文")
-  await editor.frameLocator("iframe").getByText("并排修改后的正文", { exact: false }).first().waitFor({ state: "visible" })
+  if (await backing.inputValue() !== "并排修改后的正文") throw new Error("并排编辑没有更新实际Markdown源字段")
+  try {
+    await editor.frameLocator("iframe").getByText("并排修改后的正文", { exact: false }).first().waitFor({ state: "visible" })
+  } catch (cause) {
+    const state = await editor.evaluate(node => ({
+      sideBySide: node.querySelector('[data-markdown-command="side-by-side"]')?.getAttribute("aria-pressed"),
+      frame: Boolean(node.querySelector("iframe")),
+      message: node.querySelector('[aria-label="正文预览"]')?.textContent,
+    })).catch(() => null)
+    throw new Error("并排预览没有更新：" + JSON.stringify({ path: new URL(page.url()).pathname, state }), { cause })
+  }
+  if (beganAsNew) {
+    await page.waitForURL(/\/admin\/articles\/\d+\/$/)
+    if (!writingSession || !await writingSession.evaluate(node => node.isConnected)) throw new Error("新稿更新网址销毁了当前Markdown编辑实例")
+    if (await editor.locator('[data-markdown-command="side-by-side"]').getAttribute("aria-pressed") !== "true") throw new Error("新稿更新网址丢失了并排预览模式")
+    await editor.frameLocator("iframe").getByText("并排修改后的正文", { exact: false }).first().waitFor({ state: "visible" })
+  }
   await editor.locator('[data-markdown-command="side-by-side"]').click()
 
   const fullscreen = editor.locator('[data-markdown-command="fullscreen"]')

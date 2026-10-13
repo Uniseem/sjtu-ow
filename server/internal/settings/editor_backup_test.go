@@ -158,6 +158,7 @@ func TestEditorConflictProjectionNeverContainsStoredSecrets(t *testing.T) {
 func TestEditorImageZeroClearsButMissingImageFieldDoesNot(t *testing.T) {
 	e := newEditorEnv(t)
 	e.exec(`INSERT INTO images(id,title,file_name,file_size,width,height,created_at) VALUES(801,'图片','fixture.webp',20,100,100,'2026-10-11T00:00:00Z')`)
+	e.exec(`INSERT INTO images(id,title,file_name,file_size,width,height,created_at) VALUES(802,'未选择的图片','other.webp',20,100,100,'2026-10-11T00:00:00Z')`)
 	old, err := e.service.Get(e.ctx.Context)
 	if err != nil {
 		t.Fatal(err)
@@ -169,6 +170,9 @@ func TestEditorImageZeroClearsButMissingImageFieldDoesNot(t *testing.T) {
 	}
 	if first.Values.HeroImageID == nil || *first.Values.HeroImageID != 801 {
 		t.Fatal("existing image was not selected")
+	}
+	if len(first.Values.ImageTitles) != 1 || first.Values.ImageTitles["801"] != "图片" {
+		t.Fatalf("selected image title projection=%v", first.Values.ImageTitles)
 	}
 	description := "只改说明"
 	second, err := e.service.patchFields(e.ctx, &first.Version, SettingsChanges{SiteDescription: &description})
@@ -185,6 +189,9 @@ func TestEditorImageZeroClearsButMissingImageFieldDoesNot(t *testing.T) {
 	}
 	if cleared.Values.HeroImageID != nil {
 		t.Fatal("zero image id did not clear reference")
+	}
+	if cleared.Values.ImageTitles == nil || len(cleared.Values.ImageTitles) != 0 {
+		t.Fatalf("cleared image title projection=%v", cleared.Values.ImageTitles)
 	}
 	nonexistent := int64(999)
 	rejected, err := e.service.patchFields(e.ctx, &cleared.Version, SettingsChanges{HeroImageID: &nonexistent})

@@ -45,8 +45,8 @@ function label(key: string) { return resource.data.value?.features.find(feature 
           <option value="">选一项功能</option>
           <option v-for="feature in resource.data.value?.features" :key="feature.key" :value="feature.key" :disabled="group.restrictions.some(rule => rule.feature === feature.key)">{{ feature.label }}</option>
         </select>
-        <input v-model="form(group.id).note" name="note" class="c-input" maxlength="200" aria-label="原因" placeholder="原因（只有管理员看得到）" />
-        <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!action.canStart.value || !form(group.id).feature">对这组关掉</button>
+        <input v-model="form(group.id).note" name="note" class="c-input" maxlength="200" aria-label="原因" placeholder="原因" />
+        <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!action.canStart.value">对这组关掉</button>
       </form>
     </section>
   </AdminPage>

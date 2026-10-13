@@ -34,3 +34,25 @@ export function collectionRows(nodes: CollectionNode[]): CollectionRow[] {
 export function hasCollectionChildren(id: number, nodes: CollectionNode[]): boolean {
   return nodes.some((node) => node.parent_id === id)
 }
+
+export function isCollectionRoot(node: CollectionNode): boolean {
+  return node.parent_id === null && (node.key === "root" || node.key === `collection_${node.id}`)
+}
+
+/** Collection choices expose the tree with the legacy full-width indentation.
+ * Writers receive the submission subtree without its root ancestor. */
+export function collectionChoiceLabel(node: CollectionNode, nodes: CollectionNode[]): string {
+  if (node.parent_id === null) return isCollectionRoot(node) ? "（根）" : node.name
+  const byID = new Map(nodes.map(item => [item.id, item]))
+  const seen = new Set([node.id])
+  let parent: number | null = node.parent_id
+  let depth = 1
+  while (parent !== null && !seen.has(parent)) {
+    seen.add(parent)
+    depth += 1
+    const ancestor = byID.get(parent)
+    if (!ancestor) break
+    parent = ancestor.parent_id
+  }
+  return "　".repeat(Math.max(0, depth - 2)) + node.name
+}

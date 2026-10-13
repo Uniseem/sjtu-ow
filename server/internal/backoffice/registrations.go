@@ -224,7 +224,7 @@ func (s *Service) registration(ctx *app.Ctx, in IDIn) (RegistrationDetailOut, er
 		return out, err
 	}
 	out.Registration = row
-	rows, err := q.QueryContext(ctx.Context, `SELECT rm.id, rm.user_id, rm.nickname, rm.battletag, rm.is_sjtu, rm.is_captain, rm.is_active, rm.rank_tank, rm.rank_damage, rm.rank_support, u.is_active FROM registration_members rm JOIN users u ON u.id = rm.user_id WHERE rm.registration_id = ? ORDER BY rm.is_captain DESC, rm.id`, int64(in.ID))
+	rows, err := q.QueryContext(ctx.Context, `SELECT rm.id, rm.user_id, rm.nickname, rm.battletag, rm.is_sjtu, rm.is_captain, rm.is_active, rm.rank_tank, rm.rank_damage, rm.rank_support, u.is_active FROM registration_members rm JOIN users u ON u.id = rm.user_id WHERE rm.registration_id = ? ORDER BY rm.is_captain DESC, rm.nickname, rm.id`, int64(in.ID))
 	if err != nil {
 		return out, err
 	}
@@ -430,7 +430,7 @@ func (s *Service) exportRegistrations(ctx *app.Ctx, in RegistrationQuery) (CSVOu
 			return CSVOut{}, err
 		}
 	}
-	rows, err := q.QueryContext(ctx.Context, `SELECT r.id, t.title, r.team_name, r.status, r.submitted_at, r.roster_version, COALESCE(rm.nickname,''), COALESCE(rm.battletag,''), COALESCE(rm.is_sjtu,0), COALESCE(rm.is_captain,0), rm.rank_tank, rm.rank_damage, rm.rank_support, r.status_note,rm.user_id,r.tournament_id`+registrationJoin+`JOIN registration_members rm ON rm.registration_id = r.id WHERE `+where+` ORDER BY r.submitted_at DESC, r.id DESC, rm.is_captain DESC, rm.id`, args...)
+	rows, err := q.QueryContext(ctx.Context, `SELECT r.id, t.title, r.team_name, r.status, r.submitted_at, r.roster_version, COALESCE(rm.nickname,''), COALESCE(rm.battletag,''), COALESCE(rm.is_sjtu,0), COALESCE(rm.is_captain,0), rm.rank_tank, rm.rank_damage, rm.rank_support, r.status_note,rm.user_id,r.tournament_id`+registrationJoin+`JOIN registration_members rm ON rm.registration_id = r.id WHERE `+where+` ORDER BY r.submitted_at DESC, r.id DESC, rm.is_captain DESC, rm.nickname, rm.id`, args...)
 	if err != nil {
 		return CSVOut{}, err
 	}

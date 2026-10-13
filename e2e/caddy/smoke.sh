@@ -110,6 +110,7 @@ count_header() { local name=$1; shift; curl -s -o /dev/null -D - "$@" | tr -d '\
 who() { body "$@" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["who"], d["method"], d["path"])'; }
 
 CSP="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+ADMIN_CSP="default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://player.bilibili.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 SERVER_CSP=$(grep -o "\"default-src[^\"]*\"" "$ROOT/web/apps/site/server.ts" | head -1 | tr -d '"')
 
 echo "页面和接口的去向"
@@ -182,7 +183,8 @@ check "私有信件预览同站可嵌入" "SAMEORIGIN" "$(header X-Frame-Options
 check "信纸 CSP 隔离脚本" "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox" "$(header Content-Security-Policy "$BASE/api/letters/batch/1/preview")"
 check "Markdown 预览只允许外部阅读样式" "default-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; frame-src https://player.bilibili.com; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-same-origin" "$(header Content-Security-Policy "$BASE/api/admin/previews/token")"
 check "样张同站可嵌入" "SAMEORIGIN" "$(header X-Frame-Options "$BASE/api/admin/mail-samples/signup/preview")"
-check "后台CSP和前台一致" "$CSP" "$(header Content-Security-Policy "$BASE/admin/")"
+check "后台仅允许编辑器内联样式属性" "$ADMIN_CSP" "$(header Content-Security-Policy "$BASE/admin/")"
+check "后台仅一条CSP" "1" "$(count_header Content-Security-Policy "$BASE/admin/")"
 for path in /admin/ /api/letters/batch/1/preview /api/admin/previews/token; do
   check "$path HSTS" "max-age=31536000; includeSubDomains; preload" "$(header Strict-Transport-Security "$BASE$path")"
   check "$path nosniff" "nosniff" "$(header X-Content-Type-Options "$BASE$path")"

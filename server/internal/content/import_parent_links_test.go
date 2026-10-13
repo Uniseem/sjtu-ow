@@ -27,9 +27,21 @@ func TestImportContentParentLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for range 2 {
+	for iteration := range 2 {
 		if err := ImportLegacyContent(ctx, d, legacy, "https://example.test"); err != nil {
 			t.Fatal(err)
+		}
+		var rootKey string
+		wantRootKey := "root"
+		if iteration > 0 {
+			wantRootKey = "collection_100"
+		}
+		if err := d.ReadPool().QueryRowContext(ctx, "SELECT key FROM image_collections WHERE id=100").Scan(&rootKey); err != nil || rootKey != wantRootKey {
+			t.Fatalf("legacy root is not identifiable after import: key=%q err=%v", rootKey, err)
+		}
+		var logoParent int64
+		if err := d.ReadPool().QueryRowContext(ctx, "SELECT parent_id FROM image_collections WHERE key='team_logo'").Scan(&logoParent); err != nil || logoParent != 100 {
+			t.Fatalf("missing builtin collection detached from legacy root: parent=%d err=%v", logoParent, err)
 		}
 		for _, tc := range []struct {
 			table      string
@@ -52,6 +64,7 @@ func TestImportContentParentLinks(t *testing.T) {
 		if err != nil || out.Newer == nil || out.Newer.Slug != "two" {
 			t.Fatalf("next=%+v err=%v", out.Newer, err)
 		}
+		projectionExec(t, d, "UPDATE image_collections SET key='collection_100' WHERE id=100")
 	}
 }
 

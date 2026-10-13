@@ -1,6 +1,17 @@
 import { expect, test } from "vitest"
 import { ApiError, buildURL, createClient } from "./src/client"
 
+test("failed held-letter assignment revokes its temporary unload permission", async () => {
+  let permitted = false
+  const request = createClient({
+    fetch: async () => Response.json({ letters: { batch: "saved" } }),
+    beforeAssign: () => { permitted = true; return () => { permitted = false } },
+    assign: () => { throw new Error("assignment failed") },
+  })
+  await expect(request("POST", "/api/save")).rejects.toThrow("assignment failed")
+  expect(permitted).toBe(false)
+})
+
 test("explicit 401 handling preserves server fields and does not redirect", async () => {
   let assigned = false
   const request = createClient({

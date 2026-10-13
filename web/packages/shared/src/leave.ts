@@ -9,12 +9,34 @@ const participants = new Set<LeaveParticipant>()
 let installed = false
 let leaving: Promise<boolean> | null = null
 let programmatic = false
+let cancelProgrammatic: (() => void) | null = null
 
 /** The API has received a successful write and is leaving for its mandatory
- * held-letter confirmation page. Suppress only this synchronous unload. */
-export function permitProgrammaticLeave(): void {
+ * held-letter confirmation page. Browsers may dispatch beforeunload in a
+ * later task; release the permission after that event, not before it starts. */
+export function permitProgrammaticLeave(): () => void {
+  cancelProgrammatic?.()
   programmatic = true
-  setTimeout(() => { programmatic = false }, 0)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const cancel = () => {
+    if (timer !== undefined) clearTimeout(timer)
+    window.removeEventListener("beforeunload", consumed, true)
+    window.removeEventListener("pageshow", cancel)
+    window.removeEventListener("pointerdown", cancel, true)
+    window.removeEventListener("keydown", cancel, true)
+    if (cancelProgrammatic === cancel) {
+      programmatic = false
+      cancelProgrammatic = null
+    }
+  }
+  const consumed = () => { timer = setTimeout(cancel, 0) }
+  cancelProgrammatic = cancel
+  window.addEventListener("beforeunload", consumed, { capture: true, once: true })
+  window.addEventListener("pageshow", cancel, { once: true })
+  // If navigation is cancelled and editing resumes, restore normal guards.
+  window.addEventListener("pointerdown", cancel, { capture: true, once: true })
+  window.addEventListener("keydown", cancel, { capture: true, once: true })
+  return cancel
 }
 
 export function programmaticLeavePermitted(): boolean { return programmatic }

@@ -1,6 +1,21 @@
 import { expect, test } from "vitest"
 import { actionLabel, objectLabel } from "./log-labels"
 
+test.each([
+  ['tournaments.export_registrations', '导出报名名单'],
+  ['moderation.handle', '处理待复核内容'],
+  ['moderation.ask_author', '发信要求作者修改'],
+  ['wagtail.apitoken.create', 'Create API token'],
+  ['wagtail.apitoken.revoke', 'Revoke API token'],
+  ['wagtail.publish.scheduled', '发布已计划的草稿'],
+  ['wagtail.unpublish', '取消发布'],
+  ['wagtail.unpublish.scheduled', '取消发布已计划的草稿'],
+  ['wagtail.workflow.approve', '工作流：批准任务'],
+  ['wagtail.comments.delete_reply', '删除评论回复'],
+])('legacy action %s retains its frozen filter label', (action, label) => {
+  expect(actionLabel(action)).toBe(label)
+})
+
 test("every imported and new audit action has a readable Chinese label", () => {
   const actions = [
     "wagtail.create", "wagtail.edit", "wagtail.delete", "wagtail.publish", "wagtail.unpublish", "wagtail.copy", "wagtail.move", "wagtail.revert",

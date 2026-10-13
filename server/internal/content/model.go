@@ -23,6 +23,7 @@ type Category struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 	ArticleCount    int       `json:"article_count"`
+	CanDelete       bool      `json:"can_delete"`
 }
 
 // Page 是所有页面的公共基础数据。
@@ -50,7 +51,12 @@ type Page struct {
 
 // Article 表示资讯文章完整实体（含页面基础属性）。
 type Article struct {
-	DraftTitle *string `json:"draft_title,omitempty"`
+	DraftTitle              *string    `json:"draft_title,omitempty"`
+	Expired                 bool       `json:"expired"`
+	ApprovedSchedule        bool       `json:"approved_schedule"`
+	LatestRevisionCreatedAt *time.Time `json:"latest_revision_created_at"`
+	Announced               int        `json:"announced"`
+	CanAnnounce             bool       `json:"can_announce"`
 	Page
 	CategoryID          *int64 `json:"category_id,omitempty"`
 	CategoryName        string `json:"category_name,omitempty"`

@@ -228,6 +228,12 @@ func (s *Service) importFont(ctx *app.Ctx, in ImportIn) (result FontDetail, retE
 	if !in.LicenseConfirmed {
 		return FontDetail{}, api.InvalidFields(map[string][]string{"license_confirmed": {"请确认字体允许在本站使用。"}})
 	}
+	if in.Source == "google" {
+		in.DisplayName = strings.TrimSpace(in.DisplayName)
+		if utf8.RuneCountInString(in.DisplayName) > 64 {
+			return FontDetail{}, api.InvalidFields(map[string][]string{"display_name": {"字体显示名称不能超过64字。"}})
+		}
+	}
 	var prepared preparedFont
 	var err error
 	switch in.Source {
@@ -245,7 +251,10 @@ func (s *Service) importFont(ctx *app.Ctx, in ImportIn) (result FontDetail, retE
 		}
 		prepared, err = preparePackage(bytes)
 	case "google":
-		prepared, err = prepareGoogle(ctx.Context, in.Family, in.Weights)
+		prepared, err = prepareGoogle(ctx.Context, in.Family, in.Weights, s.googleClient)
+		if err == nil && in.DisplayName != "" {
+			prepared.manifest.DisplayName = in.DisplayName
+		}
 	default:
 		return FontDetail{}, api.InvalidFields(map[string][]string{"source": {"请选择成品包或 Google Fonts。"}})
 	}
@@ -345,7 +354,11 @@ func (s *Service) importFont(ctx *app.Ctx, in ImportIn) (result FontDetail, retE
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(txCtx, `UPDATE font_families SET license_type='other',license_note=? WHERE id=?`, prepared.manifest.License, id); err != nil {
+		licenseType, licenseNote := "other", prepared.manifest.License
+		if in.Source == "google" {
+			licenseType, licenseNote = "open_source", "Google Fonts 开源字体"
+		}
+		if _, err := tx.ExecContext(txCtx, `UPDATE font_families SET license_type=?,license_note=? WHERE id=?`, licenseType, licenseNote, id); err != nil {
 			return err
 		}
 		for _, face := range prepared.manifest.Faces {

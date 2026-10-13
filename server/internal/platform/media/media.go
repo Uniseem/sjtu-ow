@@ -495,7 +495,7 @@ func (s *Service) listImages(ctx context.Context, collectionKey string, collecti
 		SELECT id, collection_id, title, file_name, file_size, width, height, uploader_id, created_at, version
 		FROM images
 		%s
-		ORDER BY id DESC
+		ORDER BY created_at DESC, id DESC
 		LIMIT ? OFFSET ?
 	`, whereClause)
 

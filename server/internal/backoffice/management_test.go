@@ -269,6 +269,33 @@ func TestBulkApprovalPartialFailuresKeepActualTransitions(t *testing.T) {
 		t.Fatal("duplicate batch ids accepted")
 	}
 }
+func TestRegistrationRosterAndCSVKeepCaptainThenNicknameOrder(t *testing.T) {
+	env := managementFixture(t)
+	env.event(1, "published")
+	env.registration(10, 1, "pending")
+	env.exec(`INSERT INTO users(id,email,email_norm,password_hash,nickname,is_sjtu,agreed_terms_at,agreed_cross_border_at,email_verified_at,is_active,is_superuser,show_rank,created_at,updated_at) SELECT 3,'third@example.test','third@example.test',password_hash,'第三名',is_sjtu,agreed_terms_at,agreed_cross_border_at,email_verified_at,is_active,0,show_rank,created_at,updated_at FROM users WHERE id=2`)
+	env.exec(`UPDATE registration_members SET nickname='Z队长' WHERE registration_id=10`)
+	env.exec(`INSERT INTO registration_members(registration_id,tournament_id,user_id,nickname,battletag,is_sjtu,is_captain,is_active) VALUES(10,1,1,'Z队员','Z#123',1,0,1),(10,1,3,'A队员','A#123',1,0,1)`)
+	page, err := env.svc.registration(env.ctx, IDIn{ID: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Roster) != 3 || page.Roster[0].UserID != 2 || page.Roster[1].UserID != 3 || page.Roster[2].UserID != 1 {
+		t.Fatalf("captain/nickname roster order=%+v", page.Roster)
+	}
+	export, err := env.svc.exportRegistrations(env.ctx, RegistrationQuery{TournamentID: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	records, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(export.CSV, "\ufeff"))).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 4 || records[1][5] != "Z队长" || records[2][5] != "A队员" || records[3][5] != "Z队员" {
+		t.Fatalf("captain/nickname CSV order=%v", records)
+	}
+}
+
 func TestRegistrationCSVMatchesLegacyFieldsProtectsFormulasAndAudits(t *testing.T) {
 	env := managementFixture(t)
 	env.event(1, "published")

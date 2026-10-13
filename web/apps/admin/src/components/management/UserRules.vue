@@ -41,7 +41,7 @@ function label(key: string) { return resource.data.value?.features.find(item => 
         <option :value="true">单独允许</option>
       </select>
       <input v-model="note" name="note" class="c-input" maxlength="200" placeholder="原因（只有管理员看得到）" aria-label="原因" />
-      <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!action.canStart.value || !feature">加一条</button>
+      <button class="c-btn c-btn--secondary c-btn--sm" :disabled="!action.canStart.value">加一条</button>
     </form>
     <ActionState :message="action.message.value" :pending="action.pending.value" :uncertain="action.uncertain.value" @retry="action.retry" />
   </section>

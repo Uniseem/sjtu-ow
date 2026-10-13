@@ -29,8 +29,8 @@ export const statusOptions = [
 ] as const
 
 export const modeOptions = [
-  { value: "team", label: "整队报名" },
   { value: "individual", label: "个人报名" },
+  { value: "team", label: "整队报名" },
 ] as const
 
 export const formatOptions = [

@@ -49,16 +49,16 @@ useSortableBoard(root, () => [props.values, props.board.board_version], () => !p
 </script>
 
 <template>
-  <section ref="root" class="b-form" data-split-board>
+  <section ref="root" class="b-form">
     <h2 class="b-section__title">分队结果</h2>
     <p class="b-section__text">A 队总分 <strong>{{ sides[0]?.total }}</strong> · B 队总分 <strong>{{ sides[1]?.total }}</strong> · 分差 <strong>{{ gap }}</strong></p>
     <AdminNotice message="拖动卡片换队伍和位置。队伍满员时不能直接拖进去——先把要换下来的人拖到下面的缓冲区，再把新人拖进来。不用鼠标的话，每张卡片上的按钮也能移动。" kind="info" />
     <div class="split-teams">
       <div v-for="team in sides" :key="team.key" class="split-team" :data-team-panel="team.key">
         <h3 class="b-section__title">{{ team.label }}（总分 {{ team.total }}）</h3>
-        <p v-if="team.problems.length" class="split-problem" role="status">{{ team.problems.join('、') }}</p>
+        <p v-if="team.problems.length" class="split-problem" role="status">位置人数不符：{{ team.problems.join('、') }}</p>
         <section v-for="zone in team.zones" :key="zone.key" class="split-zone">
-          <h4 class="split-zone-title">{{ zone.label }}<span v-if="zone.capacity">（{{ zone.members.length }}/{{ zone.capacity }}）</span></h4>
+          <h4 class="split-zone-title">{{ zone.label }} <span class="split-count"><span>{{ zone.members.length }}</span><template v-if="zone.capacity"> / {{ zone.capacity }}</template></span></h4>
           <ul class="split-list" :data-board-zone="zone.key" :aria-label="`${team.label} ${zone.label}`">
             <BoardCard v-for="signup in zone.members" :key="signup.signup_id" :signup="signup" :zones="zones" :disabled="disabled" @move="moved" @side="side" />
           </ul>
@@ -66,12 +66,14 @@ useSortableBoard(root, () => [props.values, props.board.board_version], () => !p
       </div>
     </div>
     <div v-if="buffer" class="split-buffer">
-      <h3 class="split-zone-title">缓冲区（不上场）</h3>
-      <ul class="split-list" data-board-zone="buffer" aria-label="缓冲区（不上场）">
-        <BoardCard v-for="signup in buffer.members" :key="signup.signup_id" :signup="signup" :zones="zones" :disabled="disabled" @move="moved" @side="side" />
-      </ul>
+      <div class="split-zone">
+        <h4 class="split-zone-title">缓冲区（不上场） <span class="split-count"><span>{{ buffer.members.length }}</span></span></h4>
+        <ul class="split-list" data-board-zone="buffer" aria-label="缓冲区（不上场）">
+          <BoardCard v-for="signup in buffer.members" :key="signup.signup_id" :signup="signup" :zones="zones" :disabled="disabled" @move="moved" @side="side" />
+        </ul>
+      </div>
       <p class="b-sub">队伍满了要换人，先把人拖到这里腾位置。留在这里的人这次不上场。</p>
     </div>
-    <p class="b-formbar__note">位置人数不符合规格时会标红，但仍然可以保存。</p>
+    <div class="b-formbar"><slot name="actions" /><span class="b-formbar__note">位置人数不符合规格时会标红，但仍然可以保存。</span></div>
   </section>
 </template>

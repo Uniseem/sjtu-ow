@@ -50,8 +50,8 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
 </script>
 
 <template>
-  <fieldset class="b-section" :disabled="disabled">
-    <legend class="b-section__title">内容</legend>
+  <fieldset class="b-fieldset" :disabled="disabled">
+    <legend class="b-fieldset__legend">内容</legend>
     <ActivityField id="title" label="标题" :errors="fields.title" required v-slot="field">
       <input
         id="title"
@@ -80,7 +80,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
         @blur="emit('blur')"
       />
     </ActivityField>
-    <ActivityField id="description" label="详细说明" :errors="fields.description" help="支持 Markdown。" v-slot="field">
+    <ActivityField id="description" label="详细说明" :errors="fields.description" v-slot="field">
       <MarkdownEditor
         id="description"
         name="description"
@@ -105,9 +105,9 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
     </ActivityField>
   </fieldset>
 
-  <fieldset class="b-section" :disabled="disabled">
-    <legend class="b-section__title">时间</legend>
-    <ActivityField id="starts_at" label="比赛时间" :errors="fields.starts_at" help="北京时间；只修改到分钟。" v-slot="field">
+  <fieldset class="b-fieldset" :disabled="disabled">
+    <legend class="b-fieldset__legend">时间</legend>
+    <ActivityField id="starts_at" label="比赛时间" :errors="fields.starts_at" v-slot="field">
       <input
         id="starts_at"
         name="starts_at"
@@ -151,13 +151,14 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
     </ActivityField>
   </fieldset>
 
-  <fieldset class="b-section" :disabled="disabled">
-    <legend class="b-section__title">报名规则</legend>
+  <fieldset class="b-fieldset" :disabled="disabled">
+    <legend class="b-fieldset__legend">报名规则</legend>
     <ActivityField
       id="registration_mode"
       label="报名方式"
       :errors="fields.registration_mode"
-      :help="hasEntries ? '已经有人报名了，不能再改「报名方式」。' : ''"
+      help="个人报名：每个人自己报名（队长也一样），由赛事管理员编成临时队伍。整队报名：只收战队，队长报名后全队直接进入名单，不需要队员确认。已经有人报名之后不能再改。"
+      required
       v-slot="field"
     >
       <select
@@ -178,6 +179,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
       label="参赛人数下限"
       :errors="fields.roster_min"
       :help="teamMaximum === null ? '整队报名时不能超过全站战队人数上限；个人报名不受这条限制。' : `整队报名时不能超过全站战队人数上限（现在是 ${teamMaximum} 人，在全站设置里改），否则没有战队能报名。个人报名不受这条限制。`"
+      required
       v-slot="field"
     >
       <input
@@ -195,7 +197,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
         @blur="emit('blur')"
       >
     </ActivityField>
-    <ActivityField id="roster_max" label="参赛人数上限" :errors="fields.roster_max" v-slot="field">
+    <ActivityField id="roster_max" label="参赛人数上限" :errors="fields.roster_max" required v-slot="field">
       <input
         id="roster_max"
         name="roster_max"
@@ -211,7 +213,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
         @blur="emit('blur')"
       >
     </ActivityField>
-    <ActivityField id="sjtu_only" label="仅限交大" :errors="fields.sjtu_only" v-slot="field">
+    <ActivityField id="sjtu_only" label="仅限交大" :errors="fields.sjtu_only" checkbox v-slot="field">
       <label class="c-check">
         <input
           id="sjtu_only"
@@ -221,14 +223,15 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
           :aria-describedby="field.describedby"
           :aria-invalid="Boolean(fields.sjtu_only?.length)"
           @change="check('sjtu_only', $event)"
-        >仅限交大
+        ><span>仅限交大</span>
       </label>
     </ActivityField>
     <ActivityField
       id="auto_approve"
       label="报名自动通过"
       :errors="fields.auto_approve"
-      :help="hasRegistrations ? '已经有报名了，不能再改「报名自动通过」。' : ''"
+      help="只对整队报名有效（临时队伍编成即通过）。打开后，报名通过全部校验即由系统自动通过，不需要管理员审核。已经有报名之后不能再改。"
+      checkbox
       v-slot="field"
     >
       <label class="c-check">
@@ -241,25 +244,25 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
           :aria-describedby="field.describedby"
           :aria-invalid="Boolean(fields.auto_approve?.length)"
           @change="check('auto_approve', $event)"
-        >报名自动通过
+        ><span>报名自动通过</span>
       </label>
     </ActivityField>
   </fieldset>
 
-  <fieldset class="b-section" :disabled="disabled">
-    <legend class="b-section__title">通知</legend>
+  <fieldset class="b-fieldset" :disabled="disabled">
+    <legend class="b-fieldset__legend">通知</legend>
     <ActivityField
       id="participant_contact"
       label="选手联系方式"
       :errors="fields.participant_contact"
-      help="比如选手 QQ 群号。只有报了这项赛事的人看得到，也会写进报名通过、编队和开赛提醒的邮件。不要写进上面公开的详细说明。"
+      help="比如选手 QQ 群号。只有报了这项赛事的人看得到（有效名单里的人、个人报名过的人），也会写进报名通过、编队和开赛提醒的邮件。不要写进上面公开的详细说明。"
       v-slot="field"
     >
-      <textarea
+      <input
         id="participant_contact"
         name="participant_contact"
         class="c-input"
-        rows="3"
+        type="text"
         maxlength="100"
         :value="values.participant_contact"
         :aria-describedby="field.describedby"

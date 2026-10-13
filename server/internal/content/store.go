@@ -24,13 +24,17 @@ func NewStore(d *db.DB) *Store {
 
 // ListCategories 列出所有分类（含文章数统计，按 sort_order 升序）。
 func (s *Store) ListCategories(ctx context.Context) ([]*Category, error) {
+	usage, err := categoryUses(ctx, s.d.ReadPool())
+	if err != nil {
+		return nil, err
+	}
 	rows, err := s.d.ReadPool().QueryContext(ctx, `
 		SELECT c.id, c.name, c.slug, c.description, c.sort_order, c.allow_submission, c.version, c.created_at, c.updated_at,
 		       COUNT(a.page_id) as article_count
 		FROM article_categories c
 		LEFT JOIN articles a ON a.category_id = c.id
 		GROUP BY c.id
-		ORDER BY c.sort_order ASC, c.id ASC
+		ORDER BY c.sort_order ASC, c.name ASC, c.id ASC
 	`)
 	if err != nil {
 		return nil, err
@@ -46,6 +50,8 @@ func (s *Store) ListCategories(ctx context.Context) ([]*Category, error) {
 			return nil, err
 		}
 		c.AllowSubmission = allowSub == 1
+		c.ArticleCount = usage.Counts[c.ID]
+		c.CanDelete = usage.References[c.ID] == 0
 		c.CreatedAt, _ = db.ParseUTC(created)
 		c.UpdatedAt, _ = db.ParseUTC(updated)
 		list = append(list, &c)
@@ -118,6 +124,7 @@ func (s *Store) CreateCategory(ctx context.Context, c *Category) error {
 			return err
 		}
 		c.ID = id
+		c.CanDelete = true
 		c.Version = 1
 		c.CreatedAt, _ = db.ParseUTC(now)
 		c.UpdatedAt = c.CreatedAt
@@ -160,9 +167,12 @@ func (s *Store) UpdateCategory(ctx context.Context, c *Category) error {
 				"name": current.Name, "slug": current.Slug, "description": current.Description, "sort_order": current.SortOrder, "allow_submission": allow == 1,
 			}})
 		}
-		if err := tx.QueryRowContext(txCtx, "SELECT COUNT(*) FROM articles WHERE category_id=?", c.ID).Scan(&c.ArticleCount); err != nil {
+		usage, err := categoryUses(txCtx, tx)
+		if err != nil {
 			return err
 		}
+		c.ArticleCount = usage.Counts[c.ID]
+		c.CanDelete = usage.References[c.ID] == 0
 		c.Version++
 		c.UpdatedAt, _ = db.ParseUTC(now)
 		return nil
@@ -172,6 +182,13 @@ func (s *Store) UpdateCategory(ctx context.Context, c *Category) error {
 // DeleteCategory 删除分类（若仍有文章使用则拒绝）。
 func (s *Store) DeleteCategory(ctx context.Context, id int64) error {
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
+		usage, err := categoryUses(txCtx, tx)
+		if err != nil {
+			return err
+		}
+		if count := usage.References[id]; count > 0 {
+			return api.InvalidFields(map[string][]string{"__all__": {fmt.Sprintf("该分类下有%d篇文章，无法删除", count)}})
+		}
 		var count int
 		if err := tx.QueryRowContext(txCtx, "SELECT COUNT(*) FROM articles WHERE category_id=?", id).Scan(&count); err != nil {
 			return err
@@ -200,12 +217,14 @@ const articleColumns = pageColumns + `,
 	a.category_id, IFNULL(c.name, '') as category_name,
 	a.cover_image_id, a.summary, a.body_md, a.body_html, a.body_plain,
 	a.char_count, a.reading_time, a.author_id, IFNULL(u.nickname, '') as author_name,
-	a.comments_enabled, a.related_tournament_id, a.search_text, a.renderer_version`
+	a.comments_enabled, a.related_tournament_id, a.search_text, a.renderer_version,
+	p.expired, EXISTS(SELECT 1 FROM page_revisions schedule WHERE schedule.page_id=p.id AND schedule.approved_go_live_at IS NOT NULL),
+	(SELECT latest.created_at FROM page_revisions latest WHERE latest.id=p.latest_revision_id)`
 
 func scanArticle(row interface{ Scan(...any) error }) (*Article, error) {
 	var a Article
-	var live, unpub, comments, rendVer, public int
-	var goLive, expire, firstPub, lastPub, created, updated sql.NullString
+	var live, unpub, comments, rendVer, public, expired, scheduled int
+	var goLive, expire, firstPub, lastPub, created, updated, revised sql.NullString
 	var catID, coverID, authorID, tourID sql.NullInt64
 
 	err := row.Scan(
@@ -217,6 +236,7 @@ func scanArticle(row interface{ Scan(...any) error }) (*Article, error) {
 		&coverID, &a.Summary, &a.BodyMD, &a.BodyHTML, &a.BodyPlain,
 		&a.CharCount, &a.ReadingTime, &authorID, &a.AuthorName,
 		&comments, &tourID, &a.SearchText, &rendVer,
+		&expired, &scheduled, &revised,
 	)
 	if err != nil {
 		return nil, err
@@ -225,6 +245,13 @@ func scanArticle(row interface{ Scan(...any) error }) (*Article, error) {
 	a.Live = live == 1
 	a.Public = public == 1
 	a.HasUnpublishedChanges = unpub == 1
+	a.Expired = expired == 1
+	a.ApprovedSchedule = scheduled == 1
+	if revised.Valid {
+		if value, err := db.ParseUTC(revised.String); err == nil {
+			a.LatestRevisionCreatedAt = &value
+		}
+	}
 	a.CommentsEnabled = comments == 1
 	a.RendererVersion = rendVer
 
@@ -529,11 +556,25 @@ func (s *Store) PublishArticle(ctx context.Context, pageID int64, p *Page, a *Ar
 			liveInt = 1
 			liveRev = revID
 		}
+		// Approval belongs to the revision actually published, not merely to
+		// a future time typed into any draft. A replacement publish cancels the
+		// prior approved schedule atomically with the page and article update.
+		if _, err := tx.ExecContext(txCtx, "UPDATE page_revisions SET approved_go_live_at=NULL WHERE page_id=? AND approved_go_live_at IS NOT NULL", pageID); err != nil {
+			return err
+		}
+		if !p.Live && p.GoLiveAt != nil {
+			if _, err := tx.ExecContext(txCtx, "UPDATE page_revisions SET approved_go_live_at=? WHERE id=? AND page_id=?", goLiveStr, revID, pageID); err != nil {
+				return err
+			}
+			_, err := tx.ExecContext(txCtx, `UPDATE pages SET version=version+1,has_unpublished_changes=1,
+                expired=0,updated_at=?,go_live_at=CASE WHEN live=0 THEN ? ELSE go_live_at END WHERE id=?`, now, goLiveStr, pageID)
+			return err
+		}
 
 		// 更新 pages
 		_, err = tx.ExecContext(txCtx, `
 			UPDATE pages
-			SET title = ?, slug = ?, live = ?, has_unpublished_changes = 0,
+			SET title = ?, slug = ?, live = ?, expired = 0, has_unpublished_changes = 0,
 			    go_live_at = ?, expire_at = ?, first_published_at = ?, last_published_at = ?,
 			    live_revision_id = ?, latest_revision_id = ?,
 			    seo_title = ?, search_description = ?, version = version + 1, updated_at = ?
@@ -568,7 +609,7 @@ func (s *Store) UnpublishArticle(ctx context.Context, pageID int64) error {
 	return s.d.WriteTx(ctx, func(txCtx context.Context, tx *db.Tx) error {
 		res, err := tx.ExecContext(txCtx, `
 			UPDATE pages
-			SET live = 0, has_unpublished_changes = 1, version = version + 1, updated_at = ?
+			SET live = 0, live_revision_id = NULL, expired = 0, go_live_at = NULL, has_unpublished_changes = 1, version = version + 1, updated_at = ?
 			WHERE id = ? AND kind = 'article'
 		`, now, pageID)
 		if err != nil {
@@ -578,7 +619,8 @@ func (s *Store) UnpublishArticle(ctx context.Context, pageID int64) error {
 		if affected == 0 {
 			return api.NotFound("文章不存在")
 		}
-		return nil
+		_, err = tx.ExecContext(txCtx, "UPDATE page_revisions SET approved_go_live_at=NULL WHERE page_id=? AND approved_go_live_at IS NOT NULL", pageID)
+		return err
 	})
 }
 

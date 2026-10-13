@@ -22,6 +22,7 @@ type ArticleCapabilities struct {
 	Delete       bool `json:"delete"`
 	Announce     bool `json:"announce"`
 	EditAuthor   bool `json:"edit_author"`
+	EditComments bool `json:"edit_comments"`
 	EditSchedule bool `json:"edit_schedule"`
 }
 
@@ -34,6 +35,7 @@ type ArticleCategoryChoice struct {
 type ArticleAuthorChoice struct {
 	ID       int64  `json:"id"`
 	Nickname string `json:"nickname"`
+	Label    string `json:"label"`
 }
 type ArticleTournamentChoice struct {
 	ID    int64  `json:"id"`
@@ -60,7 +62,7 @@ func articleDraft(article *Article) ArticleRevisionContent {
 func (m *Module) editorProjection(ctx *app.Ctx, article *Article) (AdminArticleDetailOut, error) {
 	out := AdminArticleDetailOut{
 		Article: article, Categories: []ArticleCategoryChoice{}, Authors: []ArticleAuthorChoice{},
-		Tournaments: []ArticleTournamentChoice{}, Guide: m.svc.isPureSubmitter(ctx.Viewer),
+		Tournaments: []ArticleTournamentChoice{}, Guide: m.svc.isPlainWriter(ctx.Viewer),
 	}
 	if ctx.Viewer == nil || ctx.Viewer.Disabled {
 		return out, api.Unauthorized("要先登录")
@@ -74,8 +76,12 @@ func (m *Module) editorProjection(ctx *app.Ctx, article *Article) (AdminArticleD
 		Unpublish:  article != nil && article.Live && edit,
 		Announce:   ctx.Viewer.HasCap(CapArticlesEditAny),
 		EditAuthor: m.svc.canEditAuthor(ctx.Viewer), EditSchedule: m.svc.canEditScheduleAndSlug(ctx.Viewer),
+		EditComments: !m.svc.isPureSubmitter(ctx.Viewer),
 	}
 	if article != nil {
+		if err := m.readArticleAdminStates(ctx, []*Article{article}); err != nil {
+			return out, err
+		}
 		out.Version = article.Version
 		draft := articleDraft(article)
 		latest, err := m.svc.store.GetLatestRevision(ctx.Context, article.ID)
@@ -91,18 +97,8 @@ func (m *Module) editorProjection(ctx *app.Ctx, article *Article) (AdminArticleD
 		out.Revision = &draft
 		preview := fmt.Sprintf("/api/admin/articles/%d/preview", article.ID)
 		out.PreviewURL = &preview
-		if out.Capabilities.Announce {
-			if err := m.svc.store.d.ReadPool().QueryRowContext(ctx.Context, "SELECT COUNT(*) FROM broadcasts WHERE kind='article' AND object_id=? AND waits_for_publish=0", article.ID).Scan(&out.Announced); err != nil {
-				return out, err
-			}
-			var waiting int
-			if err := m.svc.store.d.ReadPool().QueryRowContext(ctx.Context, "SELECT COUNT(*) FROM broadcasts WHERE kind='article' AND object_id=? AND waits_for_publish=1", article.ID).Scan(&waiting); err != nil {
-				return out, err
-			}
-			if waiting > 0 && !article.Live {
-				out.Capabilities.Announce = false
-			}
-		}
+		out.Announced = article.Announced
+		out.Capabilities.Announce = article.CanAnnounce
 		if ctx.Viewer.HasCap("moderation.review") {
 			// The moderation record is read-only: displaying it never schedules AI work.
 			verdict, err := m.articleVerdict(ctx.Context, article.ID)
@@ -125,15 +121,20 @@ func (m *Module) editorProjection(ctx *app.Ctx, article *Article) (AdminArticleD
 		}
 	}
 	if out.Capabilities.EditAuthor {
-		rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, "SELECT id,nickname FROM users WHERE is_active=1 ORDER BY nickname,id")
+		rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, "SELECT id,nickname,email FROM users WHERE is_active=1 ORDER BY nickname,id")
 		if err != nil {
 			return out, err
 		}
 		for rows.Next() {
 			var choice ArticleAuthorChoice
-			if err := rows.Scan(&choice.ID, &choice.Nickname); err != nil {
+			var email string
+			if err := rows.Scan(&choice.ID, &choice.Nickname, &email); err != nil {
 				rows.Close()
 				return out, err
+			}
+			choice.Label = fmt.Sprintf("%s（#%d）", choice.Nickname, choice.ID)
+			if ctx.Viewer.Superuser {
+				choice.Label = fmt.Sprintf("%s（%s）", choice.Nickname, email)
 			}
 			out.Authors = append(out.Authors, choice)
 		}
@@ -208,19 +209,20 @@ func (m *Module) listEditableArticles(ctx *app.Ctx, in AdminListArticlesIn) (Adm
 	}
 	switch in.Status {
 	case "draft":
-		where += " AND p.live=0 AND p.go_live_at IS NULL"
+		where += " AND p.live=0 AND p.expired=0 AND NOT EXISTS(SELECT 1 FROM page_revisions schedule WHERE schedule.page_id=p.id AND schedule.approved_go_live_at IS NOT NULL)"
 	case "live":
 		where += " AND p.live=1"
 	case "changed":
 		where += " AND p.live=1 AND p.has_unpublished_changes=1"
 	case "scheduled":
-		where += " AND p.live=0 AND p.go_live_at IS NOT NULL"
+		where += " AND p.live=0 AND EXISTS(SELECT 1 FROM page_revisions schedule WHERE schedule.page_id=p.id AND schedule.approved_go_live_at IS NOT NULL)"
 	case "":
 	default:
 		return out, api.InvalidFields(map[string][]string{"status": {"状态无效"}})
 	}
 	rows, err := m.svc.store.d.ReadPool().QueryContext(ctx.Context, `SELECT `+articleColumns+` FROM pages p JOIN articles a ON a.page_id=p.id
-        LEFT JOIN article_categories c ON c.id=a.category_id LEFT JOIN users u ON u.id=a.author_id WHERE `+where+` ORDER BY p.updated_at DESC,p.id DESC`, args...)
+        LEFT JOIN article_categories c ON c.id=a.category_id LEFT JOIN users u ON u.id=a.author_id
+        LEFT JOIN page_revisions latest ON latest.id=p.latest_revision_id WHERE `+where+` ORDER BY COALESCE(latest.created_at,p.updated_at) DESC,p.id DESC`, args...)
 	if err != nil {
 		return out, err
 	}
@@ -236,6 +238,9 @@ func (m *Module) listEditableArticles(ctx *app.Ctx, in AdminListArticlesIn) (Adm
 	err = rows.Err()
 	rows.Close()
 	if err != nil {
+		return out, err
+	}
+	if err := m.readArticleAdminStates(ctx, all); err != nil {
 		return out, err
 	}
 	// Latest titles are read in one query instead of one query per table row.
@@ -276,7 +281,7 @@ func (m *Module) listEditableArticles(ctx *app.Ctx, in AdminListArticlesIn) (Adm
 	}
 	out.PageSize = in.PageSize
 	if out.PageSize < 1 || out.PageSize > 100 {
-		out.PageSize = 25
+		out.PageSize = 30
 	}
 	out.Total = len(filtered)
 	last := max(1, (out.Total+out.PageSize-1)/out.PageSize)
