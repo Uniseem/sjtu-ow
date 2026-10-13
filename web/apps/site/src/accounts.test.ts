@@ -1,6 +1,8 @@
 import { expect, test } from "vitest"
 import { handle } from "../server"
 import { safeNext } from "@sjtu-ow/shared/navigation"
+import { ApiError } from "@sjtu-ow/api"
+import { accountErrorDocument } from "./account-form"
 
 const user = { id: 7, nickname: "成员", email: "member@example.com", admin: false, superuser: false, caps: [], email_verified: true, is_sjtu: true }
 async function page(url: string, loggedIn = false, flowEmail?: string) {
@@ -19,6 +21,13 @@ test("next allows local return addresses and rejects external, encoded and malfo
   for (const target of ["https://evil.test/", "//evil.test/", "/\\evil.test/", "/%5cevil.test/", "/%2fevil.test/", "/%", "/\nevil.test/", "https:evil.test", null]) {
     expect(safeNext(target, "/me/")).toBe("/me/")
   }
+})
+test("account rate limits become the standalone scriptless 429 document", () => {
+  const html = accountErrorDocument(new ApiError(429, "rate_limited", "太快"))
+  expect(html).toContain("<title>操作太频繁 · SJTU-OW</title>")
+  expect(html).toContain('<p class="code" aria-hidden="true">429</p>')
+  expect(html).not.toContain("<script")
+  expect(accountErrorDocument(new ApiError(422, "invalid", "错了"))).toBeNull()
 })
 test("authenticated account entrances return a safe next with an actual 302", async () => {
   for (const url of ["/accounts/login/", "/accounts/signup/"]) {

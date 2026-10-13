@@ -7,15 +7,15 @@ import { toast, toasts } from "./toasts"
 
 function fakeRoot() {
   const classes = new Set<string>()
-  const properties: Record<string, string> = {}
+  const dataset: { loadbarFrom?: string } = {}
   const root: LoadbarRoot = {
     classList: {
       add: (name) => classes.add(name),
       remove: (...names) => names.forEach((name) => classes.delete(name)),
     },
-    style: { setProperty: (name, value) => (properties[name] = value) },
+    dataset,
   }
-  return { root, classes, properties }
+  return { root, classes, dataset }
 }
 
 beforeEach(() => {
@@ -27,14 +27,14 @@ afterEach(() => {
 })
 
 test("the bar crawls on start and finishes where it got to", () => {
-  const { root, classes, properties } = fakeRoot()
+  const { root, classes, dataset } = fakeRoot()
   const bar = new Loadbar(root, () => 0.5)
   bar.start()
   expect(classes.has("is-loading")).toBe(true)
   bar.arrive()
   expect(classes.has("is-loading")).toBe(false)
   expect(classes.has("is-arriving")).toBe(true)
-  expect(properties["--loadbar-from"]).toBe("0.5")
+  expect(dataset.loadbarFrom).toBe("5")
   vi.advanceTimersByTime(600)
   expect(classes.has("is-arriving")).toBe(false)
 })

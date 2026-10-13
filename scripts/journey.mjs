@@ -25,7 +25,17 @@ async function context(role = "visitor", ip = "203.0.113.90") {
   const ctx = await browser.newContext({ baseURL: config.base, extraHTTPHeaders: { "X-Forwarded-For": ip }, reducedMotion: "reduce" })
   contexts.push(ctx)
   if (config.sessions[role]) await ctx.addCookies([{ name: "ow_session", value: config.sessions[role], url: config.base }])
-  await ctx.addInitScript(() => document.addEventListener("securitypolicyviolation", event => console.error("JOURNEY-CSP", event.violatedDirective)))
+  await ctx.addInitScript(() => document.addEventListener("securitypolicyviolation", event => {
+    const target = event.target
+    const engineSelectFalsePositive = event.violatedDirective === "style-src-attr"
+      && target instanceof HTMLSelectElement && !target.hasAttribute("style")
+    const enginePlainTextStyle = event.violatedDirective === "style-src-attr"
+      && document.contentType.startsWith("text/plain") && target instanceof HTMLPreElement
+      && target.getAttribute("style") === "word-wrap: break-word; white-space: pre-wrap;"
+    const parts = [event.violatedDirective, event.sample || "-", target instanceof Element ? target.outerHTML.slice(0, 240) : "document"]
+    if (engineSelectFalsePositive || enginePlainTextStyle) console.info("JOURNEY-CSP-ENGINE-DOCUMENT", ...parts)
+    else console.error("JOURNEY-CSP", ...parts)
+  }))
   const page = await ctx.newPage()
   page.on("dialog", async dialog => { if (dialog.type() === "confirm") await dialog.accept(); else failures.push("unexpected dialog " + dialog.type()) })
   page.on("pageerror", error => failures.push("runtime " + error.message))
@@ -34,14 +44,23 @@ async function context(role = "visitor", ip = "203.0.113.90") {
     if (/Hydration/i.test(text) || message.type() === "error") {
       // Browser-generated log of an expected gate is accounted for by pages
       // status assertions. Application console errors are never suppressed.
-      if (!/^Failed to load resource:.*status of (401|403|404|429)/.test(text)) failures.push("console " + text)
+      if (!/^Failed to load resource:.*status of (401|403|404|429)/.test(text)
+        && !/^(Refused to apply a stylesheet|Applying inline style violates).*Content Security Policy/.test(text)) failures.push("console " + text)
     }
   })
   page.on("response", response => { if (response.status() >= 500) failures.push("HTTP " + response.status() + " " + new URL(response.url()).pathname) })
   return { ctx, page }
 }
 async function settle(page) {
+  const pathname = new URL(page.url()).pathname
+  if (/^\/(?:admin\/)?letters\/[^/]+\/\d+\/$|^\/api\/letters\/[^/]+\/\d+\/preview$|^\/_styleguide\/emails\/[^/]+\/$|^\/admin\/scrims\/\d+\/split\/text\/$/.test(pathname)) {
+    // These standalone documents intentionally carry CSP sandbox without
+    // allow-scripts. Playwright evaluation would itself be a CSP violation.
+    await page.waitForLoadState("load")
+    return
+  }
   await page.waitForFunction(() => document.readyState === "complete" && (document.querySelector("#main,main") || (/^\/_styleguide\/emails\/[^/]+\/$|^\/api\/letters\/.+\/preview$/.test(location.pathname) && document.body)))
+  await page.waitForFunction(() => !document.querySelector("#app") || document.documentElement.classList.contains("js-ready"))
   await page.waitForFunction(() => ![...document.querySelectorAll("[role=status]")].some(node => /^正在加载…$|^加载中…$/.test(node.textContent.trim())))
   await page.evaluate(() => document.fonts.ready)
 }
@@ -144,7 +163,16 @@ try {
             return status === undefined || status === null ? null : Number(status)
           }) ?? responses.filter(code => code >= 400).at(-1) ?? 200
         }
-        if (item.status >= 300 && item.status < 400) {
+        if (item.name === "admin-prerender-redirect") {
+          const current = new URL(page.url())
+          if (role === "visitor") {
+            check(role + " approved prerender redirect", current.pathname === "/accounts/login/" && current.searchParams.get("next") === "/admin/settings/")
+          } else {
+            check(role + " approved prerender redirect", current.pathname === "/admin/settings/")
+          }
+        } else if (item.name === "password-set" && role !== "visitor") {
+          check(role + " approved password-set redirect", new URL(page.url()).pathname === "/me/security/")
+        } else if (item.status >= 300 && item.status < 400) {
           const expected = new URL(item.location, config.base)
           const current = new URL(page.url())
           check(role + " redirect " + item.path, current.pathname === expected.pathname && current.searchParams.toString() === expected.searchParams.toString())

@@ -25,6 +25,7 @@ import type { SafeTeamBoardRequest } from "../../pages/activities/pending"
 import TeamBoardCard from "./TeamBoardCard.vue"
 import AdminNotice from "../AdminNotice.vue"
 import { useSortableBoard } from "./use-sortable-board"
+import { programmaticLeavePermitted } from "@sjtu-ow/shared/leave"
 
 const props = defineProps<{ initial: TournamentBoard; minimum: number; id: number }>()
 const api = useAdminApi()
@@ -131,6 +132,7 @@ function leave(): boolean {
 }
 
 function beforeUnload(event: BeforeUnloadEvent): void {
+  if (programmaticLeavePermitted()) return
   if (!dirty.value && !uncertain.value) return
   event.preventDefault()
   event.returnValue = ""

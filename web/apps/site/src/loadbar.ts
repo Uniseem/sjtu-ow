@@ -4,7 +4,7 @@
 // the old cross-page relay (loading.js + arrival.js) is no longer needed.
 export type LoadbarRoot = {
   classList: { add(name: string): void; remove(...names: string[]): void }
-  style: { setProperty(name: string, value: string): void }
+  dataset: { loadbarFrom?: string }
 }
 
 export const LOADBAR_DONE = 600 // ms: 300 to fill + 250 to fade, a little air
@@ -36,7 +36,9 @@ export class Loadbar {
   arrive() {
     const from = this.progress()
     this.clear()
-    this.root.style.setProperty("--loadbar-from", String(from))
+    // CSP forbids style attributes. Quantise the live transform to one of the
+    // external stylesheet's fixed custom-property rules instead.
+    this.root.dataset.loadbarFrom = String(Math.max(0, Math.min(10, Math.round(from * 10))))
     this.root.classList.add("is-arriving")
     this.timer = setTimeout(() => this.stop(), LOADBAR_DONE)
   }

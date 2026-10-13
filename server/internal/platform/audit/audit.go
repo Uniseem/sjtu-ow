@@ -52,6 +52,16 @@ type QueryResult struct {
 	PageSize int              `json:"page_size"`
 }
 
+// ActionCatalog mirrors the frozen site's registered custom log actions. Keep
+// this stable even before a given action has occurred, so the filter is a
+// complete directory rather than a history-dependent subset.
+var ActionCatalog = []string{
+	"tournaments.publish", "tournaments.finish", "tournaments.cancel", "tournaments.arrange",
+	"scrims.publish", "scrims.finish", "scrims.cancel", "scrims.select", "scrims.generate", "scrims.save_teams",
+	"teams.assign_captain", "teams.disband", "tournaments.announce", "scrims.announce", "articles.announce",
+	"users.deactivate", "users.reactivate", "tournaments.notify_participants", "scrims.notify_participants",
+}
+
 // Record 记一条。actor 为 0 表示系统。data 可以是 nil，也可以是任何能转成 JSON 的东西。
 func Record(ctx context.Context, tx *db.Tx, actor int64, action, objectType string, objectID int64, data any, at time.Time) error {
 	raw := []byte("{}")
@@ -188,7 +198,11 @@ func Query(ctx context.Context, q db.DBTX, in QueryInput) (*QueryResult, error) 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	actions := []string{}
+	actions := append([]string{}, ActionCatalog...)
+	known := map[string]bool{}
+	for _, action := range actions {
+		known[action] = true
+	}
 	choices, err := q.QueryContext(ctx, `SELECT DISTINCT action FROM audit_log ORDER BY action`)
 	if err != nil {
 		return nil, err
@@ -199,7 +213,10 @@ func Query(ctx context.Context, q db.DBTX, in QueryInput) (*QueryResult, error) 
 		if err := choices.Scan(&action); err != nil {
 			return nil, err
 		}
-		actions = append(actions, action)
+		if !known[action] {
+			actions = append(actions, action)
+			known[action] = true
+		}
 	}
 	if err := choices.Err(); err != nil {
 		return nil, err

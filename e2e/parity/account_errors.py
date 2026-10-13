@@ -91,11 +91,10 @@ def context(name, data, sessions, work, legacy_env):
     return old, new, suffix
 
 
-def submit(tools, name, evaluate):
+def submit(tools, name, evaluate, is_new):
     page = SCENARIOS[name][0]
     fields = SCENARIOS[name][2]
     tools.submissions.clear()
-    is_new = evaluate(tools, "Boolean(document.querySelector('#ow-state'))")
     if name.endswith('-expired'):
         # First load a live form, then let its server-side context expire before
         # the real POST. Expiring before GET only measures a redirect fixture.
@@ -110,7 +109,7 @@ def submit(tools, name, evaluate):
             key = 'account_email_verification_code' if page == 'confirm-email' else 'account_password_reset_verification'
             state = dict(session[key]); state['at'] = time.time() - 3600
             session[key] = state; session.save()
-    form_index = 1 if name in ('error-resend-limit','error-resend-cooldown') else 0
+    form_index = 1 if name in ('error-resend-limit','error-resend-cooldown') or (name == 'error-email-occupied' and not is_new) else 0
     if name.endswith('-limit') or name == 'error-resend-cooldown':
         endpoint = '/api/auth/resend-code' if name in ('error-resend-limit','error-resend-cooldown') and is_new else (API_PATHS[page] if is_new else PATHS[page])
         # Saturate the actual server bucket, never write counters or lower limits.
@@ -146,8 +145,30 @@ def submit(tools, name, evaluate):
       if(!form.checkValidity())throw new Error('invalid fixture: native validation blocked submission');
       form.requestSubmit();return true;
     }})()''')
+    navigation_outcomes = {
+        'error-email-expired': '/accounts/login/',
+        'error-email-third-attempt': '/accounts/login/',
+        'error-reset-expired': '/accounts/login/',
+        'error-signup-existing': '/accounts/confirm-email/',
+    }
+    navigated = False
     for _ in range(120):
-        ready = evaluate(tools, "Boolean(document.readyState==='complete' && document.querySelector('#main .c-field__error') && !document.querySelector('#main button[type=submit]')?.disabled)")
+        try:
+            ready = evaluate(tools, "Boolean(document.readyState==='complete' && document.querySelector('#main .c-field__error') && !document.querySelector('#main button[type=submit]')?.disabled)")
+            current_path = evaluate(tools, "location.pathname")
+        except RuntimeError as failure:
+            if name in navigation_outcomes and 'navigated or closed' in str(failure):
+                time.sleep(0.05)
+                continue
+            raise
+        if navigation_outcomes.get(name) == current_path:
+            # The real old and new flows deliberately leave the rejected form:
+            # expired/closed codes go to login; signup enumeration proceeds to
+            # the same confirmation page as a new address. The navigation is
+            # stronger evidence than an inline error node.
+            response = {'path': 'navigation:' + current_path, 'status': 0}
+            navigated = True
+            break
         responses = [r for r in tools.submissions if r['path'] in (PATHS[page], '/api/auth/resend-code' if name in ('error-resend-limit','error-resend-cooldown') else API_PATHS[page])]
         if (ready or name.endswith('-expired') or name == 'error-email-third-attempt' or name.endswith('-limit') or name == 'error-resend-cooldown' or name == 'error-signup-existing') and responses:
             response = responses[-1]
@@ -157,7 +178,22 @@ def submit(tools, name, evaluate):
             break
         time.sleep(0.05)
     else:
-        raise RuntimeError('real invalid form did not produce an error: ' + name)
-    evaluate(tools, "document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))")
+        state = evaluate(tools, "JSON.stringify({path:location.pathname+location.search,text:(document.querySelector('#main')||document.body).innerText.slice(0,500)})")
+        raise RuntimeError('real invalid form did not produce an error: ' + name + ' submissions=' + repr(tools.submissions) + ' state=' + str(state))
+    if navigated:
+        stable = 0
+        for _ in range(120):
+            try:
+                complete = evaluate(tools, "document.readyState==='complete' && location.pathname===" + json.dumps(navigation_outcomes[name]))
+                stable = stable + 1 if complete else 0
+                if stable >= 2: break
+            except RuntimeError as failure:
+                if 'navigated or closed' not in str(failure): raise
+                stable = 0
+            time.sleep(0.05)
+        else:
+            raise RuntimeError('account navigation did not settle: ' + name)
+    if not navigated:
+        evaluate(tools, "document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))")
     # Response metadata only: never store passwords, codes, cookies or bodies.
     return response

@@ -43,6 +43,9 @@ export type ClientDeps = {
   /** 超时（毫秒）；服务端渲染给 5 秒（12 号 6.2 第 4 步），浏览器里不设。 */
   timeoutMs?: number
   location?: () => string
+  /** A successful write may leave for held-letter confirmation. Let the app
+   * disarm its unload guard for that server-directed navigation first. */
+  beforeAssign?: () => void
   assign?: (url: string) => void
   onWrite?: () => void
   newKey?: () => string
@@ -139,6 +142,7 @@ export function createClient(deps: ClientDeps = {}): Requester {
     if (batch) {
       const here = locate()
       const letters = here.startsWith("/admin/") ? "/admin/letters/" : "/letters/"
+      deps.beforeAssign?.()
       assign(letters + encodeURIComponent(batch) + "/?back=" + encodeURIComponent(here))
     }
     if (WRITE.has(method)) deps.onWrite?.()

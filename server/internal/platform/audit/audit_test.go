@@ -55,6 +55,9 @@ func TestAuditLogQuery(t *testing.T) {
 	if len(res.Items) != 1 {
 		t.Fatalf("expected 1 item in slice, got %d", len(res.Items))
 	}
+	if len(res.Actions) < len(ActionCatalog)+1 || res.Actions[0] != "tournaments.publish" {
+		t.Fatalf("action catalog incomplete or reordered: %v", res.Actions)
+	}
 
 	item := res.Items[0]
 	if item.Action != "update_settings" {

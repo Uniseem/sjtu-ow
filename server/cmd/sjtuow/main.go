@@ -131,6 +131,7 @@ type registryOptions struct {
 	mediaDir        string
 	dataDir         string
 	previewResolver api.ViewerResolver
+	testEnvironment bool
 }
 
 func buildRegistry(
@@ -225,7 +226,7 @@ func buildRegistry(
 	fontMod := fonts.NewModule(fontService)
 	fontMod.SetViewerResolver(opts.previewResolver)
 	fontMod.Routes(reg)
-	admin := backoffice.NewService(opts.data, reg)
+	admin := backoffice.NewService(opts.data, reg).WithTestEnvironment(opts.testEnvironment)
 	admin.SetTournamentService(tournamentsSvc)
 	if opts.dataDir != "" {
 		admin.SetBackupStatusReader(backupStatusReader(filepath.Join(opts.dataDir, "backups")))
@@ -283,7 +284,7 @@ func runServe() error {
 	manualMod := manual.NewModule()
 	todoSvc := todo.NewService(d)
 
-	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc, settingsSvc, auditMod, activitySvc, manualMod, todoSvc, registryOptions{data: d, mediaDir: cfg.MediaDir, dataDir: cfg.DataDir, previewResolver: viewerOf(d, acctSvc)})
+	reg := buildRegistry(acctSvc, contentSvc, commentsSvc, searchSvc, mediaSvc, teamsSvc, membersSvc, tournamentsSvc, scrimsSvc, moderationSvc, notifySvc, agendaSvc, settingsSvc, auditMod, activitySvc, manualMod, todoSvc, registryOptions{data: d, mediaDir: cfg.MediaDir, dataDir: cfg.DataDir, previewResolver: viewerOf(d, acctSvc), testEnvironment: cfg.TestEnvironment})
 	h := serve.Handler(d, cfg.DataDir, reg, viewerOf(d, acctSvc),
 		api.WithTrustedProxies(cfg.TrustedProxies),
 		api.WithLimiter(ratelimit.NewEnforcer(d, nil)),
@@ -1079,17 +1080,15 @@ func backupStatusReader(root string) backoffice.BackupStatusReader {
 		}
 		status, err := ops.ReadBackupStatus(root)
 		if os.IsNotExist(err) {
-			return []string{"还没有本站备份记录，请检查每日备份任务。"}, nil
+			return []string{"还没有任何备份，每天夜里的备份定时任务可能没设好"}, nil
 		}
 		if err != nil {
 			return nil, err
 		}
 		problems := []string{}
 		if now.Sub(status.FinishedAt) > 36*time.Hour {
-			problems = append(problems, "超过 36 小时没有新备份，请检查每日备份任务。")
-		}
-		if status.Offsite == "failed" {
-			problems = append(problems, "最近一次异地备份上传失败，请检查对象存储设置和备份任务日志。")
+			hours := int(now.Sub(status.FinishedAt).Hours())
+			problems = append(problems, fmt.Sprintf("最近一次备份是 %d 小时前，每天夜里的备份定时任务可能没在跑", hours))
 		}
 		return problems, nil
 	}

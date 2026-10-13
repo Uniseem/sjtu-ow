@@ -38,7 +38,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-WORK = Path("/tmp/sjtu-ow-parity")
+WORK = Path(os.environ.get("PARITY_WORK", "/tmp/sjtu-ow-parity"))
 OUT = WORK / "out"
 SHOTS = OUT / "shots"
 
@@ -70,11 +70,6 @@ EMAILS = {
 
 def seed(accounts=False) -> dict:
     data = screens.seed()
-    if '--components' in sys.argv:
-        # The component oracle explicitly exercises this public cover. The
-        # ordinary page seed has a library image but no article referencing it.
-        from content.models import ArticlePage
-        ArticlePage.objects.filter(pk=data['article']).update(cover_id=data['image'])
     from account_scenarios import extend_seed
     extend_seed(data)
     from admin_scenarios import extend_seed as extend_admin_seed
@@ -103,6 +98,11 @@ def seed(accounts=False) -> dict:
     data['game_account'] = member.game_accounts.first().pk
     data['contact'] = member.contact_methods.first().pk
     data['image'] = get_image_model().objects.order_by('pk').first().pk
+    if '--components' in sys.argv:
+        # The component oracle explicitly exercises this public cover. Resolve
+        # the image first: screens.seed() deliberately does not expose its ID.
+        from content.models import ArticlePage
+        ArticlePage.objects.filter(pk=data['article']).update(cover_id=data['image'])
     data['front_letter'] = HeldLetter.objects.filter(batch=data['front_letters']).order_by('pk').first().pk
     data['back_letter'] = HeldLetter.objects.filter(batch=data['back_letters']).order_by('pk').first().pk
     from content.models import ArticlePage
@@ -324,18 +324,34 @@ SNAPSHOT = """(() => {
     .map((el) => `${el.tagName.toLowerCase()}:${el.tagName === 'BUTTON' ? 'action' : el.type || ''}:${el.name || ''}`).sort();
   const broken = [...document.images].filter((img) => img.complete && img.naturalWidth === 0).map((img) => img.getAttribute('src'));
   const box = main.getBoundingClientRect();
+  const images = [...main.querySelectorAll('img')].filter(img => img.getClientRects().length).map(img => {
+    const rect=img.getBoundingClientRect();
+    return {alt:img.alt,x:rect.left-box.left,y:rect.top-box.top,width:rect.width,height:rect.height};
+  });
+  const samples = [...main.querySelectorAll('[data-sample],[data-real-image-sample],[data-default-image-sample]')].map(node => {
+    const rect=node.getBoundingClientRect();
+    return {x:rect.left-box.left,y:rect.top-box.top,width:rect.width,height:rect.height};
+  });
+  const frames = [...main.querySelectorAll('iframe')].filter(frame => frame.getClientRects().length).map(frame => {
+    const rect=frame.getBoundingClientRect();
+    return {src:new URL(frame.src,location.href).pathname,x:rect.left-box.left,y:rect.top-box.top,width:rect.width,height:rect.height};
+  });
+  const regions = [...main.querySelectorAll('[data-setup-list]')].map(node => {
+    const rect=node.getBoundingClientRect();
+    return {kind:'setup',x:rect.left-box.left,y:rect.top-box.top,width:rect.width,height:rect.height};
+  });
   const shell = ['body','#app','.c-masthead','#main','.c-footer'].map(selector => {
     const node=document.querySelector(selector); if (!node) return {selector};
     const css=getComputedStyle(node),rect=node.getBoundingClientRect();
     return {selector,height:rect.height,top:rect.top,display:css.display,minHeight:css.minHeight,flex:css.flex,padding:css.padding,margin:css.margin,font:css.font,children:[...node.children].map(child=>({tag:child.tagName,class:child.className,height:child.getBoundingClientRect().height}))};
   });
-  return { title: document.title, text, links, fields, broken, shell,
+  return { title: document.title, text, links, fields, broken, images, samples, frames, regions, shell,
            effective_status: Number((main.querySelector('[data-page-status]') || main).dataset.pageStatus || main.querySelector('.code')?.textContent || 200), path: location.pathname + location.search,
            box: { x: box.left + scrollX, y: box.top + scrollY, width: box.width, height: box.height } };
 })()"""
 
 
-def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: str, shot: Path, invalid=None) -> dict:
+def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: str, shot: Path, invalid=None, invalid_new=False) -> dict:
     tools.send("Network.clearBrowserCookies")
     for item in (cookie if isinstance(cookie, list) else [cookie] if cookie else []):
         tools.send("Network.setCookie", {**item, "domain": "127.0.0.1", "path": "/"})
@@ -419,7 +435,28 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
         evaluate(tools, "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))")
     if invalid:
         from account_errors import submit
-        submission = submit(tools, invalid, evaluate)
+        submission = submit(tools, invalid, evaluate, invalid_new)
+        stable = 0
+        for _ in range(120):
+            try:
+                ready = evaluate(tools, "document.readyState==='complete'")
+                stable = stable + 1 if ready else 0
+                if stable >= 2: break
+            except RuntimeError as failure:
+                if 'navigated or closed' not in str(failure): raise
+                stable = 0
+            time.sleep(0.05)
+        else:
+            raise RuntimeError('submitted account document did not settle: ' + invalid)
+        for _ in range(40):
+            try:
+                evaluate(tools, "document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))")
+                break
+            except RuntimeError as failure:
+                if 'navigated or closed' not in str(failure): raise
+                time.sleep(0.05)
+        else:
+            raise RuntimeError('submitted account fonts did not settle: ' + invalid)
     if urllib.parse.urlsplit(url).path == '/_styleguide/':
         evaluate(tools, "document.querySelector('[aria-labelledby=sg-components]')?.remove()")
     if evaluate(tools, "document.querySelectorAll('iframe').length"):
@@ -447,8 +484,8 @@ def look(tools, url: str, cookie: dict | list[dict] | None, width: int, scheme: 
     return snap
 
 
-def pixel_ratio(a: Path, b: Path) -> tuple[float, str]:
-    from PIL import Image, ImageChops
+def pixel_ratio(a: Path, b: Path, image_masks=None) -> tuple[float, str]:
+    from PIL import Image, ImageChops, ImageDraw
 
     if not a.exists() or not b.exists():
         return 1.0, "缺截图"
@@ -458,11 +495,72 @@ def pixel_ratio(a: Path, b: Path) -> tuple[float, str]:
     canvas = [Image.new("RGB", (width, height), (255, 0, 255)) for _ in range(2)]
     canvas[0].paste(left, (0, 0))
     canvas[1].paste(right, (0, 0))
+    if image_masks:
+        # The old image backend and new private WebP renderer intentionally
+        # encode different bytes. Compare every image's presence and geometry,
+        # then exclude only its compressed pixels from the page threshold.
+        for target, masks in zip(canvas, image_masks):
+            draw = ImageDraw.Draw(target)
+            for item in masks:
+                x, y = round(item['x']), round(item['y'])
+                draw.rectangle((x, y, x + round(item['width']), y + round(item['height'])), fill=(127, 127, 127))
     # 每个像素取三个通道里差得最多的那个，超过 CHANNEL 算「不同」。
     red, green, blue = ImageChops.difference(*canvas).split()
     widest = ImageChops.lighter(ImageChops.lighter(red, green), blue)
     changed = sum(widest.histogram()[CHANNEL + 1 :])
     return changed / (width * height), note
+
+
+def component_pixel_ratio(a: Path, b: Path, old: dict, new: dict) -> tuple[float, str]:
+    """Compare each specimen in its own aligned slot.
+
+    A one-pixel height difference near the top of a 33k composite must not
+    shift every later, otherwise identical, component. Section dimensions are
+    still compared through the magenta padding in each aligned slot.
+    """
+    from PIL import Image, ImageChops, ImageDraw
+    left, right = Image.open(a).convert('RGB'), Image.open(b).convert('RGB')
+    for target, masks in ((left, old.get('images', [])), (right, new.get('images', []))):
+        draw = ImageDraw.Draw(target)
+        for item in masks:
+            x, y = round(item['x']), round(item['y'])
+            draw.rectangle((x, y, x + round(item['width']), y + round(item['height'])), fill=(127,127,127))
+    old_samples, new_samples = old.get('samples', []), new.get('samples', [])
+    if len(old_samples) != len(new_samples) or not old_samples:
+        return 1.0, f'组件样本数量 {len(old_samples)} / {len(new_samples)}'
+    ratios = []
+    crops = []
+    for index, (old_box, new_box) in enumerate(zip(old_samples,new_samples)):
+        width=max(round(old_box['width']),round(new_box['width']))
+        height=max(round(old_box['height']),round(new_box['height']))
+        canvases=[Image.new('RGB',(width,height),(255,0,255)) for _ in range(2)]
+        for source,box,canvas in ((left,old_box,canvases[0]),(right,new_box,canvases[1])):
+            x,y,w,h=(round(box[key]) for key in ('x','y','width','height'))
+            canvas.paste(source.crop((x,y,x+w,y+h)),(0,0))
+        crops.append(canvases)
+        red,green,blue=ImageChops.difference(*canvases).split()
+        widest=ImageChops.lighter(ImageChops.lighter(red,green),blue)
+        changed=sum(widest.histogram()[CHANNEL+1:])
+        ratios.append((changed/(width*height),index))
+    worst=max(ratios)
+    failing=sorted((item for item in ratios if item[0]>RATIO_MAX),reverse=True)[:8]
+    for _ratio,index in failing:
+        crops[index][0].save(a.with_name(a.stem+f'-sample-{index}.png'))
+        crops[index][1].save(b.with_name(b.stem+f'-sample-{index}.png'))
+    note='组件差异样本 ' + ', '.join(f'{index}:{ratio:.2%}' for ratio,index in failing) if failing else ''
+    return worst[0], note
+
+
+def prefix_pixel_ratio(a: Path, b: Path, old_height: float, new_height: float) -> tuple[float, str]:
+    from PIL import Image
+    left, right = Image.open(a).convert('RGB'), Image.open(b).convert('RGB')
+    left = left.crop((0,0,left.width,max(1,round(old_height))))
+    right = right.crop((0,0,right.width,max(1,round(new_height))))
+    scratch = OUT / '.prefix-old.png', OUT / '.prefix-new.png'
+    left.save(scratch[0]); right.save(scratch[1])
+    try: return pixel_ratio(*scratch)
+    finally:
+        for path in scratch: path.unlink(missing_ok=True)
 
 
 # --- 主流程 -------------------------------------------------------------------------
@@ -715,7 +813,7 @@ def main(argv: list[str]) -> int:
                 problems = []
                 if status[1] != (301, '/admin/settings/'):
                     problems.append(f'预渲染入口未真正301到设置：{status[1]}')
-                gate = fetch_status(f'http://127.0.0.1:{old_port}/admin/settings/', cookies(old_cookie))
+                gate = fetch_status(f'http://127.0.0.1:{old_port}/admin/settings/site/', cookies(old_cookie))
                 for width, scheme in views:
                     new = look(tools, f'http://127.0.0.1:{caddy_port}{path}', new_cookie, width, scheme, SHOTS / f'{name}-{who}-{width}-{scheme}-new.png')
                     failures = list(problems) + list(new['browser_errors'])
@@ -827,14 +925,37 @@ def main(argv: list[str]) -> int:
                     old_cookie, new_cookie, suffix = error_context(name, data, new_sessions, WORK, screens.site_env())
                     path = template + suffix
                 try:
-                    old = look(tools, old_url, old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None)
-                    new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png", name if errors else None)
+                    old = look(tools, old_url, old_cookie, width, scheme, SHOTS / f"{stem}-old.png", name if errors else None, False)
+                    if errors and (name.endswith('-limit') or name == 'error-resend-cooldown'):
+                        submission = old['submission']
+                        old = look(tools, f'http://127.0.0.1:{reference.server_address[1]}/__error/429/', None, width, scheme, SHOTS / f"{stem}-old.png")
+                        old['submission'] = submission
+                    new = look(tools, f"http://127.0.0.1:{caddy_port}{path}", new_cookie, width, scheme, SHOTS / f"{stem}-new.png", name if errors else None, True)
                 except Exception as failure:
                     row["views"].append({"view": f"{width}-{scheme}", "ratio": 1, "problems": [f"页面采集失败：{failure}"]})
                     continue
-                ratio, note = pixel_ratio(SHOTS / f"{stem}-old.png", SHOTS / f"{stem}-new.png")
+                approved_home = name == 'admin-home' and who == 'officer' and old.get('regions') and new.get('regions')
+                if components:
+                    ratio, note = component_pixel_ratio(SHOTS / f"{stem}-old.png", SHOTS / f"{stem}-new.png", old, new)
+                elif approved_home:
+                    ratio, note = prefix_pixel_ratio(SHOTS / f"{stem}-old.png", SHOTS / f"{stem}-new.png", old['regions'][0]['y'], new['regions'][0]['y'])
+                else:
+                    masks = (old.get('frames', []), new.get('frames', [])) if name == 'email-samples' else None
+                    ratio, note = pixel_ratio(SHOTS / f"{stem}-old.png", SHOTS / f"{stem}-new.png", masks)
                 effective = new['effective_status'] if admin_shell else status[1][0]
-                problems = compare(old, new, ratio, (expected_old_status, effective) if (width, scheme) == views[0] else (0, 0))
+                compared_old = old
+                if approved_home:
+                    compared_old = {**old, 'text': [line.replace('5 项建议做','4 项建议做').replace('建议做的 5 项','建议做的 4 项') for line in old['text'] if '异地备份' not in line]}
+                    row['approved_difference'] = '296 用户决定不考虑异地备份：上线清单不再显示 R2 项'
+                problems = compare(compared_old, new, ratio, (expected_old_status, effective) if (width, scheme) == views[0] else (0, 0))
+                if components:
+                    layout = lambda page: [(image['alt'], round(image['x']), round(image['y']), round(image['width']), round(image['height'])) for image in page.get('images', [])]
+                    if layout(old) != layout(new):
+                        problems.append('组件图片数量、替代文字或显示几何不同')
+                if name == 'email-samples':
+                    frame_layout = lambda page: [(frame['src'],round(frame['x']),round(frame['y']),round(frame['width']),round(frame['height'])) for frame in page.get('frames', [])]
+                    if frame_layout(old) != frame_layout(new):
+                        problems.append('邮件样张框数量、地址或显示几何不同')
                 if admin_shell:
                     if new['effective_status'] != expected_old_status:
                         problems.append(f'SPA权限结果 {new["effective_status"]} / {expected_old_status}')

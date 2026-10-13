@@ -97,7 +97,7 @@ func (s *Service) home(ctx *app.Ctx, _ struct{}) (HomeOut, error) {
 		if err := s.siteTodos(ctx.Context, q, now, &out); err != nil {
 			return out, err
 		}
-		setup, err := siteSetup(ctx.Context, q)
+		setup, err := s.siteSetup(ctx.Context, q)
 		if err != nil {
 			return out, err
 		}
@@ -212,7 +212,7 @@ func (s *Service) siteTodos(ctx context.Context, q db.DBTX, now time.Time, out *
 		beating = parseErr == nil && now.Sub(stamp) <= 120*time.Second && !stamp.After(now.Add(30*time.Second))
 	}
 	if !beating {
-		addTodo(out, 1, "后台任务（worker）没在运行：邮件、提醒都停了，到服务器上看 worker 容器", "/healthz")
+		addTodo(out, 1, "后台任务（worker）没在运行：心跳缺失。邮件、提醒、静态页都停了，到服务器上看 worker 容器", "/healthz")
 	}
 	var failures int
 	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM jobs WHERE kind = 'mail.letter' AND status = 'failed' AND finished_at >= ?`, db.FormatUTC(now.Add(-7*24*time.Hour))).Scan(&failures); err != nil {
@@ -233,7 +233,7 @@ func (s *Service) siteTodos(ctx context.Context, q db.DBTX, now time.Time, out *
 	}
 	return nil
 }
-func siteSetup(ctx context.Context, q db.DBTX) (SetupOut, error) {
+func (s *Service) siteSetup(ctx context.Context, q db.DBTX) (SetupOut, error) {
 	out := SetupOut{Required: []SetupCheck{}, Optional: []SetupCheck{}, Done: []SetupCheck{}}
 	add := func(check SetupCheck, required, done bool) {
 		if done {
@@ -244,9 +244,10 @@ func siteSetup(ctx context.Context, q db.DBTX) (SetupOut, error) {
 			out.Optional = append(out.Optional, check)
 		}
 	}
-	var host, address, description, group string
+	var host, address, description, group, founded string
 	var hero sql.NullInt64
-	err := q.QueryRowContext(ctx, `SELECT smtp_host, from_address, site_description, qq_group_url, hero_image_id FROM site_settings WHERE id = 1`).Scan(&host, &address, &description, &group, &hero)
+	var moderationEnabled, moderationConfigured bool
+	err := q.QueryRowContext(ctx, `SELECT smtp_host, from_address, site_description, qq_group_url, founded_on, hero_image_id, moderation_enabled, moderation_configured FROM site_settings WHERE id = 1`).Scan(&host, &address, &description, &group, &founded, &hero, &moderationEnabled, &moderationConfigured)
 	if err != nil {
 		return out, err
 	}
@@ -256,7 +257,7 @@ func siteSetup(ctx context.Context, q db.DBTX) (SetupOut, error) {
 		mailDetail = "已配置。改过之后在全站设置里点「发送测试邮件」确认能发出去。"
 	}
 	add(SetupCheck{Label: "邮件（SMTP）", Detail: mailDetail, URL: "/admin/settings/site/"}, true, mailDone)
-	for _, legal := range []struct{ slug, title string }{{"terms", "用户协议"}, {"privacy", "隐私政策"}, {"about", "关于我们"}} {
+	for _, legal := range []struct{ slug, title string }{{"terms", "用户协议"}, {"privacy", "隐私政策"}} {
 		var id int64
 		var body string
 		err := q.QueryRowContext(ctx, `SELECT p.id, sp.body_md FROM pages p JOIN site_pages sp ON sp.page_id = p.id WHERE p.kind = 'site_page' AND p.slug = ?`, legal.slug).Scan(&id, &body)
@@ -276,11 +277,55 @@ func siteSetup(ctx context.Context, q db.DBTX) (SetupOut, error) {
 		if id > 0 {
 			href = fmt.Sprintf("/admin/pages/%d/", id)
 		}
-		add(SetupCheck{Label: legal.title, Detail: detail, URL: href}, legal.slug != "about", done)
+		add(SetupCheck{Label: legal.title, Detail: detail, URL: href}, true, done)
 	}
-	add(SetupCheck{Label: "网站简介", Detail: "填写网站简介，让搜索结果和分享卡片介绍社团。", URL: "/admin/settings/site/"}, false, strings.TrimSpace(description) != "")
-	add(SetupCheck{Label: "社团 QQ 群", Detail: "填入 QQ 群链接，成员才能从活动提醒里找到群。", URL: "/admin/settings/site/"}, false, strings.TrimSpace(group) != "")
-	add(SetupCheck{Label: "首页首屏图", Detail: "选择首页图片。", URL: "/admin/settings/site/"}, false, hero.Valid)
+	aiDetail := "还没有填接口密钥（自建服务可以只填接口地址），AI 审核不会运行。在全站设置的「AI 审核」里填好，再点「试一下 AI」确认能连上。"
+	if moderationConfigured && !moderationEnabled {
+		aiDetail = "密钥已设置，但全站设置里「启用 AI 内容审核」关着。"
+	}
+	if moderationConfigured && moderationEnabled {
+		aiDetail = "在运行。可以在全站设置页上点「试一下 AI」确认能连上。"
+	}
+	add(SetupCheck{Label: "AI 内容审核", Detail: aiDetail, URL: "/admin/settings/site/"}, false, moderationConfigured && moderationEnabled)
+	var editors int
+	if err := q.QueryRowContext(ctx, `SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur JOIN users u ON u.id=ur.user_id WHERE ur.role=? AND u.is_active=1`, accounts.RoleContentEditor).Scan(&editors); err != nil {
+		return out, err
+	}
+	editorDetail := "已有人负责。"
+	if editors == 0 {
+		editorDetail = "还没有人在「内容编辑」组。查看巡查记录、撤下头像、隐藏评论都只有超级管理员能做。在「成员 → 用户与权限」里给社团干部勾上这个角色（赛事、内战管理员同理）。"
+	}
+	add(SetupCheck{Label: "内容编辑", Detail: editorDetail, URL: "/admin/users/"}, false, editors > 0)
+	var aboutID int64
+	var aboutBody string
+	aboutErr := q.QueryRowContext(ctx, `SELECT p.id, sp.body_md FROM pages p JOIN site_pages sp ON sp.page_id=p.id WHERE p.kind='site_page' AND p.slug='about'`).Scan(&aboutID, &aboutBody)
+	if aboutErr != nil && aboutErr != sql.ErrNoRows {
+		return out, aboutErr
+	}
+	aboutURL := ""
+	if aboutID > 0 {
+		aboutURL = fmt.Sprintf("/admin/pages/%d/", aboutID)
+	}
+	aboutDone := aboutErr == nil && strings.TrimSpace(aboutBody) != ""
+	aboutDetail := "已填写。"
+	if !aboutDone {
+		aboutDetail = "还是空的。页脚每页都链到它，写几句社团介绍和联系方式。"
+	}
+	add(SetupCheck{Label: "关于我们", Detail: aboutDetail, URL: aboutURL}, false, aboutDone)
+	missing := []string{}
+	for _, item := range []struct{ label, value string }{{"站点简介", description}, {"QQ 群链接", group}, {"成立日期", founded}} {
+		if strings.TrimSpace(item.value) == "" {
+			missing = append(missing, item.label)
+		}
+	}
+	if !hero.Valid {
+		missing = append(missing, "首屏图片")
+	}
+	homeDetail := "已填写。"
+	if len(missing) > 0 {
+		homeDetail = "还没填：" + strings.Join(missing, "、") + "。站点简介用在搜索结果和链接预览里，QQ 群链接是首页的「加入」按钮。"
+	}
+	add(SetupCheck{Label: "首页和分享信息", Detail: homeDetail, URL: "/admin/settings/site/"}, false, len(missing) == 0)
 	var covers, avatars int
 	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM images i JOIN image_collections c ON c.id = i.collection_id WHERE c.key = 'default_cover'`).Scan(&covers); err != nil {
 		return out, err
@@ -288,7 +333,22 @@ func siteSetup(ctx context.Context, q db.DBTX) (SetupOut, error) {
 	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM images i JOIN image_collections c ON c.id = i.collection_id WHERE c.key = 'default_avatar'`).Scan(&avatars); err != nil {
 		return out, err
 	}
-	add(SetupCheck{Label: "默认封面", Detail: "未选封面的文章会使用默认封面集合中的图片。", URL: "/admin/images/?collection_key=default_cover"}, false, covers > 0)
-	add(SetupCheck{Label: "默认头像", Detail: "未上传头像的成员会使用默认头像集合中的图片。", URL: "/admin/images/?collection_key=default_avatar"}, false, avatars > 0)
+	pictureMissing := []string{}
+	if covers == 0 {
+		pictureMissing = append(pictureMissing, "默认封面")
+	}
+	if avatars == 0 {
+		pictureMissing = append(pictureMissing, "默认头像")
+	}
+	pictureDetail := "图库里有图。"
+	if len(pictureMissing) > 0 {
+		pictureDetail = "「" + strings.Join(pictureMissing, "」「") + "」图库是空的，没有封面、头像的地方会显示占位图。在「图片」里上传到这两个集合（可以建子文件夹）。"
+	}
+	add(SetupCheck{Label: "默认封面和默认头像", Detail: pictureDetail, URL: "/admin/images/"}, false, len(pictureMissing) == 0)
+	bannerDetail := "已关闭。"
+	if s.testEnvironment {
+		bannerDetail = "页面顶部有「测试环境」横幅、禁止搜索引擎收录。正式上线前去掉 .env 里的 TEST_ENVIRONMENT 并重启。"
+	}
+	add(SetupCheck{Label: "测试环境标记", Detail: bannerDetail}, false, !s.testEnvironment)
 	return out, nil
 }

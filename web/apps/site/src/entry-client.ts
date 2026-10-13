@@ -10,8 +10,8 @@ import { styleguideHidden } from "./specimen"
 import { toast } from "./toasts"
 import { VIEWER, type Viewer } from "./viewer"
 import { installDropdowns } from "./dropdowns"
-import { runtimeStyle } from "./runtime-style"
 import { PageRedirect, safeNext } from "@sjtu-ow/shared/navigation"
+import { permitProgrammaticLeave } from "@sjtu-ow/shared/leave"
 
 const raw = document.getElementById("ow-state")?.textContent ?? "null"
 const state = JSON.parse(raw) as { data: PageData | null; viewer?: Viewer }
@@ -21,6 +21,7 @@ const viewer = reactive<Viewer>(state.viewer ?? { user: null })
 // Same-origin calls to Go. After every successful write the session is read
 // again (12-architecture 6.4): the nickname, the letters waiting, the caps.
 const api = createClient({
+  beforeAssign: permitProgrammaticLeave,
   onWrite: () => {
     getApiSession(api, { refresh: true }).then(
       (body) => {
@@ -41,7 +42,7 @@ installDropdowns()
 
 // The route loadbar: not on the first (server-rendered) page, only on
 // navigations from one page to another.
-const bar = new Loadbar({ classList: document.documentElement.classList, style: runtimeStyle(':root') }, () =>
+const bar = new Loadbar(document.documentElement, () =>
   progressFromMatrix(getComputedStyle(document.querySelector(".c-loadbar") ?? document.body).transform),
 )
 router.beforeEach((_to, from) => {

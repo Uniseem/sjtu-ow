@@ -605,6 +605,18 @@
       ow-loadbar-fade 250ms ease 300ms forwards;
   }
 
+  :root[data-loadbar-from="0"] { --loadbar-from: 0; }
+  :root[data-loadbar-from="1"] { --loadbar-from: 0.1; }
+  :root[data-loadbar-from="2"] { --loadbar-from: 0.2; }
+  :root[data-loadbar-from="3"] { --loadbar-from: 0.3; }
+  :root[data-loadbar-from="4"] { --loadbar-from: 0.4; }
+  :root[data-loadbar-from="5"] { --loadbar-from: 0.5; }
+  :root[data-loadbar-from="6"] { --loadbar-from: 0.6; }
+  :root[data-loadbar-from="7"] { --loadbar-from: 0.7; }
+  :root[data-loadbar-from="8"] { --loadbar-from: 0.8; }
+  :root[data-loadbar-from="9"] { --loadbar-from: 0.9; }
+  :root[data-loadbar-from="10"] { --loadbar-from: 1; }
+
   @keyframes ow-loadbar-finish {
     from {
       transform: scaleX(var(--loadbar-from, 0.6));

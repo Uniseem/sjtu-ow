@@ -24,6 +24,18 @@ test("429 exposes Retry-After seconds without accepting an invalid header", asyn
   }
 })
 
+test("held-letter redirect disarms unload guards before assigning the confirmation URL", async () => {
+  const order: string[] = []
+  const request = createClient({
+    location: () => "/teams/4/apply/",
+    beforeAssign: () => order.push("before"),
+    assign: url => order.push("assign:" + url),
+    fetch: async () => Response.json({ letters: { batch: "held-4", count: 1 } }),
+  })
+  await request("POST", "/api/teams/4/applications")
+  expect(order).toEqual(["before", "assign:/letters/held-4/?back=%2Fteams%2F4%2Fapply%2F"])
+})
+
 function fake(status: number, body: unknown, seen: { headers: Headers; url: string }) {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     seen.url = String(input)

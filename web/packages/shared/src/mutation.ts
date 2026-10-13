@@ -9,6 +9,13 @@ type Attempt<T> = {
   controller: AbortController
 }
 
+export function hasHeldLetters(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || !("letters" in value)) return false
+  const letters = value.letters
+  return typeof letters === "object" && letters !== null && "batch" in letters
+    && typeof letters.batch === "string" && letters.batch.length > 0
+}
+
 /**
  * Explicit actions (add, delete, send) retain an uncertain request exactly.
  * A manual retry cannot accidentally send edited inputs with the old key.
@@ -50,7 +57,9 @@ export function useMutation<T, R>(
       attempt = null
       uncertain.value = false
       retryAt.value = null
-      await success(result)
+      // createClient has already started the mandatory confirmation-page
+      // navigation. A page-specific success callback must not race it.
+      if (!hasHeldLetters(result)) await success(result)
       return true
     } catch (error) {
       if (disposed) return false

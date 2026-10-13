@@ -8,8 +8,9 @@ import { ADMIN_API } from "./core/api"
 import { ADMIN_SESSION, createAdminSession } from "./core/session"
 import { createAdminRouter } from "./router"
 import { installAdminLinks } from "./core/navigation"
+import {permitProgrammaticLeave} from "@sjtu-ow/shared/leave"
 
-const api=createClient({ onWrite:()=> { void session.refresh().catch(()=>undefined) } })
+const api=createClient({ beforeAssign:permitProgrammaticLeave,onWrite:()=> { void session.refresh().catch(()=>undefined) } })
 const session=createAdminSession(api)
 const router=createAdminRouter(session)
 const app=createApp(App)

@@ -332,6 +332,20 @@ func TestHomeReadsRealWorkerTableProjectsTodosAndRestrictsSetup(t *testing.T) {
 	if !pending || !backup || page.Setup == nil {
 		t.Fatalf("home=%+v", page)
 	}
+	labels := map[string]bool{}
+	for _, checks := range [][]SetupCheck{page.Setup.Required, page.Setup.Optional, page.Setup.Done} {
+		for _, check := range checks {
+			labels[check.Label] = true
+		}
+	}
+	for _, label := range []string{"邮件（SMTP）", "用户协议", "隐私政策", "AI 内容审核", "内容编辑", "关于我们", "首页和分享信息", "默认封面和默认头像", "测试环境标记"} {
+		if !labels[label] {
+			t.Fatalf("setup omitted %s: %+v", label, page.Setup)
+		}
+	}
+	if labels["异地备份"] || labels["网站简介"] || labels["首页首屏图"] || labels["默认封面"] {
+		t.Fatalf("setup exposed retired or split checks: %+v", page.Setup)
+	}
 	env.exec(`UPDATE worker_status SET heartbeat_at=? WHERE id=1`, stamp(env.ctx.Now().Add(-3*time.Minute)))
 	stale, err := env.svc.Home(env.ctx)
 	if err != nil {

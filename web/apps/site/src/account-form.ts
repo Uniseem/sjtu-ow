@@ -1,6 +1,11 @@
 import { nextTick, onUnmounted, ref } from "vue"
 import { ApiError } from "@sjtu-ow/api"
 import { safeNext } from "@sjtu-ow/shared/navigation"
+import { errorDocument } from "@sjtu-ow/shared/error-page"
+
+export function accountErrorDocument(error: unknown): string | null {
+  return error instanceof ApiError && error.status === 429 ? errorDocument(429) : null
+}
 
 export function useAccountForm() {
   const pending = ref(false)
@@ -12,6 +17,15 @@ export function useAccountForm() {
     message.value = ""
     fields.value = {}
     try { await action() } catch (error) {
+      const standalone = accountErrorDocument(error)
+      if (standalone) {
+        // The old server answers account rate limits with a top-level 429.
+        // Preserve that standalone, scriptless experience after a client POST.
+        document.open()
+        document.write(standalone)
+        document.close()
+        return
+      }
       if (error instanceof ApiError) {
         fields.value = Object.fromEntries(Object.entries(error.fields ?? {}).filter(([, errors]) => errors.length > 0))
         message.value = Object.keys(fields.value).length ? "" : error.message || "暂时无法提交，请稍后再试。"

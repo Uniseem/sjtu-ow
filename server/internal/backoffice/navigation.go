@@ -11,15 +11,18 @@ import (
 )
 
 type Service struct {
-	d            *db.DB
-	registry     *api.Registry
-	tournaments  *tournaments.Service
-	backupStatus BackupStatusReader
+	d               *db.DB
+	registry        *api.Registry
+	tournaments     *tournaments.Service
+	backupStatus    BackupStatusReader
+	testEnvironment bool
 }
 
 func NewService(d *db.DB, registry *api.Registry) *Service {
 	return &Service{d: d, registry: registry}
 }
+
+func (s *Service) WithTestEnvironment(on bool) *Service { s.testEnvironment = on; return s }
 
 type Module struct {
 	svc      *Service

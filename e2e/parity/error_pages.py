@@ -66,7 +66,7 @@ def main():
         targets=json.load(urllib.request.urlopen(f'http://127.0.0.1:{debug_port}/json'))
         tools=parity.RecordingDevTools(next(item for item in targets if item.get('type')=='page')['webSocketDebuggerUrl'])
         for method in ('Page.enable','Network.enable','Runtime.enable'): tools.send(method)
-        for code,path,role in [(403,'/admin/users/','member'),(404,'/no/such/','visitor'),(429,'/search/?q=限流','visitor'),(500,'/news/screens-guide/','visitor'),(503,'/','visitor')]:
+        for code,path,role in [(403,'/admin/users/','member'),(404,'/no/such/','visitor'),(429,'/search/?q=limit','visitor'),(500,'/news/screens-guide/','visitor'),(503,'/','visitor')]:
             if code==429:
                 for _ in range(100):
                     if parity.fetch_status(f'http://127.0.0.1:{caddy_port}/api/search?q=limit',None)[0]==429: break
@@ -88,6 +88,12 @@ def main():
                     if gate != 403: raise RuntimeError(f'admin403 gate returned {gate}')
                 elif actual!=code: raise RuntimeError(f'error trigger {code} returned {actual}')
                 for width,scheme in [(1280,'light'),(375,'light'),(1280,'dark'),(375,'dark')]:
+                    if code == 429:
+                        # Keep the real IP bucket full across a minute boundary
+                        # and use the same query as the visual navigation.
+                        for _ in range(100):
+                            if parity.fetch_status(f'http://127.0.0.1:{caddy_port}/api/search?q=limit',None)[0]==429: break
+                        else: raise RuntimeError('real search bucket did not refill')
                     stem=f'error-{code}-{width}-{scheme}'
                     old=parity.look(tools,f'http://127.0.0.1:{old_port}/error/{code}/',None,width,scheme,parity.SHOTS/f'{stem}-old.png')
                     new=parity.look(tools,new_url,cookie,width,scheme,parity.SHOTS/f'{stem}-new.png')

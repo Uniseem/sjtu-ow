@@ -8,6 +8,16 @@ export type LeaveParticipant = {
 const participants = new Set<LeaveParticipant>()
 let installed = false
 let leaving: Promise<boolean> | null = null
+let programmatic = false
+
+/** The API has received a successful write and is leaving for its mandatory
+ * held-letter confirmation page. Suppress only this synchronous unload. */
+export function permitProgrammaticLeave(): void {
+  programmatic = true
+  setTimeout(() => { programmatic = false }, 0)
+}
+
+export function programmaticLeavePermitted(): boolean { return programmatic }
 
 export function flushBeforeLeave(): Promise<boolean> {
   if (leaving) return leaving
@@ -27,6 +37,7 @@ export function flushBeforeLeave(): Promise<boolean> {
 }
 
 function beforeUnload(event: BeforeUnloadEvent): void {
+  if (programmatic) return
   if (![...participants].some((participant) => participant.dirty())) return
   event.preventDefault()
   event.returnValue = ""
