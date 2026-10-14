@@ -19,7 +19,9 @@ RUN pnpm --filter @sjtu-ow/admin build
 FROM node:24-alpine
 
 RUN addgroup -g 10001 -S app && \
-    adduser -u 10001 -S app -G app
+    adduser -u 10001 -S app -G app && \
+    mkdir -p /var/assets && \
+    chown app:app /var/assets
 
 WORKDIR /app/web/apps/site
 

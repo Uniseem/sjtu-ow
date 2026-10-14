@@ -1,6 +1,6 @@
 # SJTU-OW（上海交通大学守望先锋社区网站）
 
-社区网站，包含文章、成员、战队、赛事和内战。现行站采用 Django 6 / Wagtail 8 / Python 3.13，前台 SSR + HTMX + Alpine CSP；新栈采用 Vue 3 + Go，在同一仓库逐步迁移。当前运行版本、开发进度和下一步只看 [STATUS](handoff/STATUS.md)。
+社区网站，包含文章、成员、战队、赛事和内战，采用 Vue 3 SSR + Go，后台为独立 SPA。Django 旧站冻结保留，供迁移对拍和回滚参考。当前运行版本、开发进度和下一步只看 [STATUS](handoff/STATUS.md)。
 
 ## 从这里开始
 

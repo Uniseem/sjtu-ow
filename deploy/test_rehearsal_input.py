@@ -32,6 +32,11 @@ class RehearsalInputTests(unittest.TestCase):
                 self.assertEqual(prepare(source, root, work), root.resolve())
                 with sqlite3.connect(work / 'legacy-source.sqlite3') as snapshot:
                     self.assertEqual(snapshot.execute('SELECT id FROM accounts_user').fetchall(), [(17,)])
+                    self.assertEqual(snapshot.execute('PRAGMA journal_mode').fetchone(), ('delete',))
+                self.assertEqual(connection.execute('PRAGMA journal_mode').fetchone(), ('wal',))
+                self.assertEqual((work / 'legacy-source.sqlite3').read_bytes()[18:20], b'\x01\x01')
+                with sqlite3.connect((work / 'legacy-source.sqlite3').resolve().as_uri() + '?mode=ro', uri=True) as readonly:
+                    self.assertEqual(readonly.execute('SELECT id FROM accounts_user').fetchall(), [(17,)])
 
     def test_archive_refuses_traversal_links_and_duplicate_database(self):
         for name, kind in [('media/../../escape', tarfile.REGTYPE), ('media/link', tarfile.SYMTYPE), ('/absolute', tarfile.REGTYPE)]:

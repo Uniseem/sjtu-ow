@@ -43,6 +43,11 @@ def snapshot(source: Path, target: Path):
             raise ValueError('source is not a legacy Django database')
         with sqlite3.connect(target) as new:
             old.backup(new)
+            # backup() retains the source journal mode. A standalone file
+            # mounted read-only into the importer cannot initialize WAL/SHM.
+            # Convert this coherent copy only; never alter the live source.
+            if new.execute('PRAGMA journal_mode=DELETE').fetchone() != ('delete',):
+                raise ValueError('snapshot journal conversion failed')
     target.chmod(0o600)
 
 

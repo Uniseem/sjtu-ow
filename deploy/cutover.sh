@@ -32,6 +32,7 @@ CHECK_DISK
 BACKUP_DIR=/root/sjtu-ow-backups/cutover-$(date +%Y%m%d%H%M%S)
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
+echo "CUTOVER-BACKUP $BACKUP_DIR"
 # Pin the actual running images, not whichever latest tag currently points at.
 for service in web worker; do
     container=$("${OLD[@]}" ps -q "$service")
@@ -58,6 +59,10 @@ STARTED=$(date +%s)
 mv /etc/cron.d/sjtu-ow "$BACKUP_DIR/cron.disabled"
 # A coherent SQLite backup incorporates WAL; copying only the .sqlite3 would not.
 python3 "$REPO_DIR/deploy/rehearsal_input.py" "$LEGACY_DB" "$LEGACY_MEDIA" "$BACKUP_DIR" > "$BACKUP_DIR/media-path"
+# The importer runs as UID10001. Keep the private snapshot mode600 and give
+# only that account read access; the enclosing host directory stays root700.
+chown 10001:10001 "$BACKUP_DIR/legacy-source.sqlite3"
+chmod 600 "$BACKUP_DIR/legacy-source.sqlite3"
 "${NEXT[@]}" run --rm --no-deps server migrate
 "${NEXT[@]}" run --rm --no-deps -v "$BACKUP_DIR/legacy-source.sqlite3:/input/legacy.sqlite3:ro" server import /input/legacy.sqlite3
 "${NEXT[@]}" run --rm --no-deps -v "$LEGACY_MEDIA:/input/media:ro" server import-media /input/media

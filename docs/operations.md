@@ -4,6 +4,25 @@
 
 通用 Django 操作步骤见 [旧站使用与运行手册](legacy-guide.md)；新栈的设计规格见 [design-next.md](design-next.md) 和 [12-architecture.md](rewrite-research/12-architecture.md)。机器上的历史快照描述不当成当前探测结果。
 
+## 正式站新栈运行入口
+
+正式站新栈使用独立项目 `sjtu-ow-next`，目录仍为 `/srv/sjtu-ow`，环境文件为权限600的 `.env.next`。每条Compose命令必须同时带基础文件、该机器的专用覆盖文件和环境文件：
+
+```bash
+cd /srv/sjtu-ow
+docker compose -p sjtu-ow-next -f deploy/docker-compose.new.yml -f deploy/docker-compose.next-vps.yml --env-file /srv/sjtu-ow/.env.next ps
+docker compose -p sjtu-ow-next -f deploy/docker-compose.new.yml -f deploy/docker-compose.next-vps.yml --env-file /srv/sjtu-ow/.env.next exec -T server /srv/sjtuow/sjtuow reconcile
+curl --fail --silent http://127.0.0.1:22887/healthz
+```
+
+专用覆盖文件与 `Caddyfile.next-vps`、`.env.next` 不进仓库，加入该检出的 `.git/info/exclude`。当前覆盖配置使用在测试机先构建/验证后传入的镜像，并通过 `build: !reset null` 禁止现场重复构建；先核对 `sjtuow.source` 标签、传输SHA256和实际镜像ID。后续升级不得复用301标签覆盖正在运行的版本，使用新的明确标签并审阅覆盖文件后再更新。
+
+数据与媒体卷以实际Compose覆盖和 `docker inspect` 挂载为准，不根据默认名字猜测。导入失败后的旧新库/卷先保留；重试使用独立空卷，不删除或覆盖失败库。当前实例的卷名、镜像和快照证据写本轮报告，运行状态只看STATUS。
+
+新worker承担定时任务，旧 `/etc/cron.d/sjtu-ow` 在割接备份目录停用保存，不能继续执行 `manage.py`。旧 `sjtu-ow` 项目的容器、卷、`web:legacy`/`worker:legacy` 镜像和旧环境保留；回退照 [cutover](cutover.md) 的新写入闸处理。下面的旧站Compose及 `deploy_ship.sh` 操作只用于旧站历史/获授权的回退，不能拿来更新新站。
+
+导入快照保持文件600、宿主父目录700；其文件所有权供UID10001读取，导出的副本转为DELETE journal，避免只读单文件挂载初始化WAL/SHM。真实旧库保持原模式，只做SQLite backup，不覆盖。两项运行权限要求与回归见301轮。
+
 ## 测试机
 
 **测试机是 `2a0e:6a80:3:9c7::`（只有 IPv6），各种测试检查都在这台上跑。** 用户 2026-10-04：「各种测试检查放到 IP 为 185.99.135.224 的 vps 上进行，你可以搭建完整的工作测试流」，随后「测试机换到 IP 为 2a0e:6a80:3:9c7:: 的 vps 上。这台机子所有资源都由你掌控，请务必用满性能以达最高效率」。
@@ -32,7 +51,7 @@ Host sjtu-ow-test
 
 **原来的测试机 `185.99.135.224`**（2026-09-18 起）重装过、没有 Docker，128 在上面搭过一次，换机器后把 `/srv/sjtu-ow-check` 删了，现在不用。上面有别人的东西（Komari 探针、`/opt` 和 `/root` 下的 Flutter、Android、FlClash 工具链），再上去也只动自己建的目录，不做全局清理。
 
-### 第二台：169.58.217.180（用户 2026-10-03 指定，v6.0 起；**183 起是正式站**）
+### 第二台：169.58.217.180（正式站机器；下表保留旧站运行/回退参数）
 
 用户：「当前版本部署到 169.58.217.180 的 vps 上，端口使用 22887。不需要配置反代，我自己会配」。和测试机的区别：**本项目不占 80/443**，Caddy 只在 22887 上听 HTTP，域名和 HTTPS 由用户自己的反向代理负责。
 
