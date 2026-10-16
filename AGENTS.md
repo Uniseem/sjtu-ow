@@ -34,3 +34,21 @@ SJTU-OW 的编码助手入口。这里放必须常驻的约束；当前状态、
 ## 维护入口
 
 文档职责和更新规则只维护在 [docs/README.md](docs/README.md)。这里不放命令全集、服务器参数、当轮授权经过、版本清单、踩坑长表或历史进度。
+
+---
+
+## 双远程推送 / Dual-push (GitHub + GitLab)
+
+自 2026-10-16 起本仓库镜像到自建 GitLab。提交后请同时推送：
+
+| Remote | URL |
+|---|---|
+| `origin` (GitHub) | `https://github.com/Uniseem/sjtu-ow.git` |
+| `gitlab` | `https://gitlab.anylocate.cc/anylocate/sjtu-ow.git` |
+
+```bash
+git push origin HEAD && git push gitlab HEAD
+```
+
+Fleet / SSH / Mesh / Runner 规则见 **Uniseem/machine-management**（`anylocate/machine-management`）。CI：仅有 GitHub Actions、无现成可跑 `.gitlab-ci.yml` 时 GitLab 侧为代码镜像 only，勿发明会失败的流水线。清单：machine-management `GitLab/镜像清单.md`。
+
