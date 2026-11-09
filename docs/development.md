@@ -10,7 +10,7 @@
 
 ## 工具链与整组内容
 
-**新栈的命令和检查**（222 起，`server/` 立起来了）：在 `server/` 目录里 `gofmt -l .`（应为空）、`go vet ./...`、`staticcheck ./...`、`govulncheck ./...`、`go test ./...`；这些已经并进 `scripts/check.sh` 的「Go（新栈）」一段，测试机上 `remote-check.sh` 整组自动带上。不用 `golangci-lint`（GPL-3.0，AGENTS.md 的依赖限制）。工具链装在测试机 `/srv/sjtu-ow-check/` 下（222 轮装好，安装脚本在本轮目录）：`go/`（**1.26.9**，242 轮从 1.26.8 升——govulncheck 报 net/http 等 9 项 GO-2026-6617 要 1.26.9 修；本机是 brew 的更新版，`go.mod` 的 go 指令记测试机这版）、`node24/`（24.13）、`gobin/`（staticcheck 2026.2.1 / v0.8.1、govulncheck v1.8.0）、`gopath/ gocache/ gomodcache/`（缓存也在这块盘）；**系统自带的 Node 20 没动**，`remote-check.sh` 的任务脚本自己把这些导进 PATH（注意 npm、pnpm 的 shebang 是 `/usr/bin/env node`，用它们前必须把 `node24/bin` 放进 PATH 最前）。231 起 `web/` 的检查是 `pnpm install --frozen-lockfile` 然后 `pnpm test`（pnpm 11.20.0），写在 `scripts/check.sh` 的「Web（新栈）」一段，和 CI 的 web 任务同一句。
+**新栈的命令和检查**：在 `server/` 目录里 `gofmt -l .`（应为空）、`go vet ./...`、`staticcheck ./...`、`govulncheck ./...`、`go test ./...`；已并进 `scripts/check.sh`，由编译 VPS 上的整组执行。不用 `golangci-lint`（GPL-3.0，AGENTS.md 的依赖限制）。当前最低 Go **1.26.10**：302 首次自动 CI 在 1.26.9 命中 GO-2026-6809，303 按修补版本提升最低要求；242 的 1.26.9 记录保留在历史轮次。项目工具链在 worker 的 `/srv/build/sjtu-ow/`：`go/`、`node24/`（302 为 24.22.2）、`gobin/`（staticcheck v0.8.1、govulncheck v1.8.0）、`gopath/ gocache/ gomodcache/`。准备脚本见 [302](../handoff/rounds/302-admin-visual-cleanup/prepare-worker.sh)，机器选择见运维文档。`remote-check.sh` 将这些工具放进 PATH；系统工具链不改。Web 使用 `pnpm install --frozen-lockfile`、`pnpm test`（pnpm 11.20.0），执行事实以 `scripts/check.sh` 和 CI 为准。
 
 整组还运行 `sjtuow apigen` 并比较 `web/packages/api/src/gen/`，命令的执行事实以仓库 [check.sh](../scripts/check.sh) 和 [CI](../.github/workflows/ci.yml) 为准。下列逐项命令用于理解整组，不构成本机执行授权。
 

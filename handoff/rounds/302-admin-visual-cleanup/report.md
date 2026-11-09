@@ -62,3 +62,7 @@
 ## 改动文件
 
 `web/apps/admin/` 后台展示、`web/apps/site/` 账号/栏目/搜索/页脚及相关既有断言、`web/packages/ui/src/AuthLayout.vue`、`web/packages/styles/input.css`；赛事和内战各一份 API 测试；AGENTS、OWNERSHIP 与对应设计、迁移、开发、运维和交接文件。本轮脚本均不包含登录凭据。
+
+## 303 轮补充：首次自动 CI
+
+提交 `001c8c214881cac566ab820ef6daae56d0b09a18` 的 [CI 42568697554](https://github.com/Uniseem/sjtu-ow/actions/runs/42568697554) 中 Web 通过，Go 在 `govulncheck` 退出 3：`crypto/x509@go1.26.9` 命中 GO-2026-6809，修复版本为 `go1.26.10`。最低编译版本与后续复验在303轮单独提交，保留本轮已推送历史；界面源码不再改动。该次失败不改称通过，最终 CI 见303提交对应记录。

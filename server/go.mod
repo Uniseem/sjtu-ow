@@ -1,6 +1,6 @@
 module github.com/Uniseem/sjtu-ow/server
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/gen2brain/webp v0.6.4
