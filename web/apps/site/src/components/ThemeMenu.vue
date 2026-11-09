@@ -21,7 +21,10 @@ function pick(choice: ThemeChoice) {
   owTheme()?.set(choice)
   current.value = choice
   // The masthead menu closes; the drawer stays open to show the change.
-  if (props.variant === "bar" && root.value instanceof HTMLDetailsElement) root.value.open = false
+  if (props.variant === "bar" && root.value instanceof HTMLDetailsElement) {
+    root.value.open = false
+    root.value.querySelector("summary")?.focus()
+  }
 }
 
 function sync() {

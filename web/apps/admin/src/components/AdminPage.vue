@@ -34,7 +34,7 @@ watch(() => [props.title, props.documentTitle], ([title, documentTitle]) => {
         <h1 class="b-head__title" tabindex="-1">{{ title }}</h1>
         <div class="b-head__actions"><slot name="actions" /></div>
       </div>
-      <nav v-if="tabs.length && !backHref" class="b-tabs" :aria-label="current?.label">
+      <nav v-if="tabs.length > 1 && !backHref" class="b-tabs" :aria-label="current?.label">
         <a v-for="tab in tabs" :key="tab.key" :href="tab.url" :aria-current="selected(tab.url) ? 'page' : undefined">
           {{ tab.label }}<span v-if="tab.count" class="c-tabs__count">{{ tab.count }}</span>
         </a>

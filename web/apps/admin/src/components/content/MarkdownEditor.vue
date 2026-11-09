@@ -226,7 +226,7 @@ async function initialize(): Promise<void> {
   try {
     const [{ EditorState, Compartment }, { EditorView: View, keymap, drawSelection, highlightActiveLine },
       { defaultKeymap, history, historyKeymap, indentWithTab }, { markdown },
-      { syntaxHighlighting, defaultHighlightStyle, bracketMatching, indentOnInput }] = await Promise.all([
+      { HighlightStyle, syntaxHighlighting, defaultHighlightStyle, bracketMatching, indentOnInput }] = await Promise.all([
       import("@codemirror/state"),
       import("@codemirror/view"),
       import("@codemirror/commands"),
@@ -242,14 +242,28 @@ async function initialize(): Promise<void> {
     const editable = new Compartment()
     const attributes = new Compartment()
     const theme = View.theme({
-      "&": { color: "var(--color-fg)", backgroundColor: "var(--color-surface)", minHeight: "24rem" },
-      ".cm-content": { fontFamily: "var(--font-mono)", padding: "1rem", caretColor: "var(--color-fg)" },
+      "&": { color: "var(--color-fg)", backgroundColor: "var(--color-surface)", minHeight: "var(--editor-min-height, 24rem)" },
+      ".cm-content": { fontFamily: "var(--font-code)", padding: "1rem", caretColor: "var(--color-fg)" },
+      '.cm-content[contenteditable="false"]': { color: "var(--color-fg-2)" },
       ".cm-scroller": { overflow: "auto", lineHeight: "1.7" },
       ".cm-gutters": { backgroundColor: "var(--color-surface)", borderColor: "var(--color-line)" },
       ".cm-activeLine": { backgroundColor: "var(--color-surface-2)" },
-      "&.cm-focused": { outline: "2px solid var(--color-primary)", outlineOffset: "2px" },
+      "&.cm-focused": { outline: "2px solid var(--color-primary-text)", outlineOffset: "2px" },
+      ".cm-matchingBracket": { backgroundColor: "var(--color-primary-soft)" },
+      ".cm-nonmatchingBracket": { backgroundColor: "var(--color-warn-soft)" },
       ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": { backgroundColor: "var(--color-primary-soft)" },
     })
+    const syntaxColors: Record<string, string> = {
+      "#404740": "var(--color-fg-2)", "#708": "var(--color-primary-text)", "#219": "var(--color-primary-text)",
+      "#164": "var(--color-ok)", "#a11": "var(--color-primary-text)", "#e40": "var(--color-accent-text)",
+      "#00f": "var(--color-info)", "#30a": "var(--color-info)", "#085": "var(--color-ok)",
+      "#167": "var(--color-info)", "#256": "var(--color-info)", "#00c": "var(--color-primary-text)",
+      "#940": "var(--color-fg-3)", "#f00": "var(--color-primary-text)",
+    }
+    const highlighting = HighlightStyle.define(defaultHighlightStyle.specs.map(rule => ({
+      ...rule,
+      ...(typeof rule.color === "string" ? { color: syntaxColors[rule.color] ?? "var(--color-fg)" } : {}),
+    })))
     view = new View({
       root: shadow,
       parent: shadow,
@@ -270,7 +284,7 @@ async function initialize(): Promise<void> {
           highlightActiveLine(),
           bracketMatching(),
           indentOnInput(),
-          syntaxHighlighting(defaultHighlightStyle),
+          syntaxHighlighting(highlighting),
           theme,
           View.lineWrapping,
           keymap.of([
@@ -338,7 +352,7 @@ defineExpose({ insertImage: selected, focus: () => { view ? view.focus() : fallb
 </script>
 <template>
   <div ref="container" class="c-field markdown-editor" :class="{ 'is-fullscreen': fullscreen }" data-markdown-editor :data-markdown-field="name">
-    <div class="b-rowacts" role="toolbar" :aria-label="`${label}工具栏`">
+    <div class="b-rowacts markdown-editor__toolbar" role="toolbar" :aria-label="`${label}工具栏`">
       <button v-for="item in toolbarCommands" :key="item.command" :data-markdown-command="item.command" type="button" class="c-btn c-btn--quiet c-btn--sm" :title="item.shortcut ? `${item.label}（${item.shortcut}）` : item.label" :disabled="disabled" @click="run(item.command)">{{ item.label }}</button>
       <button type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="disabled" data-markdown-command="image-upload" @click="chooseImage">插入图片</button>
       <button type="button" class="c-btn c-btn--quiet c-btn--sm" :disabled="disabled" data-markdown-command="video" @click="video">B 站视频</button>
@@ -378,6 +392,34 @@ defineExpose({ insertImage: selected, focus: () => { view ? view.focus() : fallb
 </template>
 
 <style scoped>
+.markdown-editor { --editor-min-height: 24rem; }
+.markdown-editor__toolbar {
+  gap: 0.25rem;
+  padding: 0.375rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-2);
+}
+.markdown-editor__toolbar .c-btn {
+  min-width: 2.25rem;
+  padding-inline: 0.625rem;
+  border-radius: var(--radius-xs);
+  color: var(--color-fg-2);
+  font-weight: 500;
+  text-decoration: none;
+}
+.markdown-editor__toolbar .c-btn:hover:not(:disabled, [aria-pressed="true"]) {
+  background-color: var(--color-surface);
+  color: var(--color-fg);
+  text-decoration: none;
+}
+.markdown-editor__toolbar .c-btn[aria-pressed="true"] {
+  background-color: var(--color-primary-soft);
+  color: var(--color-on-primary-soft);
+}
+.markdown-editor__source textarea { min-height: var(--editor-min-height); height: var(--editor-min-height); font-family: var(--font-code); }
+@media (max-width: 768px) {
+  .markdown-editor { --editor-min-height: 18rem; }
+}
 .markdown-editor__panes { min-width: 0; }
 .markdown-editor__source { min-width: 0; }
 .markdown-editor__source[hidden], .markdown-editor__source [hidden] { display: none; }

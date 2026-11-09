@@ -64,6 +64,7 @@ export function createSiteRouter(ssr: boolean) {
       { path: "/teams/", component: Teams, meta: { load: loadTeams satisfies Load } },
       { path: "/_styleguide/", component: () => import("./pages/Styleguide.vue"), meta: { load: loadStyleguide satisfies Load } },
       { path: "/_styleguide/components/", component: () => import("./pages/ComponentSpecimen.vue"), meta: { load: loadStyleguide satisfies Load } },
+      { path: "/_styleguide/interactions/", component: () => import("./pages/InteractionSpecimen.vue"), meta: { load: loadStyleguide satisfies Load } },
       {path:"/admin/:pathMatch(.*)*",component:()=>import("./pages/Page.vue"),meta:{load:()=>{throw httpError(404)}}},
       ...PAGES,
     ],

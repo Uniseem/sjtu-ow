@@ -109,5 +109,8 @@ test("a toast appears and leaves on its own", () => {
   expect(toasts.map((item) => item.text)).toEqual(["已保存", "出错了"])
   expect(toasts[0].kind).toBe("success")
   vi.advanceTimersByTime(4500)
+  expect(toasts.length).toBe(2)
+  expect(toasts.every(item => item.phase === "leaving")).toBe(true)
+  vi.advanceTimersByTime(200)
   expect(toasts.length).toBe(0)
 })

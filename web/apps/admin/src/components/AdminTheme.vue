@@ -12,7 +12,11 @@ const choices: Array<{ value: Choice; label: string; icon: string }> = [
 ]
 function theme(): Theme | undefined { return (window as Window & { owTheme?: Theme }).owTheme }
 function sync(): void { current.value = theme()?.current() || "system" }
-function select(choice: Choice): void { theme()?.set(choice); sync(); if (menu.value) menu.value.open = false }
+function select(choice: Choice): void {
+  theme()?.set(choice)
+  sync()
+  if (menu.value) { menu.value.open = false; menu.value.querySelector("summary")?.focus() }
+}
 onMounted(() => { sync(); document.addEventListener("owthemechange", sync) })
 onUnmounted(() => document.removeEventListener("owthemechange", sync))
 </script>

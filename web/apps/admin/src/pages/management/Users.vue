@@ -45,7 +45,7 @@ function filter() { void router.push({path:route.path,query:{q:search.value||und
       <tbody><tr v-for="user in rows" :key="user.id" :data-user-row="user.id">
         <td><RouterLink class="b-title" :to="'/admin/users/' + user.id + '/'">{{ user.nickname || '（没有昵称）' }}</RouterLink><span v-if="user.is_superuser" class="b-sub">超级管理员</span></td>
         <td data-label="邮箱">{{ user.email }}</td><td data-label="交大">{{ user.is_sjtu ? '是' : '否' }}</td>
-        <td data-label="角色"><template v-for="name in visibleRoles(user.roles)" :key="name"><span class="c-tag">{{ roleLabel(name) }}</span>{{ ' ' }}</template><template v-if="!user.roles.length">—</template></td>
+        <td data-label="角色"><span class="inline-flex ml-auto flex-wrap justify-end gap-1"><span v-for="name in visibleRoles(user.roles)" :key="name" class="c-tag">{{ roleLabel(name) }}</span><template v-if="!visibleRoles(user.roles).length">—</template></span></td>
         <td data-label="状态"><CStatus :label="user.is_active ? '在用' : '已停用'" :kind="user.is_active ? 'ok' : 'off'" /></td>
         <td data-label="注册">{{ day(user.created_at) }}</td>
       </tr></tbody>

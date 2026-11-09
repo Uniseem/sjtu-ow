@@ -100,6 +100,11 @@
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --ease-spring: cubic-bezier(0.2, 0, 0, 1);
   --ease-ow: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 120ms;
+  --duration-standard: 180ms;
+  --duration-surface: 240ms;
+  --duration-image: 300ms;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f6671' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   --container-page: 120rem;
   --container-prose: 44rem;
 }
@@ -150,6 +155,7 @@
     --color-info-soft: #1d2a3b;
     --color-toast: #e8eaee;
     --color-on-toast: #1d2531;
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23959cab' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
 }
 
@@ -214,6 +220,7 @@
 @layer base {
   html {
     background-color: var(--color-bg);
+    scroll-padding-block: 7rem;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
@@ -290,8 +297,17 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 3px;
+  }
+
+  :is(h1, h2, h3, p, dd, li) {
+    overflow-wrap: break-word;
+  }
+
+  :is(input, select, textarea, button, summary, a) {
+    -webkit-tap-highlight-color: transparent;
+    scroll-margin-block: 7rem;
   }
 
   a {
@@ -343,11 +359,47 @@
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
-      animation-delay: 0s !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       transition-delay: 0s !important;
     }
+
+    .c-drift,
+    .c-hero__gear {
+      animation: none !important;
+    }
+
+    :is(.c-media__pic, .c-feature, .c-teams__logo, .c-person__pic) img,
+    .c-btn,
+    .c-iconbtn {
+      transform: none !important;
+    }
+
+    .is-loading .c-loadbar {
+      opacity: 0;
+      transform: scaleX(0.9);
+      animation: c-loadbar-still 0s linear 150ms forwards !important;
+    }
+
+    .is-arriving .c-loadbar {
+      opacity: 0;
+      animation: none !important;
+    }
+  }
+}
+
+@keyframes c-loadbar-still {
+  to { opacity: 1; }
+}
+
+@keyframes c-backdrop-in {
+  from { background-color: transparent; }
+}
+
+@keyframes c-surface-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--surface-from, -0.375rem));
   }
 }
 
@@ -711,7 +763,7 @@
     color: var(--color-fg-2);
     font-size: 0.9375rem;
     font-weight: 500;
-    transition: color 150ms var(--ease-standard);
+    transition: color var(--duration-fast) var(--ease-standard);
   }
 
   .c-nav a:hover {
@@ -803,8 +855,8 @@
     border-radius: var(--radius-sm);
     color: var(--color-fg-2);
     transition:
-      color 150ms var(--ease-standard),
-      background-color 150ms var(--ease-standard);
+      color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-iconbtn:hover {
@@ -876,6 +928,9 @@
   }
 
   .c-menu__panel a {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
     padding: 0.625rem 0.75rem;
     border-radius: 6px;
     color: var(--color-fg);
@@ -932,6 +987,7 @@
     align-items: center;
     gap: 0.625rem;
     width: 100%;
+    min-height: 2.75rem;
     padding: 0.625rem 0.75rem;
     border-radius: 6px;
     color: var(--color-fg);
@@ -997,9 +1053,13 @@
     white-space: nowrap;
   }
 
-  .c-ctxmenu__item:hover,
+  .c-ctxmenu__item:hover {
+    background-color: var(--color-surface-2);
+  }
+
   .c-ctxmenu__item:focus-visible {
-    outline: none;
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: -2px;
     background-color: var(--color-surface-2);
   }
 
@@ -1070,7 +1130,9 @@
     right: 0;
     left: 0;
     max-height: calc(100vh - 4rem);
+    max-height: calc(100dvh - 4rem);
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 0.5rem 1rem 1.5rem;
     background-color: var(--color-surface);
     box-shadow: var(--shadow-float);
@@ -1451,10 +1513,12 @@
     line-height: 1.2;
     white-space: nowrap;
     cursor: pointer;
+    touch-action: manipulation;
     transition:
-      color 150ms var(--ease-standard),
-      background-color 150ms var(--ease-standard),
-      border-color 150ms var(--ease-standard);
+      color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
   }
 
   .c-btn svg {
@@ -1467,7 +1531,7 @@
     color: var(--color-white);
   }
 
-  .c-btn--primary:hover {
+  .c-btn--primary:hover:not(:disabled, [aria-disabled="true"]) {
     background-color: var(--color-primary-hover);
   }
 
@@ -1476,8 +1540,8 @@
     border-color: var(--color-control);
   }
 
-  .c-btn--secondary:hover,
-  .c-btn--danger:hover {
+  .c-btn--secondary:hover:not(:disabled, [aria-disabled="true"]),
+  .c-btn--danger:hover:not(:disabled, [aria-disabled="true"]) {
     background-color: var(--color-surface-2);
   }
 
@@ -1490,7 +1554,7 @@
     color: var(--color-on-primary-soft);
   }
 
-  .c-btn--tonal:hover {
+  .c-btn--tonal:hover:not(:disabled, [aria-disabled="true"]) {
     background-color: color-mix(in oklab, var(--color-primary-soft) 80%, var(--color-primary));
   }
 
@@ -1502,7 +1566,7 @@
     color: var(--color-primary-text);
   }
 
-  .c-btn--quiet:hover {
+  .c-btn--quiet:hover:not(:disabled, [aria-disabled="true"]) {
     text-decoration: underline;
     text-underline-offset: 0.25em;
   }
@@ -1514,7 +1578,7 @@
     color: var(--color-white);
   }
 
-  .c-btn--light:hover {
+  .c-btn--light:hover:not(:disabled, [aria-disabled="true"]) {
     background-color: color-mix(in oklab, var(--color-white) 14%, transparent);
   }
 
@@ -1535,7 +1599,13 @@
   .c-btn:disabled,
   .c-btn[aria-disabled="true"] {
     cursor: not-allowed;
-    opacity: 0.5;
+    color: var(--color-fg-3);
+    opacity: 0.7;
+    transform: none;
+  }
+
+  .c-btn:active:not(:disabled, [aria-disabled="true"]) {
+    transform: translateY(1px);
   }
 
   .c-btn--primary:disabled,
@@ -1568,7 +1638,7 @@
 
   .c-card {
     position: relative;
-    transition: background-color 150ms var(--ease-standard);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   /* No edge to light up: the surface itself deepens a shade. */
@@ -1882,15 +1952,15 @@
   }
 
   .c-table tbody tr {
-    transition: background-color 150ms var(--ease-standard);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-table tbody tr:hover {
     background-color: var(--color-bg);
   }
 
-  /* Phones: every row becomes a block of label / value lines. */
-  @media (max-width: 639px) {
+  /* Narrow layouts use label/value rows instead of squeezing columns. */
+  @media (max-width: 1023px) {
     .c-table--stack thead {
       display: none;
     }
@@ -1912,11 +1982,14 @@
 
     .c-table--stack td {
       display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
       justify-content: space-between;
       gap: 1rem;
       padding: 0.25rem 0;
       border-top: 0;
       text-align: right;
+      overflow-wrap: anywhere;
     }
 
     .c-table--stack td::before {
@@ -2238,10 +2311,21 @@
   /* 自动保存的状态（design 13.17, v7.6）: one quiet line above the form,
      drawn by static/js/autosave.js. */
   .c-autosave {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 1.5rem;
     margin: 0;
     font-size: 0.875rem;
     line-height: 1.5;
     color: var(--color-fg-3);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .c-autosave svg {
+    width: 1rem;
+    height: 1rem;
   }
 
   .c-autosave[data-state="saved"] {
@@ -2266,6 +2350,7 @@
   .c-field textarea,
   .c-input {
     width: 100%;
+    min-width: 0;
     min-height: 44px;
     padding: 0.5rem 0.875rem;
     border: 1px solid var(--color-control);
@@ -2275,14 +2360,14 @@
     font-size: 1rem;
     line-height: 1.5;
     transition:
-      border-color 150ms var(--ease-standard),
-      box-shadow 150ms var(--ease-standard);
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
   }
 
-  .c-field input:hover,
-  .c-field select:hover,
-  .c-field textarea:hover,
-  .c-input:hover {
+  .c-field input:hover:where(:not(:disabled, [readonly])),
+  .c-field select:hover:where(:not(:disabled)),
+  .c-field textarea:hover:where(:not(:disabled, [readonly])),
+  .c-input:hover:where(:not(:disabled, [readonly])) {
     border-color: var(--color-fg);
   }
 
@@ -2291,8 +2376,8 @@
   .c-field select:focus,
   .c-field textarea:focus,
   .c-input:focus {
-    border-color: var(--color-primary);
-    box-shadow: inset 0 0 0 1px var(--color-primary);
+    border-color: var(--color-primary-text);
+    box-shadow: inset 0 0 0 1px var(--color-primary-text);
     outline: none;
   }
 
@@ -2302,9 +2387,11 @@
     color: var(--color-fg-3);
   }
 
-  .c-field textarea {
+  .c-field textarea,
+  textarea.c-input {
     min-height: 7.5rem;
     line-height: 1.7;
+    resize: vertical;
   }
 
   /* A file picker (v6.11, the avatar upload; team logos too): the text says
@@ -2327,7 +2414,7 @@
     font-size: 0.9375rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 150ms var(--ease-standard);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-field input[type="file"]:hover::file-selector-button {
@@ -2358,7 +2445,7 @@
   select.c-input {
     appearance: none;
     padding-right: 2.5rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23534341' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-image: var(--select-arrow);
     background-position: right 0.875rem center;
     background-repeat: no-repeat;
     background-size: 1.125rem;
@@ -2367,7 +2454,7 @@
   .c-field.is-invalid input,
   .c-field.is-invalid select,
   .c-field.is-invalid textarea {
-    border-color: var(--color-primary);
+    border-color: var(--color-primary-text);
     background-color: color-mix(in oklab, var(--color-primary-soft) 35%, var(--color-surface));
   }
 
@@ -2393,8 +2480,8 @@
     background-repeat: no-repeat;
     cursor: pointer;
     transition:
-      background-color 150ms var(--ease-standard),
-      border-color 150ms var(--ease-standard);
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-field input[type="checkbox"]:checked,
@@ -2415,6 +2502,36 @@
     border-color: var(--color-primary);
     background-image: radial-gradient(circle, var(--color-primary) 0 0.25rem, transparent 0.27rem);
     background-size: 100% 100%;
+  }
+
+  :is(.c-field, .c-check) input:is([type="checkbox"], [type="radio"]):focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+
+  :is(.c-field, .c-check) input[type="checkbox"]:indeterminate {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E");
+    background-size: 0.875rem;
+  }
+
+  :is(.c-field, .c-check) input:disabled {
+    cursor: not-allowed;
+  }
+
+  :is(.c-input, .c-field input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"]), .c-field select, .c-field textarea):disabled {
+    border-color: var(--color-line);
+    background-color: var(--color-surface-2);
+    color: var(--color-fg-3);
+    opacity: 1;
+    cursor: not-allowed;
+  }
+
+  :is(.c-input, .c-field input, .c-field textarea)[readonly] {
+    background-color: var(--color-bg);
+    color: var(--color-fg-2);
   }
 
   .c-check,
@@ -2448,9 +2565,9 @@
     cursor: pointer;
     font-size: 0.9375rem;
     transition:
-      background-color 150ms var(--ease-standard),
-      border-color 150ms var(--ease-standard),
-      color 150ms var(--ease-standard);
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
   }
 
   .c-choice input {
@@ -2464,15 +2581,20 @@
   }
 
   .c-choice:has(input:checked) {
-    border-color: var(--color-primary-soft);
+    border-color: var(--color-primary-text);
     background-color: var(--color-primary-soft);
     color: var(--color-on-primary-soft);
     font-weight: 600;
   }
 
   .c-choice:has(input:focus-visible) {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 3px;
+  }
+
+  .c-choice:has(input:disabled) {
+    opacity: 0.65;
+    cursor: not-allowed;
   }
 
   .c-form {
@@ -2684,9 +2806,12 @@
     font-size: 0.9375rem;
     line-height: 1.5;
     pointer-events: auto;
-    animation:
-      c-toast-in 400ms var(--ease-spring),
-      c-toast-out 300ms var(--ease-standard) 6s forwards;
+    animation: c-toast-in var(--duration-standard) var(--ease-standard);
+  }
+
+  .c-toast.is-leaving {
+    pointer-events: none;
+    animation: c-toast-out var(--duration-standard) var(--ease-standard) forwards;
   }
 
   .c-toast svg {
@@ -2710,6 +2835,7 @@
   @keyframes c-toast-out {
     to {
       opacity: 0;
+      transform: translateY(-0.25rem);
       visibility: hidden;
     }
   }
@@ -2737,6 +2863,7 @@
 
   .c-pager {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
@@ -2773,7 +2900,7 @@
     font-size: 0.9375rem;
     font-weight: 500;
     white-space: nowrap;
-    transition: color 150ms var(--ease-standard);
+    transition: color var(--duration-fast) var(--ease-standard);
   }
 
   .c-tabs a:hover {
@@ -2822,8 +2949,8 @@
     font-size: 0.9375rem;
     font-weight: 500;
     transition:
-      background-color 150ms var(--ease-standard),
-      color 150ms var(--ease-standard);
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
   }
 
   .c-sidenav a:hover {
@@ -3070,7 +3197,7 @@
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
     color: var(--color-fg-2);
-    transition: background-color 150ms var(--ease-standard);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-comments__sort a:hover {
@@ -3193,8 +3320,8 @@
     cursor: pointer;
     list-style: none;
     transition:
-      background-color 150ms var(--ease-standard),
-      color 150ms var(--ease-standard);
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
   }
 
   .c-act::-webkit-details-marker {
@@ -3244,7 +3371,7 @@
     font-weight: 600;
     cursor: pointer;
     list-style: none;
-    transition: background-color 150ms var(--ease-standard);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-comment__thread > summary:hover {
@@ -3537,12 +3664,10 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 300ms var(--ease-standard);
+    scale: 1;
+    transition: scale var(--duration-image) var(--ease-standard);
   }
 
-  .c-feature:hover .c-feature__img {
-    transform: scale(1.03);
-  }
 
   .c-feature::after {
     content: "";
@@ -3603,7 +3728,7 @@
   .c-rows > .c-row {
     border-radius: var(--radius-xs);
     background-color: var(--color-surface);
-    transition: background-color 150ms var(--ease-standard);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-rows > .c-row:first-child {
@@ -3639,7 +3764,7 @@
     line-height: 1.5;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    transition: color 150ms var(--ease-standard);
+    transition: color var(--duration-fast) var(--ease-standard);
   }
 
   .c-row:hover .c-row__title {
@@ -3718,12 +3843,10 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 300ms var(--ease-standard);
+    scale: 1;
+    transition: scale var(--duration-image) var(--ease-standard);
   }
 
-  .c-media:hover .c-media__pic img {
-    transform: scale(1.03);
-  }
 
   /* A picture from the 默认封面 pool (design 13.2.5, v6.7) drifts slowly,
      like a camera: four ways, picked by the object's id, so neighbours move
@@ -3816,7 +3939,7 @@
     overflow: hidden;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    transition: color 150ms var(--ease-standard);
+    transition: color var(--duration-fast) var(--ease-standard);
   }
 
   .c-media:hover .c-media__title {
@@ -3863,7 +3986,7 @@
     border-radius: var(--radius-lg);
     background-color: var(--color-surface);
     text-align: center;
-    transition: border-color 150ms var(--ease-standard);
+    transition: border-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-teams__item:hover {
@@ -3887,12 +4010,10 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 300ms var(--ease-standard);
+    scale: 1;
+    transition: scale var(--duration-image) var(--ease-standard);
   }
 
-  .c-teams__item:hover .c-teams__logo img {
-    transform: scale(1.04);
-  }
 
   .c-teams__body {
     display: flex;
@@ -4271,7 +4392,7 @@
     padding: 1rem 1.25rem;
     border-radius: var(--radius-lg);
     background-color: var(--color-surface);
-    transition: border-color 150ms var(--ease-standard);
+    transition: border-color var(--duration-fast) var(--ease-standard);
   }
 
   .c-sequel__item:hover {
@@ -4839,6 +4960,86 @@
     display: none;
   }
 
+  /* Shared interaction states; layouts and content remain still. */
+  :is(.c-iconbtn, .c-menu > summary, .c-menu__panel a, .c-theme button,
+      .c-ctxmenu__item, .c-drawer__nav a, .b-tabs a, .b-subtabs a, .b-chips a) {
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard),
+      outline-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .c-iconbtn:active:not(:disabled, [aria-disabled="true"]) {
+    transform: translateY(1px);
+  }
+
+  .c-iconbtn:disabled {
+    color: var(--color-fg-3);
+    cursor: not-allowed;
+  }
+
+  :is(.c-tabs, .c-nav, .b-nav, .b-tabs, .b-subtabs) a:focus-visible {
+    border-radius: var(--radius-xs);
+    outline-offset: -3px;
+  }
+
+  :is(.c-media, .c-teams__item, .c-person):has(.c-stretch:focus-visible) {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 3px;
+  }
+
+  :is(.c-media, .c-teams__item, .c-person) .c-stretch:focus-visible {
+    outline: none;
+  }
+
+  .c-check:has(input:disabled) {
+    color: var(--color-fg-3);
+    cursor: not-allowed;
+  }
+
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .c-feature:hover .c-feature__img,
+    .c-media:hover .c-media__pic img,
+    .c-teams__item:hover .c-teams__logo img {
+      scale: 1.03;
+    }
+  }
+
+  @media (pointer: coarse) {
+    .c-btn--sm,
+    .b-filters .c-input,
+    .b-filters .c-check,
+    .b-chips a,
+    .b-subtabs a,
+    .c-ctxmenu__item {
+      min-height: 2.75rem;
+    }
+
+    .c-btn--sm.c-btn--quiet {
+      min-width: 2.75rem;
+      padding-inline: 0.375rem;
+    }
+  }
+
+  @media (forced-colors: active) {
+    :is(.c-field, .c-check) input:is([type="checkbox"], [type="radio"]) {
+      appearance: auto;
+      background-image: none;
+      forced-color-adjust: auto;
+    }
+
+    .c-field select,
+    select.c-input {
+      appearance: auto;
+      background-image: none;
+    }
+
+    .c-choice:has(input:checked) {
+      outline: 2px solid Highlight;
+      outline-offset: 0;
+    }
+  }
+
   /* ---- Style guide page ------------------------------------------------------------ */
 
   .c-swatch {
@@ -4929,7 +5130,7 @@
     font-size: 0.9375rem;
     font-weight: 500;
     white-space: nowrap;
-    transition: color 150ms var(--ease-standard);
+    transition: color var(--duration-fast) var(--ease-standard);
   }
 
   .b-nav__link:hover {
@@ -5522,7 +5723,7 @@
     padding: 1.25rem;
     border-radius: var(--radius-lg);
     background-color: var(--color-surface);
-    transition: background-color 150ms var(--ease-standard);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   a.b-card:hover {
@@ -5567,7 +5768,7 @@
     background-color: var(--color-surface);
     color: var(--color-fg);
     text-align: left;
-    transition: background-color 150ms var(--ease-standard);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   .b-grid__item:hover {
@@ -5653,6 +5854,9 @@
   .b-dialog {
     width: min(64rem, calc(100vw - 2rem));
     max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overscroll-behavior: contain;
+    scroll-padding-block: 4rem 1.5rem;
     margin: auto;
     padding: 0;
     border-radius: var(--radius-lg);
@@ -5663,6 +5867,21 @@
 
   .b-dialog::backdrop {
     background-color: color-mix(in oklab, var(--color-night) 55%, transparent);
+  }
+
+  .b-dialog[open]::backdrop {
+    animation: c-backdrop-in var(--duration-surface) var(--ease-standard);
+  }
+
+  :is(.c-menu, .c-theme)[open] > .c-menu__panel,
+  .c-drawer[open] > .c-drawer__panel,
+  .c-ctxmenu {
+    animation: c-surface-in var(--duration-standard) var(--ease-standard);
+  }
+
+  .b-dialog[open] {
+    --surface-from: 0.375rem;
+    animation: c-surface-in var(--duration-surface) var(--ease-standard);
   }
 
   .b-dialog__head {
@@ -5919,13 +6138,25 @@
   }
 
   .typography-row .fields {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
   }
 
   .typography-row .fields > * {
-    min-width: 9rem;
+    min-width: 0;
+  }
+
+  .typography-layout,
+  .typography-layout > *,
+  .typography-aside {
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .typography-row .fields {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
   #typography-preview {
@@ -5940,6 +6171,7 @@
     font-size: var(--font-body-size, 1rem);
     line-height: var(--font-body-line-height, 1.6);
     letter-spacing: var(--font-body-letter-spacing, normal);
+    overflow-wrap: anywhere;
   }
 
   #typography-preview .p-h1 { font-family: var(--font-h1, var(--font-body)); font-weight: var(--font-h1-weight, 700); font-size: var(--font-h1-size, 2rem); line-height: var(--font-h1-line-height, 1.3); letter-spacing: var(--font-h1-letter-spacing, normal); margin: 0 0 0.5rem; }
