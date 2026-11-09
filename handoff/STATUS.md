@@ -2,14 +2,16 @@
 
 ```yaml
 milestone: 正式站301起运行Vue3 SSR + Go，2026-10-14北京20:24:42割接成功，健康四项与生产公网浏览器20项通过。按用户缩减范围上线，自查通过；旧库/媒体/镜像/源码保留，取消项仍未验证/未复验，不称全量验收通过。
-round: 305-frontend-component-polish（自查通过，未部署）
-next_frontend: 305组件打磨完成：242文件归属盘点、300页面视图/570样张/432检查，另有管理6组合、Chromium145和WebKit1.63的100项专项通过。最终Web及双引擎图片/按下/门禁/单标签导航通过，保持302简洁方向。提交后核对精确SHA自动CI；正式站部署未授权。
+round: 306-production-ui-release（镜像准备完成，待主机身份确认）
+next_frontend: 正式部署授权已收到。564bb9a的新306镜像及真实容器20视图已在HostDZire-NL通过，制品/摘要/截图取回。确认Bero新主机指纹后，复用306-564bb9a镜像继续现场核对、备份、升级和真实公网前后台验证；不重构或重跑305无关矩阵。
 next_backend: 303最低Go已对齐1.26.10，VPS整组及精确SHA自动CI42569576567成功。AI巡查按D5仍未移植，当前仅保存配置和人工复核，304保留短状态，不把它描述为可用。无新增业务/API改动；旧资产保留，未部署，回退仍须先保全新写入差异。
 updated: 2026-11-09
-blocked_on: 无代码阻塞。WebKit1.64原生select上游CSP回归保留记录，补验使用独立1.63工具，项目依赖/CSP不改；不恢复旧批取消的迁移矩阵，正式站部署未授权。
+blocked_on: Bero公网入口和可信跳板直达Mesh均返回同一新SSH主机键，和本机/已有运维信任记录不同。已请求用户确认，未跳过校验、修改known_hosts或登录生产；部署、生产备份及上线验收尚未执行。指纹见私有机器记录和本聊天确认问题。
 ```
 
 ## 前台迁移（2026-10-10 起，先读这里）
+
+**306 镜像准备完成，正式部署待主机身份确认**：用户授权部署305的564bb9a（自动CI42583372076成功）。已在HostDZire-NL从精确提交构建Go/Web新306镜像，非root资产复制、实际Go1.26.10、20个真实镜像视图通过，制品取回；虚构卷与容器只在编译机。正式站按机器管理已迁Bero，不能用旧Contabo/旧代码目录Compose。公网与Mesh的SSH主机键均与旧信任记录不同，已请求确认；未登录或更改生产，不称上线成功。确认后复用已验证制品，先核对实际生产配置/挂载并备份，再升级和验真实公网；结果与日志见306报告。
 
 **305 前后台组件打磨完成、自查通过**：按用户授权先更新设计，再统一控件状态、焦点、触屏、浮层、表格、反馈时序和编辑器主题。修375排版/768表格溢出、角色标签分散、单标签重复导航、复选框焦点及减少动态效果的无脚本提示；最后专项又修压缩产物下图片仍悬停放大的问题。保持302删减方向，没有新增业务或项目依赖，未部署。
 
@@ -205,14 +207,14 @@ blocked_on: 无代码阻塞。WebKit1.64原生select上游CSP回归保留记录�
 
 ## 最近轮次
 
+**306（2026-11-09，正式发布准备，部分完成）**：用户已授权部署；精确564bb9a导出构建Go/Web镜像306-564bb9a，非root260资产复制及Go1.26.10核对通过。真实镜像/Caddy/独立虚构库20视图通过，制品78MB及证据取回。生产SSH主机身份与旧记录不一致，已请求用户确认；未跳过校验、未登录生产，实际备份/部署/上线验收未执行。见 rounds/306-production-ui-release/。
+
 **305（2026-11-09，前后台组件打磨）**：统一控件、焦点、触屏、浮层动效、减少动态效果、卡片和反馈，修编辑器、排版、表格、标签分组与单标签导航。VPS整组、300视图/570样张、管理6组合、Chromium145和WebKit1.63的100项专项通过；最后图片减少动态效果修正后的Web及双引擎图片/按下/门禁/导航退出0。242仅为源码盘点，自查通过；WebKit1.64上游回归/所有原始失败保留，项目依赖及CSP不改，未部署。见 rounds/305-frontend-component-polish/。
 
 **304（2026-11-09，必要状态修正）**：AI巡查尚未移植，纠正302删过头的提示，设置和记录页各保留一句短状态；移除设置页空操作条，保留隐藏提交按钮。VPS整组和48组合通过，空条修正后Web与48组合再次退出0，最终截图已核对。303自动CI42569576567成功，304结果看对应SHA；业务/API不改，未部署。见 rounds/304-moderation-availability/。
-
-**303（2026-11-09，CI编译补丁）**：302首次CI的Web通过、Go 1.26.9在govulncheck命中GO-2026-6809退出3。最低Go提升到1.26.10，VPS完整整组20261109-134444-e4042ff退出0；界面和业务源码未改，302浏览器及48组合证据沿用。按新AGENTS连续修复，单独提交保留已推送历史，未部署。见 rounds/303-go-patch-ci/。
 
 只保留最近 3 轮的摘要；新加一轮时把超出的条目移到 `archive/` 的历史记录。过去的执行结果归档，当前未完成项必须仍在上面的任务/验收表。
 
 ## 历史记录
 
-移出的最近轮次摘要见 [302 摘要](archive/status-recent-302.md)、[301 摘要](archive/status-recent-301.md)、[300 摘要](archive/status-recent-300.md)、[299 摘要](archive/status-recent-299.md)、[298 摘要](archive/status-recent-298.md)、[297 摘要](archive/status-recent-297.md)、[296 摘要](archive/status-recent-296.md)、[295 摘要](archive/status-recent-295.md)、[294 摘要](archive/status-recent-294.md)、[293 摘要](archive/status-recent-293.md)、[292 摘要](archive/status-recent-292.md)、[291 摘要](archive/status-recent-291.md)、[290 摘要](archive/status-recent-290.md)、[289 摘要](archive/status-recent-289.md)、[288 摘要](archive/status-recent-288.md)、[286 摘要](archive/status-recent-286.md)、[285 摘要](archive/status-recent-285.md)、[284 摘要](archive/status-recent-284.md)和[此前近期历史](archive/status-recent-through-279.md)。277 以前迁出的叙述、旧里程碑表与轮次总表见 [状态历史](archive/status-through-277.md)，每轮证据见 [rounds/](rounds/)。历史快照不再更新成进度；查当前下一步只看本文件头部与交接表。
+移出的最近轮次摘要见 [303 摘要](archive/status-recent-303.md)、[302 摘要](archive/status-recent-302.md)、[301 摘要](archive/status-recent-301.md)、[300 摘要](archive/status-recent-300.md)、[299 摘要](archive/status-recent-299.md)、[298 摘要](archive/status-recent-298.md)、[297 摘要](archive/status-recent-297.md)、[296 摘要](archive/status-recent-296.md)、[295 摘要](archive/status-recent-295.md)、[294 摘要](archive/status-recent-294.md)、[293 摘要](archive/status-recent-293.md)、[292 摘要](archive/status-recent-292.md)、[291 摘要](archive/status-recent-291.md)、[290 摘要](archive/status-recent-290.md)、[289 摘要](archive/status-recent-289.md)、[288 摘要](archive/status-recent-288.md)、[286 摘要](archive/status-recent-286.md)、[285 摘要](archive/status-recent-285.md)、[284 摘要](archive/status-recent-284.md)和[此前近期历史](archive/status-recent-through-279.md)。277 以前迁出的叙述、旧里程碑表与轮次总表见 [状态历史](archive/status-through-277.md)，每轮证据见 [rounds/](rounds/)。历史快照不再更新成进度；查当前下一步只看本文件头部与交接表。
