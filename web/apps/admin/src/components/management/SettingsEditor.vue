@@ -70,7 +70,6 @@ function update(name: keyof SettingsValues, event: Event) {
 
           <div class="b-formbar">
             <button hidden class="c-btn c-btn--primary" :disabled="save.pending.value">保存</button>
-            <span class="b-formbar__note">改了就自动保存（密钥离开框时才存）；首页、横幅这些页面会跟着重新生成。</span>
           </div>
         </form>
       </div>
@@ -78,12 +77,11 @@ function update(name: keyof SettingsValues, event: Event) {
         <section class="b-section">
           <h2 class="b-section__title">检查</h2>
           <form class="b-form" @submit.prevent="testEmail"><button type="submit" class="c-btn c-btn--secondary c-btn--sm" :disabled="!email.canStart.value">发送测试邮件</button>
-          <p class="b-sub">发给你自己的邮箱，用于检查 SMTP 配置。发送失败时会显示原因。</p>
+          <p class="b-sub">发给当前账号的邮箱。</p>
           </form>
           <p v-if="emailMessage" class="b-sub" role="status">{{ emailMessage }}</p>
-          <p class="b-sub">AI 巡查引擎按已批准的迁移安排在割接后启用。</p>
           <form class="b-form" @submit.prevent="backup?.test()"><button type="submit" class="c-btn c-btn--secondary c-btn--sm" :disabled="sidePending">测试对象存储</button>
-          <p class="b-sub">用已保存的异地备份设置往存储桶里写一个小文件再删掉，看能不能连上、有没有权限。刚改的设置会先存好再测；「备份上传到对象存储」没打开也能测。</p>
+          <p class="b-sub">保存设置后，写入并删除一个测试文件。</p>
           </form>
           <ActionState :message="email.message.value" :pending="email.pending.value" :uncertain="email.uncertain.value" @retry="email.retry" />
         </section>

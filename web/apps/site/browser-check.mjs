@@ -194,7 +194,7 @@ async function main() {
     title: document.title,
     // 两处主导航（页头和抽屉）同有 aria-label=主导航；只数页头那份
     nav: [...document.querySelector("nav[aria-label=主导航]").querySelectorAll("a")].map((a) => a.textContent),
-    footer: document.querySelector(".c-footer__statement")?.textContent.slice(0, 12),
+    footer: document.querySelector(".c-footer__base")?.textContent.slice(0, 12),
     account: [...document.querySelectorAll(".c-account a")].map((a) => a.textContent.trim()),
     stylesheet: !!document.querySelector('link[rel="stylesheet"]'),
     entryScript: document.querySelector("script[type=module]")?.getAttribute("src"),

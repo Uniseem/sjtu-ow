@@ -157,7 +157,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
       id="registration_mode"
       label="报名方式"
       :errors="fields.registration_mode"
-      help="个人报名：每个人自己报名（队长也一样），由赛事管理员编成临时队伍。整队报名：只收战队，队长报名后全队直接进入名单，不需要队员确认。已经有人报名之后不能再改。"
+      help="个人报名后由管理员编队；整队报名由队长提交。有人报名后不可更改。"
       required
       v-slot="field"
     >
@@ -178,7 +178,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
       id="roster_min"
       label="参赛人数下限"
       :errors="fields.roster_min"
-      :help="teamMaximum === null ? '整队报名时不能超过全站战队人数上限；个人报名不受这条限制。' : `整队报名时不能超过全站战队人数上限（现在是 ${teamMaximum} 人，在全站设置里改），否则没有战队能报名。个人报名不受这条限制。`"
+      :help="teamMaximum === null ? '整队报名不能超过全站战队人数上限。' : `整队报名最多 ${teamMaximum} 人。`"
       required
       v-slot="field"
     >
@@ -230,7 +230,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
       id="auto_approve"
       label="报名自动通过"
       :errors="fields.auto_approve"
-      help="只对整队报名有效（临时队伍编成即通过）。打开后，报名通过全部校验即由系统自动通过，不需要管理员审核。已经有报名之后不能再改。"
+      help="仅对整队报名有效，有报名后不可更改。"
       checkbox
       v-slot="field"
     >
@@ -255,7 +255,7 @@ function date(name: "starts_at" | "registration_opens_at" | "registration_closes
       id="participant_contact"
       label="选手联系方式"
       :errors="fields.participant_contact"
-      help="比如选手 QQ 群号。只有报了这项赛事的人看得到（有效名单里的人、个人报名过的人），也会写进报名通过、编队和开赛提醒的邮件。不要写进上面公开的详细说明。"
+      help="仅报名者可见，也会写入参赛邮件。"
       v-slot="field"
     >
       <input

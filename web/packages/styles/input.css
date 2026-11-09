@@ -2721,17 +2721,6 @@
     text-align: center;
   }
 
-  /* A small landscape over the words (design-details 1.9). */
-  .c-empty::before {
-    content: "";
-    display: block;
-    width: 10rem;
-    aspect-ratio: 16 / 9;
-    margin: 0 auto 1rem;
-    border-radius: var(--radius-sm);
-    background: var(--color-ok-soft) url("/static/img/placeholders/hue-4.svg") center / cover;
-  }
-
   .c-empty__title {
     color: var(--color-fg);
     font-weight: 600;
@@ -4971,8 +4960,8 @@
   }
 
   .b-account__name {
-    display: none;
-    max-width: 8rem;
+    display: inline;
+    max-width: 5rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -5004,6 +4993,10 @@
     .b-account__name,
     .b-top__site span {
       display: inline;
+    }
+
+    .b-account__name {
+      max-width: 8rem;
     }
   }
 

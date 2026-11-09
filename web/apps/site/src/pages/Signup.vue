@@ -33,7 +33,7 @@ function signup() {
 }
 </script>
 <template>
-  <AuthLayout why>
+  <AuthLayout>
     <h1>注册</h1><p>已经有账号？<a :href="'/accounts/login/' + (next !== '/me/' ? '?next=' + encodeURIComponent(next) : '')" class="c-link">登录</a></p>
     <form method="post" action="/accounts/signup/" :aria-busy="pending || undefined" @submit.prevent="signup">
       <AuthError :message="message" />
@@ -45,8 +45,8 @@ function signup() {
       </CField>
       <CField label="我已阅读并同意用户协议和隐私政策" kind="checkbox" input-id="id_agreed_terms" required :errors="fields.agree_terms"><input id="id_agreed_terms" v-model="agreeTerms" type="checkbox" name="agreed_terms" required></CField>
       <CField label="我同意将个人信息存储在境外服务器" kind="checkbox" input-id="id_agreed_cross_border" required :errors="fields.agree_cross_border"><input id="id_agreed_cross_border" v-model="agreeCrossBorder" type="checkbox" name="agreed_cross_border" required></CField>
+      <p><a href="/terms/" class="c-link" target="_blank" rel="noopener">用户协议</a> · <a href="/privacy/" class="c-link" target="_blank" rel="noopener">隐私政策</a></p>
       <input v-if="next !== '/me/'" type="hidden" name="next" :value="next">
-      <p class="text-sm text-fg-2">请先阅读<a href="/terms/" class="c-link" target="_blank" rel="noopener">用户协议</a>和<a href="/privacy/" class="c-link" target="_blank" rel="noopener">隐私政策</a>（在新标签页打开），两项同意要分别勾选。</p>
       <div><button type="submit" class="c-btn c-btn--primary c-btn--block" :disabled="pending">注册</button></div>
     </form>
   </AuthLayout>

@@ -39,7 +39,7 @@ const fixtures: Fixture[] = [
   ...JSON.parse(readFileSync(new URL("./testdata/legacy-comments.json", import.meta.url), "utf8")),
 ]
 
-// Attribute order, self-closing syntax, boolean attribute notation, fragment
+// Attribute and class order, self-closing syntax, boolean attribute notation, fragment
 // comments and whitespace are serializer details. Keep every tag, attribute,
 // class, value and visible character otherwise (including ARIA and links).
 function canonical(html: string): string {
@@ -47,6 +47,7 @@ function canonical(html: string): string {
     .replace(/<([\w-]+)((?:[^>"']|"[^"]*"|'[^']*')*)>/g, (_, tag, body: string) => {
       const attrs = [...body.replace(/\/$/, "").matchAll(/([\w:-]+)(?:="([^"]*)"|='([^']*)')?/g)]
         .map((m) => [m[1], m[2] ?? m[3] ?? ""])
+        .map(([name, value]) => [name, name === "class" ? value.split(/\s+/).sort().join(" ") : value])
         .map(([name, value]) => `${name.toLowerCase()}=${value.replace(/\s+/g, " ").trim()}`).sort()
       return `<${tag}${attrs.length ? " " + attrs.join(" ") : ""}>`
     }).replace(/\s+/g, " ").replace(/> </g, "><").replace(/>\s+/g, ">").replace(/\s+</g, "<").trim()
@@ -57,7 +58,11 @@ async function paint(component: Component, props: Record<string, unknown>, fixtu
 }
 for (const [i, fixture] of fixtures.entries()) {
   test(`old template parity ${i}: ${fixture.component} ${JSON.stringify(fixture.props)}`, async () => {
-    expect(canonical(await paint(components[fixture.component], fixture.props, fixture))).toBe(canonical(fixture.html))
+    // 302: account forms without an aside use one centered column.
+    const expected = fixture.component === "AuthLayout" && !fixture.props.why
+      ? fixture.html.replace("grid items-start gap-12 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:gap-24", "grid items-start gap-12 max-w-md mx-auto")
+      : fixture.html
+    expect(canonical(await paint(components[fixture.component], fixture.props, fixture))).toBe(canonical(expected))
   })
 }
 test("private or stopped avatars fall back; large and small avatars use their allowed rendition", async () => {

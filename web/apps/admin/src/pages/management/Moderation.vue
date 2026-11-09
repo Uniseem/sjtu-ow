@@ -9,7 +9,6 @@ import { statusLabels,riskLabels,targetLabels,categories } from "./moderation-la
 import AdminPage from "../../components/AdminPage.vue"
 import ResourceState from "../../components/management/ResourceState.vue"
 import ManagementPager from "../../components/management/ManagementPager.vue"
-import CIcon from "@sjtu-ow/ui/CIcon.vue"
 const api=useAdminApi(),route=useRoute(),router=useRouter()
 const status=ref(route.query.status===undefined?'pending':text(route.query.status)),risk=ref(text(route.query.risk)),type=ref(text(route.query.target_type)),since=ref(text(route.query.since))
 const resource=useResource(()=>route.fullPath,signal=>getApiAdminModeration(api,{all:route.query.status==='',status:route.query.status===undefined?'pending':text(route.query.status),risk:text(route.query.risk),target_type:text(route.query.target_type),since:route.query.since?positive(route.query.since):undefined,page:positive(route.query.page)},{signal}))
@@ -18,8 +17,6 @@ function filter(){void router.push({path:route.path,query:{status:status.value,r
 </script>
 <template>
  <AdminPage title="巡查记录" section="审核">
-  <div class="c-notice c-notice--warn"><CIcon name="alert" /><div class="c-notice__body">AI 巡查引擎将在割接后移植，已有记录仍可查看、人工记录处理结果。</div></div>
-  <section class="b-section"><p class="b-section__text">AI 每 30 分钟巡查一次新写或改过的内容，觉得可能不妥的会发信提醒（收件人在「设置 → 全站设置 → AI 审核」里填，没填发给超级管理员）。网站默认信任所有人，这里的记录是给你查的，标不标处理结果都行。<strong>AI 只做判断，不会改动任何内容。</strong></p></section>
   <form method="get" class="b-filters" @submit.prevent="filter">
    <select v-model="status" name="status" class="c-input" aria-label="状态" @change="filter"><option value="">全部状态</option><option v-for="(label,value) in statusLabels" :key="value" :value="value">{{ label }}</option></select>
    <select v-model="risk" name="risk" class="c-input" aria-label="风险" @change="filter"><option value="">全部风险</option><option v-for="(label,value) in riskLabels" :key="value" :value="value">{{ label }}</option></select>

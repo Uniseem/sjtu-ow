@@ -29,7 +29,7 @@ function login() {
 }
 </script>
 <template>
-  <AuthLayout why>
+  <AuthLayout>
     <h1>登录</h1><p>还没有账号？<a :href="'/accounts/signup/' + (next !== '/' ? '?next=' + encodeURIComponent(next) : '')" class="c-link">注册</a></p>
     <form method="post" action="/accounts/login/" :aria-busy="pending || undefined" @submit.prevent="login">
       <AuthError :message="message" />

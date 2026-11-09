@@ -46,7 +46,7 @@ function filter() { void router.push({ path: route.path, query: { action: action
       </tr>
     </tbody>
   </table>
-  <CEmpty v-else-if="!resource.pending.value && !resource.message.value" title="没有记录" message="换个时间段或动作试试。" />
+  <CEmpty v-else-if="!resource.pending.value && !resource.message.value" title="没有记录" />
   <ManagementPager v-if="resource.data.value" :total="resource.data.value.total" :page="resource.data.value.page" :size="resource.data.value.page_size" />
   </AdminPage>
 </template>

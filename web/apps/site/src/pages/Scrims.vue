@@ -19,7 +19,7 @@ useHead({title:"内战 · SJTU-OW"})
 </script>
 <template>
   <main id="main" class="flex-1">
-    <header class="c-pagehead c-pagehead--picture"><CPagehead section="scrims" :image-id="data.list.banner_image_id" /><div class="l-container l-container--narrow"><h1>内战</h1><p class="c-pagehead__lede">社团成员之间的对局。报名后管理员会统一分队，分队结果发到群里。</p></div></header>
+    <header class="c-pagehead c-pagehead--picture"><CPagehead section="scrims" :image-id="data.list.banner_image_id" /><div class="l-container l-container--narrow"><h1>内战</h1></div></header>
     <div class="l-container l-container--narrow pt-10 pb-16 lg:pt-14 lg:pb-24">
       <div class="grid gap-14">
         <section v-if="upcoming.length" aria-labelledby="scrims-upcoming"><div class="c-sectionhead"><h2 id="scrims-upcoming">即将开始</h2></div><ol class="c-rows"><CScrimRow v-for="scrim in upcoming" :key="scrim.id" :scrim="{...scrim,starts_at:scrim.starts_at || ''}" :signups="scrim.signup_total" /></ol></section>

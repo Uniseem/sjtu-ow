@@ -21,7 +21,6 @@ function label(key: string) { return resource.data.value?.features.find(item => 
 <template>
   <section class="b-section">
     <h2 class="b-section__title">功能规则</h2>
-    <p class="b-section__text">只对这个人：单独禁止某项功能（比如评论），或者在他所在的组关掉时单独允许。</p>
     <ResourceState :pending="resource.pending.value" :message="resource.message.value" @retry="resource.refresh" />
     <ul v-if="resource.data.value?.rules.length" class="b-list">
       <li v-for="rule in resource.data.value.rules" :key="rule.id">

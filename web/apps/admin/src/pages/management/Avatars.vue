@@ -25,7 +25,7 @@ const action = useAdminAction<{ id: number; reason: string; note: string }, { re
 </script>
 <template>
   <AdminPage title="头像" section="审核">
-    <p class="b-section__text">成员上传的头像马上就换上（网站默认信任所有人），这里按上传时间列出，最新的在前；看到不合适的就撤下，图片会删掉，并发信告诉本人原因。图片已经在服务器上裁成正方形，看到的就是显示的样子。</p>
+    <p class="b-section__text">撤下头像会删除图片，并发信告知本人原因。</p>
     <nav class="b-chips" aria-label="状态">
       <RouterLink v-for="tab in statuses" :key="tab.value" :to="`?status=${tab.value}`" :aria-current="status === tab.value ? 'true' : undefined">{{ tab.label }}<span class="c-tabs__count">{{ resource.data.value?.counts[tab.value] ?? 0 }}</span></RouterLink>
     </nav>

@@ -14,9 +14,6 @@ const viewer = useViewer()
       <div class="c-footer__grid">
         <div>
           <BrandMark />
-          <p class="c-footer__statement">
-            SJTU-OW 是上海交通大学守望先锋玩家的社团网站，由学生社团自己建设和维护。不是上海交通大学官方网站，与游戏开发商、运营商无关。
-          </p>
         </div>
         <div class="c-footer__links">
           <nav class="c-footer__col font-nav" aria-label="社区">

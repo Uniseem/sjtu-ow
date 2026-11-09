@@ -15,7 +15,6 @@ const choices: { key: ImageKey; label: string }[] = [
   { key: 'banner_news_id', label: '「资讯」栏目横幅' }, { key: 'banner_tournaments_id', label: '「赛事」栏目横幅' },
   { key: 'banner_scrims_id', label: '「内战」栏目横幅' }, { key: 'banner_teams_id', label: '「战队」栏目横幅' }, { key: 'banner_members_id', label: '「成员」栏目横幅' },
 ]
-const help = (key: ImageKey) => key === 'default_share_image_id' ? '没有封面的页面使用这张图作为分享预览。' : key === 'hero_image_id' ? '首页首屏背后的图（按浅色或深色模式压一层白色或深色，右半边是交大校徽），建议 2400×1350 以上，可以用守望先锋官方图。空着用本站的占位插画。' : '栏目页顶部标题区背后的图（设计 13.2.5），按浅色或深色模式压一层白色或深色。建议 2400×640 以上，可以用守望先锋官方图。空着用本站的占位插画。'
 const displayed = computed(() => choices.filter(choice => !props.only || (props.only === 'site' ? ['default_share_image_id', 'hero_image_id'].includes(choice.key) : choice.key.startsWith('banner_'))))
 const values = shallowRef<Record<ImageKey, number | null>>({ default_share_image_id: props.settings.default_share_image_id, hero_image_id: props.settings.hero_image_id, banner_news_id: props.settings.banner_news_id, banner_tournaments_id: props.settings.banner_tournaments_id, banner_scrims_id: props.settings.banner_scrims_id, banner_teams_id: props.settings.banner_teams_id, banner_members_id: props.settings.banner_members_id })
 const imageTitles = shallowRef({ ...props.settings.image_titles })
@@ -55,12 +54,12 @@ watch(()=>[action.pending.value,action.uncertain.value],([pending,uncertain])=>{
     <h2 v-if="!only" class="b-section__title">图片</h2>
     <div v-for="choice in displayed" :key="choice.key" class="c-field">
       <span class="c-field__label">{{ choice.label }}</span>
-      <div class="b-picker" role="group" :aria-label="choice.label"><div class="b-picker__preview">
-        <img v-if="values[choice.key]" :src="imageUrl(values[choice.key]!, 'max-320x200')" alt="" loading="lazy" />
+      <div class="b-picker" role="group" :aria-label="choice.label"><div v-if="values[choice.key]" class="b-picker__preview">
+        <img :src="imageUrl(values[choice.key]!, 'max-320x200')" alt="" loading="lazy" />
         </div><div class="b-picker__body"><p class="b-picker__title">{{ values[choice.key] ? imageTitles[String(values[choice.key])] ?? '' : '没有选图片' }}</p><div class="b-picker__actions">
         <button type="button" class="c-btn c-btn--secondary c-btn--sm" :aria-label="`选择${choice.label}`" :disabled="!action.canStart.value" @click="open(choice.key)">选择</button>
         <button v-if="values[choice.key]" type="button" class="c-btn c-btn--quiet c-btn--sm" :aria-label="`清除${choice.label}`" :disabled="!action.canStart.value" @click="select(choice.key, null)">清除</button>
-      </div></div></div><div class="c-field__help">{{ help(choice.key) }}</div>
+      </div></div></div>
     </div>
     <ActionState :message="action.message.value" :pending="action.pending.value" :uncertain="action.uncertain.value" @retry="action.retry" />
     <Teleport to="body"><dialog ref="dialog" class="b-dialog" :aria-labelledby="headingId">

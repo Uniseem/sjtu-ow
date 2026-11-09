@@ -42,7 +42,7 @@ function filter() { void router.push({ path: route.path, query: { q: search.valu
         </tr>
       </tbody>
     </table>
-    <CEmpty v-else-if="!resource.pending.value && !resource.message.value" title="没有战队" message="换个筛选条件试试。" />
+    <CEmpty v-else-if="!resource.pending.value && !resource.message.value" title="没有战队" />
     <ManagementPager v-if="resource.data.value" :page="positive(route.query.page)" :size="50" :total="filtered.length" />
   </AdminPage>
 </template>

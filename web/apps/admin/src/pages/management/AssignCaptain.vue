@@ -33,7 +33,7 @@ async function assign() {
     <ResourceState :pending="resource.pending.value || candidates.pending.value" :message="resource.message.value || candidates.message.value" :status="resource.status.value === 200 ? candidates.status.value : resource.status.value" @retry="resource.refresh(); candidates.refresh()" />
     <template v-if="resource.data.value?.team && candidates.data.value">
       <section class="b-section">
-        <p class="b-section__text">用于队长账号被停用等情况。被指定的人如果还不是成员，会先加入战队。</p>
+        <p class="b-section__text">指定非本队成员时，会先将其加入战队。</p>
         <p class="b-section__text">当前成员： <template v-for="(member, index) in resource.data.value.members" :key="member.user_id">{{ member.nickname }}{{ member.role === 'captain' ? '（队长）' : '' }}{{ index < resource.data.value.members.length - 1 ? '、 ' : '' }}</template><template v-if="!resource.data.value.members.length">（无）</template></p>
         <form method="get" class="b-filters" role="search" @submit.prevent="filter">
           <input id="q" v-model="search" type="search" name="q" maxlength="50" placeholder="按昵称或邮箱找人" class="c-input" aria-label="按昵称或邮箱找人" />

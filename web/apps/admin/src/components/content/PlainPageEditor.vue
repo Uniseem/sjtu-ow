@@ -62,10 +62,10 @@ function text(name: "title" | "body_md" | "seo_title" | "search_description", ev
         <ContentField name="body" label="正文" :errors="fields.body_md">
           <template #default="field"><MarkdownEditor ref="editor" name="body" :id="field.id" :model-value="values.body_md" :disabled="!permission.managePages.value || draft.blocked.value" :invalid="Boolean(fields.body_md?.length)" :describedby="field.describedby" @update:model-value="save.set('body_md', $event)" /></template>
         </ContentField>
-        <ContentField name="seo_title" label="搜索结果里的标题" hint="空着就用页面标题。" :errors="fields.seo_title">
+        <ContentField name="seo_title" label="搜索结果里的标题" :errors="fields.seo_title">
           <template #default="field"><input :id="field.id" class="c-input" name="seo_title" :value="values.seo_title" maxlength="255" @input="text('seo_title', $event)"></template>
         </ContentField>
-        <ContentField name="search_description" label="搜索描述" :errors="fields.search_description" hint="显示在搜索引擎结果中，位于标题之下的描述性文字。">
+        <ContentField name="search_description" label="搜索描述" :errors="fields.search_description">
           <template #default="field"><textarea :id="field.id" class="c-input" name="search_description" :value="values.search_description" rows="3" :aria-describedby="field.describedby" @input="text('search_description', $event)" /></template>
         </ContentField>
       </fieldset>

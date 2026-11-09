@@ -42,9 +42,8 @@ usePageMeta(() => ({ title: data?.title ?? "站内搜索", description: "搜索�
       </div>
     </header>
     <div class="l-container l-container--narrow pb-16 lg:pb-24">
-      <p v-if="!data?.searched" class="max-w-2xl text-fg-2">只搜公开内容：已发布的文章、赛事和内战、未解散的战队、成员展示页上的成员。多个词用空格隔开，每个词都要命中。</p>
-      <CEmpty v-else-if="total === 0" title="没有找到" :message="`没有找到和「${data.query}」有关的内容。换个词试试。`" />
-      <template v-else>
+      <CEmpty v-if="data?.searched && total === 0" title="没有找到" :message="`没有找到和「${data.query}」有关的内容。换个词试试。`" />
+      <template v-else-if="data?.searched">
         <p class="mb-8 text-fg-2">「{{ data.query }}」共 {{ total }} 条结果</p>
         <div class="grid gap-10">
           <!-- Ids count every group, shown or not, as the old forloop.counter did. -->

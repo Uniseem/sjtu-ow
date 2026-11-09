@@ -2,14 +2,16 @@
 
 ```yaml
 milestone: 正式站301起运行Vue3 SSR + Go，2026-10-14北京20:24:42割接成功，健康四项与生产公网浏览器20项通过。按用户缩减范围上线，自查通过；旧库/媒体/镜像/源码保留，取消项仍未验证/未复验，不称全量验收通过。
-round: 301-ops-cleanup-cutover（已上线，自查通过）
-next_frontend: 本批三项操作已取得真实WebKit通过证据：分队复制、编队保存后待发信确认/返回/持久、新稿自动保存后正文与并排预览保留并可继续保存发布。暂无追加前台收尾任务；299取消的矩阵、逐页补证、完整旅程和变异不再领取。
+round: 302-admin-visual-cleanup（完成，自查通过）
+next_frontend: 本轮后台装饰图和前后台冗余说明删减完成；Go/Web整组、前后台浏览器及48个页面组合在编译VPS通过。AGENTS已按用户要求更新连续修复及VPS规则，暂无追加界面任务；未部署。
 next_backend: 新栈正式站运行维护按operations的新入口；本轮清理/割接完成，暂无追加上线必做任务。29.48%磁盘、健康与worker心跳通过，旧服务/库/镜像和两次快照保留。新站可能已有写入，回退须先保全差异，不用旧备份整库覆盖。
-updated: 2026-10-14
-blocked_on: 本轮上线无剩余阻塞；用户授权的本站缓存及一个明确批准的旧TeXLive镜像清理后磁盘门达标，正式割接/对账/健康/公网主要页通过。取消的矩阵等不再领取；人工旧密码和非现有角色线上完整旅程未验证，不称全量。
+updated: 2026-11-09
+blocked_on: 本轮无未解决的VPS验证失败；正式站部署未获本轮授权。旧批取消的矩阵等不再领取，历史未验证项不称通过；自动CI看本轮提交SHA对应的运行记录。
 ```
 
 ## 前台迁移（2026-10-10 起，先读这里）
+
+**302 界面删减完成**：按用户要求删除后台装饰图、重复头像/眉标、空选图预览及前后台介绍性小字，登录注册改为单栏。设计先更新至design-next第7节第11条、admin原则和design-details空状态；业务内容、图片库数据、功能性预览、错误/保存状态和操作后果保留。用户要求编译测试全部放VPS、凭据查机器管理仓库、空间不足自行清理，并要求改AGENTS继续修复；已更新连续修复/默认分工及VPS规则，修复赛事/内战两处过期测试日期。Go/Web整组、后台桩浏览器34项、前台浏览器及评论23项通过；12页×双尺寸×浅深色48组合通过，最终截图已取回。各次失败和复验分列302报告，未合称同次退出0；未访问生产应用、未部署。
 
 **301 正式上线**：用户授权清理后立即上架，并单独批准删除旧TeXLive2024.1镜像。先清74条本站私有构建缓存，再删除该唯一批准镜像，磁盘门通过。测试机修并验证assets新卷所有权、非root私有快照读取及WAL副本独立只读导入；镜像先测试机构建、校验后传正式站。首次只读WAL导入中止后恢复旧服务/cron，失败库和快照保留；重试用独立空卷，20:24:42由新栈接管，23项计数/抽样对账、健康四项、私有API9项、公网浏览器20项通过。最终可用约43.5GiB/29.48%，旧站数据/镜像/源码保留。见 [301 report](rounds/301-ops-cleanup-cutover/report.md)，自查通过；旧密码哈希保持且已有超管会话可用，人工手输旧密码和其他真实角色旅程未验证，不恢复299取消专项、不称全量。用户已在切换前获知须重新登录。
 
@@ -195,14 +197,14 @@ blocked_on: 本轮上线无剩余阻塞；用户授权的本站缓存及一个�
 
 ## 最近轮次
 
+**302（2026-11-09，界面删减）**：按用户要求删除后台装饰图和前后台冗余说明，更新AGENTS允许当前助手连续修复关联前后台、测试和文档，并要求编译检查全部在VPS。按机器管理仓库重建当前worker环境，未清理空间或操作生产服务；两处过期日期测试修复后定向通过，Go/Web整组、后台桩34、前台及评论23、48页组合通过。失败和复验单列，已取回截图，自查通过，未部署。见 rounds/302-admin-visual-cleanup/。
+
 **301（2026-10-14，正式上线）**：用户授权本站清理/立即上架，另批准一个旧TeXLive镜像；磁盘由9.50%升至最终29.48%。测试机修验证新卷/私有快照/WAL只读导入并传预建镜像；首次失败后恢复旧服务，重试独立空卷，20:24:42割接成功、elapsed182秒。23项计数/抽样对账、健康四项、私有API9项、公网浏览器20项通过；旧资产/失败快照保留，自查通过，不称全量。见 rounds/301-ops-cleanup-cutover/。
 
 **300（2026-10-14，缩减范围收尾）**：同步远端后在测试机后台完成唯一保留的WebKit三项操作：分队复制、编队待发信确认返回/持久、新稿自动保存改网址保留正文/预览并继续保存发布。分队/编队8条断言与文章定向6条断言分次取得通过，失败/准备错误原样记录；无业务代码变更，自查通过。正式站未访问，磁盘门和割接授权仍阻塞上线。见 rounds/300-webkit-final-operations/。
-
-**299（2026-10-14，验收范围决定）**：用户进一步取消非必要剩余验证，本轮只改文档/状态并push，不执行验证。当前任务缩为一次WebKit操作检查，其余矩阵/逐页补证/双引擎完整旅程/第二场演练/外部专项取消；沿用既有通过证据，省略项不标通过。正式站磁盘门、部署授权和数据保护保留。见 rounds/299-minimal-verification-scope/。
 
 只保留最近 3 轮的摘要；新加一轮时把超出的条目移到 `archive/` 的历史记录。过去的执行结果归档，当前未完成项必须仍在上面的任务/验收表。
 
 ## 历史记录
 
-移出的最近轮次摘要见 [298 摘要](archive/status-recent-298.md)、[297 摘要](archive/status-recent-297.md)、[296 摘要](archive/status-recent-296.md)、[295 摘要](archive/status-recent-295.md)、[294 摘要](archive/status-recent-294.md)、[293 摘要](archive/status-recent-293.md)、[292 摘要](archive/status-recent-292.md)、[291 摘要](archive/status-recent-291.md)、[290 摘要](archive/status-recent-290.md)、[289 摘要](archive/status-recent-289.md)、[288 摘要](archive/status-recent-288.md)、[286 摘要](archive/status-recent-286.md)、[285 摘要](archive/status-recent-285.md)、[284 摘要](archive/status-recent-284.md)和[此前近期历史](archive/status-recent-through-279.md)。277 以前迁出的叙述、旧里程碑表与轮次总表见 [状态历史](archive/status-through-277.md)，每轮证据见 [rounds/](rounds/)。历史快照不再更新成进度；查当前下一步只看本文件头部与交接表。
+移出的最近轮次摘要见 [299 摘要](archive/status-recent-299.md)、[298 摘要](archive/status-recent-298.md)、[297 摘要](archive/status-recent-297.md)、[296 摘要](archive/status-recent-296.md)、[295 摘要](archive/status-recent-295.md)、[294 摘要](archive/status-recent-294.md)、[293 摘要](archive/status-recent-293.md)、[292 摘要](archive/status-recent-292.md)、[291 摘要](archive/status-recent-291.md)、[290 摘要](archive/status-recent-290.md)、[289 摘要](archive/status-recent-289.md)、[288 摘要](archive/status-recent-288.md)、[286 摘要](archive/status-recent-286.md)、[285 摘要](archive/status-recent-285.md)、[284 摘要](archive/status-recent-284.md)和[此前近期历史](archive/status-recent-through-279.md)。277 以前迁出的叙述、旧里程碑表与轮次总表见 [状态历史](archive/status-through-277.md)，每轮证据见 [rounds/](rounds/)。历史快照不再更新成进度；查当前下一步只看本文件头部与交接表。

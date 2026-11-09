@@ -31,7 +31,7 @@ function longDay(value:string) { const p=shanghaiParts(new Date(value)); return 
 </script>
 <template>
   <AdminPage title="活动数据" section="数据">
-    <p class="b-section__text">只数已发布和已结束的内战、赛事，草稿和已取消的不算；人数按在用、验证过邮箱的成员去重。这里是活动数据，网站不做访问统计。</p>
+    <p class="b-section__text">统计已发布和已结束的活动，人数按有效成员去重。</p>
     <form method="get" class="b-filters" data-activity-period @submit.prevent="filter">
       <RouterLink v-for="preset in presets" :key="preset.label" :to="{ path: route.path, query: { start: preset.start, end: preset.end } }" class="c-btn c-btn--secondary c-btn--sm">{{ preset.label }}</RouterLink>
       <label class="b-count" for="activity-start">从</label><input id="activity-start" v-model="start" type="date" name="start" required class="c-input" />

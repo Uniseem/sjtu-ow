@@ -43,7 +43,6 @@ useHead({ title: "战队 · SJTU-OW" })
         <div class="c-pagehead__row">
           <div>
             <h1>战队</h1>
-            <p class="c-pagehead__lede">社团里的固定队伍，每队最多 {{ list.max_members }} 人。找一支招募中的申请加入，或者自己建一支。</p>
           </div>
           <div class="c-pagehead__actions">
             <a href="/teams/new/" class="c-btn c-btn--primary"><CIcon name="plus" />创建战队</a>

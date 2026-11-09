@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
@@ -56,7 +57,7 @@ func TestRoutesAndGates(t *testing.T) {
 	e := newEnv(t)
 	h := e.handler()
 	u := e.user("甲", 2000, 2000, 2000)
-	sid := e.scrim()
+	sid := e.scrim(withStart(time.Now().UTC().Add(10 * 24 * time.Hour)))
 	sp := "/api/scrims/" + strconv.FormatInt(sid, 10)
 	if code, out := e.call(h, "GET", "/api/scrims", 0, false, ""); code != 200 || len(out["scrims"].([]any)) != 1 {
 		t.Fatalf("列表：%d %v", code, out)

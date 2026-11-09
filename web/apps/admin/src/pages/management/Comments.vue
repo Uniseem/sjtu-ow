@@ -27,7 +27,7 @@ function filter() { void router.push({ path: route.path, query: { q: search.valu
       <select v-model="shown" name="show" class="c-input" aria-label="哪些评论" @change="filter"><option value="">全部评论</option><option value="hidden">只看隐藏的</option><option value="pinned">只看置顶的</option></select>
           <button class="c-btn c-btn--secondary c-btn--sm">筛选</button>
         </form>
-        <p class="b-section__text">评论只能隐藏和置顶，不能删除或改字。每篇文章只能置顶一条顶层评论。</p>
+        <p class="b-section__text">每篇文章可置顶一条顶层评论。</p>
         <ActionState :message="action.message.value" :pending="action.pending.value" :uncertain="action.uncertain.value" @retry="action.retry" />
         <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.refresh" />
         <table v-if="resource.data.value?.items.length" class="c-table c-table--stack">
@@ -52,7 +52,7 @@ function filter() { void router.push({ path: route.path, query: { q: search.valu
             </tr>
           </tbody>
         </table>
-        <CEmpty v-else-if="!resource.pending.value && !resource.message.value" title="没有评论" message="换个筛选条件试试。" />
+        <CEmpty v-else-if="!resource.pending.value && !resource.message.value" title="没有评论" />
         <ManagementPager v-if="resource.data.value" :page="resource.data.value.page" :size="resource.data.value.page_size" :total="resource.data.value.total" />
       </AdminPage>
 </template>

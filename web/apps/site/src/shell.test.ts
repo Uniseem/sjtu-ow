@@ -67,7 +67,7 @@ test("a visitor gets the masthead, the nav and the footer", async () => {
   expect(html).not.toContain("账号菜单")
   expect(html).not.toContain("我的报名")
   expect(html).not.toContain('href="/accounts/logout/"')
-  expect(html).toContain("SJTU-OW 是上海交通大学守望先锋玩家的社团网站")
+  expect(html).toContain("不是上海交通大学官方网站")
   expect(html).toContain(`© ${shanghaiYear()} SJTU-OW · 学生社团自办网站`)
   expect(html).toContain("游戏图片版权归暴雪娱乐所有")
   // 搜索图标真的画出来了（components/icon.html 的 search 路径）

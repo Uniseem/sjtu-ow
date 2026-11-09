@@ -22,7 +22,7 @@ useHead({title:"赛事 · SJTU-OW"})
   <main id="main" class="flex-1">
     <header class="c-pagehead c-pagehead--picture">
       <CPagehead section="tournaments" :image-id="data.list.banner_image_id" />
-      <div class="l-container"><h1>赛事</h1><p class="c-pagehead__lede">社团自己办的比赛。一般是每人自己报名，由赛事组编成队伍；标着「整队报名」的，由队长为整支战队报名。</p></div>
+      <div class="l-container"><h1>赛事</h1></div>
     </header>
     <div class="l-container pt-10 pb-16 lg:pt-14 lg:pb-24">
       <div class="grid gap-14">

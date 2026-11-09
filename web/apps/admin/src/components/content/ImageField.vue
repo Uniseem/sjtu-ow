@@ -25,7 +25,7 @@ function close(): void {
 <template>
   <div class="b-picker" role="group" :aria-label="label">
     <input type="hidden" :name="name" :value="modelValue ?? ''">
-    <div class="b-picker__preview"><img v-if="modelValue" :src="imageUrl(modelValue, 'max-320x200')" alt="" loading="lazy"></div>
+    <div v-if="modelValue" class="b-picker__preview"><img :src="imageUrl(modelValue, 'max-320x200')" alt="" loading="lazy"></div>
     <div class="b-picker__body">
       <p class="b-picker__title">{{ modelValue ? image.data.value?.title || (image.pending.value ? '正在加载…' : '图片暂时无法加载') : '没有选图片' }}</p>
       <div class="b-picker__actions">

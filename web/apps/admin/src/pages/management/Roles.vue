@@ -23,7 +23,6 @@ function label(key: string) { return resource.data.value?.features.find(feature 
       <RouterLink to="/admin/users/">用户</RouterLink>
       <RouterLink to="/admin/roles/" aria-current="page">角色</RouterLink>
     </nav></template>
-    <p class="b-section__text">谁在哪个角色里，在「用户」里编辑那个人。角色本身能做什么是固定的（设计 4.1）；细粒度的权限在 Wagtail 底层后台的用户组里，平时不用动。</p>
     <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.refresh" />
     <ActionState :message="action.message.value" :pending="action.pending.value" :uncertain="action.uncertain.value" @retry="action.retry" />
     <section v-for="group in resource.data.value?.groups" :key="group.id" class="b-section" :data-role="group.name">

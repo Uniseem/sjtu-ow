@@ -14,7 +14,6 @@ const resource = useResource(() => true, signal => getApiAdminMemberGroups(api, 
     <template #actions>
       <RouterLink class="c-btn c-btn--primary c-btn--sm" to="/admin/member-groups/new/"><CIcon name="plus" />新建分组</RouterLink>
     </template>
-    <p class="b-section__text">成员展示页上的分组，比如「社团干部」。组里的人照样在「全部成员」里。</p>
     <ResourceState :pending="resource.pending.value" :message="resource.message.value" :status="resource.status.value" @retry="resource.refresh" />
     <table v-if="resource.data.value?.groups.length" class="c-table c-table--stack">
       <thead>

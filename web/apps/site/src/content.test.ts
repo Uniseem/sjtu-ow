@@ -127,11 +127,10 @@ const results = {
   ],
 }
 
-test("search with nothing to look for explains itself and does not call Go", async () => {
+test("empty search keeps its form and does not call Go", async () => {
   const { status, body, asked } = await page("/search/?q=%20%20", {})
   expect(status).toBe(200)
   expect(body).toContain("<title>站内搜索 · SJTU-OW</title>")
-  expect(body).toContain("只搜公开内容：")
   expect(body).toContain('<input id="search-q" type="search" name="q" value="" maxlength="50"')
   expect(asked).not.toContain("/api/search")
 })

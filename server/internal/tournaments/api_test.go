@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Uniseem/sjtu-ow/server/internal/accounts"
 	"github.com/Uniseem/sjtu-ow/server/internal/app"
@@ -56,7 +57,8 @@ func TestRoutesAndGates(t *testing.T) {
 	e := newEnv(t)
 	h := e.handler()
 	a, b, mgr := e.user("队长"), e.user("队员"), e.user("管理")
-	tid := e.tour()
+	now := time.Now().UTC()
+	tid := e.tour(withWindow(now.Add(-24*time.Hour), now.Add(7*24*time.Hour)), withStart(now.Add(10*24*time.Hour)))
 	team := e.team("接口队", a, b)
 	tp := "/api/tournaments/" + strconv.FormatInt(tid, 10)
 

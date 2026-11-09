@@ -105,12 +105,12 @@ async function remove(): Promise<void> {
             <input :id="field.id" class="c-input" name="name" :value="values.name" maxlength="255" :aria-describedby="field.describedby" @input="input('name', $event)">
           </template>
         </ContentField>
-        <ContentField name="slug" label="网址片段" :errors="fields.slug" hint="资讯栏目按分类筛选时地址里用的词，只用字母、数字和连字符。">
+        <ContentField name="slug" label="网址片段" :errors="fields.slug" hint="只用字母、数字和连字符。">
           <template #default="field">
             <input :id="field.id" class="c-input" name="slug" :value="values.slug" maxlength="255" :aria-describedby="field.describedby" @input="input('slug', $event)">
           </template>
         </ContentField>
-        <ContentField name="sort_order" label="排序" required :errors="fields.sort_order" hint="数字小的排在前面。">
+        <ContentField name="sort_order" label="排序（从小到大）" required :errors="fields.sort_order">
           <template #default="field">
             <input :id="field.id" class="c-input" name="sort_order" type="number" step="1" :value="values.sort_order" @change="order">
           </template>

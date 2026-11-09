@@ -10,7 +10,6 @@ const props = defineProps<{
   section: string
   backHref?: string
   backLabel?: string
-  subtitle?: string
 }>()
 const route = useRoute()
 const session = useAdminSession()
@@ -31,12 +30,10 @@ watch(() => [props.title, props.documentTitle], ([title, documentTitle]) => {
   <header class="b-head">
     <div class="b-head__inner">
       <a v-if="backHref" class="b-head__back" :href="backHref"><CIcon name="arrow-left" class="size-4" />{{ backText }}</a>
-      <p v-else-if="current" class="b-head__kicker">{{ current.label }}</p>
       <div class="b-head__row">
         <h1 class="b-head__title" tabindex="-1">{{ title }}</h1>
         <div class="b-head__actions"><slot name="actions" /></div>
       </div>
-      <p v-if="subtitle" class="mt-2 text-sm text-fg-2">{{ subtitle }}</p>
       <nav v-if="tabs.length && !backHref" class="b-tabs" :aria-label="current?.label">
         <a v-for="tab in tabs" :key="tab.key" :href="tab.url" :aria-current="selected(tab.url) ? 'page' : undefined">
           {{ tab.label }}<span v-if="tab.count" class="c-tabs__count">{{ tab.count }}</span>

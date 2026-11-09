@@ -75,7 +75,7 @@ onMounted(() => { void loadArticles() })
       <p v-if="draft.notice.value" class="c-notice c-notice--info" role="status">{{ draft.notice.value }}</p>
       <ContentActionMessage :message="draft.publication.message.value" :pending="draft.publication.pending.value" :uncertain="draft.publication.uncertain.value" @retry="draft.publication.retry" />
       <fieldset class="b-fieldset" :disabled="!permission.managePages.value || draft.blocked.value">
-        <p class="b-section__text">最多 3 篇，按这里的顺序排在首页最上面。只能选已经发布的文章。改了自动存成草稿，点「发布」首页才更新。</p>
+        <p class="b-section__text">最多 3 篇已发布文章，按顺序展示。修改后需发布。</p>
         <p v-if="loading" class="b-sub" role="status">正在加载置顶文章…</p>
         <div v-if="loadMessage" class="c-notice c-notice--error" role="alert"><p>{{ loadMessage }}</p><button type="button" class="c-btn c-btn--secondary c-btn--sm" @click="loadArticles">重新加载</button></div>
         <ContentField v-for="(_, index) in slots" :key="index" :name="`article_${index + 1}`" :label="`第 ${index + 1} 篇`">

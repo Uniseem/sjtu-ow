@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted } from "vue"
 import { useRoute } from "vue-router"
 import CIcon from "@sjtu-ow/ui/CIcon.vue"
-import CAvatar from "@sjtu-ow/ui/CAvatar.vue"
 import AdminTheme from "./AdminTheme.vue"
 import { useAdminSession } from "../core/session"
 import type { AdminSection, AdminTab } from "../core/api"
@@ -35,7 +34,7 @@ onUnmounted(() => { document.removeEventListener("click",closeMenus); document.r
         <a class="b-top__site" href="/" target="_blank" rel="noopener"><CIcon name="external" class="size-4" /><span>打开网站</span></a>
         <AdminTheme />
         <details v-if="user" class="c-menu">
-          <summary :aria-label="'账号菜单：' + user.nickname"><CAvatar :person="user" size="sm" plain /><span class="b-account__name">{{ user.nickname }}</span><CIcon name="chevron-down" class="size-4" /></summary>
+          <summary :aria-label="'账号菜单：' + user.nickname"><span class="b-account__name">{{ user.nickname }}</span><CIcon name="chevron-down" class="size-4" /></summary>
           <div class="c-menu__panel"><a href="/me/">个人中心</a><hr><a href="/accounts/logout/">退出</a></div>
         </details>
       </div>
