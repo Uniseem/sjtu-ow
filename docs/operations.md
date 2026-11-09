@@ -6,16 +6,22 @@
 
 ## 正式站新栈运行入口
 
-正式站新栈使用独立项目 `sjtu-ow-next`，目录仍为 `/srv/sjtu-ow`，环境文件为权限600的 `.env.next`。每条Compose命令必须同时带基础文件、该机器的专用覆盖文件和环境文件：
+**2026-11-09 入口核对**：正式站已于10月迁到机器管理仓库记录的BeroHost-DE，不再是下文历史Contabo地址。当前项目仍为`sjtu-ow-next`、代码目录`/srv/sjtu-ow`；实际Compose来源为`/etc/contabo-apps/sjtu-ow-next.compose.json`，与私有机器管理仓库的对应配置一致。各服务通过该JSON的`env_file`读取权限600的私有环境文件；代码目录中的`.env.next`与`deploy/docker-compose.next-vps.yml`保留作301历史，不覆盖当前配置。
+
+当前命令显式指定项目/配置；`--env-file /dev/null`仅关闭隐式.env插值，服务指定的私有env_file仍正常读取，不能将它替换为空环境：
 
 ```bash
 cd /srv/sjtu-ow
-docker compose -p sjtu-ow-next -f deploy/docker-compose.new.yml -f deploy/docker-compose.next-vps.yml --env-file /srv/sjtu-ow/.env.next ps
-docker compose -p sjtu-ow-next -f deploy/docker-compose.new.yml -f deploy/docker-compose.next-vps.yml --env-file /srv/sjtu-ow/.env.next exec -T server /srv/sjtuow/sjtuow reconcile
+docker compose -p sjtu-ow-next -f /etc/contabo-apps/sjtu-ow-next.compose.json --env-file /dev/null ps
+docker compose -p sjtu-ow-next -f /etc/contabo-apps/sjtu-ow-next.compose.json --env-file /dev/null exec -T server /srv/sjtuow/sjtuow reconcile
 curl --fail --silent http://127.0.0.1:22887/healthz
 ```
 
-专用覆盖文件与 `Caddyfile.next-vps`、`.env.next` 不进仓库，加入该检出的 `.git/info/exclude`。当前覆盖配置使用在测试机先构建/验证后传入的镜像，并通过 `build: !reset null` 禁止现场重复构建；先核对 `sjtuow.source` 标签、传输SHA256和实际镜像ID。后续升级不得复用301标签覆盖正在运行的版本，使用新的明确标签并审阅覆盖文件后再更新。
+当前生产配置以私有机器管理仓库为准，先查实际容器的`com.docker.compose.project.config_files`标签，不能使用代码目录里的旧Compose覆盖它。生产只加载在编译机验证过的镜像，核对`sjtuow.source`/OCI revision、压缩包SHA256、image ID和实际内容；不现场编译，不复用301等运行中旧标签。更新前备份当前真实库/媒体及实际配置，保留正在运行的镜像ID；只修改本站应用镜像引用，端口、网络、私有环境和真实卷按现场已核对的配置保留。
+
+同一新栈的普通更新不执行`cutover.sh`或旧库导入。回退镜像前核对schema兼容并保全当前数据；不恢复旧整库。现有worker在TERM后保留120秒租约，新实例等待正常过期再接管，不直接修改数据库锁；上线验收须读到新实例的启动/心跳时间，不能只依赖旧心跳尚未超时的health绿灯。
+
+下列专用覆盖/Caddy与卷说明保留301割接背景；当前运行版本、实际部署结果和备份路径看STATUS及最新部署报告。SSH访问按机器管理的当前入口/凭据和已核对主机键，旧缓存冲突时核对来源后定向处理，不关闭严格校验。307未修改全局known_hosts或服务器SSH/网络配置。
 
 数据与媒体卷以实际Compose覆盖和 `docker inspect` 挂载为准，不根据默认名字猜测。导入失败后的旧新库/卷先保留；重试使用独立空卷，不删除或覆盖失败库。当前实例的卷名、镜像和快照证据写本轮报告，运行状态只看STATUS。
 
