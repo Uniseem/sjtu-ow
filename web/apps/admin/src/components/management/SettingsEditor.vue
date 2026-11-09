@@ -68,9 +68,7 @@ function update(name: keyof SettingsValues, event: Event) {
           </fieldset>
           <BackupEditor ref="backup" embedded />
 
-          <div class="b-formbar">
-            <button hidden class="c-btn c-btn--primary" :disabled="save.pending.value">保存</button>
-          </div>
+          <button hidden class="c-btn c-btn--primary" :disabled="save.pending.value">保存</button>
         </form>
       </div>
       <aside class="b-aside">

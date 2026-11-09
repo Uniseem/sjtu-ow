@@ -25,3 +25,7 @@ VPS 后台整组运行 `20261109-134444-e4042ff`，本机日志 `/tmp/sjtuow-302
 ## 改动文件
 
 `server/go.mod`、`docs/development.md`、STATUS、302追加补充及本轮三份交接文件。
+
+## 304 轮补充：自动 CI
+
+提交 `7ea5eef8bc599c299d9b153ec993dfe659f1d727` 的 [CI 42569576567](https://github.com/Uniseem/sjtu-ow/actions/runs/42569576567) 已成功，Go、Web 两项均通过，旧标准库漏洞阻塞已解决。

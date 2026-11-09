@@ -17,6 +17,7 @@ function filter(){void router.push({path:route.path,query:{status:status.value,r
 </script>
 <template>
  <AdminPage title="巡查记录" section="审核">
+  <p class="b-section__text">AI 巡查暂不可用，记录可人工复核。</p>
   <form method="get" class="b-filters" @submit.prevent="filter">
    <select v-model="status" name="status" class="c-input" aria-label="状态" @change="filter"><option value="">全部状态</option><option v-for="(label,value) in statusLabels" :key="value" :value="value">{{ label }}</option></select>
    <select v-model="risk" name="risk" class="c-input" aria-label="风险" @change="filter"><option value="">全部风险</option><option v-for="(label,value) in riskLabels" :key="value" :value="value">{{ label }}</option></select>

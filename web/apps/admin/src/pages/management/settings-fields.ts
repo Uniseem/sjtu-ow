@@ -30,7 +30,7 @@ export const settingsSections: SettingSection[] = [
   ] },
   { title: 'AI 审核', fields: [
     { name: 'moderation_image_enabled', label: "连图片一起审核", kind: 'checkbox', help: "图片送审会增加费用。" },
-    { name: 'moderation_enabled', label: "启用 AI 内容审核", kind: 'checkbox', help: "需配置接口和密钥。" },
+    { name: 'moderation_enabled', label: "启用 AI 内容审核", kind: 'checkbox', help: "巡查暂不可用，配置仅保存备用。" },
     { name: 'moderation_base_url', label: "接口地址", kind: 'url', help: "OpenAI 兼容地址，留空使用 DeepSeek。" },
     { name: 'moderation_model', label: "审核模型", kind: 'text', required: true, maxlength: 100 },
     { name: 'moderation_extra_params', label: "附加请求参数", kind: 'textarea', help: "JSON，可留空。" },
